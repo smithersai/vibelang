@@ -36,7 +36,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
-| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `Debate.run`, a bounded exchange a judge settles; `MapReduce.run`, map every shard and reduce in shard order; `Saga.run`, forward steps whose compensations unwind in reverse; `Kanban.run`, items through ordered columns; `Supervisor.run`, a boss that plans, delegates and reviews; `Sidecar.run`, a cheap shadow scored against the primary; `PatternError` | none; they are pure Effect code and run in any runtime |
+| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `Debate.run`, a bounded exchange a judge settles; `MapReduce.run`, map every shard and reduce in shard order; `Saga.run`, forward steps whose compensations unwind in reverse; `Kanban.run`, items through ordered columns; `Supervisor.run`, a boss that plans, delegates and reviews; `Sidecar.run`, a cheap shadow scored against the primary; `DriftDetector.run`, a snapshot compared with a baseline; `Intervene.run`, a change applied behind an approval; `Trellis.validate` and `Trellis.execute`, a model-written delegation plan inside an envelope; `PatternError` | none; they are pure Effect code and run in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -1743,3 +1743,71 @@ export effect function compare() {
 | A supervisor checks the plan before any worker runs | A plan with no `tasks` array, no task, more than `maxTasks` tasks, a task without a string `id` and `workerType`, or a repeated id fails with `invalid_input`. |
 | A sidecar's shadow never fails the run | A shadow failure or defect is quarantined and not scored. The primary's failure and the scorer's failure fail the run, and so does an interruption. |
 | Sidecar scores are finite | A score or difference that is `NaN` or infinite fails with `invalid_input`. `Experimental.Patterns.Sidecar.delta(primary, shadow)` computes the same delta and throws that `PatternError`. |
+
+### DriftDetector, Intervene and Trellis
+
+`Experimental.Patterns.DriftDetector.run(input, { baseline, capture, compare, alertIf?, alert? })` captures a snapshot, compares it with `baseline`, and runs `alert` once when the comparison reports drift. A comparison reports drift when it is `true` or has an own `drifted: true`; `alertIf` decides from the comparison instead. The result is `{ snapshot, comparison, drifted, alert? }`, and `alert` is present only when the alert ran:
+
+```vibe
+// run: try Console.log(try latency(140))
+// experimental: builtins
+export effect function latency(reading: number) {
+  const result = try Experimental.Patterns.DriftDetector.run("p99", {
+    baseline: 100,
+    capture: effect () => reading,
+    compare: effect ({ snapshot, baseline }) => ({ delta: snapshot - baseline }),
+    alertIf: (comparison) => comparison.delta > 25,
+    alert: effect ({ comparison }) => `paged: up ${comparison.delta} ms`
+  })
+  return result.alert ?? "steady"
+}
+// Output: paged: up 40 ms
+```
+
+`Experimental.Patterns.Intervene.run(input, { read, propose, apply, report, dryRun, approval? })` reads a target, proposes a change, and reports. A dry run reports the proposal with `applied: undefined` and never calls `apply`. Otherwise `approval`, when present, runs first and must answer the literal `"approved"`; any other answer fails with a `SchemaError` and `apply` does not run:
+
+```vibe
+// run: try Console.log(try rename("approved")); try Console.log(rename("later") catch (error) => error._tag)
+// experimental: builtins
+export effect function rename(decision: string) {
+  return try Experimental.Patterns.Intervene.run("rename", {
+    dryRun: false,
+    read: effect () => ["a.ts", "b.ts"],
+    propose: effect ({ context }) => context.length,
+    approval: effect () => decision,
+    apply: effect ({ proposal }) => proposal,
+    report: effect ({ applied }) => `wrote ${applied} edits`
+  })
+}
+// Output: wrote 2 edits
+// Output: SchemaError
+```
+
+A trellis runs a delegation plan a model wrote. A plan is `{ agent: { goal, seat? } }`, `{ sequence: [...] }` or `{ parallel: [...] }`, and `Experimental.Patterns.Trellis.Plan` is its schema. `Trellis.validate(plan, { fuel, depth, fanout })` returns every refusal as a `TrellisError` with a `code` and the plan `path` to repair, and returns none for an admitted plan. `Trellis.leaves(plan)` lists the leaves with their paths. `Trellis.execute(plan, { leaf, concurrency })` runs each leaf, holding at most `concurrency` leaves in flight across the whole plan:
+
+```vibe
+// run: try Console.log(try delegate())
+// experimental: builtins
+const plan: Experimental.Patterns.Trellis.Plan = {
+  sequence: [{ agent: { goal: "draft" } }, { parallel: [{ agent: { goal: "test" } }, { agent: { goal: "lint" } }] }]
+}
+
+export effect function delegate() {
+  const refused = Experimental.Patterns.Trellis.validate(plan, { fuel: 2, depth: 3, fanout: 2 })
+  const results = try Experimental.Patterns.Trellis.execute(plan, {
+    concurrency: 2,
+    leaf: effect (leaf) => `${leaf.goal} at ${leaf.path}`
+  })
+  return `${refused.map((error) => error.code).join(",")}; ${String(results)}`
+}
+// Output: fuel_exhausted; draft at root.sequence[0],test at root.sequence[1].parallel[0],lint at root.sequence[1].parallel[1]
+```
+
+| Rule | Consequence |
+| --- | --- |
+| A drift detector detects once | It captures, compares and alerts at most once a call. Polling belongs to the caller. The alert's failure is the run's failure. |
+| `baseline` is read at the call | Every stage receives the same baseline value. Replacing it on the options object afterwards changes nothing. |
+| An intervention's approval fails closed | Only the literal `"approved"` lets `apply` run. `true` or `{ approved: true }` fail with a `SchemaError`. |
+| A trellis plan names one kind of node an object | An object with any other key, or with two of `agent`, `sequence` and `parallel`, is refused with `invalid_plan`. So is an empty container, a missing array member and an empty goal. |
+| A trellis envelope bounds the whole plan | A node deeper than `depth` is `depth_exceeded`, a container wider than `fanout` is `fanout_exceeded`, and more leaves than `fuel` is `fuel_exhausted`. A bound that is not a positive whole number is `invalid_envelope`. |
+| A trellis result follows the plan | A sequence's members run in order and a parallel group's start together; each container gives its members' results in plan order, whatever order they finish in. |

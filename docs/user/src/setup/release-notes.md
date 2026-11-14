@@ -158,6 +158,8 @@ These features come from VIP-73, an open proposal. They are not part of the lang
 
 - A kanban board, a supervisor that delegates and reviews, or a shadow run scored against the primary was a hand-written loop over Effects. `Experimental.Patterns.Kanban.run`, `Experimental.Patterns.Supervisor.run` and `Experimental.Patterns.Sidecar.run` run these shapes as plain Effect code, and bad options fail with `Experimental.Patterns.PatternError`.
 
+- A drift check against a baseline, a change applied behind an approval, or a delegation plan a model wrote was hand-written Effect code, and a model's plan was not checked against any bound. `Experimental.Patterns.DriftDetector.run`, `Experimental.Patterns.Intervene.run` and `Experimental.Patterns.Trellis.execute` run these shapes, and `Experimental.Patterns.Trellis.validate` refuses a plan outside its depth, fan-out and fuel envelope with the path to repair.
+
 ## 0.0.13
 
 0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](alpha.md) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are supported only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).

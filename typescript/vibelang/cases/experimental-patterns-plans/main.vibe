@@ -1,0 +1,63 @@
+// expect-result: {"drift":{"drifted":true,"alert":"paged: 140 vs 100"},"steady":false,"applied":"wrote 2 edits","dry":"would write 2 edits","denied":"SchemaError","results":[["A"],["B","C"]],"leaves":["root.parallel[0].sequence[0]","root.parallel[1].sequence[0]","root.parallel[1].sequence[1]"],"refused":["fanout_exceeded root"],"width":"TrellisError invalid_envelope"}
+// Experimental.Patterns (VIP-73) also ports Smithers' plan patterns as plain
+// Effect code. DriftDetector.run captures a snapshot, compares it with a
+// baseline and alerts only when it moved. Intervene.run reads, proposes, and
+// applies behind an approval that must answer "approved". Trellis.validate
+// checks a plan a model wrote against a fixed envelope, and Trellis.execute
+// runs its leaves with a concurrency bound.
+effect function drift(reading: number) {
+  return try Experimental.Patterns.DriftDetector.run("latency", {
+    baseline: 100,
+    capture: effect () => reading,
+    compare: effect ({ snapshot, baseline }) => ({ delta: snapshot - baseline, snapshot, baseline }),
+    alertIf: (comparison) => comparison.delta > 25,
+    alert: effect ({ comparison }) => `paged: ${comparison.snapshot} vs ${comparison.baseline}`
+  })
+}
+
+effect function refactor(dryRun: boolean, decision: string) {
+  return try Experimental.Patterns.Intervene.run("rename", {
+    dryRun,
+    read: effect () => ["a.ts", "b.ts"],
+    propose: effect ({ context }) => context.length,
+    approval: effect () => decision,
+    apply: effect ({ proposal }) => proposal,
+    report: effect ({ proposal, applied }) =>
+      applied === undefined ? `would write ${proposal} edits` : `wrote ${applied} edits`
+  })
+}
+
+const plan: Experimental.Patterns.Trellis.Plan = {
+  parallel: [
+    { sequence: [{ agent: { goal: "a" } }] },
+    { sequence: [{ agent: { goal: "b" } }, { agent: { goal: "c", seat: "critic" } }] }
+  ]
+}
+
+export effect function main() {
+  const flagged = try drift(140)
+  const steady = try drift(110)
+  const applied = try refactor(false, "approved")
+  const dry = try refactor(true, "denied")
+  const denied = refactor(false, "denied") catch (error) => error._tag
+  const results = try Experimental.Patterns.Trellis.execute(plan, {
+    concurrency: 2,
+    leaf: effect (leaf) => leaf.goal.toUpperCase()
+  })
+  const leaves = Experimental.Patterns.Trellis.leaves(plan).map((leaf) => leaf.path)
+  const refused = Experimental.Patterns.Trellis.validate(plan, { fuel: 3, depth: 3, fanout: 1 })
+    .map((error) => `${error.code} ${error.path}`)
+  const width = Experimental.Patterns.Trellis.execute(plan, { concurrency: 0, leaf: effect () => "none" })
+    catch (error) => `${error._tag} ${error.code}`
+  return {
+    drift: { drifted: flagged.drifted, alert: flagged.alert },
+    steady: steady.drifted,
+    applied,
+    dry,
+    denied,
+    results,
+    leaves,
+    refused,
+    width
+  }
+}

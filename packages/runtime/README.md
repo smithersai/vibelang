@@ -382,7 +382,7 @@ experimental, not part of the alpha, and `.vibe` code that names one, through
 | `vibelang-runtime/experimental/Fuzz` | Feedback-guided fuzzing over a Schema or an Effect `Arbitrary`: shrunk, replayable findings and a corpus store |
 | `vibelang-runtime/experimental/FuzzSimulation` | An execution mode for `Fuzz` that makes fiber scheduling and virtual time part of the input |
 | `vibelang-runtime/experimental/Test` | Test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording, `decisions`, the same for a `DecisionModel`, `record`, which records what the file is missing, `modelServer`, the recording served over HTTP, `durable` and `restartable` engines with `crash`, `host`, a machine of fixed files and scripted commands, `journal` and `divergence` assertions over a durable run, and `conformance.engine()`, nine cases that certify a workflow engine |
-| `vibelang-runtime/experimental/Patterns` | Orchestration patterns as plain Effect code: `Panel.run`, `ReviewLoop.run`, `Bounded.run`, `Quarantine.run`, `CheckSuite.run`, `MergeQueue.run`, `Runbook.run`, `Escalation.run`, `Debate.run`, `MapReduce.run`, `Saga.run`, `Kanban.run`, `Supervisor.run`, `Sidecar.run`, `PatternError` |
+| `vibelang-runtime/experimental/Patterns` | Orchestration patterns as plain Effect code: `Panel.run`, `ReviewLoop.run`, `Bounded.run`, `Quarantine.run`, `CheckSuite.run`, `MergeQueue.run`, `Runbook.run`, `Escalation.run`, `Debate.run`, `MapReduce.run`, `Saga.run`, `Kanban.run`, `Supervisor.run`, `Sidecar.run`, `DriftDetector.run`, `Intervene.run`, `Trellis.validate`, `Trellis.execute`, `PatternError` |
 
 Each pattern of `vibelang-runtime/experimental/Patterns` also has its own subpath,
 `vibelang-runtime/experimental/patterns/*`, such as
