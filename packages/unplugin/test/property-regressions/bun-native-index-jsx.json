@@ -1,0 +1,12 @@
+{
+  "property": "bun-native-index-jsx",
+  "rule": "VIP-39 keeps native .tsx unchanged; the Bun hook matches only names a VibeLang module can serve.",
+  "input": {
+    "depth": 0,
+    "leadingDot": false,
+    "trailingSlash": false,
+    "tag": "div",
+    "runtimeName": "nativejsx"
+  },
+  "generatorVersion": 1
+}

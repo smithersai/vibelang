@@ -116,6 +116,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 ### Bugs fixed since 0.0.12
 
+- Native JSX index modules imported with `.` or `..` could build against React when the VibeLang Bun plugin was enabled. With no `index.vibe` to resolve, those imports now stay with Bun and keep their configured JSX runtime.
+
 - Historical quotations in accepted proposals could be mistaken for new language requirements. Their dated context now stays part of the quotation record, while amendments still state the rules.
 
 - Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.

@@ -340,7 +340,7 @@ const pluginTest = (name: "vite" | "unplugin", files: readonly string[], names?:
     S.file("//scripts/testing/run-package-test.mjs"), S.file("//scripts/testing/package-fixtures.mjs"),
     S.glob("vite/src/**"), S.file("vite/package.json"), S.file("vite/bun.lock"),
     S.glob("unplugin/src/**"), S.file("unplugin/package.json"), S.file("unplugin/bun.lock"),
-    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/007-tooling.md"), S.file("//docs/design/vips/0039-vibex.md"),
     migrationSources, ...experimentInstall, ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",

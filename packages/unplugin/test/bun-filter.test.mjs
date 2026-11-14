@@ -123,7 +123,8 @@ test("bunResolveFilter escapes names and matches only relative imports", () => {
   for (const specifier of ["./aXb.js", "./xxy.js", "./p.js", "pkg/a.b.js", "/abs/a.b.js", "./a.b.mjs"]) assert.ok(!filter.test(specifier), specifier)
   const empty = bunResolveFilter(new Set())
   assert.ok(!empty.test("./index.js"))
-  assert.ok(empty.test("./x.vibe") && empty.test("/abs/x.vibe") && empty.test("./m.vibe.text.js") && empty.test("."))
+  assert.ok(empty.test("./x.vibe") && empty.test("/abs/x.vibe") && empty.test("./m.vibe.text.js"))
+  for (const name of [".", "..", "./", "../", "./.", "./..", "../.."]) assert.ok(!empty.test(name), name)
   assert.ok(!empty.test("./dir") && !empty.test("./view"), "an extensionless name matches only a .vibe name or an index.vibe directory")
   const named = bunResolveFilter(new Set(["leaf", "a.b"]), new Set(["dir"]))
   for (const specifier of ["./leaf", "../x/leaf", "./a.b", "./dir", "./dir/", "./leaf?raw", ".", "..", "./", "../"]) assert.ok(named.test(specifier), specifier)
@@ -324,4 +325,98 @@ test("bun-served-layouts", async () => {
       } finally { rmSync(root, { recursive: true, force: true }) }
     }
   })
+})
+
+const nativeIndexJsxRule = "docs/design/vips/0039-vibex.md: `.ts` and `.tsx` are unchanged; packages/unplugin/README.md: an extensionless name matches only where a VibeLang file or index exists"
+
+function checkNativeIndexJsx({ depth, leadingDot, trailingSlash, tag, runtimeName }) {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bun-native-index-")))
+  try {
+    const parents = Array.from({ length: depth }, (_, i) => `child${i}`)
+    const entry = ["src", ...parents, "main.ts"].join("/")
+    const path = (leadingDot ? "./" : "") + (depth ? Array(depth).fill("..").join("/") : ".") + (trailingSlash ? "/" : "")
+    const runtime = "jsx-" + runtimeName
+    write(root, {
+      ".git/HEAD": "ref: refs/heads/main\n",
+      "package.json": '{"type":"module"}',
+      [`node_modules/${runtime}/package.json`]: JSON.stringify({ name: runtime, type: "module", exports: { "./jsx-runtime": "./rt.js", "./jsx-dev-runtime": "./rt.js" } }),
+      [`node_modules/${runtime}/rt.js`]: 'export const jsx = tag => "fake:" + tag; export const jsxs = jsx, jsxDEV = jsx, Fragment = "fragment";\n',
+      "tsconfig.json": JSON.stringify({ compilerOptions: { jsx: "preserve", jsxImportSource: runtime, module: "ESNext", moduleResolution: "Bundler" } }),
+      "src/index.tsx": `export const view = <${tag} />\n`,
+      [entry]: `import { view } from ${JSON.stringify(path)}; console.log(view)\n`,
+      "build.mjs": [
+        'const enabled = process.env.NATIVE_INDEX_WITH_PLUGIN === "1"',
+        'const plugins = enabled ? [(await import(process.env.PLUGIN)).default()] : []',
+        'try {',
+        `  const result = await Bun.build({ entrypoints: [${JSON.stringify(entry)}], target: "bun", outdir: enabled ? "plugin" : "plain", plugins })`,
+        '  if (!result.success) { console.error(result.logs); process.exit(1) }',
+        '} catch (error) { console.error(error); process.exit(1) }'
+      ].join("\n")
+    })
+    assert.deepEqual([...vibeBasenames(root)], [], "the native project has no VibeLang index to resolve")
+    const plugin = new URL("../src/bun.js", import.meta.url).href
+    for (const enabled of [false, true]) {
+      const build = spawnSync("bun", ["build.mjs"], { cwd: root, encoding: "utf8", env: { ...process.env, PLUGIN: plugin, NATIVE_INDEX_WITH_PLUGIN: enabled ? "1" : "0" } })
+      assert.equal(build.status, 0, `${path}, plugin=${enabled}: ${build.stderr}`)
+      const run = spawnSync("bun", [`${enabled ? "plugin" : "plain"}/main.js`], { cwd: root, encoding: "utf8" })
+      assert.equal(run.status, 0, run.stderr)
+      assert.equal(run.stdout, `fake:${tag}\n`)
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+}
+
+test("bun-native-index-jsx", { skip: !hasBun && "bun is not on PATH" }, async () => {
+  const vip = readFileSync(new URL("../../../docs/design/vips/0039-vibex.md", import.meta.url), "utf8")
+  assert.ok(vip.includes("`.ts` and `.tsx` are unchanged"))
+  await checkProperty(fc, {
+    name: "bun-native-index-jsx", rule: nativeIndexJsxRule,
+    command: "node --test test/bun-filter.test.mjs",
+    arbitrary: fc.record({ depth: fc.integer({ min: 0, max: 3 }), leadingDot: fc.boolean(), trailingSlash: fc.boolean(),
+      tag: fc.constantFrom("div", "span", "button", "svg"), runtimeName: fc.stringMatching(/^[a-z]{2,8}$/) }),
+    numRuns: 12, regressions, check: checkNativeIndexJsx
+  })
+})
+
+test("bun-unnamed-index-resolution", async () => {
+  await checkProperty(fc, {
+    name: "bun-unnamed-index-resolution", rule: claimRule,
+    command: "node --test test/bun-filter.test.mjs",
+    arbitrary: fc.record({ depth: fc.integer({ min: 0, max: 3 }), leadingDot: fc.boolean(), trailingSlash: fc.boolean(),
+      kind: fc.constantFrom("vibe", "tsx", "missing"), otherIndex: fc.boolean(), query: fc.constantFrom("", "?raw") }),
+    numRuns: 75, regressions,
+    check({ depth, leadingDot, trailingSlash, kind, otherIndex, query }) {
+      const root = mkdtempSync(join(tmpdir(), "vibelang-bun-unnamed-index-"))
+      try {
+        const parents = Array.from({ length: depth }, (_, i) => `child${i}`)
+        const importer = join(root, "src", ...parents, "main.ts")
+        const specifier = (leadingDot ? "./" : "") + (depth ? Array(depth).fill("..").join("/") : ".") + (trailingSlash ? "/" : "") + query
+        const files = { ".git/HEAD": "ref: refs/heads/main\n", "package.json": "{}", [["src", ...parents, "main.ts"].join("/")]: "export {}\n" }
+        if (kind !== "missing") files[`src/index.${kind}`] = "export const answer = 42\n"
+        if (otherIndex) files["other/index.vibe"] = "export const answer = 1\n"
+        write(root, files)
+        const hook = bunHook(root)
+        const matched = hook.filter.test(specifier)
+        const actual = matched ? hook.resolve(specifier, importer) : undefined
+        assert.equal(actual, kind === "vibe" ? join(root, "src/index.vibe") + query : undefined)
+        if (kind === "vibe") assert.ok(matched, "real VibeLang index imports retain their resolver")
+        if (kind !== "vibe" && !otherIndex) assert.ok(!matched, "no VibeLang index means no unnamed index hook")
+      } finally { rmSync(root, { recursive: true, force: true }) }
+    }
+  })
+})
+
+test("a new Bun build rescans unnamed VibeLang index imports", () => {
+  const root = mkdtempSync(join(tmpdir(), "vibelang-bun-index-rescan-"))
+  try {
+    write(root, { ".git/HEAD": "ref: refs/heads/main\n", "package.json": "{}" })
+    const first = bunHook(root)
+    assert.ok(!first.filter.test("."))
+    write(root, { "src/index.vibe": "export const answer = 42\n" })
+    assert.ok(!first.filter.test("."), "the existing build keeps its registered filter")
+    const next = bunHook(root)
+    assert.ok(next.filter.test("."))
+    assert.equal(next.resolve(".", join(root, "src/main.ts")), join(root, "src/index.vibe"))
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })

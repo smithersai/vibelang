@@ -609,8 +609,12 @@ A missing literal `.ts` bundle entry resolves to its sibling `.vibe`,
 so an unchanged test can keep its entrypoint. Existing TypeScript and
 in-memory entries retain their priority.
 An explicitly configured `vibelang-unplugin/bun` plugin keeps its own
-project and compiler choices. Child processes need the preload in their own
-working directory's configuration, or the `--preload` flag.
+project and compiler choices. Native JSX directory indexes imported with `.`
+or `..` keep Bun's `jsxImportSource` when no `index.vibe` is available to the
+build. An `index.vibe` elsewhere can still make those names match the resolve
+hook; use the framework's JSX plugin for those collisions. Child processes
+need the preload in their own working directory's configuration, or the
+`--preload` flag.
 See the [Bun configuration](https://github.com/smithersai/vibelang/tree/main/packages/unplugin#bun-builds-inside-tools-and-tests).
 
 Native modules inside a Bun bundle can also keep relative, absolute, or

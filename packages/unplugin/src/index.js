@@ -184,7 +184,9 @@ export function bunResolveFilter(names, indexDirectories = new Set()) {
   const relative = String.raw`^\.\.?(?:\/|$)`
   const named = [...new Set([...names, ...indexDirectories])].sort().map(escape)
   // ".", "..", "./" and "../" name a directory's index by no name of their own.
-  const unnamed = String.raw`^\.\.?(?:\/\.\.?)*\/?(?:\?.*)?$|` + relative +
+  const unnamedIndex = names.has("index") || indexDirectories.size > 0
+    ? String.raw`^\.\.?(?:\/\.\.?)*\/?(?:\?.*)?$|` : ""
+  const unnamed = unnamedIndex + relative +
     String.raw`(?!.*\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)(?:\?.*)?$)` +
     (named.length ? String.raw`(?:.*\/)?(?:` + named.join("|") + String.raw`)\/?(?:\?.*)?$` : "(?!)")
   const declaration = relative + String.raw`.*\.vibex?\.[^./\\]+\.jsx?(?:\?.*)?$`

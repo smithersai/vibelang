@@ -303,10 +303,13 @@ as `file:line:column - error TS2322: text`.
   and for an extensionless relative name or a relative `./x.js` only where an
   `x.vibe` (for an extensionless name, also a directory `x` with an
   `index.vibe`) exists in the repository, in a package it links, or in an
-  installed package with its own `tsconfig.json`. Bun compiles a `.tsx` module
+  installed package with its own `tsconfig.json`. An unnamed directory import
+  (`.`, `..` and their slash forms) matches only when that scan found an
+  `index.vibe`. Bun compiles a `.tsx` module
   against React, ignoring its `tsconfig.json`'s `jsxImportSource`, once a resolve
   hook matches the import that reaches it; an extensionless import whose name
-  is also a `.vibe` file elsewhere in the repository still matches. Add the
+  is also a `.vibe` file elsewhere in the repository still matches, including
+  an `index.vibe` for `.` or `..`. Add the
   framework's own JSX plugin to `Bun.build`, such as Solid's, to keep its JSX. Dot directories don't count, except the one
   that holds the project. Load is for `.vibe` modules and their module
   declarations' outputs. Bun 1.4.4 miscompiles a CommonJS dependency, such as
@@ -320,8 +323,9 @@ as `file:line:column - error TS2322: text`.
   a successful multi-entry build retains their JavaScript outputs.
   A filter sees only the specifier, so matching it is a precondition:
   the resolve callback claims a path only when it serves the resolved module.
-  A `.vibe` file added during a build
-  is reached by its `.vibe` or extensionless name until the next build.
+  The filter is fixed for one build. Start another build after adding a
+  `.vibe` file with a previously unseen basename or directory index. An
+  explicit `.vibe` name still reaches the resolve hook in the existing build.
 - **webpack and Rspack:** the error carries its position in the message only;
   unplugin doesn't pass a location to webpack. webpack before 5.112.0 can miss
   a save made as a watch build finishes
