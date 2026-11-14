@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- The website could change a claim about a specific release to name the latest published version. Versioned claims now keep their original version while installation pins and platform information follow the selected release.
+
 - Contributor tests could report a missing or mismatched `typescript` installation as a generator failure. They now report the required version and its installation command before running reference programs.
 
 - A site deployment could fail because release notes mentioned an older package version in a bug description. Historical entries now pass the version check, while install commands on other pages still require the current version.
@@ -94,6 +96,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml). Propose a change to the language with an [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml).
 
 ### Bugs fixed since 0.0.12
+
+- Historical quotations in accepted proposals could be mistaken for new language requirements. Their dated context now stays part of the quotation record, while amendments still state the rules.
 
 - Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.
 
