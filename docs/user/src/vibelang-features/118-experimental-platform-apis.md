@@ -36,7 +36,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
-| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `PatternError` | none; they are pure Effect code and run in any runtime |
+| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `PatternError` | none; they are pure Effect code and run in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -1531,6 +1531,61 @@ export effect function gate() {
 // Output: true: failed audit
 ```
 
+`Experimental.Patterns.MergeQueue.run(input, { members, failurePolicy, concurrency?, priority? })` lands members in one prioritized order, one at a time unless `concurrency` is wider. Each member's `run` receives `{ id, position, input }`:
+
+```vibe
+// run: try Console.log(try landAll())
+// experimental: builtins
+effect function land(change: { id: string; position: number; input: string }) {
+  return `${change.id} landed ${change.position}`
+}
+
+export effect function landAll() {
+  const result = try Experimental.Patterns.MergeQueue.run("main", {
+    members: [{ id: "docs", run: land }, { id: "hotfix", priority: 5000, run: land }],
+    failurePolicy: "halt"
+  })
+  return result.landed.map((entry) => entry.output).join("; ")
+}
+// Output: hotfix landed 0; docs landed 1
+```
+
+`Experimental.Patterns.Runbook.run(input, { steps, approve, onDeny })` runs steps in order. A step's `risk` decides whether `approve` is asked first, and each step sees the output of the last step that ran as `previous`:
+
+```vibe
+// run: try Console.log(try release())
+// experimental: builtins
+export effect function release() {
+  const result = try Experimental.Patterns.Runbook.run("v2", {
+    steps: [
+      { id: "backup", risk: "safe", run: effect (_request) => "backed up" },
+      { id: "migrate", risk: "critical", run: effect ({ previous }) => `migrated after ${previous}` }
+    ],
+    approve: effect (request) => request.elevated ? "approved" : "denied",
+    onDeny: "fail"
+  })
+  return result.ran.join(", ")
+}
+// Output: backup, migrate
+```
+
+`Experimental.Patterns.Escalation.run(input, { rungs, accept?, fallback? })` tries each rung in order and settles on the first result that does not escalate:
+
+```vibe
+// run: try Console.log(try answer("why"))
+// experimental: builtins
+export effect function answer(question: string) {
+  const reached = try Experimental.Patterns.Escalation.run(question, {
+    rungs: [
+      effect (question: string) => ({ model: "small", ok: question.length > 5 }),
+      effect (_question: string) => ({ model: "large", ok: true })
+    ]
+  })
+  return `level ${reached.level}: ${reached.result.model}`
+}
+// Output: level 1: large
+```
+
 The patterns keep these rules:
 
 | Rule | Consequence |
@@ -1543,7 +1598,10 @@ The patterns keep these rules:
 | `Bounded.run` starts the highest priority first | `priorities` sets a member's priority by name and `priority` sets it for the rest, 0 without either. Equal priorities start in the order they were written, and the result lists the members in the order they started. The first failure interrupts the members still running. |
 | `Quarantine.run` with `policy: "quarantine"` does not fail for a member | Each member gives `{ _tag: "Succeeded", member, value }` or `{ _tag: "Quarantined", member, error }`, and no member is interrupted for another's failure. A defect or an interruption still fails the run. `policy: "halt"` fails on the first failure and gives plain values. `Quarantine.settle` fails with `code` `quarantined` naming the quarantined members, with their errors in `cause`. |
 | A check row passes unless it is missing or says it failed | A row of `undefined` or `null`, or an object with `passed: false`, `ok: false`, `failed: true` or an `error` other than `undefined`, `null` and `false`, fails. `all-pass` needs every check to pass, `majority` more than half and `any-pass` one; an empty suite never passes. With `continueOnFail: true` a check that fails is listed in `failed` with its error in `errors`; with `false` its failure fails the suite and interrupts the other checks. |
-| Bad options fail with `Experimental.Patterns.PatternError` | An empty panel, member record or check record, an empty check id, a `concurrency` or `maxRounds` that is not a positive whole number, a priority that is not a whole number or names an unknown member, and stall `rounds` under 2 fail with `code` `invalid_decorator`. The failure is in the error channel, so `catch` claims it. |
+| `MergeQueue.run` lands in queue order | Members land in descending priority, then in the order they were written. A member without a `priority` gets the queue's `priority`, or `MergeQueue.DefaultPriority` (1000). `concurrency` defaults to 1. Under `failurePolicy: "halt"` a failure fails the queue and no member behind it starts, so `halt` requires concurrency 1. Under `"quarantine"` a failed member is listed in `quarantined` as `{ id, error }` and the rest still land. `MergeQueue.ordered(members, priority)` gives the order without running anything. |
+| A runbook approval must answer `"approved"` | A `safe` step runs unasked. A `risky` or `critical` step first asks `approve` with `{ step, risk, elevated, input, previous }`, where `elevated` is `true` for `critical`. Any other answer is a denial: `onDeny: "fail"` fails the run with a `SchemaError` and runs no later step, and `onDeny: "skip"` lists the step in `skipped` and goes on. |
+| An escalation rung settles unless it reports a failure | A rung's own `escalateIf(result, level)` decides first, then `accept(result)` with the approval vocabulary above. With neither, a result of `undefined` or `null`, or an object with `ok: false`, `failed: true` or an `error` other than `undefined`, `null` and `false`, escalates. After the last rung `fallback` runs if there is one; otherwise the result is `{ level, result, accepted: false, exhausted: true }`. |
+| Bad options fail with `Experimental.Patterns.PatternError` | An empty panel, member record, check record, queue, runbook or ladder, an empty check id, a repeated queue member or runbook step id, `halt` above concurrency 1, a `concurrency` or `maxRounds` that is not a positive whole number, a priority that is not a whole number or names an unknown member, and stall `rounds` under 2 fail with `code` `invalid_decorator`. The failure is in the error channel, so `catch` claims it. |
 | Options are read at the call | Changing the options object afterwards does not change a run that has not started. |
 
 A pattern adds no durability of its own. A stage that calls a `task` inside a `workflow` is a durable step; a stage that is an ordinary Effect is not.

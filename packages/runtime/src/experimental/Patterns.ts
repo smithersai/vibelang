@@ -10,9 +10,12 @@
  */
 export * as Bounded from "./patterns/Bounded.js"
 export * as CheckSuite from "./patterns/CheckSuite.js"
+export * as Escalation from "./patterns/Escalation.js"
+export * as MergeQueue from "./patterns/MergeQueue.js"
 export * as Panel from "./patterns/Panel.js"
 export { PatternError } from "./patterns/PatternError.js"
 export type { PatternErrorCode } from "./patterns/PatternError.js"
 export * as Quarantine from "./patterns/Quarantine.js"
 export * as ReviewLoop from "./patterns/ReviewLoop.js"
+export * as Runbook from "./patterns/Runbook.js"
 export * as Stall from "./patterns/Stall.js"

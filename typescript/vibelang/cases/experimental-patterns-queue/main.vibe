@@ -1,0 +1,73 @@
+// expect-result: {"landed":"hotfix@0,docs@1","held":"feature: Conflict","halted":"feature","runbook":"ran backup,migrate; skipped deploy","denied":"SchemaError","ladder":"1: strong","exhausted":"exhausted at 1","empty":"invalid_decorator","halt":"invalid_decorator"}
+// Experimental.Patterns (VIP-73): MergeQueue.run lands members in one
+// prioritized order at a concurrency the queue owns; quarantine holds back a
+// failed member and lands the rest. Runbook.run runs ordered steps, and a
+// step's risk decides whether an approval gates it. Escalation.run tries each
+// rung in order until one result is accepted. Bad options fail with
+// PatternError, which a catch claims.
+error Conflict {
+  id: string
+}
+
+effect function land(args: { id: string; position: number; input: string }) {
+  if (args.id === "feature") throw new Conflict({ id: args.id })
+  return `${args.id}@${args.position}`
+}
+
+effect function queue(failurePolicy: "halt" | "quarantine") {
+  return try Experimental.Patterns.MergeQueue.run("main", {
+    members: [
+      { id: "docs", run: land },
+      { id: "hotfix", priority: 5000, run: land },
+      { id: "feature", priority: 1, run: land }
+    ],
+    failurePolicy
+  })
+}
+
+effect function release(onDeny: "fail" | "skip") {
+  return try Experimental.Patterns.Runbook.run("v1", {
+    steps: [
+      { id: "backup", risk: "safe", run: effect (_request) => "backed up" },
+      { id: "deploy", risk: "risky", run: effect (_request) => "deployed" },
+      { id: "migrate", risk: "critical", run: effect (_request) => "migrated" }
+    ],
+    approve: effect (request) => request.elevated ? "approved" : "denied",
+    onDeny
+  })
+}
+
+effect function ladder(goal: string) {
+  return try Experimental.Patterns.Escalation.run(goal, {
+    rungs: [
+      effect (goal: string) => ({ tier: "cheap", ok: goal.length > 9 }),
+      effect (goal: string) => ({ tier: "strong", ok: goal.length > 3 })
+    ]
+  })
+}
+
+const noRungs: Array<(goal: string) => string!!> = []
+
+export effect function main() {
+  const quarantined = try queue("quarantine")
+  const halted = queue("halt") catch (error) => error._tag === "Conflict" ? error.id : error.code
+  const ran = try release("skip")
+  const denied = release("fail") catch (error) => error._tag
+  const settled = try ladder("plan")
+  const spent = try ladder("go")
+  return {
+    landed: quarantined.landed.map((entry) => entry.output).join(","),
+    held: quarantined.quarantined.map((entry) => `${entry.id}: ${entry.error._tag}`).join(","),
+    halted,
+    runbook: `ran ${ran.ran.join(",")}; skipped ${ran.skipped.join(",")}`,
+    denied,
+    ladder: settled.exhausted ? "exhausted" : `${settled.level}: ${settled.result.tier}`,
+    exhausted: spent.exhausted ? `exhausted at ${spent.level}` : "settled",
+    empty: Experimental.Patterns.Escalation.run("goal", { rungs: noRungs }) catch (error) => error.code,
+    halt: Experimental.Patterns.MergeQueue.run("main", {
+      members: [{ id: "docs", run: land }],
+      concurrency: 2,
+      failurePolicy: "halt"
+    }) catch (error) => error._tag === "PatternError" ? error.code : "other"
+  }
+}
