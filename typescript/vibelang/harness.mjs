@@ -45,6 +45,10 @@
 // must be new: previous trials are never overwritten. Interrupted reports have
 // complete: false. Timings describe this invocation, not a performance baseline.
 //
+// A runner killed by the harness names its configured deadline on the FAIL
+// line, including when its stdout matches. Independent exits and signals keep
+// their ordinary failure details; only the harness timer proves a timeout.
+//
 // Every runner must exit successfully, including when its stdout matches.
 // Every case except a failing one must compile without errors. Every file in
 // expected/ other than stdout.txt and diagnostics.txt must equal the file at
@@ -670,6 +674,10 @@ async function check(name, commands) {
     phase: "run", cwd: dir, timeout: runTimeout,
     env: { ...commands.env, VIBELANG_BINARY: tsc },
   })
+  if (ran.timedOut) {
+    const log = [`stdout:\n${ran.stdout.trimEnd()}`, ran.stderr.trimEnd()].filter(Boolean).join("\n")
+    return { ok: false, detail: `${path.relative(dir, entry)} killed at its ${runTimeout / 1000} s deadline`, log }
+  }
   let want, got
   if (fs.existsSync(stdoutFile)) {
     want = fs.readFileSync(stdoutFile, "utf8")

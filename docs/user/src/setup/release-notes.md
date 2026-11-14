@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- A compiler acceptance case that exceeded its run deadline could report only missing output or an exit code. It now names the deadline that killed the runner, including when its output matched.
+
 - `await` in a plain callback inside a class `static` block could report obsolete advice about Effect code. It now reports TypeScript's native error for the written form.
 
 - An invalid `await` in a class field initializer could report an obsolete waiting error. It now keeps TypeScript’s native diagnostics and the contexts of nested callables.

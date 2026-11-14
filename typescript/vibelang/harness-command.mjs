@@ -123,7 +123,7 @@ export class CaseCommands {
           exitCode: record.error ? null : code, signal,
           stdoutTail: stdout.slice(-16_384), stderrTail: stderr.slice(-16_384),
         })
-        resolve({ code: record.errorCode ?? (signal ? `killed by ${signal}` : record.timedOut ? `timed out after ${timeout} ms` : code), stdout, stderr })
+        resolve({ code: record.errorCode ?? (signal ? `killed by ${signal}` : record.timedOut ? `timed out after ${timeout} ms` : code), timedOut: record.timedOut, stdout, stderr })
       })
     })
   }

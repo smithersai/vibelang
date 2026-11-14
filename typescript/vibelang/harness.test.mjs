@@ -105,7 +105,7 @@ test("a custom runner's run-seconds line sets its deadline", (t) => {
   const result = spawnSync(process.execPath, [harness, "--verbose", "--jobs", "2", "runner-1s", "runner-5s"], { env, encoding: "utf8", timeout: 30_000 })
   assert.equal(result.status, 1, result.stdout + result.stderr)
   assert.match(result.stdout, /^ok\s+runner-5s/m, result.stdout)
-  assert.match(result.stdout, /^FAIL\s+runner-1s: run.mjs printed printed no result \(exit killed by SIGKILL\)/m, result.stdout)
+  assert.match(result.stdout, /^FAIL\s+runner-1s: run.mjs killed at its 1 s deadline/m, result.stdout)
   const log = /log:\s+(.+?)(?:\)|$)/m.exec(result.stdout)?.[1]
   assert.ok(log, "the failing runner must name its log:\n" + result.stdout)
   const run = JSON.parse(fs.readFileSync(log, "utf8")).commands.find((command) => command.phase === "run")
@@ -137,7 +137,7 @@ test("a runner takes the largest run-seconds among the helpers it imports", (t) 
   const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
   const result = spawnSync(process.execPath, [harness, "--verbose", "--jobs", "4", ...Object.keys(runners)], { env, encoding: "utf8", timeout: 30_000 })
   assert.equal(result.status, 1, result.stdout + result.stderr)
-  assert.match(result.stdout, /^FAIL\s+takes-helper: run.mjs printed printed no result \(exit killed by SIGKILL\)/m, result.stdout)
+  assert.match(result.stdout, /^FAIL\s+takes-helper: run.mjs killed at its 1 s deadline/m, result.stdout)
   for (const name of ["takes-largest", "own-line-wins", "plain-helper"]) assert.match(result.stdout, new RegExp(`^ok\\s+${name}`, "m"), result.stdout)
 })
 
@@ -161,7 +161,7 @@ test("nested helper budgets bound the real runner process", (t) => {
   const result = spawnSync(process.execPath, [harness, "--jobs", "2", "nested-runner-1", "nested-runner-5"],
     { env, encoding: "utf8", timeout: 30_000 })
   assert.equal(result.status, 1, result.stdout + result.stderr)
-  assert.match(result.stdout, /^FAIL\s+nested-runner-1:.*killed by SIGKILL/m)
+  assert.match(result.stdout, /^FAIL\s+nested-runner-1: run.mjs killed at its 1 s deadline/m)
   assert.match(result.stdout, /^ok\s+nested-runner-5/m)
 })
 
@@ -170,6 +170,7 @@ test("command evidence records deadline kills, spawn errors, and bounded tails",
   const commands = new CaseCommands()
   const timed = await commands.run(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { phase: "run", timeout: 30 })
   assert.equal(timed.code, "killed by SIGKILL")
+  assert.equal(timed.timedOut, true)
   assert.equal(commands.records[0].timedOut, true)
   assert.equal(commands.records[0].signal, "SIGKILL")
   assert.equal(commands.records[0].exitCode, null)
@@ -987,7 +988,7 @@ test("helper import quote spelling preserves native runner deadline enforcement"
     { env, encoding: "utf8", timeout: 30_000 })
   assert.equal(result.status, 1, result.stdout + result.stderr)
   for (const style of ["single", "double"]) {
-    assert.match(result.stdout, new RegExp("^FAIL\\s+quoted-helper-" + style + "-1:.*killed by SIGKILL", "m"))
+    assert.match(result.stdout, new RegExp("^FAIL\\s+quoted-helper-" + style + "-1: run.mjs killed at its 1 s deadline", "m"))
     assert.match(result.stdout, new RegExp("^ok\\s+quoted-helper-" + style + "-5", "m"))
   }
 })
@@ -1020,4 +1021,80 @@ test("cleanup of native declarations survives a self-linked node_modules and kee
     assert.equal(fs.readFileSync(path.join(dir, "y.d.ts"), "utf8"), "export declare const y: number\n", "a hand-written declaration stays")
   }
   assert.equal(fs.existsSync(path.join(outside, "z.d.ts")), true, "a linked tree outside the case is left alone")
+})
+
+test("runner deadline failures name the limit independently of output", (t) => {
+  const { root, harness } = fixture(t)
+  const cases = path.join(root, "vibelang/cases")
+  const variants = [
+    ["default-limit", 60, "", ""],
+    ["empty-output", 1, "", ""],
+    ["wrong-output", 1, "wrong\n", ""],
+    ["matching-output", 1, "expected\n", ""],
+    ["inherited-limit", 1, "", 'import { limit } from "../_limit.mjs"\n'],
+  ]
+  fs.writeFileSync(path.join(cases, "_limit.mjs"), "// run-seconds: 1\nexport const limit = 1\n")
+  const writeCase = (name, source) => {
+    const at = path.join(cases, name)
+    fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+    fs.writeFileSync(path.join(at, "scenario"), "runtime")
+    fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+    fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
+    fs.writeFileSync(path.join(at, "run.mjs"), source)
+  }
+  for (const [name, seconds, output, imports] of variants) {
+    writeCase(name, (seconds === 60 || imports ? "" : "// run-seconds: " + seconds + "\n") + imports +
+      "process.stdout.write(" + JSON.stringify(output) + ")\n" +
+      "await new Promise(resolve => setTimeout(resolve, 120_000))\n")
+  }
+  writeCase("passing-control", 'console.log("expected")\n')
+  writeCase("exit-control", 'process.exit(1)\n')
+  writeCase("signal-control", 'process.kill(process.pid, "SIGKILL")\n')
+  const result = spawnSync(process.execPath,
+    [harness, "--verbose", "--jobs", "8", ...variants.map(([name]) => name), "passing-control", "exit-control", "signal-control"],
+    { env: { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") },
+      encoding: "utf8", timeout: 150_000 })
+  assert.ifError(result.error)
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  for (const [name, seconds] of variants) {
+    assert.match(result.stdout, new RegExp("^FAIL\\s+" + name + ": run.mjs killed at its " + seconds + " s deadline \\(\\d+\\.\\d s\\)$", "m"), result.stdout)
+  }
+  assert.match(result.stdout, /^ok\s+passing-control \(\d+\.\d s\)$/m, result.stdout)
+  assert.match(result.stdout, /^FAIL\s+exit-control: .*printed no result \(exit 1\)/m, result.stdout)
+  assert.match(result.stdout, /^FAIL\s+signal-control: .*printed no result \(exit killed by SIGKILL\)/m, result.stdout)
+  assert.doesNotMatch(result.stdout, /(?:exit|signal)-control: .*deadline/)
+  assert.match(result.stdout, /8 cases: 1 ok, 7 FAIL, 0 pending, 0 XPASS/)
+  const logs = [...result.stdout.matchAll(/^log:\s+(.+)$/gm)]
+    .map(([, file]) => JSON.parse(fs.readFileSync(file, "utf8")))
+  for (const [name, seconds] of variants) {
+    const command = logs.find(log => log.case === name).commands.find(command => command.phase === "run")
+    assert.equal(command.timeoutMs, seconds * 1000)
+    assert.equal(command.timedOut, true)
+    assert.equal(command.signal, "SIGKILL")
+  }
+})
+
+test("runner deadline classification is independent of arbitrary stdout", (t) => {
+  const { root, harness } = fixture(t)
+  const at = path.join(root, "vibelang/cases/property-deadline")
+  fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+  fs.writeFileSync(path.join(at, "scenario"), "runtime")
+  fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  fc.assert(fc.property(
+    fc.oneof(fc.constantFrom("", "matched\n", "\u0000", "Ω\r\n"), fc.string({ maxLength: 32 })),
+    fc.boolean(),
+    (output, matches) => {
+      fs.writeFileSync(path.join(at, "expected/stdout.txt"), matches ? output : output + "different")
+      fs.writeFileSync(path.join(at, "run.mjs"),
+        "// run-seconds: 1\nprocess.stdout.write(" + JSON.stringify(output) + "); setInterval(() => {}, 1000)\n")
+      const result = spawnSync(process.execPath, [harness, "--verbose", "property-deadline"],
+        { env, encoding: "utf8", timeout: 30_000 })
+      assert.ifError(result.error)
+      assert.equal(result.status, 1, result.stdout + result.stderr)
+      assert.match(result.stdout, /^FAIL\s+property-deadline: run.mjs killed at its 1 s deadline \(\d+\.\d s\)$/m, result.stdout)
+      const file = /^log:\s+(.+)$/m.exec(result.stdout)[1]
+      const command = JSON.parse(fs.readFileSync(file, "utf8")).commands.find(command => command.phase === "run")
+      assert.equal(command.timedOut, true)
+    }), { seed: 0xdead11, numRuns: 8 })
 })

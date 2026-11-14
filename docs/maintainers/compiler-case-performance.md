@@ -2,6 +2,8 @@
 
 A compiler case's deadline catches a hang. It does not show that a passing case has become slower. Retain repeated measurements separately from the correctness gate; performance alerts are informational while a reserved-capacity baseline is being established.
 
+When the harness kills a runner at its run limit, its `FAIL` line names the runner and configured deadline, such as `run.mjs killed at its 60 s deadline`. The retained command record has `timedOut: true`, the limit in `timeoutMs`, and the termination signal. A runner killed after printing the expected output still fails. An independent exit or signal keeps its ordinary failure diagnostic.
+
 ## Record trials
 
 Build the compiler and runtime as described in [the compiler guide](../../typescript/VIBELANG.md#build-and-test). The harness uses `typescript/built/local/tsc`; record that binary's build revision. From `typescript/`, with the pinned Effect install and an absolute runtime path:

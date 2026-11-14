@@ -39,6 +39,8 @@ Tagged templates follow the call rule (D267): `sql` followed by a template runs 
 
 Direct harness calls require `EFFECT_NODE_MODULES` to contain Effect and `VIBELANG_RUNTIME` to name an absolute directory containing the `vibelang-runtime` manifest and built `dist/index.js`. An invalid installation exits with status `2` before selecting cases or replacing their output; use the built `packages/runtime` directory or run `vibelang/smoke.sh`.
 
+A custom `run.mjs` has a `60`-second deadline unless its `// run-seconds: N` line or imported helpers set another limit. If the harness timer fires, the `FAIL` line names the runner and deadline, even after matching output. The retained command evidence records `timedOut: true`; an independent exit or signal keeps its ordinary diagnostic.
+
 | Kind | Marked by | Passes when |
 | --- | --- | --- |
 | Failing | A source whose first line is `// expect: EK9201 EK9202` | The error codes `tsc -p` reports are exactly those codes. Warnings and message text do not count |
