@@ -381,6 +381,8 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   }
   const loadsEarly = earlyConstant(declarations, moved, new Set(reexported.filter((d) => !typeOnly(d))), null, ts)
   if (loadsEarly) return { refused: `${file}: export ${[...loadsEarly.names].join(", ")} would be initialized in ${posix.basename(platformPath(file))} before a statement above it that reads it while the module loads` }
+  const overtakes = runsEarly(declarations, moved, ts)
+  if (overtakes) return { refused: `${file}: ${firstLine(source, overtakes.statement)} runs while the module loads, after ${firstLine(source, overtakes.after)}, and in ${posix.basename(platformPath(file))} it would run first` }
   // An inferred return type is written into the module's declarations from
   // the sibling. A type only the sibling declares, a private copy or a moved
   // private class or enum, has no name there unless the sibling exports it
@@ -897,13 +899,12 @@ function earlyConstant(declarations, moved, copied, constants, ts) {
   return null
 }
 
-// The names a top-level statement reads while the module loads. A function
-// stored as a value, in a variable, an object or array literal or a class
-// member, runs only when something calls it later; a function passed to a
-// call may run now, so its body counts. Types and instance field initializers
-// read nothing at load.
-function loadReads(statement, ts) {
-  const reads = new Set()
+// Calls each(node) for every node of a top-level statement that is evaluated
+// while the module loads. A function stored as a value, in a variable, an
+// object or array literal or a class member, runs only when something calls
+// it later; a function passed to a call may run now, so its body counts.
+// Types and instance field initializers are not evaluated at load.
+function atLoad(statement, ts, each) {
   const stored = (node) => ts.isVariableStatement(node) || ts.isVariableDeclarationList(node) || ts.isVariableDeclaration(node) || ts.isObjectLiteralExpression(node) ||
     ts.isPropertyAssignment(node) || ts.isArrayLiteralExpression(node) || ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) ||
     ts.isNonNullExpression(node) || ts.isConditionalExpression(node) || ts.isClassDeclaration(node) || ts.isClassExpression(node) || ts.isPropertyDeclaration(node) || ts.isExportAssignment(node) ||
@@ -912,12 +913,26 @@ function loadReads(statement, ts) {
     if (ts.isTypeNode(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isTypeParameterDeclaration(node) || ts.isHeritageClause(node) && node.token === ts.SyntaxKind.ImplementsKeyword) return
     if (ts.isPropertyDeclaration(node) && !(node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword) && node.parent && ts.isClassLike(node.parent)) {
       if (node.name && ts.isComputedPropertyName(node.name)) visit(node.name, false)
+      for (const modifier of node.modifiers ?? []) if (ts.isDecorator(modifier)) visit(modifier, false)
       return
     }
     if (ts.isFunctionLike(node) && node.body !== undefined) {
       if (node.name && ts.isComputedPropertyName(node.name)) visit(node.name, false)
-      if (value) return
+      if (value) {
+        for (const modifier of node.modifiers ?? []) if (ts.isDecorator(modifier)) visit(modifier, false)
+        return
+      }
     }
+    each(node)
+    ts.forEachChild(node, (child) => visit(child, value && stored(node) && !(ts.isConditionalExpression(node) && child === node.condition)))
+  }
+  visit(statement, true)
+}
+
+// The names a top-level statement reads while the module loads (atLoad).
+function loadReads(statement, ts) {
+  const reads = new Set()
+  atLoad(statement, ts, (node) => {
     if (ts.isIdentifier(node)) {
       const parent = node.parent
       const declares = parent && (ts.isVariableDeclaration(parent) || ts.isFunctionDeclaration(parent) || ts.isFunctionExpression(parent) || ts.isClassDeclaration(parent) || ts.isClassExpression(parent) || ts.isEnumDeclaration(parent) || ts.isParameter(parent) || ts.isBindingElement(parent)) && parent.name === node
@@ -925,10 +940,51 @@ function loadReads(statement, ts) {
       if (!declares && !member) reads.add(node.text)
     }
     if (ts.isShorthandPropertyAssignment(node)) reads.add(node.name.text)
-    ts.forEachChild(node, (child) => visit(child, value && stored(node) && !(ts.isConditionalExpression(node) && child === node.condition)))
-  }
-  visit(statement, true)
+  })
   return reads
+}
+
+// Whether a top-level statement does something while the module loads that
+// another statement's load can observe: any statement that is not a
+// declaration, and a declaration that calls, constructs, awaits, assigns or
+// deletes at load (atLoad). Reads can call getters, spreads and bindings can
+// invoke iterators, and coercions can call user code. Those count on either
+// side of a move, as do reads that observe an earlier statement's writes.
+function actsAtLoad(statement, ts) {
+  if (!(ts.isVariableStatement(statement) || ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement) ||
+    ts.isEnumDeclaration(statement) || ts.isModuleDeclaration(statement) || ts.isExportDeclaration(statement) || ts.isExportAssignment(statement) || ts.isImportEqualsDeclaration(statement) ||
+    ts.isNamespaceExportDeclaration(statement) || ts.isEmptyStatement(statement))) return true
+  if ((statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.DeclareKeyword)) return false
+  let acts = false
+  atLoad(statement, ts, (node) => {
+    if (ts.isCallExpression(node) || ts.isNewExpression(node) || ts.isTaggedTemplateExpression(node) || ts.isAwaitExpression(node) || ts.isDecorator(node) || ts.isDeleteExpression(node) ||
+      ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node) ||
+      ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node) || ts.isSpreadAssignment(node) || ts.isSpreadElement(node) ||
+      ts.isObjectBindingPattern(node) || ts.isArrayBindingPattern(node) || ts.isTemplateExpression(node) || ts.isComputedPropertyName(node) || ts.isThrowStatement(node) ||
+      ts.isHeritageClause(node) && node.token === ts.SyntaxKind.ExtendsKeyword ||
+      ts.isVariableDeclarationList(node) && (node.flags & ts.NodeFlags.Using) !== 0 ||
+      ts.isPrefixUnaryExpression(node) && node.operator !== ts.SyntaxKind.ExclamationToken || ts.isPostfixUnaryExpression(node) ||
+      ts.isBinaryExpression(node) && ![ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken,
+        ts.SyntaxKind.CommaToken, ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken].includes(node.operatorToken.kind)) acts = true
+  })
+  return acts
+}
+
+// The sibling and a module body evaluate when imported, before any statement
+// the module keeps. A moved statement that runs code while the module loads
+// therefore runs ahead of every kept statement above it: `settings.root =
+// "/etc/app"` kept, then `export const banner = readFileSync(settings.root +
+// "/banner.txt")` moved, would read the root before it is set. Moved
+// statements keep their order among themselves, and a kept statement below a
+// moved one still runs after it. Returns the first moved statement that would
+// run early with the kept statement it would overtake, { statement, after }.
+function runsEarly(declarations, moved, ts) {
+  let after
+  for (const d of declarations) {
+    if (!moved.has(d)) after ??= actsAtLoad(d.statement, ts) ? d.statement : undefined
+    else if (after && actsAtLoad(d.statement, ts)) return { statement: d.statement, after }
+  }
+  return undefined
 }
 
 function isMovable(statement, ts) {
@@ -1105,6 +1161,8 @@ function firstLine(source, statement) {
 // A top-level statement keeps its place only among its neighbours, and a body
 // evaluates when imported, so such a statement never moves: it stays where it
 // stands, and only its host operations move (hostOperations), called in place.
+// The same holds for a declaration that runs code while the module loads below
+// a kept statement that does (runsEarly): in the body it would run first.
 // A module left with no value of its own stays TypeScript: a body holding the
 // whole file is a .ts file with a harder name. A declaration that would move but
 // reads import.meta, or a value that would move only because moved code reads
@@ -1178,7 +1236,9 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   // before the module's own statements, while a helper called where the
   // statement performed the operation keeps the order of evaluation. Throwing
   // code still moves whole.
-  const ordered = platformCode && !metaReader ? [...close(platformSeed)].find((d) => !movable(d.statement)) : undefined
+  // A declaration that runs code at load below a kept statement that does is
+  // such a statement too (runsEarly).
+  const ordered = platformCode && !metaReader ? [...close(platformSeed)].find((d) => !movable(d.statement)) ?? (platformSeed.length ? runsEarly(declarations, moved, ts) : undefined) : undefined
   let operations = null
   if (metaReader || dragged || ordered) {
     moved = close(throwSeed)
@@ -1198,6 +1258,8 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
     if (!movable(d.statement)) return { refused: `${file}: ${firstLine(source, d.statement)} runs in order among the module's statements, so it cannot move to a module body` }
     if (readsImportMeta(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} reads import.meta, which a module body cannot (EK4009)` }
   }
+  const overtakes = runsEarly(declarations, moved, ts)
+  if (overtakes) return { refused: `${file}: ${firstLine(source, overtakes.statement)} runs while the module loads, after ${firstLine(source, overtakes.after)}, and in a module body it would run first` }
   const kept = declarations.filter((d) => !moved.has(d))
   const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
   if (inferredTypes.refused) return inferredTypes

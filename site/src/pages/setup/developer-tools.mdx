@@ -554,6 +554,12 @@ The routes serve tools that read sources. Compiled output names each routed
 module by its own output instead, `./user.js` for `#vibelang/emitted/src/user`,
 in JavaScript and in declarations, so no route reaches a published package and
 the program loads one copy of the module.
+Wildcard routes use Node's private-import matching: an exact entry wins;
+otherwise, the longest prefix wins, then the longest key for equal prefixes.
+The wildcard matches at least one character, and its match replaces every
+`*` in the `vibelang-source` target, including a target such as
+`./src/*/*.vibe`.
+
 Migration's record emit checks this: when a published package's compiled
 declarations still name a route, it restores that package's routes and
 reports the declaration files and every affected module, including targets of

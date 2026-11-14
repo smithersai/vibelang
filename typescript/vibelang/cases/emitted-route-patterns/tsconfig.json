@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "rewriteRelativeImportExtensions": true,
+    "target": "es2022",
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "customConditions": [
+      "vibelang-source"
+    ],
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "declaration": true,
+    "rootDir": ".",
+    "outDir": "out"
+  },
+  "include": [
+    "*.vibe",
+    "*.ts",
+    "src/**/*.vibe"
+  ]
+}

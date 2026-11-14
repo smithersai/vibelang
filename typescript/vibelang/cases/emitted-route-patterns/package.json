@@ -1,0 +1,1 @@
+{"private": true, "type": "module", "imports": {"#vibelang/emitted/repeated/*": {"vibelang-source": "./src/*/*.vibe", "default": "./dist/*/*.js"}, "#vibelang/emitted/*": {"vibelang-source": "./src/general/*.vibe", "default": "./dist/general/*.js"}, "#vibelang/emitted/*.server": {"vibelang-source": "./src/server/*.vibe", "default": "./dist/server/*.js"}}}
