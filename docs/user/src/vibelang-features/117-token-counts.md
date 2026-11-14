@@ -118,7 +118,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Existing project](../setup/existing-project.md) | 4,400 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,700 |
 | **Build and test** | **23,000** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 18,000 |
+| [vibelang CLI](../setup/vibelang-cli.md) | 19,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,800 |
 | **Format and lint** | **16,000** |
 | [Format with dprint](../setup/formatting.md) | 3,800 |
