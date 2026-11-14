@@ -80,7 +80,7 @@ try {
 `)
     const run = (specifier: string) => {
       const child = Bun.spawnSync([process.execPath, "--preload", "./plugin.mjs", "driver.mjs"], {
-        cwd: fixture, env: { ...process.env, COMPUTED_IMPORT: specifier }, timeout: 10_000
+        cwd: fixture, env: { ...process.env, COMPUTED_IMPORT: specifier }
       })
       expect(child.exitCode, child.stderr.toString()).toBe(0)
       return JSON.parse(child.stdout.toString())
