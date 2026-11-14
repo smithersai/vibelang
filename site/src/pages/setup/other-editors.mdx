@@ -46,6 +46,8 @@ Bindings introduced by an `is` pattern in a `while`, `do…while` or `for` head 
 
 Reference search and rename include a parameter's declaration and its use as a destructuring source, including contextual names such as `source`, even when a default contains `do { }` or a `match` arm whose `do { }` returns from the function.
 
+Signature help supports qualified and computed extractor matchers, such as `Matchers.pick(let item)` and `Matchers["pick"](let item)`, and regular-expression extractors. Requests also support unresolved matcher names.
+
 The `_` in a legacy `infer _` return annotation is an inference placeholder, so the server declines its rename. Ordinary generic parameters and conditional `infer` bindings remain renameable.
 
 Reference search and rename include imported scalar types in `schema` fields and aliases, including type-only and namespace imports. They follow the written type binding used to select the codec.
