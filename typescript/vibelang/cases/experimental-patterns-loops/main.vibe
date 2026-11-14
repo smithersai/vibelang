@@ -1,0 +1,88 @@
+// expect-result: {"chain":"draft:weak,test:strong after 1 derisk round","ladder":"leaf_failed at root","best":{"candidate":"v3","score":9,"iterations":3,"converged":true},"plateau":"v3 after 4","sweep":{"iterations":3,"resolved":true,"fixed":[2,1]},"stuck":["b"],"bounds":"invalid_decorator"}
+// Experimental.Patterns (VIP-73) also ports Smithers' loop patterns as plain
+// Effect code. DelegationChain.run refines a prompt, plans and derisks it,
+// runs each leaf of the plan up a ladder of tiers, reviews and settles.
+// Optimizer.run generates and evaluates until a target score, keeping the
+// best attempt. ScanFixVerify.run scans, fixes each issue, verifies, and
+// repeats until a scan is clean.
+effect function delegate(strongOnly: string) {
+  return try Experimental.Patterns.DelegationChain.run("ship it", {
+    tierOrder: ["weak", "strong"],
+    maxDepth: 2,
+    maxDeriskRounds: 2,
+    refine: effect ({ prompt }) => `goal: ${prompt}`,
+    plan: effect () => ({ sequence: [{ agent: { goal: "draft" } }, { agent: { goal: "test" } }] }),
+    derisk: effect () => ({ approved: true }),
+    execute: {
+      weak: effect ({ leaf }) => {
+        if (leaf.goal === strongOnly) throw "too hard"
+        return `${leaf.goal}:weak`
+      },
+      strong: effect ({ leaf }) => `${leaf.goal}:strong`
+    },
+    review: effect () => true,
+    settle: effect ({ leaves, deriskExhausted }) =>
+      `${leaves.join(",")} after ${deriskExhausted ? "every" : "1"} derisk round`
+  })
+}
+
+effect function search(target: number | undefined, maxIterations: number) {
+  return try Experimental.Patterns.Optimizer.run("prompt", {
+    generate: effect ({ iteration }) => `v${iteration}`,
+    evaluate: effect ({ iteration }) => ({ score: [4, 7, 9, 2][iteration - 1] }),
+    targetScore: target,
+    maxIterations
+  })
+}
+
+effect function sweep(rounds: string[][], maxRetries: number) {
+  const fixed: number[] = []
+  const result = try Experimental.Patterns.ScanFixVerify.run("repo", {
+    scan: effect ({ iteration }) => rounds[iteration - 1] ?? [],
+    fix: effect ({ issue }) => `fixed ${issue}`,
+    verify: effect ({ fixes }) => {
+      fixed.push(fixes.length)
+      return fixes.length > 0
+    },
+    maxRetries,
+    maxIssues: 2,
+    concurrency: 2
+  })
+  return { result, fixed }
+}
+
+export effect function main() {
+  const chain = try delegate("test")
+  const ladder = Experimental.Patterns.DelegationChain.run("ship it", {
+    tierOrder: ["weak"],
+    maxDepth: 1,
+    maxDeriskRounds: 1,
+    refine: effect () => "goal",
+    plan: effect () => ({ agent: { goal: "draft" } }),
+    derisk: effect () => true,
+    execute: { weak: effect () => "draft" },
+    review: effect () => false,
+    settle: effect () => "settled"
+  }) catch (error) => match (error) {
+    when Experimental.Patterns.DelegationChain.DelegationError: `${error.code} at ${error.path}`;
+    default: "other";
+  }
+  const found = try search(8, 4)
+  const plateau = try search(undefined, 4)
+  const swept = try sweep([["x", "y", "z"], ["z"]], 3)
+  const stuck = try sweep([["a", "b"], ["b"]], 2)
+  const bounds = Experimental.Patterns.Optimizer.run("prompt", {
+    generate: effect () => "v",
+    evaluate: effect () => ({ score: 1 }),
+    maxIterations: 0
+  }) catch (error) => error.code
+  return {
+    chain,
+    ladder,
+    best: { candidate: found.best.candidate, score: found.best.score, iterations: found.iterations, converged: found.converged },
+    plateau: `${plateau.best.candidate} after ${plateau.iterations}`,
+    sweep: { iterations: swept.result.iterations, resolved: swept.result.resolved, fixed: swept.fixed },
+    stuck: stuck.result.remaining,
+    bounds
+  }
+}

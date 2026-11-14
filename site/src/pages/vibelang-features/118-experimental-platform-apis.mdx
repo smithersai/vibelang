@@ -41,7 +41,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
-| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `Debate.run`, a bounded exchange a judge settles; `MapReduce.run`, map every shard and reduce in shard order; `Saga.run`, forward steps whose compensations unwind in reverse; `Kanban.run`, items through ordered columns; `Supervisor.run`, a boss that plans, delegates and reviews; `Sidecar.run`, a cheap shadow scored against the primary; `DriftDetector.run`, a snapshot compared with a baseline; `Intervene.run`, a change applied behind an approval; `Trellis.validate` and `Trellis.execute`, a model-written delegation plan inside an envelope; `PatternError` | none; they are pure Effect code and run in any runtime |
+| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `Debate.run`, a bounded exchange a judge settles; `MapReduce.run`, map every shard and reduce in shard order; `Saga.run`, forward steps whose compensations unwind in reverse; `Kanban.run`, items through ordered columns; `Supervisor.run`, a boss that plans, delegates and reviews; `Sidecar.run`, a cheap shadow scored against the primary; `DriftDetector.run`, a snapshot compared with a baseline; `Intervene.run`, a change applied behind an approval; `Trellis.validate` and `Trellis.execute`, a model-written delegation plan inside an envelope; `DelegationChain.run`, refine, plan, derisk, execute, review and settle; `Optimizer.run`, generate and evaluate toward a target score; `ScanFixVerify.run`, fix every issue a scan finds until a scan is clean; `PatternError` | none; they are pure Effect code and run in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -1781,3 +1781,71 @@ export effect function delegate() {
 | A trellis plan names one kind of node an object | An object with any other key, or with two of `agent`, `sequence` and `parallel`, is refused with `invalid_plan`. So is an empty container, a missing array member and an empty goal. |
 | A trellis envelope bounds the whole plan | A node deeper than `depth` is `depth_exceeded`, a container wider than `fanout` is `fanout_exceeded`, and more leaves than `fuel` is `fuel_exhausted`. A bound that is not a positive whole number is `invalid_envelope`. |
 | A trellis result follows the plan | A sequence's members run in order and a parallel group's start together; each container gives its members' results in plan order, whatever order they finish in. |
+
+### DelegationChain, Optimizer and ScanFixVerify
+
+`Experimental.Patterns.DelegationChain.run(prompt, { refine, plan, derisk, execute, review, settle, tierOrder, maxDepth, maxDeriskRounds, budget?, concurrency? })` runs a fixed chain. `refine` turns the prompt into a goal. `plan` and `derisk` run as a review loop of at most `maxDeriskRounds` rounds. The derisked plan must fit a `Trellis` envelope whose fuel, depth and fan-out are all `maxDepth`. Each leaf then climbs `tierOrder`, weakest first: `execute[tier]` runs it, and `review` with `stage: "leaf"` accepts or rejects the output. A tier that fails or is rejected hands the leaf to the next tier. Last, `review` with `stage: "chain"` sees every leaf output, and `settle` receives `{ prompt, goal, plan, leaves, review, deriskExhausted }`:
+
+```vibe
+export effect function ship() {
+  return try Experimental.Patterns.DelegationChain.run("add search", {
+    tierOrder: ["small", "large"],
+    maxDepth: 2,
+    maxDeriskRounds: 2,
+    refine: effect ({ prompt }) => prompt,
+    plan: effect () => ({ sequence: [{ agent: { goal: "schema" } }, { agent: { goal: "ranking" } }] }),
+    derisk: effect () => ({ approved: true }),
+    execute: {
+      small: effect ({ leaf }) => `${leaf.goal} by small`,
+      large: effect ({ leaf }) => `${leaf.goal} by large`
+    },
+    review: effect (request) => request.stage === "chain" || request.output !== "ranking by small",
+    settle: effect ({ leaves }) => leaves.join("; ")
+  })
+}
+// Run in an effect function: try Console.log(try ship())
+// Output: schema by small; ranking by large
+```
+
+`Experimental.Patterns.Optimizer.run(input, { generate, evaluate, maxIterations, targetScore?, onMaxReached? })` generates a candidate and evaluates it to `{ score, feedback? }` each iteration. From the second iteration on, `generate` receives the `previous` attempt `{ candidate, score, feedback, iteration }`. The search stops at the first score of at least `targetScore`, and gives `{ best, iterations, converged }`, where `best` is the earliest attempt with the highest score:
+
+```vibe
+export effect function tune() {
+  const result = try Experimental.Patterns.Optimizer.run("prompt", {
+    generate: effect ({ iteration }) => `draft ${iteration}`,
+    evaluate: effect ({ iteration }) => ({ score: [0.4, 0.9, 0.6][iteration - 1] }),
+    maxIterations: 3
+  })
+  return `${result.best.candidate} scored ${result.best.score} in ${result.iterations} iterations`
+}
+// Run in an effect function: try Console.log(try tune())
+// Output: draft 2 scored 0.9 in 3 iterations
+```
+
+`Experimental.Patterns.ScanFixVerify.run(input, { scan, fix, verify, maxRetries, maxIssues, concurrency })` scans for an array of issues each round. A clean scan ends the loop with `resolved: true`. Otherwise `fix` runs for each of the first `maxIssues` issues, in batches of `concurrency`, and `verify` receives the round's `issues` and `fixes`. After `maxRetries` rounds with issues the loop ends with `resolved: false` and the last scan's issues in `remaining`:
+
+```vibe
+export effect function lint() {
+  const result = try Experimental.Patterns.ScanFixVerify.run("src", {
+    scan: effect ({ iteration }) => [["unused import", "missing semicolon"], ["missing semicolon"], []][iteration - 1],
+    fix: effect ({ issue }) => `fixed ${issue}`,
+    verify: effect ({ fixes }) => fixes.length,
+    maxRetries: 3,
+    maxIssues: 1,
+    concurrency: 1
+  })
+  return `resolved: ${result.resolved} after ${result.iterations} scans`
+}
+// Run in an effect function: try Console.log(try lint())
+// Output: resolved: true after 3 scans
+```
+
+| Rule | Consequence |
+| --- | --- |
+| A delegation leaf calls each tier once | The chain never retries a tier. A leaf that no tier settles fails the chain with a `DelegationError` whose `code` is `leaf_failed`, whose `path` is the leaf's plan path, and whose `cause` lists each tier's outcome. |
+| A delegation chain checks its bounds first | A `maxDepth`, `maxDeriskRounds` or `concurrency` that is not a positive whole number, or an empty `tierOrder`, is `invalid_bounds`; a tier with no `execute` stage is `missing_tier`. No stage runs. |
+| A derisked plan outside the envelope runs no leaf | The chain fails with the first `TrellisError`, and its `cause` holds every refusal. A `PatternError` from `plan` or `derisk` becomes `derisk_failed`. |
+| An optimizer keeps its best attempt | A later attempt replaces the best only with a higher score. Without `targetScore` the search runs every iteration. |
+| An optimizer score is finite | A score that is `NaN` or infinite fails with `invalid_input`. With `onMaxReached: "fail"`, a search that spends its iterations below `targetScore` fails with `exhausted`; `"fail"` without a `targetScore` is `invalid_decorator`. |
+| A scan-fix-verify loop stops only on a clean scan | `verify`'s answer is recorded in `verifications` and never ends the loop. `ScanFixVerify.resolved(verification)` reads `true` or an own `resolved: true`. |
+| A batch of fixes finishes before the next starts | At most `concurrency` fixes run at once. Issues past `maxIssues` wait for the next scan. |
