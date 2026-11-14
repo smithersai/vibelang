@@ -132,8 +132,10 @@ var bindingHomeOptions = []string{"strict", "noUncheckedIndexedAccess", "exactOp
 var bindingHomeLiterals = map[string]struct{ source, options string }{
 	// smithers packages/smithers/agent/fs, SchemaBridge.vibe line 70 as
 	// drive-smithers minimized it (inbox migrate-smithers 2026-11-01, repro
-	// exit-success-binding/a.vibe).
-	"smithers-exit-success-binding": {`export effect function recover<A>(program: Effect<A, unknown, unknown>, failure: () => Effect<string>): Effect<A, string, infer R> {
+	// exit-success-binding/a.vibe). Its return annotation wrote `infer R`
+	// in the requirement slot, which is now EK4857 (chapter 001), so the
+	// literal writes `unknown` there and still probes the binding.
+	"smithers-exit-success-binding": {`export effect function recover<A>(program: Effect<A, unknown, unknown>, failure: () => Effect<string>): Effect<A, string, unknown> {
   return match (try exit(program as Effect<A, unknown>)) {
     when Exit.Success(let value): value;
     default: throw try failure();

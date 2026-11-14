@@ -1,2 +1,1 @@
 # Precise gaps observed by r4 six/more Go runs; independent native controls retained.
-FuzzMatchBindingHomes feature:literal:smithers-exit-success-binding compiler VIP-7 Chapter 4 Typing: a let binding keeps its TypeScript counterpart type under noUncheckedIndexedAccess and exactOptionalPropertyTypes; lane migfix-smithers

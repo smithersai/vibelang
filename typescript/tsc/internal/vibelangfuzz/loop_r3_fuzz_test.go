@@ -210,9 +210,14 @@ var isHomePublicQuotes = []string{
 	"The same holds for a catch clause's parameter, whose environment is distinct from the catch Block",
 }
 
+// VIP-5: a try statement in effect code is EK0503, so the effect wrapper of a
+// catch position reports it beside the catch parameter's own result.
+const isHomeTryStatementQuote = "a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code"
+
 func requireIsHomeQuotes(t testing.TB) {
 	r3Quoted(t, "004-match.md", isHomeQuotes...)
 	r3Quoted(t, "../vips/0007-match.md", isHomePublicQuotes...)
+	r3Quoted(t, "002-running.md", isHomeTryStatementQuote)
 }
 
 var isHomePositions = []struct{ name, source, want, key string }{
@@ -220,7 +225,7 @@ var isHomePositions = []struct{ name, source, want, key string }{
 	{"catch-nested-default", `try { work() } catch ({ a: { code = (1 is const c) } }: any) {}`, "EK0705", "catch:EK0705"},
 	{"catch-computed-key", `try { work() } catch ({ [(1 is let c) ? "x" : "y"]: value }: any) {}`, "EK0705", "catch:EK0705"},
 	{"catch-array-default", `try { work() } catch ([a = (1 is let c)]: any) {}`, "EK0705", "catch:EK0705"},
-	{"catch-local-do", `try { throw {} as any } catch ({ code = do { const ok = (1 is let c); ok } }) {}`, "", "catch:local-do"},
+	{"catch-local-do", `try { work() } catch ({ code = do { const ok = (1 is let c); ok } }: any) {}`, "", "catch:local-do"},
 	{"catch-binding-free", `try { work() } catch ({ code = (1 is Number) }: any) {}`, "", "catch:free"},
 	{"catch-body", `try { work() } catch (e: any) { if (e is { code: let c }) return c }`, "", "catch:body"},
 	{"guard-after-if", `const input: unknown = { code: 1 }; if (!(input is { code: let c })) return 0; c`, "", "guard:home"},
@@ -268,6 +273,13 @@ func FuzzIsHomePositions(f *testing.F) {
 			t.Fatal(err)
 		}
 		errs := r3Errors(r.Diagnostics)
+		if wr.name == "effect" && strings.HasPrefix(p.name, "catch-") {
+			if !slices.Contains(errs, "EK0503") {
+				Gap(t, "FuzzIsHomePositions", "catch:effect-try", "002-running: %s; %s reports %v:\n%s", isHomeTryStatementQuote, p.name, errs, source)
+				return
+			}
+			errs = slices.DeleteFunc(errs, func(code string) bool { return code == "EK0503" })
+		}
 		switch {
 		case p.want == "" && len(errs) > 0:
 			Gap(t, "FuzzIsHomePositions", p.key, "004-match: %s should compile, reports %v:\n%s", p.name, errs, source)
