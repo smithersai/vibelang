@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nfunction key(): 7 { return 7 }\nerror Call { [key()]: number }\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"es2022\",\"lib\":[\"esnext\"],\"module\":\"nodenext\",\"moduleResolution\":\"nodenext\",\"strict\":true,\"types\":[],\"skipLibCheck\":true,\"outDir\":\"out\",\"declaration\":true},\"include\":[\"*.vibe\"]}\n")
+[]byte("")
