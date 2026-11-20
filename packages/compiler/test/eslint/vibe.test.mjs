@@ -147,6 +147,19 @@ test("a codec that a schema field names is used, wherever the field names it", (
   }
 })
 
+test("an import that a schema field names is a value import, which import type would break", () => {
+  // The schema's Schema.Struct reads the imported codec, so import type fails with TS1361.
+  const typeImports = (code) =>
+    lint({ code, filename: "/file.vibe" })
+      .filter((message) => message.ruleId === "@typescript-eslint/consistent-type-imports")
+      .map((message) => message.line)
+  for (const form of ["schema File { source: Held }", "schema File = Held[]", "schema error File { source: Held }"]) {
+    assert.deepEqual(typeImports(`import { Held } from "./held.vibe"\nexport ${form}\n`), [], form)
+  }
+  assert.deepEqual(typeImports('import * as held from "./held.vibe"\nexport schema File { source: held.Held }\n'), [])
+  assert.deepEqual(typeImports('import { Held } from "./held.vibe"\nexport type File = { source: typeof Held }\n'), [1])
+})
+
 test("a module declaration's body lints as TypeScript, on the .vibe file's lines and columns", () => {
   // VIP-40: Linters, the ESLint parser gives the declaration a VibeModuleDeclaration node — spec-rule: docs/design/vips/0040-module-declarations.md#7d78c1856c68a863
   const { code, filename } = fixture("modules.vibe")
