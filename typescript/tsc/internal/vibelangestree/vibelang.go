@@ -564,8 +564,8 @@ func (c *converter) schemaDeclaration(n *ast.Node) *obj {
 //
 // A reference with type arguments, Array<T> or Record<K, V>, stays a type
 // reference, and its arguments are mapped in turn. The query's first name
-// carries schemaValue, so eslint.mjs marks what it resolves to used:
-// typescript-eslint counts typeof in a type as a type use.
+// carries schemaValue, so eslint.mjs gives what it resolves to a value read
+// outside the type: typescript-eslint counts typeof in a type as a type use.
 func schemaValues(value any) {
 	switch v := value.(type) {
 	case *obj:
