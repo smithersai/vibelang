@@ -251,6 +251,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The guidance for a plain function that throws (`EK0401`) told readers and coding agents to move the code to a `.ts` file, so converted projects kept throwing code out of VibeLang. The skill, the specification and these docs now say to keep the code in a `module` block inside the `.vibe` file, with `@throws {T}` on each function that throws, and to use a separate `.ts` file only where a tool must start the file by path.
 
+- A `module` declaration named after an Effect global or module, such as `module context { }`, could report `EK4005` ("redeclares a binding of this file") because of unrelated code in the same file: a call to another Effect global such as `succeed`, a parameter or local `const` named `context` inside a function, or an object literal inside a function. A module name now shadows Effect's globals and modules as a `const` does, and `EK4005` reports only a second binding of that name at the top level of the file.
+
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
 - A migration could report unchanged namespace member documentation as changed when a public binding used `infer`. The API check now keeps those comments on their public members and still detects edited documentation.
