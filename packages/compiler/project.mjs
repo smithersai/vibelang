@@ -35,7 +35,7 @@ const exitIgnoredLine = /^VIBELANG-EXIT-IGNORED: (\w+) (\w+\d+)$/
  */
 export function findCompiler(root, compiler) {
   if (compiler) return resolve(root, compiler)
-  if (process.env.VIBELANG_BINARY) return executablePath(process.env.VIBELANG_BINARY)
+  if (process.env.VIBELANG_BINARY) return executablePath(process.env.VIBELANG_BINARY, root)
   const require = createRequire(join(resolve(root), "package.json"))
   return join(dirname(require.resolve("vibelang/package.json")), "bin/vibelang")
 }

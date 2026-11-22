@@ -133,6 +133,7 @@ export function nearestProject(file: string): string | undefined
 /** The nearest package.json directory, or the path's directory when none exists. */
 export function packageRoot(path: string): string
 /** Find a containing program after the initial config excludes a source. */
+export function configIn(directory: string): string | undefined
 export function findProject(file: string, options: {
   project?: string
   tried?: string

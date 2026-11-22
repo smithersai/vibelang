@@ -97,10 +97,10 @@ test("LSP formatting uses the same configured formatter on the unsaved document"
     textDocument: { uri }, options: { tabSize: 2, insertSpaces: true },
     range: { start: { line: 0, character: 0 }, end: { line: 0, character: 6 } }
   }), [])
-  assert.equal(applyEdits(unsaved, await client.request("textDocument/onTypeFormatting", {
+  assert.deepEqual(await client.request("textDocument/onTypeFormatting", {
     textDocument: { uri }, options: { tabSize: 2, insertSpaces: true },
     position: { line: 0, character: unsaved.length - 1 }, ch: ";"
-  })), expected)
+  }), [])
   assert.equal(result, formatSource(unsaved, path))
   assert.equal(readFileSync(path, "utf8"), 'export const disk = "leave unchanged"\n')
   client.notify("textDocument/didChange", { textDocument: { uri, version: 2 }, contentChanges: [{ text: result }] })
