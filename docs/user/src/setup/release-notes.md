@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- `Experimental.Process.kill(1, { group: true })` and `isRunning(1, { group: true })` passed `-1` to POSIX `kill`, which addresses every process rather than process group 1. Both now fail with `BadArgument` without calling the host.
+
 - Concurrent branches calling the same `Experimental.Durable.task` could swap their recorded results after a crash or restart when earlier steps finished in a different order than replay. Task journal entries now match by payload identity as well as occurrence.
 
 - A source file with a modification time ahead of the system clock caused bundler builds and dev servers to recompile forever. Files timestamped in the future no longer trigger repeated recompiles.

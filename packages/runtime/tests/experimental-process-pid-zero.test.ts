@@ -41,7 +41,7 @@ test("Process.isRunning: zero and its numeric neighbourhood preserve query targe
       const query = current.isRunning(pid, { group })
       expect(calls).toEqual([])
       const result = outcome(query)
-      const valid = Number.isSafeInteger(pid) && pid >= 0 && !(group === true && platform === "win32")
+      const valid = Number.isSafeInteger(pid) && pid >= 0 && !(group === true && (platform === "win32" || pid === 1))
       if (!valid) {
         expect(result).toEqual({ ok: false, reason: "BadArgument" })
         expect(calls).toEqual([])
@@ -55,6 +55,16 @@ test("Process.isRunning: zero and its numeric neighbourhood preserve query targe
       }
     })
   ), { numRuns: 300, seed: 152031 })
+})
+
+test("Process.kill and Process.isRunning: group 1 is refused before the host receives kill(-1)", () => {
+  for (const platform of ["linux", "darwin", "win32"]) {
+    withHost(platform, "ok", (calls) => {
+      expect(outcome(service().kill(1, { group: true }))).toEqual({ ok: false, reason: "BadArgument" })
+      expect(outcome(service().isRunning(1, { group: true }))).toEqual({ ok: false, reason: "BadArgument" })
+      expect(calls).toEqual([])
+    })
+  }
 })
 
 test("Process.kill: zero stays refused before the host receives any real signal", () => {
