@@ -227,6 +227,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - Publishing a release exposed the publisher's home directory in npm metadata. Release scripts now publish unchanged archives from neutral staging and reject registry entries that expose a home path.
 
 - The React Native guide and the `vibelang` package page showed a CommonJS `metro.config.js`, and the package page a CommonJS `babel.config.js`, for an app whose `package.json` has `"type": "module"`. Metro failed with `require is not defined in ES module scope`. Both pages now name the files `metro.config.cjs` and `babel.config.cjs`.
+- Migration setup crashed on a YAML `.prettierrc` or a commented `dprint.json`, sometimes after changing other files. It now leaves unsupported Prettier settings unchanged with a warning naming the file and updates dprint settings while preserving comments.
+
 - With no `project` option, the Vite plugin and the bundler plugins read the root's `tsconfig.json` even when a `vibe.config.json` was beside it, so they compiled with settings the compiler ignored. They now read the root's `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, as the compiler does.
 - Requesting signature help inside a qualified extractor pattern could crash the language server. These queries now keep working while a pattern is being edited.
 - Formatting `fork.in(scope)work()` could fail even though a space between the scope and operand is optional. It now formats normally and keeps the scope call and operand separate.
@@ -252,6 +254,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - The guidance for a plain function that throws (`EK0401`) told readers and coding agents to move the code to a `.ts` file, so converted projects kept throwing code out of VibeLang. The skill, the specification and these docs now say to keep the code in a `module` block inside the `.vibe` file, with `@throws {T}` on each function that throws, and to use a separate `.ts` file only where a tool must start the file by path.
 
 - A `module` declaration named after an Effect global or module, such as `module context { }`, could report `EK4005` ("redeclares a binding of this file") because of unrelated code in the same file: a call to another Effect global such as `succeed`, a parameter or local `const` named `context` inside a function, or an object literal inside a function. A module name now shadows Effect's globals and modules as a `const` does, and `EK4005` reports only a second binding of that name at the top level of the file.
+
+- A `.vibe` module whose inferred export type was longer than TypeScript's serializer limit wrote the whole type into its declaration sidecar, 52 MB for one t3code module, where `tsc` reports `TS7056` for the same `.ts` source, and the migrate flow's API check ran out of memory reading it. The module now reports `TS7056` as `tsc` does: at the export in a project that emits declarations, and at each `.ts` file that imports the module in one that does not. Its sidecar holds what TypeScript writes, cut off at the limit. Give the export an explicit type annotation, as the message says.
 
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
