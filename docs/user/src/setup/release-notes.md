@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Requesting signature help inside a `match` expression (such as after `match (`, inside a literal pattern, or inside array-pattern arms) could panic the language server with a parent-child span assertion failure. Synthesized `match` nodes now span all of their children.
 - Fixed `scripts/remote.sh` interpolating workspace directory names and relative subdirectories unquoted into remote SSH shell commands; paths are now single-quoted beside `"$HOME"`.
 - Fixed `scripts/apply-patch.sh` silently exiting `0` and applying partial changes on truncated or CRC-corrupted gzip patch payloads; patches are now decompressed and validated to a temporary file before invoking `git apply`.
 - Formatting a file containing a single-line braced `for concurrent` body (such as `for concurrent(2) (const id of ids) { try Console.log(id) }`) failed with an internal error when the TypeScript formatter removed or added braces around the single-statement body. The formatter's equivalence check now treats `for concurrent` loop bodies like native loop bodies.

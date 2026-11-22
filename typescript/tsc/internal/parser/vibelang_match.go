@@ -1395,16 +1395,37 @@ func (p *Parser) mString(text string, at core.TextRange) *ast.Node {
 	return p.vibelangSynthesized(p.factory.NewStringLiteral(text, ast.TokenFlagsNone), at)
 }
 
+// nodesSpan expands at to contain every non-nil child node's Loc so synthesized
+// parents satisfy TypeScript's parent-contains-child invariant for language
+// service queries such as signature help.
+func nodesSpan(at core.TextRange, nodes ...*ast.Node) core.TextRange {
+	for _, n := range nodes {
+		if n == nil {
+			continue
+		}
+		if n.Pos() >= 0 && (at.Pos() < 0 || n.Pos() < at.Pos()) {
+			at = core.NewTextRange(n.Pos(), at.End())
+		}
+		if n.End() > at.End() {
+			at = core.NewTextRange(at.Pos(), n.End())
+		}
+	}
+	return at
+}
+
 func (p *Parser) mBinary(left *ast.Node, operator ast.Kind, right *ast.Node, at core.TextRange) *ast.Node {
-	return p.vibelangSpanning(p.factory.NewBinaryExpression(nil, left, nil, p.mToken(operator, at), right), at)
+	span := nodesSpan(at, left, right)
+	return p.vibelangSpanning(p.factory.NewBinaryExpression(nil, left, nil, p.mToken(operator, at), right), span)
 }
 
 func (p *Parser) mParens(expr *ast.Node, at core.TextRange) *ast.Node {
-	return p.vibelangSpanning(p.factory.NewParenthesizedExpression(expr), at)
+	span := nodesSpan(at, expr)
+	return p.vibelangSpanning(p.factory.NewParenthesizedExpression(expr), span)
 }
 
 func (p *Parser) mCall(callee *ast.Node, args []*ast.Node, at core.TextRange) *ast.Node {
-	return p.vibelangSpanning(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(at, args), ast.NodeFlagsNone), at)
+	span := nodesSpan(nodesSpan(at, callee), args...)
+	return p.vibelangSpanning(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(span, args), ast.NodeFlagsNone), span)
 }
 
 // mExtractCall writes $extract(matcher, subject). A global regular expression
@@ -1429,11 +1450,13 @@ func (p *Parser) mExtractCall(matcher, subject *ast.Node, at core.TextRange) *as
 }
 
 func (p *Parser) mProperty(expr *ast.Node, name string, at core.TextRange) *ast.Node {
-	return p.vibelangSpanning(p.factory.NewPropertyAccessExpression(expr, nil, p.mIdent(name, at), ast.NodeFlagsNone), at)
+	span := nodesSpan(at, expr)
+	return p.vibelangSpanning(p.factory.NewPropertyAccessExpression(expr, nil, p.mIdent(name, at), ast.NodeFlagsNone), span)
 }
 
 func (p *Parser) mElement(expr *ast.Node, argument *ast.Node, at core.TextRange) *ast.Node {
-	return p.vibelangSpanning(p.factory.NewElementAccessExpression(expr, nil, argument, ast.NodeFlagsNone), at)
+	span := nodesSpan(at, expr, argument)
+	return p.vibelangSpanning(p.factory.NewElementAccessExpression(expr, nil, argument, ast.NodeFlagsNone), span)
 }
 
 // mPatternRead marks read, the access a pattern writes to reach a part of its
@@ -1456,13 +1479,15 @@ func (p *Parser) mKeyword(kind ast.Kind, at core.TextRange) *ast.Node {
 }
 
 func (p *Parser) mBlock(statements []*ast.Node, at core.TextRange) *ast.Node {
-	return p.vibelangSpanning(p.factory.NewBlock(p.newNodeList(at, statements), true /*multiLine*/), at)
+	span := nodesSpan(at, statements...)
+	return p.vibelangSpanning(p.factory.NewBlock(p.newNodeList(span, statements), true /*multiLine*/), span)
 }
 
 func (p *Parser) mConst(name *ast.Node, flags ast.NodeFlags, init *ast.Node, at core.TextRange) *ast.Node {
-	declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(name, nil, nil, init), at)
-	list := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(at, []*ast.Node{declaration}), flags), at)
-	return p.vibelangSpanning(p.factory.NewVariableStatement(nil, list), at)
+	span := nodesSpan(at, name, init)
+	declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(name, nil, nil, init), span)
+	list := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(span, []*ast.Node{declaration}), flags), span)
+	return p.vibelangSpanning(p.factory.NewVariableStatement(nil, list), span)
 }
 
 // patternErrorCall writes $patternError(code) or $patternError(code, detail),
@@ -2388,13 +2413,8 @@ func (p *Parser) emitSteps(steps []matchStep, success []*ast.Node, at core.TextR
 	// return of its value, so that a position in the value is inside them
 	// and the language service can find the value's tokens there.
 	test := p.joinTests(tests, ast.KindAmpersandAmpersandToken, at)
-	span := testsSpan(at, test)
-	for _, statement := range inner {
-		if statement.End() > span.End() {
-			span = core.NewTextRange(at.Pos(), statement.End())
-		}
-	}
-	then := p.mBlock(inner, span)
+	then := p.mBlock(inner, at)
+	span := nodesSpan(at, test, then)
 	return append(out, p.vibelangSpanning(p.factory.NewIfStatement(test, then, nil), span))
 }
 
@@ -2537,9 +2557,9 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 // stands, whose arms return their values.
 func (p *Parser) matchFunctionCall(info *matchInfo) *ast.Node {
 	statements := p.matchStatements(info, func(value *ast.Node, at core.TextRange) []*ast.Node {
-		return []*ast.Node{p.vibelangSpanning(p.factory.NewReturnStatement(value), at)}
+		return []*ast.Node{p.vibelangSpanning(p.factory.NewReturnStatement(value), nodesSpan(at, value))}
 	}, func(noMatch *ast.Node, at core.TextRange) *ast.Node {
-		return p.vibelangSpanning(p.factory.NewReturnStatement(noMatch), at)
+		return p.vibelangSpanning(p.factory.NewReturnStatement(noMatch), nodesSpan(at, noMatch))
 	})
 	span := core.NewTextRange(info.anchor.End(), p.nodePos())
 	body := p.mBlock(statements, span)
@@ -2550,14 +2570,20 @@ func (p *Parser) matchFunctionCall(info *matchInfo) *ast.Node {
 		arrowToken.Flags &^= ast.NodeFlagsReparsed
 		modifiers := p.newModifierList(info.async.Loc, p.nodeSliceArena.NewSlice1(info.async))
 		params := p.newNodeList(core.NewTextRange(info.anchor.Pos(), info.anchor.Pos()), nil)
-		arrow = p.vibelangSpanning(p.factory.NewArrowFunction(modifiers, nil, params, nil, nil, arrowToken, body), core.NewTextRange(body.Pos(), body.End()))
+		arrowSpan := nodesSpan(body.Loc, info.async, arrowToken)
+		arrow = p.vibelangSpanning(p.factory.NewArrowFunction(modifiers, nil, params, nil, nil, arrowToken, body), arrowSpan)
 		p.vibelangAsyncMatches = append(p.vibelangAsyncMatches, arrow)
 	} else {
 		arrow = p.vibelangProgramArrow(nil, body, info.anchor)
 	}
-	callee := p.vibelangSpanning(p.factory.NewParenthesizedExpression(arrow), span)
+	calleeSpan := nodesSpan(span, arrow)
+	callee := p.vibelangSpanning(p.factory.NewParenthesizedExpression(arrow), calleeSpan)
 	call := p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(core.NewTextRange(p.nodePos(), p.nodePos()), nil), ast.NodeFlagsNone)
-	return p.finishNode(call, info.pos)
+	callPos := info.pos
+	if callee.Pos() >= 0 && callee.Pos() < callPos {
+		callPos = callee.Pos()
+	}
+	return p.finishNode(call, callPos)
 }
 
 // matchReturnStatement writes return match (...) { ... } as a block whose
@@ -2572,11 +2598,12 @@ func (p *Parser) matchReturnStatement(info *matchInfo, pos int) *ast.Node {
 // past the match. Keep the block at the original statement range.
 func (p *Parser) matchReturnStatementAt(info *matchInfo, loc core.TextRange) *ast.Node {
 	statements := p.matchStatements(info, func(value *ast.Node, at core.TextRange) []*ast.Node {
-		return []*ast.Node{p.vibelangSpanning(p.factory.NewReturnStatement(value), at)}
+		return []*ast.Node{p.vibelangSpanning(p.factory.NewReturnStatement(value), nodesSpan(at, value))}
 	}, func(noMatch *ast.Node, at core.TextRange) *ast.Node {
-		return p.vibelangSpanning(p.factory.NewReturnStatement(noMatch), at)
+		return p.vibelangSpanning(p.factory.NewReturnStatement(noMatch), nodesSpan(at, noMatch))
 	})
-	return p.finishNodeWithEnd(p.factory.NewBlock(p.newNodeList(loc, statements), true /*multiLine*/), loc.Pos(), loc.End())
+	blockSpan := nodesSpan(loc, statements...)
+	return p.finishNodeWithEnd(p.factory.NewBlock(p.newNodeList(blockSpan, statements), true /*multiLine*/), blockSpan.Pos(), blockSpan.End())
 }
 
 // matchStatement writes a match that stands as a statement as a labeled
@@ -2586,12 +2613,17 @@ func (p *Parser) matchStatement(info *matchInfo, pos int) *ast.Node {
 	label := "$match" + strconv.Itoa(p.vibelangMatchTemps)
 	statements := p.matchStatements(info, func(value *ast.Node, at core.TextRange) []*ast.Node {
 		leave := p.vibelangSpanning(p.factory.NewBreakStatement(p.mTemp(label, info.anchor)), info.anchor)
-		return []*ast.Node{p.vibelangSpanning(p.factory.NewExpressionStatement(value), at), leave}
+		return []*ast.Node{p.vibelangSpanning(p.factory.NewExpressionStatement(value), nodesSpan(at, value)), leave}
 	}, func(noMatch *ast.Node, at core.TextRange) *ast.Node {
-		return p.vibelangSpanning(p.factory.NewExpressionStatement(noMatch), at)
+		return p.vibelangSpanning(p.factory.NewExpressionStatement(noMatch), nodesSpan(at, noMatch))
 	})
-	block := p.finishNode(p.factory.NewBlock(p.newNodeList(core.NewTextRange(info.anchor.End(), p.nodePos()), statements), true /*multiLine*/), info.anchor.End())
-	statement := p.finishNode(p.factory.NewLabeledStatement(p.mTemp(label, info.anchor), block), pos)
+	blockSpan := nodesSpan(core.NewTextRange(info.anchor.End(), p.nodePos()), statements...)
+	block := p.finishNodeWithEnd(p.factory.NewBlock(p.newNodeList(blockSpan, statements), true /*multiLine*/), blockSpan.Pos(), blockSpan.End())
+	stmtPos := pos
+	if blockSpan.Pos() >= 0 && blockSpan.Pos() < stmtPos {
+		stmtPos = blockSpan.Pos()
+	}
+	statement := p.finishNode(p.factory.NewLabeledStatement(p.mTemp(label, info.anchor), block), stmtPos)
 	p.vibelangMatches[statement] = info
 	return statement
 }
