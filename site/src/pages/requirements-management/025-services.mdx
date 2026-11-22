@@ -287,7 +287,7 @@ Write the `service` keyword without Unicode escapes: an escaped keyword is `TS12
 
 ### Generic capture
 
-A custom `service` has one key across every instantiation of its enclosing function or class. Its implementation contract must therefore use concrete types: a service cannot declare type parameters or capture an enclosing type parameter in a member contract (`EK3005`), including in a whole-shape annotation such as `service S: { value: T } { ... }`. Different specializations would share one runtime key. Use a concrete contract, or give individual members their own generic parameters independent of outer parameters.
+A custom `service` has one key across every instantiation of its enclosing function or class. Its implementation contract must therefore use concrete types: a service cannot declare type parameters or capture an enclosing type parameter in a member contract (`EK3005`), including in a whole-shape annotation such as `service S: { value: T } { ... }`. Different specializations would share one runtime key. Use a concrete contract, or give individual members their own generic parameters independent of outer parameters. Concrete recursive aliases, including fluent builders whose type arguments grow at each step, are allowed in a service inside a generic function. A recursive alias that uses an enclosing type parameter in its member contract still reports `EK3005`.
 
 These count as captures:
 
