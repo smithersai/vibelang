@@ -6,7 +6,7 @@ The extension `vibelang.vibelang` registers `vibe` (VibeLang) for `.vibe` files 
 
 | Feature | What you see |
 | --- | --- |
-| Diagnostics | TypeScript's errors at `.vibe` spans, and VibeLang's own, such as `EK(1003)` on `async` |
+| Diagnostics | TypeScript's errors at `.vibe` spans, and VibeLang's own, such as `EK(0102)` on `await` in effect code |
 | Hover | A function's inferred contract, `function lookup(id: number): Effect<string, NotFound, never>`, and at a call that runs, "Runs here and returns `string`." |
 | Navigation | Go to definition, find references, and rename across `.vibe` and `.ts` files |
 | Completions | TypeScript's completions, with VibeLang types: inside a `.vibe` function, a call that runs has its success type |

@@ -324,9 +324,9 @@ async function run() {
     assert(found.range.start.line === 1, `line ${found.range.start.line}`)
   })
 
-  await check("diagnostics: EK1003 appears on wait.vibe with source EK", async () => {
-    const wait = await open("src/wait.vibe")
-    const found = await waitFor("EK1003", () => vscode.languages.getDiagnostics(wait.uri).find((d) => codeOf(d) === 1003))
+  await check("diagnostics: EK0102 appears on old-await.vibe with source EK", async () => {
+    const oldAwait = await open("src/old-await.vibe")
+    const found = await waitFor("EK0102", () => vscode.languages.getDiagnostics(oldAwait.uri).find((d) => codeOf(d) === 102))
     assert(found.source === "EK", `source ${found.source}`)
   })
 
