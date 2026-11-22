@@ -21,7 +21,7 @@ Read the VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md`: every for
 - Runners run only where no fiber runs the code (D38); `.vibe` tests use `it.effect` or `it.live`, and Promise-style tests stay in `.ts`.
 - A producer is a `Stream` wherever one is expected, and `for...of` over a `Stream` pulls and closes it (D26).
 - Settings go in a top-level `vibelang` object in `tsconfig.json` (D275). dprint formats and ESLint lints `.vibe` files (D276, D277).
-- Effect code in TypeScript's style draws warnings EK4830-EK4837 whose quick fixes write the VibeLang form (D284-D290), and `vibelang --fix` applies them (D291). Serializable errors use `Schema.TaggedError`, which draws EK4837 without a fix: an error declaration would drop its Schema, so the class stays where the Schema is needed.
+- Effect code in TypeScript style may draw EK4830 to EK4837 warnings. Show the edit the reader can make by hand. Keep `Schema.TaggedError` when the code needs its Schema.
 - A hatch example must show something VibeLang cannot write directly: a Promise or callback API, a foreign library call, or platform code. Write ordinary computation in plain VibeLang. Network examples are compile-checked; never mark them `// run:`.
 
 ## Voice
@@ -63,6 +63,8 @@ Many modules work exactly as in Effect: `Option`, `Chunk`, `HashMap`, `Duration`
 ## When the spec has no answer
 
 Write the answer most consistent with the rules above, and mark it with a block quote: `> **Proposed.** …`. If no consistent answer exists, write `> **Not designed yet.** <the precise question>`. Record unresolved questions with the page path in the issue or review. Keep drafting and process history outside the public source tree.
+
+Keep checkout-only migration guidance in the [contributor migration guide](migrate-flow.md).
 
 ## Token counts
 

@@ -39,7 +39,7 @@ The last three `excludes` keep dprint off the declarations the compiler writes b
 
 dprint finds the plugin in `node_modules/vibelang` from `dprint.json`'s directory, so the configuration needs no checksum for it. The plugin's executable is the native compiler: the manifest names the platform package that holds it, such as `vibelang-linux-x64`, with that package's tarball checksum; dprint downloads the tarball from the npm registry once, checks it, and caches it. List the TypeScript plugin too: the VibeLang plugin formats with it. The VibeLang plugin has no settings; put style settings under `typescript`.
 
-If your project requires a checksum on every plugin, keep its pinned plugin list and run `vibelang-format --write` after `dprint fmt`, or `vibelang-format --check` after `dprint check`. Migration setup wires these commands automatically. If no plugins are configured, it supplies a pinned TypeScript plugin and uses the same command pair. When rerun after an older setup, it removes the old `npm:vibelang/dprint-plugin.json` entry and preserves the pinned plugins and their order.
+If your project requires a checksum on every plugin, keep its pinned plugin list and run `vibelang-format --write` after `dprint fmt`, or `vibelang-format --check` after `dprint check`.
 
 ## 3. Format and check
 
@@ -150,7 +150,7 @@ Both formatting commands report missing explicit files, unmatched explicit glob 
 
 ## Prettier, Oxfmt and migration
 
-The compiler also ships `vibelang/prettier` and `vibelang-format`. See [Developer tools after migration](developer-tools.md) for the integrations, their shared formatter, and how migration extends existing checks.
+The compiler also ships `vibelang/prettier` and `vibelang-format`. See [Developer tools](developer-tools.md) for integrations that use the same formatter.
 
 The Prettier plugin formats the supplied buffer even when its path matches an ignore rule, and reports syntax errors in unsaved input. File-scanning commands select files using their ignore rules.
 

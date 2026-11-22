@@ -1,6 +1,6 @@
 # VibeLang in .ts files
 
-The `vibelang-typescript` package is an experimental implementation of [open VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md). It is a source-checkout preview and is not published to npm. Prefer [the regular integration](existing-project.md) when you can use `.vibe` files.
+The `vibelang-typescript` package is an experimental implementation of [open VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md). Use the source-checkout preview to try it. Prefer [the regular integration](existing-project.md) when you can use `.vibe` files.
 
 The compiler recognizes VibeLang in a `.ts` file whose first line is `// @vibe`. The replacement package runs it under the name `typescript`, so existing `tsc` scripts can reach it. Files without the directive stay TypeScript.
 
@@ -8,7 +8,7 @@ This is the last option. Use it only when you can't name files `.vibe`. The [`vi
 
 ## Install
 
-The replacement package is not currently available from npm. Use the source-checkout preview below.
+The replacement package is not published to the public npm registry. The release scripts can stage and rehearse the package, and the source checkout below provides the compiler and runtime you can use today.
 
 The checkout targets TypeScript 7.1. Move a TypeScript 5 or 6 project to that compiler version first, including its configuration migrations.
 

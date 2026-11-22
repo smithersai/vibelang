@@ -105,13 +105,13 @@ If `parse.ts` or a conflicting sibling name is taken, compared case-insensitivel
 
 `new f()` on a function declared in a `.vibe` file uses TypeScript's own constructor checks. VibeLang adds no constructor diagnostic, so assertions and `@ts-ignore` keep TypeScript's behavior.
 
-A generated declaration for a `module` body keeps relative imports pointed at their source modules. With `vibe.sidecarDir`, rebuilding does not import a relocated declaration as a second source module. The migrate flow removes a returned source's module-body declarations when it restores the original TypeScript. Project references also retain a body's type exports when reading built declarations, so inherited members stay available to the consuming project.
+A generated declaration for a `module` body keeps relative imports pointed at their source modules. With `vibe.sidecarDir`, rebuilding does not import a relocated declaration as a second source module. Project references also retain a body's type exports when reading built declarations, so inherited members stay available to the consuming project.
 
 ## Diagnostic reference: additional codes
 
 `EK1502` rejects type parameters on a `schema` body or alias. Write a generic TypeScript factory for parameterized construction.
 
-Each entry gives the condition and the repair. The examples and language-service tables on this page cover the other registered codes for these forms.
+Each entry gives the condition and the edit to make. The examples and language-service tables on this page cover the other registered codes for these forms.
 
 | Code | Meaning | Remedy |
 | --- | --- | --- |
@@ -280,7 +280,7 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Effect-native | `preferSchemaOverJson` | EK4818, off by default | `JSON.parse(text)` |
 | Effect-native | `processEnv` | Covered: EK4402 | `process.env.PORT`; use `Config` |
 | Effect-native | `processEnvInEffect` | Covered: EK4402 | `process.env.PORT` |
-| Effect-native | `unsafeEffectTypeAssertion` | `EK4810`, warning; removing the assertion has no automatic fix | `program as Effect.Effect<number>` drops a failure  A type-spelling repair also protects the whole refused assertion; unrelated annotations can still be repaired. |
+| Effect-native | `unsafeEffectTypeAssertion` | `EK4810`, warning; removing the assertion has no automatic fix | `program as Effect.Effect<number>` drops a failure. Keep the failure in the written type. |
 | Style | `catchAllToMapError` | Not needed: a catch that rethrows is the one form | `catch effect (e) => { throw new Failed({ cause: e }) }` |
 | Style | `deterministicKeys` | Not needed: the compiler derives each service key from its package, module, and name | `@acme/app/src/users#Users` |
 | Style | `effectDoNotation` | Not needed: `const` statements bind values | `const user = try (try Users).find(id)` |
@@ -360,7 +360,7 @@ Include `debug.ts` in the project, compile it with `vibelang`, then run `node --
 
 ## Lint and build integration
 
-Type-check with `vibelang --noEmit`. The compiler owns type and language diagnostics in the terminal, editor, and Vite overlay. The local `vibelang-vite` package supports Vite 7 and 8 and Vitest 5. It runs one whole-project compiler subprocess on the first request and after edits, serves JavaScript and source maps, and invalidates loaded `.vibe` modules and their importers; it does not use `vibelang --api`.
+Type-check with `vibelang --noEmit`. The compiler owns type and language diagnostics in the terminal, editor, and Vite overlay. The `vibelang-vite` package supports Vite 7 and 8 and Vitest 5. It runs one whole-project compiler subprocess on the first request and after edits, serves JavaScript and source maps, and invalidates loaded `.vibe` modules and their importers; it does not use `vibelang --api`.
 
 ```ts
 // TypeScript (.ts)
@@ -369,12 +369,12 @@ import { defineConfig } from "vitest/config"
 import vibelang from "vibelang-vite"
 
 export default defineConfig({
-  plugins: [vibelang()],
-  test: { include: ["src/**/*.test.vibe"] }
+  plugins: [vibelang({ project: "tsconfig.test.json" })],
+  test: { include: ["src/**/*.test.{vibe,vibex}"] },
 })
 ```
 
-The starter already includes this configuration. `bun run test` checks and compiles source tests without a prior build. See [TestClock](../testing/063-testclock.md) for tests with virtual time.
+The starter selects `tsconfig.test.json` because its main project excludes the test files. `bun run test` checks and compiles source tests without a prior build. See [TestClock](../testing/063-testclock.md) for tests with virtual time.
 
 Lint `.vibe` and `.vibex` files with ESLint through `vibelang/eslint`, the parser the `vibelang` package ships. A parser warning alone does not prevent the tree from being produced. If a file also has a syntax error, the parser reports the first error at its own location. The compiler parses each file, and ESLint gets the tree typescript-eslint gives it for TypeScript: typescript-eslint's rules and plugins such as `eslint-plugin-import`, `eslint-plugin-jsdoc`, and `eslint-plugin-unicorn` apply unchanged. Install `eslint` and `typescript-eslint` 8 beside `vibelang`; the parser uses typescript-eslint's scope analysis.
 
@@ -394,7 +394,7 @@ export default tseslint.config({
 
 Reports, fixes, and `// eslint-disable-next-line` comments land on the `.vibe` or `.vibex` text. Adjacent type-list openings, such as `F<<T>(x: T) => T>`, are separate `<` tokens; a written left shift remains a single `<<` token. When an `is` pattern captures its subject, the lint tree uses `VibeIsExpression` with `callee` and `arguments` visitor keys. Its matcher retains its lexical scope and its subject is visited once; the generated invocation is not a written call. Rules still visit calls you write in the subject or a guard. Rules that need type information, such as `@typescript-eslint/no-unnecessary-type-assertion`, cannot run on a `.vibe` file, since no TypeScript program loads one: enable them for `.ts` files only and check types with `vibelang --noEmit`. EK4801-EK4825 stay in the compiler and the language server. To see the tree a rule reads, run `vibelang --estree main.vibe < main.vibe`. Pattern bindings keep their assignment child under `VibePatternAssignment`, whose `expression` visitor key lets scope analysis distinguish reads from writes. Compiler-generated constant-true steps do not trigger `no-constant-binary-expression`; constants and comma expressions written in the source still do. Calls with a lifted `do` argument retain the written method and receiver ranges; generated `.bind` wrappers do not appear as source calls. Written call and computed-access newlines still reach `no-unexpected-multiline`. A `for concurrent` loop appears as `VibeForConcurrentStatement` with `iterable`, `concurrency` and `body` visitor keys. Its `body` keeps the item binding's arrow scope; an omitted limit has `null` for `concurrency`. Calls written in its children remain ordinary calls. Generated helper variables stay absent from both scope lists and `getDeclaredVariables` results. Rules such as `prefer-const` still report authored bindings, including names beginning with `$`.
 
-`eslint-plugin-import` reads the exports of each module a file imports with the parser its `import/parsers` setting maps the module's extension to. Without an entry for `.vibe`, it finds no exports in a `.vibe` module, so `import/namespace`, `import/named` and `import/default` report every name a `.ts` file imports from one. Map `.vibe` and `.vibex` to `vibelang/eslint` (`import-x/parsers` for `eslint-plugin-import-x`); the migrate flow's setup adds this entry to each ESLint configuration that loads either plugin:
+`eslint-plugin-import` reads the exports of each module a file imports with the parser its `import/parsers` setting maps the module's extension to. Without an entry for `.vibe`, it finds no exports in a `.vibe` module, so `import/namespace`, `import/named` and `import/default` report every name a `.ts` file imports from one. Map `.vibe` and `.vibex` to `vibelang/eslint` (`import-x/parsers` for `eslint-plugin-import-x`):
 
 ```js
 // eslint.config.js
@@ -417,7 +417,7 @@ export default {
 }
 ```
 
-Knip then resolves `./x.vibe`, reports an unused export of a `.vibe` file at its line, and counts `vibelang-runtime`, which every compiled module imports, as used. Namespace reads through brackets, such as `Users["find"]`, retain the same exports as dot access. A computed key that cannot be resolved retains every export of that namespace, as Knip does for TypeScript. The migrate flow writes this configuration, moving the settings of a `knip.json` into a `knip.config.ts`.
+Knip then resolves `./x.vibe`, reports an unused export of a `.vibe` file at its line, and counts `vibelang-runtime`, which every compiled module imports, as used. Namespace reads through brackets, such as `Users["find"]`, retain the same exports as dot access. A computed key that cannot be resolved retains every export of that namespace, as Knip does for TypeScript. If you use `knip.json`, move its settings into the new configuration file.
 
 An export keeps the JSDoc tags Knip reads, such as `/** @public */`. All names in one variable declaration share its tags, as in TypeScript: `/** @public */ export const first = 1, second = 2` keeps both exports public. The adapter also keeps intervening ordinary comments and their spacing, so a comment after a JSDoc tag affects Knip attachment exactly as it does in TypeScript. A tag after an earlier statement recognizes every JavaScript line terminator, including CR, U+2028 and U+2029. JSDoc on the same line as an earlier statement follows Knip's ordinary TypeScript lookup as well.
 
@@ -448,9 +448,9 @@ Without `project`, `typedProgram()` discovers the nearest config starting at `ts
 
 `typedProgram` returns the project's TypeScript program, from the `typescript` the project resolves, in which each `.vibe` module reads as the declaration `vibelang` writes for it. A module of another workspace package compiles with that package's `tsconfig.json`, as the loaders compile it. It runs `vibelang` once per project, the first time the program reads one of its modules, and throws when a project does not compile, since typed lint would then have no types for its modules. Native imports retain their module identity beside unrelated `.ts` and `.tsx` files. Relocated sidecars follow the project's `rootDirs`.
 
-Typed lint tools that discover `tsconfig.json` from each `.ts` file need a project that includes that file. If tests are outside the main project’s `include`, a `test/tsconfig.json` containing `{ "extends": "../tsconfig.test.json" }` can point to the existing test project. Keep its original options and file list, and inherit `allowArbitraryExtensions: true` so imports of `.vibe` read their sidecars. The migration flow prepares named test directories when an existing complete project is unambiguous.
+Typed lint tools that discover `tsconfig.json` from each `.ts` file need a project that includes that file. If tests are outside the main project’s `include`, a `test/tsconfig.json` containing `{ "extends": "../tsconfig.test.json" }` can point to the existing test project. Keep its original options and file list, and inherit `allowArbitraryExtensions: true` so imports of `.vibe` read their sidecars.
 
-When a typed tool uses project references across source-exporting workspace packages, keep `disableSourceOfProjectReferenceRedirect` absent or `false`. Disabling source redirects can leave a native type behind a TypeScript namespace barrel, such as `AWS.RDS.DBInstance`, as an error type even when a direct subpath import is typed. Source redirects let the tool read `x.d.vibe.ts`. Migration setup updates owned configs and records each change in `wired.declarationRedirects`; external presets stay unchanged and receive a local override.
+When a typed tool uses project references across source-exporting workspace packages, keep `disableSourceOfProjectReferenceRedirect` absent or `false`. Disabling source redirects can leave a native type behind a TypeScript namespace barrel, such as `AWS.RDS.DBInstance`, as an error type even when a direct subpath import is typed. Source redirects let the tool read `x.d.vibe.ts`.
 
 The TypeScript projection keeps an explicitly marked `effect` lambda as an Effect function, even when its receiving callback type returns `void`. Its written keyword also settles its form when the callback comes from another module.
 
@@ -470,7 +470,7 @@ For example, `VibeCatchExpression > Literal.handler[value='']` selects a recover
 
 Node types for the VIP forms, such as effect functions, `effect { }` blocks, prefix `try`, `try.all` and its siblings, and the `fork` forms, are pending VIP-34's tooling implementation.
 
-Declaration forms keep the TypeScript the checker reads: `error NotFound { id: string }` is a class with those fields, `service` declares a service key, and `schema User { ... }` is a `const User` typed by its fields. The parser leaves the names it writes for the checker, such as a `match`'s temporaries, out of scope analysis, so no rule reports a name the author did not write. A Vite Plus integration and a VibeLang Oxlint configuration are not shipped.
+Declaration forms keep the TypeScript the checker reads: `error NotFound { id: string }` is a class with those fields, `service` declares a service key, and `schema User { ... }` is a `const User` typed by its fields. The parser leaves the names it writes for the checker, such as a `match`'s temporaries, out of scope analysis, so no rule reports a name the author did not write. For native Oxlint rules, see [the `vibelang/oxlint` integration](../setup/developer-tools.md#oxlint).
 
 The TypeScript projection retains `effect` on named functions and class methods, including when the written return type names an alias imported from another module. A body that only returns a value still runs as an Effect.
 

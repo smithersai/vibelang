@@ -4,7 +4,7 @@ Each retired or legacy form reports a diagnostic. This page names each form and 
 
 ## General migration rules
 
-**Migration** rewrites toward the VIP form or native Effect TypeScript and preserves evaluation order, captures, the call-versus-run phase, coldness, error and environment channels, and public declarations. It never edits a test or a fixture: a test that bundles `.vibe` passes unchanged, or its modules stay `.ts`. A default plan leaves Effect type-only users in TypeScript. A legacy `try make()` of a removed plain wrapper loses its `try`, whatever the result's shape. An old call whose behavior it can't preserve keeps a `.ts` boundary, with an explicit refusal. It never invents `asEffect()`, never turns `Match.withReturnType<T>()` into an unchecked `as T`, and writes `try Effect.forkChild(program, options)` for the legacy `fork(program, options)`. Prelude cleanup keeps an explicit Effect import where removing it would change the declaration. A tool cache for type-directed compilation is reusable only while its source, declarations, configuration, versions and project are unchanged. A missing validation outcome is unverified: a later stage never inherits an earlier stage's exit. This also applies to legacy setup compile receipts: a missing or invalid setup exit blocks migration admission; retain the receipts and start a fresh setup from the original source. Package paths keep separate compiler results, including `packages/core` and `packages__core`. An older receipt shared by multiple package names is unverified and names the possible owners; preserve it and start a fresh setup. The migrate flow pairs a callback with its original callee, argument position and occurrence, separately from its enclosing function. A callback returning a cold `Effect.gen` program may become an `effect` callback with the same void completion. An `effect { … }` block remains a program returned by its plain factory; a dropped return value or call-time work moved into an `effect` function still fails verification.
+When rewriting a retired form, preserve evaluation order and the distinction between building and running an Effect. Compare public declarations and run the existing tests after each change. Leave a module in TypeScript when its original behavior depends on TypeScript semantics.
 
 
 ## Generator parameter defaults
@@ -49,7 +49,7 @@ Preserve existing parentheses, written default slots and required imports when e
 
 Remove the redundant `mutable` marker from an ordinary interface or object-type property or index signature. The field stays writable unless written `readonly`. For a plain `error` payload with a legacy `mutable` marker, write an explicit compatibility class using the existing runtime error factory; it retains tagged matching. Schema fields, schema errors, schema tuples and `data` bodies use their separate rules.
 
-After all migration repositories have zero remaining accepted uses, these ordinary member and plain-error payload markers are rejected with `EK3410`. A method or identifier named `mutable` keeps its TypeScript meaning. This specifies the retirement target; it does not claim the held rejection implementation or consumer migration is complete.
+The retirement diagnostic for those markers is `EK3410`. A method or identifier named `mutable` keeps its TypeScript meaning.
 
 ## Legacy data receiver methods
 
@@ -69,7 +69,7 @@ A retired statement reports `EK0503`; a typed catch clause also reports warning 
 
 Under VIP-24, replace the retired resolved `wire` intrinsic with explicit `Layer.provideMerge` composition. Supply each layer once, in source order, and keep the dependency order of the old graph and the declaration's [API identity](https://vibelang.sh/spec/001-functions#api-identity). An unrelated local function named `wire` keeps its TypeScript meaning.
 
-After preserving migration, a bare `fork { … }` is `EK1707` and the resolved retired `wire` intrinsic is `EK2401`. The held enforcement changes still require zero remaining uses in every migration repository.
+A bare `fork { … }` is `EK1707` and the resolved retired `wire` intrinsic is `EK2401`. Use the explicit replacements above when updating old source.
 
 ## Empty legacy trust wrappers
 
@@ -120,19 +120,3 @@ The transitional `static readonly default = implementation` form reports the `EK
 Writing `static readonly defaultValue = () => implementation` instead chooses a `Context.Reference` fallback. Adding `readonly` to an old mutable `defaultValue` chooses that fallback too, so make that change as a deliberate migration. When upgrading a legacy service that used the old readonly default, write `readonly` on those fields and their nested type members to keep the earlier declarations.
 
 Older compilers derived directory-prefixed keys for services in a package whose `package.json` has `"name": ""`. To keep those identities, write the old keys explicitly with `static readonly key` before upgrading consumers.
-
-## Migration setup
-
-The API check supports `exports` that point at generated declaration sidecars through `rootDirs`. A sidecar must match the selected project's emitted declaration and have one source owner; changed or ambiguous mirrors keep the batch under review.
-
-Migration setup excludes generated declaration sidecars, including `x.vibe.platform.d.ts` and `x.vibex.platform.d.ts`, from Oxlint, ESLint, dprint and formatters that read `.prettierignore`. Authored `.platform.ts` implementations remain checked. Rerun setup to update an existing migration's configuration.
-
-The migration's canonical API comparison uses freshly emitted declarations for native `module` bodies. Existing compatibility copies can spell imports differently; they do not replace the current emit. Handwritten neighbouring declarations remain checked.
-
-In Vite+ projects, these generated-output exclusions also go in `vite.config.ts` under `fmt.ignorePatterns` and `lint.ignorePatterns`. Existing rules, test settings and authored implementation checks stay in place. Setup reports a warning when those sections are computed and require an explicit edit.
-
-## Retaining validation evidence
-
-Keep the original compiler-check reports as well. Losing a report or a checked package's entry cannot remove that package from verification. The run names the package and missing evidence and refuses to resume.
-
-Keep the migration run directory until the migration finishes. A completed setup must retain its compiler diagnostics and exit receipts for every checked package. If both files are missing, resuming the run stops with the package named, even when an earlier admission record said it was accepted. Current setup records its compiler-receipt format, so losing those files or their directory cannot select an older successful result. Legacy-only runs remain readable when their package identities are unambiguous. Retain the remaining evidence and start a fresh setup from the original source.

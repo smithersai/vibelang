@@ -66,7 +66,7 @@ Unparenthesized combinations report `EK0301`. Insert parentheses around the grou
 
 After an assertion, `x as A!! < 3` leaves `R` omitted and continues with a comparison; ordinary operand checks still apply. Parenthesize a generic function requirement, such as `A!!(<T>() => T)`. A tuple still fills the requirement slot: `x as A!![0]` has `R = [0]`; write `(x as A!!)[0]` for a later element access.
 
-An Effect type operand is an ordinary TypeScript source type. An invalid operand such as `number!!(string?)` reports TypeScript's syntax error. The `EK0301` parenthesis repair applies to actual compound operands, including written function and constructor types.
+An Effect type operand is an ordinary TypeScript source type. An invalid operand such as `number!!(string?)` reports TypeScript's syntax error. For `EK0301`, put parentheses around the compound operand, including function and constructor types.
 
 A following `as` or `satisfies` still continues the expression: `x as A!! as B` keeps `R = never` and then asserts `B`. A type named `as` or `satisfies` can still fill a requirement slot. The parser prefers that slot when both source parses complete, including when a line break ends the statement by automatic semicolon insertion. Inside an argument or parentheses, a line break cannot end the statement.
 

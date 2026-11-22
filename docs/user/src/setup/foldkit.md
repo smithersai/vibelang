@@ -120,7 +120,6 @@ export const FetchQuote = Command.define("FetchQuote", {
 ```
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12
 // fragment
 export const FetchQuote = Command.define("FetchQuote", {
   args: {},

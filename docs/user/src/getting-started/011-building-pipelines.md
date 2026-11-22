@@ -2,10 +2,6 @@
 
 Use statements for dependent steps and the pipe operator, `|>`, for a series of transformations of a value. In `x |> f(%)`, the topic `%` stands for `x`: the body after `|>` says where the value goes, so a stage can take it in any argument position.
 
-When a repair captures stages in a local function, it preserves the statement boundary after a declaration without a semicolon. Unbraced `if`, `else` and loop bodies keep their original control flow.
-
-Captures at the start of a larger expression also preserve the statement boundary, including `satisfies` and `as`, property or element access, and arithmetic or conditional expressions. Enclosing arguments and parentheses retain their original structure.
-
 ## Compose reusable functions
 
 ```vibe

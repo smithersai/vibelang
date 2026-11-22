@@ -27,12 +27,9 @@ passes its conditions to the Node processes that run tests, the defaults are
 Vitest's own, which leave out `module`: Node then loads a dependency through
 its `default` export, as it does without the plugin. A workspace package
 that mixes `.ts` and `.vibe` modules therefore uses one source graph, even
-when its default export points at emitted JavaScript under `.vibelang/js`.
+when its default export points at emitted JavaScript.
 
 Delegated package imports retain Vite and Rollup resolver options, including SSR mode and CommonJS metadata. This keeps optional native dependencies optional when a CommonJS package is bundled for Node.
-
-The migration flow keeps bundled private imports as exact source entries. When a publication helper maps them to build output, its `types` condition selects the package’s regular declarations in its own output directory. Compatibility sidecars under `.vibe/declarations/` are for source checking and need not be packed. Runtime import targets and declaration contents stay unchanged.
-
 
 The `// @vibe` check reads real source files. Virtual module identifiers from another bundler plugin stay with that plugin, even when their names end in `.ts` or `.vibe`.
 
@@ -71,12 +68,7 @@ export default defineConfig({
 })
 ```
 
-The factory creates a fresh plugin for each worker build. Migration setup
-follows local workspace dependencies to detect these workers and adds the
-factory to the consuming app's config. This includes semver ranges and
-npm aliases whose installed package resolves to a local workspace. The nearest
-installed package determines which workspace sources the app loads. Test and
-fixture sources do not trigger this edit.
+The factory creates a fresh plugin for each worker build.
 
 ### When the Vite config imports a VibeLang module
 
@@ -105,17 +97,6 @@ set `VIBELANG_PROJECT=tsconfig.node.json` and include the helper there.
 On Vite versions without native dependency watching, restart the dev server
 after editing a config dependency. `VIBELANG_REGISTER_DEBUG=1` reports loader
 compiles and cache hits when diagnosing config startup.
-
-Migration setup detects runtime imports and re-exports into existing native
-modules or the selected source directories, including transitive config
-helpers, and wires the affected `vite` package scripts. Type-only imports
-do not need this path. Before enabling native loading, setup adds the source
-extension TypeScript resolves to extensionless relative runtime imports in
-config helpers it owns, including directory indexes and transitive helpers.
-It stops with the file and import when a required edit belongs to a protected
-file or the helper has no runtime source. A config graph outside the migration
-scope keeps its original loader and imports. Setup reports a config without a
-matching script so its caller can supply the same preload and flag.
 
 A migrated config helper may retain an extensionless import of an unchanged `.ts` or `.js` sibling. The Node preload resolves that sibling or its directory index in TypeScript's file order, so importing the same native file directly keeps one module instance.
 
@@ -223,7 +204,7 @@ Run `npx vitest run`. Tests need no prior build. The output includes:
 
 If a test starts a Node process that runs the project's source, such as a command-line program, pass `vibelang({ project: "tsconfig.test.json", register: true })`. The plugin adds `vibelang/register` to the tests' `NODE_OPTIONS`, so that process imports `.vibe` modules too, whatever its working directory. Any `NODE_OPTIONS` the configuration or the environment already sets is kept. A Bun process a test starts, such as `process.execPath` under `bun x --bun vitest`, reads `BUN_OPTIONS` instead, so the plugin also adds `--preload` of `vibelang/bun` there, unless that file's path contains a space, which `BUN_OPTIONS` cannot carry.
 
-When using Vitest's `test.projects`, add `vibelang()` to each project's own `plugins` when its tests import `.vibe` sources. Keep the project's other plugins and test options. A plugin on the outer configuration alone does not configure an independent project. Use `register: true` on a project's plugin when its tests launch source-running child processes. The migrate flow wires inline projects with statically readable roots and test selectors, and reports unsupported shapes for manual setup.
+When using Vitest's `test.projects`, add `vibelang()` to each project's own `plugins` when its tests import `.vibe` sources. Keep the project's other plugins and test options. A plugin on the outer configuration alone does not configure an independent project. Use `register: true` on a project's plugin when its tests launch source-running child processes.
 
 ### Node's test runner and Jest
 

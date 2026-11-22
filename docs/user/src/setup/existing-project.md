@@ -4,8 +4,16 @@ Install VibeLang's packages in a project with a `package.json` and check that th
 
 Call your own `.ts` functions and npm packages through `Effect.try` when they may throw, or `tryPromise` for Promises ([TypeScript boundaries](../vibelang-features/114-vibelang-for-effect-users.md#keep-platform-work-in-effect)). For example, import your parser and capture its input in the callback:
 
+```ts
+// TypeScript (.ts)
+// settings.ts
+export function parseSettings(text: string): unknown {
+  return JSON.parse(text)
+}
+```
+
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-13, VIP-14
+// load-settings.vibe
 import { parseSettings } from "./settings.ts"
 error BadSettings { cause: unknown }
 
@@ -24,31 +32,13 @@ wraps. For example, `settings.vibe` beside `settings.ts` both emit
 
 Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock` and `Random`. The compiler reports unwrapped non-effectful foreign calls that may throw as `EK0403`, and platform calls, including the web's clock and randomness reads such as `crypto.randomUUID()`, as `EK4402` ([diagnostics](../getting-started/012-devtools.md#diagnostics-completions-and-refactors)). For non-effectful foreign calls, `@throws {never}` permits a direct call and a missing annotation means `unknown`. A written `@throws {RangeError}` or other non-`never` contract requires an `Effect.try` bridge in effect code (`EK0403`). A callable returning an `Effect`, `Stream` or `Layer` is effectful: call it directly, regardless of `@throws`. Run an Effect result with `try`; bridging its factory with `Effect.try` returns the cold program instead of its success value.
 
-Migration setup also selects packages whose source files or tests import a
-migrated package through a relative path, even without a manifest dependency.
-This includes transitive consumers and keeps their original test files unchanged.
-
-The migration inventory keeps `.vibex` modules alongside `.vibe`, `.ts` and `.tsx` sources, including their local import and test dependencies. Generated declaration sidecars do not count as source files.
-
-Literal Vite build inputs follow a migrated source to its native extension. A computed template or concatenated TypeScript filename, such as `${stem}.browser.ts`, requires a proven rewrite before its matching source can migrate. The flow refuses that rename with the entry location and source path, leaving the original build command reachable. The same check applies when resuming a prepared batch or a one-pass run. If an older interrupted run already renamed the source, use `revert` to restore it before retrying; the computed entry stays as written.
-
-The migration planner follows the source graph of an unchanged bundling test. With a plain inline `Bun.build({ packages: "external", … })` call, package imports stay outside that graph. Relative imports and TypeScript path aliases still belong to it. Literal resolver plugins whose hooks only throw preserve this boundary. Unclear resolver behavior keeps the files in TypeScript for review.
-
-Migration retains a tracked authored source after renaming it to `.vibe`, including under an ignored directory such as `src/lib/`. Returning that module to TypeScript retains its original path too. Only the journaled files are explicitly tracked; unrelated ignored files remain excluded.
-
-Migration leaves documentation examples, declaration outputs and JSON test data unchanged when it wires source paths. Source and configuration references still follow the migrated modules.
-
 ## 1. Check package.json
 
 `package.json` must have `"type": "module"`. Before adding it, check how this changes Node's loading of your project's `.js` files.
 
 The VibeLang runtime requires `effect` 4.1.1 exactly. The compiler declares the same exact peer dependency, so package managers can report an incompatible version during installation. The runtime depends on Effect internals and checks the exact version at load. VibeLang follows Effect 4.0.6's defect precedence, which 4.1.1 keeps: a failure whose cleanup crashes is a defect. Read the [release notes](../setup/release-notes.md) before updating code that inspects causes or recovers mixed failures. If your project depends on another `effect` version, review the migration before changing it. Upgrade an existing project to the pinned Effect version first, fix any failures, and verify its tests. Convert files to `.vibe` only after the Effect upgrade passes.
 
-For a published library, keep `vibelang-runtime` in production dependencies at a registry version. A package that starts source children through `vibelang/register` or `vibelang/bun` also needs `vibelang` in production dependencies. A production `file:` path into a local toolchain does not travel with an `npm pack` tarball. Rerunning migration setup also removes an owned subprocess helper when its arguments are now known to need no source loader, preserving the native launch. This cleanup works without loader dependency pins and does not add package dependencies. A helper that the native formatter rewrites remains eligible for cleanup or refresh. Changes to its code, types, comments or documentation stay for review. Setup leaves a proven JavaScript CLI launch native even when later arguments are dynamic, so a distributed install script does not acquire loader dependencies for ordinary npm or other JavaScript CLI arguments. A built JavaScript entry constructed by an unmodified `join` or `resolve` import from `node:path` also stays native, preserving scripts that tests evaluate with `vm.Script`. A `join` result that might be a runtime option keeps conservative handling when later arguments are unknown. Unknown or typed source entrypoints continue to receive their loaders. Helpers reuse existing runtime `Schema` and `fileURLToPath` imports, or add unaliased named imports, so setup does not introduce star imports or value aliases. Authored bindings and comments remain intact; conflicting names receive a located warning.
-
-A native TypeScript checker can load one package's `.ts` sources from another package. If their VibeLang dependencies have hidden declarations under `vibe.sidecarDir`, setup adds private type routes to the physical declarations. Runtime imports retain the source or its actual emitted JavaScript, and the repository's normal pack command selects the built declaration paths. This also supports Bun's native `bun check --no-script` without changing that command. Tests, fixtures and generated importers keep their source; a missing declaration or conflicting route gives a review reason. Inferred declaration types use a public package export when one re-exports a private module-body type. An inferred type from a TypeScript dependency retains its qualification when a local import names a namespace: an imported `SqlClient` namespace yields `SqlClient.SqlClient` in the declaration, as its TypeScript twin does. Exact or more specific `exports` entries still take precedence over broader wildcards, including a `null` entry that keeps a body private.
-
-The migration flow keeps these production dependencies at the staged artifacts' actual release versions while retaining local development pins. Its `.vibelang/toolchain-publication.json` receipt lists the exact versions that must be published before consumers can install the target tarball. A successful local setup does not establish that those releases are available in the registry.
+For a published library, keep `vibelang-runtime` in production dependencies at a registry version. If the package runs source in production through `vibelang/register` or `vibelang/bun`, also list `vibelang` in production dependencies. Check that those versions are available before publishing the library.
 
 ## 2. Install the packages
 
@@ -171,9 +161,9 @@ Rename a `.ts` file that uses Effect to `.vibe`, then check it:
 npx vibelang -p tsconfig.json --noEmit
 ```
 
-The migration flow also updates loader queries and fragments when it renames a source. For example, `export { default as counterRaw } from "./counter.ts?raw#snippet"` points at `"./counter.vibe?raw#snippet"` after conversion, keeping the exported name and suffix. Imports, re-exports and dynamic imports follow the same rule, including configured aliases. Reverting a module restores each original specifier. When platform extraction creates a `module` body, its peer imports follow the renamed dependencies too, including a dependency already migrated in an earlier batch. A dependency retained in TypeScript keeps its original name.
+Update imports, re-exports, and build entry paths that name the old file. Keep any loader query or fragment. For example, change `"./counter.ts?raw#snippet"` to `"./counter.vibe?raw#snippet"` for a Vite raw import.
 
-If a previous migration left `./user.ts` pointing at a renamed `user.vibe`, replace that stale relative name in VibeLang sources before native-extension fallback is retired. The replacement follows the project's `rewriteRelativeImportExtensions`, `allowImportingTsExtensions` and emit settings: a permitted source name, or the runtime `.js`/`.jsx` name. Existing native files keep their imports. See [CLI migration](vibelang-cli.md).
+For ordinary source imports, update `./user.ts` to `./user.vibe` when the project permits source extensions, or use the runtime name `./user.js`. See [Stale TypeScript specifiers](migrating-retired-forms.md#stale-ts-specifiers).
 
 Effect declarations and combinator calls written in TypeScript's style use the same library APIs in `.vibe` ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). An `Effect.gen` that the file pipes, such as `Effect.gen(...).pipe(Effect.provide(AppLive))`, reports `EK1002`: write its body by hand inside `export effect function main() { provide AppLive { ... } }`, reading a service as `try Users`.
 
@@ -187,22 +177,10 @@ Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`
 
 Declaration identity checks follow namespace re-exports through native module bodies. This includes self-re-exports and cycles between module namespaces when a binding moves behind a named re-export. Forwarding an unchanged binding keeps its API; changed member types, export names and documentation still fail the check. Ordinary object values and declared mutable namespaces retain their mutability checks.
 
-An unchanged recursive type alias retains its identity when an unrelated declaration in its dependency graph moves into a module body. The check follows the alias's referenced bindings, including private aliases and imported types; a changed dependency, constraint or branch still fails verification.
-
 ## Next
 
 If you use a coding agent, run `npx vibelang agents init` to give it the VibeLang skill, the language server and a check after each edit ([Coding agents](coding-agents.md)).
 
 Set up the build: [React](react.md), [Vue](vue.md), or [Svelte](svelte.md) with Vite; [Vite and Vitest](vite.md) for other Vite or Vitest projects; [Build with the vibelang CLI](vibelang-cli.md) without a bundler. For another bundler, see step 3 of [Set up VibeLang](../setup.md).
-
-Migration never returns an error-free module to TypeScript because of a warning. This follows each diagnostic's warning category, for VibeLang and imported Effect diagnostics alike, including new codes. Remaining warnings are named `warning-retained`. The arrays live on module rows as `files[].warningExceptions` in the run's `batches/NN/verify.json` and `record.json`, and appear in the migration report. An error still returns the module.
-
-Platform extraction reads `.tsx` and `.vibex` with JSX enabled, including host calls inside JSX callbacks. A native companion uses `.platform.tsx`; an inline `module` body keeps the containing file's JSX mode. Export-signature and publication checks still apply.
-
-Migration compile and revert steps refresh project references after source changes. They follow the reverse reference closure, clear each affected project's effective `outDir`, `declarationDir` and build-info artifacts, then rebuild the reference roots before checking dependents. A progress receipt beside `reference-refresh-compile.log` or `reference-refresh-revert.log` records planned projects, cleared outputs and rebuild success or failure. It writes `state: "planning"` before discovering outputs, and records `planningMs` when planning succeeds or fails. Indexed path containment avoids rescanning every source and output for each artifact. Output paths that overlap tracked files, configurations or the sources of a project being rebuilt, or that leave the repository, are refused before deletion. JavaScript and declaration files the repository does not track count as outputs even when an unrelated configuration lists them, such as a root `tsconfig.base.json` with `allowJs` and no `include`. Unrelated tooling configurations that extend generated framework files or reference missing child configurations do not block this refresh. A configuration in the affected reference graph or one of its build dependencies still fails before deletion, and its error names the configuration and TypeScript diagnostic code.
-
-Migration setup routes the forced built-in `bun check --no-script` checker to `vibelang --noEmit`, keeping literal project paths and surrounding commands. A build invocation, such as `bun check --no-script -b` or `bun check --no-script --build`, runs `vibelang -b` or `vibelang --build` with the same projects and written flags; setup adds no `--noEmit`, so each project's emit settings still apply. Bun's build-mode `-p` and `--project` selectors become positional TypeScript project arguments: `bun check --no-script -b -p tsconfig.tests.json` becomes `vibelang -b tsconfig.tests.json`. The build flag comes first, and quoted project paths keep their literal text. This checks unchanged TypeScript tests importing `./leaf.js` after `leaf.ts` becomes `leaf.vibe`. Bare `bun check` keeps the project's own `check` script; unsupported Bun checker flags retain the original command.
-
-The migration flow pins a staged native compiler's revision and executable digest before conversion. Checking, emission and recording require the same artifact, so replacing a toolchain in place or switching to an installed compiler cannot relabel earlier conversions. After a compiler upgrade, reconvert in a fresh run; `--force` does not bypass this check. Loader-only edits leave the native digest unchanged.
 
 Only when the CLI and plugins above cannot fit a project that must keep TypeScript file names, consider the experimental [TypeScript shim](typescript-shim.md) as the last resort. Read its stock-tool limitations first.

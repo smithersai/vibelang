@@ -16,11 +16,7 @@ checking does not prove runtime behavior; the native smoke suite covers that.
 Each row identifies the missing contract, resource, producer, or value-call
 behavior and the exact diagnostic observed.
 
-The tooling gaps are separate: distribution uses local file dependencies and a
-local VSIX, Vite uses compiler subprocesses, declaration emit has no `$direct`
-metadata, and the compiler has no custom migration refactors or mechanical ES
-code actions. See the Devtools guide and design chapters 27 and 28. No Oxlint
-configuration package is shipped.
+The Vite plugin uses compiler subprocesses. See [Devtools](src/getting-started/012-devtools.md) for diagnostics, editor refactors, linting and build integration.
 
 ## Checked blocks
 

@@ -318,7 +318,7 @@ A template pattern such as `` `ready` `` has no substitutions and compares witho
 
 A negated ordinary-class pattern narrows its arm as `if (!(value instanceof C))` does. For `value: Date | { kind: string }`, `when not Date: value.kind` therefore checks. A default arm follows the failed ordered pattern and guard tests, as TypeScript control flow does; its type is independent of the exhaustiveness check. A negated class with an own matcher complements that matcher, so a boolean matcher does not imply an `instanceof` exclusion. `async match` adopts returned Promises and thenables, giving `Promise<Awaited<U>>` for arm union `U`.
 
-The compiler reports `EK0705` for an `is` binding that would need formal-parameter initialization or an `enum` member initializer as its lexical home. A binding-free default test stays allowed; an explicit local `do` block or match arm can hold bindings and return the needed result. Repairs preserve the call phase and do not move initialization into the body.
+The compiler reports `EK0705` for an `is` binding that would need formal-parameter initialization or an `enum` member initializer as its lexical home. A binding-free default test stays allowed; an explicit local `do` block or match arm can hold bindings and return the needed result. Keep the initialization in the parameter or enum member so it runs at the same time.
 
 ## Exhaustiveness
 
@@ -524,8 +524,6 @@ Coverage restrictions do not change TypeScript narrowing while a pattern runs or
 An object pattern rejects a literal `__proto__` key, including quoted and escaped spellings, with one `EK0707` for each invalid key. Write `{ ["__proto__"]: let value }` for that property. Computed keys, `{ let __proto__ }` binding shorthand and ordinary object literals retain their meanings.
 
 Primitive constructor patterns such as `when Number:` and `when Number(let n):` do not prove exhaustiveness for a finite literal union. Add `default`, literal arms or a bare binding arm. Ordinary `is`, arm and default-flow narrowing stay the same (VIP-7, decided detail78).
-
-A no-op whose removal would discard an embedded comment or the evaluation of its receiver stays unchanged, such as `try Effect /* keep */ .void` or `try getEffect().void`.
 
 A binding from an `unknown` subject through a computed key, such as `{ [key]: let value }` with `key: string`, has type `unknown`. It does not produce an indexing error for the generated read. Declared field and index-signature types still apply, and accesses written in your source keep TypeScript's normal checks.
 
