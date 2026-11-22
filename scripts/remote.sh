@@ -36,15 +36,20 @@ while [ ! -d "$root/.jj" ] && [ "$root" != / ]; do root=$(dirname "$root"); done
 name=$(basename "$root")
 rel=${here#"$root"}
 dest="es-remote/$name"
+shquote() {
+	printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+qdest=$(shquote "$dest")
+qdest_rel=$(shquote "$dest$rel")
 
 if [ "${1:-}" = "--clean" ]; then
-	$SSH "$HOST" "rm -rf ~/$dest"
+	$SSH "$HOST" "rm -rf -- \"\$HOME\"/$qdest"
 	echo "removed $HOST:~/$dest"
 	exit 0
 fi
 [ $# -gt 0 ] || { echo "usage: remote.sh <command...> | remote.sh --clean" >&2; exit 2; }
 
-$SSH "$HOST" "mkdir -p ~/$dest"
+$SSH "$HOST" "mkdir -p -- \"\$HOME\"/$qdest"
 rsync -a --delete -e "$SSH" \
 	--exclude '/.jj' --exclude '/.git' --exclude 'node_modules' --exclude '/typescript/built' \
 	--exclude 'dist' --exclude '/typescript/vibelang/cases/*/out' --exclude '/docs/user/site' \
@@ -80,13 +85,12 @@ rsync -a --delete -e "$SSH" \
 # Quote each argument for the remote shell.
 cmd=""
 for a in "$@"; do
-	q=$(printf '%s' "$a" | sed "s/'/'\\\\''/g")
-	cmd="$cmd '$q'"
+	cmd="$cmd $(shquote "$a")"
 done
 
-$SSH "$HOST" "export PATH=\$HOME/es-tools/go/bin:\$HOME/es-tools/node/bin:\$HOME/es-tools/bun/bin:\$PATH GOFLAGS=-trimpath CGO_ENABLED=0 EFFECT_NODE_MODULES=\$HOME/$dest/experiments/node_modules
+$SSH "$HOST" "export PATH=\$HOME/es-tools/go/bin:\$HOME/es-tools/node/bin:\$HOME/es-tools/bun/bin:\$PATH GOFLAGS=-trimpath CGO_ENABLED=0 EFFECT_NODE_MODULES=\"\$HOME\"/$qdest/experiments/node_modules
 set -e
-cd ~/$dest
+cd -- \"\$HOME\"/$qdest
 # rsync preserves source mtimes; neither a manifest's timestamp nor an
 # existing node_modules proves that the synchronized lockfile is installed.
 install() {
@@ -101,4 +105,4 @@ if [ -f packages/runtime/package.json ]; then
 	fi
 fi
 set +e
-cd ~/$dest$rel && $cmd"
+cd -- \"\$HOME\"/$qdest_rel && $cmd"
