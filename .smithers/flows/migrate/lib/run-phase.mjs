@@ -19,7 +19,7 @@ export function vibeTree(compiler, text, file, cwd = undefined) {
   const result = spawnSync(compiler, ["--estree", file], { cwd, input: text, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
   if (result.error || result.status !== 0) throw new Error("vibelang --estree failed for " + file + ": " + (result.error?.message ?? result.stderr?.trim()))
   const { ast, error } = JSON.parse(result.stdout)
-  if (error) throw new Error(file + " does not parse: " + error.message)
+  if (error) throw Object.assign(new Error(file + " does not parse: " + error.message), { parseError: true })
   return ast
 }
 
@@ -561,14 +561,20 @@ export const blocking = change => change.verdict === "value" || change.verdict =
  * gate fails it.
  */
 export function runPhaseCheck({ compiler, ts, target, files, original }) {
-  const changes = [], unchecked = []
+  const changes = [], unchecked = [], failed = []
   for (const file of files.filter(file => /\.vibex?$/.test(file))) {
     const before = original(file)
     if (!before) continue
     const text = readFileSync(join(target, file), "utf8")
     let vibe
-    try { vibe = vibeTree(compiler, text, join(target, file), target) } catch (error) { unchecked.push({ file, reason: error.message }); continue }
+    try {
+      vibe = vibeTree(compiler, text, join(target, file), target)
+    } catch (error) {
+      if (error?.parseError === true) unchecked.push({ file, reason: error.message })
+      else failed.push({ file, reason: error.message })
+      continue
+    }
     for (const change of runPhaseChanges({ ts, original: before.text, originalPath: before.path, vibe, vibeText: text })) changes.push({ file, ...change })
   }
-  return { changes, unchecked, blocking: changes.filter(blocking) }
+  return { changes, unchecked, failed, blocking: changes.filter(blocking) }
 }

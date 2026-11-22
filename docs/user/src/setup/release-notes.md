@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Migration run-phase verification treated a crashed, missing, or nonzero-exiting compiler as an unchecked parse error and passed the gate. Compiler execution failures now fail the run-phase check instead of passing silently.
+
 - The language server dropped watched-file change and deletion events for closed `.vibe` and `.vibex` files, leaving open files with stale types and diagnostics after external edits. Watched `.vibe` and `.vibex` files now refresh just like `.ts` and `.tsx`.
 
 - Package `#imports` and `exports` targets pointing into `outDir` (such as `./out/util.js`) failed to map back to `.vibe` and `.vibex` sources on a clean build. Output-to-source extension resolution now includes `.vibe` and `.vibex` beside `.ts` and `.tsx`.

@@ -2169,7 +2169,7 @@ export async function verify(options) {
       declarationEmit: emitErrors.length === 0,
       foreignFiles: foreign.length === 0,
       declarationOracle: unproven.length === 0,
-      runPhase: runPhase.blocking.length === 0,
+      runPhase: runPhase.blocking.length === 0 && (runPhase.failed?.length ?? 0) === 0,
       lostWrappers: lostWrappers.blocking.length === 0 && lostWrappers.unchecked.length === 0,
       pathReferences: pathReferences.ok,
       distList: distList.ok,
