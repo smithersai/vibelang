@@ -134,6 +134,17 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 				set("left", c.convertChild(binary.Left, n)).
 				set("right", c.convertChild(binary.Right, n)), true
 		}
+		// A non-binding `x is P` test lowers to a synthesized comparison whose
+		// span sits on P while Left is the source subject before `is`. Expose
+		// it as VibeIsExpression spanning subject through pattern so ESLint
+		// rules never see a BinaryExpression with Left outside its range.
+		if synthesized(binary.OperatorToken) && !synthesized(binary.Left) {
+			if _, tokKind := c.tokenAfter(binary.Left.End()); tokKind == ast.KindIsKeyword {
+				return c.nodeAt(span{c.start(binary.Left), max(binary.Right.End(), n.End())}, "VibeIsExpression").
+					set("subject", c.convertChild(binary.Left, n)).
+					set("pattern", c.convertChild(binary.Right, n)), true
+			}
+		}
 	case ast.KindLabeledStatement:
 		if result := c.concurrentHead(n); result != nil {
 			return result, true

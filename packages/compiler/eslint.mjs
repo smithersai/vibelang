@@ -59,7 +59,7 @@ export const vibeVisitorKeys = Object.freeze({
   VibeEffectType: ["success", "failure", "requirements"],
   VibeInferType: [],
   VibeForConcurrentStatement: ["iterable", "concurrency", "body"],
-  VibeIsExpression: ["callee", "arguments"],
+  VibeIsExpression: ["callee", "arguments", "subject", "pattern"],
   VibeMaskStatement: ["body"],
   VibeModuleDeclaration: ["id", "body"],
   VibePatternAssignment: ["expression"],

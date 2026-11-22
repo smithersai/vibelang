@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- ESTree output for non-binding `x is P` tests (such as `x is 1` or `x is null`) now emits a `VibeIsExpression` spanning from subject through pattern instead of a `BinaryExpression` whose range excluded its left operand, preventing ESLint rules like `space-infix-ops` from crashing.
 - The `EK1005` note for nested runners inside effect code now suggests `try <effect>` and `fork.detached <effect>` instead of invalid `detach(() => ...)`.
 - A `workflow` declaration's `.layer` now retains task requirements regardless of declaration order, module imports, or nested bindings sharing a task's name, and named function or class expressions inside a workflow body no longer trigger undeclared-name errors.
 - Migration setup now rewrites `tsc`/`tsgo`/`tsrs` and `prettier` only in command position, preserves existing `eslint` and `typescript-eslint` version pins (warning on incompatible majors), skips protected test and fixture config files, and quotes shell paths containing spaces or metacharacters.
