@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- The migration flow now binds `verify.json` to the verified working-copy commit so edits made after verification trigger re-verification, writes a pending record intent before committing so crashes or bookmark failures after `jj commit` resume cleanly, and writes JSON receipts and `config.json` atomically.
 - The Vite plugin now resolves `paths` aliases from the tsconfig or `vibe.config.json` that compiled each `.vibe` module (including referenced configs and custom `project` options) and refreshes its config and alias caches when JSON config files change without requiring a server restart.
 - Migration setup crashed with a JSON `SyntaxError` on YAML `.prettierrc` files or commented `dprint.json` files after modifying other files. Non-JSON Prettier files and commented dprint configs are now left untouched with a located warning.
 

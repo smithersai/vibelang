@@ -105,6 +105,7 @@ export function paths(runDir) {
     repair: (b) => join(batch(b), "repair.json"),
     verify: (b) => join(batch(b), "verify.json"),
     lostWrapperAllow: join(r, "lost-wrappers-allow.json"),
+    recordPending: (b) => join(batch(b), "record.pending.json"),
     record: (b) => join(batch(b), "record.json"),
     sourceDigests: (b) => join(batch(b), "source-digests.json"),
     reverted: (b) => join(batch(b), "reverted.json")
@@ -119,15 +120,20 @@ export function nextStep(runDir) {
   if (!existsSync(p.setup)) return { step: existsSync(p.upgrade) ? "setup" : "upgrade-effect" }
   if (!existsSync(p.plan)) return { step: "plan" }
   const plan = readJson(p.plan)
+  const target = readJsonIf(p.config)?.target
   for (let i = 0; i < plan.batches.length; i++) {
     const b = batchName(i)
     if (existsSync(p.record(b))) continue
+    if (existsSync(p.recordPending(b))) return { step: "record", batch: b }
     if (!existsSync(p.codemod(b))) return { step: "codemod", batch: b }
     if (!existsSync(p.compile(b))) return { step: "compile", batch: b }
     if (!existsSync(p.repair(b))) return { step: "repair", batch: b }
     const verify = readJsonIf(p.verify(b))
     if (!verify || mtime(p.repair(b)) > mtime(p.verify(b))) return { step: "verify", batch: b }
     if (!verify.ok) return { step: "repair", batch: b, again: true }
+    if (target && existsSync(join(target, ".jj"))) {
+      if (!verify.commit || verify.commit !== Jj.commitIdSync(target, "@")) return { step: "verify", batch: b }
+    }
     return { step: "record", batch: b }
   }
   return { step: "report" }
@@ -2184,6 +2190,7 @@ export async function verify(options) {
     earlierFailure: Object.entries(result.checks).filter(([, passed]) => !passed).map(([name]) => name) })
   result.checks.packLoad = result.packLoad.ok
   if (config.compilerArtifact) bindCompilerArtifact(config)
+  result.commit = await Jj.commitId(t, "@")
   result.ok = Object.values(result.checks).every(Boolean)
   writeJson(p.verify(b), result)
   return result
@@ -2207,8 +2214,22 @@ export async function record(options) {
   const b = currentBatch(options.run, options.batch)
   if (existsSync(p.record(b))) return readJson(p.record(b))
   bindCompilerArtifact(config, p, { resume: true })
-  let verified = readJsonIf(p.verify(b))
   const t = config.target
+  const pending = readJsonIf(p.recordPending(b))
+  if (pending) {
+    const prevCommit = await Jj.commitId(t, "@-")
+    const prevChange = await Jj.changeId(t, "@-")
+    const prevSubject = (await Jj.description(t, "@-")).split(/\r?\n/, 1)[0]?.trim() ?? ""
+    if (prevChange === pending.changeId && prevSubject === pending.subject.trim() && (await Jj.diffDigest(t, "@-")) === pending.tree) {
+      if (pending.bookmark) await Jj.setBookmark(t, pending.bookmark, prevCommit)
+      const resumed = { ...pending.result, at: new Date().toISOString(), commit: prevCommit }
+      writeJson(p.record(b), resumed)
+      rmSync(p.recordPending(b), { force: true })
+      return resumed
+    }
+    rmSync(p.recordPending(b), { force: true })
+  }
+  let verified = readJsonIf(p.verify(b))
   const files = batchFiles(config, thePlan, b)
   const nothingKept = result => revertedWhole(result, files, readJsonIf(p.reverted(b), []))
   if (!verified?.ok && !nothingKept(verified) && !options.force) throw new Error(`batch ${b} has not passed verify; run verify, or record with --force <reason>`)
@@ -2240,7 +2261,7 @@ export async function record(options) {
   const afterFormat = await Jj.commitId(t, "@")
   await assertScope()
   if (thePlan.mode === "one-pass" && (formatted.code !== 0 || vibeFormatted.code !== 0)) throw new Error("record refused: formatter failed")
-  const verificationRefreshed = beforeFormat !== afterFormat || thePlan.mode === "one-pass"
+  const verificationRefreshed = beforeFormat !== afterFormat || !verified?.commit || verified.commit !== beforeFormat || thePlan.mode === "one-pass"
   if (verificationRefreshed) {
     // Reject protected edits before verification can run the tests again.
     const testDiffBeforeCertification = await testEdits(config, p, thePlan, b, typeScriptOf(config))
@@ -2277,12 +2298,8 @@ export async function record(options) {
   await assertScope()
   await assertSources()
   if (config.compilerArtifact) bindCompilerArtifact(config)
-  const commit = await Jj.commit(t, lines.join("\n"))
-  if (commit) await Jj.setBookmark(t, config.bookmark, commit)
-  const result = {
+  const resultBase = {
     batch: b,
-    at: new Date().toISOString(),
-    commit,
     bookmark: config.bookmark,
     compilerArtifact: config.compilerArtifact ?? null,
     files: rows,
@@ -2295,7 +2312,19 @@ export async function record(options) {
     forced: verified?.ok || nothingKept(verified) ? null : options.force,
     ...(nothingKept(verified) ? { nothingKept: true, causes: rows.map(row => ({ file: row.planned, reason: reverted.find(entry => entry.file === row.planned).reason })) } : {})
   }
+  writeJson(p.recordPending(b), {
+    batch: b,
+    changeId: await Jj.changeId(t, "@"),
+    tree: await Jj.diffDigest(t, "@"),
+    subject: lines[0],
+    bookmark: config.bookmark,
+    result: resultBase
+  })
+  const commit = await Jj.commit(t, lines.join("\n"))
+  if (commit) await Jj.setBookmark(t, config.bookmark, commit)
+  const result = { ...resultBase, at: new Date().toISOString(), commit }
   writeJson(p.record(b), result)
+  rmSync(p.recordPending(b), { force: true })
   return result
 }
 

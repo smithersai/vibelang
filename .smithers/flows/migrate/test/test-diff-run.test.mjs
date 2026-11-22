@@ -97,7 +97,7 @@ test("record rechecks after a formatter edits a previously verified test", async
 }, { initial: { "package.json": '{"scripts":{"format":"prettier --write"}}' } }))
 
 test("record leaves a protected test's layout to its literal edit (t3code nodeRuntime.test.ts)", async () => fixture(async ({ target, run, p }) => {
-  writeJson(p.verify("01"), { ok: true, checks: { packs: true } })
+  writeJson(p.verify("01"), { ok: true, checks: { packs: true }, commit: await Jj.commitId(target, "@") })
   put(target, "node_modules/.bin/prettier", '#!/bin/sh\nfor f in "$@"; do case "$f" in *.ts) printf "\\n" >> "$f";; esac; done\n')
   await must("chmod +x node_modules/.bin/prettier", { cwd: target })
   const result = await record({ run, batch: "01" })
@@ -124,7 +124,7 @@ async function revertedBatch(target, p) {
 const onlyMigrated = { tests: true, packs: true, newErrors: true, migrated: false }
 test("record keeps a batch settle reverted whole, with its causes and no forced reason", async () => fixture(async ({ target, run, p }) => {
   await revertedBatch(target, p)
-  writeJson(p.verify("01"), { ok: false, checks: onlyMigrated })
+  writeJson(p.verify("01"), { ok: false, checks: onlyMigrated, commit: await Jj.commitId(target, "@") })
   const result = await record({ run, batch: "01" })
   assert.equal(result.nothingKept, true)
   assert.equal(result.forced, null)

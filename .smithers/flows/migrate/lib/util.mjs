@@ -3,7 +3,7 @@
 // use Node's own modules directly.
 import { spawn } from "node:child_process"
 import { createHash } from "node:crypto"
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { appendFileSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, relative, sep } from "node:path"
 
 /** Runs a shell command and resolves with its exit code and output; never rejects on a nonzero exit. */
@@ -67,9 +67,36 @@ export const quote = (text) => `'${String(text).replaceAll("'", `'\\''`)}'`
 export const readJson = (path) => JSON.parse(readFileSync(path, "utf8"))
 export const readJsonIf = (path, fallback) => (existsSync(path) ? readJson(path) : fallback)
 
-export function writeJson(path, value) {
+export function syncDirectory(path) {
+  const fd = openSync(path, "r")
+  try { fsyncSync(fd) } finally { closeSync(fd) }
+}
+
+/** Replace atomically, and flush both the contents and the directory entry. */
+export function durableWrite(path, data, mode = 0o600) {
   mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, JSON.stringify(value, null, 2) + "\n")
+  const temp = `${path}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.migrate-tmp`
+  const fd = openSync(temp, "w", mode)
+  try {
+    writeFileSync(fd, data)
+    fsyncSync(fd)
+  } catch (error) {
+    try { closeSync(fd) } catch {}
+    rmSync(temp, { force: true })
+    throw error
+  }
+  closeSync(fd)
+  try {
+    renameSync(temp, path)
+  } catch (error) {
+    rmSync(temp, { force: true })
+    throw error
+  }
+  syncDirectory(dirname(path))
+}
+
+export function writeJson(path, value) {
+  durableWrite(path, JSON.stringify(value, null, 2) + "\n", 0o644)
 }
 
 export function writeText(path, text) {

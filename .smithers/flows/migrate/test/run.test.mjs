@@ -1,13 +1,15 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { parseArgs, many, one } from "../lib/args.mjs"
 import { readIssues, validateIssue, ofKind } from "../lib/issues.mjs"
 import { buildInventory, isTestFile } from "../lib/inventory.mjs"
-import { formatExistingVibe, formatRecorded, formatVibe, makeConfig, nextStep, paths, vibeDprintConfig } from "../lib/steps.mjs"
-import { must } from "../lib/util.mjs"
+import { formatExistingVibe, formatRecorded, formatVibe, makeConfig, nextStep, paths, record, verify, vibeDprintConfig } from "../lib/steps.mjs"
+import * as Jj from "../lib/jj.mjs"
+import { fixture } from "./record-verification-oracle.mjs"
+import { must, readJson, writeJson } from "../lib/util.mjs"
 import { parseTokenCounts } from "../lib/tokens.mjs"
 import { repairPrompt } from "../lib/repair.mjs"
 
@@ -250,5 +252,107 @@ test("formatVibe formats with the repository's dprint where the nearest dprint c
     ].join("\n"))
   } finally {
     rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("verify.json is bound to the working-copy commit: post-verify edits force re-verification in nextStep and record", async () => {
+  await fixture(false, "createLazy", async ({ run, p, target, formatted }) => {
+    // Keep the formatter idempotent on whatever main.vibe holds after verify.
+    writeFileSync(join(target, "node_modules/.bin/vibelang-format"), "#!/usr/bin/env node\n", { mode: 0o755 })
+    writeFileSync(join(target, "main.vibe"), formatted)
+    const beforeDecl = readFileSync(join(p.baseline, "dts/root/main.d.ts"), "utf8")
+    const changedDecl = beforeDecl.replaceAll("void", "string")
+    writeFileSync(join(target, "node_modules/.bin/vibelang"), [
+      "#!/usr/bin/env node",
+      'const fs=require("node:fs"),p=require("node:path");',
+      'const i=process.argv.indexOf("--outDir");',
+      'if(i>=0){const out=process.argv[i+1];fs.mkdirSync(out,{recursive:true});',
+      'const src=fs.readFileSync("main.vibe","utf8");',
+      'fs.writeFileSync(p.join(out,"main.d.ts"),src.includes("type PostEdit")?' + JSON.stringify(changedDecl) + ':' + JSON.stringify(beforeDecl) + ');}',
+    ].join("\n"), { mode: 0o755 })
+
+    for (const file of [p.upgrade, p.setup, p.codemod("01"), p.compile("01"), p.repair("01")]) writeJson(file, {})
+    const checked = await verify({ run, batch: "01" })
+    assert.equal(checked.ok, true, JSON.stringify(checked))
+    assert.deepEqual(nextStep(run), { step: "record", batch: "01" })
+
+    // Append a type-only edit that the formatter will not touch.
+    writeFileSync(join(target, "main.vibe"), formatted + "\nexport type PostEdit = string\n")
+    assert.deepEqual(nextStep(run), { step: "verify", batch: "01" })
+    await assert.rejects(record({ run, batch: "01" }), /failed verify/)
+    assert.equal(readJson(p.verify("01")).checks.declarations, false)
+  })
+})
+
+test("record recovers after a bookmark failure following jj commit without stranding the batch", async () => {
+  await fixture(false, "createLazy", async ({ root, run, p, target, source, formatted }) => {
+    writeFileSync(join(target, "node_modules/.bin/vibelang-format"), "#!/usr/bin/env node\n", { mode: 0o755 })
+    writeFileSync(join(target, "main.vibe"), formatted)
+    const beforeDecl = readFileSync(join(p.baseline, "dts/root/main.d.ts"), "utf8")
+    writeFileSync(join(target, "node_modules/.bin/vibelang"), [
+      "#!/usr/bin/env node",
+      'const fs=require("node:fs"),p=require("node:path");',
+      'if(process.argv.includes("--estree")){console.log(JSON.stringify({ast:{type:"Program",body:[]},tokens:[]}));process.exit(0);}',
+      'const i=process.argv.indexOf("--outDir");',
+      'if(i>=0){const out=process.argv[i+1];fs.mkdirSync(out,{recursive:true});',
+      'fs.writeFileSync(p.join(out,"main.d.ts"),' + JSON.stringify(beforeDecl) + ');',
+      'fs.writeFileSync(p.join(out,"main.js"),"export const createLazy = () => {};\\n");}',
+    ].join("\n"), { mode: 0o755 })
+    for (const file of [p.upgrade, p.setup, p.codemod("01"), p.compile("01"), p.repair("01")]) writeJson(file, {})
+    // Record original source bytes so assertSourcesCurrent runs on entry.
+    writeJson(p.codemodState("01"), {
+      originals: [{ from: "main.ts", to: "main.vibe", bytes: Buffer.from(source, "utf8").toString("base64") }]
+    })
+    const checked = await verify({ run, batch: "01" })
+    assert.equal(checked.ok, true, JSON.stringify(checked))
+
+    // Intercept jj so `jj bookmark set` fails once after `jj commit` succeeds.
+    const realJj = (await must("command -v jj")).stdout.trim()
+    const shimDir = join(root, "shim-bin")
+    const marker = join(root, "bookmark-failed-once")
+    mkdirSync(shimDir, { recursive: true })
+    writeFileSync(join(shimDir, "jj"), [
+      "#!/bin/sh",
+      `if [ "$1" = "bookmark" ] && [ "$2" = "set" ] && [ ! -e ${JSON.stringify(marker)} ]; then`,
+      `  : > ${JSON.stringify(marker)}`,
+      '  echo "simulated bookmark failure" >&2',
+      "  exit 1",
+      "fi",
+      `exec ${JSON.stringify(realJj)} "$@"`,
+      ""
+    ].join("\n"), { mode: 0o755 })
+
+    const prevPath = process.env.PATH
+    process.env.PATH = `${shimDir}:${prevPath}`
+    try {
+      await assert.rejects(record({ run, batch: "01" }), /simulated bookmark failure/)
+      assert.equal(existsSync(marker), true)
+      assert.equal(existsSync(p.record("01")), false)
+      assert.deepEqual(nextStep(run), { step: "record", batch: "01" })
+      const committed = await Jj.commitId(target, "@-")
+
+      const resumed = await record({ run, batch: "01" })
+      assert.equal(resumed.commit, committed)
+      assert.equal(readJson(p.record("01")).commit, committed)
+      assert.equal(await Jj.bookmarkTarget(target, readJson(p.config).bookmark), committed)
+    } finally {
+      process.env.PATH = prevPath
+    }
+  })
+})
+
+test("writeJson replaces files atomically via durableWrite instead of truncating in place", () => {
+  const dir = mkdtempSync(join(tmpdir(), "migrate-writejson-"))
+  try {
+    const file = join(dir, "receipt.json")
+    writeJson(file, { step: 1 })
+    const firstInode = statSync(file).ino
+    writeJson(file, { step: 2 })
+    const secondInode = statSync(file).ino
+    assert.notEqual(secondInode, firstInode, "atomic rename should replace the inode rather than truncating in place")
+    assert.deepEqual(readJson(file), { step: 2 })
+    assert.deepEqual(readdirSync(dir), ["receipt.json"])
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
   }
 })
