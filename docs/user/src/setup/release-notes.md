@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- On Windows, a located error in one `.vibe` file was treated as project-wide because listed source paths used forward slashes while diagnostic paths used backslashes. Path separators are now normalized before matching diagnostics to files.
+
 - Passing a directory (such as `vibelang format --check src` or `.`) read no files and exited `0` without formatting or reporting unformatted sources. Directory arguments now recursively format and check matching VibeLang sources inside them.
 
 - `vibelang/oxlint` could crash with an uncaught `EPIPE` error when the compiler exited before reading stdin, leaving temporary files behind. Early compiler exits are now reported cleanly as `vibelang(unprojected)` diagnostics.

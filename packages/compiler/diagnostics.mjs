@@ -11,9 +11,12 @@ const realpath = (path) => {
 // moduleDeclarationSource, which imports this module.
 const moduleDeclarationSource = (path) => /^(.+\.vibex?)\.[^./\\]+\.jsx?$/.exec(path)?.[1]
 
+const normalize = (path) => realpath(path).replaceAll("\\", "/")
+
 export function diagnosticsForFile(diagnostics, file, files) {
-  const source = realpath(moduleDeclarationSource(file) ?? file)
-  return diagnostics.filter((diagnostic) => !diagnostic.file || !files.includes(diagnostic.file) || realpath(diagnostic.file) === source)
+  const source = normalize(moduleDeclarationSource(file) ?? file)
+  const listed = new Set(files.map(normalize))
+  return diagnostics.filter((diagnostic) => !diagnostic.file || !listed.has(normalize(diagnostic.file)) || normalize(diagnostic.file) === source)
 }
 
 /** Formats a diagnostic as `file:line:column - error TS2322: text`. */

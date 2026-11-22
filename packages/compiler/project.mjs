@@ -119,7 +119,7 @@ export function parseOutput(output, root) {
       // Keep existing input paths even when their spelling resembles a
       // comment. Once file listing starts, missing paths remain inputs too.
       !(diagnostic && /^\/[*/]/.test(line.trim()) && !existsSync(line.trim()))) {
-      files.push(line.trim())
+      files.push(process.platform === "win32" ? resolve(line.trim()) : line.trim())
       listed.add(index)
       diagnostic = undefined
     } else if (diagnostic && line) {
