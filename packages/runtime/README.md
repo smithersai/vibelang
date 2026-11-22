@@ -127,8 +127,9 @@ The compiler-owned `vibelang-runtime/internal` entry preserves the Effect versio
 At module load, `version.js` statically imports the public `effect/package.json`
 export with the JSON import attribute and checks its version. This works in Node
 and Bun, and bundlers inline the same metadata without a Node module loader or
-file-system access. A mismatch throws an error naming the runtime version, the
-installed and required Effect versions, and the command `npm install effect@4.1.1`.
+file-system access. A mismatch names the runtime version from its installed
+package manifest, the installed and required Effect versions, and the command
+`npm install effect@4.1.1`.
 Package metadata keeps module side effects, so browser tree shaking can't drop
 the guard when a caller imports only a helper. The mismatch tests cover a
 different patch version and Effect 3.
@@ -306,12 +307,11 @@ acceptance case `stack-depth` uses them to check that loops run in constant stac
 `vibelang-runtime/data-methods` exports `$method`, the helper the prototype
 text-only projector ([Fast calls without types](#fast-calls-without-types))
 imports for data-first method calls, and the `MethodCandidate` type. The
-`vibelang` compiler resolves a data-first method call from types and does not
-import it. A callable
-member on the receiver runs with that receiver. Otherwise, exactly one
-matching Effect module candidate receives the value as its first argument.
-An absent or ambiguous candidate keeps JavaScript's missing-method failure.
-Applications normally let the compiler emit this import.
+`vibelang` compiler uses type information to resolve data-first method calls
+at compile time. The prototype helper runs a callable member with its receiver.
+Otherwise, exactly one matching Effect module candidate receives the value as
+its first argument. An absent or ambiguous candidate keeps JavaScript's
+missing-method failure.
 
 ## Experimental platform APIs
 
