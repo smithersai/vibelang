@@ -20,13 +20,20 @@ local M = {}
 
 local typescript_filetypes = { "typescript", "typescriptreact", "javascript", "javascriptreact" }
 
--- esc_command returns the vibelang that serves a project rooted at root.
-local function esc_command(root)
-  if root then
-    local local_esc = vim.fs.joinpath(root, "node_modules", ".bin", "vibelang")
+-- esc_command walks upward from start_dir for node_modules/.bin/vibelang
+-- (matching hoisted workspace installs) before falling back to PATH.
+local function esc_command(start_dir)
+  local dir = start_dir
+  while dir and dir ~= "" do
+    local local_esc = vim.fs.joinpath(dir, "node_modules", ".bin", "vibelang")
     if vim.fn.executable(local_esc) == 1 then
       return local_esc
     end
+    local parent = vim.fs.dirname(dir)
+    if not parent or parent == dir then
+      break
+    end
+    dir = parent
   end
   return "vibelang"
 end
@@ -100,10 +107,12 @@ function M.setup(opts)
           vim.bo[args.buf].syntax = filetype == "vibex" and "typescriptreact" or "typescript"
         end
       end
-      local root = vim.fs.root(args.buf, { "tsconfig.json", "package.json", ".git" })
+      local bufname = vim.api.nvim_buf_get_name(args.buf)
+      local bufdir = bufname ~= "" and vim.fs.dirname(bufname) or nil
+      local root = vim.fs.root(args.buf, { "vibe.config.json", "tsconfig.json", "package.json", ".git" })
       vim.lsp.start({
         name = "vibelang",
-        cmd = { opts.cmd or esc_command(root), "--lsp", "--stdio" },
+        cmd = { opts.cmd or esc_command(bufdir or root), "--lsp", "--stdio" },
         root_dir = root,
       }, { bufnr = args.buf })
     end,
