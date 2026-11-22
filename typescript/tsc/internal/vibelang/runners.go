@@ -255,15 +255,12 @@ func reportNestedRunner(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 		note(d, "Register tests at the module's top level, or in a describe callback.")
 		return
 	}
-	program := "() => …"
+	program := "…"
 	if arguments := call.Arguments(); len(arguments) > 0 {
 		program = nodeText(file, arguments[0])
-		if !ast.IsFunctionExpressionOrArrowFunction(ast.SkipParentheses(arguments[0])) {
-			program = "() => " + program
-		}
 	}
 	// A root outlives the fiber that started it; a fork would not (D408).
-	note(d, "Call the program, or detach it to let it outlive this fiber, as a root would:   detach({0})", program)
+	note(d, "Run the Effect here with try {0}, or detach it to let it outlive this fiber: fork.detached {0}", program)
 }
 
 // runningFunctionName names fn, the function a fiber runs, for EK1005.

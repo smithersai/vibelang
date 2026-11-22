@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"strings"
 	"testing"
 )
 
@@ -43,5 +44,36 @@ func TestPlainRunnerCallbackBoundaries(t *testing.T) {
 				t.Fatalf("EK1005 count %d, want %d\n%s", n, tc.want, source)
 			}
 		})
+	}
+}
+
+func TestEK1005SuggestionCompiles(t *testing.T) {
+	source := "effect function g() { return 1 }\nexport effect function f() { const p = runPromise(g()); return p }\n"
+	p, f, _, _ := editorProgram(t, source)
+	var ek1005Note string
+	for _, d := range p.GetSemanticDiagnostics(t.Context(), f) {
+		if d.Code() == EK1005.Code {
+			for _, child := range d.MessageChain() {
+				ek1005Note += child.String() + "\n"
+			}
+		}
+	}
+	if ek1005Note == "" {
+		t.Fatal("expected EK1005 diagnostic with a suggestion note")
+	}
+	if strings.Contains(ek1005Note, "detach(() =>") {
+		t.Fatalf("EK1005 note must not suggest invalid detach(() => ...): %s", ek1005Note)
+	}
+	for _, want := range []string{"try g()", "fork.detached g()"} {
+		if !strings.Contains(ek1005Note, want) {
+			t.Fatalf("EK1005 note missing %q: %s", want, ek1005Note)
+		}
+		replaced := strings.Replace(source, "runPromise(g())", want, 1)
+		rp, rf, _, _ := editorProgram(t, replaced)
+		for _, d := range append(rp.GetSyntacticDiagnostics(t.Context(), rf), rp.GetSemanticDiagnostics(t.Context(), rf)...) {
+			if d.Category() == diagnostics.CategoryError {
+				t.Fatalf("suggested replacement %q failed to compile: %s\n%s", want, d.String(), replaced)
+			}
+		}
 	}
 }
