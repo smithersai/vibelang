@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- `catch` did not recover a typed failure when its cause also carried an interruption with a negative interruptor id, such as internal interruptions from Effect's `FiberSet`, `FiberMap`, or `FiberHandle`. Abandonment sentinels are now identified by a private annotation instead of the sign of the fiber id.
+
 - A refused `Experimental.Durable.rewind` (for an invalid position or an irreversible or compensable step) still claimed the run and fenced out the engine driving it. Rewind now validates the journal before claiming the run.
 
 - `Experimental.Process.kill(1, { group: true })` and `isRunning(1, { group: true })` passed `-1` to POSIX `kill`, which addresses every process rather than process group 1. Both now fail with `BadArgument` without calling the host.

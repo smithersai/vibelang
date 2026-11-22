@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
-import { Cause, Context, Deferred, Fiber, Stream } from "effect"
+import { Cause, Context, Deferred, Fiber, FiberSet, Stream } from "effect"
 import {
-  $bind, $bindMethod, $propertyKey, $spreadItems, $catch, $caught, $control, $expected, $finally, $finallyFailure, $joinedFrame, $plainOf, $plainSync, $fork, $forOf, $normal, acquireRelease,
+  $bind, $bindMethod, $propertyKey, $spreadItems, $catch, $catchCause, $catchExpression, $caught, $control, $expected, $finally, $finallyFailure, $joinedFrame, $plainOf, $plainSync, $fork, $forOf, $normal, acquireRelease,
   $produce, $program, $programs, $reference, $region, $service, $tailResume,
   $tailResumeWith, $trusted, $trustedPlain, $using, $yield, $yieldAll, abandon, Control,
   $direct, Effect, Exit, fork, handle, handoff, Layer, pipe, resume,
@@ -497,4 +497,39 @@ test("regions: a failing finalizer retains both original and cleanup failures", 
     const failures = exit.cause.reasons.filter(Cause.isFailReason).map(reason => reason.error)
     expect(failures).toEqual(["body", "cleanup"])
   }
+})
+
+
+test("regions: $catch and $catchCause recover a failure beside a negative-id or FiberSet interrupt", async () => {
+  class Boom extends TaggedError("Boom")<{ readonly n: number }> {}
+  for (const id of [-1, -7, -Infinity]) {
+    const cause = Cause.fromReasons([
+      Cause.fail(new Boom({ n: 1 })).reasons[0]!,
+      Cause.interrupt(id).reasons[0]!
+    ])
+    expect(Effect.runSyncExit($catch(Effect.failCause(cause), () => Effect.succeed("recovered")))).toEqual(
+      Exit.succeed("recovered")
+    )
+    expect(Effect.runSyncExit($catchExpression(() => Effect.failCause(cause), () => Effect.succeed("recovered")))).toEqual(
+      Exit.succeed("recovered")
+    )
+    expect(Effect.runSyncExit($catchCause(Effect.failCause(cause), () => Effect.succeed("caught")))).toEqual(
+      Exit.succeed("caught")
+    )
+  }
+  // Real FiberSet internal interruption (fiberId -1) combined with a typed failure in a finalizer.
+  const recovered = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+    const set = yield* FiberSet.make()
+    const started = yield* Deferred.make<void>()
+    const fiber = yield* FiberSet.run(set)(
+      Effect.ensuring(
+        Effect.andThen(Deferred.succeed(started, void 0), Effect.never),
+        Effect.fail(new Boom({ n: 2 }))
+      )
+    )
+    yield* Deferred.await(started)
+    yield* FiberSet.clear(set)
+    return yield* $catch(Fiber.join(fiber), (e) => Effect.succeed(`recovered:${(e as Boom).n}`))
+  })))
+  expect(recovered).toBe("recovered:2")
 })

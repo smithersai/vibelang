@@ -112,8 +112,14 @@ export class TransferIntoParallelScope extends Error {
 
 let abortIds = 0
 
-const isAbortReason = (reason: Cause.Reason<unknown>) =>
-  Cause.isInterruptReason(reason) && reason.fiberId !== undefined && reason.fiberId < 0
+const AbortSentinel = Context.Reference<number | undefined>("vibelang/kernel/AbortSentinel", {
+  defaultValue: () => undefined
+})
+
+const abortIdOf = (reason: Cause.Reason<unknown>): number | undefined =>
+  Cause.isInterruptReason(reason) ? Context.get(Cause.reasonAnnotations(reason), AbortSentinel) : undefined
+
+const isAbortReason = (reason: Cause.Reason<unknown>) => abortIdOf(reason) !== undefined
 
 /**
  * Whether cause carries an abandonment's sentinel interrupt: a control
@@ -122,7 +128,7 @@ const isAbortReason = (reason: Cause.Reason<unknown>) =>
 export const isAbortCause = (cause: Cause.Cause<unknown>): boolean => cause.reasons.some(isAbortReason)
 
 const isAbortReasonOf = (abortId: number) => (reason: Cause.Reason<unknown>) =>
-  Cause.isInterruptReason(reason) && reason.fiberId === abortId
+  abortIdOf(reason) === abortId
 
 const keep = <E = never>(cause: Cause.Cause<E> | undefined, predicate: (reason: Cause.Reason<unknown>) => boolean) => {
   if (cause === undefined) return undefined
@@ -571,7 +577,7 @@ export const abandonNow = (target: Continuation | Suspended): Effect.Effect<Exit
     const segment = k.segment!
     k.segment = undefined
     const abortId = -(++abortIds)
-    const abortCause = Cause.interrupt(abortId) as Cause.Cause<never>
+    const abortCause = Cause.annotate(Cause.interrupt(abortId), Context.make(AbortSentinel, abortId)) as Cause.Cause<never>
     const stack = fiber._stack
     stack.push(new AbandonCollector(k, fiber.context, fiber.interruptible, abortId))
     for (let j = 0; j < segment.length; j++) stack.push(segment[j])
