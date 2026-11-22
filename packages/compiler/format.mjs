@@ -3,7 +3,7 @@ import { findBinary } from "./binary.mjs"
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { fileHasVibeDirective, hasVibeDirective } from "./source.mjs"
-import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync, globSync as expandGlob, readFileSync, symlinkSync, statSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync, globSync as expandGlob, readFileSync, symlinkSync, statSync } from "node:fs"
 import { availableParallelism, tmpdir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { createRequire } from "node:module"
@@ -275,11 +275,32 @@ function formatBatch(files, clean) {
   })
   return results
 }
-// Existing source paths are literal, including bracketed route names. Other
-// inputs, including the default extension pattern, still use glob expansion.
+function walkDirectory(root, options) {
+  const results = []
+  const visit = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = dir === "." ? entry.name : join(dir, entry.name)
+      if (options?.exclude?.(full)) continue
+      if (entry.isDirectory()) visit(full)
+      else if (entry.isFile() && /\.(?:vibex?|[cm]?ts|tsx)$/.test(entry.name)) results.push(full)
+    }
+  }
+  visit(root)
+  return results.sort()
+}
+
+// Existing source paths and directories are literal, including bracketed route
+// names. Other inputs, including the default extension pattern, still use glob
+// expansion.
 function globSync(pattern, options) {
-  if (/\.(?:vibex?|[cm]?ts|tsx)$/.test(pattern) && existsSync(pattern) && statSync(pattern).isFile()) {
-    return options?.exclude?.(pattern) ? [] : [pattern]
+  if (existsSync(pattern)) {
+    const stat = statSync(pattern)
+    if (stat.isFile() && /\.(?:vibex?|[cm]?ts|tsx)$/.test(pattern)) {
+      return options?.exclude?.(pattern) ? [] : [pattern]
+    }
+    if (stat.isDirectory()) {
+      return options?.exclude?.(pattern) ? [] : walkDirectory(pattern, options)
+    }
   }
   return expandGlob(pattern, options)
 }
