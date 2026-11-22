@@ -74,7 +74,7 @@ const isCompiled = (id) => isVibeLangFile(cleanId(id)) || isModuleOutput(cleanId
 // Keep TypeScript's source priority when the bundler cannot find .vibe.
 function extensionlessVibe(directory, specifier) {
   const source = extensionlessImport(directory, specifier)
-  return source?.endsWith(".vibe") ? source : undefined
+  return source && isVibeLangFile(source) ? source : undefined
 }
 
 // The directory whose .vibe modules a build can reach: the nearest ancestor of
@@ -504,7 +504,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       missingWatcher?.finish(error)
     },
     watchChange(id) {
-      if (/\.(?:vibe|[cm]?tsx?|json)$/.test(id)) current?.invalidate()
+      if (/\.(?:vibex?|[cm]?tsx?|json)$/.test(id)) current?.invalidate()
       debug(`watch change ${id}`)
     },
     // Bun 1.4.2 stops resolving Bun.build's in-memory `files` once a plugin's

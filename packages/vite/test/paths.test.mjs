@@ -157,3 +157,73 @@ test("hotUpdate clears cached nearest-config and paths lookups on JSON edits", a
   t.after(() => plugin.closeWatcher())
   assert.equal(plugin.resolveId("@/val", entry), join(root, "nested/local/val.ts"))
 })
+
+test("shared relative-imports and relative-output helpers stay in sync across compiler, vite and unplugin", () => {
+  const compilerRel = readFileSync(join(packageRoot, "../compiler/relative-imports.mjs"), "utf8")
+  const viteRel = readFileSync(join(packageRoot, "src/relative-imports.js"), "utf8")
+  const unpluginRel = readFileSync(join(packageRoot, "../unplugin/src/relative-imports.js"), "utf8")
+  assert.equal(viteRel, compilerRel)
+  assert.ok(unpluginRel.includes('".vibex"'), "unplugin relative-imports must include .vibex")
+  assert.ok(unpluginRel.includes("export function extensionlessImport(directory, specifier, fileExists)"), "unplugin relative-imports must retain fileExists parameter")
+  const viteOut = readFileSync(join(packageRoot, "src/relative-output.js"), "utf8")
+  const unpluginOut = readFileSync(join(packageRoot, "../unplugin/src/relative-output.js"), "utf8")
+  assert.equal(viteOut, unpluginOut)
+})
+
+test("Vite build watch mode registers type-only project inputs as watch files", async (t) => {
+  const compiler = join(packageRoot, "../compiler/bin/vibelang")
+  const compilerOptions = {
+    target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true,
+    types: [], skipLibCheck: true, allowImportingTsExtensions: true, rewriteRelativeImportExtensions: true, noEmit: true
+  }
+  const root = project(t, {
+    "package.json": JSON.stringify({ type: "module" }),
+    "tsconfig.json": JSON.stringify({ compilerOptions, include: ["src"] }),
+    "src/types.ts": "export interface Answer { readonly n: number }\n",
+    "src/main.vibe": "import type { Answer } from \"./types.ts\"\nexport const a: Answer = { n: 42 }\n",
+  })
+  const plugin = vibelang({ compiler })
+  plugin.configResolved({ root, command: "build", base: "/", logger: { warn() {}, error() {} } })
+  t.after(() => plugin.closeWatcher())
+  const watched = new Set()
+  const entry = join(root, "src/main.vibe")
+  await plugin.load.call({
+    meta: { watchMode: true },
+    addWatchFile(file) { watched.add(file) },
+    error(message) { throw new Error(typeof message === "string" ? message : message.message) }
+  }, entry)
+  assert.ok(watched.has(join(root, "src/types.ts")), `expected src/types.ts in watched files: ${[...watched].join(", ")}`)
+})
+
+test("Vite close() does not reject or poison later builds after a failed backend load", async (t) => {
+  const { cpSync, symlinkSync } = await import("node:fs")
+  const { pathToFileURL } = await import("node:url")
+  const root = project(t, {
+    "package.json": JSON.stringify({ type: "module" }),
+    "tsconfig.json": JSON.stringify({ compilerOptions: { noEmit: true, types: [] }, include: ["src"] }),
+    "src/main.vibe": "export const n = 1\n",
+  })
+  const isolatedPluginDir = join(root, "isolated-vite-plugin")
+  cpSync(join(packageRoot, "src"), join(isolatedPluginDir, "src"), { recursive: true })
+  writeFileSync(join(isolatedPluginDir, "package.json"), JSON.stringify({ type: "module" }))
+  mkdirSync(join(isolatedPluginDir, "node_modules"), { recursive: true })
+  symlinkSync(join(packageRoot, "node_modules/magic-string"), join(isolatedPluginDir, "node_modules/magic-string"))
+  symlinkSync(join(packageRoot, "node_modules/@jridgewell"), join(isolatedPluginDir, "node_modules/@jridgewell"))
+  const { default: isolatedVibelang } = await import(pathToFileURL(join(isolatedPluginDir, "src/index.js")).href)
+  const plugin = isolatedVibelang({ compiler: join(packageRoot, "../compiler/bin/vibelang") })
+  plugin.configResolved({ root, command: "build", base: "/", logger: { warn() {}, error() {} } })
+  const entry = join(root, "src/main.vibe")
+  const ctx = {
+    meta: { watchMode: false },
+    addWatchFile() {},
+    error(message) { throw new Error(typeof message === "string" ? message : message.message) }
+  }
+  await assert.rejects(plugin.load.call(ctx, entry), /vibelang-vite needs the vibelang package/)
+  await assert.doesNotReject(plugin.closeBundle(), "close() must not reject after a failed backend load")
+  // Once vibelang is installed, the same plugin instance must recover and compile cleanly.
+  mkdirSync(join(root, "node_modules"), { recursive: true })
+  symlinkSync(join(packageRoot, "../compiler"), join(root, "node_modules/vibelang"))
+  t.after(() => plugin.closeWatcher())
+  const loaded = await plugin.load.call(ctx, entry)
+  assert.match(loaded.code, /export const n = 1/)
+})

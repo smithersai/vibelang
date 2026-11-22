@@ -337,7 +337,8 @@ export default function vibelang(options = {}) {
     modules = undefined
     current = undefined
     const work = Promise.resolve(closing).then(async () => {
-      const projects = await pending
+      // A backend that failed to load failed its build already; it has nothing to close.
+      const projects = await pending?.catch(() => undefined)
       await projects?.close()
     })
     closing = work
@@ -552,11 +553,18 @@ export default function vibelang(options = {}) {
     async load(id) {
       const file = cleanId(id)
       if (!isCompiled(file) || !isModuleId(id)) return
-      const { project, code, map, errors, warnings, error } = await loadModule(sourceFile(file))
+      const { project, code, map, inputs, errors, warnings, error } = await loadModule(sourceFile(file))
       this.addWatchFile(project)
       // Handling load bypasses Vite's filesystem loader, which normally adds
       // watches for source files outside its root.
       this.addWatchFile(backend.moduleDeclarationSource?.(file) ?? sourceFile(file))
+      // In build watch mode, register all project inputs (including type-only
+      // imports not present in emitted JavaScript) so edits trigger rebuilds.
+      if (!serving && this.meta?.watchMode) {
+        for (const input of inputs ?? []) {
+          if (existsSync(input)) this.addWatchFile(input)
+        }
+      }
       if (errors.length) this.error(diagnostics(errors, file))
       for (const warning of warnings) logger.warn(backend.formatDiagnostic(warning))
       if (error) this.error(error)

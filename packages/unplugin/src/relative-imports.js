@@ -3,12 +3,18 @@ import { dirname, join, resolve } from "node:path"
 
 // A specifier ending in one of these names its file's extension; TypeScript
 // removes it before it tries its own (tspath's extensionsToRemove).
-const namedExtension = /\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)$/
+const namedExtension = /\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibex?)$/
+// A specifier that names a file by its path: relative (./x, ../x, ., ..) or
+// absolute (/x, C:\x). A bare specifier names a package, or a tsconfig paths
+// alias, and reaches a .vibe module only through a file discovery already reads.
+export const pathSpecifier = /^(?:\.\.?(?:[\\/]|$)|[\\/]|[A-Za-z]:[\\/])/
+
 // The files TypeScript tries for an extensionless import, in its order.
-const implicitExtensions = [".ts", ".tsx", ".vibe", ".d.ts", ".js", ".jsx"]
+const implicitExtensions = [".ts", ".tsx", ".vibe", ".vibex", ".d.ts", ".js", ".jsx"]
 
 /**
- * Returns the file TypeScript's Node10 and Bundler resolution picks for the
+ * Returns the file TypeScript's Bundler resolution picks (TypeScript 7 removed
+ * Node10: TS5108) for the
  * relative import `specifier` written in `directory` when it names no
  * extension: ./x is x.ts, x.tsx, x.vibe, x.d.ts, x.js or x.jsx, in that order,
  * else the directory x's index with the same extensions. It returns
@@ -16,7 +22,8 @@ const implicitExtensions = [".ts", ".tsx", ".vibe", ".d.ts", ".js", ".jsx"]
  * a package.json, or when no file is there. The loaders and bundlers resolve
  * x.vibe this way, where only TypeScript's own extensions are theirs.
  */
-export function extensionlessImport(directory, specifier) {
+// A bundler may also provide native in-memory inputs for the same lookup.
+export function extensionlessImport(directory, specifier, fileExists) {
   if (namedExtension.test(specifier)) return undefined
   const target = resolve(directory, specifier)
   const isFile = (path) => {
@@ -31,7 +38,7 @@ export function extensionlessImport(directory, specifier) {
   const stems = /(?:^|[\\/])\.{0,2}$/.test(specifier) ? [] : [target]
   if (!existsSync(join(target, "package.json"))) stems.push(join(target, "index"))
   for (const stem of stems) {
-    const found = implicitExtensions.map((extension) => stem + extension).find(isFile)
+    const found = implicitExtensions.map((extension) => stem + extension).find(fileExists ?? isFile)
     if (found !== undefined) return found
   }
   return undefined

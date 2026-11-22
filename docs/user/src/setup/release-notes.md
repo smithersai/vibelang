@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Synced shared import-resolution helpers across `vibelang`, `vibelang-vite`, and `vibelang-unplugin` so unplugin resolves extensionless `.vibex` imports and watches `.vibex` changes, fixed `vibelang-vite`'s `close()` so a failed backend load does not poison subsequent builds, and registered type-only project inputs as watch files under `vite build --watch`.
 - `vibelang agents check` and `vibelang agents hook` no longer label ordinary type-check error exits (status 1 or 2 with clean stdout diagnostics and empty stderr) as `check incomplete`, and `vibelang agents init` now uses platform-independent path containment when discovering workspace binaries on Windows.
 - Fixed stale documentation and manifest pins across the Vite, starter, and unplugin READMEs, `vibelang-unplugin`'s `root` option JSDoc, the Vite setup guide's Rolldown declaration section, and `vibelang-ts-mapper`'s `vibelang-runtime` peer pin.
 - Fixed CLI scripts under `scripts/` (including `repack.mjs`, `select.mjs`, `generate-grammar-admission.mjs`, `go-shard-seconds.mjs`, and `api-identity.mjs`) silently exiting `0` without running when invoked through a symlinked directory path; entrypoint checks now resolve real paths via `isMain`.

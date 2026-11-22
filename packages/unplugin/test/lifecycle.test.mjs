@@ -30,3 +30,16 @@ test("a CommonJS config can load vibelang-unplugin and its bundler subpaths", ()
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test("unplugin resolves extensionless .vibex imports", async (t) => {
+  const { mkdtemp, rm, writeFile } = await import("node:fs/promises")
+  const { tmpdir } = await import("node:os")
+  const { join } = await import("node:path")
+  const { default: unplugin } = await import("../src/index.js")
+  const root = await mkdtemp(join(tmpdir(), "vibelang-unplugin-vibex-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await writeFile(join(root, "App.vibex"), "export const App = () => <div/>\n")
+  await writeFile(join(root, "main.vibe"), 'import { App } from "./App"\nexport { App }\n')
+  const plugin = unplugin.raw({}, { framework: "rollup" })
+  assert.equal(plugin.resolveId.call({}, "./App", join(root, "main.vibe")), join(root, "App.vibex"))
+})
