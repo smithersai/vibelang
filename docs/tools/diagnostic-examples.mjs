@@ -101,7 +101,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4824` | off by default (warning when enabled): legacy compiler compatibility — a pipe has no functions.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:1:21; error](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4824).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4825` | off by default (warning when enabled): legacy compiler compatibility — a pipe continues another pipe.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:1:22; error; also EK4840](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4825).
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:1:22; error](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4825).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK1002` | error: legacy compiler compatibility — a generator-based API receives a legacy producer.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Native `function*` retains JavaScript generator semantics; an Effect producer is explicitly `effect function*`.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK1005` | error: legacy compiler compatibility — a root runner is called inside code already running on a fiber.
@@ -158,7 +158,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4815` | warning: legacy compiler compatibility — an Effect value is thrown as an Effect failure.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4817` | off by default (warning when enabled): legacy compiler compatibility — `instanceof` tests a `Schema` class rather than schema membership.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Use `Schema.is`; the optional legacy port defaults off.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4840` | warning: legacy compiler compatibility — an Option pipeline can be converted to legacy extension-method syntax.
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4840` | off by default (warning when enabled): legacy compiler compatibility — an Option pipeline can be converted to legacy extension-method syntax.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4601` | error: legacy compiler compatibility — `await` before a call returning an Effect in plain code.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Example: `function run() { return await Effect.succeed(1) }`.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Native async functions retain JavaScript `await`; effect code rejects it with `EK0102`.

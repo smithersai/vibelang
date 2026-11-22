@@ -44,7 +44,7 @@ func (tx *lowering) outputSpecifier(specifier *ast.Node) *ast.Node {
 	}
 	text, changed := specifier.Text(), false
 	if tx.rewrite {
-		text, changed = outputSpecifierTextWithJSX(specifier.Text(), tx.jsx)
+		text, changed = outputSpecifierTextForFormat(specifier.Text(), tx.jsx, tx.commonJS)
 	}
 	// Identifier module references are generated output names, independent of
 	// source-extension rewriting. A JSX body preserves JSX in its own .jsx file.
@@ -67,12 +67,24 @@ func outputSpecifierText(text string) (string, bool) {
 	return outputSpecifierTextWithJSX(text, core.JsxEmitNone)
 }
 
-// outputSpecifierTextWithJSX uses the native output extension selected by jsx.
+// outputSpecifierTextWithJSX uses the native output extension selected by jsx,
+// for a file emitted as an ES module.
 func outputSpecifierTextWithJSX(text string, jsx core.JsxEmit) (string, bool) {
+	return outputSpecifierTextForFormat(text, jsx, false /*commonJS*/)
+}
+
+// outputSpecifierTextForFormat names the output of text from a file emitted
+// as CommonJS when commonJS is set, and as an ES module otherwise. require
+// takes a file path and decodes nothing, so a CommonJS specifier keeps its
+// characters, as TypeScript's own rewrite does: ./a b.vibe names ./a b.js.
+func outputSpecifierTextForFormat(text string, jsx core.JsxEmit, commonJS bool) (string, bool) {
 	if !tspath.ToModuleSpecifier(text).ShouldRewriteExtension(nil /*rewrites*/, tspath.CaseSensitive) {
 		return text, false
 	}
 	output := tspath.ChangeExtension(text, outputpaths.GetOutputExtension(text, jsx))
+	if commonJS {
+		return output, true
+	}
 	// Source specifiers name filesystem paths; emitted ESM specifiers are URLs.
 	// Escape each segment separately so separators retain their meaning, and
 	// literal percent sequences cannot be interpreted as already encoded URLs.

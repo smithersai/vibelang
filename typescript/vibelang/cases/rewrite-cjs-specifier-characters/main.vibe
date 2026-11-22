@@ -1,0 +1,8 @@
+// In a CommonJS package, rewriteRelativeImportExtensions names a sibling by
+// its output path, unescaped: require takes a file path, not a URL, so
+// ./[id].vibe becomes ./[id].js, as TypeScript emits for the .ts twin.
+import { x } from "./[id].vibe"
+
+export effect function program() {
+  return x + 1
+}

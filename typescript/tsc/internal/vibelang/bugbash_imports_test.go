@@ -20,6 +20,29 @@ func TestBugBashImportURLCharacters(t *testing.T) {
 	}
 }
 
+// A file emitted as CommonJS names its imports by file path for require,
+// which decodes nothing, so the rewrite changes only the extension (#437).
+func TestImportSpecifierCommonJSUnescaped(t *testing.T) {
+	for source, want := range map[string]string{
+		"./hi#1.vibe":         "./hi#1.js",
+		"./hi%1.vibe":         "./hi%1.js",
+		"../a b/file.ts":      "../a b/file.js",
+		"./[id].vibe":         "./[id].js",
+		"./(group)/page.vibe": "./(group)/page.js",
+		"./caf\u00e9.vibe":    "./caf\u00e9.js",
+		"effect":              "effect",
+	} {
+		got, _ := outputSpecifierTextForFormat(source, core.JsxEmitNone, true /*commonJS*/)
+		if got != want {
+			t.Errorf("%q: got %q, want %q", source, got, want)
+		}
+		esm, _ := outputSpecifierTextForFormat(source, core.JsxEmitNone, false /*commonJS*/)
+		if wantESM, _ := outputSpecifierText(source); esm != wantESM {
+			t.Errorf("%q: ES module got %q, want %q", source, esm, wantESM)
+		}
+	}
+}
+
 func TestImportSpecifierJSXModes(t *testing.T) {
 	for _, mode := range []core.JsxEmit{core.JsxEmitNone, core.JsxEmitPreserve, core.JsxEmitReact, core.JsxEmitReactNative, core.JsxEmitReactJSX, core.JsxEmitReactJSXDev} {
 		suffix := ".js"
