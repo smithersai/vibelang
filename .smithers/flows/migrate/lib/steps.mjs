@@ -1234,7 +1234,7 @@ export async function setup(options) {
   // Under --no-wire, only a package of the run that has no VibeLang yet is wired.
   const wired = config.wire ? await wireTarget(config, logs) : await wireNewPackages(config, logs)
   const compiler = compilerOf(config)
-  const { stdout: version } = await must(`${JSON.stringify(compiler)} --version`)
+  const { stdout: version } = await must(`${quote(compiler)} --version`)
 
   // The baseline every batch is compared with: the tests with VibeLang set up and nothing migrated.
   // Built from clean outputs, its dist list is what each batch's build must still ship.

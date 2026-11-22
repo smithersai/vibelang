@@ -9,10 +9,10 @@ import { execFileSync } from "node:child_process"
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
-import { must, readJson, writeJson } from "./util.mjs"
+import { must, quote, readJson, writeJson } from "./util.mjs"
 
 async function pack(dir, out) {
-  const { stdout } = await must(`npm pack --silent --pack-destination ${JSON.stringify(out)}`, { cwd: dir })
+  const { stdout } = await must(`npm pack --silent --pack-destination ${quote(out)}`, { cwd: dir })
   const name = stdout.trim().split("\n").at(-1).trim()
   if (!existsSync(join(out, name))) throw new Error(`npm pack in ${dir} printed ${name}, which is not in ${out}`)
   return join(out, name)

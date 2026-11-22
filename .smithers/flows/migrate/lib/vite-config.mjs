@@ -6,6 +6,7 @@ import { listSources, isTestFile, isFixtureFile } from "./inventory.mjs"
 import { resolveRelative } from "./imports.mjs"
 import { ownedPaths, repositoryPackages } from "./wire.mjs"
 import { vibePath } from "./codemod.mjs"
+import { quote } from "./util.mjs"
 
 const preload = 'NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" '
 const configNames = ["vite.config.ts", "vite.config.mts", "vite.config.js", "vite.config.mjs"]
@@ -244,7 +245,9 @@ export function nativeConfigScripts(scripts = {}, { root, dir, renames }) {
       const to = file && toOf.get(file)
       if (!to) return part
       module = to
-      return part.slice(0, at) + " --config " + posix.relative(cwd, to) + part.slice(at)
+      const relConfig = posix.relative(cwd, to)
+      const formattedConfig = /[\s"'\\$`|&;()<>*?[\]{}#!~]/.test(relConfig) ? quote(relConfig) : relConfig
+      return part.slice(0, at) + " --config " + formattedConfig + part.slice(at)
     }).join("")
     if (text !== command) edits.push({ script: name, before: command, after: text, module })
     return [name, text]

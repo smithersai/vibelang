@@ -8,6 +8,8 @@ import { preloadRegister } from "./oxlint-plugins.mjs"
 import { addVitePlusIgnores, addEslintIgnore, addEslintImportParsers, addEslintVibe, declarationIgnores, emittedIgnore, jsxSidecarIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
 import { wireTsdownConfigs } from "./tsdown.mjs"
+import { isProtectedFile } from "./test-diff.mjs"
+import { quote } from "./util.mjs"
 
 // An ast-grep rule's ignores gain the declaration sidecars, x.d.vibe.ts, which
 // a TypeScript rule otherwise scans as TypeScript, reporting each finding of a
@@ -292,7 +294,7 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
     writeFileSync(join(root, file), text); changed.push(file)
   }
   // Only the repository's own packages: a vendored tree keeps its scripts and configs.
-  const all = files(root).filter(ownedPaths(root))
+  const all = files(root).filter(ownedPaths(root)).filter(file => !isProtectedFile(file))
 
   const manifests = all.filter(file => posix.basename(file) === "package.json")
   warnings.push(...wireNodeSourceHooks({ root, all, manifests, ts, specsFor, write }).warnings)
@@ -343,7 +345,8 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
         needsCompiler = true
       }
       if (commandAt("prettier").test(next) && !next.includes("vibelang/prettier")) {
-        next = next.replace(/\bprettier\b/, "prettier --plugin vibelang/prettier")
+        const prettierCmd = /(^|[;&|(`{])(\s*(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|[^\s;&|()]+)\s+)*(?:(?:npx|bunx|yarn|bun\s+x|(?:pnpm|npm|yarn)(?:\s+--?[^\s;&|()]+(?:\s+(?:"[^"]*"|'[^']*'|[^\s;&|()]+))?)*\s+exec)\s+)?)prettier(?=[\s;&|)`}]|$)/
+        next = next.replace(prettierCmd, "$1$2prettier --plugin vibelang/prettier")
         needsCompiler = true
       }
       if (commandAt(String.raw`oxlint|vp\s+lint`).test(next)) {
@@ -715,12 +718,15 @@ export default await configFor()
       }
       write(rule, jsxGrammar ? sidecarIgnoreOf(sidecarIgnoreOf(original), jsxSidecar) : sidecarIgnoreOf(original))
     }
-    builds.push({ cwd: dir, command: `node ${posix.relative(dir, ".") ? posix.relative(dir, ".") + "/" : ""}node_modules/vibelang/bin/vibelang-ast-grep ${library}` })
+    const shellArg = value => /[\s"'\\$`|&;()<>*?[\]{}#!~]/.test(value) ? quote(value) : value
+    const binPath = `${posix.relative(dir, ".") ? posix.relative(dir, ".") + "/" : ""}node_modules/vibelang/bin/vibelang-ast-grep`
+    builds.push({ cwd: dir, command: `node ${shellArg(binPath)} ${shellArg(library)}` })
     needsCompiler = true
   }
   if (builds.length) {
+    const shellArg = value => /[\s"'\\$`|&;()<>*?[\]{}#!~]/.test(value) ? quote(value) : value
     const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
-    const commands = builds.map(b => `(cd ${b.cwd} && ${b.command})`).join(" && ")
+    const commands = builds.map(b => `(cd ${shellArg(b.cwd)} && ${b.command})`).join(" && ")
     const previous = pkg.scripts?.postinstall ?? ""
     if (!previous.includes("vibelang-ast-grep")) {
       pkg.scripts = { ...pkg.scripts, postinstall: previous ? `(${previous}) && ${commands}` : commands }
@@ -733,7 +739,18 @@ export default await configFor()
     const path = "package.json"
     const pkg = JSON.parse(readFileSync(join(root, path), "utf8"))
     pkg.devDependencies = { ...pkg.devDependencies, vibelang: specsFor(".").vibelang }
-    if (needsLint) Object.assign(pkg.devDependencies, { eslint: "^9.39.5", "typescript-eslint": "^8.69.0" })
+    if (needsLint) {
+      const existingEslint = pkg.dependencies?.eslint ?? pkg.devDependencies?.eslint
+      if (!existingEslint) pkg.devDependencies.eslint = "^9.39.5"
+      else {
+        const major = /\d+/.exec(existingEslint)?.[0]
+        if (major !== undefined && Number(major) < 9) {
+          warnings.push(`package.json pins eslint ${existingEslint}; kept the existing pin instead of replacing it with ^9.39.5 required by the generated flat ESLint config`)
+        }
+      }
+      const existingTsEslint = pkg.dependencies?.["typescript-eslint"] ?? pkg.devDependencies?.["typescript-eslint"]
+      if (!existingTsEslint) pkg.devDependencies["typescript-eslint"] = "^8.69.0"
+    }
     write(path, JSON.stringify(pkg, null, 2) + "\n")
   }
   return { changed: [...new Set(changed)], builds, warnings }

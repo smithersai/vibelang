@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Migration setup now rewrites `tsc`/`tsgo`/`tsrs` and `prettier` only in command position, preserves existing `eslint` and `typescript-eslint` version pins (warning on incompatible majors), skips protected test and fixture config files, and quotes shell paths containing spaces or metacharacters.
 - Corrected `docs/maintainers/coding-agents.md` to document that the opencode plugin runs `vibelang agents check` rather than `vibelang --fix`, and marked the `EK9206` research note as resolved.
 - Updated `MAINTAINERS.md`, `CONTRIBUTING.md`, and `README.md` so the published package count (twelve), `vibelang-typescript` version rule, `packages/typescript-shim/` layout entry, and Apache-2.0 package list match the release scripts.
 - Incremental builds now store `vibe` settings in `.tsbuildinfo` so unchanged builds reuse cached outputs and removed settings invalidate stale diagnostics, `--listEmittedFiles` lists written declaration sidecars, and editor on-type formatting no longer invokes the whole-document formatter or errors on incomplete VibeLang code.
