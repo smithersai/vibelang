@@ -290,6 +290,9 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				if isBody && p.emitsDeclarationAt(data.SourceFile, sidecar) {
 					return nil
 				}
+				publicationMutex.Lock()
+				selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(sidecar))] = true
+				publicationMutex.Unlock()
 				if err := publish(func() error {
 					// Publish the replacement before pruning its old layout. A
 					// failed write must leave the previous declaration available.
