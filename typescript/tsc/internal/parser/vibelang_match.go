@@ -716,6 +716,11 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 				// The string key keeps the clause lowerable, so its pattern still binds.
 				result.items = append(result.items, &pattern{kind: patternInvalid, anchor: key.Loc, code: 707, detail: "A pattern key cannot be a private name. Test it in a guard: when let v and if (" + key.Text() + " in v)."})
 				clause.key = p.mString(key.Text(), key.Loc)
+			} else if key.Kind == ast.KindBigIntLiteral {
+				// A bigint literal is not a valid property name; keep the clause lowerable
+				// with a string key so its sub-pattern and recovery still run.
+				result.items = append(result.items, &pattern{kind: patternInvalid, anchor: key.Loc, code: 707, detail: "A pattern key cannot be a bigint literal. Write the computed key [" + key.Text() + "]:."})
+				clause.key = p.mString(key.Text(), key.Loc)
 			} else if key.Kind == ast.KindComputedPropertyName {
 				clause.key = key.Expression()
 				clause.computed = !isLiteralKey(clause.key)
@@ -1539,7 +1544,11 @@ func (p *Parser) propertyPath(base matchPath, clause objectClause, ctx *matchCom
 		case !clause.computed && key.Kind == ast.KindNumericLiteral:
 			return p.cachePatternRead(p.mPatternRead(p.mElement(base(), p.vibelangSynthesized(p.factory.NewNumericLiteral(key.Text(), ast.TokenFlagsNone), key.Loc), key.Loc)), ctx)
 		}
-		return p.cachePatternRead(p.mPatternRead(p.mElement(base(), p.cloneIdentExpression(key), key.Loc)), ctx)
+		index := p.cloneIdentExpression(key)
+		if index == nil {
+			index = p.mString("", key.Loc)
+		}
+		return p.cachePatternRead(p.mPatternRead(p.mElement(base(), index, key.Loc)), ctx)
 	}
 }
 
@@ -1645,6 +1654,9 @@ func (p *Parser) propertyKeyTest(path matchPath, clause objectClause, at core.Te
 		left = p.vibelangSynthesized(p.factory.NewNumericLiteral(key.Text(), ast.TokenFlagsNone), key.Loc)
 	default:
 		left = p.cloneIdentExpression(key)
+		if left == nil {
+			left = p.mString("", key.Loc)
+		}
 	}
 	return p.cachePatternRead(p.mBinary(left, ast.KindInKeyword, path(), at), ctx)
 }

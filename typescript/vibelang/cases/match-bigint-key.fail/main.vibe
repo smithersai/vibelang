@@ -1,0 +1,6 @@
+// expect: EK0707
+export effect function main() {
+  const x: unknown = { a: 1 }
+  const r = match (x) { when { 1n: 1 }: "one"; default: "other"; }
+  return r
+}
