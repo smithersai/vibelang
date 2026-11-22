@@ -5,6 +5,12 @@
 # smaller than gzip on the queue's large stacks; gzip still applies, for `gh workflow run` and older senders.
 set -eu
 packed=$(mktemp)
-trap 'rm -f "$packed"' 0
+patch=$(mktemp)
+trap 'rm -f "$packed" "$patch"' 0
 base64 -d > "$packed"
-if xz -t "$packed" 2>/dev/null; then xz -dc "$packed"; else gunzip -c "$packed"; fi | git apply --whitespace=nowarn -
+if xz -t "$packed" 2>/dev/null; then
+	xz -dc "$packed" > "$patch"
+else
+	gunzip -c "$packed" > "$patch"
+fi
+git apply --whitespace=nowarn "$patch"

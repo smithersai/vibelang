@@ -4,7 +4,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { test } from "node:test"
-import { gzipSync } from "node:zlib"
+import { constants as zlibConstants, createGzip, gzipSync } from "node:zlib"
 
 // The hosted pre-gate applies a queued change from the dispatch payload, which GitHub caps at 65,535 characters. 69
 // entries in two days (2026-10-30/31) were over it with gzip and waited for one of four nyc workers; xz brings about a
@@ -65,6 +65,33 @@ test("a payload that is neither xz nor gzip fails and changes nothing", (t) => {
   const dir = checkout(t)
   const result = apply(dir, Buffer.from(diff))
   assert.notEqual(result.status, 0)
+  assert.equal(fs.readFileSync(path.join(dir, "a.txt"), "utf8"), "one\ntwo\n")
+  assert.ok(!fs.existsSync(path.join(dir, "new.txt")))
+})
+
+test("a truncated gzip payload fails and changes nothing", async (t) => {
+  const dir = checkout(t)
+  const firstFileDiff = diff.slice(0, diff.indexOf("diff --git a/new.txt"))
+  const truncated = await new Promise((resolve, reject) => {
+    const gz = createGzip()
+    const chunks = []
+    gz.on("data", (chunk) => chunks.push(chunk))
+    gz.on("error", reject)
+    gz.write(firstFileDiff)
+    gz.flush(zlibConstants.Z_SYNC_FLUSH, () => resolve(Buffer.concat(chunks)))
+  })
+  const result = apply(dir, truncated)
+  assert.notEqual(result.status, 0, "truncated gzip payload must exit non-zero")
+  assert.equal(fs.readFileSync(path.join(dir, "a.txt"), "utf8"), "one\ntwo\n")
+  assert.ok(!fs.existsSync(path.join(dir, "new.txt")))
+})
+
+test("a gzip payload with a corrupted CRC trailer fails and changes nothing", (t) => {
+  const dir = checkout(t)
+  const corrupted = Buffer.from(gzipSync(Buffer.from(diff)))
+  corrupted[corrupted.length - 8] ^= 0xff
+  const result = apply(dir, corrupted)
+  assert.notEqual(result.status, 0, "corrupted gzip CRC must exit non-zero")
   assert.equal(fs.readFileSync(path.join(dir, "a.txt"), "utf8"), "one\ntwo\n")
   assert.ok(!fs.existsSync(path.join(dir, "new.txt")))
 })
