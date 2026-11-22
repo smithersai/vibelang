@@ -109,6 +109,7 @@ type outerTypeWalk struct {
 	context          uint32
 	contexts         map[outerTypeContext]uint32
 	activeReferences map[*checker.Type]bool
+	activeAliases    map[*ast.Symbol]int
 }
 
 // find returns the first type parameter in t declared outside class, or nil.
@@ -191,6 +192,9 @@ func (w *outerTypeWalk) find(t *checker.Type) (captured *checker.Type) {
 		}
 		return w.find(c.GetBaseConstraintOfType(t))
 	case t.Flags()&checker.TypeFlagsObject != 0:
+		if len(w.objects) >= 64 {
+			return nil
+		}
 		savedContext := w.context
 		if t.Mapper() != nil || t.ObjectFlags()&checker.ObjectFlagsReference != 0 {
 			// Distinct instantiations can share a method type after native
@@ -243,6 +247,49 @@ func (w *outerTypeWalk) find(t *checker.Type) (captured *checker.Type) {
 			}
 			w.activeReferences[target] = true
 			defer delete(w.activeReferences, target)
+		}
+		if alias := t.Alias(); alias != nil && alias.Symbol() != nil {
+			symbol := alias.Symbol()
+			declaredOutside := true
+			for _, decl := range symbol.Declarations() {
+				for owner := decl.Parent; owner != nil; owner = owner.Parent {
+					if ast.IsNodeDescendantOf(w.class, owner) && (ast.IsFunctionLike(owner) || ast.IsClassLike(owner)) && len(owner.TypeParameters()) != 0 {
+						declaredOutside = false
+						break
+					}
+				}
+				if !declaredOutside {
+					break
+				}
+			}
+			if declaredOutside && len(alias.TypeArguments()) > 0 {
+				mayCapture := false
+				for _, arg := range alias.TypeArguments() {
+					if w.find(arg) != nil {
+						mayCapture = true
+						break
+					}
+				}
+				if !mayCapture {
+					return nil
+				}
+			}
+			// Bound recursive type-alias instantiations (such as fluent builders
+			// or non-regular Next<U[]>) while allowing finite nesting like Box<Box<T>>.
+			const maxAliasDepth = 8
+			if w.activeAliases[symbol] >= maxAliasDepth {
+				return nil
+			}
+			if w.activeAliases == nil {
+				w.activeAliases = map[*ast.Symbol]int{}
+			}
+			w.activeAliases[symbol]++
+			defer func() {
+				w.activeAliases[symbol]--
+				if w.activeAliases[symbol] == 0 {
+					delete(w.activeAliases, symbol)
+				}
+			}()
 		}
 		if t.ObjectFlags()&(checker.ObjectFlagsAnonymous|checker.ObjectFlagsMapped|checker.ObjectFlagsReference) == 0 {
 			return nil

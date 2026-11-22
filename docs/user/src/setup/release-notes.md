@@ -8,12 +8,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Declaring a `service` inside a generic function with a member typed by a recursive type alias (such as a fluent builder `Builder<[...T, U]>`) caused the compiler and language server to loop without terminating. Outer type-parameter checks now short-circuit concrete external aliases and bound recursive alias expansion.
 - The migration flow now binds `verify.json` to the verified working-copy commit so edits made after verification trigger re-verification, writes a pending record intent before committing so crashes or bookmark failures after `jj commit` resume cleanly, and writes JSON receipts and `config.json` atomically.
 - The Vite plugin now resolves `paths` aliases from the tsconfig or `vibe.config.json` that compiled each `.vibe` module (including referenced configs and custom `project` options) and refreshes its config and alias caches when JSON config files change without requiring a server restart.
 - Migration setup crashed with a JSON `SyntaxError` on YAML `.prettierrc` files or commented `dprint.json` files after modifying other files. Non-JSON Prettier files and commented dprint configs are now left untouched with a located warning.
 
 - Migration run-phase verification treated a crashed, missing, or nonzero-exiting compiler as an unchecked parse error and passed the gate. Compiler execution failures now fail the run-phase check instead of passing silently.
-
 - The language server dropped watched-file change and deletion events for closed `.vibe` and `.vibex` files, leaving open files with stale types and diagnostics after external edits. Watched `.vibe` and `.vibex` files now refresh just like `.ts` and `.tsx`.
 
 - Package `#imports` and `exports` targets pointing into `outDir` (such as `./out/util.js`) failed to map back to `.vibe` and `.vibex` sources on a clean build. Output-to-source extension resolution now includes `.vibe` and `.vibex` beside `.ts` and `.tsx`.
