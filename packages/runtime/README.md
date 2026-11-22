@@ -204,7 +204,6 @@ or runtime references valid in first-release `.vibe` source.
 | `callback` | Adapt a callback API with cancellation | — |
 | `customMatcher` | Shared custom pattern matcher key, installed and typed as `Symbol.customMatcher` | VIP-7, VIP-27 |
 | `detach` | Fork a program independently of the current block | — |
-| `interrupt` | Interrupt the running fiber | — |
 | `interruptible` | Run a program with interruption enabled | — |
 | `join` | The prelude's `join`: `join(x)` is the keyword `join x`, joining a fiber or collection of fibers | D391, D432 |
 | `restore` | Restore the enclosing uninterruptible region’s previous interruptibility | — |
@@ -214,7 +213,6 @@ or runtime references valid in first-release `.vibe` source.
 | `runSync` | Run a synchronous program | — |
 | `sync` | Run a TypeScript hatch; exceptions become defects | — |
 | `uninterruptible` | Run a program with interruption masked | — |
-| `yieldNow` | Yield to the scheduler | — |
 | `$bind` | Run an Effect result or lift an ordinary value during prototype call lowering | D24 |
 | `$bindMethod` | Internal compiler adapter: capture a method and receiver without reading its `bind`, `call` or `apply` properties; invoke after the arguments | VIP-2 |
 | `$propertyKey` | Internal compiler adapter: convert a computed key before a `do` where it stands, as a computed key in a literal does (`ToPropertyKey`) | VIP-2 |
@@ -247,6 +245,7 @@ or runtime references valid in first-release `.vibe` source.
 | `$forkScoped` | Fork `fork.scoped` into the current `Scope` | D47 |
 | `$forkDetach` | Fork `fork.detached` into a fiber nothing owns | D47 |
 | `fork` | Expose `Effect.forkScoped` to TypeScript and prelude type positions | D4, D19 |
+| `forkIn` | Fork a program into a given Scope | D47 |
 | `$Context` | Expose Effect's Context namespace for generated service references | D1, D40 |
 | `$service` | Create the Context key base merged with a generated service interface | D1, D45 |
 | `$reference` | Create the `Context.Reference` base of a service class that declares `static readonly default` | D40, D45 |
