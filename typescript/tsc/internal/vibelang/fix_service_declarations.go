@@ -17,7 +17,7 @@ func init() {
 
 	}
 	tsFormRules[EK4854.Code] = &tsFormRule{message: EK4854, find: findLegacyServices}
-	tsFormRules[EK4855.Code] = &tsFormRule{message: EK4855, find: findLegacyDefaults}
+	tsFormRules[EK4855.Code] = &tsFormRule{message: EK4855, find: findLegacyDefaults, check: checkLegacyDefaults}
 }
 
 // This recognizes the retired spelling only for migration; it never affects
@@ -90,6 +90,19 @@ func findLegacyDefaults(c *checker.Checker, file *ast.SourceFile, report func(*a
 	visit = func(n *ast.Node) bool {
 		if r := legacyDefaultRewrite(c, file, n); r != nil {
 			report(n, r)
+		}
+		return n.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+}
+
+func checkLegacyDefaults(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if legacyDefault(n) {
+			if _, ok := declarationWordRange(n.Parent); ok {
+				report(n, nil)
+			}
 		}
 		return n.ForEachChild(visit)
 	}

@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Fixed compiler and language server crashes on named-import `Option.match` calls, `Match` block handlers with an incomplete `return`, and `service` declarations combining `static readonly default` with a computed static member; diagnostic checks no longer compute discarded legacy rewrite plans for `EK4839`, `EK4855`, `EK4856`, and `EK4857`.
 - Declaring a `service` inside a generic function with a member typed by a recursive type alias (such as a fluent builder `Builder<[...T, U]>`) caused the compiler and language server to loop without terminating. Outer type-parameter checks now short-circuit concrete external aliases and bound recursive alias expansion.
 - The migration flow now binds `verify.json` to the verified working-copy commit so edits made after verification trigger re-verification, writes a pending record intent before committing so crashes or bookmark failures after `jj commit` resume cleanly, and writes JSON receipts and `config.json` atomically.
 - The Vite plugin now resolves `paths` aliases from the tsconfig or `vibe.config.json` that compiled each `.vibe` module (including referenced configs and custom `project` options) and refreshes its config and alias caches when JSON config files change without requiring a server restart.

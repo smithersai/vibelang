@@ -51,6 +51,7 @@ func init() {
 	tsFormRules[EK4839.Code] = &tsFormRule{
 		message: EK4839,
 		find:    findMatchChains,
+		check:   checkMatchChains,
 	}
 }
 
@@ -126,20 +127,37 @@ func matchStage(c *checker.Checker, stage *ast.Node) (*ast.Node, string) {
 	return call, name
 }
 
-// findMatchChains reports EK4839 at each Match chain or direct Option.match in file.
+// findMatchChains reports EK4839 at each Match chain or direct Option.match in file with rewrite analysis.
 func findMatchChains(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
+	scanMatchChains(c, file, true, report)
+}
+
+// checkMatchChains reports EK4839 without computing discarded rewrite plans.
+func checkMatchChains(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
+	scanMatchChains(c, file, false, report)
+}
+
+func scanMatchChains(c *checker.Checker, file *ast.SourceFile, plan bool, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		// Like a generator body, a generator in the arguments waits for EK1002.
 		if optionMatchOf(c, node) && !inGeneratorBody(node) && !holdsEffectGenerator(c, file, node) {
-			report(node, optionMatchRewrite(c, file, node), "Option.match", shortText(expressionText(file, node.Arguments()[0]), "value"), "Option's match API")
+			var rewrite *formRewrite
+			if plan {
+				rewrite = optionMatchRewrite(c, file, node)
+			}
+			report(node, rewrite, "Option.match", shortText(expressionText(file, node.Arguments()[0]), "value"), "Option's match API")
 		}
 		if chain := matchChainOf(c, node); chain != nil && !inGeneratorBody(node) {
 			subject := "value"
 			if chain.subject != nil {
 				subject = shortText(expressionText(file, chain.subject), "…")
 			}
-			report(node, matchChainRewrite(c, file, node), shortText(expressionText(file, chain.start), core.IfElse(chain.subject != nil, "Match.value(…)", "Match.type<…>()")), subject, "Effect's Match functions")
+			var rewrite *formRewrite
+			if plan {
+				rewrite = matchChainRewrite(c, file, node)
+			}
+			report(node, rewrite, shortText(expressionText(file, chain.start), core.IfElse(chain.subject != nil, "Match.value(…)", "Match.type<…>()")), subject, "Effect's Match functions")
 		}
 		return node.ForEachChild(visit)
 	}
@@ -891,6 +909,9 @@ func matchHandlerArm(c *checker.Checker, a *analyzer, file *ast.SourceFile, hand
 		value = last.Expression()
 		src := file.Text()
 		valueText := expressionText(file, value)
+		if ast.NodeIsMissing(value) || valueText == "" {
+			return matchArm{}, label + " has no return value"
+		}
 		if strings.HasPrefix(valueText, "{") || strings.HasPrefix(valueText, "function") || strings.HasPrefix(valueText, "class") {
 			valueText = "(" + valueText + ")"
 		}
