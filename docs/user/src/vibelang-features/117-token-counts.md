@@ -17,9 +17,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,570 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,953 |
-| The skill and the user guide (149 pages) | 620,000 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,722 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 18,121 |
+| The skill and the user guide (149 pages) | 630,000 |
 | The user guide alone | 620,000 |
 | The specification (11 chapters) | 280,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
@@ -87,7 +87,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| **Start Here** | **5,700** |
+| **Start Here** | **5,800** |
 | [Welcome](../001-onboarding.md) | 2,100 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 2,000 |
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,700 |
@@ -149,7 +149,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Error Management** | **26,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 14,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,800 |
-| [Fallback](../error-management/016-fallback.md) | 2,700 |
+| [Fallback](../error-management/016-fallback.md) | 2,800 |
 | [Matching](../error-management/017-matching.md) | 790 |
 | [Retrying](../error-management/018-retrying.md) | 780 |
 | [Timing Out](../error-management/019-timing-out.md) | 830 |
@@ -270,7 +270,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Handlers (open proposal, not in the alpha)](111-control-operations-and-handlers.md) | 160 |
-| [Producers](112-producers.md) | 4,700 |
+| [Producers](112-producers.md) | 4,800 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 14,000 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
@@ -296,7 +296,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Introduction](../../../design/src/000-intro.md) | 3,200 |
 | **The language** | **130,000** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 14,000 |
-| [2. Running Effects](../../../design/src/002-running.md) | 29,000 |
+| [2. Running Effects](../../../design/src/002-running.md) | 30,000 |
 | [3. Failures](../../../design/src/003-failures.md) | 11,000 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 24,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 15,000 |

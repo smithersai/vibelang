@@ -239,6 +239,10 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The API comparison command could load a TypeScript compiler installed with an input package and fail on unchanged declarations. It now uses the pinned compiler unless another compiler is explicitly requested.
 
+- `EK0401`, for a `throw` or a call known to throw in a plain function or at the top level, told you to move the code to a `.ts` file. Its message now offers the `module` block, TypeScript kept inside the `.vibe` file with `@throws` on the function, and `EK0406`'s note names the `module` block beside a `.ts` file.
+
+- The guidance for a plain function that throws (`EK0401`) told readers and coding agents to move the code to a `.ts` file, so converted projects kept throwing code out of VibeLang. The skill, the specification and these docs now say to keep the code in a `module` block inside the `.vibe` file, with `@throws {T}` on each function that throws, and to use a separate `.ts` file only where a tool must start the file by path.
+
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
 - A migration could report unchanged namespace member documentation as changed when a public binding used `infer`. The API check now keeps those comments on their public members and still detects edited documentation.
@@ -248,6 +252,10 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - The compiler reference said flow analysis skipped arguments passed as programs. It now describes argument traversal and nested function boundaries accurately.
 
 - Wildcard private imports could name the wrong module or remain in compiled JavaScript and declarations. Emission now follows the most specific matching route, rejects empty wildcard matches, and substitutes every target wildcard.
+
+- A statement starting with `(`, `[`, a template literal, `+` or `-` on the line after a block-bodied `catch` arrow could be swallowed and reported as `EK0512`. It now starts a separate statement, for both plain and `effect` handlers.
+
+- The migration's API identity check refused an unchanged package whose enum had helper functions in a namespace or was declared more than once, reporting `TS2451`. These declarations now compare identical, while changed enum values and helper types still differ.
 
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
 
