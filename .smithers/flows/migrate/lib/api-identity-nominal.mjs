@@ -235,7 +235,18 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
           const members = node.members.map(member => {
             const visibility = member.modifiers?.find(m => m.kind === ts.SyntaxKind.PrivateKeyword || m.kind === ts.SyntaxKind.ProtectedKeyword)
             const privateName = member.name && ts.isPrivateIdentifier(member.name)
-            if ((!visibility && !privateName) || ts.isConstructorDeclaration(member)) return ts.visitEachChild(member, visit, context)
+            if (ts.isConstructorDeclaration(member)) {
+              const transformedCtor = ts.visitEachChild(member, visit, context)
+              if (!visibility || visibilityMarkers.has("constructor")) return transformedCtor
+              changed = true
+              visibilityMarkers.add("constructor")
+              const marker = factory.createPropertyDeclaration(
+                [...declared, factory.createModifier(ts.SyntaxKind.StaticKeyword), factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)],
+                factory.createStringLiteral("__api_visibility_constructor"), undefined,
+                factory.createLiteralTypeNode(factory.createStringLiteral(ts.tokenToString(visibility.kind))), undefined)
+              return [transformedCtor, marker]
+            }
+            if (!visibility && !privateName) return ts.visitEachChild(member, visit, context)
             changed = true
             const copy = factory.cloneNode(member)
             copy.modifiers = factory.createNodeArray((member.modifiers ?? []).filter(m => m !== visibility))
@@ -294,6 +305,10 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
               [factory.createModifier(ts.SyntaxKind.ExportKeyword)], member.name.text, undefined, type), member))), ts.NodeFlags.Namespace)
           const properties = entries.map(({member}) => factory.createPropertySignature(
             [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], member.name, undefined, qualified(member)))
+          if (node.modifiers?.some(m => m.kind === ts.SyntaxKind.ConstKeyword)) properties.push(factory.createPropertySignature(
+            [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)],
+            factory.createStringLiteral("__api_const_enum"), undefined,
+            factory.createLiteralTypeNode(factory.createTrue())))
           const enumSymbol = checker.getSymbolAtLocation(node.name)
           const enumType = checker.getTypeOfSymbolAtLocation(enumSymbol, node.name)
           for (const index of checker.getIndexInfosOfType(enumType)) properties.push(factory.createIndexSignature(
