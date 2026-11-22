@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Migration test verification could accept a candidate run that produced no per-test report when the baseline already exited nonzero, or accept a previously passing test that became skipped. Both now fail verification.
+
 - The `vibelang-runtime` README listed `interrupt` and `yieldNow` as root exports even though neither exists, and omitted `forkIn`. The root exports table now matches the package exports.
 
 - `catch` did not recover a typed failure when its cause also carried an interruption with a negative interruptor id, such as internal interruptions from Effect's `FiberSet`, `FiberMap`, or `FiberHandle`. Abandonment sentinels are now identified by a private annotation instead of the sign of the fiber id.

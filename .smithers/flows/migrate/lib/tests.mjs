@@ -181,19 +181,41 @@ function sourceTitleKey(renames) {
  * matched by stableName.
  */
 export function compareTests(baseline, current, { renames = [] } = {}) {
-  if (!baseline.tests || !current.tests) {
+  if (!baseline.tests && !current.tests) {
     const regressed = baseline.code === 0 && current.code !== 0
-    return { ok: !regressed, newFailures: regressed ? ["(exit status)"] : [], missing: [], fixed: [] }
+    return { ok: !regressed, newFailures: regressed ? ["(exit status)"] : [], missing: [], skipped: [], fixed: [] }
+  }
+  if (baseline.tests && !current.tests) {
+    const before = comparableTests(baseline.tests, { renames })
+    const hasBaselineTests = Object.keys(before).length > 0
+    const missing = Object.keys(before).filter((n) => before[n] === "passed").sort()
+    const regressed = baseline.code === 0 && current.code !== 0
+    const newFailures = regressed || (hasBaselineTests && !missing.length && current.code !== 0) ? ["(exit status)"] : []
+    return { ok: !hasBaselineTests && !regressed, newFailures, missing, skipped: [], fixed: [] }
+  }
+  if (!baseline.tests && current.tests) {
+    const after = comparableTests(current.tests, { renames })
+    const newFailures = Object.keys(after).filter((n) => after[n] === "failed").sort()
+    if (!newFailures.length && baseline.code === 0 && current.code !== 0) newFailures.push("(exit status)")
+    return { ok: !newFailures.length, newFailures, missing: [], skipped: [], fixed: [] }
   }
   const before = comparableTests(baseline.tests, { renames })
   const after = comparableTests(current.tests, { renames })
   const newFailures = Object.keys(after).filter((n) => after[n] === "failed" && before[n] !== "failed").sort()
   const missing = Object.keys(before).filter((n) => before[n] === "passed" && !(n in after)).sort()
+  const skipped = Object.keys(before).filter((n) => before[n] === "passed" && n in after && after[n] !== "passed" && after[n] !== "failed").sort()
   const fixed = Object.keys(before).filter((n) => before[n] === "failed" && after[n] === "passed").sort()
-  // Every test passing does not make a run that now exits nonzero, such as
-  // one an unhandled error fails, a pass.
-  if (!newFailures.length && !missing.length && baseline.code === 0 && current.code !== 0) newFailures.push("(exit status)")
-  return { ok: !newFailures.length && !missing.length, newFailures, missing, fixed }
+  const beforeFailed = Object.keys(before).filter((n) => before[n] === "failed")
+  const afterFailed = Object.keys(after).filter((n) => after[n] === "failed")
+  // Every test passing does not make a run that now exits nonzero (such as one
+  // an unhandled error fails) a pass, including when the baseline's nonzero exit
+  // was explained by named failures that are now gone.
+  const unexplainedExit = current.code !== 0 && (baseline.code === 0 || (beforeFailed.length > 0 && afterFailed.length === 0))
+  if (!newFailures.length && !missing.length && !skipped.length && unexplainedExit) newFailures.push("(exit status)")
+  if (Object.keys(before).length > 0 && Object.keys(after).length === 0 && !newFailures.length && !missing.length && !skipped.length) {
+    newFailures.push("(missing test report)")
+  }
+  return { ok: !newFailures.length && !missing.length && !skipped.length, newFailures, missing, skipped, fixed }
 }
 
 /**
@@ -204,8 +226,9 @@ export function compareTests(baseline, current, { renames = [] } = {}) {
  */
 export function regressionIssue({ change, command, cwd, changed, before, after, comparison, logs }) {
   if (comparison.ok) return null
-  const perTest = Boolean(before.tests && after.tests)
-  const count = comparison.newFailures.length + comparison.missing.length
+  const skipped = comparison.skipped ?? []
+  const perTest = Boolean(before.tests && (after.tests || comparison.missing.length))
+  const count = comparison.newFailures.length + comparison.missing.length + skipped.length
   return {
     kind: "issue",
     batch: "setup",
@@ -213,7 +236,11 @@ export function regressionIssue({ change, command, cwd, changed, before, after, 
     repro: `${command} (in ${cwd}), before and after ${changed.length ? changed.join(", ") : "the change"}; logs ${logs.before} and ${logs.after}`,
     expected: "the target's tests pass as they did before the change",
     actual: perTest
-      ? [...comparison.newFailures.map((n) => `fails: ${n}`), ...comparison.missing.map((n) => `missing: ${n}`)].join("; ")
+      ? [
+          ...comparison.newFailures.map((n) => `fails: ${n}`),
+          ...comparison.missing.map((n) => `missing: ${n}`),
+          ...skipped.map((n) => `skipped: ${n}`)
+        ].join("; ")
       : `exit ${before.code} before, exit ${after.code} after; the runner reports no per-test results`
   }
 }

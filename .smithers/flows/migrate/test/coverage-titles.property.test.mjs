@@ -6,7 +6,7 @@ import { comparableTests, compareTests } from "../lib/tests.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-mobile-coverage-titles.json", import.meta.url)))
-const clean = { ok: true, newFailures: [], missing: [], fixed: [] }
+const clean = { ok: true, newFailures: [], missing: [], skipped: [], fixed: [] }
 const prefix = "apps/mobile/src/reactCompilerCoverage.test > React Compiler coverage compiles "
 const receipt = tests => ({ code: 0, tests })
 

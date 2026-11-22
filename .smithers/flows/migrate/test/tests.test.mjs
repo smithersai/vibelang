@@ -33,8 +33,8 @@ test("tests that share a name in one file keep one entry each", () => {
 
 test("compareTests finds new failures and missing tests, and ignores failures the baseline had", () => {
   const baseline = { code: 1, tests: { "a > x": "passed", "a > y": "failed", "a > z": "passed" } }
-  assert.deepEqual(compareTests(baseline, { code: 1, tests: { "a > x": "passed", "a > y": "failed", "a > z": "passed" } }), { ok: true, newFailures: [], missing: [], fixed: [] })
-  assert.deepEqual(compareTests(baseline, { code: 1, tests: { "a > x": "failed", "a > y": "passed" } }), { ok: false, newFailures: ["a > x"], missing: ["a > z"], fixed: ["a > y"] })
+  assert.deepEqual(compareTests(baseline, { code: 1, tests: { "a > x": "passed", "a > y": "failed", "a > z": "passed" } }), { ok: true, newFailures: [], missing: [], skipped: [], fixed: [] })
+  assert.deepEqual(compareTests(baseline, { code: 1, tests: { "a > x": "failed", "a > y": "passed" } }), { ok: false, newFailures: ["a > x"], missing: ["a > z"], skipped: [], fixed: ["a > y"] })
 })
 
 test("without per-test results, only the exit status can regress", () => {
@@ -152,7 +152,7 @@ test("a Vitest run that writes no report is not read from the previous run's rep
     const current = await run(1, false)
     assert.equal(current.code, 1)
     assert.equal(current.tests, null)
-    assert.deepEqual(compareTests(baseline, current), { ok: false, newFailures: ["(exit status)"], missing: [], fixed: [] })
+    assert.deepEqual(compareTests(baseline, current), { ok: false, newFailures: ["(exit status)"], missing: ["a.test > a works"], skipped: [], fixed: [] })
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -167,10 +167,33 @@ test("a passing report from a run that exits nonzero, after a baseline that exit
     // Every test passes, then an unhandled error fails the run.
     const current = await run(1, true)
     assert.deepEqual(current.tests, baseline.tests)
-    assert.deepEqual(compareTests(baseline, current), { ok: false, newFailures: ["(exit status)"], missing: [], fixed: [] })
+    assert.deepEqual(compareTests(baseline, current), { ok: false, newFailures: ["(exit status)"], missing: [], skipped: [], fixed: [] })
     // A baseline that already exited nonzero keeps comparing test by test.
     assert.equal(compareTests(current, current).ok, true)
   } finally {
     rmSync(root, { recursive: true, force: true })
+  }
+})
+
+
+test("a candidate with no per-test report fails even when the baseline already exited nonzero", () => {
+  const baseline = { code: 1, tests: { "a > one": "passed", "a > two": "passed", "b > old": "failed" } }
+  const result = compareTests(baseline, { code: 1, tests: null })
+  assert.equal(result.ok, false)
+  assert.deepEqual(result.missing, ["a > one", "a > two"])
+  // Even with no passing tests in the baseline, losing the report fails.
+  const allFailedBaseline = { code: 1, tests: { "b > old": "failed" } }
+  assert.equal(compareTests(allFailedBaseline, { code: 1, tests: null }).ok, false)
+  // Fixing the baseline failure while still exiting nonzero is an unexplained exit failure.
+  const unexplained = compareTests(baseline, { code: 1, tests: { "a > one": "passed", "a > two": "passed", "b > old": "passed" } })
+  assert.equal(unexplained.ok, false)
+  assert.deepEqual(unexplained.newFailures, ["(exit status)"])
+})
+
+test("a passing baseline test that becomes skipped, pending or todo fails the per-batch test gate", () => {
+  for (const status of ["skipped", "pending", "todo"]) {
+    const result = compareTests({ code: 0, tests: { "a > one": "passed" } }, { code: 0, tests: { "a > one": status } })
+    assert.equal(result.ok, false, `status ${status} must fail`)
+    assert.deepEqual(result.skipped, ["a > one"])
   }
 })
