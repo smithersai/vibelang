@@ -86,9 +86,9 @@ provide(x)                         a call to provide: no "{" on the same line
 
 ### Contextual keywords
 
-<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four, written once as the production [DeclarationStart](#declarationstart) and its five start productions under [Productions](#productions).
+<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. [DeclarationStart](#declarationstart) has seven alternatives. The experimental `task` and `workflow` starts also require a same-line binding name, with the extra lookahead restriction shown below.
 
-Where a TypeScript declaration can start (a `StatementListItem`, or after `export`), a `DeclarationStart` begins that declaration, longest alternative first. Anything else is ordinary TypeScript, where the word is an identifier: `const error = …`, `catch (error)`, `const e = error as Error`, `return data as User[]`, `const ok = schema satisfies Schema.Top` and `error instanceof NotFound;` (a reserved word is not a `BindingIdentifier`). After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration: a body's `{` and a `schema` alias's `=` may follow line breaks. The one production-specific rule is the bodyless `error` and `schema error` form, under [ErrorDeclaration](#errordeclaration). No other line-break or disambiguation rule applies to these four words. For diagnostic recovery, a recognized service header missing its body is `EK0906`, an ordinary schema header missing its required body or admitted alias form is `EK1503`, and a data header missing its variant body is `EK1604`. A custom `service` in a native TypeScript ambient source context is `EK0907`, before the same missing-body recovery. Ambientness may be explicit or inherited through nested `declare namespace`, ambient external `declare module`, `declare global` or native declaration-file contexts where the source syntax otherwise occurs; neither `export` nor a complete body, key or default creates an ambient-service form. Ordinary native ambient declarations and generated `.d.ts` output keep their native rules. Recovery does not admit another declaration form or change contextual keyword classification, native TypeScript ambient declarations, independent type-parameter/member checks, or the admitted bodyless error forms.
+Where a TypeScript declaration can start (a `StatementListItem`, or after `export`), a `DeclarationStart` begins that declaration, longest alternative first. Anything else is ordinary TypeScript, where the word is an identifier: `const error = …`, `catch (error)`, `const e = error as Error`, `return data as User[]`, `const ok = schema satisfies Schema.Top` and `error instanceof NotFound;` (a reserved word is not a `BindingIdentifier`). After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration: a body's `{` and a `schema` alias's `=` may follow line breaks. The one production-specific rule is the bodyless `error` and `schema error` form, under [ErrorDeclaration](#errordeclaration). For `task` and `workflow`, `as`, `satisfies` and `is` after the keyword keep their expression meaning. For diagnostic recovery, a recognized service header missing its body is `EK0906`, an ordinary schema header missing its required body or admitted alias form is `EK1503`, and a data header missing its variant body is `EK1604`. A custom `service` in a native TypeScript ambient source context is `EK0907`, before the same missing-body recovery. Ambientness may be explicit or inherited through nested `declare namespace`, ambient external `declare module`, `declare global` or native declaration-file contexts where the source syntax otherwise occurs; neither `export` nor a complete body, key or default creates an ambient-service form. Ordinary native ambient declarations and generated `.d.ts` output keep their native rules. Recovery does not admit another declaration form or change contextual keyword classification, native TypeScript ambient declarations, independent type-parameter/member checks, or the admitted bodyless error forms.
 
 ```text
 service Users                 one service: the body follows the name, as a class body does
@@ -109,11 +109,23 @@ error                         an expression statement: no name on the line
 Timeout                       then another
 ```
 
+The durable declaration lookahead leaves these expression forms available at a statement start:
+
+```vibe es
+const task = 1
+const workflow = 2
+type Job = number
+task as Job;
+workflow satisfies Job;
+task is 1;
+```
+
 **Other contextual keywords.** Each word below is a keyword only before the tokens listed, on the same line, and an ordinary identifier everywhere else. Each is tested wherever its production can appear.
 
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
 | `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](#effectaccessor)), as TypeScript parses `async get x()`; on an `interface` or type literal member: a member name or `[`, where TypeScript parses an `async` modifier and reports TS1070 or TS1071, so that `EK0108` reports it; at a statement start, a name other than `as`, `satisfies` or `is`, then `(` or `<` ([EffectShorthand](#effectshorthand)); `{` in an expression position only, so in a heritage clause (`class C extends effect { }`, `class C implements effect { }`, `interface I extends A, effect { }`) `effect` is an identifier and `{` starts the body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](#effectmodifier), so `EK0105` reports them | [Functions](001-functions.md) |
+| `task`, `workflow` | at a declaration start, a same-line binding identifier other than `as`, `satisfies` or `is` | [Services](005-services.md#task-and-workflow-declarations) |
 | `concurrent` | after `for` (line break allowed), then `(` | [Running Effects](002-running.md#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](002-running.md#interruption-blocks) |
 | `provide` | at a statement start when a valid [ProvideStatement](#providestatement) head parses, or bounded recovery relaxes only line breaks immediately before/after top-level provider commas; the ordinary provider grammar, no break after `provide` and same-line final `{` still apply; otherwise an identifier | [Services](005-services.md#provide-blocks) |
@@ -206,7 +218,7 @@ EffectMethod = EffectClassMethod | EffectObjectMethod
 #### EffectClassMethod
 
 ```text
-EffectClassMethod = DecoratorList? Modifiers? EffectModifier [no LineTerminator here] ClassElementName TypeParameters? Params ReturnType? (Block | ";")   (TypeScript class methods and overload signatures, including semicolon insertion)
+EffectClassMethod = DecoratorList? Modifiers? EffectModifier [no LineTerminator here] ClassElementName "?"? TypeParameters? Params ReturnType? (Block | ";")   (TypeScript class methods and overload signatures, including semicolon insertion)
 ```
 
 #### EffectObjectMethod
@@ -302,7 +314,7 @@ ArrowParams = "(" FormalParameters ")"   (TypeScript's parenthesized async-arrow
 #### Modifiers
 
 ```text
-Modifiers = the class-member modifiers TypeScript allows before async (static, public, private, protected, override)
+Modifiers = the class-member modifiers TypeScript allows before async (static, public, private, protected, override), plus abstract for EK0108 recovery
 ```
 
 #### PipeExpression
@@ -635,13 +647,13 @@ The durable declarations below, from TaskStart to OptionMember, are experimental
 #### TaskStart
 
 ```text
-TaskStart        = "task"     [no LineTerminator here] BindingIdentifier
+TaskStart        = "task"     [no LineTerminator here] [lookahead ∉ { as, satisfies, is }] BindingIdentifier
 ```
 
 #### WorkflowStart
 
 ```text
-WorkflowStart    = "workflow" [no LineTerminator here] BindingIdentifier
+WorkflowStart    = "workflow" [no LineTerminator here] [lookahead ∉ { as, satisfies, is }] BindingIdentifier
 ```
 
 #### TaskDeclaration
@@ -756,8 +768,20 @@ Two members or fields with no `Separator` between them are a VibeLang syntax err
 #### SchemaDeclaration
 
 ```text
-SchemaDeclaration = SchemaStart "{" Field* "}"
+SchemaDeclaration = SchemaStart TypeParameters? "{" SchemaMember* "}"
                   | SchemaStart "=" Type
+```
+
+#### SchemaMember
+
+```text
+SchemaMember = Field | RejectedSchemaMember
+```
+
+#### RejectedSchemaMember
+
+```text
+RejectedSchemaMember = a TypeScript type member that is not a Field   (parses, then EK1505 rejects it)
 ```
 
 #### DataDeclaration
@@ -769,7 +793,13 @@ DataDeclaration = DataStart TypeParameters? "{" (Variant (Separator Variant)* Se
 #### Variant
 
 ```text
-Variant = IdentifierName ("{" Field* "}")?   (a "{" after the name is its field body, after any line breaks: the LineTerminator alternative of Separator does not apply before "{")
+Variant = IdentifierName ("{" Field* "}" | RejectedVariantPayload)?   (a "{" after the name is its field body, after any line breaks: the LineTerminator alternative of Separator does not apply before "{")
+```
+
+#### RejectedVariantPayload
+
+```text
+RejectedVariantPayload = a parenthesized payload after a variant name   (parses for EK1606 recovery)
 ```
 
 #### MatchExpression
@@ -950,7 +980,7 @@ schema User { role:             one field, role: "admin" | "user"
 
 A variant's `{` may follow a line break, as an error body's may; a line break before `{` is not a separator, so `data D { A` then `{ x: string } }` gives `A` the field `x`. `readonly` is allowed on any field; `error` and `data` fields are readonly either way. `data Empty {}` has no variants; it is an empty `Data.TaggedEnum`.
 
-**Declarations.** `ClassHeritage` is TypeScript's class heritage, `extends` and `implements` clauses. `ServiceDeclaration`, `ErrorDeclaration` and `SchemaErrorDeclaration` are deliberately wider than the language, so `service Repo<T> { }`, `service S extends Base { }`, `error E<T> { }` and `error E { static x = 1 }` reach the coded static rules of [Failures](003-failures.md#error-declarations) and [Services](005-services.md#static-rules) instead of a generic syntax error. The alternatives don't overlap: a member that parses as a `Field`, `PropertySignature`, `MethodSignature`, `KeyMember` or `DefaultMember` is that member, never a rejected one, so `service S { a: number, b: string }` uses interface separators. `ClassMethod` includes ordinary TypeScript method overloads, getters and setters, with their class modifiers and decorator checks. A getter is accepted and the setter rule rejects a setter; a constructor parses as `RejectedElement` but gets the specific constructor diagnostic before the catch-all row. `EffectMethod` and `ProducerMethod` start with `effect` and a name, which no ordinary `ClassMethod` does (`effect() { }` is a method named `effect`). A `ClassMethod`, `EffectMethod` or `ProducerMethod` in an error body follows TypeScript's class-method checks (`private m()`, `protected`, `override`), as any class can (VIP-13); a `static` one is rejected by the `static` rule. A member gets one diagnostic: the first row of its chapter's table that names it; the `RejectedElement` or `RejectedMember` row applies only when no other row does, and a member that a [Functions](001-functions.md) `effect` rule rejects (`effect get`, `effect set`, `effect constructor`) gets the applicable Functions diagnostics, with no extra error-body category diagnostic.
+**Declarations.** `ClassHeritage` is TypeScript's class heritage, `extends` and `implements` clauses. `ServiceDeclaration`, `ErrorDeclaration` and `SchemaErrorDeclaration` are deliberately wider than the language, so `service Repo<T> { }`, `service S extends Base { }`, `error E<T> { }` and `error E { static x = 1 }` reach the coded static rules of [Failures](003-failures.md#error-declarations) and [Services](005-services.md#static-rules) instead of a generic syntax error. Grammar recovery also admits type parameters on a schema declaration with a field body and non-field members within that body for `EK1502` and `EK1505`, a parenthesized variant payload for `EK1606`, and an `abstract` effect method for `EK0108`. The alternatives don't overlap: a member that parses as a `Field`, `PropertySignature`, `MethodSignature`, `KeyMember` or `DefaultMember` is that member, never a rejected one, so `service S { a: number, b: string }` uses interface separators. `ClassMethod` includes ordinary TypeScript method overloads, getters and setters, with their class modifiers and decorator checks. A getter is accepted and the setter rule rejects a setter; a constructor parses as `RejectedElement` but gets the specific constructor diagnostic before the catch-all row. `EffectMethod` and `ProducerMethod` start with `effect` and a name, which no ordinary `ClassMethod` does (`effect() { }` is a method named `effect`). A `ClassMethod`, `EffectMethod` or `ProducerMethod` in an error body follows TypeScript's class-method checks (`private m()`, `protected`, `override`), as any class can (VIP-13); a `static` one is rejected by the `static` rule. A member gets one diagnostic: the first row of its chapter's table that names it; the `RejectedElement` or `RejectedMember` row applies only when no other row does, and a member that a [Functions](001-functions.md) `effect` rule rejects (`effect get`, `effect set`, `effect constructor`) gets the applicable Functions diagnostics, with no extra error-body category diagnostic.
 
 ```text
 error E { id: string }            a Field
@@ -2172,7 +2202,7 @@ The old `EK9210` is retired and will never be reassigned: the first-release cont
 
 The old `EK0511` is retired and will never be reassigned: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`.
 
-Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). VibeLang's own rules take one hundred-block per VIP, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (VIP-34, amended). Imported lint rules use the growing `EK38` decimal suffix below (VIP-34, amended). A code assigned before that scheme is kept where its rule is unchanged, or only widened or downgraded: `EK0801`, `EK1010`, `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610`, `EK4701` and `EK4802`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; a row starting "suggestion" is an editor suggestion; an interim row starting "off by default" is a disabled warning. Other VibeLang rows are errors; the imported table gives each lint rule’s explicit default. Only a warning's code, or an `EK38xx` code, may appear in `vibe.severities` (VIP-30, amended): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Reused numbers: `EK2001` to `EK2005`, `EK2102` to `EK2104`, `EK3006`, `EK3007` and `EK3201` previously named different rules in the [old language’s diagnostic table](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/428-part4-ch28-tooling.md); in this table they mean only the rows below. The old `EK3008` is retired and will never be reassigned: its static service-key rule uses `EK0901`. VibeLang's own syntax errors have codes too, each in its VIP's block (`EK0509`, `EK1906`, `EK2005`, …). TypeScript's own diagnostics keep their `TS` codes. Diagnostic ownership follows the source rule, not the parser helper: new VibeLang productions, placement rules, adopted proposal early errors and explicit reconciliations use their owning VIP's `EK` code. Imported proposal syntax is not ordinary native TypeScript syntax. Independent errors in native embedded expressions and types keep their native diagnostics. Each Effect language-service rule that VIP-38 imports (`effecttsgo/*`) gets one stable `EK38xx` code, listed in a table generated from the pinned effect-tsgo version; the CLI prints the code and the rule name (`EK3801 floatingEffect: …`), a VIP-32 bump regenerates the table, and a code never changes once assigned. Every `EK38xx` code is a lint code that `vibe.severities` may set to any value, `"off"` included (VIP-38, amended). The [Imported lint codes](#imported-lint-codes) table below is generated from that pin.
+Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). VibeLang's own rules take one hundred-block per VIP, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (VIP-34, amended). Imported lint rules use the growing `EK38` decimal suffix below (VIP-34, amended). A code assigned before that scheme is kept where its rule is unchanged, or only widened or downgraded: `EK0801`, `EK1010`, `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610`, `EK4701` and `EK4802`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; a row starting "suggestion" is an editor suggestion; an interim row starting "off by default" is a disabled warning. Other VibeLang rows are errors; the imported table gives each lint rule’s explicit default. Under VIP-30 as amended, `vibe.severities` accepts configurable VibeLang warnings and assigned imported lint codes. It rejects every interim code in the [transitional table](#transitional-compiler-diagnostics): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Reused numbers: `EK2001` to `EK2005`, `EK2102` to `EK2104`, `EK3006`, `EK3007` and `EK3201` previously named different rules in the [old language’s diagnostic table](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/428-part4-ch28-tooling.md); in this table they mean only the rows below. The old `EK3008` is retired and will never be reassigned: its static service-key rule uses `EK0901`. VibeLang's own syntax errors have codes too, each in its VIP's block (`EK0509`, `EK1906`, `EK2005`, …). TypeScript's own diagnostics keep their `TS` codes. Diagnostic ownership follows the source rule, not the parser helper: new VibeLang productions, placement rules, adopted proposal early errors and explicit reconciliations use their owning VIP's `EK` code. Imported proposal syntax is not ordinary native TypeScript syntax. Independent errors in native embedded expressions and types keep their native diagnostics. Each Effect language-service rule that VIP-38 imports (`effecttsgo/*`) gets one stable `EK38xx` code, listed in a table generated from the pinned effect-tsgo version; the CLI prints the code and the rule name (`EK3801 floatingEffect: …`), a VIP-32 bump regenerates the table, and a code never changes once assigned. Every `EK38xx` code is a lint code that `vibe.severities` may set to any value, `"off"` included (VIP-38, amended). The [Imported lint codes](#imported-lint-codes) table below is generated from that pin.
 
 The rows below that cite VIP-55 belong to the experimental durable declarations of the open proposal [VIP-55](../vips/0055-durable-tasks-workflows.md); they are not part of the language.
 
@@ -2303,7 +2333,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK3003` | `new` on a service | 9 | [Services](005-services.md#static-rules) |
 | `EK3004` | `instanceof` a service, or a class pattern naming any `service` declaration, with or without `defaultValue` | 7, 9 | [Services](005-services.md#static-rules) |
 | `EK3005` | a generic service, or a service whose resolved member contracts capture an outer type parameter | 9 | [Services](005-services.md#static-rules) |
-| `EK3006` | an error code, an interim `EK92xx` code (even one printed as a warning) or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](007-tooling.md) |
+| `EK3006` | an error code, any interim code in the transitional table (including warnings) or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](007-tooling.md) |
 | `EK3007` | an unknown `vibe` key, or a `vibe` value of the wrong type other than a `severities` entry (`EK3006`), including a `severities` value that is not an object | 30 | [Configuration and tooling](007-tooling.md#config-files) |
 | `EK3009` | warning: root `vibelang.diagnostics` or `compilerOptions.vibelang.diagnostics` in any supported config or extended config needs migration; supported legacy settings still apply, and modern entries win | 30 | [Legacy severity maps](007-tooling.md#legacy-severity-maps) |
 | `EK3010` | warning: retired `trustedPackages` is ignored in `vibe` and supported legacy sections; remove the key and use the ordinary foreign-callable contract | 4, 30 | [Configuration](007-tooling.md#config-files) |
@@ -2377,7 +2407,7 @@ Trailing blocks are rejected by [VIP-11](../vips/0011-trailing-blocks-denied.md#
 
 The legacy bare prelude `Scope` type and same-named module-export shorthand have no diagnostic while the transitional compiler accepts them. Their [migration](007-tooling.md#legacy-prelude-shorthand) writes `Scope.Scope`, `Option.Option<A>` and `FileSystem.FileSystem.of(impl)`. Coordinated removal follows zero remaining migration-repository uses; afterwards the equivalent namespace imports report native `TS2709` for namespace-as-type uses and `TS2339` for absent namespace members. This compatibility allocates no `EK` code.
 
-A transitional compiler may still print compatibility diagnostics from the old language. The following inventory covers the `EK92xx` codes in its [registry](../../../typescript/tsc/internal/vibelang/diagnostics.go), separately from the normative rules above: an interim code does not establish a language rule or reserve a new VIP block. Their retirement follows the named VIPs; a compiler renumbering must update this inventory with the registry.
+A transitional compiler may still print compatibility diagnostics from the old language. The following inventory covers interim codes across all number ranges in its [registry](../../../typescript/tsc/internal/vibelang/diagnostics.go), separately from the normative rules above: an interim code does not establish a language rule or reserve a new VIP block. Their retirement follows the named VIPs; a compiler renumbering must update this inventory with the registry.
 
 | Emitted code | Rule | Retirement VIP | Replacement |
 | --- | --- | --- | --- |
@@ -2445,7 +2475,7 @@ A transitional compiler may still print compatibility diagnostics from the old l
 | interim `EK4809` | warning: legacy compiler compatibility — every service member requires the same service. The imported leaking-requirements lint has its assigned identity. Replay [example: main.vibe:75:9; error](../../../typescript/vibelang/cases/lsrules.fail/main.vibe). | 9, 38 | [Rule chapter](007-tooling.md) |
 | interim `EK4810` | warning: legacy compiler compatibility — an assertion removes part of an Effect's error or requirement channel. Keep the complete checked channel; imported unsafe-assertion lint has its own identity. Replay [example: main.vibe:82:10; error](../../../typescript/vibelang/cases/lsrules.fail/main.vibe). | 38 | [Rule chapter](007-tooling.md) |
 | interim `EK4811` | off by default (warning when enabled): legacy compiler compatibility — `any` or `unknown` enters an Effect channel. Legacy optional port of the imported error-context rule; default off. Replay [example: main.vibe:87:9; error](../../../typescript/vibelang/cases/lsrules.fail/main.vibe). | 38 | [Rule chapter](007-tooling.md) |
-| interim `EK4814` | warning: legacy compiler compatibility — a `Schema` class overrides its constructor. Decoding invokes the override. Imported schema-constructor lint has its own identity. Replay [example: main.vibe:101:3](../../../typescript/vibelang/cases/lsrules.fail/main.vibe). | 38 | [Rule chapter](007-tooling.md) |
+| interim `EK4814` | warning: legacy compiler compatibility — a `Schema` class overrides its constructor. Decoding invokes the override. Move work intended only for explicit construction to a factory function. This interim warning cannot appear in `vibe.severities`. The imported counterpart is `EK3883`. Replay [example: main.vibe:101:3](../../../typescript/vibelang/cases/lsrules.fail/main.vibe). | 38 | [Rule chapter](007-tooling.md) |
 | interim `EK4815` | warning: legacy compiler compatibility — an Effect value is thrown as an Effect failure. Throw the intended error value or use `try` to execute the Effect; imported lint has its own identity. Replay [example: main.vibe:112:9; error](../../../typescript/vibelang/cases/lsrules.fail/main.vibe). | 4, 38 | [Rule chapter](007-tooling.md) |
 | interim `EK4817` | off by default (warning when enabled): legacy compiler compatibility — `instanceof` tests a `Schema` class rather than schema membership. Use `Schema.is`; the optional legacy port defaults off. Replay [example: main.vibe:107:10; error](../../../typescript/vibelang/cases/lsrules.fail/main.vibe). | 38 | [Rule chapter](007-tooling.md) |
 | interim `EK4840` | warning: legacy compiler compatibility — an Option pipeline can be converted to legacy extension-method syntax. Keep native Option calls or accepted matching syntax; do not introduce unsupported extension methods. Replay [example: main.vibe:5:54](../../../typescript/vibelang/cases/tsforms-option/main.vibe). | 6, 34 | [Rule chapter](007-tooling.md) |
@@ -2467,7 +2497,7 @@ A transitional compiler may still print compatibility diagnostics from the old l
 For example, `effect function bad(): number!! { throw new Bad() }`, with `error Bad`, fails ordinary Effect return-type checking: its error type is `Bad`, rather than `never`. `effect function run() { return try succeed(1) }` is valid and gives `Success(1)`. Removing the old statement warning never permits skipping an infallible Effect.
 
 
-The compiler also prints `EK0204`, a compiler gap rather than a language rule. Where it still compiles a `do` to a function (a parameter default, a declaration in a for-loop initializer, a `for` loop's test and update, a class member, a `case` test, an optional chain, and the `catch` expressions, `throw` expressions and `fork` it writes as functions), it rejects a `return`, `var`, jump, `await` or `yield` that would leave the `do`. The admitted completions keep the meaning [Running Effects](002-running.md#parameter-defaults) gives; ordinary placement and early-error rules still apply. In particular, `function f(x = do { return null }) {}` returns `null` from `f`; the code retires when the compiler lowers those positions.
+The compiler also prints `EK0204`, a compiler gap rather than a language rule. Where it still compiles a `do` to a function (a parameter default, a declaration in a for-loop initializer, a `for` loop's test and update, a class member, a `case` test, an optional chain, and the `catch` expressions, `throw` expressions and `fork` it writes as functions), it rejects a `return`, `var`, jump, `await` or `yield` that would leave the `do`. The admitted completions keep the meaning [Running Effects](002-running.md#parameter-defaults) gives; ordinary placement and early-error rules still apply. The compiler moves supported identifier defaults for plain, async and effect callables. For example, `function f(x = do { return null }) {}` returns `null` from `f`, and `effect function f(x = do { return null }) {}` returns an Effect that succeeds with `null`. Native generators and unsupported parameter patterns can still report `EK0204`. The code retires when the compiler lowers those positions.
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
