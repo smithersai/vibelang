@@ -13,6 +13,7 @@ import { markPlainFunctions } from "./plain.mjs"
 import { rewriteViteScripts } from "./vite-config.mjs"
 import { rewriteSourceLiterals } from "./source-paths.mjs"
 import { packageContext } from "./converted-paths.mjs"
+import { manifestText } from "./package-json-format.mjs"
 import { assertModuleBoundary, rewriteExports, rewriteImports, rewriteScripts, vibePath } from "./codemod.mjs"
 import { rewriteBuildEntrypoints } from "./build-entrypoints.mjs"
 import { assertComputedBuildEntrypoints } from "./computed-build-entrypoints.mjs"
@@ -58,9 +59,9 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   // rewriteExports reads the original manifest. Reapply the companion's
   // private subpaths to its planned result in the same write-ahead journal.
   for (const split of platform.splits) if (split.privateExports) {
-    const { manifest, keys } = split.privateExports, pkg = JSON.parse(read(manifest))
+    const { manifest, keys } = split.privateExports, planned = read(manifest), pkg = JSON.parse(planned)
     for (const key of keys) pkg.exports[key] = null
-    write(manifest, JSON.stringify(pkg, null, 2) + "\n")
+    write(manifest, manifestText(planned, pkg))
   }
   const scriptEdits = rewriteViteScripts(target, renames, { read, write })
   const packageScriptEdits = rewriteScripts(target, renames, { read, write })

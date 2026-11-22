@@ -12,6 +12,7 @@ import { applyEdits, resolveRelative } from "./imports.mjs"
 import { isFixtureFile, isTestFile, listSources } from "./inventory.mjs"
 import { testBundleDeferrals } from "./test-bundles.mjs"
 import { packageDirOf } from "./codemod.mjs"
+import { manifestText } from "./package-json-format.mjs"
 import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 
 export const routePrefix = "#vibelang/emitted/"
@@ -165,7 +166,7 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
     if (JSON.stringify(imports) === JSON.stringify(json.imports ?? {})) continue
     if (Object.keys(imports).length) json.imports = imports
     else delete json.imports
-    const after = JSON.stringify(json, null, 2) + "\n"
+    const after = manifestText(before, json)
     if (after !== before) { writeFileSync(manifest, after); changed.push(posix.join(dir, "package.json")) }
   }
   return { changed, modules: [...modules].sort(), ...(warnings.length ? { warnings } : {}) }

@@ -8,6 +8,7 @@ import { test } from "node:test"
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import { codemod, makeConfig, paths, revert } from "../lib/steps.mjs"
 import { onePassStep } from "../lib/onepass.mjs"
+import { ignoredTargets, renameBatch } from "../lib/codemod.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, writeJson } from "../lib/util.mjs"
 
@@ -68,4 +69,31 @@ test("property: ignored source names remain literal paths and never admit ignore
       } finally { rmSync(f.root, { recursive: true, force: true }) }
     }
   ), { seed: 514278, numRuns: 40 })
+})
+
+// The legacy renameBatch check must judge each path as a literal file. A
+// fileset parse error used to pass the whole batch as tracked.
+test("the ignored-path check reads names with fileset operators literally and reports jj failures", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-ignored-literal-")), outside = mkdtempSync(join(tmpdir(), "migrate-ignored-none-"))
+  try {
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: root })
+    for (const file of ["src/(auth)/login.ts", "src/a~b.ts", "lib/(auth)/login.ts", "lib/plain.ts"]) {
+      mkdirSync(dirname(join(root, file)), { recursive: true })
+      writeFileSync(join(root, file), "export const value = 1\n")
+    }
+    await Jj.commit(root, "tracked sources")
+    writeFileSync(join(root, ".gitignore"), "lib/\n")
+    await Jj.commit(root, "ignore lib")
+    assert.throws(() => renameBatch(root, ["src/(auth)/login.ts", "lib/(auth)/login.ts"]), /lib\/\(auth\)\/login\.vibe: the repository ignores this path/)
+    assert.ok(existsSync(join(root, "lib/(auth)/login.ts")) && existsSync(join(root, "src/(auth)/login.ts")), "a refusal renames nothing")
+    assert.deepEqual(renameBatch(root, ["src/(auth)/login.ts", "src/a~b.ts"]), [{ from: "src/(auth)/login.ts", to: "src/(auth)/login.vibe" }, { from: "src/a~b.ts", to: "src/a~b.vibe" }])
+    assert.deepEqual(ignoredTargets(root, ["src/(auth)/login.vibe", "src/a~b.vibe", "lib/plain.ts", "lib/untracked.vibe"]), ["lib/untracked.vibe"])
+    // Outside a repository there is nothing to ask; a repository jj cannot read is an error, not a pass.
+    assert.deepEqual(ignoredTargets(outside, ["src/a.vibe"]), [])
+    rmSync(join(root, ".jj/repo/store"), { recursive: true, force: true })
+    assert.throws(() => ignoredTargets(root, ["src/a~b.vibe"]), /jj file list exited/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(outside, { recursive: true, force: true })
+  }
 })

@@ -10,6 +10,7 @@ import { sidecarConfigIn, sidecarPath, sidecarSettings } from "./sidecar-config.
 import { applyEdits, editableImports, resolveAliased, resolveRelative, splitSpecifier } from "./imports.mjs"
 import { isFixtureFile, isTestFile } from "./inventory.mjs"
 import { isDeclarationFile, run } from "./util.mjs"
+import { manifestText } from "./package-json-format.mjs"
 import { Minimatch } from "./vendor/minimatch.mjs"
 
 /**
@@ -91,7 +92,12 @@ export function assertModuleBoundary(root, from) {
   }
 }
 
-/** Renames each file of the batch on disk; refuses to overwrite. */
+/**
+ * Renames each file of the batch on disk; refuses to overwrite, and refuses a
+ * path the repository ignores. The flow itself renames through the journal
+ * (prepareState, applyState) and then tracks each converted path explicitly,
+ * so an ignored path is retained there instead of refused.
+ */
 export function renameBatch(root, files) {
   const renames = files.map((from) => ({ from, to: vibePath(from) }))
   for (const { from, to } of renames) {
@@ -108,10 +114,20 @@ export function renameBatch(root, files) {
   return renames
 }
 
-/** The paths jj does not track once they exist, as a tracked module under an ignored directory is not tracked under its new name. Outside a jj repository, none. */
-function ignoredTargets(root, paths) {
-  const listed = spawnSync("jj", ["file", "list", ...paths.map((path) => `root:${path}`)], { cwd: root, encoding: "utf8" })
-  if (listed.status !== 0) return []
+/**
+ * The paths jj does not track once they exist, as a tracked module under an
+ * ignored directory is not tracked under its new name. Each path is a literal
+ * file, never a fileset expression. Outside a jj repository, or without jj,
+ * none; any other jj failure throws, since it proves nothing about the batch.
+ */
+export function ignoredTargets(root, paths) {
+  const listed = spawnSync("jj", ["file", "list", "--", ...paths.map((path) => "root-file:" + JSON.stringify(path))], { cwd: root, encoding: "utf8" })
+  if (listed.error?.code === "ENOENT") return []
+  if (listed.error) throw listed.error
+  if (listed.status !== 0) {
+    if (/There is no jj repo in/.test(listed.stderr)) return []
+    throw new Error("jj file list exited " + listed.status + "\n" + listed.stderr.trim())
+  }
   const tracked = new Set(listed.stdout.split("\n"))
   return paths.filter((path) => !tracked.has(path))
 }
@@ -302,7 +318,7 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
   }
   for (const [dir, moved] of owners) {
     const manifest = posix.join(dir, "package.json")
-    const pkg = JSON.parse(readFileSync(join(root, manifest), "utf8"))
+    const before = readFileSync(join(root, manifest), "utf8"), pkg = JSON.parse(before)
     const sidecar = sidecarOf(root, dir)
     let changed = false
     for (const { from, to } of moved) {
@@ -349,7 +365,7 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
         pkg[field] = Object.fromEntries(entries)
       }
     }
-    if (changed) write(manifest, JSON.stringify(pkg, null, 2) + "\n")
+    if (changed) write(manifest, manifestText(before, pkg))
   }
   return edits
 }
@@ -387,7 +403,7 @@ export function refreshSidecarExports(root, tracked, configs, {
   const edits = []
   for (const manifest of tracked.filter(file => posix.basename(file) === "package.json")) {
     const dir = posix.dirname(manifest)
-    const pkg = JSON.parse(readFileSync(join(root, manifest), "utf8"))
+    const before = readFileSync(join(root, manifest), "utf8"), pkg = JSON.parse(before)
     const start = edits.length
     const update = (value, path) => {
       if (Array.isArray(value)) return value.map((item, index) => update(item, [...path, index]))
@@ -416,7 +432,7 @@ export function refreshSidecarExports(root, tracked, configs, {
       return relativeTarget
     }
     for (const field of ["types", "typings", "typesVersions", ...moduleMaps]) if (Object.hasOwn(pkg, field)) pkg[field] = update(pkg[field], [field])
-    if (edits.length !== start) write(manifest, JSON.stringify(pkg, null, 2) + "\n")
+    if (edits.length !== start) write(manifest, manifestText(before, pkg))
   }
   return edits
 }
@@ -455,14 +471,14 @@ export function restoreExports(root, edits, module) {
   for (const edit of undone) {
     const path = join(root, edit.manifest)
     if (!existsSync(path)) continue
-    const pkg = JSON.parse(readFileSync(path, "utf8"))
+    const before = readFileSync(path, "utf8"), pkg = JSON.parse(before)
     if (edit.privateCompanion !== undefined) {
       if (edit.field !== "exports" || compilerCompanionOf(edit.module) !== edit.privateCompanion)
         throw new Error("invalid private compiler companion export receipt")
       if (!pkg.exports || !Object.hasOwn(pkg.exports, edit.key)) continue
       if (pkg.exports[edit.key] !== null) throw new Error(edit.manifest + ": private companion export changed during migration")
       delete pkg.exports[edit.key]
-      writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
+      writeFileSync(path, manifestText(before, pkg))
       continue
     }
     const source = posix.relative(posix.dirname(edit.manifest), vibe)
@@ -478,7 +494,7 @@ export function restoreExports(root, edits, module) {
     } else if (edit.added) delete pkg[edit.field][edit.key]
     else if (edit.key !== undefined) pkg[edit.field][edit.key] = pointBack(pkg[edit.field][edit.key], source, posix.extname(module), sidecar)
     else pkg[edit.field] = pointBack(pkg[edit.field], source, posix.extname(module), sidecar)
-    writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
+    writeFileSync(path, manifestText(before, pkg))
   }
   return undone
 }
@@ -508,7 +524,7 @@ export function rewriteScripts(root, renames, { read = (file) => readFileSync(jo
   }
   for (const [dir, moved] of byManifest) {
     const manifest = posix.join(dir, "package.json")
-    const pkg = JSON.parse(read(manifest))
+    const before = read(manifest), pkg = JSON.parse(before)
     if (pkg.scripts === null || typeof pkg.scripts !== "object") continue
     let changed = false
     for (const [script, command] of Object.entries(pkg.scripts)) {
@@ -524,7 +540,7 @@ export function rewriteScripts(root, renames, { read = (file) => readFileSync(jo
         changed = true
       }
     }
-    if (changed) write(manifest, JSON.stringify(pkg, null, 2) + "\n")
+    if (changed) write(manifest, manifestText(before, pkg))
   }
   return edits
 }
@@ -540,11 +556,11 @@ export function restoreScripts(root, edits, module) {
   for (const edit of undone) {
     const path = join(root, edit.manifest)
     if (!existsSync(path)) continue
-    const pkg = JSON.parse(readFileSync(path, "utf8"))
+    const before = readFileSync(path, "utf8"), pkg = JSON.parse(before)
     const dir = posix.dirname(edit.manifest)
     if (typeof pkg.scripts?.[edit.script] !== "string") continue
     pkg.scripts[edit.script] = replaceWord(pkg.scripts[edit.script], posix.relative(dir, vibe), posix.relative(dir, module))
-    writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
+    writeFileSync(path, manifestText(before, pkg))
   }
   return undone
 }
