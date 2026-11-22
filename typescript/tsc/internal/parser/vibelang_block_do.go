@@ -27,8 +27,12 @@ func (p *Parser) rejectVibeLangBlockDo(keyword string) {
 	if p.token != ast.KindDoKeyword {
 		return
 	}
+	replacement := keyword + " { ... }"
+	if keyword == "fork" {
+		replacement = "fork effect { ... }"
+	}
 	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.tokenRange(), "EK", diagnostics.CategoryError, 1003,
-		fmt.Sprintf("do does not follow %s in VibeLang: write %s { ... }.", keyword, keyword)))
+		fmt.Sprintf("do does not follow %s in VibeLang: write %s.", keyword, replacement)))
 	p.hasParseError = true
 	p.nextToken()
 }
