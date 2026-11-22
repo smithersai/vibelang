@@ -567,12 +567,33 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     if (!source) return undefined
     const imports = []
     const factory = ts.factory
+    const reexportedLocals = new Set()
+    for (const statement of source.statements) {
+      if (ts.isExportDeclaration(statement) && !statement.moduleSpecifier && !statement.isTypeOnly &&
+          statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+        for (const element of statement.exportClause.elements) {
+          if (!element.isTypeOnly) reexportedLocals.add((element.propertyName ?? element.name).text)
+        }
+      } else if (ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression)) {
+        reexportedLocals.add(statement.expression.text)
+      }
+    }
     const canonicalImport = (node, module = node.moduleSpecifier) => {
+      const clauseTypeOnly = Boolean(node.importClause.isTypeOnly)
       let bindings = node.importClause.namedBindings
       if (bindings && ts.isNamedImports(bindings)) bindings = factory.updateNamedImports(bindings,
         [...bindings.elements].sort((a, b) => a.name.text.localeCompare(b.name.text))
-          .map(specifier => factory.updateImportSpecifier(specifier, false, specifier.propertyName, specifier.name)))
-      const clause = factory.updateImportClause(node.importClause, false, node.importClause.name, bindings)
+          .map(specifier => factory.updateImportSpecifier(
+            specifier,
+            (clauseTypeOnly || Boolean(specifier.isTypeOnly)) && reexportedLocals.has(specifier.name.text),
+            specifier.propertyName,
+            specifier.name,
+          )))
+      const keepClauseTypeOnly = clauseTypeOnly && (
+        (node.importClause.name && reexportedLocals.has(node.importClause.name.text)) ||
+        (bindings && ts.isNamespaceImport(bindings) && reexportedLocals.has(bindings.name.text))
+      )
+      const clause = factory.updateImportClause(node.importClause, Boolean(keepClauseTypeOnly), node.importClause.name, bindings)
       return factory.updateImportDeclaration(node, node.modifiers, clause, module, node.attributes)
     }
     const imported = node => ts.isImportDeclaration(node) && node.importClause
@@ -1349,7 +1370,9 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   // all of it. Any project enabling it wins: the migration keeps tsconfig, and
   // a snapshot from an older flow carries no record of the option.
   const contexts = options.projectContexts ?? []
-  const exactOptionalPropertyTypes = contexts.some(context => context.compilerOptions?.exactOptionalPropertyTypes)
+  // Always compare optional properties strictly so a?: T and a?: T | undefined
+  // never compare identical for consumers that enable exactOptionalPropertyTypes.
+  const exactOptionalPropertyTypes = true
   // Project libraries add to the default one, so a dependency's declaration
   // that names DOM types under a project's skipLibCheck stays comparable.
   const libraries = [...new Set(contexts.flatMap(context => context.compilerOptions?.lib ?? []))]
@@ -1358,7 +1381,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true,
     noEmit: true, skipLibCheck: false, types: [], allowImportingTsExtensions: true, allowArbitraryExtensions: true,
     resolveJsonModule: projectJsonModules(ts, before) && projectJsonModules(ts, after),
-    ...(exactOptionalPropertyTypes ? { exactOptionalPropertyTypes } : {}),
+    exactOptionalPropertyTypes,
     ...(libraries.length ? { lib: [ts.getDefaultLibFileName({ target: ts.ScriptTarget.ESNext }), ...libraries] } : {}),
     ...options.compilerOptions,
     strict: true, strictNullChecks: true, strictFunctionTypes: true, noImplicitAny: true, noImplicitThis: true,
@@ -1861,8 +1884,150 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   }
   // Alignment adds these names to the virtual program, not to the package.
   const authored = name => !name.startsWith("__api_infer_")
+  const syntaxDifferences = []
   function recordCheck(entrypoint, name, a, b, aspect) {
     checks.push({ entrypoint, export: name, aspect, a, b })
+  }
+  function checkDeclarationSyntax(symbolA, symbolB, entrypoint, name) {
+    const dchecker = documentationChecker
+    const isOwnFile = file => Boolean(file) && [before, after].some(base =>
+      (file === base || ownsFile(base, file)) && !file.includes("/node_modules/"))
+    const isOwnDecl = decl => Boolean(decl) && isOwnFile(decl.getSourceFile?.().fileName)
+    const isOwnSymbol = sym => Boolean(sym?.declarations?.some(isOwnDecl))
+    const hasMod = (node, kind) => Boolean(node?.modifiers?.some(m => m.kind === kind))
+    const recordDiff = (aspect, detail) => {
+      syntaxDifferences.push({
+        entrypoint,
+        export: name,
+        aspect,
+        mutuallyAssignable: false,
+        diagnostic: detail,
+      })
+    }
+    const typeParamSummary = decls => {
+      const relevant = (decls ?? []).filter(d => d.typeParameters?.length)
+      if (!relevant.length) return ""
+      const count = Math.max(...relevant.map(d => d.typeParameters.length))
+      const parts = []
+      for (let i = 0; i < count; i++) {
+        const mods = []
+        if (relevant.some(d => hasMod(d.typeParameters[i], ts.SyntaxKind.ConstKeyword))) mods.push("const")
+        if (relevant.some(d => hasMod(d.typeParameters[i], ts.SyntaxKind.InKeyword))) mods.push("in")
+        if (relevant.some(d => hasMod(d.typeParameters[i], ts.SyntaxKind.OutKeyword))) mods.push("out")
+        parts.push(mods.join(" "))
+      }
+      return parts.join(",")
+    }
+    const constructorVisibility = decls => {
+      const classes = (decls ?? []).filter(d => ts.isClassDeclaration(d) || ts.isClassExpression(d))
+      if (!classes.length) return undefined
+      for (const cls of classes) {
+        for (const member of cls.members) {
+          if (ts.isConstructorDeclaration(member) && hasMod(member, ts.SyntaxKind.PrivateKeyword)) return "private"
+        }
+      }
+      for (const cls of classes) {
+        for (const member of cls.members) {
+          if (ts.isConstructorDeclaration(member) && hasMod(member, ts.SyntaxKind.ProtectedKeyword)) return "protected"
+        }
+      }
+      return "public"
+    }
+    const hasThisParameter = decl => {
+      const first = decl?.parameters?.[0]
+      return Boolean(first && ts.isIdentifier(first.name) && first.name.text === "this")
+    }
+    const memberForm = sym => {
+      const decls = sym?.declarations ?? []
+      if (decls.some(d => ts.isMethodSignature(d) || ts.isMethodDeclaration(d))) return "method"
+      if (decls.some(d => ts.isPropertySignature(d) || ts.isPropertyDeclaration(d))) return "property"
+      return undefined
+    }
+    const compareSymbolDecls = (sa, sb, aspect, label) => {
+      if (!isOwnSymbol(sa) && !isOwnSymbol(sb)) return
+      const tpA = typeParamSummary(sa.declarations), tpB = typeParamSummary(sb.declarations)
+      if (tpA !== tpB) recordDiff(aspect, `Type parameter modifiers on ${label} differ (${tpA || "none"} vs ${tpB || "none"}).`)
+      const ctorA = constructorVisibility(sa.declarations), ctorB = constructorVisibility(sb.declarations)
+      if (ctorA && ctorB && ctorA !== ctorB)
+        recordDiff("value", `Constructor visibility on ${label} differs (${ctorA} vs ${ctorB}).`)
+    }
+    const seenPairs = new Map()
+    const markSeen = (ta, tb) => {
+      const ka = ta?.target ?? ta, kb = tb?.target ?? tb
+      if (!ka || !kb) return true
+      let inner = seenPairs.get(ka)
+      if (inner?.has(kb)) return true
+      if (!inner) { inner = new Set(); seenPairs.set(ka, inner) }
+      inner.add(kb)
+      return false
+    }
+    const walkTypes = (ta, tb, aspect, path) => {
+      if (!ta || !tb || markSeen(ta, tb)) return
+      const sa = ta.symbol, sb = tb.symbol
+      if (sa && sb && (isOwnSymbol(sa) || isOwnSymbol(sb))) {
+        const tpA = typeParamSummary(sa.declarations), tpB = typeParamSummary(sb.declarations)
+        if (tpA !== tpB) recordDiff(aspect, `Type parameter modifiers on ${path} differ (${tpA || "none"} vs ${tpB || "none"}).`)
+        const ctorA = constructorVisibility(sa.declarations), ctorB = constructorVisibility(sb.declarations)
+        if (ctorA && ctorB && ctorA !== ctorB)
+          recordDiff("value", `Constructor visibility on ${path} differs (${ctorA} vs ${ctorB}).`)
+      }
+      for (const [kind, sigsA, sigsB] of [
+        ["call", ta.getCallSignatures(), tb.getCallSignatures()],
+        ["construct", ta.getConstructSignatures(), tb.getConstructSignatures()],
+      ]) {
+        if (sigsA.length !== sigsB.length) continue
+        for (let i = 0; i < sigsA.length; i++) {
+          const da = sigsA[i].getDeclaration(), db = sigsB[i].getDeclaration()
+          if (!da || !db || (!isOwnDecl(da) && !isOwnDecl(db))) continue
+          const sigLabel = sigsA.length > 1 ? `${path}#${kind}${i}` : `${path}()`
+          const tpA = typeParamSummary([da]), tpB = typeParamSummary([db])
+          if (tpA !== tpB) recordDiff(aspect, `Type parameter modifiers on ${sigLabel} differ (${tpA || "none"} vs ${tpB || "none"}).`)
+          if (kind === "call" && hasThisParameter(da) !== hasThisParameter(db)) {
+            recordDiff(aspect, `Explicit this parameter on ${sigLabel} differs (${hasThisParameter(da) ? "present" : "absent"} vs ${hasThisParameter(db) ? "present" : "absent"}).`)
+          }
+          const paramsA = sigsA[i].getParameters(), paramsB = sigsB[i].getParameters()
+          if (paramsA.length === paramsB.length) {
+            for (let p = 0; p < paramsA.length; p++) {
+              const ha = paramsA[p].valueDeclaration ?? paramsA[p].declarations?.[0] ?? da
+              const hb = paramsB[p].valueDeclaration ?? paramsB[p].declarations?.[0] ?? db
+              walkTypes(dchecker.getTypeOfSymbolAtLocation(paramsA[p], ha), dchecker.getTypeOfSymbolAtLocation(paramsB[p], hb), aspect, `${sigLabel}.param${p}`)
+            }
+          }
+          walkTypes(dchecker.getReturnTypeOfSignature(sigsA[i]), dchecker.getReturnTypeOfSignature(sigsB[i]), aspect, `${sigLabel}.return`)
+        }
+      }
+      const propsA = new Map(dchecker.getPropertiesOfType(ta).map(p => [p.name, p]))
+      const propsB = new Map(dchecker.getPropertiesOfType(tb).map(p => [p.name, p]))
+      for (const [propName, pa] of propsA) {
+        if (!authored(propName) || propName === "prototype" || propName.startsWith("__api_")) continue
+        const pb = propsB.get(propName)
+        if (!pb || (!isOwnSymbol(pa) && !isOwnSymbol(pb))) continue
+        const memberPath = `${path}.${propName}`
+        const formA = memberForm(pa), formB = memberForm(pb)
+        if (formA && formB && formA !== formB)
+          recordDiff(aspect, `Member ${memberPath} form differs (${formA} vs ${formB}).`)
+        const absA = Boolean(pa.declarations?.some(d => hasMod(d, ts.SyntaxKind.AbstractKeyword)))
+        const absB = Boolean(pb.declarations?.some(d => hasMod(d, ts.SyntaxKind.AbstractKeyword)))
+        if (absA !== absB)
+          recordDiff(aspect, `Abstract modifier on ${memberPath} differs (${absA ? "abstract" : "concrete"} vs ${absB ? "abstract" : "concrete"}).`)
+        const accA = Boolean(pa.declarations?.some(d => hasMod(d, ts.SyntaxKind.AccessorKeyword)))
+        const accB = Boolean(pb.declarations?.some(d => hasMod(d, ts.SyntaxKind.AccessorKeyword)))
+        if (accA !== accB)
+          recordDiff(aspect, `Accessor modifier on ${memberPath} differs (${accA ? "accessor" : "property"} vs ${accB ? "accessor" : "property"}).`)
+        const da = pa.valueDeclaration ?? pa.declarations?.[0]
+        const db = pb.valueDeclaration ?? pb.declarations?.[0]
+        if (da && db) walkTypes(dchecker.getTypeOfSymbolAtLocation(pa, da), dchecker.getTypeOfSymbolAtLocation(pb, db), aspect, memberPath)
+      }
+    }
+    compareSymbolDecls(symbolA, symbolB, symbolA.flags & ts.SymbolFlags.Type ? "type" : "value", name)
+    if ((symbolA.flags & ts.SymbolFlags.Type) && (symbolB.flags & ts.SymbolFlags.Type)) {
+      walkTypes(dchecker.getDeclaredTypeOfSymbol(symbolA), dchecker.getDeclaredTypeOfSymbol(symbolB), "type", name)
+    }
+    if ((symbolA.flags & ts.SymbolFlags.Value) && (symbolB.flags & ts.SymbolFlags.Value)) {
+      const da = symbolA.valueDeclaration ?? symbolA.declarations?.[0]
+      const db = symbolB.valueDeclaration ?? symbolB.declarations?.[0]
+      if (da && db) walkTypes(dchecker.getTypeOfSymbolAtLocation(symbolA, da), dchecker.getTypeOfSymbolAtLocation(symbolB, db), "value", name)
+    }
   }
   function memberDocs(symbol, checker = documentationChecker) {
     const found = new Map(), seen = new Set()
@@ -1957,6 +2122,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
         entrypoint, export: name + key, before: amembers.get(key) ?? "", after: bmembers.get(key) ?? "", ...docBlockDifference(ts, amembers.symbols?.get(key), bmembers.symbols?.get(key))
       })
     }
+    if (!sharedModule) checkDeclarationSyntax(authoredA, authoredB, entrypoint, name)
     const amask = a.flags & (ts.SymbolFlags.Type | ts.SymbolFlags.Value | ts.SymbolFlags.Namespace)
     const bmask = b.flags & (ts.SymbolFlags.Type | ts.SymbolFlags.Value | ts.SymbolFlags.Namespace)
     for (const [flag, aspect] of [[ts.SymbolFlags.Value, "value"], [ts.SymbolFlags.Type, "type"]]) {
@@ -2098,12 +2264,20 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       trail = new Set([...trail, a, b])
       const ae = new Map(checker.getExportsOfModule(a).map(s => [s.name, s]))
       const be = new Map(checker.getExportsOfModule(b).map(s => [s.name, s]))
+      const nsRuntime = symbol => symbol.declarations?.some(ts.isSourceFile)
+        ? runtimeExports(symbol)
+        : new Set(checker.getExportsOfModule(symbol)
+            .filter(s => !checker.getTypeOnlyAliasDeclaration?.(s) && (unalias(s).flags & ts.SymbolFlags.Value))
+            .map(s => s.name))
+      const aruntime = nsRuntime(a), bruntime = nsRuntime(b)
       const docExports = symbol => symbol.flags & ts.SymbolFlags.Namespace
         ? new Map(documentationChecker.getExportsOfModule(symbol).map(s => [s.name, s])) : new Map()
       const adocs = docExports(authoredA), bdocs = docExports(authoredB)
       for (const child of [...new Set([...ae.keys(), ...be.keys()])].filter(authored).sort()) {
         if (!ae.has(child) || !be.has(child)) result.nameDifferences.push({ entrypoint, export: name + "." + child, side: ae.has(child) ? "before" : "after" })
         else {
+          if (aruntime.has(child) !== bruntime.has(child))
+            result.nameDifferences.push({ entrypoint, export: name + "." + child, meaning: "runtime value", side: aruntime.has(child) ? "before" : "after" })
           // A namespace export can merge with a type alias of the same name.
           // Qualifying its type members through that alias loses the module
           // namespace in a type-position import. Refer to the resolved module
@@ -2174,6 +2348,12 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   })
   // An unavailable export has no probe: its error types prove nothing.
   const unavailable = new Set(invalidExports.filter(item => item.scope === "export").map(item => item.entrypoint + "\0" + item.export))
+  const seenSyntax = new Set()
+  for (const item of syntaxDifferences) {
+    if (unavailable.has(item.entrypoint + "\0" + item.export)) continue
+    const key = JSON.stringify(item)
+    if (!seenSyntax.has(key)) { seenSyntax.add(key); result.typeDifferences.push(item) }
+  }
   const comparable = checks.filter(check => !unavailable.has(check.entrypoint + "\0" + check.export))
   // Only plain comparison data survives preparation. No Program, TypeChecker,
   // SourceFile or diagnostic node is retained while fresh probes are checked.
@@ -2232,6 +2412,8 @@ function checkComparison(ts, plan, progress) {
     ...(offset === 0 ? bridges.flatMap(file => ts.getPreEmitDiagnostics(program, program.getSourceFile(file))) : []),
     ...ts.getPreEmitDiagnostics(program, probeSource),
   ]
+  const sameFailures = new Set(diagnostics.filter(d => d.file?.fileName === probe && d.start !== undefined && d.code === 2344)
+    .map(d => byLine.get(d.file.getLineAndCharacterOfPosition(d.start).line)).filter(Boolean))
   const assignmentFailures = new Set(diagnostics.filter(d => d.file?.fileName === probe && d.start !== undefined)
     .map(d => assignmentLines.get(d.file.getLineAndCharacterOfPosition(d.start).line)).filter(Boolean))
   for (const d of diagnostics) {
@@ -2259,7 +2441,16 @@ function checkComparison(ts, plan, progress) {
       }
     }
     const line = d.file && d.start !== undefined ? d.file.getLineAndCharacterOfPosition(d.start).line : -1
-    if (d.file?.fileName === probe && assignmentLines.has(line) && d.code === 2344) continue
+    if (d.file?.fileName === probe && assignmentLines.has(line) && d.code === 2344) {
+      const assignCheck = assignmentLines.get(line)
+      if (sameFailures.has(assignCheck)) continue
+      const item = { entrypoint: assignCheck.entrypoint, export: assignCheck.export, aspect: assignCheck.aspect,
+        mutuallyAssignable: false, diagnostic: diagnosticText(d), probe: lines[line] }
+      const key = JSON.stringify(item)
+      if (!seen.has(key)) result.typeDifferences.push(item)
+      seen.add(key)
+      continue
+    }
     const check = d.file?.fileName === probe && d.code === 2344 ? byLine.get(line) : undefined
     const context = d.file?.fileName === probe ? byLine.get(line) ?? assignmentLines.get(line) : undefined
     const item = check
