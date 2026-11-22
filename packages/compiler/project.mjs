@@ -720,16 +720,24 @@ function fileState(file) {
   }
 }
 
-// Returns a source modified after time, or one that is gone.
-function changedSince(files, time) {
+// Returns a source modified between start and end, or one that is gone.
+// A file whose modification time is ahead of the wall clock is reported via
+// future instead of triggering an unbounded recompile loop.
+function changedSince(files, start, end) {
+  let future
   for (const file of files) {
     try {
       const mtime = statSync(file).mtimeMs
-      if (mtime > time) return { file, mtime }
+      if (mtime > end) {
+        future ??= { file, mtime }
+        continue
+      }
+      if (mtime > start) return { file, mtime }
     } catch (error) {
       return { file, error: error.code }
     }
   }
+  return future ? { future } : undefined
 }
 
 // Module code for a failed compile. The bundler reports the real error.
@@ -802,10 +810,13 @@ export function projects({ root, project, compiler, cache, debug = () => {}, pre
             debug(`compile ${state.tsconfig} ${started} finished in ${Math.round(performance.timeOrigin + performance.now() - time)}ms: ${value.outputs.size} outputs, ${value.errors.length} errors`)
             // A file saved during the compile may be missing from its output. esbuild records
             // watch files when a load returns, so it would not rebuild for that save. Compile again.
+            const finished = Math.max(performance.timeOrigin + performance.now(), Date.now() + 1)
             const changed = fileState(state.tsconfig) !== configBefore
               ? { file: state.tsconfig, error: "config state changed" }
-              : changedSince(value.inputs.filter((file) => file !== state.tsconfig), time)
-            if (changed) {
+              : changedSince(value.inputs.filter((file) => file !== state.tsconfig), time, finished)
+            if (changed?.future) {
+              debug(`${changed.future.file} has a future modification time during compile ${started}: mtime=${changed.future.mtime}, finished=${finished}`)
+            } else if (changed) {
               revision++
               debug(`${changed.file} changed during compile ${started}: revision ${revision}; mtime=${changed.mtime ?? changed.error}, started=${time}`)
             }

@@ -785,6 +785,47 @@ test("a fractional mtime in the compile start millisecond does not trigger anoth
   assert.equal(compiles().length, 1, trace.join("\n"))
 })
 
+test("a source with a future modification time resolves instead of recompiling forever", async (t) => {
+  const root = fixture(t)
+  const project = join(root, "tsconfig.json")
+  const source = join(root, "main.vibe")
+  writeFileSync(project, JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext" }, include: ["*.vibe"] }))
+  writeFileSync(source, 'export const value = "future"\n')
+  const tomorrow = (Date.now() + 24 * 60 * 60 * 1000) / 1000
+  utimesSync(source, tomorrow, tomorrow)
+  const calls = join(root, "calls.txt")
+  const compiler = join(root, "compiler.mjs")
+  writeFileSync(compiler, `#!/usr/bin/env node
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { dirname, join, relative } from "node:path"
+const args = process.argv.slice(2)
+appendFileSync(${JSON.stringify(calls)}, "1\\n")
+const outDir = args[args.indexOf("--outDir") + 1]
+const rootDir = args[args.indexOf("--rootDir") + 1]
+const src = readFileSync(${JSON.stringify(source)}, "utf8")
+const out = join(outDir, relative(rootDir, ${JSON.stringify(source)}).replace(/\\.vibe$/, ".js"))
+mkdirSync(dirname(out), { recursive: true })
+writeFileSync(out, src + "\\n//# sourceMappingURL=main.js.map\\n")
+writeFileSync(out + ".map", JSON.stringify({ version: 3, sources: [${JSON.stringify(source)}], mappings: "" }))
+console.log(${JSON.stringify(source)})
+`)
+  chmodSync(compiler, 0o755)
+  const trace = []
+  const modules = projects({
+    root, project, compiler, cache: false,
+    debug(line) {
+      trace.push(line)
+      if (line.includes("3 started")) throw new Error("project retried indefinitely")
+    }
+  })
+  const loaded = await modules.load(source)
+  assert.deepEqual(loaded.errors, [])
+  assert.match(loaded.code, /value = "future"/)
+  const runs = readFileSync(calls, "utf8").trim().split("\n").length
+  assert.ok(runs <= 2, `expected at most 2 compiler runs, got ${runs}\n${trace.join("\n")}`)
+  assert.ok(trace.some((line) => line.includes("future modification time")), trace.join("\n"))
+})
+
 test("a source saved after the compiler reads it is compiled again before load returns", { skip }, async (t) => {
   const { root, app, compiler, compiles } = workspace(t)
   const source = join(app, "src/main.vibe")
