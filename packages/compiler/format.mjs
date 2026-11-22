@@ -1,5 +1,5 @@
 // All formatter entry points use the shipped dprint process plugin.
-import { findBinary } from "./binary.mjs"
+import { findBinary, resolveNativeBinary } from "./binary.mjs"
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { fileHasVibeDirective, hasVibeDirective } from "./source.mjs"
@@ -104,14 +104,8 @@ function processPlugin() {
   const shipped = fileURLToPath(new URL("./dprint-plugin.json", import.meta.url))
   const manifest = JSON.parse(readFileSync(shipped, "utf8"))
   if (!Object.values(manifest).some(entry => entry?.reference?.startsWith("npm:"))) return shipped
-  const executable = process.platform === "win32" ? "vibelang.exe" : "vibelang"
-  if (!process.env.VIBELANG_BINARY && !existsSync(new URL("./native/" + executable, import.meta.url))) {
-    const target = process.platform + "-" + process.arch
-    const name = process.platform === "win32" ? "@smthrs/cli-" + target : "vibelang-" + target
-    try { createRequire(import.meta.url).resolve(name + "/package.json") }
-    catch { return shipped }
-  }
-  const binary = findBinary()
+  const binary = resolveNativeBinary()
+  if (binary === undefined) return shipped
   let stamp
   try { const stat = statSync(binary); stamp = [stat.size, stat.mtimeMs, stat.ctimeMs] } catch {}
   const key = JSON.stringify([binary, stamp])

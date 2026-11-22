@@ -979,3 +979,72 @@ test("project emission preserves configured sidecar roots", async (t) => {
     arbitrary:shape,check,numRuns:24})
 
 })
+
+test("pathsOf parses UTF-8 BOM tsconfigs and preserves ,} and ,] inside strings (#485)", async (t) => {
+  const { aliasImport, forgetPaths, pathsOf } = await import("../paths-imports.mjs")
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-paths-bom-")))
+  t.after(() => { forgetPaths(); rmSync(dir, { recursive: true, force: true }) })
+
+  mkdirSync(join(dir, "src"), { recursive: true })
+  writeFileSync(join(dir, "src/a.vibe"), "export const a = 1\n")
+  const bomConfig = join(dir, "tsconfig.bom.json")
+  writeFileSync(bomConfig, "\uFEFF" + JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }))
+  assert.ok(pathsOf(bomConfig), "BOM tsconfig must parse paths")
+  assert.equal(aliasImport(bomConfig, "@/a"), join(dir, "src/a.vibe"))
+
+  const commaConfig = join(dir, "tsconfig.comma.json")
+  writeFileSync(commaConfig, '{ "compilerOptions": { "paths": { "@x,}": ["./src/a,]b.ts",], }, }, }')
+  const parsed = pathsOf(commaConfig)
+  assert.deepEqual(parsed?.paths, { "@x,}": ["./src/a,]b.ts"] })
+})
+
+test("coldProjects discovers packages configured with vibe.config.json (#485)", async (t) => {
+  const { coldProjects } = await import("../register-prefill.mjs")
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-prefill-config-")))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  mkdirSync(join(dir, "src"), { recursive: true })
+  writeFileSync(join(dir, "package.json"), '{"name":"vibe-only","type":"module"}\n')
+  writeFileSync(join(dir, "vibe.config.json"), '{"include":["src"]}\n')
+  writeFileSync(join(dir, "src/main.vibe"), "export const x = 1\n")
+  assert.deepEqual(coldProjects([dir]), [join(dir, "vibe.config.json")])
+})
+
+test("VIBELANG_BINARY resolves bare PATH names and cwd-relative paths consistently across entrypoints (#485)", async (t) => {
+  const { chmodSync } = await import("node:fs")
+  const { delimiter } = await import("node:path")
+  const { findCompiler } = await import("../project.mjs")
+  const { launcherBinary } = await import("../cache.mjs")
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bin-override-")))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const binDir = join(dir, "path-bin")
+  const pkgRoot = join(dir, "packages/app")
+  mkdirSync(binDir, { recursive: true })
+  mkdirSync(pkgRoot, { recursive: true })
+  const devBin = join(binDir, "vibelang-dev-test")
+  writeFileSync(devBin, "#!/bin/sh\nexit 0\n")
+  chmodSync(devBin, 0o755)
+  const relBin = join(dir, "native-local")
+  writeFileSync(relBin, "#!/bin/sh\nexit 0\n")
+  chmodSync(relBin, 0o755)
+  const launcher = fileURLToPath(new URL("../bin/vibelang", import.meta.url))
+
+  const prevBin = process.env.VIBELANG_BINARY
+  const prevPath = process.env.PATH
+  const prevCwd = process.cwd()
+  t.after(() => {
+    process.chdir(prevCwd)
+    if (prevBin === undefined) delete process.env.VIBELANG_BINARY
+    else process.env.VIBELANG_BINARY = prevBin
+    process.env.PATH = prevPath
+  })
+
+  process.chdir(dir)
+  process.env.PATH = `${binDir}${delimiter}${prevPath}`
+  process.env.VIBELANG_BINARY = "vibelang-dev-test"
+  assert.equal(findCompiler(pkgRoot), devBin)
+  assert.equal(launcherBinary(launcher), devBin)
+
+  process.env.VIBELANG_BINARY = "./native-local"
+  assert.equal(findCompiler(pkgRoot), relBin)
+  assert.equal(launcherBinary(launcher), relBin)
+})

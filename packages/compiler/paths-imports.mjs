@@ -3,7 +3,7 @@ import { createRequire } from "node:module"
 import { basename, dirname, isAbsolute, resolve } from "node:path"
 import { extensionlessImport } from "./relative-imports.mjs"
 
-// A tsconfig is JSON with comments and trailing commas (JSONC).
+// A tsconfig is JSON with comments and trailing commas (JSONC), and may start with a UTF-8 BOM.
 function parseConfig(text) {
   let out = ""
   for (let i = 0; i < text.length; i++) {
@@ -16,12 +16,26 @@ function parseConfig(text) {
       while (i < text.length && text[i] !== "\n") i++
       out += "\n"
     } else if (c === "/" && text[i + 1] === "*") {
-      i = text.indexOf("*/", i + 2)
-      if (i < 0) break
-      i++
+      const end = text.indexOf("*/", i + 2)
+      i = end < 0 ? text.length : end + 1
+      out += " "
     } else out += c
   }
-  return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"))
+  // Strip trailing commas outside strings so string values containing ",}" or ",]" stay intact.
+  let result = ""
+  for (let i = 0; i < out.length; i++) {
+    const c = out[i]
+    if (c === '"') {
+      const start = i
+      for (i++; i < out.length && out[i] !== '"'; i++) if (out[i] === "\\") i++
+      result += out.slice(start, i + 1)
+    } else if (c === ",") {
+      let next = i + 1
+      while (next < out.length && /\s/.test(out[next])) next++
+      if (out[next] !== "}" && out[next] !== "]") result += c
+    } else result += c
+  }
+  return JSON.parse(result.replace(/^\uFEFF/, ""))
 }
 
 const isFile = (path) => {

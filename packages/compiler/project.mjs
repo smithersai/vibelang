@@ -17,6 +17,7 @@ import { temporaryRoot } from "./temporary.mjs"
 import { performance } from "node:perf_hooks"
 import { basename, dirname, isAbsolute, join, parse, relative, resolve } from "node:path"
 import { launcherBinary, loaderRecord, loaderRecordFile, parseJsonc, projectCache } from "./cache.mjs"
+import { executablePath, isNodeScript } from "./compiler-override.mjs"
 
 const slash = (path) => path.replaceAll("\\", "/")
 const located = /^(.+?)\((\d+),(\d+)\):\s+(error|warning|suggestion)\s+(\w+\d+):\s?(.*)$/
@@ -34,27 +35,12 @@ const exitIgnoredLine = /^VIBELANG-EXIT-IGNORED: (\w+) (\w+\d+)$/
  */
 export function findCompiler(root, compiler) {
   if (compiler) return resolve(root, compiler)
-  if (process.env.VIBELANG_BINARY) return resolve(root, process.env.VIBELANG_BINARY)
+  if (process.env.VIBELANG_BINARY) return executablePath(process.env.VIBELANG_BINARY)
   const require = createRequire(join(resolve(root), "package.json"))
   return join(dirname(require.resolve("vibelang/package.json")), "bin/vibelang")
 }
 
-// The npm launcher and the native platform packages both install bin/vibelang,
-// so read the shebang instead of trusting the filename.
-function isNodeLauncher(path) {
-  if (/\.(?:[cm]?js)$/.test(path)) return true
-  let file
-  try {
-    file = openSync(path, "r")
-    const header = Buffer.alloc(256)
-    const bytes = readSync(file, header, 0, header.length, 0)
-    return /^#![^\r\n]*\bnode(?:\s|$)/.test(header.subarray(0, bytes).toString("utf8"))
-  } catch {
-    return false
-  } finally {
-    if (file !== undefined) closeSync(file)
-  }
-}
+const isNodeLauncher = isNodeScript
 
 // The vibelang launcher only finds the native compiler and runs it, so a
 // compile runs that binary itself and skips starting Node for the launcher.
@@ -562,7 +548,7 @@ export function checkLoaderRecord({ project, root = packageRoot(project), compil
 
 // The preferred config in directory, or undefined. A custom name such as
 // tsconfig.app.json is never discovered, as in TypeScript: it must be named.
-const configIn = (directory) =>
+export const configIn = (directory) =>
   ["vibe.config.json", "tsconfig.json", "jsconfig.json"].map((name) => join(directory, name)).find((path) => existsSync(path))
 
 /** Returns the preferred config in the nearest directory above file, or undefined. */

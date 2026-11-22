@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Fixed `paths-imports` rejecting UTF-8 BOM tsconfigs and corrupting `,}` or `,]` inside string values, updated `vibelang/register` cold-start prefill to discover `vibe.config.json` and `jsconfig.json` projects, and unified `VIBELANG_BINARY` resolution across the launcher, cache, project backend, ESLint, and formatter so bare `PATH` names and cwd-relative paths resolve consistently.
 - Synced shared import-resolution helpers across `vibelang`, `vibelang-vite`, and `vibelang-unplugin` so unplugin resolves extensionless `.vibex` imports and watches `.vibex` changes, fixed `vibelang-vite`'s `close()` so a failed backend load does not poison subsequent builds, and registered type-only project inputs as watch files under `vite build --watch`.
 - `vibelang agents check` and `vibelang agents hook` no longer label ordinary type-check error exits (status 1 or 2 with clean stdout diagnostics and empty stderr) as `check incomplete`, and `vibelang agents init` now uses platform-independent path containment when discovering workspace binaries on Windows.
 - Fixed stale documentation and manifest pins across the Vite, starter, and unplugin READMEs, `vibelang-unplugin`'s `root` option JSDoc, the Vite setup guide's Rolldown declaration section, and `vibelang-ts-mapper`'s `vibelang-runtime` peer pin.
