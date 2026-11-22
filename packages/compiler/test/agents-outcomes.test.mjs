@@ -104,3 +104,18 @@ if (process.argv.includes(${JSON.stringify(join(root, "tsconfig.json"))})) {
     assert.doesNotMatch(result.stdout, /vibelang: no errors\./)
   }
 })
+
+test("ordinary type errors on stdout with empty stderr are not labeled check incomplete", (t) => {
+  const root = project(t)
+  const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
+  writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true, noEmit: true, types: [], skipLibCheck: true }, vibe: { effectGlobals: false, effectModules: false }, include: ["*.vibe"] }))
+  writeFileSync(join(root, "witness.vibe"), 'export const a: number = "bad"\n')
+  writeFileSync(join(root, "other.vibe"), "export const ok: number = 1\n")
+  const result = spawnSync(process.execPath, [launcher, "agents", "check", "witness.vibe"], {
+    cwd: root, encoding: "utf8", env: { ...process.env, VIBELANG_BINARY: native }
+  })
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /TS2322/)
+  assert.match(result.stdout, /1 error left/)
+  assert.doesNotMatch(result.stdout + result.stderr, /check incomplete/)
+})
