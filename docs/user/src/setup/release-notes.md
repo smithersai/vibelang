@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Exhaustiveness checks on `match` expressions now reduce impossible intersection branches before checking finite domains, so guarded or incomplete matches over refined tagged unions report `EK4701`.
 - The API-identity checker now rejects changes to constructor visibility, `abstract` and `accessor` class members, `in`/`out`/`const` type-parameter modifiers, explicit `this` parameters, method-versus-property signatures, `const enum` modifiers, type-only re-exports inside namespace re-exports, and optional properties versus explicit `undefined`.
 - Fixed VS Code compiler discovery on Windows to look for `vibelang.exe` (Bun installs) ahead of `vibelang.cmd` and spawn `.cmd`/`.bat` shims with `shell: true`, and updated the Neovim plugin to walk upward for hoisted `node_modules/.bin/vibelang` binaries in monorepos.
 - Fixed `paths-imports` rejecting UTF-8 BOM tsconfigs and corrupting `,}` or `,]` inside string values, updated `vibelang/register` cold-start prefill to discover `vibe.config.json` and `jsconfig.json` projects, and unified `VIBELANG_BINARY` resolution across the launcher, cache, project backend, ESLint, and formatter so bare `PATH` names and cwd-relative paths resolve consistently.

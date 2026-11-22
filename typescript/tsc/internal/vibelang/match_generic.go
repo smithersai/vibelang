@@ -19,6 +19,7 @@ func genericMatchRemainder(c *checker.Checker, call *ast.Node) (declared, left *
 	if constraint := c.GetBaseConstraintOfType(declared); constraint != nil {
 		declared = constraint
 	}
+	declared = c.GetReducedType(declared)
 	if !isFiniteMatchType(c, declared) {
 		return nil, nil
 	}
@@ -38,7 +39,7 @@ func genericMatchRemainder(c *checker.Checker, call *ast.Node) (declared, left *
 			left = genericArmRemainder(c, subject, left, arm)
 		}
 	}
-	return declared, remainingPatternMembers(c, call, left)
+	return declared, c.GetReducedType(remainingPatternMembers(c, call, c.GetReducedType(left)))
 }
 
 // Each parser arm is a block of declarations followed by nested if tests.

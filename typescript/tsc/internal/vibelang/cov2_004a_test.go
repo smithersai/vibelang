@@ -2,7 +2,6 @@ package vibelang
 
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"os"
 	"testing"
 )
 
@@ -46,10 +45,6 @@ func TestCov2004aArityWarning(t *testing.T) {
 }
 
 func TestCov2004aRefinedDomain(t *testing.T) {
-	if os.Getenv("VIBELANG_COVERAGE_RUN_PENDING") == "" {
-		t.Skip("docs/design/src/004-match.md#839f2afffd98ae0d: issue #580: represented generic tag refinement with a false guard misses EK4701; set VIBELANG_COVERAGE_RUN_PENDING=1 to run the retained assertion")
-	}
-
 	// Chapter 004: represented tag refinements reduce a generic finite domain; rule-evidence: docs/design/src/004-match.md#839f2afffd98ae0d
 	for _, tc := range []struct {
 		name, source string
@@ -57,6 +52,7 @@ func TestCov2004aRefinedDomain(t *testing.T) {
 	}{
 		{"complete", "function f<T extends {_tag:'A'}|{_tag:'B'}>(s:T & {_tag:'A'}) {return match(s){when {_tag:'A'}:1;};}", 0},
 		{"guarded-is-still-finite", "function f<T extends {_tag:'A'}|{_tag:'B'}>(s:T & {_tag:'A'}) {return match(s){when {_tag:'A'} and if(false):1;};}", 4701},
+		{"non-generic-refined-guarded", "function f(s:({_tag:'A'}|{_tag:'B'}) & {_tag:'A'}) {return match(s){when {_tag:'A'} and if(false):1;};}", 4701},
 	} {
 		t.Run(tc.name, func(t *testing.T) { cov2004aDiagnostics(t, tc.source, tc.wanted) })
 	}
