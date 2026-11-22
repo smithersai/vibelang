@@ -1,9 +1,10 @@
+import { isMain } from "./is-main.mjs"
 // Uses the same TypeScript 5.9.3 program/host as the resolution matrix.
 import { matrix } from "./resolution-matrix.mjs"
 import {readFileSync,writeFileSync} from "node:fs"
 import {fileURLToPath} from "node:url"
 export const declarationMatrix = () => matrix(true)
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
  const data=declarationMatrix()
  if(process.argv.includes("--json")) console.log(JSON.stringify(data))
  else {

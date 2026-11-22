@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Published declaration identity: exported names, strict bidirectional type
 // identity checked by tsc, and JSDoc. No declaration text canonicalizer.
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync, statSync , realpathSync } from "node:fs"
 import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"
 import { totalmem } from "node:os"
@@ -2360,7 +2360,7 @@ function main(args) {
 }
 const evaluating = process.execArgv.some(arg => ["-e", "--eval", "-p", "--print"].includes(arg) ||
   arg.startsWith("--eval=") || arg.startsWith("--print="))
-if (!evaluating && process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (!evaluating && (() => { try { return Boolean(process.argv[1]) && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)) } catch { return false } })()) {
   try {
     if (process.argv[2] === "--api-identity-worker") {
       const request = JSON.parse(readFileSync(0, "utf8"))

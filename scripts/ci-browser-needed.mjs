@@ -1,3 +1,4 @@
+import { isMain } from "./is-main.mjs"
 // Only reviewed targets with a complete dependency plan may omit Chromium.
 // New targets, planner failures and broad selections retain browser setup.
 import { spawnSync } from "node:child_process"
@@ -69,7 +70,7 @@ export function browserPrerequisites(targets, workspace = root) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (isMain(import.meta.url)) {
   const result = browserPrerequisites(process.env.PRE_TARGETS ?? "")
   console.error("browser prerequisites: " + result.reason)
   console.log("needed=" + result.needed)

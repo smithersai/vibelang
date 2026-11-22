@@ -1,3 +1,4 @@
+import { isMain } from "../is-main.mjs"
 import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -31,6 +32,6 @@ if (group === "source-map-tools") {
 }
 
 }
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   preparePackageTests(fileURLToPath(new URL("../../", import.meta.url)), process.argv[2])
 }

@@ -1,3 +1,4 @@
+import { isMain } from "./is-main.mjs"
 // Keep Go's JSON output intact; add bounded metadata before Go starts and while it is quiet.
 // No command arguments, environment values, source text or process paths enter these records.
 import { spawn } from "node:child_process"
@@ -189,4 +190,4 @@ export function run(args) {
   })
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) run(process.argv.slice(2))
+if (isMain(import.meta.url)) run(process.argv.slice(2))

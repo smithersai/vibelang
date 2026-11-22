@@ -1,3 +1,4 @@
+import { isMain } from "./is-main.mjs"
 // TypeScript 5.9.3 is the oracle (decided detail 296). No compiler-derived expectations.
 import ts from "../docs/tools/node_modules/typescript/lib/typescript.js"
 import { readFileSync, writeFileSync } from "node:fs"
@@ -103,7 +104,7 @@ function markdown(data) {
       r.resolved ? code(r.resolved) : "—", r.diagnostics.map(n => code("TS" + n)).join(", ") || "—",
       r.emitted.map(code).join(", ") || "—"].join(" | ") + " |").join("\n") + "\n"
 }
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const data = matrix()
   const outputs = [
     [new URL("../docs/design/resolution-matrix.json", import.meta.url), "{\n  \"typescript\": " + JSON.stringify(data.typescript) + ",\n  \"rows\": [\n" + data.rows.map(r => "    " + JSON.stringify(r)).join(",\n") + "\n  ]\n}\n"],

@@ -1,3 +1,4 @@
+import { isMain } from "../is-main.mjs"
 // Compare archived harness --report trials. Alerts are informational; malformed
 // evidence exits 2. This never changes a hang guard or silently accepts a failed
 // case as a performance sample. See docs/maintainers/compiler-case-performance.md.
@@ -217,4 +218,4 @@ function main(args) {
   finally { fs.closeSync(fd) }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main(process.argv.slice(2))
+if (isMain(import.meta.url)) main(process.argv.slice(2))

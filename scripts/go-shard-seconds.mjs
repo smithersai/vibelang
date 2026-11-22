@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isMain } from "./is-main.mjs"
 // Writes <package>/testdata/shard-seconds.txt, used by scripts/go-test-shards.sh.
 // Prefer uncached go test -json: its event timestamps include parallel subtests,
 // whereas Go's top-level Elapsed and verbose duration can exclude their work.
@@ -98,7 +99,7 @@ export function render(rows, { date, note }) {
   return [...header, ...rows.map(([name, seconds]) => `${seconds} ${name}`)].join("\n") + "\n"
 }
 
-if (process.argv[1] && import.meta.url === new URL(process.argv[1], "file://").href) {
+if (isMain(import.meta.url)) {
   const args = process.argv.slice(2)
   const noteAt = args.indexOf("--note")
   const note = noteAt >= 0 ? args.splice(noteAt, 2)[1] : ""
