@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Package `#imports` and `exports` targets pointing into `outDir` (such as `./out/util.js`) failed to map back to `.vibe` and `.vibex` sources on a clean build. Output-to-source extension resolution now includes `.vibe` and `.vibex` beside `.ts` and `.tsx`.
+
 - A bigint literal property key inside an object pattern (such as `when { 1n: 1 }`) crashed the compiler and language server. It now reports `EK0707` without crashing, including while editing incomplete prefixes.
 
 - CommonJS bundler configurations (such as `webpack.config.js` and `rspack.config.js` without `"type": "module"`) failed to `require("vibelang-unplugin")` or its bundler subpaths with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Each export entry now includes a `default` condition.

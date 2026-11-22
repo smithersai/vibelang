@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "imports": {
+    "#util": "./out/util.js",
+    "#tsutil": "./out/tsutil.js"
+  }
+}

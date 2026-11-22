@@ -66,3 +66,22 @@ func TestVibexExtensionLists(t *testing.T) {
 		t.Errorf("TryGetExtensionFromPath(App.vibex) = %q, want .vibex", got)
 	}
 }
+
+func TestGetPossibleOriginalInputExtensionForExtensionIncludesVibe(t *testing.T) {
+	t.Parallel()
+	for _, output := range []string{"/out/util.js", "/out/util.d.ts"} {
+		exts := GetPossibleOriginalInputExtensionForExtension(output)
+		var hasVibe, hasVibex bool
+		for _, ext := range exts {
+			if ext == ExtensionVibe {
+				hasVibe = true
+			}
+			if ext == ExtensionVibex {
+				hasVibex = true
+			}
+		}
+		if !hasVibe || !hasVibex {
+			t.Fatalf("GetPossibleOriginalInputExtensionForExtension(%q) = %v, want .vibe and .vibex included", output, exts)
+		}
+	}
+}
