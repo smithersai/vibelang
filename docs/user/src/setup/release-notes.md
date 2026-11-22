@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Incremental builds now store `vibe` settings in `.tsbuildinfo` so unchanged builds reuse cached outputs and removed settings invalidate stale diagnostics, `--listEmittedFiles` lists written declaration sidecars, and editor on-type formatting no longer invokes the whole-document formatter or errors on incomplete VibeLang code.
 - Declaration files now declare a non-exported `service` whenever an exported annotation references its `Name.Shape` type, so downstream TypeScript consumers no longer fail with `TS2503` or silently resolve the shape to `any`.
 - Exhaustiveness checks on `match` expressions now reduce impossible intersection branches before checking finite domains, so guarded or incomplete matches over refined tagged unions report `EK4701`.
 - The API-identity checker now rejects changes to constructor visibility, `abstract` and `accessor` class members, `in`/`out`/`const` type-parameter modifiers, explicit `this` parameters, method-versus-property signatures, `const enum` modifiers, type-only re-exports inside namespace re-exports, and optional properties versus explicit `undefined`.

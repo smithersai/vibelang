@@ -2229,8 +2229,9 @@ func (s *Server) handleDocumentRangeFormat(ctx context.Context, ls *ls.LanguageS
 }
 
 func (s *Server) handleDocumentOnTypeFormat(ctx context.Context, ls *ls.LanguageService, params *lsproto.DocumentOnTypeFormattingParams) (lsproto.DocumentOnTypeFormattingResponse, error) {
-	if s.formatVibe != nil && ls.FormatsAsVibeLang(params.TextDocument.Uri) {
-		return ls.ProvideFormatDocumentUsing(ctx, params.TextDocument.Uri, s.formatVibe, &lsproto.Range{Start: lsproto.Position{Line: params.Position.Line}, End: lsproto.Position{Line: params.Position.Line, Character: 0x7fffffff}})
+	if ls.FormatsAsVibeLang(params.TextDocument.Uri) {
+		edits := []*lsproto.TextEdit{}
+		return lsproto.TextEditsOrNull{TextEdits: &edits}, nil
 	}
 	return ls.ProvideFormatDocumentOnType(
 		ctx,

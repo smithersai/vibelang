@@ -118,6 +118,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	}
 	var publication []func() error
 	var publicationMutex sync.Mutex
+	var emittedFiles []tspath.RootedFilePath
 	// Declaration emit runs files in parallel; write is the caller's function
 	// and is called one at a time, so a caller may collect into a plain map.
 	publish := func(action func() error) error {
@@ -208,6 +209,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				if err := write(native, want); err != nil {
 					return err
 				}
+				emittedFiles = append(emittedFiles, tspath.RootedFilePathFromNormalized(native))
 			}
 			if output == nil {
 				return nil
@@ -281,6 +283,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 						if err := write(sidecar, text); err != nil {
 							return err
 						}
+						emittedFiles = append(emittedFiles, tspath.RootedFilePathFromNormalized(sidecar))
 					}
 					if output == nil {
 						return nil
@@ -335,6 +338,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 			}
 		}
 	}
+	result.EmittedFiles = emittedFiles
 	return result
 }
 

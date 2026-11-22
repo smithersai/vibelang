@@ -331,20 +331,6 @@ func tscCompilation(ctx context.Context, sys tsc.System, commandLine *tsoptions.
 	)
 }
 
-func findConfigFile(searchPath tspath.RootedDirectoryPath, fileExists func(tspath.RootedFilePath) bool, configName string) tspath.RootedFilePath {
-	result, ok := searchPath.ForEachAncestorDirectory(func(ancestor tspath.RootedDirectoryPath) (tspath.RootedFilePath, bool) {
-		fullConfigName := ancestor.ResolveFile(configName)
-		if fileExists(fullConfigName) {
-			return fullConfigName, true
-		}
-		return fullConfigName, false
-	})
-	if !ok {
-		return ""
-	}
-	return result
-}
-
 func getTraceFromSys(sys tsc.System, locale locale.Locale, testing tsc.CommandLineTesting) func(msg *diagnostics.Message, args ...any) {
 	return tsc.GetTraceWithWriterFromSys(sys.Writer(), locale, testing)
 }

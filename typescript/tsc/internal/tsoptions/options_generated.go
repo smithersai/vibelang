@@ -376,7 +376,7 @@ func CompilerOptionsAffectSemanticDiagnostics(oldOptions *core.CompilerOptions, 
 		return true
 	}
 	return !reflect.DeepEqual(oldOptions.Effect, newOptions.Effect) ||
-		!oldOptions.VibeLang.Equals(newOptions.VibeLang) ||
+		!oldOptions.VibeLang.EffectiveEquals(newOptions.VibeLang) ||
 		oldOptions.AllowImportingTsExtensions != newOptions.AllowImportingTsExtensions ||
 		oldOptions.AllowUmdGlobalAccess != newOptions.AllowUmdGlobalAccess ||
 		oldOptions.AllowUnreachableCode != newOptions.AllowUnreachableCode ||
@@ -435,7 +435,7 @@ func CompilerOptionsAffectEmit(oldOptions *core.CompilerOptions, newOptions *cor
 	if oldOptions == nil || newOptions == nil {
 		return true
 	}
-	return !oldOptions.VibeLang.Equals(newOptions.VibeLang) ||
+	return !oldOptions.VibeLang.EffectiveEquals(newOptions.VibeLang) ||
 		oldOptions.AssumeChangesOnlyAffectDirectDependencies != newOptions.AssumeChangesOnlyAffectDirectDependencies ||
 		oldOptions.EmitBOM != newOptions.EmitBOM ||
 		oldOptions.EmitDecoratorMetadata != newOptions.EmitDecoratorMetadata ||
