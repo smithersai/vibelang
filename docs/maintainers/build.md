@@ -163,8 +163,8 @@ colliding target names fail declaration loading. Each generated target has a
 `10m` deadline and retains the old target's complete input closure, property
 sample counts and worker deadlines.
 
-The labels are `//packages:migrate-test-<file stem>`, with dots in the stem
-replaced by hyphens. Convert files use `migrate-test-convert-<file stem>`.
+The labels in the `packages` package use the `migrate-test-` prefix and a
+file stem with dots replaced by hyphens. Convert files use `migrate-test-convert-<file stem>`.
 For example, `migrate/test/api-identity-gate.test.mjs` runs as
 `//packages:migrate-test-api-identity-gate`. The three existing file targets
 `//packages:migrate-source-child-native`,
@@ -497,10 +497,6 @@ Migration alias properties also use the built checkout compiler at `packages/com
 
 Native compiler property tests use the built checkout compiler at `packages/compiler/native/vibelang` (`vibelang.exe` on Windows), while `VIBELANG_BINARY` selects an explicit compiler. Build the checkout compiler before running these tests. The properties execute with the variable unset in their validation so a missing manual environment setting cannot skip or prevent the compiler witnesses.
 
-Native compiler property tests use the built checkout compiler at `packages/compiler/native/vibelang` (`vibelang.exe` on Windows), while `VIBELANG_BINARY` selects an explicit compiler. Build the checkout compiler before running these tests. The properties execute with the variable unset in their validation so a missing manual environment setting cannot skip or prevent the compiler witnesses.
-
-Native compiler property tests use the built checkout compiler at `packages/compiler/native/vibelang` (`vibelang.exe` on Windows), while `VIBELANG_BINARY` selects an explicit compiler. Build the checkout compiler before running these tests. The properties execute with the variable unset in their validation so a missing manual environment setting cannot skip or prevent the compiler witnesses.
-
 Go editor fixtures reject an explicitly requested package directory that is missing,
 a dangling link, or a regular file, with the package name, path and
 `sh scripts/setup.sh` hint. Packages deliberately omitted by a negative test remain
@@ -541,12 +537,17 @@ compiler passed with `--upstream` before starting measurements. If either
 `--version` command fails, it returns that command's exit status and keeps
 its `stderr` visible.
 
-Every native build and copy uses `scripts/native-output.sh`: it writes a private sibling temporary output, closes the writer, then renames the executable into place. Concurrent readers keep executing the previous binary until the complete replacement is published, avoiding `ETXTBSY`. Failed builds leave the previous executable intact and clean up their temporary output. This applies to the compiler, forms generator, mapper, standalone test builds and release platform binaries; release rebuilds retain existing binaries while compiling replacements. Remote release transfers use `rsync` without `--inplace`, which also replaces completed files by rename.
+The compiler and forms-generator graph builds publish through
+`scripts/native-output.sh`. The helper writes a private sibling executable and
+renames it into place after the writer closes, so concurrent readers retain a
+complete executable. A failed build keeps the previous output. The mapper
+graph target uses `go build -o` directly. Remote release transfers use `rsync`
+without `--inplace`, which also replaces completed files by rename.
 
 ### Changed-path fast targets
 
 The merge queue lands on `vibe` after a build, so the full suites run only after
-landing. The queue's `validate.sh` adds a few fast targets to that build when a
+landing. The queue adds fast targets to that build when a
 batch changes the files they cover, so a commit that breaks one stops at the
 queue:
 
@@ -562,12 +563,11 @@ queue:
 | `//:spec-proposed-diagnostics` | Diagnostic allocation tables and proposal-fixture generation; unassigned proposal codes stay unresolved while published assignments remain intact. |
 | `//:spec-registry-go` | Published specification/VIP assignments, compiler/core diagnostic declarations and fuzz registry inventories; validates registrations, paired debt records and declaration-only allowances; none permits an unassigned diagnostic to be emitted. |
 | `//:tooling-citations` | Service/tooling chapters, their owning VIPs, configuration/core options and the four covered fuzz sources; checks exact public quotations, syntax-diagnostic ownership rows and retired-setting properties without a runtime build. |
-| `//:lint-config` | Configuration/core options, imported lint options or hooks, fixer/config diagnostics, lint fuzz tests, or the VIP-38 contract; checks warning, activation and preserving migration without building runtime packages. |
+| `//:lint-config` | Configuration/core options, imported lint options or hooks, lint/config diagnostics, lint fuzz tests, or the VIP-38 contract; checks warning, activation and preserving migration without building runtime packages. |
 | `//:docs-contracts` | Specification chapters/VIPs, user pages, covered contract tests and fixtures, or `docs/tools` dependencies; runs native examples and mutation guards without building the compiler. Appendix B owner checks run here; the complete compiler-backed no-throw suite remains in `//:docs-tools`. |
 | `//packages:runtime-package` | `packages/runtime/`, `packages/PACKAGE.ts` or `docs/tools/bugbash4-docs.test.mjs` |
 | `//:effect-pin` | a `package.json` or `scripts/effect-pin*` |
 | `//:flow-layout` | the migrate flow's `lib/steps.mjs` or its layout test |
-| `//:docs-check` | Public spec sources or generated pages and the provenance checker; rejects internal review attribution while keeping the public policy text. |
 | `//:grammar-inventory` | a VibeLang parser file, a file in `internal/vibelang/`, or the admission table |
 | `//:mapper-scripts` | `scripts/mapper-*`, `packages/ts-mapper/`, the compiler's `cache.mjs` or the LSP fixture |
 | `//:spec-appendix-replays` | Appendix B and failing-case changes; checks that each replay of a failing case names a diagnostic the case expects, without a compiler build. |
@@ -585,11 +585,7 @@ The runtime package check runs the existing entrypoint, export-identity and Effe
 
 The editor oracles take about a minute after their build. They join for the
 language service, which they judge: main went RED post-merge on
-`FuzzEditorConsistency` when a rename change reached it unchecked. The `--fix`
-fixed twins and cost guards take about a minute after their build. They join for
-any compiler source because a change outside `--fix` can move what it writes:
-VIP-6's parser and prelude change turned every qualified `Effect` call into a
-bare global in `--fix` output, and only post-merge saw it. The other fuzz
+`FuzzEditorConsistency` when a rename change reached it unchecked. The other fuzz
 suites, `//:docs-tools` and `//:snippets` stay out of this list. They take
 minutes and depend on most of the tree, so no small set of paths selects them.
 
@@ -622,7 +618,7 @@ They use the repository inputs and runtime that the seed oracles read.
 Run the same selection locally, or inspect the labels without running tests:
 
 ```sh
-CI_GATE_BASE=main@github sh scripts/ci.sh //packages:compiler-test-1 //packages:compiler-test-2 //packages:compiler-test-3 //packages:compiler-test-4 --jobs 8
+CI_GATE_BASE=main sh scripts/ci.sh //packages:compiler-test-1 //packages:compiler-test-2 //packages:compiler-test-3 //packages:compiler-test-4 --jobs 8
 printf '%s\n' docs/design/src/003-failures.md | node scripts/fuzz-gate/select.mjs
 ```
 
@@ -695,16 +691,6 @@ Run only the bounded hang validation with:
 sh scripts/ci.sh //:go-vibelangfuzz-hangs --jobs 8
 ```
 
-## Native repair properties
-
-The handler-repair properties run the CLI repair, editor repair and manual
-control in separate Node processes and compare their `Exit` values. Repeated
-runs within a test share a private `NODE_COMPILE_CACHE` directory so Node can
-reuse compiled runtime dependencies. Each child still has its own module cache
-and global state. The directory is removed when that test ends.
-`NODE_DISABLE_COMPILE_CACHE` and `NODE_V8_COVERAGE` disable this optimization;
-coverage collection keeps its ordinary behavior.
-
 ## Mapper test executables
 
 The data-method execution tests compile the current runtime sources. Before
@@ -760,8 +746,8 @@ renamed or synthesized label remains a corpus failure; normal unused-label
 diagnostics remain visible to ESLint users.
 
 `packages/compiler/test/eslint-corpus-labels.test.mjs` runs the native guard in
-the `//packages:compiler-test-N` shards without the optional ESLint install. The standalone
-suite also checks minimized real corpus runs and generated labels with ESLint's
+the numbered compiler test shards without the optional ESLint install. The
+standalone suite also checks minimized real corpus runs and generated labels with ESLint's
 actual `no-unused-labels` rule.
 
 Dollar-prefixed bindings such as `$assertMatch` and `$freeze` are also deliberate source witnesses. The corpus compares a quoted name with the native `Identifier` at the diagnostic location, including its `synthesized` flag. A dollar name elsewhere in the file cannot excuse an unwritten helper. `packages/compiler/test/eslint-corpus-names.test.mjs` runs without the optional ESLint install; the standalone suite checks six real corpus shapes and generated names with the pinned unused-variable rule.
@@ -882,10 +868,9 @@ failures passed. The original JSON stream and exit status remain unchanged.
 
 If diagnostic output fails, the Go progress reporter stops diagnostic writes, cancels the command and returns status `1`. On POSIX hosts this cancellation reaches the entire owned process group. Standard output keeps Go's original bytes. `scripts/go-test-progress-stderr-error.test.mjs` exercises package events, generated process trees and a quiet command through its real heartbeat.
 
-The target uses the shared graph check deadline. Its regression reads that
-default from the actual check factory and verifies the target retains it;
-changing the default does not leave a stale deadline assertion. Missing,
-unbounded and mismatched deadlines still fail the check.
+The graph deadline is ten minutes. The regression in
+`scripts/spec-progress-target.test.mjs` checks the target's deadline and
+fuzz subprocess budget.
 
 
 On Linux, a bounded sample of the child process tree reports executable kinds:
@@ -908,8 +893,8 @@ whole group, including test binaries and their children. An immediate
 signal-derived exit status. On Windows, cancellation forwards to the direct
 child.
 
-The target retains its 15-minute deadline, required dependency checks,
-`VIBELANG_FUZZ_HANG=120s` and `-count=1` to rerun external oracles.
+The target sets `VIBELANG_FUZZ_REQUIRE=1` and
+`VIBELANG_FUZZ_HANG=120s`. It uses `-count=1` to rerun external oracles.
 Run it with:
 
 ```sh
@@ -995,7 +980,7 @@ expanded test globs. Runtime discovery includes nested tests and Bun's
   :forms-generator              cached go build ./cmd/vibelang-forms -> typescript/built/local/vibelang-forms
   :mapper                       cached go build ./cmd/vibelang-mapper -> typescript/built/local/vibelang-mapper
 //typescript/vibelang
-  :<case>                       harness.mjs <case>, one target per case (809)
+  :<case>                       harness.mjs <case>, one target per case with a tsconfig.json
   :lsp-smoke                    headless language-server editor checks
 //packages
   :runtime-dist                 bun run build -> packages/runtime/dist
@@ -1034,7 +1019,7 @@ expanded test globs. Runtime discovery includes nested tests and Bun's
   :site-contrast                npm ci and a production build of a private copy of site/, then the contrast audit
   :spec-lint                    the specification linters over docs/design (merge gate, through :docs-tools)
   :design-files                 Filegroup: docs/design
-  :spec-tests                   the Go tests that read docs/design (every Test...Quoted by name, registry, whole printed diagnostic numbers, VIP citations, pending lines), the cost guards of --fix and flow narrowing
+  :spec-tests                   the Go tests that read docs/design (every Test...Quoted by name, registry, whole printed diagnostic numbers, VIP citations, pending lines), the cost guards of flow narrowing
 ```
 
 The source-map tool assertions share one four-worker leaf; its thirteen files run beside each other so splitting them does not multiply total elapsed work. Runtime compilation and generated source-map programs remain a separate cached preparation.
@@ -1043,7 +1028,7 @@ Migration and convert suites belong to the `//packages:migrate-test` suite and i
 
 
 ```text
-:native-srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test-N, :migrate-test
+:native-srcs ─► :compiler ─┬─► :<case> ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test-N, :migrate-test
                            ├─► :compiler-native ─► :compiler-test-N, :migrate-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
                            ├─► :lsp-smoke ◄─ :runtime-dist
                            └─► :snippets, :docs-tools
@@ -1076,7 +1061,7 @@ Bun gives a test 5 seconds unless the command says otherwise: `bunfig.toml`
 has no timeout key, and a `setDefaultTimeout` in a preload reaches the first
 test file only. Every `bun test` the graph or a package script runs therefore
 passes `--timeout` (the runtime 30 s, which covers two 10 s children per test;
-`docs/tools` 60 s; the kernel laws 30 s). `scripts/bun-test-budgets.test.mjs`
+`docs/tools` 60 s; the kernel laws 60 s). `scripts/bun-test-budgets.test.mjs`
 fails a `PACKAGE.ts` shell or a package script that drops the flag, and a
 `main.test.ts` child deadline the runtime budget cannot cover twice.
 
@@ -1215,18 +1200,10 @@ The harness sets `VIBELANG_BINARY` to the absolute compiler executable it used w
 The `native-phase-import-emit` runner keeps the default 60-second overall budget. Its reference compiler subprocess has a 30-second deadline, so a reference-compile timeout is reported before the outer runner's deadline.
 
 A case's custom `run.mjs` has 60 seconds unless one of its lines says
-`// run-seconds: N`. The twelve `rewrite-*` runners call `compareRewrite`, a
-pipeline of six stages (two compiles, two runs, two `--fix` passes) that each
-have a 30-second deadline. Eleven declare `// run-seconds: 180`, their sum: a
-slow stage then trips its own deadline, which names the stage in
-`out/rewrite-evidence/<stage>.log` with its duration, instead of the runner
-being killed as a whole. `rewrite-reserved-error-payload` declares 600: its six
-stages ran 70 to 182 seconds in total over 159 post-merge runs, and the sum
-killed it twice without a stage tripping. Under the 60-second default, post-merge killed healthy
-runs after four compiles on loaded hosts (medians of 13 to 20 seconds, maxima of
-86 to 115 seconds over 214 runs).
+`// run-seconds: N`. `rewrite-reserved-error-payload` declares a 600-second
+runner budget.
 
-A shared helper that is such a pipeline carries the line itself, and a runner
+A shared helper with its own budget carries the line itself, and a runner
 without its own takes the largest `N` among the helpers it imports, so a new
 case on `cov-ch004-twin.mjs` or `census-vibex.mjs` needs no line.
 Helper discovery follows single- and double-quoted relative `.mjs` imports
@@ -1564,7 +1541,7 @@ Launcher fixtures that expect the whole suite set `GO_TEST_SLICE=1/1` explicitly
 | --- | --- | --- |
 | A doc page | the `:tree` checks | compiler, runtime, every case, the upstream Go tests |
 | A page in `docs/design` | `:spec-tests` and the `:tree` checks | compiler, runtime, every case, the upstream Go tests |
-| One case's files | that case and the `:tree` checks | compiler, runtime, 808 cases |
+| One case's files | that case and the `:tree` checks | compiler, runtime, other cases |
 | The runtime's `src/` | `:runtime-*`, every case, the `:tree` checks | compiler, compiler package |
 | A Go source file | `:compiler`, every case, every Go test, the `:tree` checks | runtime |
 | `harness.mjs` | every case and the `:tree` checks | compiler, runtime |
@@ -1661,13 +1638,16 @@ A cached result is only as correct as its key is complete. Each target names:
   and `jj file list`, which the docs check runs while other targets restore
   their outputs, snapshots the working copy: an unignored temporary tree is
   tracked, then vanishes before the check reads it. Discovery prunes the Vite
-  The compiler-package migration properties also spawn `jj`; it is declared in the workspace host binaries and on `//packages:compiler-test-1` to `-4` and `//packages:migrate-test`.
   and unplugin test `.fixtures/` trees and the compiler case directory, which
   has no package declarations: their generated outputs may change while the
   compiler tests explain their migration-source cache inputs. This excludes
   declaration discovery only; case sources still enter their declared inputs.
 
-Native builds and copies publish executables through `scripts/native-output.sh`.
+The compiler-package migration properties also spawn `jj`. The workspace host
+and the four numbered compiler test suites and `//packages:migrate-test`
+declare it as a tool.
+
+Compiler and forms-generator builds publish executables through `scripts/native-output.sh`.
 The helper refuses a directory at the executable path, including a symlink
 to a directory, before starting the writer and again before publication.
 It reports the path and leaves the directory and its contents intact.
@@ -1831,17 +1811,21 @@ metadata loading through the same router.
 
 ## Specification contracts
 
-Both `//:forms` and `//:docs-tools` require the static `//:spec-lint` aggregate, which selects `//:spec-registry`,
-`//:spec-tables`, `//:spec-copies`, `//:spec-authority`,
-`//:spec-linters-test`. They use the normal
-Smithers graph and cache; no extra pre-gate script is needed.
+Both `//:forms` and `//:docs-tools` require `//:spec-lint`. Its eleven
+dependencies are `//:spec-registry`, `//:spec-tables`, `//:spec-copies`,
+`//:spec-authority`, `//:spec-linters-test`, `//:spec-schema-constructor`,
+`//:spec-pipe-arrows`, `//:spec-catch-diagnostics`, `//:spec-appendix-examples`,
+`//:spec-appendix-host-examples` and `//:spec-diagnostic-identity`.
+Compiler-backed checks run through `//:spec-linters-test`,
+`//:spec-appendix-examples` and `//:spec-appendix-host-examples`. Smithers
+schedules and caches the dependencies through the normal graph.
 
 The registry check reads Appendix B until the one-file diagnostic registry
 lands. One adapter selects that source when present. TypeScript codes and
 options come from the pinned compiler registry. The registry also reads JSON/JSONC option keys and VibeLang CLI fences. Explicit `EK3007` or `TS5023` rejection witnesses do not assign a new option; other tools do not contribute compiler flags. VibeLang names require
 published VIP authority; unresolved authority is reported as a warning. An open VIP is not approval, even when its diagnostic already has a registry row. A denied VIP may explain a rejection in its own sentence; a neighbouring rejection sentence cannot authorize a positive citation.
 The table check compares decided config keys, denied VIP membership and
-repair forms, and resolution order. A property signature such as `sidecarDir?: string` is qualified by the top-level option object its VIP declares; an unrelated object's field does not authorize a `vibe` key. The copy check compares shared tables
+resolution order. A property signature such as `sidecarDir?: string` is qualified by the top-level option object its VIP declares; an unrelated object's field does not authorize a `vibe` key. The copy check compares shared tables
 and explicitly marked `spec-copy` sections byte for byte. The
 `//:spec-shared-tables` generated target derives the resolution reference
 from VIP-39. After editing that source table, run `node docs/tools/spec-rules.mjs generate` and commit the generated reference. Its regression check compares the committed bytes with a fresh generation.
@@ -1957,11 +1941,10 @@ and source call newlines keep their reports.
 ## Specification rule authority
 
 The optional `//:spec-rule-judge` run target checks added specification rules
-and compiler diagnostic messages with `gpt-6-luna`, after deterministic
-linters. It rejects grounded rules without accepted authority and contradictions
-by default. Platform owns its attachment to the pre-gate. Its private
-revision/diff/policy cache prevents retries from changing a verdict; missing
-decisions or an unavailable model warn and allow the entry.
+and compiler diagnostic messages after deterministic linters. It rejects
+grounded rules without accepted authority and contradictions by default.
+Its revision, diff and policy cache preserves verdicts across retries.
+Missing decisions or an unavailable model produce a warning.
 `//:spec-rule-judge-test` checks its tooling without a model.
 See [the configuration and fixed historical eval](../../scripts/spec-rule-judge/README.md)
 for external authority paths, the `smthrs eval` command and calibration results.
@@ -2026,7 +2009,7 @@ It requires explicit selection, so wildcard CI does not need a diff. See
 for sentence classification, case references, twin layout and exit codes.
 
 The manual Smithers target `//:spec-coverage-census` inventories immutable
-`main@github` rules and their passing, pending, tag-linked and missing test evidence,
+`main` rules and their passing, pending, tag-linked and missing test evidence,
 excluding reviewed `not-rules/*.csv` rows;
 `//:spec-coverage-census-test` checks its extraction and matching contracts.
 See [the docs tools census contract](../tools/README.md#specification-coverage-census)
@@ -2042,12 +2025,9 @@ and editor-only suggestions count; whole decimal suffixes remain distinct.
 The existing `//:spec-registry` checks VIP authority and citations in specification
 chapters; it does not inventory every compiler message declaration.
 
-This target is exclusive and omitted from normal wildcard test runs while `fold-details` folds the complete Appendix B
-inventory from `gate6-codes`. Its mutation tests and the unused-factory-diagnostic retirement properties run in
-`//:spec-linters-test`. To require the real inventory, fold the missing rows,
-regenerate compiler category/doc projections, run
-`node docs/tools/diagnostic-identity.mjs` with zero findings, remove
-`exclusive: true` from `specDiagnosticIdentity`, then add it to `specLint.data`.
+The target runs in normal wildcard test selections and through `//:spec-lint`.
+Its mutation tests and the unused-factory diagnostic checks also run in
+`//:spec-linters-test`.
 No compatibility-code allowlist bypasses missing definition rows.
 Historical proposals, the versioned code map and release/decision logs are
 migration records; current chapters and guides are scanned. Appendix B's
@@ -2079,13 +2059,11 @@ and generated provenance mutations.
 
 The alias-revert injected-I/O and asset-import properties quote Chapter 007’s current declaration-file and source-tool split. Refresh those citations when that sentence changes; retain their alias roundtrip and host asset-resolution checks and all sample counts.
 
-The hidden-native cache property requires real misses for the fixed .vibe leading-dot cases, including all visible/hidden file and directory combinations with include globs or explicit files. Its remaining .vibex allowances keep strict stale-result and XPASS guards until their own product repairs land; the32 discovery samples remain unchanged.
+The hidden-native cache property requires real misses for the fixed .vibe leading-dot cases, including all visible/hidden file and directory combinations with include globs or explicit files. Its remaining .vibex allowances keep strict stale-result and XPASS guards until their own fixes land; the 32 discovery samples remain unchanged.
 
 Migration helper, runtime enumeration, pinned formatter and workspace reachability property citations use Chapter 007’s current declaration-file and source-tool split. Citation refreshes preserve their generated inputs, negative controls, assertions and sample counts.
 
 The sidecar source-selection properties cite the current Chapter 007 summary of discovery, explicit-input overwrite protection and final physical/logical resolution. Keep each citation check together with its original native/stock compiler controls, literal corpus hashes, generated dimensions and sample counts.
-
-Async conversion integration tests retain every refusal fixture in the LSP project, then compile each positive repair in a separate project. This keeps intentionally invalid neighbours from stopping the runtime check. Converted async returns may use a Promise-adoption bridge, so the execution check awaits `Effect.runPromise`. The fresh data checks compare against stock TypeScript twins and exercise 100 generated primitive values while retaining getter and alias refusals.
 
 Declaration comparison fixtures follow the API identity contract in Functions: equivalent target spellings may compare equal only with matching exported names, mutually identical types and export documentation. Preserve explicit type/name/doc counterexamples and incomplete-environment refusals alongside the original 80-run module-resolution property.
 
@@ -2095,8 +2073,6 @@ The native declaration-spelling property reads the current Specifiers contract i
 
 Publication helper properties cite Chapter 007’s native output names: x.js and ordinary x.d.ts in outDir. Citation maintenance retains both 100-case properties and their distribution paths, shadowing, unsupported-expression and source-form controls.
 
-The retained-schema-constructor gate cites the current preserving-fix rule in Chapter 007. Its real compiler fixture, constructor/refused-class warning checks and generated diagnostic-policy controls remain required when refreshing that citation.
-
 The compiler package test target passes its declared compiler-native artifact through VIBELANG_BINARY after entering packages/compiler. Keep that path absolute and quoted so the native configuration-contract tests run in workspace paths containing spaces; retain the existing target selection, dependency and deadline.
 
 The corpus for build entries and the properties for packages, wildcards, reversion and workspace resolution quote Chapter 007’s current contract for TypeScript and tools. Run both consumers of the shared corpus when refreshing its quotation, preserving their literal sources, variant sets, hashes and original property counts.
@@ -2105,7 +2081,7 @@ The workspace-package cache regression uses TypeScript's `strictNullChecks` sett
 
 ### Grammar admission tables
 
-The developer build, `sh scripts/build-vibelang.sh`, runs `TestTableAccountsForEveryHook` before generating Effect globals or replacing compiler outputs. The census reads parser and lowering sources, the generated inventory and its cited specification chapters; it does not link the compiler. A failure prints the missing hook or invalid row and preserves the command's exit status and existing outputs. Repair the canonical table and regenerate its projections before building again. The census runs for the host even when `GOOS` or `GOARCH` selects a different compiler target. This source-checkout check is separate from the native artifact's build inputs: editing documentation does not invalidate the Smithers compiler artifact.
+The developer build, `sh scripts/build-vibelang.sh`, runs `TestTableAccountsForEveryHook` before generating Effect globals or replacing compiler outputs. The census reads parser and lowering sources, the generated inventory and its cited specification chapters; it does not link the compiler. A failure prints the missing hook or invalid row and preserves the command's exit status and existing outputs. Update the canonical table and regenerate its projections before building again. The census runs for the host even when `GOOS` or `GOARCH` selects a different compiler target. This source-checkout check is separate from the native artifact's build inputs: editing documentation does not invalidate the Smithers compiler artifact.
 
 Edit `docs/design/registry/grammar-admission.tsv`, one reviewed hook per line.
 The five columns are hook, form, specification authority, status and reason.
@@ -2211,6 +2187,8 @@ A retirement needs no codemod and passes no retirement gate: VibeLang ships
 no quick fixes or codemods of its own before release (ruling PROC-29, in
 `docs/design/vips/README.md`). `docs/design/retirement-allowlist.json` keeps
 the record of approved retirements, and the diagnostic identity tests read it.
+
+## Additional regression checks
 
 The identity-allocation checkpoint compares the recorded before/after allocation
 transition in `docs/design/diagnostic-identity-allocation.json`. Its original
@@ -2463,9 +2441,8 @@ validation and API comparison. Their original target and strictness settings
 remain in force. The `in`, `out` and `in out` forms, class/interface/type
 shapes and four generated changed-field samples remain enabled.
 
-The `//:go-failure-aliases` target checks that failure aliases preserve the declaration-tag admission rule, including repaired inputs retained in the failure corpus.
-
-The diagnostic registry gate also requires a keyed preservation generator for every registered quick fix. It reads the compiler case corpus used to build those generators, so changing a fixture re-keys the check.
+The `//:go-failure-aliases` target checks that aliases retain their
+declaration-site tags without admitting ordinary throwing calls.
 
 The `//:go-generator-return-contracts` target checks generator migration against written result types, including incompatible bare returns, optional and `void` results, nested functions and source trivia.
 
@@ -2515,19 +2492,21 @@ The `//:go-interim-severities` target replays the saved compatibility-warning in
 
 The `//:emission-snapshots` target includes the pinned negation-pattern declaration and Exit comparison. It uses the shared VIP-27 API identity comparator, retains the unmodified TypeScript twin and rejects changed native union types or authored documentation. The release target runs generated union and metadata mutation controls.
 
-The `//:appendix-oracles` target runs the Appendix B probe, quick-fix and stock-TypeScript twin controls. The chapter 4 reference-oracle controls run in `//:release`. Their test-runner catalog entries must match the commands that execute them.
+The `//:appendix-oracles` target runs the Appendix B diagnostic probes,
+editor diagnostic controls and stock TypeScript twins. The Chapter 4
+reference-oracle controls run in `//:release`.
 
-Give services explicit keys in isolated migration fixtures when the service-key repair is outside the assertion being tested. Keep exact source comparisons so an unrelated repair cannot obscure the callback or requirement migration under test.
+The `//:deep-type-repair` target pairs the spec quotation test for nested
+Effect shorthand grouping with a native case that checks declaration output
+and runtime behavior.
 
-The cached-default oracle in `//:appendix-oracles` follows VIP-9's preserving native-class migration. It compares exact repaired source, recompiles its type reads, checks shared cached value identity and mutation visibility, and repeats those observations across generated field names and initial values.
+The `//:reserved-error-repair` target checks that reserved-payload and
+inheritance diagnostics stay independent. The native case compares declaration
+output and the complete runtime `Exit`.
 
-For rejected trailing blocks, ordinary parser recovery output is not a legacy runtime reference. The appendix oracle compares a repair's exact emitted JavaScript with an independently written valid form and checks the program, Effect callback and plain callback runtime results, including generated comment and line-ending variants.
-
-The `//:deep-type-repair` target checks required shorthand grouping through 32 nested Effect or array boundaries. It retains exact declaration output and the native deep-rewrite runtime and idempotence checks.
-
-The `//:reserved-error-repair` target checks independent reserved-payload and inheritance diagnostics across generated declaration forms, with each violation removed separately. Its native case retains exact declaration output, complete runtime Exit and idempotent class repairs.
-
-The `//:go-error-inheritance` target also replays every ambient error-class preservation input. It checks the specific diagnostic, independently written native declaration, editor edit, emitted erasure and second repair. Both Go packages share one compilation invocation; named test progress distinguishes compilation from test execution. Resolved inputs retain their corpus files and become mandatory passing cases.
+The `//:go-error-inheritance` target checks native error inheritance and
+ambient error classes for their diagnostics, declaration output and erasure.
+It runs the selected tests from both Go packages in one invocation.
 
 The `//:build-contracts` target checks explicit Bun test deadlines before graph or package-script changes land. Service-call, table-row and runtime export documentation checks receive 30 seconds rather than inheriting Bun’s five-second default.
 
@@ -2588,8 +2567,6 @@ The `//:declaration-contract-twins` check compares ordinary, unmodified stock de
 The `//:trusted-callback-contracts` check verifies foreign callback contracts, native constructor shadowing and all runtime observations in the throwing-callback fixture.
 
 The `//:declaration-manifest-retirement` target verifies complete package file sets against stock TypeScript in five emission layouts, checks that no provenance manifest is emitted, and retains the forms fixture’s exact declarations and runtime observations. Foreign-call contracts travel in declarations; stale provenance files do not grant permission.
-
-The `//:class-evaluation-repairs` check exercises preserving repairs in class bases and generated schema error bases, including parentheses, nested calls and repeated fixes.
 
 The `//:whole-service-declarations` check compares whole-shape services with native declarations across namespace imports, defaults and enclosing namespaces.
 
@@ -2661,17 +2638,7 @@ The `//:nothrow-rethrow-escape-controls` gate retains every escape shape and add
 
 The `//:native-import-preference-twins` gate retains byte-exact unchanged-importer controls and compares explicit source imports with independent native twins and stock TypeScript 5.9.3.
 
-The `//:legacy-schema-key-defect-repairs` gate checks both input diagnostics, zero-error fixed output, defect identity bridges, and idempotence across class heritage and four nested schema layouts.
-
-The `//:throw-repair-native-twins` gate retains every repair and idempotence invocation. It batches the native twin and declaration comparisons into one TypeScript program each, snapshots every declaration before the next repair, and records fixture/stage timing without source payloads. The runner keeps its existing deadline and adds deterministic input variations.
-
-The `//:option-generator-iterator-refusals` gate distinguishes native generators from explicit producers and retains every active-iterator refusal across binding, discard, return, nested-loop, alias, and option-state variations.
-
 The `//:error-tag-inheritance-identities` check retains all inheritance rejections and the native property error, with literal and union reserved-tag mutations in both error forms.
-
-The `//:automatic-catch-data-preservation` target checks returned data, native contracts, advisories and editor actions across catch handler variations.
-
-The `//:native-repair-argument-thunks` target checks method-argument repairs across calls, defaults, receivers, native narrowing and declaration identity.
 
 The `//:lexical-capture-diagnostic-retirement` gate validates the retired fixture inventory and its resurrection guard, then checks captured values with independent native-error controls.
 
@@ -2710,11 +2677,8 @@ independently. Resource guards require unchanged browser libraries to retain
 their parsed document identity. All 24 ambient samples still compare self,
 formatting and type mutations.
 
-The `//:schema-alias-native-properties` target checks alias repairs against native writable-property errors across optional, nested and imported schema variations.
-
-The `//:implicit-generator-defect-bridges` target compares implicit generator repairs against native declarations and Effect exits across foreign invocation and contract variations.
-
-The `//:trusted-legacy-client-actions` target checks the legacy client diagnostics at current synchronous-call boundaries through public language-service document edits.
+The `//:schema-alias-native-properties` target runs the quoted checks for
+native schema alias property and declaration contracts.
 
 The `//:recursive-legacy-slot-diagnostics` check retains recursive legacy call-cycle and native recursion errors while testing fully written positive contracts for argument, logical and generic call positions.
 
@@ -2730,8 +2694,6 @@ The `//:native-identity-receipt-inputs` target validates frozen source and confi
 
 The `//:parser-error-registration-members` target checks the complete parser suite and generated matcher blocks across error forms and authored member variations.
 
-The `//:migration-source-twins` target checks complete source equality and declaration identity for implicit-run and imported generator migrations, including their evidence comments.
-
 
 JSDoc-link API fixtures select `lib.es5.d.ts` for independent native validation
 and every comparison program. The loaded-library guard requires ES5 and permits
@@ -2743,8 +2705,6 @@ must retain native `TS2583` and make comparison unavailable.
 
 The `//:schema-codec-native-return-inference` target checks generated schema factory return inference, writable codec references, lexical scopes and migration idempotence.
 
-The `//:scoped-wrapper-refusal-progress` target checks scoped platform refusals, independent listed-file repairs, omitted companions and unchanged unlisted modules, including interrupted verification.
-
 The `//:explicit-diagnostic-category-variants` target checks fixed throw-syntax error severity and contextual host warning categories against Appendix B.
 
 The `//:unique-diagnostic-authorizations` target checks that a retired diagnostic and its source fixture have one authorization record, preserving approval references and protected source/configuration digests when records are consolidated.
@@ -2753,13 +2713,9 @@ The `//:syntax-error-matcher-registration` target checks complete syntax goldens
 
 The `//:continuation-contract-retirement` target keeps continuation retirement identities consistent across the registry, full-project corpus, native namesake controls and Appendix examples.
 
-The `//:generator-binding-refusal-contracts` target checks complete generator refusal diagnostics and object, defaulted, nested and tuple parameter migration corpus controls.
-
 The `//:resolved-fuzz-gap-regressions` target replays native source resolution, declaration spelling, generator arguments, grouped completion, and execution diagnostics after their compiler gaps are resolved. Changes to those implementations or pending records select it before landing.
 
 The `//:inherited-error-constructor-arity` target checks zero, single, multiple, optional, rest and object constructor shapes, retaining arity errors in authored methods.
-
-The `//:generic-handler-requirement-migration` check covers inferred requirement types in legacy error handlers and their public contract preservation.
 
 The `//:diagnostic-example-source-locations` target replays located JSON and provider examples and the archive decoder guards. The complete Appendix runner continues to replay every example. It runs at most four single-threaded compilers concurrently, keeps witnesses from the same native project sequential, and waits for active compilers before cleaning up a failed run. Receipts retain the example order and each code, category and source-location check.
 
@@ -2783,19 +2739,9 @@ The schema codec return check also replays grouped, required-field, and readonly
 
 The trusted class visibility check replays the located compatibility example and varies private versus exported classes, import aliases, namespaces, and Unicode names against stock TypeScript visibility controls.
 
-The tagged match repair check compares complete migration output and compiles it, with exhaustive-tag handler and refutable-combinator fuzz controls.
-
 The loader sidecar root check varies explicit, inherited, inferred, and composite roots through public and loader compiles, then runs the embedded bundler declaration checks. Failures report the relative declaration paths actually written.
 
 The error registration projection check preserves authored native static blocks while checking error fields, getters, methods, empty declarations, and schema controls in both renderings against native and stock TypeScript.
-
-The layer repair check preserves `LF` and `CRLF` comments while using explicit service lookup; keyed service-call inputs cover `try`, `catch`, pipes, and nested handlers with the same member name.
-
-The grouped schema boundary check retains exactly one inheritance error after a field-only repair, then compiles full migrations across parent, child, nested-array, namespace, and Unicode field variants.
-
-The `//:build-repair-cli-contracts` target checks build aliases, repair flag order, repeated runs and source line endings against VIP-34. It also retains watch refusal controls and the dependency-order, cycle, ownership and cancellation tests for project builds.
-
-The `//:abstract-error-constructor-migrations` target checks abstract root and inherited constructor repairs across ordinary, migration-only and VIP-only runs, including imported bases, namespaces, Unicode and declaration preservation. Runtime controls retain field filtering, tags, getters, constructor identity and repeated repair behavior.
 
 The binding-free pattern check compiles checking projections with actual runtime cache types, independently of prelude export inventory, and verifies empty, literal, nested, negated and alternative patterns plus iterator closing and getter reads.
 
@@ -2809,27 +2755,16 @@ Optional array-pattern bindings use the same conditional lexical-cell initializa
 
 Computed schema keys in TypeScript projections keep their native expressions, including calls, getters and symbol keys. They are evaluated in the generated schema object at the same position as before. Keys containing VibeLang operations, or lexical values that need an Effect frame, report `EK9001` and require the compiler; they are not silently copied after removing a keyword. Native `await` and `yield` keep their native function context. Ordinary `this` keys retain the Effect function receiver in checking and executable projections. `FuzzMapperSchemaComputedKeys` covers writable and readonly fields in schemas, aliases and nested structs, with keyed inputs and changing names and literals.
 
-The `//:http-request-pipe-rollback-controls` target retains canonical HTTP setter repairs, observable argument refusal and exact declaration controls across namespace and named imports, aliases, reexports, Unicode and stage order. The complete pipeline-order preservation controls also run in `//:pure-request-pipe-receiver-controls`.
-
-The `//:sync-builtin-call-bridge-controls` target retains exact sync wrapper checks and compares generated call bridges with native TypeScript. Keyed inputs cover JSON values and parse failures, property reads, Unicode and helper name collisions; runtime traces include construction, repeated runs, receivers, arguments and defect details.
-
 The mapper prelude helper check type-checks generated iterable projections with both native and stock TypeScript, preserves runtime helper types, and runs iterator cleanup controls.
 
 The `//:mapper-explicit-catch-owner-controls` target retains lazy catch and pipe-topic projection assertions under explicit effect owners. It also checks native and mapped `EK0504` spans for ordinary functions, arrows and shadowed callbacks, while marked owners remain valid. Legacy hatch and value-handler projection controls keep their existing coverage.
 
-The `//:migration-metadata-comment-twins` target checks exact narrowed-call and parameter-cell repair twins and executes both fixed cases. Keyed comment controls cover headers, footers, trailing comments, Unicode and line endings without erasing source metadata from comparisons.
+The `//:migration-metadata-comment-twins` target runs the native counterparts
+for narrowed property calls and parameter cells.
 
 `//:mapper-catch-declaration-imports` checks inferred and partial catch channels with stock TypeScript and namespace-alias controls.
 
-The abstract error constructor controls also retain an existing `Data` and `Schema` import while migrating a fieldless base and a child with fields and a getter. This reproduces overlapping import insertions in all three repair modes; the import-free cases remain positive controls.
-
 The `//:mapper-subtype-callable-controls` target keeps five unresolved host callback checks while retaining effect blocks in the source mutation. Written callback controls, runtime cases and the effect-marker comment property remain required.
-
-`//:legacy-inferred-service-receiver-order` checks the original service migration and a keyed matrix of marked and unmarked inferred-channel annotations against native TypeScript declarations.
-
-`//:native-generator-refusal-site-controls` checks unchanged native generator returns, original source coordinates after earlier repairs, refused-only files and protected prelude edits, including the keyed inside/outside edit matrix.
-
-The corrected pipeline repair check retains all original factory-order, mutable-stage, receiver, callback, runner and accessor-option cases. Canonical HTTP setters additionally keep their proven-safe data-first form and exact declaration output across import layouts and stage order.
 
 `//:service-member-diagnostic-ownership` checks single member diagnostics across whole shapes, generic declarations, invalid keys and call or construct signatures, including keyed fuzz inputs.
 
@@ -2873,13 +2808,14 @@ plugin install another target may be using.
 Compiler fixtures that emit relative source-extension imports set
 `rewriteRelativeImportExtensions`, as their TypeScript twins do. An editor
 archive that exercises such imports carries its own `tsconfig.json`, so the
-original project and the project after a quick fix use the same extension
-policy. Keep static and dynamic imports of both `.vibe` and `.vibex` covered.
+editor and compiler runs use the same extension policy. Keep static and dynamic imports of both `.vibe` and `.vibex` covered.
 
 Changes to the checker or computed-member regressions select `//scripts/fuzz-gate:computed-members`, which compares literal computed duplicate diagnostics and alias controls with the pinned TypeScript compiler.
 
-Trusted-wrapper repair changes also select `//:trusted-empty-forwarding`, covering repaired declarations, narrowed arguments, known throws and the generated forwarding case.
+The `//:trusted-empty-forwarding` target runs the trusted-wrapper migration
+case to check the original input proof and current forwarding output.
 
-TypeScript-form repair changes select `//:form-repair-sidecars`, which runs the repair tests in `internal/vibelang`. The `vibelang` package has no changed-path fuzz family, so a change to a repair rule reaches these tests before it lands only through this target.
+The `//:form-repair-sidecars` target runs the Go tests for retained TypeScript
+form diagnostics and native error declaration shapes.
 
 Changes to the own-signature throws check also run `FuzzLegacyEffectAlias`, whose inherited Effect members are checked at their own signatures. Changes to the module file loader select `//scripts/fuzz-gate:inline-module-artifacts`, so a loader fix that closes an inline-module gap also removes its pending lines.
