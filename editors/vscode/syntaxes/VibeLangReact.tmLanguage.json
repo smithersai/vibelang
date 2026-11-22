@@ -59,9 +59,6 @@
 					"include": "#vibelang-durable-declaration"
 				},
 				{
-					"include": "#vibelang-handle-clause"
-				},
-				{
 					"include": "#vibelang-provide"
 				},
 				{
@@ -260,9 +257,6 @@
 				},
 				{
 					"include": "#vibelang-pipe"
-				},
-				{
-					"include": "#vibelang-await-operation"
 				},
 				{
 					"include": "#vibelang-fork"
@@ -2807,6 +2801,9 @@
 				}
 			},
 			"patterns": [
+				{
+					"include": "#vibelang-match-when"
+				},
 				{
 					"include": "#object-member"
 				}
@@ -6161,7 +6158,7 @@
 					"name": "entity.name.type.alias.ts"
 				}
 			},
-			"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|control|schema|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
+			"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|schema|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
 			"patterns": [
 				{
 					"include": "#comment"
@@ -6179,7 +6176,7 @@
 							"name": "keyword.control.intrinsic.tsx"
 						}
 					},
-					"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|control|schema|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
+					"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|schema|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
 					"patterns": [
 						{
 							"include": "#type"
@@ -6193,7 +6190,7 @@
 							"name": "keyword.operator.assignment.tsx"
 						}
 					},
-					"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|control|schema|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
+					"end": "(?=\\}|;|^\\s*$|(?:^\\s*(?:error|service|schema|abstract|async|effect|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
 					"patterns": [
 						{
 							"include": "#type"
@@ -6204,7 +6201,7 @@
 		},
 		"vibelang-type-declaration": {
 			"name": "meta.class.ts",
-			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(schema)\\s+([_$[:alpha:]][_$[:alnum:]]*)",
+			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(schema)\\s+(?!(?:as|satisfies|is|instanceof|in)\\b)([_$[:alpha:]][_$[:alnum:]]*)",
 			"beginCaptures": {
 				"1": {
 					"name": "keyword.control.export.ts"
@@ -6234,7 +6231,7 @@
 		},
 		"vibelang-error-declaration": {
 			"name": "meta.class.ts",
-			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?(?:(abstract)\\s+)?(?:(schema)\\s+)?\\b(error)\\s+([_$[:alpha:]][_$[:alnum:]]*)",
+			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?(?:(abstract)\\s+)?(?:(schema)\\s+)?\\b(error)\\s+(?!(?:as|satisfies|is|instanceof|in)\\b)([_$[:alpha:]][_$[:alnum:]]*)",
 			"beginCaptures": {
 				"1": {
 					"name": "keyword.control.export.ts"
@@ -6374,7 +6371,7 @@
 		},
 		"vibelang-member-declaration": {
 			"name": "meta.class.ts",
-			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(service|control)\\s+([_$[:alpha:]][_$[:alnum:]]*)",
+			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(service)\\s+(?!(?:as|satisfies|is|instanceof|in)\\b)([_$[:alpha:]][_$[:alnum:]]*)",
 			"beginCaptures": {
 				"1": {
 					"name": "keyword.control.export.ts"
@@ -6402,14 +6399,6 @@
 				}
 			]
 		},
-		"vibelang-handle-clause": {
-			"match": "\\b(handle)\\s+(?=[_$[:alpha:]][_$[:alnum:]]*\\s*\\.\\s*[_$[:alpha:]][_$[:alnum:]]*\\s*\\()",
-			"captures": {
-				"1": {
-					"name": "keyword.control.trycatch.ts"
-				}
-			}
-		},
 		"vibelang-fork": {
 			"match": "(?<![_$[:alnum:]])(fork)\\s+(?!(?:in|instanceof|as|satisfies)\\b)(?=[_$[:alpha:]{]|this\\b|new\\b|await\\b)",
 			"captures": {
@@ -6422,20 +6411,6 @@
 			"match": "(?<![_$[:alnum:].])(join)\\s+(?!(?:in|instanceof|as|satisfies)\\b)(?=[_$[:alpha:]{\\[]|this\\b)",
 			"captures": {
 				"1": {
-					"name": "keyword.control.flow.ts"
-				}
-			}
-		},
-		"vibelang-await-operation": {
-			"match": "(?<![_$[:alnum:].])(await)\\s*(\\.)\\s*(all|allSettled|race|any)(?![_$[:alnum:]])",
-			"captures": {
-				"1": {
-					"name": "keyword.control.flow.ts"
-				},
-				"2": {
-					"name": "punctuation.accessor.ts"
-				},
-				"3": {
 					"name": "keyword.control.flow.ts"
 				}
 			}
@@ -6478,12 +6453,7 @@
 					}
 				},
 				{
-					"match": "^\\s*(when)(?=\\s)",
-					"captures": {
-						"1": {
-							"name": "keyword.control.switch.ts"
-						}
-					}
+					"include": "#vibelang-match-when"
 				},
 				{
 					"match": "(?<=[_$[:alnum:])\\]])\\s+(is)(?=\\s+[^\\s=])",
@@ -6574,7 +6544,7 @@
 		},
 		"vibelang-durable-declaration": {
 			"name": "meta.class.ts",
-			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(task|workflow)\\s+([_$[:alpha:]][_$[:alnum:]]*)(?<!\\b(?:as|satisfies|is))(?=\\s*\\{)",
+			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(task|workflow)\\s+(?!(?:as|satisfies|is|instanceof|in)\\b)([_$[:alpha:]][_$[:alnum:]]*)(?=\\s*\\{)",
 			"beginCaptures": {
 				"1": {
 					"name": "keyword.control.export.ts"
@@ -6601,6 +6571,14 @@
 					"include": "#class-or-interface-body"
 				}
 			]
+		},
+		"vibelang-match-when": {
+			"match": "(?:^|(?<=[{;]))\\s*(when)(?=\\s+(?!:))",
+			"captures": {
+				"1": {
+					"name": "keyword.control.switch.ts"
+				}
+			}
 		}
 	}
 }

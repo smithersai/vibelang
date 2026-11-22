@@ -218,3 +218,21 @@ test("VIP-39: the literal-text oracle quotes the accepted rule", () => {
   const spec = readFileSync(new URL("../../../docs/design/vips/0039-vibex.md", import.meta.url), "utf8")
   assert.ok(spec.includes("Tag names, attribute names, attribute strings and JSX text are JSX's alone."))
 })
+
+test("contextual declaration keywords stay identifiers before operators, inline when is scoped, and retired forms are not highlighted (#572)", () => {
+  assert.equal(has("throw error as AppError", "error", "storage.type.class.ts"), false)
+  assert.equal(has("error instanceof NotFound;", "error", "storage.type.class.ts"), false)
+  assert.equal(has("service satisfies S;", "service", "storage.type.class.ts"), false)
+  assert.equal(has("schema as T;", "schema", "storage.type.class.ts"), false)
+  assert.equal(has("error in table;", "error", "storage.type.class.ts"), false)
+  const oneLine = "const m = match (x) { when 1: \"a\"; when 2: \"b\"; default: \"c\"; }"
+  const whenParts = tokenize(highlighter, oneLine, { lang: "VibeLang", theme: "github-light", includeExplanation: "scopeName" })
+    .tokens.flat().flatMap(t => t.explanation).filter(e => e.content.trim() === "when")
+  assert.equal(whenParts.length, 2)
+  assert.ok(whenParts[0].scopes.some(s => s.scopeName === "keyword.control.switch.ts"), "first inline when")
+  assert.ok(whenParts[1].scopes.some(s => s.scopeName === "keyword.control.switch.ts"), "second inline when")
+  assert.equal(has("const o = { when: 1 }", "when", "keyword.control.switch.ts"), false)
+  assert.equal(has("control Approval { approve(r: string): boolean }", "control", "storage.type.class.ts"), false)
+  assert.equal(has("try { x } handle Approval.approve(r) { }", "handle", "keyword.control.trycatch.ts"), false)
+  assert.equal(has("await.all [a(), b()]", "all", "keyword.control.flow.ts"), false)
+})

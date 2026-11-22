@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Updated the VS Code TextMate grammars so `error`, `schema`, and `service` stay identifiers before `as`, `satisfies`, `is`, `instanceof`, and `in`, inline `when` arms in one-line `match` expressions are highlighted, and retired `control`, `handle`, and `await.*` rules are removed.
 - Fixed a syntax error in the tree-sitter property test suite and updated the VS Code and Neovim editor suites and setup docs to expect `EK0102` on `old-await.vibe` and current `forms.vibe` syntax.
 - Fixed the `EK1003` parser diagnostic for `fork do { ... }` to suggest `fork effect { ... }` instead of the transitional bare `fork { ... }` spelling, and aligned Appendix B with Chapter 7 on the `EK1707` migration hold and `EK1003` block-`do` coverage.
 - Deleting or renaming a `.vibe` or `.vibex` file now prunes its stale `.d.vibe.ts` and `.d.ts` sidecars and prevents module resolution from matching orphaned generated forwarders, failed `noEmitOnError` and syntax-error builds preserve existing valid sidecars, and `vibelang -b` restores deleted sidecar declarations.
