@@ -472,11 +472,23 @@ export const task = <
       })
       return value
     })
+  const payloadDigest = (payload: P): Effect.Effect<string> =>
+    Effect.suspend(() => {
+      try {
+        return canonical.sha256(canonical.canonicalJson(canonical.snapshot(payloadSchema, payload)))
+      } catch {
+        return Effect.succeed("")
+      }
+    })
   const call = (payload: P) =>
     Effect.gen(function*() {
       const instance = yield* WorkflowEngine.WorkflowInstance
       const handler = yield* Handler
       const n = nextOccurrence(instance, key)
+      const digest = yield* payloadDigest(payload)
+      const stepKey = digest === ""
+        ? `${key}/${n}`
+        : `${key}@${digest}/${steps.nextOccurrence(instance, `${key}\u0001${digest}`, `Task ${key}`)}`
       // Credentials never reach the journal, which stores a step's result and error.
       let body: Effect.Effect<unknown, unknown> = handler.run(payload).pipe(
         Effect.tap((value) => Effect.sync(() => canonical.refuseRedacted(value, `The result of task ${key}`))),
@@ -497,7 +509,7 @@ export const task = <
       const step = policy === undefined
         ? activity
         : Activity.retry(activity, { while: () => retryAllows(policy, ++attempts) })
-      return yield* Effect.provideService(step, engineInternal.StepInfo, info)
+      return yield* Effect.provideService(step, engineInternal.StepInfo, { ...info, stepKey })
     }) as ReturnType<Task<Key, Payload, Success, Error>>
   const self = Object.assign((payload: P) => call(payload), {
     key,

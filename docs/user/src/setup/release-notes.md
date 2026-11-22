@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Concurrent branches calling the same `Experimental.Durable.task` could swap their recorded results after a crash or restart when earlier steps finished in a different order than replay. Task journal entries now match by payload identity as well as occurrence.
+
 - A source file with a modification time ahead of the system clock caused bundler builds and dev servers to recompile forever. Files timestamped in the future no longer trigger repeated recompiles.
 
 - Editing a source file while a cold loader validated a committed loader record could store the stale output in the compile cache under the new file's hash. The cache snapshot is now taken before record validation, so concurrent edits are not cached.

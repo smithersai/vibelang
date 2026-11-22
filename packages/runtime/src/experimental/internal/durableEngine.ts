@@ -140,7 +140,10 @@ const indexEntries = (
 ) => {
   for (const entry of entries) {
     const payload = entry.payload as Record<string, unknown>
-    if (entry.eventType === "StepCompleted") steps.set(`${payload.step}/${payload.attempt}`, payload.exit)
+    if (entry.eventType === "StepCompleted") {
+      const key = typeof payload.stepKey === "string" ? payload.stepKey : (payload.step as string)
+      steps.set(`${key}/${payload.attempt}`, payload.exit)
+    }
     else if (entry.eventType === "DeferredDone" && !deferreds.has(payload.name as string)) deferreds.set(payload.name as string, payload.exit)
     else if (entry.eventType === "ClockScheduled" && !clocks.has(payload.name as string)) clocks.set(payload.name as string, payload.wakeAt as number)
   }
@@ -392,7 +395,9 @@ export const make = (store: Store) =>
         const instance = yield* WorkflowInstance
         const state = executions.get(instance.executionId)
         if (!state) return yield* Effect.die(`Run ${instance.executionId} is not loaded`)
-        const stepId = `${activity.name}/${attempt}`
+        const info = yield* StepInfo
+        const stepKey = typeof info.stepKey === "string" ? info.stepKey : activity.name
+        const stepId = `${stepKey}/${attempt}`
         const recorded = state.steps.get(stepId)
         if (recorded !== undefined) {
           return new Workflow.Complete({ exit: decodeExit(recorded) })
@@ -402,8 +407,9 @@ export const make = (store: Store) =>
         if (state.interrupted && !instance.interrupted) {
           return new Workflow.Suspended({})
         }
-        const info = yield* StepInfo
-        yield* commit(state, instance.executionId, [{ eventType: "StepStarted", payload: { ...info, step: activity.name, attempt } }])
+        const startedPayload: Record<string, unknown> = { ...info, step: activity.name, attempt }
+        delete startedPayload.stepKey
+        yield* commit(state, instance.executionId, [{ eventType: "StepStarted", payload: startedPayload }])
         const activityInstance = WorkflowInstance.initial(instance.workflow, instance.executionId)
         activityInstance.interrupted = instance.interrupted
         return yield* activity.executeEncoded.pipe(
@@ -412,9 +418,12 @@ export const make = (store: Store) =>
           Effect.tap((result) => {
             if (result._tag !== "Complete") return Effect.void
             const exit = encodeExit(result.exit)
+            const completedPayload = typeof info.stepKey === "string"
+              ? { step: activity.name, stepKey: info.stepKey, attempt, exit }
+              : { step: activity.name, attempt, exit }
             // The event and the step's state commit together.
             return Effect.andThen(
-              commit(state, instance.executionId, [{ eventType: "StepCompleted", payload: { step: activity.name, attempt, exit } }]),
+              commit(state, instance.executionId, [{ eventType: "StepCompleted", payload: completedPayload }]),
               Effect.sync(() => void state.steps.set(stepId, exit))
             )
           })

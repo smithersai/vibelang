@@ -146,3 +146,71 @@ test("a workflow result or a deferred holding a Redacted value is refused before
   const entries = await Effect.runPromise(Effect.forEach(await Effect.runPromise(store.list({})), (row) => store.entries(row.run)))
   expect(journal + JSON.stringify(entries)).not.toContain("hunter2")
 })
+
+
+test("concurrent branches calling the same task keep their own results after a crash and replay", async () => {
+  const store = Durable.makeMemoryStore()
+  let summarizeCalls = 0
+  let blockHang = true
+  const hangReached = Deferred.makeUnsafe<void>()
+  const Fetch = Durable.task("race#FetchRepo", { payload: { repo: Schema.String }, success: Schema.String })
+  const Summarize = Durable.task("race#Summarize", { payload: { issues: Schema.String }, success: Schema.String })
+  const Hang = Durable.task("race#Hang", { payload: {}, success: Schema.Void })
+  const W = Durable.workflow("race#ConcurrentBranches", {
+    payload: { id: Schema.String },
+    success: Schema.Array(Schema.String)
+  })
+  const makeLayer = () =>
+    W.toLayer(() =>
+      Effect.gen(function*() {
+        const out = yield* Effect.all(
+          ["a", "b"].map((repo) =>
+            Effect.gen(function*() {
+              const issues = yield* Fetch({ repo })
+              return `${repo} => ${yield* Summarize({ issues })}`
+            })
+          ),
+          { concurrency: "unbounded" }
+        )
+        yield* Hang({})
+        return out
+      })
+    ).pipe(
+      Layer.provide(Fetch.toLayer(({ repo }) =>
+        Effect.andThen(Effect.sleep(repo === "a" ? "50 millis" : "1 millis"), Effect.succeed(`issues-of-${repo}`))
+      )),
+      Layer.provide(Summarize.toLayer(({ issues }) =>
+        Effect.sync(() => {
+          summarizeCalls++
+          return `summary(${issues})`
+        })
+      )),
+      Layer.provide(Hang.toLayer(() =>
+        blockHang
+          ? Effect.andThen(Deferred.succeed(hangReached, undefined), Effect.never)
+          : Effect.void
+      )),
+      Layer.provideMerge(Durable.layerStore(store))
+    )
+
+  // First engine completes both Fetch and Summarize (b finishes before a), then hangs before completing.
+  const firstRun = Effect.scoped(Effect.gen(function*() {
+    const scope = yield* Effect.scope
+    const layer = makeLayer()
+    const env = yield* Layer.buildWithScope(layer, scope)
+    const fiber = yield* W.execute({ id: "concurrent-1" }).pipe(Effect.provide(env), Effect.forkChild)
+    yield* Deferred.await(hangReached)
+    yield* Fiber.interrupt(fiber)
+  }))
+  await Effect.runPromise(firstRun)
+  expect(summarizeCalls).toBe(2)
+
+  // Second engine resumes from the same store: replay reaches a before b,
+  // and each branch must receive the summary recorded for its own payload.
+  blockHang = false
+  const result = await Effect.runPromise(
+    W.execute({ id: "concurrent-1" }).pipe(Effect.provide(makeLayer()))
+  )
+  expect(result).toEqual(["a => summary(issues-of-a)", "b => summary(issues-of-b)"])
+  expect(summarizeCalls).toBe(2)
+})
