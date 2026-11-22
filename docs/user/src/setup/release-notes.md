@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Editing a source file while a cold loader validated a committed loader record could store the stale output in the compile cache under the new file's hash. The cache snapshot is now taken before record validation, so concurrent edits are not cached.
+
 - Rejected service member headers could add misleading implicit return type, overload, or duplicate implementation errors. Each rejected member now reports its service rule, while ordinary nested classes and interfaces keep their native errors.
 
 - Constructing a service key could hide unknown names and type errors in its arguments. Those errors now appear alongside `EK3003`.

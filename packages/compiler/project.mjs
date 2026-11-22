@@ -368,16 +368,18 @@ function cached({ project, root, compiler, cache, debug, loader, onMiss, scope =
     debug(`${project} from the cache in ${elapsed(started)}`)
     return hit.result
   }
+  const snapshot = stages.time("snapshot", () => store?.begin())
   // A cold cache: the project's committed loader record (cache.mjs) serves the
   // compile when every input it names still holds, and the cache keeps it.
+  // Taking the cache snapshot first ensures an input edited while the record is
+  // validated fails the cache's race check rather than caching stale output.
   const recorded = scope === "loader" && store && existsSync(loaderRecordFile(project))
     ? stages.time("record", () => loaderRecord({ project, root, compiler }).lookup()) : undefined
   if (recorded?.result) {
-    stages.time("store", () => store.store(store.begin(), recorded.result, recorded.files))
+    stages.time("store", () => store.store(snapshot, recorded.result, recorded.files))
     debug(`${project} from its loader record in ${elapsed(started)}: ${stages}`)
     return recorded.result
   }
-  const snapshot = stages.time("snapshot", () => store?.begin())
   const finish = ({ result, files }) => {
     stages.time("store", () => store?.store(snapshot, result, files))
     const modules = new Set(result.outputs.values()).size
