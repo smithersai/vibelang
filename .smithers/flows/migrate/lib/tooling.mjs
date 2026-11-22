@@ -240,6 +240,50 @@ function group(script) {
 // again from the scripts oxlint invocations, so an older runs passes follow
 // the configurations the script names with -c.
 const generatedPasses = /^\((.*)\)((?: && (?:(?:NODE_OPTIONS=(?:"[^"]*"|'[^']*'|[^\s]+) )?eslint --config \S*\.vibelang\/eslint\.(?:[\w-]+\.)?config\.mjs(?: (?!--no-error)[^\s;&|]+)* --no-error-on-unmatched-pattern(?: --max-warnings(?:=| )0)?|node \S*\.vibelang\/oxlint\.mjs --vibe-native(?: [^\s;&|]+)*))+)$/
+
+function stripJsonComments(text) {
+  let out = "", inString = false, escape = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i], next = text[i + 1]
+    if (inString) {
+      out += ch
+      if (escape) escape = false
+      else if (ch === "\\") escape = true
+      else if (ch === "\"") inString = false
+      continue
+    }
+    if (ch === "\"") { inString = true; out += ch; continue }
+    if (ch === "/" && next === "/") {
+      i += 2
+      while (i < text.length && text[i] !== "\n") i++
+      if (i < text.length) out += "\n"
+      continue
+    }
+    if (ch === "/" && next === "*") {
+      i += 2
+      while (i + 1 < text.length && !(text[i] === "*" && text[i + 1] === "/")) i++
+      i++
+      continue
+    }
+    out += ch
+  }
+  return out.replace(/,(\s*[}\]])/g, "$1")
+}
+
+function parseJsoncObject(text) {
+  try {
+    const value = JSON.parse(text)
+    return value && typeof value === "object" && !Array.isArray(value) ? { value, strict: true } : null
+  } catch {
+    try {
+      const value = JSON.parse(stripJsonComments(text))
+      return value && typeof value === "object" && !Array.isArray(value) ? { value, strict: false } : null
+    } catch {
+      return null
+    }
+  }
+}
+
 export function wireDeveloperTools({ root, specsFor, ts }) {
   const changed = [], builds = [], warnings = []
   const write = (file, text) => {
@@ -266,8 +310,11 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   const dprintPlugin = "npm:vibelang/dprint-plugin.json"
   const dprintTypescriptPlugin = "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"
   const dprintConfigs = all.filter(f => /(^|\/)dprint\.json$/.test(f))
+  const dprintParsed = new Map(dprintConfigs.map(f => [f, parseJsoncObject(readFileSync(join(root, f), "utf8"))]))
   const pinned = new Set(dprintConfigs.filter(f => {
-    const plugins = (JSON.parse(readFileSync(join(root, f), "utf8")).plugins ?? [])
+    const parsed = dprintParsed.get(f)
+    if (!parsed) return false
+    const plugins = (parsed.value.plugins ?? [])
       .filter(plugin => plugin !== dprintPlugin)
     return plugins.every(p => /@[0-9a-f]{64}$/.test(p))
   }))
@@ -346,13 +393,23 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   }
   // JSON Prettier configurations cover editor invocations too.
   for (const file of all.filter(f => /(^|\/)(?:\.prettierrc(?:\.json)?|prettier\.config\.json)$/.test(f))) {
-    const config = JSON.parse(readFileSync(join(root, file), "utf8"))
+    let config
+    try { config = JSON.parse(readFileSync(join(root, file), "utf8")) } catch { config = null }
+    if (!config || typeof config !== "object" || Array.isArray(config)) {
+      warnings.push(file + ": add the vibelang/prettier plugin by hand")
+      continue
+    }
     config.plugins = [...new Set([...(config.plugins ?? []), "vibelang/prettier"])]
     write(file, JSON.stringify(config, null, 2) + "\n")
     needsCompiler = true
   }
   for (const file of dprintConfigs) {
-    const config = JSON.parse(readFileSync(join(root, file), "utf8"))
+    const parsed = dprintParsed.get(file)
+    if (!parsed || !parsed.strict) {
+      warnings.push(file + ": add the VibeLang dprint plugin and declaration excludes by hand")
+      continue
+    }
+    const config = parsed.value
     if (pinned.has(file)) {
       const plugins = (config.plugins ?? []).filter(plugin => plugin !== dprintPlugin)
       config.plugins = plugins.length ? plugins : [dprintTypescriptPlugin]

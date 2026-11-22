@@ -410,3 +410,20 @@ test("setup run again on foldkit's wiring leaves one layer of passes and one ign
   assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
   void own
 })
+
+
+test("YAML .prettierrc and commented dprint.json produce located warnings instead of crashing setup", t => {
+  const yamlPrettier = "semi: false\nsingleQuote: true\n"
+  const commentedDprint = "// project formatting settings\n{\n  \"plugins\": [\"https://plugins.dprint.dev/typescript-0.93.4.wasm\"],\n}\n"
+  const root = fixture(t, {
+    "package.json": JSON.stringify({ name: "app", scripts: { fmt: "prettier --check ." } }),
+    ".prettierrc": yamlPrettier,
+    "dprint.json": commentedDprint,
+    "src/main.ts": "export const x = 1\n"
+  })
+  const result = wireDeveloperTools({ root, specsFor })
+  assert.equal(readFileSync(join(root, ".prettierrc"), "utf8"), yamlPrettier)
+  assert.equal(readFileSync(join(root, "dprint.json"), "utf8"), commentedDprint)
+  assert.ok(result.warnings.some(w => w.includes(".prettierrc") && w.includes("vibelang/prettier")), JSON.stringify(result.warnings))
+  assert.ok(result.warnings.some(w => w.includes("dprint.json")), JSON.stringify(result.warnings))
+})
