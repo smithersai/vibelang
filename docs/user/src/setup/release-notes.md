@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- A `workflow` declaration's `.layer` now retains task requirements regardless of declaration order, module imports, or nested bindings sharing a task's name, and named function or class expressions inside a workflow body no longer trigger undeclared-name errors.
 - Migration setup now rewrites `tsc`/`tsgo`/`tsrs` and `prettier` only in command position, preserves existing `eslint` and `typescript-eslint` version pins (warning on incompatible majors), skips protected test and fixture config files, and quotes shell paths containing spaces or metacharacters.
 - Corrected `docs/maintainers/coding-agents.md` to document that the opencode plugin runs `vibelang agents check` rather than `vibelang --fix`, and marked the `EK9206` research note as resolved.
 - Updated `MAINTAINERS.md`, `CONTRIBUTING.md`, and `README.md` so the published package count (twelve), `vibelang-typescript` version rule, `packages/typescript-shim/` layout entry, and Apache-2.0 package list match the release scripts.
