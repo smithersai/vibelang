@@ -52,9 +52,9 @@ Maintainers land their own work on `vibe`. `main` advances only to a commit on `
 
 ## Release process
 
-The release contains six platform binaries (macOS, Linux and Windows on arm64 and x64) and eleven packages. Include both Windows packages, `@smthrs/cli-win32-x64` and `@smthrs/cli-win32-arm64`, in rehearsal and publication.
+The release contains six platform binaries (macOS, Linux and Windows on arm64 and x64) and twelve packages. Include both Windows packages, `@smthrs/cli-win32-x64` and `@smthrs/cli-win32-arm64`, in rehearsal and publication.
 
-1. **Align versions.** Every package version must equal the compiler's, in `typescript/tsc/internal/vibelang/identity.go`; `make-packages.mjs` refuses a mismatch. Review breaking changes.
+1. **Align versions.** Every VibeLang package version must equal the compiler's in `typescript/tsc/internal/vibelang/identity.go`, except `vibelang-typescript` which follows `7.1.<patch>`; `make-packages.mjs` checks both rules and refuses a mismatch. Review breaking changes.
 2. **Check.** Run setup, `sh scripts/e2e.sh`, the compiler cases, affected package tests, editor tests and `bun docs/tools/check-snippets.ts`. Before publication, run `VIBELANG_RELEASE_NOTES_FINAL=1 VIBELANG_LAST_PUBLISHED_VERSION=$(npm view vibelang version) node --test docs/tools/release-docs.test.mjs` to check the candidate notes against npm. Record commands, toolchain versions and results. A skipped platform is untested.
 3. **Build.** `sh scripts/release/build-binaries.sh` cross-compiles the candidate platform binaries. `node scripts/release/make-packages.mjs` assembles the candidate packages and their tarballs in `dist-npm/`. Commit first: the packager and the publisher refuse a tree with uncommitted changes, and binaries or tarballs built from another commit. Check manifests, the bundled extension, licenses and notices.
 4. **Rehearse.** `sh scripts/release/rehearse.sh` publishes the tarballs to a throwaway registry, then scaffolds, builds, starts and tests an app with npm and with Bun. It clears checkout compiler and runtime overrides so the app uses its installed packages. It runs on one host, so it can't prove the other platforms' binaries work.
@@ -72,4 +72,4 @@ Reports arrive through GitHub's private vulnerability reporting; see [SECURITY.m
 
 Publish a performance or token claim only with a public, reproducible method: pinned versions, inputs, units, results and limits. The README's [token comparison](.smithers/token-compare/README.md) is the model. Keep held-out tasks, hidden tests and transcripts private; a private benchmark is not public evidence.
 
-<sub>1,641 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>1,665 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

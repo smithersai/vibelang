@@ -42,6 +42,7 @@ node scripts/share-effect.mjs
 | `packages/create-vibelang/`, `templates/app/` | The starter generator and the starter app |
 | `packages/vite/`, `packages/unplugin/` | Vite, webpack, Rspack and other bundler integrations |
 | `packages/ts-mapper/` | TypeScript mapping utilities |
+| `packages/typescript-shim/` | `vibelang-typescript`: TypeScript 7 compatibility shim for tools that resolve `typescript` |
 | `editors/` | VS Code and Cursor extension, Neovim and Zed setup, tree-sitter grammar |
 | `examples/` | Runnable example projects |
 | `docs/user/`, `docs/design/` | User guides, the specification and the decision log |
@@ -105,4 +106,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>3,211 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>3,242 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

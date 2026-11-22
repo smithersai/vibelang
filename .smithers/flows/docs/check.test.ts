@@ -110,7 +110,7 @@ test("maintainer docs describe staged landings, outside reviews, and every relea
   const script = await readFile(join(repository, "scripts/release/make-packages.mjs"), "utf8")
   const table = /const platforms = \{([^}]*)\}/.exec(script)![1]!
   const platforms = [...table.matchAll(/"([a-z0-9]+-[a-z0-9]+)":/g)].map((match) => match[1]!)
-  const packages = platforms.length + 5 // vibelang, runtime, vite, unplugin and create-vibelang
+  const packages = platforms.length + 6 // vibelang, runtime, vite, unplugin, create-vibelang and vibelang-typescript
   const word = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
   expect(maintainers).toContain(`${word[platforms.length]} platform binaries`)
   expect(maintainers).toContain(`${word[packages]} packages`)
@@ -193,3 +193,25 @@ test("contributor release-note guidance runs the strict guard before submission"
     await rm(fixture, { recursive: true, force: true })
   }
 })
+
+test("release docs agree with make-packages.mjs on package count, versions, layout, and Apache licenses (#440)", async () => {
+  const makePackages = await readFile(join(repository, "scripts/release/make-packages.mjs"), "utf8");
+  const maintainers = await readFile(join(repository, "MAINTAINERS.md"), "utf8");
+  const contributing = await readFile(join(repository, "CONTRIBUTING.md"), "utf8");
+  const readme = await readFile(join(repository, "README.md"), "utf8");
+  const shimManifest = JSON.parse(await readFile(join(repository, "packages/typescript-shim/package.json"), "utf8"));
+
+  expect(makePackages).toContain("twelve npm packages");
+  expect(maintainers).toContain("twelve packages");
+  expect(maintainers).not.toContain("eleven packages");
+  expect(maintainers).toContain("vibelang-typescript");
+  expect(maintainers).toContain("7.1.");
+  expect(contributing).toContain("`packages/typescript-shim/`");
+
+  expect(shimManifest.license).toBe("Apache-2.0");
+  expect(readme).toContain("`vibelang`");
+  expect(readme).toContain("`vibelang-<platform>`");
+  expect(readme).toContain("`@smthrs/cli-win32-x64`");
+  expect(readme).toContain("`@smthrs/cli-win32-arm64`");
+  expect(readme).toContain("`vibelang-typescript`");
+});
