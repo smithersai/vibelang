@@ -569,6 +569,41 @@ func (t *BuildTask) getUpToDateStatus(orchestrator *Orchestrator, configPath tsp
 		}
 	}
 
+	// VibeLang declaration sidecars (x.d.vibe.ts and native x.d.ts) are required
+	// outputs even in incremental/composite build mode. If any is missing on
+	// disk, rebuild so -b restores it instead of reporting up to date.
+	{
+		options := t.resolved.CompilerOptions()
+		sidecarRoot := options.VibeSidecarRoot(t.resolved.FileNames(), orchestrator.caseSensitivity)
+		fs := orchestrator.host.FS()
+		for _, inputFile := range t.resolved.FileNames() {
+			source := string(inputFile)
+			ext := tspath.VibeLangSourceExtension(source)
+			if ext == "" {
+				continue
+			}
+			sidecar, _ := options.VibeSidecarPaths(source, orchestrator.caseSensitivity, sidecarRoot)
+			sidecarPath := tspath.RootedFilePathFromNormalized(sidecar)
+			if !fs.FileExists(sidecarPath) {
+				return &upToDateStatus{kind: upToDateStatusTypeOutputMissing, data: sidecarPath}
+			}
+			if native := compiler.NativeDeclarationPath(sidecar); native != "" {
+				stem := strings.TrimSuffix(source, ext)
+				otherVibe := tspath.ExtensionVibex
+				if ext == tspath.ExtensionVibex {
+					otherVibe = tspath.ExtensionVibe
+				}
+				yields := fs.FileExists(tspath.RootedFilePathFromNormalized(stem+tspath.ExtensionTs)) ||
+					fs.FileExists(tspath.RootedFilePathFromNormalized(stem+tspath.ExtensionTsx)) ||
+					fs.FileExists(tspath.RootedFilePathFromNormalized(stem+otherVibe))
+				nativePath := tspath.RootedFilePathFromNormalized(native)
+				if !yields && !fs.FileExists(nativePath) {
+					return &upToDateStatus{kind: upToDateStatusTypeOutputMissing, data: nativePath}
+				}
+			}
+		}
+	}
+
 	var refDtsUnchanged bool
 	for _, upstream := range t.upStream {
 		if upstream.task.status.kind == upToDateStatusTypeSolution {

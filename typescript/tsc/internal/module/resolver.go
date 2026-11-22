@@ -1948,8 +1948,67 @@ func (r *resolutionState) tryFile(fileName resolutionCandidate) (tspath.RootedFi
 	return "", false
 }
 
+func generatedNativeForwarderTarget(fileName tspath.RootedFilePath, text string) string {
+	base := tspath.GetBaseFileName(string(fileName))
+	stem, ok := strings.CutSuffix(base, tspath.ExtensionDts)
+	if !ok || strings.HasSuffix(stem, ".d"+tspath.ExtensionVibe) || strings.HasSuffix(stem, ".d"+tspath.ExtensionVibex) {
+		return ""
+	}
+	trimmed := strings.ReplaceAll(strings.TrimSpace(text), "\r\n", "\n")
+	for _, ext := range []string{tspath.ExtensionVibe, tspath.ExtensionVibex} {
+		spec := "./" + stem + ext
+		if trimmed == `export * from "`+spec+`";` ||
+			trimmed == `export * from "`+spec+`";
+export { default } from "`+spec+`";` ||
+			trimmed == `import vibe = require("`+spec+`");
+export = vibe;` {
+			return stem + ext
+		}
+	}
+	return ""
+}
+
+func (r *resolutionState) isStaleGeneratedNativeForwarder(fileName tspath.RootedFilePath) bool {
+	name := string(fileName)
+	if fileName.ContainsLowercaseDirectorySequence("/node_modules/") ||
+		!strings.HasSuffix(name, tspath.ExtensionDts) ||
+		strings.HasSuffix(name, ".d"+tspath.ExtensionVibe+".ts") ||
+		strings.HasSuffix(name, ".d"+tspath.ExtensionVibex+".ts") {
+		return false
+	}
+	text, ok := r.resolver.fs.ReadFile(fileName)
+	if !ok {
+		return false
+	}
+	target := generatedNativeForwarderTarget(fileName, text)
+	if target == "" {
+		return false
+	}
+	// Colocated source beside the native forwarder?
+	if r.resolver.fs.FileExists(fileName.Directory().ResolveFile(target)) {
+		return false
+	}
+	// Relocated sidecarDir source mapped from the paired .d.vibe.ts / .d.vibex.ts?
+	ext := tspath.VibeLangSourceExtension(target)
+	sidecar := fileName.Directory().ResolveFile(strings.TrimSuffix(target, ext) + ".d" + ext + ".ts")
+	if r.resolver.vibeSidecarSource != nil {
+		if src := r.resolver.vibeSidecarSource.ResolveVibeSidecarSource(sidecar, ""); src != "" && r.resolver.fs.FileExists(src) {
+			return false
+		}
+	}
+	if r.compilerOptions.VibeLang != nil && r.compilerOptions.VibeLang.SidecarDir != "" {
+		if candidate := r.compilerOptions.VibeSidecarSource(string(sidecar), r.resolver.fs.CaseSensitivity()); candidate != "" && r.resolver.fs.FileExists(tspath.RootedFilePathFromNormalized(candidate)) {
+			return false
+		}
+	}
+	return true
+}
+
 func (r *resolutionState) tryFileLookup(fileName tspath.RootedFilePath) bool {
 	if r.resolver.fs.FileExists(fileName) {
+		if r.isStaleGeneratedNativeForwarder(fileName) {
+			return false
+		}
 		if r.tracer != nil {
 			r.tracer.write(diagnostics.File_0_exists_use_it_as_a_name_resolution_result, fileName)
 		}

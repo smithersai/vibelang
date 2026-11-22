@@ -77,3 +77,70 @@ func (p *Program) pruneOwnedSidecar(sidecar string, output vfs.FS) error {
 	p.pruneSidecarDirectories(directory, output)
 	return nil
 }
+
+// pruneStaleOwnedSidecars removes sidecar declarations, native forwarders, and
+// receipts owned solely by this project that are no longer among selected live
+// outputs (for example after a .vibe or .vibex source is deleted or renamed).
+func (p *Program) pruneStaleOwnedSidecars(selected map[tspath.PathKey]bool, output vfs.FS) {
+	if output == nil {
+		return
+	}
+	options := p.vibeSidecarOptions()
+	if options.ConfigFilePath == "" {
+		return
+	}
+	visited := map[tspath.PathKey]bool{}
+	var walk func(dir string)
+	walk = func(dir string) {
+		if dir == "" {
+			return
+		}
+		dirPath := tspath.RootedDirectoryPathFromNormalized(dir)
+		key := p.caseSensitivity.PathKey(dirPath.AsPath())
+		if visited[key] {
+			return
+		}
+		visited[key] = true
+		entries := output.GetAccessibleEntries(dirPath)
+		hasReceipt := false
+		for _, name := range entries.Files {
+			if strings.HasPrefix(name, ".vibelang-sidecar-") && strings.HasSuffix(name, ".owner") {
+				hasReceipt = true
+				break
+			}
+		}
+		if hasReceipt {
+			for _, name := range entries.Files {
+				if !tspath.IsDeclarationFileName(name) {
+					continue
+				}
+				candidate := tspath.CombinePaths(dir, name)
+				if selected != nil && selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(candidate))] {
+					continue
+				}
+				_ = p.pruneOwnedSidecar(candidate, output)
+			}
+		}
+		for _, sub := range entries.Directories {
+			switch sub {
+			case "node_modules", ".git", ".jj":
+				continue
+			}
+			walk(tspath.CombinePaths(dir, sub))
+		}
+	}
+	configDir := tspath.GetDirectoryPath(string(options.ConfigFilePath))
+	walk(configDir)
+	if options.VibeLang != nil && options.VibeLang.SidecarDir != "" {
+		walk(options.VibeLang.SidecarDir)
+	}
+	if root := p.vibeSidecarSourceRoot(); root != "" {
+		walk(root)
+	}
+	for _, file := range p.files {
+		name := string(file.FileName())
+		if !file.FileName().ContainsLowercaseDirectorySequence("/node_modules/") {
+			walk(tspath.GetDirectoryPath(name))
+		}
+	}
+}
