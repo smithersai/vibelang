@@ -2,7 +2,7 @@ export interface VibeLangOptions {
   /** tsconfig path relative to the root. Defaults to tsconfig.json. */
   project?: string
   /**
-   * Project root. The compiler runs here with rootDir set to it.
+   * Project root. The compiler scopes emit to this directory (`--loader-root`) and overrides `rootDir` to the filesystem root.
    * Defaults to the Vite root, the webpack or Rspack context, Rolldown's
    * cwd, esbuild's absWorkingDir, or process.cwd().
    */

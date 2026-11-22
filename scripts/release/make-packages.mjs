@@ -60,6 +60,7 @@ const vite = readJson("packages/vite/package.json")
 const unplugin = readJson("packages/unplugin/package.json")
 const create = readJson("packages/create-vibelang/package.json")
 const typescriptShim = readJson("packages/typescript-shim/package.json")
+const tsMapper = readJson("packages/ts-mapper/package.json")
 const template = readJson("templates/app/package.json")
 const identity = readFileSync(join(root, "typescript/tsc/internal/vibelang/identity.go"), "utf8")
 const version = /const Version = "([^"]+)"/.exec(identity)?.[1]
@@ -86,11 +87,14 @@ expect(typescriptShim.dependencies?.vibelang === version, `vibelang-typescript: 
 expect(typescriptShim.version === typescriptShimVersion(), `vibelang-typescript: version ${typescriptShim.version}, expected ${typescriptShimVersion()}`)
 expect(typescriptShim.engines?.node === nodeEngine, `vibelang-typescript: engines.node ${typescriptShim.engines?.node}, expected ${nodeEngine}`)
 expect(unplugin.peerDependencies?.vibelang === version, `vibelang-unplugin: peer vibelang ${unplugin.peerDependencies?.vibelang}, expected ${version}`)
+expect(tsMapper.peerDependencies?.["vibelang-runtime"] === version, `vibelang-ts-mapper: peer vibelang-runtime ${tsMapper.peerDependencies?.["vibelang-runtime"]}, expected ${version}`)
 const effect = runtime.peerDependencies?.effect
 expect(typeof effect === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(effect),
   "vibelang-runtime: effect peer must be an exact version")
 expect(compiler.peerDependencies?.effect === effect,
   "vibelang: effect peer must match the runtime's exact pin " + effect)
+expect(tsMapper.peerDependencies?.effect === effect,
+  `vibelang-ts-mapper: effect peer must match the runtime's exact pin ${effect}`)
 expect(compiler.peerDependenciesMeta?.effect?.optional !== true,
   "vibelang: effect peer must be required")
 expect(template.dependencies?.effect === effect, `template: effect ${template.dependencies?.effect}, but the runtime requires ${effect}`)

@@ -30,7 +30,7 @@ An included source outside the compilation root reports that boundary directly. 
 ```sh
 npm install --save-dev vibelang vibelang-vite vite
 # For tests:
-npm install --save-dev vitest@5.0.5 @effect/vitest@4.1.1
+npm install --save-dev vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 The plugin compiles with the `vibelang` package, a peer dependency, through its
@@ -172,9 +172,9 @@ the native compiler its Node launcher would run. Without a `compiler` option,
 ## How it works
 
 v0 runs one `vibelang` subprocess for the whole project on the first module request
-and after each source change; requests share that compilation. Each plugin
-instance owns an output directory under `node_modules/.vibelang/vite-*`, removed
-when Vite closes. It forces JavaScript and source-map emission, embeds source
+and after each source change; requests share that compilation. The compiler writes to a directory under the system temporary
+directory; the plugin reads the JavaScript and source maps into memory and
+deletes it. It forces JavaScript and source-map emission, embeds source
 content, checks and emits only the project's own `.vibe` files (`--loader-root`): those
 under Vite's root, or under the project's package when its `tsconfig.json` sits
 above that root. It disables declarations and incremental output.
