@@ -214,3 +214,12 @@ test("the opencode plugin appends check's report to an edit's result", { skip: s
   await hooks["tool.execute.after"]({ tool: "read", sessionID: "s", callID: "c", args: { filePath: join(root, "src/a.vibe") } }, read)
   assert.equal(read.output, "contents")
 })
+
+test("coding-agents.md matches the command opencodePlugin actually runs (#616)", () => {
+  const doc = readFileSync(new URL("../../../docs/maintainers/coding-agents.md", import.meta.url), "utf8")
+  const row = doc.split("\n").find((line) => line.startsWith("| `.opencode/plugins/vibelang.js` |"))
+  assert.ok(row, "expected .opencode/plugins/vibelang.js row in docs/maintainers/coding-agents.md")
+  assert.ok(!row.includes("--fix"), `opencode plugin row must not claim --fix: ${row}`)
+  assert.ok(row.includes("agents check"), `opencode plugin row should mention agents check: ${row}`)
+  assert.ok(!doc.includes("The plugin runs `--fix`"), "coding-agents.md must not claim the plugin runs --fix")
+})

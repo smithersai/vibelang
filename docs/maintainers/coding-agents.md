@@ -24,11 +24,11 @@ Read on 2026-10-29 against Claude Code 2.1.312, Codex CLI 0.165.0, opencode 1.18
 | `.claude/skills/vibelang-lsp/.claude-plugin/plugin.json` | Claude Code | A repository plugin needs no marketplace; a project's `.claude/plugins/` is not scanned [C4] |
 | `.codex/hooks.json` `PostToolUse` on `apply_patch` | Codex | Codex edits files only through `apply_patch`; `tool_input.command` holds the patch, whose `*** Update File:` lines name the files [X3] |
 | `opencode.json` `lsp.vibelang` | opencode | opencode's own diagnostics loop |
-| `.opencode/plugins/vibelang.js` | opencode | Runs `vibelang --fix`, which the LSP does not |
+| `.opencode/plugins/vibelang.js` | opencode | Runs `vibelang agents check <files>` after edits and appends any remaining diagnostics to the tool result |
 
 Two choices were checked against the agents' source:
 
-- **No opencode `formatter` entry.** Any `formatter` object also turns on every built-in formatter whose tool is installed, such as Prettier for `.ts` files (`packages/core/src/config/plugin/formatter.ts` in opencode's `dev` branch). The plugin runs `--fix` without that side effect.
+- **No opencode `formatter` entry.** Any `formatter` object also turns on every built-in formatter whose tool is installed, such as Prettier for `.ts` files (`packages/core/src/config/plugin/formatter.ts` in opencode's `dev` branch). The plugin runs `vibelang agents check <files>` without that side effect.
 - **`npx --no -- vibelang`.** npm 11's `npx --no vibelang --lsp --stdio` passes no arguments to `vibelang`, which then compiles the project instead of starting the server. `--` passes them.
 
 ## The language server and push-only clients

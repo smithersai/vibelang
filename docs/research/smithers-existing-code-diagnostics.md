@@ -1,5 +1,7 @@
 # Smithers existing-code diagnostics: EK9206 and EK4402
 
+> Status: The `EK9206` regression below was resolved in `a67560eee` (VIP-1 explicit effects); the reduced witness now compiles without `EK9206` (reporting only the advisory `EK4834` warning on `fail`).
+
 Verdict: **EK9206 is a regression at these sites. EK4402 is intended, but the existing-code rejection must remain a warning until the preserving `--fix-migration-only` repair ships.** This is a specification ruling, with no compiler, codemod, or live migration-tree fix. migfix-smithers owns `fix:smithers-command-reentered-EK9206` and `fix:smithers-incur-platform-migration-EK4402`.
 
 ## EK9206: regression
