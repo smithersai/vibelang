@@ -192,37 +192,65 @@ const compilerDigests = (identity) =>
 
 // tsconfig files are JSON with comments and trailing commas.
 export function parseJsonc(text) {
+  const len = text.length
+  const start = len > 0 && text.charCodeAt(0) === 0xfeff ? 1 : 0
   let out = ""
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i]
-    if (char === '"') {
-      const start = i
-      for (i++; i < text.length && text[i] !== '"'; i++) if (text[i] === "\\") i++
-      out += text.slice(start, i + 1)
-    } else if (char === "/" && text[i + 1] === "/") {
-      while (i < text.length && text[i] !== "\n") i++
-      out += "\n"
-    } else if (char === "/" && text[i + 1] === "*") {
-      const end = text.indexOf("*/", i + 2)
-      i = end === -1 ? text.length : end + 1
-      out += " "
-    } else out += char
-  }
-  // Trailing commas, outside strings.
-  let result = ""
-  for (let i = 0; i < out.length; i++) {
-    const char = out[i]
-    if (char === '"') {
-      const start = i
-      for (i++; i < out.length && out[i] !== '"'; i++) if (out[i] === "\\") i++
-      result += out.slice(start, i + 1)
-    } else if (char === ",") {
+  let chunkStart = start
+  for (let i = start; i < len; i++) {
+    const ch = text.charCodeAt(i)
+    if (ch === 34 /* " */) {
+      for (i++; i < len; i++) {
+        const c = text.charCodeAt(i)
+        if (c === 92 /* \\ */) i++
+        else if (c === 34 /* " */) break
+      }
+    } else if (ch === 47 /* / */ && i + 1 < len) {
+      const next = text.charCodeAt(i + 1)
+      if (next === 47 /* / */) {
+        out += text.slice(chunkStart, i)
+        const nl = text.indexOf("\n", i + 2)
+        if (nl === -1) {
+          out += "\n"
+          chunkStart = len
+          break
+        }
+        i = nl
+        chunkStart = nl
+      } else if (next === 42 /* * */) {
+        out += text.slice(chunkStart, i) + " "
+        const end = text.indexOf("*/", i + 2)
+        if (end === -1) {
+          chunkStart = len
+          break
+        }
+        i = end + 1
+        chunkStart = end + 2
+      }
+    } else if (ch === 44 /* , */) {
       let next = i + 1
-      while (next < out.length && /\s/.test(out[next])) next++
-      if (out[next] !== "}" && out[next] !== "]") result += char
-    } else result += char
+      while (next < len) {
+        const nc = text.charCodeAt(next)
+        if (nc === 32 || nc === 9 || nc === 10 || nc === 13 || nc === 12 || nc === 11 || nc === 0xfeff || nc === 0xa0) {
+          next++
+        } else if (nc === 47 /* / */ && next + 1 < len) {
+          const nn = text.charCodeAt(next + 1)
+          if (nn === 47) {
+            const nl = text.indexOf("\n", next + 2)
+            next = nl === -1 ? len : nl + 1
+          } else if (nn === 42) {
+            const end = text.indexOf("*/", next + 2)
+            next = end === -1 ? len : end + 2
+          } else break
+        } else break
+      }
+      if (next < len && (text.charCodeAt(next) === 125 /* } */ || text.charCodeAt(next) === 93 /* ] */)) {
+        out += text.slice(chunkStart, i)
+        chunkStart = i + 1
+      }
+    }
   }
-  return JSON.parse(result.replace(/^\uFEFF/, ""))
+  if (chunkStart < len) out += text.slice(chunkStart)
+  return JSON.parse(out)
 }
 
 const relativeSpecifier = (specifier) => /^\.\.?(?:[\\/]|$)/.test(specifier) || isAbsolute(specifier)

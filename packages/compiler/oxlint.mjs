@@ -60,10 +60,17 @@ export function sourceSpan(segments, start, length) {
 
 /** The 1-based line and column of a byte offset. Oxlint counts columns in bytes. */
 export function lineAndColumn(source, offset) {
-  const before = source.subarray(0, offset)
   let line = 1
-  for (const byte of before) if (byte === 10) line++
-  return { line, column: offset - before.lastIndexOf(10) }
+  let lastNewline = -1
+  let pos = 0
+  while (pos < offset) {
+    const nl = source.indexOf(10, pos)
+    if (nl === -1 || nl >= offset) break
+    line++
+    lastNewline = nl
+    pos = nl + 1
+  }
+  return { line, column: offset - lastNewline }
 }
 
 // Whether the import naming the span comes from effect or effect/*. D501 keeps

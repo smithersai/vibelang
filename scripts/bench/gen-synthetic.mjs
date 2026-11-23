@@ -183,7 +183,11 @@ export const run${i} = (): Effect.Effect<number> =>
 function project(dir, ext, module, main) {
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(path.join(dir, "src"), { recursive: true })
-  writeFileSync(path.join(dir, "package.json"), '{"type":"module","private":true}\n')
+  writeFileSync(path.join(dir, "package.json"), JSON.stringify({
+    name: `synthetic-${path.basename(dir)}`,
+    type: "module",
+    private: true
+  }) + "\n")
   writeFileSync(path.join(dir, "tsconfig.json"), JSON.stringify({
     compilerOptions: {
       target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true,

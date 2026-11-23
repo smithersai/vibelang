@@ -48,10 +48,38 @@ func bangText(channels ...string) string {
 // it, an Effect type in the ! form, or, after a !, an object type, whose {
 // would start a function body.
 func bangSlot(text string, afterBang bool) string {
-	if hasTopLevel(text, "=>") || hasTopLevel(text, "?") || hasTopLevel(text, "!") || hasTopLevel(text, "|") || hasTopLevel(text, "&") || afterBang && strings.HasPrefix(text, "{") {
+	if (afterBang && strings.HasPrefix(text, "{")) || needsBangSlotParens(text) {
 		return "(" + text + ")"
 	}
 	return text
+}
+
+// needsBangSlotParens reports in a single pass whether text contains any
+// top-level =>, ?, !, |, or & outside brackets and string literals.
+func needsBangSlotParens(text string) bool {
+	depth := 0
+	for i := 0; i < len(text); i++ {
+		switch ch := text[i]; ch {
+		case '=':
+			if i+1 < len(text) && text[i+1] == '>' {
+				if depth == 0 {
+					return true
+				}
+				i++
+			}
+		case '"', '\'', '`':
+			i = skipString(text, i)
+		case '(', '[', '{', '<':
+			depth++
+		case ')', ']', '}', '>':
+			depth--
+		case '?', '!', '|', '&':
+			if depth == 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // hasTopLevel reports whether text contains token outside brackets and string
@@ -97,14 +125,30 @@ func skipString(text string, start int) int {
 // Effect.Effect<, or an import type of effect/Effect's Effect.
 var effectStart = regexp.MustCompile(`(?:import\("[^"]*"(?:, \{[^()]*\})?\)\.)?(?:Effect\.)?Effect<`)
 
+// lastNonSpaceByte returns the last non-space byte in s, or 0 if none.
+func lastNonSpaceByte(s string) byte {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] != ' ' {
+			return s[i]
+		}
+	}
+	return 0
+}
+
 // bangTypes rewrites every Effect<A, E, R> in text, a type or a declaration
 // that TypeScript printed, into the ! form, innermost first.
 func bangTypes(text string) string {
+	if !strings.Contains(text, "Effect<") {
+		return text
+	}
 	var out strings.Builder
 	rest := text
 	for {
 		loc := effectStart.FindStringIndex(rest)
 		if loc == nil {
+			if out.Len() == 0 {
+				return text
+			}
 			out.WriteString(rest)
 			return out.String()
 		}
@@ -124,9 +168,12 @@ func bangTypes(text string) string {
 			arguments[i] = bangTypes(argument)
 		}
 		bang := bangText(arguments...)
-		before := strings.TrimRight(out.String()+rest[:start], " ")
+		prev := lastNonSpaceByte(rest[:start])
+		if prev == 0 {
+			prev = lastNonSpaceByte(out.String())
+		}
 		after := strings.TrimLeft(rest[close+1:], " ")
-		if strings.HasSuffix(before, "|") || strings.HasSuffix(before, "&") || strings.HasPrefix(after, "|") || strings.HasPrefix(after, "&") || strings.HasPrefix(after, "[") {
+		if prev == '|' || prev == '&' || strings.HasPrefix(after, "|") || strings.HasPrefix(after, "&") || strings.HasPrefix(after, "[") {
 			bang = "(" + bang + ")"
 		}
 		out.WriteString(rest[:start])

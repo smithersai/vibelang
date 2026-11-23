@@ -137,15 +137,29 @@ function builtinTest(matcher: unknown, subject: unknown): boolean | undefined {
   return undefined
 }
 
+const fnCall = Function.prototype.call
+const fnToString = Function.prototype.toString
+const objectPrototype = Object.prototype
+const propIsEnumerable = Object.prototype.propertyIsEnumerable
+const booleanHint: MatchHint = Object.freeze({ matchType: "boolean" })
+const extractorHint: MatchHint = Object.freeze({ matchType: "extractor" })
+const classSyntaxCache = new WeakMap<Function, boolean>()
+
 /**
  * Reports whether f is a class: written with class syntax, or a constructor
  * with methods on its prototype (a built-in such as Date or Map). Other
  * functions are predicates.
  */
 function isClass(f: Function): boolean {
-  if (/^class[\s{]/.test(Function.prototype.toString.call(f))) return true
   const prototype = (f as any).prototype
-  return prototype !== undefined && prototype !== null && Object.getOwnPropertyNames(prototype).length > 1
+  if (prototype === undefined || prototype === null) return false
+  let classSyntax = classSyntaxCache.get(f)
+  if (classSyntax === undefined) {
+    classSyntax = /^class[\s{]/.test(fnToString.call(f))
+    classSyntaxCache.set(f, classSyntax)
+  }
+  if (classSyntax) return true
+  return Object.getOwnPropertyNames(prototype).length > 1
 }
 
 /** SameValue, except that the pattern 0 matches -0 (SameValueZero for an unsigned zero). */
@@ -170,13 +184,17 @@ export function $is<const T>(matcher: T, subject: unknown, receiver?: unknown): 
 export function $is(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false, dispatch: "" | "call" | "construct" = ""): boolean {
   if (matcher !== null && (typeof matcher === "object" || typeof matcher === "function")) {
     const custom = matcherOf(matcher, ownClassOnly)
-    if (custom !== undefined) return !!Reflect.apply(custom, matcher, [subject, { matchType: "boolean" }, receiver])
+    if (custom !== undefined) {
+      return typeof custom === "function"
+        ? !!fnCall.call(custom, matcher, subject, booleanHint, receiver)
+        : !!Reflect.apply(custom as any, matcher, [subject, booleanHint, receiver])
+    }
     const builtin = builtinTest(matcher, subject)
     if (builtin !== undefined) return builtin
     if (typeof matcher === "function") {
       return (dispatch === "construct" || dispatch === "" && isClass(matcher))
         ? subject instanceof (matcher as any)
-        : !!Reflect.apply(matcher, receiver, [subject, { matchType: "boolean" }])
+        : !!fnCall.call(matcher, receiver, subject, booleanHint)
     }
   }
   return sameValue(matcher, subject)
@@ -256,7 +274,13 @@ export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subj
 export function $extract(matcher: unknown, subject: unknown, receiver?: unknown): ReadonlyArray<any> | false
 export function $extract(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false, dispatch: "" | "call" | "construct" = ""): unknown {
   const custom = matcherOf(matcher, ownClassOnly)
-  if (custom !== undefined) return extractedList(Reflect.apply(custom, matcher, [subject, { matchType: "extractor" }, receiver]))
+  if (custom !== undefined) {
+    return extractedList(
+      typeof custom === "function"
+        ? fnCall.call(custom, matcher, subject, extractorHint, receiver)
+        : Reflect.apply(custom as any, matcher, [subject, extractorHint, receiver])
+    )
+  }
   if (matcher instanceof RegExp) return regExpExtract(matcher, subject)
   if (typeof matcher === "function") {
     if (matcher === Array) return Array.isArray(subject) ? subject : false
@@ -272,23 +296,67 @@ export function $extract(matcher: unknown, subject: unknown, receiver: unknown =
       if (instanceExtractors.has(matcher)) return [subject]
       throw new TypeError("An ordinary class used as an extractor must return an object")
     }
-    return extractedList(Reflect.apply(matcher, receiver, [subject, { matchType: "extractor" }]))
+    return extractedList(fnCall.call(matcher, receiver, subject, extractorHint))
   }
   if (ownClassOnly) throw new TypeError()
   throw new TypeError("An extractor pattern needs a class, a regular expression, or a value with a Symbol.customMatcher method")
 }
 
+function setDataProperty(target: Record<PropertyKey, unknown>, key: PropertyKey, value: unknown): void {
+  if (key === "__proto__" || key in objectPrototype) {
+    Object.defineProperty(target, key, { value, enumerable: true, configurable: true, writable: true })
+  } else {
+    target[key] = value
+  }
+}
+
 /** The own enumerable properties of an object pattern's subject that its clauses do not name. */
 export function $rest<T, K extends PropertyKey>(subject: T, keys: ReadonlyArray<K>): Omit<T, K> {
   const result: Record<PropertyKey, unknown> = {}
-  const excluded = new Set<PropertyKey>(keys.map(key => typeof key === "number" ? String(key) : key))
-  for (const key of Reflect.ownKeys(subject as object)) {
-    if (!excluded.has(key) && Object.prototype.propertyIsEnumerable.call(subject, key)) {
-      // Object rest creates data properties, including a literal __proto__.
-      Object.defineProperty(result, key, {
-        value: (subject as any)[key], enumerable: true, configurable: true, writable: true
-      })
+  const keyCount = keys.length
+  const source = subject as any
+  const ownStrings = Object.keys(source)
+  const ownSymbols = Object.getOwnPropertySymbols(source)
+  if (keyCount === 0) {
+    for (let i = 0; i < ownStrings.length; i++) {
+      const key = ownStrings[i]
+      setDataProperty(result, key, source[key])
     }
+    for (let i = 0; i < ownSymbols.length; i++) {
+      const sym = ownSymbols[i]
+      if (propIsEnumerable.call(source, sym)) setDataProperty(result, sym, source[sym])
+    }
+    return result as Omit<T, K>
+  }
+  if (keyCount <= 4) {
+    const k0 = typeof keys[0] === "number" ? String(keys[0]) : keys[0]
+    const k1 = keyCount > 1 ? (typeof keys[1] === "number" ? String(keys[1]) : keys[1]) : undefined
+    const k2 = keyCount > 2 ? (typeof keys[2] === "number" ? String(keys[2]) : keys[2]) : undefined
+    const k3 = keyCount > 3 ? (typeof keys[3] === "number" ? String(keys[3]) : keys[3]) : undefined
+    for (let i = 0; i < ownStrings.length; i++) {
+      const key = ownStrings[i]
+      if (key === k0 || (keyCount > 1 && (key === k1 || (keyCount > 2 && (key === k2 || (keyCount > 3 && key === k3)))))) continue
+      setDataProperty(result, key, source[key])
+    }
+    for (let i = 0; i < ownSymbols.length; i++) {
+      const sym = ownSymbols[i]
+      if (sym === k0 || (keyCount > 1 && (sym === k1 || (keyCount > 2 && (sym === k2 || (keyCount > 3 && sym === k3)))))) continue
+      if (propIsEnumerable.call(source, sym)) setDataProperty(result, sym, source[sym])
+    }
+    return result as Omit<T, K>
+  }
+  const excluded = new Set<PropertyKey>()
+  for (let i = 0; i < keyCount; i++) {
+    const key = keys[i]
+    excluded.add(typeof key === "number" ? String(key) : key)
+  }
+  for (let i = 0; i < ownStrings.length; i++) {
+    const key = ownStrings[i]
+    if (!excluded.has(key)) setDataProperty(result, key, source[key])
+  }
+  for (let i = 0; i < ownSymbols.length; i++) {
+    const sym = ownSymbols[i]
+    if (!excluded.has(sym) && propIsEnumerable.call(source, sym)) setDataProperty(result, sym, source[sym])
   }
   return result as Omit<T, K>
 }

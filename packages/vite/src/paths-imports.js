@@ -5,37 +5,65 @@ import { extensionlessImport } from "./relative-imports.js"
 
 // A tsconfig is JSON with comments and trailing commas (JSONC), and may start with a UTF-8 BOM.
 function parseConfig(text) {
+  const len = text.length
+  const start = len > 0 && text.charCodeAt(0) === 0xfeff ? 1 : 0
   let out = ""
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i]
-    if (c === '"') {
-      const start = i
-      for (i++; i < text.length && text[i] !== '"'; i++) if (text[i] === "\\") i++
-      out += text.slice(start, i + 1)
-    } else if (c === "/" && text[i + 1] === "/") {
-      while (i < text.length && text[i] !== "\n") i++
-      out += "\n"
-    } else if (c === "/" && text[i + 1] === "*") {
-      const end = text.indexOf("*/", i + 2)
-      i = end < 0 ? text.length : end + 1
-      out += " "
-    } else out += c
-  }
-  // Strip trailing commas outside strings so string values containing ",}" or ",]" stay intact.
-  let result = ""
-  for (let i = 0; i < out.length; i++) {
-    const c = out[i]
-    if (c === '"') {
-      const start = i
-      for (i++; i < out.length && out[i] !== '"'; i++) if (out[i] === "\\") i++
-      result += out.slice(start, i + 1)
-    } else if (c === ",") {
+  let chunkStart = start
+  for (let i = start; i < len; i++) {
+    const ch = text.charCodeAt(i)
+    if (ch === 34 /* " */) {
+      for (i++; i < len; i++) {
+        const c = text.charCodeAt(i)
+        if (c === 92 /* \\ */) i++
+        else if (c === 34 /* " */) break
+      }
+    } else if (ch === 47 /* / */ && i + 1 < len) {
+      const next = text.charCodeAt(i + 1)
+      if (next === 47 /* / */) {
+        out += text.slice(chunkStart, i)
+        const nl = text.indexOf("\n", i + 2)
+        if (nl === -1) {
+          out += "\n"
+          chunkStart = len
+          break
+        }
+        i = nl
+        chunkStart = nl
+      } else if (next === 42 /* * */) {
+        out += text.slice(chunkStart, i) + " "
+        const end = text.indexOf("*/", i + 2)
+        if (end === -1) {
+          chunkStart = len
+          break
+        }
+        i = end + 1
+        chunkStart = end + 2
+      }
+    } else if (ch === 44 /* , */) {
       let next = i + 1
-      while (next < out.length && /\s/.test(out[next])) next++
-      if (out[next] !== "}" && out[next] !== "]") result += c
-    } else result += c
+      while (next < len) {
+        const nc = text.charCodeAt(next)
+        if (nc === 32 || nc === 9 || nc === 10 || nc === 13 || nc === 12 || nc === 11 || nc === 0xfeff || nc === 0xa0) {
+          next++
+        } else if (nc === 47 /* / */ && next + 1 < len) {
+          const nn = text.charCodeAt(next + 1)
+          if (nn === 47) {
+            const nl = text.indexOf("\n", next + 2)
+            next = nl === -1 ? len : nl + 1
+          } else if (nn === 42) {
+            const end = text.indexOf("*/", next + 2)
+            next = end === -1 ? len : end + 2
+          } else break
+        } else break
+      }
+      if (next < len && (text.charCodeAt(next) === 125 /* } */ || text.charCodeAt(next) === 93 /* ] */)) {
+        out += text.slice(chunkStart, i)
+        chunkStart = i + 1
+      }
+    }
   }
-  return JSON.parse(result.replace(/^\uFEFF/, ""))
+  if (chunkStart < len) out += text.slice(chunkStart)
+  return JSON.parse(out)
 }
 
 const isFile = (path) => {
@@ -66,6 +94,18 @@ function extendedConfig(from, name) {
 }
 
 const settings = new Map()
+const rootDirsCache = new Map()
+const jsxCache = new Map()
+const parsedConfigs = new Map()
+const compiledPatterns = new WeakMap()
+
+function readParsedConfig(config) {
+  if (parsedConfigs.has(config)) return parsedConfigs.get(config)
+  let parsed
+  try { parsed = parseConfig(readFileSync(config, "utf8")) } catch { parsed = undefined }
+  parsedConfigs.set(config, parsed)
+  return parsed
+}
 
 /**
  * Returns the `paths` a tsconfig sets, through its `extends` chain, with the
@@ -78,8 +118,7 @@ export function pathsOf(config, seen = new Set()) {
   let result
   if (!seen.has(config)) {
     seen.add(config)
-    let parsed
-    try { parsed = parseConfig(readFileSync(config, "utf8")) } catch { parsed = undefined }
+    const parsed = readParsedConfig(config)
     const options = parsed?.compilerOptions ?? {}
     let inherited = { paths: undefined, pathsBase: undefined, baseUrl: undefined }
     const parents = parsed?.extends === undefined ? [] : [parsed.extends].flat()
@@ -100,21 +139,37 @@ export function pathsOf(config, seen = new Set()) {
   return result
 }
 
+function compilePaths(paths) {
+  let compiled = compiledPatterns.get(paths)
+  if (compiled !== undefined) return compiled
+  const wildcards = []
+  for (const key of Object.keys(paths)) {
+    const star = key.indexOf("*")
+    if (star < 0 || key.indexOf("*", star + 1) >= 0) continue
+    const prefix = key.slice(0, star)
+    const suffix = key.slice(star + 1)
+    wildcards.push({ key, prefix, suffix, prefixLen: prefix.length, suffixLen: suffix.length, minLen: prefix.length + suffix.length })
+  }
+  // Stable sort by descending prefix length so the first match is longest-prefix, preserving key order on ties.
+  wildcards.sort((a, b) => b.prefixLen - a.prefixLen)
+  compiled = { wildcards }
+  compiledPatterns.set(paths, compiled)
+  return compiled
+}
+
 // The pattern of paths that specifier matches: an exact key, else the key
 // with one `*` whose prefix is longest, as TypeScript's matchPatternOrExact.
 function matchingPattern(paths, specifier) {
   if (Object.hasOwn(paths, specifier) && !specifier.includes("*")) return { key: specifier, star: "" }
-  let best
-  for (const key of Object.keys(paths)) {
-    const star = key.indexOf("*")
-    if (star < 0 || key.indexOf("*", star + 1) >= 0) continue
-    const prefix = key.slice(0, star), suffix = key.slice(star + 1)
-    if (specifier.length >= prefix.length + suffix.length && specifier.startsWith(prefix) && specifier.endsWith(suffix) &&
-        (best === undefined || prefix.length > best.prefix)) {
-      best = { key, prefix: prefix.length, star: specifier.slice(prefix.length, specifier.length - suffix.length) }
+  const { wildcards } = compilePaths(paths)
+  const specLen = specifier.length
+  for (let i = 0; i < wildcards.length; i++) {
+    const entry = wildcards[i]
+    if (specLen >= entry.minLen && specifier.startsWith(entry.prefix) && specifier.endsWith(entry.suffix)) {
+      return { key: entry.key, prefix: entry.prefixLen, star: specifier.slice(entry.prefixLen, specLen - entry.suffixLen) }
     }
   }
-  return best
+  return undefined
 }
 
 // The file TypeScript loads for path, a substitution made absolute: the file
@@ -166,40 +221,64 @@ export function aliasImport(config, specifier, { migratedTypeScript = false, fil
 }
 
 /** Forgets the configs read so far, for a process that edits them. */
-export function forgetPaths() { settings.clear() }
+export function forgetPaths() {
+  settings.clear()
+  rootDirsCache.clear()
+  jsxCache.clear()
+  parsedConfigs.clear()
+}
 
 /**
  * compilerOptions.rootDirs as absolute paths, including inherited configs:
  * each relative to the config that sets it, `${configDir}` to the first.
  */
 export function rootDirsOf(config, seen = new Set(), leaf = config) {
-  if (config === undefined || seen.has(config)) return undefined
+  if (config === undefined) return undefined
+  const cacheKey = config === leaf ? config : `${config}\0${leaf}`
+  if (seen.size === 0 && rootDirsCache.has(cacheKey)) return rootDirsCache.get(cacheKey)
+  if (seen.has(config)) return undefined
   seen.add(config)
-  let parsed
-  try { parsed = parseConfig(readFileSync(config, "utf8")) } catch { return undefined }
+  const parsed = readParsedConfig(config)
+  if (parsed === undefined) {
+    seen.delete(config)
+    if (seen.size === 0) rootDirsCache.set(cacheKey, undefined)
+    return undefined
+  }
   let inherited
-  for (const parent of [parsed.extends ?? []].flat()) {
+  const parents = parsed.extends === undefined ? [] : [parsed.extends].flat()
+  for (const parent of parents) {
     const path = typeof parent === "string" ? extendedConfig(config, parent) : undefined
     const rootDirs = path === undefined ? undefined : rootDirsOf(path, seen, leaf)
     if (rootDirs !== undefined) inherited = rootDirs
   }
   seen.delete(config)
   const own = parsed.compilerOptions?.rootDirs
-  return Array.isArray(own) ? own.filter(dir => typeof dir === "string").map(dir => resolve(dirname(config), dir.replaceAll("${configDir}", dirname(leaf)))) : inherited
+  const result = Array.isArray(own) ? own.filter(dir => typeof dir === "string").map(dir => resolve(dirname(config), dir.replaceAll("${configDir}", dirname(leaf)))) : inherited
+  if (seen.size === 0) rootDirsCache.set(cacheKey, result)
+  return result
 }
 
 /** JSX output mode, including inherited configs, for emitted-source lookup. */
 export function jsxOf(config, seen = new Set()) {
-  if (config === undefined || seen.has(config)) return undefined
+  if (config === undefined) return undefined
+  if (seen.size === 0 && jsxCache.has(config)) return jsxCache.get(config)
+  if (seen.has(config)) return undefined
   seen.add(config)
-  let parsed
-  try { parsed = parseConfig(readFileSync(config, "utf8")) } catch { return undefined }
+  const parsed = readParsedConfig(config)
+  if (parsed === undefined) {
+    seen.delete(config)
+    if (seen.size === 0) jsxCache.set(config, undefined)
+    return undefined
+  }
   let inherited
-  for (const parent of [parsed.extends ?? []].flat()) {
+  const parents = parsed.extends === undefined ? [] : [parsed.extends].flat()
+  for (const parent of parents) {
     const path = typeof parent === "string" ? extendedConfig(config, parent) : undefined
     const jsx = path === undefined ? undefined : jsxOf(path, seen)
     if (jsx !== undefined) inherited = jsx
   }
   seen.delete(config)
-  return parsed.compilerOptions?.jsx ?? inherited
+  const result = parsed.compilerOptions?.jsx ?? inherited
+  if (seen.size === 0) jsxCache.set(config, result)
+  return result
 }

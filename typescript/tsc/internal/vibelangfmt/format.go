@@ -42,6 +42,9 @@ func Format(fileName, source string, formatter TypeScriptFormatter) (string, err
 	if err != nil {
 		return "", prefix(fileName, err)
 	}
+	if result == source {
+		return result, nil
+	}
 	if err := sameProgram(fileName, source, result); err != nil {
 		return "", prefix(fileName, fmt.Errorf("vibelang format: internal error: formatting changed the program: %w", err))
 	}
@@ -73,14 +76,21 @@ func sameProgram(fileName, before, after string) error {
 	if diagnostics := b.Diagnostics(); len(diagnostics) != 0 && len(a.Diagnostics()) == 0 {
 		return syntaxError(after, diagnostics[0])
 	}
-	c := comparer{before: before, after: after}
+	c := comparer{
+		before:      before,
+		after:       after,
+		hasComments: strings.Contains(before, "//") || strings.Contains(before, "/*") || strings.Contains(after, "//") || strings.Contains(after, "/*"),
+	}
 	if err := c.same(a.AsNode(), b.AsNode()); err != nil {
 		return err
 	}
 	return c.sameModules(a, b)
 }
 
-type comparer struct{ before, after string }
+type comparer struct {
+	before, after string
+	hasComments   bool
+}
 
 func unparenthesize(node *ast.Node) *ast.Node {
 	for node != nil && (node.Kind == ast.KindParenthesizedExpression || node.Kind == ast.KindParenthesizedType) {
@@ -114,7 +124,7 @@ func (c *comparer) same(a, b *ast.Node) error {
 			return c.differ(a, "computed field key parentheses changed")
 		}
 	}
-	if associatedDocCount(a, c.before) != associatedDocCount(b, c.after) {
+	if c.hasComments && associatedDocCount(a, c.before) != associatedDocCount(b, c.after) {
 		return c.differ(a, "JSDoc attachment changed; choose whether the comment should apply before formatting")
 	}
 	if a.Kind == ast.KindForOfStatement && (a.Flags^b.Flags)&ast.NodeFlagsVibeLang != 0 {
