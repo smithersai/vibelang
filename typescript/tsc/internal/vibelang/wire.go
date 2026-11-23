@@ -10,7 +10,12 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// wire (design D27) composes layers into one: wire(UsersLive, MailerLive,
+// Retained legacy: VIP-24 denies wire, and EK2401 is its target rejection.
+// Chapter 7 ("Legacy fork, try-statement and wire migration") holds that
+// enforcement until migration repositories have zero remaining uses, so until
+// then the compiler keeps the lowering below.
+//
+// wire (history D27) composes layers into one: wire(UsersLive, MailerLive,
 // DatabaseLive, ConfigLive). The runtime's wire folds its arguments with
 // Layer.provideMerge from the last to the first, so each argument may use
 // what the arguments after it provide. The compiler reads each argument's

@@ -42,12 +42,12 @@ func TestModuleServiceDeclarations(t *testing.T) {
 	files[runtime+"index.d.ts"] = `export * as Effect from "effect/Effect"; export * from "./match.js"; export * as Control from "./experimental.js"`
 	files[runtime+"experimental.d.ts"] = `export * as FileSystem from "effect/FileSystem"`
 	src := strings.TrimSuffix(effect, "node_modules/effect/") // the project directory
-	files[src+"main.vibe"] = "export const name = (fs: FileSystem.FileSystem): infer _ => fs.name\n" +
-		"export const experimental = (fs: Control.FileSystem): infer _ => fs.name\n" +
+	files[src+"main.vibe"] = "export const name = (fs: FileSystem.FileSystem) => fs.name\n" +
+		"export const experimental = (fs: Control.FileSystem) => fs.name\n" +
 		"export const noop = FileSystem.layerNoop({})\n" +
-		"export const local = <FileSystem>(fs: FileSystem): infer _ => fs\n" +
-		"export const first = (value: Option<number>): infer _ => value\n" +
-		"export const spelled = (value: Option.Option<number>): infer _ => value\n"
+		"export const local = <FileSystem>(fs: FileSystem) => fs\n" +
+		"export const first = (value: Option<number>) => value\n" +
+		"export const spelled = (value: Option.Option<number>) => value\n"
 	files[src+"prompt.vibe"] = "import { Prompt } from \"effect/ai\"\nexport const text = (prompt: Prompt): string => prompt.text\n"
 	files["/workspace/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true},"files":["main.vibe","prompt.vibe"]}`
 	dts := emitDeclarations(t, files)

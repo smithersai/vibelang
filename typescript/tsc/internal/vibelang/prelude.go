@@ -116,7 +116,9 @@ var preludeModules = map[string]string{
 	"$awaitRace":       runtimeModule,
 	"$awaitAny":        runtimeModule,
 	"$forConcurrent":   runtimeModule,
-	"detach":           runtimeModule,
+	// Retained legacy (history D170): no VIP adds a bare detach; VIP-17 writes
+	// fork.detached e. Its retirement is pending (cases/detach-is-unbound.fail).
+	"detach": runtimeModule,
 	// A provide block's Key = value provider, which the parser writes (D173, provide.go).
 	"$provideService": runtimeModule,
 	// The extends clause the parser writes for service Name: Type (D281,

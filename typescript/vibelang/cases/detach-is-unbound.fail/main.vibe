@@ -1,0 +1,7 @@
+// expect: TS2304
+// docs/design/src/000-intro.md: every pre-VIP form no VIP adds is retired. The
+// prelude detach (history D170) has no VIP; VIP-17 writes fork.detached e.
+export effect function main() {
+  const fiber = try detach(Effect.succeed(7))
+  return try Fiber.join(fiber)
+}
