@@ -482,6 +482,7 @@ vibelang/imports.go:lowering.visitImportOrExport	admission:imports	007-tooling.m
 vibelang/imports.go:lowering.outputSpecifier	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
 vibelang/imports.go:outputSpecifierText	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
 vibelang/imports.go:outputSpecifierTextWithJSX	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
+vibelang/imports.go:outputSpecifierTextForFormat	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
 vibelang/lower.go:newLowering	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
 vibelang/lower.go:lowering.visit	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
 vibelang/lower.go:lowering.visitSource	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below

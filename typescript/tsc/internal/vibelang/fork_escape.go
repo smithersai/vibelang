@@ -6,5 +6,5 @@ package vibelang
 var EK4838 = message(4838, errorCategory, "This fiber is owned by {0}, which interrupts it on exit, but it is {1}.")
 
 func init() {
-	registry[EK4838.Code] = EK4838
+	registerDiagnostic(EK4838)
 }

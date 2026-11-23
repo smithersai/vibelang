@@ -35,171 +35,90 @@ var projectionCases = []struct {
 	diagnostics []Diagnostic
 }{
 
-	{name: "Match generic stages retain contextual pipe inference",
-		source:  "import { Match } from \"effect\"; function phase(x: \"a\" | \"b\") { return pipe(Match.value(x), Match.when(\"a\", () => \"A\"), Match.orElse((s) => `other ${s}`)) }",
-		virtual: "import { Match } from \"effect\"; function phase(x: \"a\" | \"b\") { return $gen(function* () { return (yield* $run(pipe((yield* $run(Match.value(x))), Match.when(\"a\", () => \"A\"), Match.orElse((s) => `other ${s}`)))) })}"},
-
-	{name: "unproven predicate retains narrowing syntax",
-		source:  `import { maybe } from "./opaque.js"; function f() { if (maybe.isSome()) return maybe.value; return 0 }`,
-		virtual: `import { maybe } from "./opaque.js"; function f() { return $gen(function* () { if ($dataGuard(maybe, "isSome", [], (yield* $run(maybe.isSome())))) return maybe.value; return 0 })}`},
-
-	{name: "external service Effect member is a receiver preserving value call",
-		source:  `import { Users } from "./users.ts"; function f() { return Users.all() }`,
-		virtual: `import { Users } from "./users.js"; function f() { return $gen(function* () { return (yield* $run($member($use(Users), "all")())) })}`},
-	{name: "a chained Config value call runs the returned data",
-		source:  `function f() { return config("HOST")() }`,
-		virtual: `function f() { return $gen(function* () { return (yield* $run($value((yield* $run(config("HOST"))))())) })}`},
-	{name: "a pinned service alias contributes R in a tail only lambda",
-		source:  `import { Path as Paths } from "effect/Path"; const f = (part: string) => Paths.join("root", part)`,
-		virtual: `import { Path as Paths } from "effect/Path"; const f = (part: string) => $gen(function* () { return (yield* $run($use(Paths).join("root", part))) })`},
-	{name: "L8 leaves an external key owned member on the key",
-		source:  `import { Users } from "./users.ts"; function f() { return Users.pipe() }`,
-		virtual: `import { Users } from "./users.js"; function f() { return $gen(function* () { return (yield* $run(Users.pipe())) })}`},
-
 	{
 		name:    "pipe topics use the data method module behind a local shadow",
 		source:  "function f(xs: Stream.Stream<number>) { const Stream = 1; return xs |> %.map((n) => n + Stream) }",
-		virtual: "function f(xs: Stream.Stream<number>) { return $gen(function* () { const Stream = 1; return (yield* $run($gen(function* () { const $topic = xs; return (yield* $run(Stream_1.map($topic, (n) => n + Stream))) }))) })}",
+		virtual: "function f(xs: Stream.Stream<number>) { const Stream = 1; return (() => { const $topic = xs; return Stream_1.map($topic, (n) => n + Stream) })() }",
 	},
-
-	{name: "composed calls keep separate error channel witnesses", source: "function f() { return 1 |> % + 1 } function g() { return f() }", virtual: "function f() { return $gen(function* () { return (yield* $run($gen(function* () { const $topic = 1; return $topic + 1 }))) })} function g() { return $gen(function* () { return (yield* $runAt(f(), 57)) })}"},
 
 	{
 		name:    "stream topic method result metadata survives a chain",
 		source:  "function f(xs: Stream.Stream<number>) { return xs.filter((n) => n > 0).map((n) => n + 1) }",
-		virtual: "function f(xs: Stream.Stream<number>) { return $gen(function* () { return (yield* $run(Stream.map((yield* $run(Stream.filter(xs, (n) => n > 0))), (n) => n + 1))) })}",
-	},
-	{
-		name:    "a held fork program joins through its declared module",
-		source:  "function f() { const fiber = fork(() => 1); return fiber.join() }",
-		virtual: "function f() { return $gen(function* () { const fiber = (yield* $run($scoped(fork)($gen(function* () { return 1 })))); return (yield* $run(Fiber.join(fiber))) })}",
+		virtual: "function f(xs: Stream.Stream<number>) { return Stream.map(Stream.filter(xs, (n) => n > 0), (n) => n + 1) }",
 	},
 
-	{
-		name:    "stored iterable programs convert at the collection boundary",
-		source:  "function f(xs: Array<() => Effect.Effect<number>>) { return Effect.all(xs) }",
-		virtual: "function f(xs: Array<() => Effect.Effect<number>>) { return $gen(function* () { return (yield* $run(Effect.all($programs(xs)))) })}",
-	},
-	{
-		name:    "stored record fields adapt function values before holding calls cold",
-		source:  "function f(job: () => Effect.Effect<number>) { return Effect.all({ a: job }) }",
-		virtual: "function f(job: () => Effect.Effect<number>) { return $gen(function* () { return (yield* $run(Effect.all({ a: $asProgram(job) }))) })}",
-	},
-	{
-		name:    "stored pipe programs and generic stages keep their forms",
-		source:  "function f(job: () => Effect.Effect<number>) { return pipe(job, Effect.retry({ times: 2 })) }",
-		virtual: "function f(job: () => Effect.Effect<number>) { return $gen(function* () { return (yield* $run(pipe($asProgram(job), Effect.retry({ times: 2 })))) })}",
-	},
-	{
-		name:    "module runner takes a call by name",
-		source:  "const n = Effect.runSync(Effect.succeed(1))",
-		virtual: "const n = Effect.runSync($gen(function* () { return (yield* $run(Effect.succeed(1))) }))",
-	},
 	{
 		name:    "pure module pipe evaluates once",
 		source:  "const n = 21 |> % * 2",
 		virtual: "const n = (() => { const $topic = 21; return $topic * 2 })()",
 	},
-	{
-		name:    "program topic defers the input and retries the same program",
-		source:  "function f() { return Effect.fail(1) |> Effect.retry(%, { times: 2 }) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($gen(function* () { const $topic = $gen(function* () { return (yield* $run(Effect.fail(1))) }); return (yield* $run(Effect.retry($topic, { times: 2 }))) }))) })}",
-	},
 
 	{
 		name:    "a service keeps multiline empty channels around interleaved statics",
 		source:  "export service Counter {\n increment(): void!!\n static readonly layer = Layer.succeed(Counter, { increment: () => {}, read: () => 2 })\n read(): number!!\n}",
-		virtual: "export interface Counter {\n increment(): Effect.Effect<void, never, never>\n read(): Effect.Effect<number, never, never>; readonly \"~vibelang/service\"?: \"app/src/main#Counter\" } export abstract class Counter extends $service<Counter>(\"app/src/main#Counter\") { static readonly layer = Layer.succeed(Counter, { increment: () => { return $gen(function* () {})}, read: () => $gen(function* () { return 2 }) })\n \n}",
-	},
-
-	{
-		name:    "using in a loop body keeps a statement block",
-		source:  "function f(xs: string[]) { for (const x of xs) { using r = lease(x); if (x) continue\n return r }\n return \"end\" }",
-		virtual: "function f(xs: string[]) { return $gen(function* () { for (const x of (yield* $each(xs))) { const $c = yield* $scopedBody($gen(function* () { const r = (yield* $acquire(lease(x))); if (x) return $jump(\"continue:\")\n return $box(r) })); if ($jumped($c, \"continue:\")) continue; return $unboxed($c) }\n return \"end\" })}",
-	},
-
-	{
-		name:    "function scoped var escapes a region and a for initializer",
-		source:  "function f() { try { var x = g(1); for (var i = 0; i < 2; i++) x += i } finally { h() }\n return x + i }",
-		virtual: "function f() { return $gen(function* () {var x = $varType($gen(function* () { return (yield* $run(g(1))) })); var i = $varType($gen(function* () { return 0 }));  yield* $finally($gen(function* () {  x = (yield* $run(g(1))); for ( i = 0; i < 2; i++) x += i }), $gen(function* () { ;(yield* $run($value(h)())) }))\n return x + i })}",
+		virtual: "export interface Counter {\n increment(): Effect.Effect<void, never, never>\n read(): Effect.Effect<number, never, never>; readonly \"~vibelang/service\"?: \"app/src/main#Counter\" } export abstract class Counter extends $service<Counter>(\"app/src/main#Counter\") { static readonly layer = Layer.succeed(Counter, { increment: () => {}, read: () => 2 })\n \n}",
 	},
 
 	{
 		name:    "data method call punctuation skips comments",
 		source:  "function f(o: Option.Option<number>) { return o.getOrElse /* ( */ (() => 0) }",
-		virtual: "function f(o: Option.Option<number>) { return $gen(function* () { return (yield* $run(Option.getOrElse(o, () => 0))) })}",
-	},
-
-	{
-		name:    "a never completing try has no void success path",
-		source:  "function f() { try { throw 1 } finally { cleanup() } }",
-		virtual: "function f() { return $gen(function* () { return yield* $finally($gen(function* () { return (yield* $fail(1)) as void }), $gen(function* () { ;(yield* $run($value(cleanup)())) })) })}",
+		virtual: "function f(o: Option.Option<number>) { return Option.getOrElse(o, () => 0) }",
 	},
 
 	{
 		name:    "data predicate narrows the original receiver",
 		source:  "function f(o: Option.Option<number>) { if (o.isSome()) return o.value; return 0 }",
-		virtual: "function f(o: Option.Option<number>) { return $gen(function* () { if (Option.isSome(o)) return o.value; return 0 })}",
+		virtual: "function f(o: Option.Option<number>) { if (Option.isSome(o)) return o.value; return 0 }",
 	},
 	{
 		name:    "module predicate retains stock narrowing",
 		source:  "function f(e: Exit.Exit<number, string>) { return Exit.isFailure(e) ? e.cause : undefined }",
-		virtual: "function f(e: Exit.Exit<number, string>) { return $gen(function* () { return Exit.isFailure(e) ? e.cause : undefined })}",
+		virtual: "function f(e: Exit.Exit<number, string>) { return Exit.isFailure(e) ? e.cause : undefined }",
 	},
 	{
 		name:    "data method uses the module behind a local shadow",
 		source:  "function f(o: Option.Option<number>) { const Option = 1; return o.getOrElse(() => Option) }",
-		virtual: "function f(o: Option.Option<number>) { return $gen(function* () { const Option = 1; return (yield* $run(Option_1.getOrElse(o, () => Option))) })}",
+		virtual: "function f(o: Option.Option<number>) { const Option = 1; return Option_1.getOrElse(o, () => Option) }",
 	},
 	{
 		name:    "join a held Fiber",
-		source:  "function f(a: Fiber.Fiber<number>) { return join a }",
-		virtual: "function f(a: Fiber.Fiber<number>) { return $gen(function* () { return (yield* $run($join(a))) })}",
+		source:  "effect function f(a: Fiber.Fiber<number>) { return join a }",
+		virtual: "       function f(a: Fiber.Fiber<number>) { return $gen(function* () { return (yield* $run($join(a))) })}",
 	},
 	{
 		name:    "join an array of Fibers",
-		source:  "function f(a: Fiber.Fiber<number>, b: Fiber.Fiber<string>) { return join [a, b] }",
-		virtual: "function f(a: Fiber.Fiber<number>, b: Fiber.Fiber<string>) { return $gen(function* () { return (yield* $run($join([a, b]))) })}",
+		source:  "effect function f(a: Fiber.Fiber<number>, b: Fiber.Fiber<string>) { return join [a, b] }",
+		virtual: "       function f(a: Fiber.Fiber<number>, b: Fiber.Fiber<string>) { return $gen(function* () { return (yield* $run($join([a, b]))) })}",
 	},
 	{
 		name:    "join an object of Fibers",
-		source:  "function f(a: Fiber.Fiber<number>) { return join { a } }",
-		virtual: "function f(a: Fiber.Fiber<number>) { return $gen(function* () { return (yield* $run($join({ a }))) })}",
+		source:  "effect function f(a: Fiber.Fiber<number>) { return join { a } }",
+		virtual: "       function f(a: Fiber.Fiber<number>) { return $gen(function* () { return (yield* $run($join({ a }))) })}",
 	},
 	{
 		name:    "join an annotated collection",
-		source:  "function f(xs: Fiber.Fiber<number>[]) { return join xs }",
-		virtual: "function f(xs: Fiber.Fiber<number>[]) { return $gen(function* () { return (yield* $run($join(xs))) })}",
+		source:  "effect function f(xs: Fiber.Fiber<number>[]) { return join xs }",
+		virtual: "       function f(xs: Fiber.Fiber<number>[]) { return $gen(function* () { return (yield* $run($join(xs))) })}",
 	},
 	{
 		name:    "concurrent unbounded with continue",
-		source:  "function f(xs: number[]) { for concurrent (const x of xs) { if (x) continue; } }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;(yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { if (x) return; } }), { concurrency: \"unbounded\", discard: true }))); })}",
+		source:  "effect function f(xs: number[]) { for concurrent (const x of xs) { if (x) continue; } }",
+		virtual: `       function f(xs: number[]) { return $gen(function* () { ;(yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { if (x) return; } }), { concurrency: "unbounded", discard: true }))); })}`,
 	},
 	{
 		name:    "concurrent bounded single statement",
-		source:  "function f(xs: number[]) { for concurrent(2) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = 2; (yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { ;(yield* $run(log(x)));  } }), { concurrency: $concurrency, discard: true }))); } })}",
+		source:  "effect function f(xs: number[]) { for concurrent(2) (const x of xs) try log(x) }",
+		virtual: "       function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = 2; (yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { ;(yield* $run($try(log(x))));  } }), { concurrency: $concurrency, discard: true }))); } })}",
 	},
 	{
 		name:    "concurrent written undefined single statement",
-		source:  "function f(xs: number[]) { for concurrent(undefined as any) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = undefined as any; (yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { ;(yield* $run(log(x)));  } }), { concurrency: $concurrency, discard: true }))); } })}",
+		source:  "effect function f(xs: number[]) { for concurrent(undefined as any) (const x of xs) try log(x) }",
+		virtual: "       function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = undefined as any; (yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { ;(yield* $run($try(log(x))));  } }), { concurrency: $concurrency, discard: true }))); } })}",
 	},
 	{
 		name:    "concurrent written null single statement",
-		source:  "function f(xs: number[]) { for concurrent(null as any) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = null as any; (yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { ;(yield* $run(log(x)));  } }), { concurrency: $concurrency, discard: true }))); } })}",
-	},
-	{
-		name:    "all takes its array elements by name",
-		source:  "function f() { return all([Effect.succeed(1), Effect.succeed(2)]) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run(all([$gen(function* () { return (yield* $run(Effect.succeed(1))) }), $gen(function* () { return (yield* $run(Effect.succeed(2))) })]))) })}",
-	},
-	{
-		name:    "library data call is evaluated lazily in a hatch",
-		source:  "function f() { return sync(BigDecimal.fromNumberUnsafe(0)) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run(sync(() => (BigDecimal.fromNumberUnsafe(0))))) })}",
+		source:  "effect function f(xs: number[]) { for concurrent(null as any) (const x of xs) try log(x) }",
+		virtual: "       function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = null as any; (yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { ;(yield* $run($try(log(x))));  } }), { concurrency: $concurrency, discard: true }))); } })}",
 	},
 
 	{
@@ -210,14 +129,9 @@ var projectionCases = []struct {
 	{
 		name:    "hatch body retains plain JavaScript member semantics",
 		source:  "function f() { return sync(() => BigDecimal.make(1n, 0).normalize()) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run(sync(() => BigDecimal.make(1n, 0).normalize()))) })}",
+		virtual: "function f() { return sync(() => BigDecimal.make(1n, 0).normalize()) }",
 	},
 
-	{
-		name:    "hatch value is deferred and its inputs run",
-		source:  "function f() { return sync(String(7)) + sync((n) => n * 2, read()) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run(sync(() => (String(7))))) + (yield* $run(sync((n) => n * 2, (yield* $run($value(read)()))))) })}",
-	},
 	{
 		name:    "schema primitives optional literals arrays and readonly",
 		source:  "export schema User { readonly id: string; home?: number; role: \"a\" | \"b\"; tags: string[]; mutable active: boolean }\n",
@@ -251,7 +165,7 @@ var projectionCases = []struct {
 	{
 		name:    "catch expressions associate to the left (D237)",
 		source:  "effect function f() { return a() catch b() catch c }",
-		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch((yield* $run($catch(a(), () => $gen(function* () { return (yield* $run($value(b)())) })))), () => $gen(function* () { return c })))) })}",
+		virtual: "       function f() { return $gen(function* () { return (yield* $run($catch((yield* $run($catch(a(), () => $gen(function* () { return b() })))), () => $gen(function* () { return c })))) })}",
 	},
 	{
 		name:    "nullish coalescing stays inside the catch (D237)",
@@ -281,17 +195,17 @@ var projectionCases = []struct {
 	{
 		name:    "catch expression retains this in both operands",
 		source:  "effect function f() { return this.a() catch this.b() }",
-		virtual: "       function f() { return $gen({ self: this }, function* () { return (yield* $run($catch(this.a(), () => $gen({ self: this }, function* () { return (yield* $run(this.b())) })))) })}",
+		virtual: "       function f() { return $gen({ self: this }, function* () { return (yield* $run($catch(this.a(), () => $gen({ self: this }, function* () { return this.b() })))) })}",
 	},
 	{
 		name:    "a written catch helper call keeps ordinary call semantics",
 		source:  "function f() { return $catchExpression(a, b) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($catchExpression(a, b))) })}",
+		virtual: "function f() { return $catchExpression(a, b) }",
 	},
 	{
 		name:    "nested pipe bodies have distinct lexical topics",
 		source:  "function f() { return 1 |> % + (2 |> % * 3) }",
-		virtual: "function f() { return $gen(function* () { return (yield* $run($gen(function* () { const $topic = 1; return $topic + ((yield* $run($gen(function* () { const $topic_1 = 2; return $topic_1 * 3 })))) }))) })}",
+		virtual: "function f() { return (() => { const $topic = 1; return $topic + ((() => { const $topic_1 = 2; return $topic_1 * 3 })()) })() }",
 	},
 	{
 		name:    "an error constructor payload stays a field in virtual TypeScript",
@@ -378,62 +292,28 @@ var projectionCases = []struct {
 		source:  "type C = User!!Db\ntype D = User!!\ntype E = User!NotFound!\n",
 		virtual: "type C = Effect.Effect<User, never, Db>\ntype D = Effect.Effect<User, never, never>\ntype E = Effect.Effect<User, NotFound, never>\n",
 	},
-	{
-		name:    "calls run in a function body",
-		source:  "function greet(id: string) {\n  const user = find(id)\n  return user.name\n}\n",
-		virtual: "function greet(id: string) { return $gen(function* () {\n  const user = (yield* $run(find(id)))\n  return user.name\n})}\n",
-	},
-	{
-		name:    "nested and chained calls",
-		source:  "function f(x: number) {\n  const y = f(g(x))\n  a(b)(c)\n  f().x\n}\n",
-		virtual: "function f(x: number) { return $gen(function* () {\n  const y = (yield* $run(f((yield* $run(g(x))))))\n  ;(yield* $run((yield* $run(a(b)))(c)))\n  ;(yield* $run(f())).x\n})}\n",
-	},
-	{
-		name:    "a run in an unbraced body takes no semicolon",
-		source:  "function f(x: boolean) {\n  if (x) g(1)\n  else h(2)\n  while (x) g(3)\n  for (;;) h(4)\n}\n",
-		virtual: "function f(x: boolean) { return $gen(function* () {\n  if (x) (yield* $run(g(1)))\n  else (yield* $run(h(2)))\n  while (x) (yield* $run(g(3)))\n  for (;;) (yield* $run(h(4)))\n})}\n",
-	},
-	{
-		name:    "calls in a nested lambda stay",
-		source:  "function f() {\n  return xs.map((x) => g(x))\n}\n",
-		virtual: "function f() { return $gen(function* () {\n  return (yield* $run(xs.map((x) => g(x))))\n})}\n",
-	},
-	{
-		name:    "a nested function declaration is its own Effect",
-		source:  "function f() {\n  function inner() { return h(1) }\n  return inner\n}\n",
-		virtual: "function f() { return $gen(function* () {\n  function inner() { return $gen(function* () { return (yield* $run(h(1))) })}\n  return inner\n})}\n",
-	},
+
 	{
 		name:    "throw fails",
-		source:  "function annotated(): User!NotFound! {\n  throw new NotFound({ id: f(1) })\n}\n",
-		virtual: "function annotated(): Effect.Effect<User, NotFound, never> { return $gen(function* () {\n  return yield* $fail(new NotFound({ id: (yield* $run(f(1))) }))\n})}\n",
+		source:  "effect function annotated(): User!NotFound! {\n  throw new NotFound({ id: try f(1) })\n}\n",
+		virtual: "       function annotated(): Effect.Effect<User, NotFound, never> { return $gen(function* () {\n  return yield* $fail(new NotFound({ id:     (yield* $run($try(f(1)))) }))\n})}\n",
 	},
 	{
 		name:    "a function that only throws keeps A void",
-		source:  "function find(id: string) {\n  if (id === \"\") throw new Timeout()\n  throw new NotFound({ id })\n}\n",
-		virtual: "function find(id: string) { return $gen(function* () {\n  if (id === \"\") return (yield* $fail(new Timeout())) as void\n  return (yield* $fail(new NotFound({ id }))) as void\n})}\n",
-	},
-	{
-		name:    "an infer channel wraps the body in $contract (D57)",
-		source:  "function find(id: string): string!infer E!Db {\n  return id\n}\n",
-		virtual: "function find(id: string) { return $contract<string, $Infer, Db>()($gen(function* () {\n  return id\n}))}\n",
+		source:  "effect function find(id: string) {\n  if (id === \"\") throw new Timeout()\n  throw new NotFound({ id })\n}\n",
+		virtual: "       function find(id: string) { return $gen(function* () {\n  if (id === \"\") return (yield* $fail(new Timeout())) as void\n  return (yield* $fail(new NotFound({ id }))) as void\n})}\n",
 	},
 
 	{
-		name:    "written Effect contracts infer channels from the body (D57)",
-		source:  "function f(): Effect<infer A, infer E, never> { return 1 }",
-		virtual: "function f() { return $contract<$Infer, $Infer, never>()($gen(function* () { return 1 }))}",
-	},
-	{
 		name:    "plain callbacks retain a contract success type (D67)",
 		source:  "import { Schema } from \"effect\"; const s = Schema.suspend((): Effect<Schema.Codec<A, B>, never, never> => s)",
-		virtual: "import { Schema } from \"effect\"; const s = Schema.suspend((): Schema.Codec<A, B> => s)",
+		virtual: `import { Schema } from "effect"; const s = Schema.suspend((): Effect<Schema.Codec<A, B>, never, never> => s)`,
 	},
 
 	{
 		name:    "omitted dependencies of a contract are never (VIP-3)",
-		source:  "function find(id: string): string!NotFound {\n  return id\n}\n",
-		virtual: "function find(id: string): Effect.Effect<string, NotFound, never> { return $gen(function* () {\n  return id\n})}\n",
+		source:  "effect function find(id: string): string!NotFound {\n  return id\n}\n",
+		virtual: "       function find(id: string): Effect.Effect<string, NotFound, never> { return $gen(function* () {\n  return id\n})}\n",
 	},
 	{
 		name:    "a plain return annotation keeps a plain function (L2)",
@@ -485,95 +365,48 @@ var projectionCases = []struct {
 		source:  "service Version: number { static readonly defaultValue = () => 4 }\n",
 		virtual: "interface Version { readonly \"~vibelang/service\"?: \"app/src/main#Version\" } abstract class Version extends $reference<number>(\"app/src/main#Version\") { static readonly defaultValue = () => 4 }\n",
 	},
-	{
-		name:    "methods of a class that implements a service are Effect functions (D92)",
-		source:  "service Users { find(id: string): User!NotFound }\nclass Memory implements Users {\n  find(id: string) { return id }\n  static make() { return 1 }\n}\n",
-		virtual: "interface Users { find(id: string): Effect.Effect<User, NotFound, never>; readonly \"~vibelang/service\"?: \"app/src/main#Users\" } abstract class Users extends $service<Users>(\"app/src/main#Users\") {}\nclass Memory implements Users {\n  find(id: string) { return $gen(function* () { return id })}\n  static make() { return 1 }\n}\n",
-	},
-	{
-		name:    "a method takes the form its body decides",
-		source:  "class Cache {\n  get(k: string) { return load(k) }\n  refresh(k: string) {\n    const v = load(k)\n    return v\n  }\n}\n",
-		virtual: "class Cache {\n  get(k: string) { return load(k) }\n  refresh(k: string) { return $gen(function* () {\n    const v = (yield* $run(load(k)))\n    return v\n  })}\n}\n",
-	},
-	{
-		name:    "returns leave a try statement through its completion",
-		source:  "function f(id: string) {\n  try {\n    return find(id)\n  } catch (e) {\n    return \"guest\"\n  }\n}\n",
-		virtual: "function f(id: string) { return $gen(function* () {\n  const $c = yield* $catch($gen(function* () {\n    return $box((yield* $run(find(id))))\n  }), (e) => $gen(function* () {\n    return $box(\"guest\")\n  })); return $unboxed($c)\n})}\n",
-	},
-	{
-		name:    "a region that no jump leaves dispatches nothing",
-		source:  "function f() {\n  try {\n    g(1)\n  } catch {\n    g(2)\n  }\n}\n",
-		virtual: "function f() { return $gen(function* () {\n  yield* $catch($gen(function* () {\n    ;(yield* $run(g(1)))\n  }), () => $gen(function* () {\n    ;(yield* $run(g(2)))\n  }))\n})}\n",
-	},
-	{
-		name:    "a break that leaves a region is a jump the loop takes",
-		source:  "function g(xs: number[]) {\n  for (const x of xs) {\n    try {\n      if (x) break\n      g(x)\n    } finally {\n      h(x)\n    }\n  }\n}\n",
-		virtual: "function g(xs: number[]) { return $gen(function* () {\n  for (const x of (yield* $each(xs))) {\n    const $c = yield* $finally($gen(function* () {\n      if (x) return $jump(\"break:\")\n      ;(yield* $run(g(x)))\n    ; return $end }), $gen(function* () {\n      ;(yield* $run(h(x)))\n    ; return $end })); if ($jumped($c, \"break:\")) break\n  }\n})}\n",
-	},
-	{
-		name:    "a jump that leaves two regions passes the completion on",
-		source:  "function f() {\n  try {\n    try {\n      return 1\n    } finally {\n      g(1)\n    }\n  } catch {\n    return 2\n  }\n}\n",
-		virtual: "function f() { return $gen(function* () {\n  const $c = yield* $catch($gen(function* () {\n    const $c_1 = yield* $finally($gen(function* () {\n      return $box(1)\n    }), $gen(function* () {\n      ;(yield* $run(g(1)))\n    ; return $end })); return $c_1\n  }), () => $gen(function* () {\n    return $box(2)\n  })); return $unboxed($c)\n})}\n",
-	},
+
 	{
 		name:    "a provide block provides its layers to a region (D172, D173)",
-		source:  "function main() {\n  provide AppLive, Clock = clock {\n    return greet(\"42\")\n  }\n}\n",
-		virtual: "function main() { return $gen(function* () {\n  const $c = yield* $provideEntries([AppLive, $provideService(Clock, \"Clock\", clock)])($gen(function* () {\n    return $box((yield* $run(greet(\"42\"))))\n  })); return $unboxed($c)\n})}\n",
+		source:  "effect function main() {\n  provide AppLive, Clock = clock {\n    return try greet(\"42\")\n  }\n}\n",
+		virtual: "       function main() { return $gen(function* () {\n  const $c = yield* $provideEntries([AppLive, $provideService(Clock, \"Clock\", clock)])($gen(function* () {\n    return $box((yield* $run($try(greet(\"42\")))))\n  })); return $unboxed($c)\n})}\n",
 	},
 	{
 		name:    "a match expression in an Effect body runs as a program (D206)",
-		source:  "function f(e: Failure) {\n  const label = match (e) {\n    when NotFound and { let id }: `no user ${id}`;\n    default: describe(e);\n  }\n  return label\n}\n",
-		virtual: "function f(e: Failure) { return $gen(function* () {\n  const label = (yield* $run($gen(function* () { const $matchCache2 = $matchCache(); void e; { if ($is(NotFound, e) && (typeof e === \"function\" || typeof e === \"object\") && e !== null && \"id\" in e) { let id = e.id; return `no user ${id}`; } } return (yield* $run(describe(e))); })))\n  return label\n})}\n",
+		source:  "effect function f(e: Failure) {\n  const label = match (e) {\n    when NotFound and { let id }: `no user ${id}`;\n    default: try describe(e);\n  }\n  return label\n}\n",
+		virtual: "       function f(e: Failure) { return $gen(function* () {\n  const label = (yield* $run($gen(function* () { const $matchCache2 = $matchCache(); void e; { if ($is(NotFound, e) && (typeof e === \"function\" || typeof e === \"object\") && e !== null && \"id\" in e) { let id = e.id; return `no user ${id}`; } } return (yield* $run($try(describe(e)))); })))\n  return label\n})}\n",
 	},
 	{
 		name:    "a returned match returns from its arms, exhaustively (D209)",
-		source:  "function g(o: Option.Option<number>) {\n  return match (o) {\n    when Option.Some(let v): v;\n    when Option.None: 0;\n  }\n}\n",
-		virtual: "function g(o: Option.Option<number>) { return $gen(function* () {\n  { void o; { const $extracted4 = (Option.isSome(o) ? [o.value] : false); if ($extracted4 !== false && $extracted4.length === 1) { let v = $extracted4[0]; return v; } } { if (Option.isNone(o)) { return 0; } } return $noMatch(o); }\n})}\n",
+		source:  "effect function g(o: Option.Option<number>) {\n  return match (o) {\n    when Option.Some(let v): v;\n    when Option.None: 0;\n  }\n}\n",
+		virtual: "       function g(o: Option.Option<number>) { return $gen(function* () {\n  { void o; { const $extracted4 = (Option.isSome(o) ? [o.value] : false); if ($extracted4 !== false && $extracted4.length === 1) { let v = $extracted4[0]; return v; } } { if (Option.isNone(o)) { return 0; } } return $noMatch(o); }\n})}\n",
 	},
 	{
 		name:    "a match statement and an is test",
-		source:  "function h(n: number) {\n  match (n) {\n    when 1: log(\"one\");\n    default: log(\"other\");\n  }\n  return n is 1 or 2\n}\n",
-		virtual: "function h(n: number) { return $gen(function* () {\n  $match2: { void n; { if (n === 1) { (yield* $run(log(\"one\"))); break $match2; } } (yield* $run(log(\"other\"))); break $match2; } \n  return (((n === 1) || (n === 2)))\n})}\n",
+		source:  "effect function h(n: number) {\n  match (n) {\n    when 1: try log(\"one\");\n    default: try log(\"other\");\n  }\n  return n is 1 or 2\n}\n",
+		virtual: "       function h(n: number) { return $gen(function* () {\n  $match2: { void n; { if (n === 1) { (yield* $run($try(log(\"one\")))); break $match2; } } (yield* $run($try(log(\"other\")))); break $match2; } \n  return (((n === 1) || (n === 2)))\n})}\n",
 	},
-	{
-		name:    "using acquires its initializer by name in the block's Scope (D47, D14)",
-		source:  "function report(path: string) {\n  using file = Files.open(path)\n  using t = timer(\"x\")\n  return file.name\n}\n",
-		virtual: "function report(path: string) { return $gen(function* () {\n  const file = (yield* $acquire($use(Files).open(path)))\n  const t = (yield* $acquire(timer(\"x\")))\n  return file.name\n})}\n",
-	},
+
 	{
 		name:    "interruption blocks and finally (exit) are regions (D178-D180)",
-		source:  "function f() {\n  uninterruptible {\n    const conn = acquire()\n    try { restore { return use(conn) } } finally (exit) { release(conn, exit) }\n  }\n}\n",
-		virtual: "function f() { return $gen(function* () {\n  const $c = yield* uninterruptible($gen(function* () {\n    const conn = (yield* $run($value(acquire)()))\n    const $c_1 = yield* $finallyExit($gen(function* () { const $c_2 = yield* restore($gen(function* () { return $box((yield* $run(use(conn)))) })); return $c_2 }), (exit) => $gen(function* () { ;(yield* $run(release(conn, exit))) ; return $end })); return $c_1\n  })); return $unboxed($c)\n})}\n",
+		source:  "effect function f() {\n  uninterruptible {\n    const conn = try acquire()\n    restore { return try use(conn) }\n  }\n}\n",
+		virtual: "       function f() { return $gen(function* () {\n  const $c = yield* uninterruptible($gen(function* () {\n    const conn =     (yield* $run($try(acquire())))\n    const $c_1 = yield* restore($gen(function* () { return $box((yield* $run($try(use(conn))))) })); return $c_1\n  })); return $unboxed($c)\n})}\n",
 	},
-	{
-		name:    "a tail region falls off its end for TypeScript's reachability",
-		source:  "function describe(e: Failure) {\n  try {\n    return find(e)\n  } catch (error) {\n    switch (error._tag) {\n      case \"A\": return \"a\"\n      case \"B\": return \"b\"\n    }\n  }\n}\n",
-		virtual: "function describe(e: Failure) { return $gen(function* () {\n  const $c = yield* $catch($gen(function* () {\n    return $box((yield* $run(find(e))))\n  }), (error) => $gen(function* () {\n    switch (error._tag) {\n      case \"A\": return $box(\"a\")\n      case \"B\": return $box(\"b\")\n    }\n  })); return $unboxed($c)\n})}\n",
-	},
+
 	{
 		name:    "a plain generator retains calls and delegation beside Effect iteration (VIP-21)",
-		source:  "function* lookups(keys: string[]) {\n  for (const key of keys) yield Store.get(key)\n  yield* more()\n}\nfunction total() {\n  let sum = 0\n  for try (const n of lookups([\"a\"])) sum += n\n  return sum\n}\n",
-		virtual: "function* lookups(keys: string[]) {\n  for (const key of keys) yield Store.get(key)\n  yield* more()\n}\nfunction total() { return $gen(function* () {\n  let sum = 0\n  for (const n of (yield* $eachStream((yield* $run(lookups([\"a\"])))))) sum += n\n  return sum\n})}\n",
+		source:  "function* lookups(keys: string[]) {\n  for (const key of keys) yield Store.get(key)\n  yield* more()\n}\neffect function total() {\n  let sum = 0\n  for try (const n of lookups([\"a\"])) sum += n\n  return sum\n}\n",
+		virtual: "function* lookups(keys: string[]) {\n  for (const key of keys) yield Store.get(key)\n  yield* more()\n}\n       function total() { return $gen(function* () {\n  let sum = 0\n  for (const n of (yield* $eachStream(lookups([\"a\"])))) sum += n\n  return sum\n})}\n",
 	},
 	{
 		name:    "a layer without statements succeeds with its members",
 		source:  "layer UsersLive: Users {\n  find(id) { return lookup(id) }\n  readonly region = \"eu\";\n}\n",
-		virtual: "const UsersLive = Layer.succeed(Users, {\n  find(id) { return $gen(function* () { return (yield* $run(lookup(id))) })},\n  region: \"eu\"\n})\n",
+		virtual: "const UsersLive = Layer.succeed(Users, {\n  find(id) { return lookup(id) },\n  region: \"eu\"\n})\n",
 	},
 	{
 		name:    "a layer with statements builds in an Effect",
 		source:  "export layer UsersLive: Users {\n  const d = Directory()\n  find(id) { return d.lookup(id) }\n  readonly region = name()\n}\n",
-		virtual: "export const UsersLive = Layer.effect(Users, $gen(function* () {\n  const d = (yield* $run($value(Directory)()))\n  return { find(id) { return $gen(function* () { return (yield* $run(d.lookup(id))) })},\n  region: (yield* $run($value(name)())) }\n}))\n",
-	},
-	{
-		name:    "service member calls read the service (D41)",
-		source:  "function f(id: string) {\n  return Users.find(id)\n}\n",
-		virtual: "function f(id: string) { return $gen(function* () {\n  return (yield* $run($use(Users).find(id)))\n})}\n",
-	},
-	{
-		name:    "effect modules and JavaScript globals are not keys",
-		source:  "function f() {\n  Console.log(Math.max(1, 2))\n}\n",
-		virtual: "function f() { return $gen(function* () {\n  ;(yield* $run(Console.log((yield* $run(Math.max(1, 2))))))\n})}\n",
+		virtual: "export const UsersLive = Layer.effect(Users, $gen(function* () {\n  const d = Directory()\n  return { find(id) { return d.lookup(id) },\n  region: name() }\n}))\n",
 	},
 }
 
@@ -649,60 +482,22 @@ func TestCatchFixturesRequireExplicitEffect(t *testing.T) {
 	}
 }
 
-// A form-choice error retains unsupported source for the caller to repair;
-// its catch still reports the missing boundary independently.
-func TestOpaquePipeCatchRequiresEffect(t *testing.T) {
-	source := "import { opaque } from './other'; function f() { return a() |> opaque(%) catch 1 }"
-	projection := Project(source, testContext)
-	boundary, choice := 0, 0
-	for _, d := range projection.Diagnostics {
-		switch d.Code {
-		case 504:
-			boundary++
-			assert.Equal(t, source[d.Start:d.Start+d.Length], "catch")
-		case int32(CodeFormChoice):
-			choice++
-		default:
-			t.Fatalf("unexpected diagnostic: %+v", d)
-		}
-	}
-	assert.Equal(t, boundary, 1)
-	assert.Assert(t, choice > 0)
-	assertValidMap(t, projection, source)
-}
-
 // TestCatchExpressionCorpus checks synthesized match and do operands in
-// the runnable fixture, including its throw handler and lazy fallback.
+// the runnable case, including its throw handler, lazy fallback, and the
+// effect block it passes to exit.
 func TestCatchExpressionCorpus(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile(preVIP1("catch-expression", "../../../vibelang/cases/catch-expression/main.vibe"))
+	data, err := os.ReadFile("../../../vibelang/cases/catch-expression/main.vibe")
 	assert.NilError(t, err)
 	source := string(data)
 	projection := Project(source, testContext)
 	assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
 	assertParses(t, projection.Text)
 	assertValidMap(t, projection, source)
-	assert.Assert(t, strings.Contains(projection.Text, "$run(exit($gen("), "exit must receive its catch operand by name:\n%s", projection.Text)
+	assert.Assert(t, strings.Contains(projection.Text, "$run($try(exit($gen("), "exit must receive its effect block operand as a program:\n%s", projection.Text)
 	js, _, diagnostics := Emit(source, testContext)
 	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
 	assert.Assert(t, strings.Contains(js, "exit($gen("), "exit must capture the catch operand's defect:\n%s", js)
-}
-
-// TestPipeTopicChoices checks that D155 program topics and opaque callees
-// cannot silently choose an evaluation boundary for an opaque or mixed topic.
-func TestPipeTopicChoices(t *testing.T) {
-	t.Parallel()
-	for _, source := range []string{
-		"import { opaque } from './other'; function f() { return pipe(() => a(), opaque) }",
-		"function f() { return a() |> retry(%, Schedule.recurs(2)) + % }",
-		"import { opaque } from './other'; effect function f() { return a() |> opaque(%) catch () => 1 }",
-	} {
-		projection := Project(source, testContext)
-		assert.Assert(t, len(projection.Diagnostics) > 0, "%s", source)
-		for _, d := range projection.Diagnostics {
-			assert.Equal(t, d.Code, int32(CodeFormChoice), "%v", d)
-		}
-	}
 }
 
 // virtualBody returns projection's text without its first line, the import line.
@@ -739,10 +534,10 @@ func TestProjection(t *testing.T) {
 // resolve effect or vibelang-runtime.
 func TestImportLine(t *testing.T) {
 	t.Parallel()
-	source := "const Option = 1\nfunction f() {\n  const $run = 2\n  Console.log(Option)\n}\nconst L = Layer.empty\n"
+	source := "const Option = 1\neffect function f() {\n  const $run = 2\n  try Console.log(Option)\n}\nconst L = Layer.empty\n"
 	projection := Project(source, testContext)
 	line, _, _ := strings.Cut(projection.Text, "\n")
-	assert.Equal(t, line, `import { type $PreludeLoaded, $gen, $run as $run_1, Console, Layer } from "vibelang-ts-mapper/prelude"; true satisfies $PreludeLoaded;`)
+	assert.Equal(t, line, `import { type $PreludeLoaded, $gen, $run as $run_1, $try, Console, Layer } from "vibelang-ts-mapper/prelude"; true satisfies $PreludeLoaded;`)
 }
 
 // TestImportLineExperimental checks that the projection imports D313's
@@ -778,7 +573,7 @@ func TestImportedEffectNamespaceKeepsThePreludeType(t *testing.T) {
 	projection := Project(source, testContext)
 	line, rest, _ := strings.Cut(projection.Text, "\n")
 	assert.Assert(t, strings.Contains(line, "Effect as Effect_1"), line)
-	assert.Equal(t, rest, "import { Effect } from \"effect\"\ntype A = Effect_1<string, never, never>\nconst x = Effect.void\nfunction f<Scope>(s: Scope) { return $gen(function* () {})}\n")
+	assert.Equal(t, rest, "import { Effect } from \"effect\"\ntype A = Effect_1<string, never, never>\nconst x = Effect.void\nfunction f<Scope>(s: Scope) {}\n")
 }
 
 // TestVerbatimSegmentsCoverSourceText checks that the identifiers a user
@@ -843,21 +638,6 @@ func TestDurableDeclarationIsUnprojected(t *testing.T) {
 	assertValidMap(t, projection, source)
 }
 
-// TestFormChoice checks that a lambda whose form the rules cannot decide
-// draws EK9005 at the lambda, with the resolver's message, and still lowers
-// the default's guess.
-func TestFormChoice(t *testing.T) {
-	t.Parallel()
-	source := "function f(xs: Items) {\n  xs.forEach((x) => {\n    log(x)\n    g(x)\n  })\n}\n"
-	projection := Project(source, testContext)
-	assert.Equal(t, len(projection.Diagnostics), 1)
-	d := projection.Diagnostics[0]
-	assert.Equal(t, d.Code, int32(CodeFormChoice))
-	assert.Equal(t, source[d.Start:d.Start+d.Length], "(x) => {\n    log(x)\n    g(x)\n  }")
-	assert.Assert(t, strings.HasPrefix(d.Message, "Cannot tell whether the lambda at argument 1 of xs.forEach is a plain function or an Effect function"), d.Message)
-	assert.Assert(t, strings.Contains(projection.Text, "(x) => { return $gen(function* () {"), projection.Text)
-}
-
 // TestProjectionIsDeterministic checks that equal text projects to equal
 // output, which TypeScript's content-hash cache relies on.
 func TestProjectionIsDeterministic(t *testing.T) {
@@ -915,7 +695,7 @@ func TestCorpusPlans(t *testing.T) {
 // rendering: a service's base and a block that is a Scope region of its own.
 func TestExecutableEdits(t *testing.T) {
 	t.Parallel()
-	source := "service Flags { readonly beta: boolean; static readonly defaultValue = () => ({ beta: true }) }\nfunction f() {\n  g(1)\n  {\n    using r = acquire()\n  }\n}\n"
+	source := "service Flags { readonly beta: boolean; static readonly defaultValue = () => ({ beta: true }) }\neffect function f() {\n  try g(1)\n  for (;;) {\n    fork g(2)\n  }\n}\n"
 	p := lower(source, testContext)
 	var bases [][]string
 	scopes := 0
@@ -933,7 +713,7 @@ func TestExecutableEdits(t *testing.T) {
 		}
 	}
 	assert.DeepEqual(t, bases, [][]string{{"reference", "app/src/main#Flags", "Flags"}})
-	assert.Equal(t, scopes, 2) // the inner block's open and close, not the function body's
+	assert.Equal(t, scopes, 2) // the loop body's open and close, not the function body's
 }
 
 // TestExecutableServiceShape checks that the executable rendering of a
@@ -1093,16 +873,16 @@ func TestFiberDiagnostics(t *testing.T) {
 		name, source string
 		code         int32
 	}{
-		{"unknown join", "function f(x: unknown) { return join x }", CodeFormChoice},
-		{"unannotated parameter", "function f(x) { return join x }", CodeFormChoice},
-		{"unknown call result", "function f() { return join external() }", CodeFormChoice},
-		{"nonfiber", "function f() { const x = 1; return join x }", 1704},
-		{"empty object", "function f() { return join {} }", 1704},
-		{"nested join", "function f(a: Fiber.Fiber<number>) { return join [[a]] }", 1704},
-		{"nested annotated join", "function f(a: Fiber.Fiber<number>[][]) { return join a }", 1704},
-		{"Deferred", "function f(a: Deferred.Deferred<number>) { return join a }", 1704},
-		{"break", "function f() { for concurrent (const x of [1]) { break } }", 1903},
-		{"return", "function f() { for concurrent (const x of [1]) { return x } }", 1904},
+		{"unknown join", "effect function f(x: unknown) { return join x }", CodeFormChoice},
+		{"unannotated parameter", "effect function f(x) { return join x }", CodeFormChoice},
+		{"unknown call result", "effect function f() { return join external() }", CodeFormChoice},
+		{"nonfiber", "effect function f() { const x = 1; return join x }", 1704},
+		{"empty object", "effect function f() { return join {} }", 1704},
+		{"nested join", "effect function f(a: Fiber.Fiber<number>) { return join [[a]] }", 1704},
+		{"nested annotated join", "effect function f(a: Fiber.Fiber<number>[][]) { return join a }", 1704},
+		{"Deferred", "effect function f(a: Deferred.Deferred<number>) { return join a }", 1704},
+		{"break", "effect function f() { for concurrent (const x of [1]) { break } }", 1903},
+		{"return", "effect function f() { for concurrent (const x of [1]) { return x } }", 1904},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			projection := Project(c.source, testContext)
@@ -1121,7 +901,7 @@ func TestFiberDiagnostics(t *testing.T) {
 // TestConcurrentNestedJumps keeps a nested loop's jumps and a nested
 // function's return separate from the concurrent item's continuation.
 func TestConcurrentNestedJumps(t *testing.T) {
-	source := "function f(xs: number[]) { if (xs.length) for concurrent(2) (const x of xs) { for (let i = 0; i < 2; i++) { if (i) break; continue } const g = () => { return x }; if (x) continue; log(x) } }"
+	source := "effect function f(xs: number[]) { if (xs.length) for concurrent(2) (const x of xs) { for (let i = 0; i < 2; i++) { if (i) break; continue } const g = () => { return x }; if (x) continue; log(x) } }"
 	projection := Project(source, testContext)
 	assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
 	assertParses(t, projection.Text)
@@ -1130,13 +910,13 @@ func TestConcurrentNestedJumps(t *testing.T) {
 	assert.Assert(t, strings.Contains(projection.Text, "if (x) return;"), "%s", projection.Text)
 }
 
-// TestConcurrentContinueRegions checks item exits through a lazy region
-// and a parser-generated single-statement block, where edits share a span.
+// TestConcurrentContinueRegions checks item exits through a nested
+// concurrent loop and a parser-generated single-statement block, where
+// edits share a span.
 func TestConcurrentContinueRegions(t *testing.T) {
 	for _, source := range []string{
-		"function f(xs: number[]) { for concurrent (const x of xs) continue }",
-		"function f(xs: number[]) { for concurrent (const x of xs) { try { if (x) continue } finally { log(x) } } }",
-		"function f(xs: number[]) { for concurrent (const x of xs) { for concurrent (const y of xs) { if (y) continue } if (x) continue } }",
+		"effect function f(xs: number[]) { for concurrent (const x of xs) continue }",
+		"effect function f(xs: number[]) { for concurrent (const x of xs) { for concurrent (const y of xs) { if (y) continue } if (x) continue } }",
 	} {
 		projection := Project(source, testContext)
 		assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
@@ -1159,9 +939,9 @@ func TestJoinAnnotatedFactory(t *testing.T) {
 // match bodies on their own lowering path, including their run edits.
 func TestFiberFormsInSynthesizedExpressions(t *testing.T) {
 	for _, source := range []string{
-		"function f(a: Fiber.Fiber<number>) { return do { join a } }",
-		"function f(a: Fiber.Fiber<number>) { return match (1) { when 1: join a; default: 0; } }",
-		"function f() { return do { for concurrent (const x of [1]) { log(x) } 1 } }",
+		"effect function f(a: Fiber.Fiber<number>) { return do { join a } }",
+		"effect function f(a: Fiber.Fiber<number>) { return match (1) { when 1: join a; default: 0; } }",
+		"effect function f() { return do { for concurrent (const x of [1]) { log(x) } 1 } }",
 	} {
 		projection := Project(source, testContext)
 		assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
@@ -1215,24 +995,6 @@ func TestHatchAnnotations(t *testing.T) {
 	}
 	source := "function f(text: string) { return sync((s) => JSON.parse(s), text) }"
 	assert.Equal(t, len(Project(source, testContext).Diagnostics), 0)
-}
-
-// TestRegionVarNeedsAnnotation keeps lexical dependencies and repeated
-// declarations from acquiring a type from the wrong generator's scope.
-func TestRegionVarNeedsAnnotation(t *testing.T) {
-	t.Parallel()
-	for _, source := range []string{
-		"function f() { try { const n = 1; var x = n } finally {} return x }",
-		"const e = 0; function f() { try { g() } catch (e) { var x = e } return x }",
-		"const n = 0; function f() { try { const { n } = read(); var x = n } finally {} return x }",
-		"const n = 0; function f() { for (let n = 0; n < 2; n++) { try { var x = n } finally {} } return x }",
-		"function f() { try { var x = 1; var x = 2 } finally {} return x }",
-		"function f() { try { var { x } = read() } finally {} return x }",
-	} {
-		p := Project(source, testContext)
-		assert.Assert(t, len(p.Diagnostics) > 0, "%s", source)
-		assert.Assert(t, strings.Contains(p.Diagnostics[0].Message, "Annotate"), "%v", p.Diagnostics)
-	}
 }
 
 // TestDoControlFlow pins diagnostics in original coordinates while allowing

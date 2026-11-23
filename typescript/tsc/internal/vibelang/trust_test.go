@@ -196,8 +196,10 @@ export declare function make(): Schema`,
 // @effect/vitest re-exports vitest, and vitest's expect, assert and vi carry
 // no @throws, so each call of one, and of a method of what one returned,
 // throws unknown in effect code (VIP-4, amended 2026-11-02, clarified
-// 2026-11-10). @effect/vitest's own declarations, and a written @throws
-// {never} on vitest's, keep their contracts.
+// 2026-11-10). Only the pinned Effect packages in effectThrowsTable carry
+// shipped contracts; an unpinned package such as @effect/vitest follows the
+// plain external-package rule (no @throws means unknown), while a written
+// @throws {never} keeps its contract.
 // Chapter 900: EK1011 diagnostic - spec-rule: docs/design/src/900-appendices.md#9784033faf45ac67
 func TestReexportedForeignCallsThrowUnknown(t *testing.T) {
 	t.Parallel()
@@ -223,7 +225,10 @@ export declare function annotated(): void
 		{"spy held in a const", `import { vi } from "@effect/vitest"`, `export { vi } from "vitest"`, `const spy = vi.spyOn(target, "f"); spy.mockRestore()`, 2},
 		{"spy held in a let", `import { vi } from "@effect/vitest"`, `export { vi } from "vitest"`, `let spy = vi.spyOn(target, "f"); spy.mockRestore()`, 2},
 		{"written never contract", `import { annotated } from "@effect/vitest"`, `export * from "vitest"`, `annotated()`, 0},
-		{"own declaration", `import { own } from "@effect/vitest"`, `export * from "vitest"; export declare function own(): void`, `own()`, 0},
+		{"own declaration", `import { own } from "@effect/vitest"`, `export * from "vitest"; export declare function own(): void`, `own()`, 1},
+		{"own declaration with never", `import { own } from "@effect/vitest"`, `export * from "vitest"
+/** @throws {never} */
+export declare function own(): void`, `own()`, 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string]string{

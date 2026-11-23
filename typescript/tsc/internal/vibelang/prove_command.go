@@ -49,7 +49,7 @@ var (
 
 func init() {
 	for _, m := range []*Message{EK4315, EK4316, EK4317, EK4318, EK4319} {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
 }
 

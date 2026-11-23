@@ -99,9 +99,19 @@ Interop rests on two facts:
 
 Based on [Effect's Creating Effects](https://effect.website/docs/v4/getting-started/creating-effects#trypromise), this adapter wraps an `async` function from a `.ts` file:
 
+```ts
+// TypeScript (.ts)
+// todos.ts
+export async function fetchTodo(id: number, signal: AbortSignal): Promise<string> {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/" + id, { signal })
+  if (!response.ok) throw new Error("Todo request failed: " + response.status)
+  return response.text()
+}
+```
+
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
-import { fetchTodo } from "./todos.ts" // (id: number, signal: AbortSignal) => Promise<string>
+// load-todo.vibe
+import { fetchTodo } from "./todos.ts"
 
 error TodoFailed { cause: unknown }
 
@@ -139,7 +149,7 @@ The [cheat sheet](vibelang-features/115-cheat-sheet.md) puts every VibeLang form
 
 ## Try it
 
-You need Node `22.22.3` (`22.x`) or Node `24.11.1` or later. Bun is optional, at 1.4 or later; [running sources with Bun](setup/vibelang-cli.md#run-sources-with-bun) needs 1.4.2 or later.
+You need Node `22.22.3` (`22.x`) or Node `24.11.1` or later. Bun is optional. If you use it, install Bun 1.4.2 or later. See how to [run sources with Bun](setup/vibelang-cli.md#run-sources-with-bun).
 
 ```sh
 npm create vibelang@latest my-app

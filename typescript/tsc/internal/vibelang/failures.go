@@ -81,13 +81,6 @@ func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 		default:
 			n.ForEachChild(visit)
 		}
-		if program := a.returnedProgram(n); program != nil {
-			info.addError(channelType(a.checker, program, "_E"), n)
-			info.addRequirement(channelType(a.checker, program, "_R"), n)
-			if info.effect == nil {
-				info.effect = effectInterface(a.checker, program)
-			}
-		}
 		return false
 	}
 	visit(node)
@@ -340,7 +333,7 @@ func (a *analyzer) blockRunsEffects(block *ast.Node) bool {
 		if isFunctionBoundary(n) || isHatchArgument(n) {
 			return false
 		}
-		if a.returnedProgram(n) != nil || isInvocation(n) && a.performs(n) ||
+		if isInvocation(n) && a.performs(n) ||
 			isHandleStatement(n) ||
 			isProvideBlock(n) || maskWord(n) != "" ||
 			n.Kind == ast.KindVariableDeclarationList && isUsingList(n) ||

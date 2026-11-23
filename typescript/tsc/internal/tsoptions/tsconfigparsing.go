@@ -1500,7 +1500,7 @@ func parseJsonConfigFileContentWorker(
 					errors = append(errors, createDiagnosticAtProjectReferenceProperty(sourceFile, index, "circular", diagnostics.Compiler_option_0_requires_a_value_of_type_1, "reference.circular", "boolean"))
 				}
 				projectReferences = append(projectReferences, &core.ProjectReference{
-					Path:         tspath.ToRootedPath(ref.path, basePath),
+					Path:         resolveProjectReferenceDirectory(tspath.ToRootedPath(ref.path, basePath), fs),
 					OriginalPath: ref.path,
 					Circular:     ref.reference.Circular,
 				})
@@ -2147,4 +2147,20 @@ func GetParsedCommandLineOfConfigFilePath(
 		nil,
 		extendedConfigCache,
 	), nil
+}
+
+// resolveProjectReferenceDirectory names the config file of a referenced
+// directory whose project is not in tsconfig.json: vibe.config.json, or
+// jsconfig.json when it is the only one, as -p <dir> reads it. Consumers of a
+// reference resolve its path without a file system, where a directory means
+// tsconfig.json; a directory that has one, or no config at all, stays as written.
+func resolveProjectReferenceDirectory(path tspath.RootedPath, fs vfs.FS) tspath.RootedPath {
+	if fs == nil {
+		return path
+	}
+	config := core.ResolveConfigFileNameOfProjectReferenceInDirectory(path, fs.FileExists)
+	if config == core.ResolveConfigFileNameOfProjectReference(path) {
+		return path
+	}
+	return config.AsPath()
 }

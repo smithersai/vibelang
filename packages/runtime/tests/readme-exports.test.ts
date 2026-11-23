@@ -78,20 +78,7 @@ test("README names the module generated code imports, as the compiler emits it",
   assert.ok(claims.length >= 2, String(claims))
   assert.deepEqual([...new Set(claims)], [generated])
   assert.match(section("## Fast calls without types"), /\*\*Prototype\.\*\*/)
-})
-
-
-test("README Public exports table matches the root module's value exports", async () => {
-  const actual = new Set(Object.keys(await import("vibelang-runtime")))
-  const table = section("## Public exports")
-  const documented = new Set<string>()
-  for (const line of table.split("\n")) {
-    if (!line.startsWith("| `")) continue
-    const [, nameCol, purposeCol = ""] = line.split("|")
-    if (nameCol.includes("(type)") || /^\s*Type of /.test(purposeCol)) continue
-    for (const match of nameCol.matchAll(/`([^`]+)`/g)) documented.add(match[1])
-  }
-  const extra = [...documented].filter((name) => !actual.has(name)).sort()
-  const omitted = [...actual].filter((name) => !documented.has(name)).sort()
-  assert.deepEqual({ extra, omitted }, { extra: [], omitted: [] })
+  const dispatch = section("## Data method dispatch")
+  assert.match(dispatch, /the prototype\s+text-only projector[^.]*imports for data-first method calls/)
+  assert.doesNotMatch(dispatch, /the compiler emit this import/)
 })

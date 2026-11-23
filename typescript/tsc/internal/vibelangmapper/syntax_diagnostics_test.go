@@ -95,12 +95,48 @@ func TestSyntaxPlainContractIdentity(t *testing.T) {
 	}
 }
 
-// TestSyntaxEK2006 distinguishes exits from local targets in finally (D15).
-// Chapter 900: EK2006 diagnostic - spec-rule: docs/design/src/900-appendices.md#362c0f7f978822b3
-func TestSyntaxEK2006(t *testing.T) {
-	checkSyntaxFixture(t, "ek2006-finally-jump", 2006, 2)
-	for _, jump := range []string{"return", "break", "continue"} {
-		checkSyntaxDiagnostic(t, 2006, "function f() { while (true) { try {} finally { "+jump+"; } } }", jump, jump+" leaves a finally block, which would discard a failure in flight.", `function f() { try { return 1 } finally { while (true) { break; continue } const g = () => { return 2 } } }`)
+// TestSyntaxEffectTryStatement reports a try statement in effect code as
+// Code 503 spanning the whole statement; a plain function's try statement is
+// JavaScript and draws nothing, finally jumps included (VIP-5, issue #515).
+func TestSyntaxEffectTryStatement(t *testing.T) {
+	checkSyntaxFixture(t, "appb-ek0503-try-statement", CodeEffectTryStatement, 2)
+	checkSyntaxFixture(t, "appendix-ek0503-try-finally", CodeEffectTryStatement, 1)
+	checkSyntaxFixture(t, "ek2006-finally-jump", CodeEffectTryStatement, 2)
+	prelude := "error Boom { why: string }\neffect function risky(): number!Boom { throw new Boom({ why: \"x\" }) }\nexport effect function main() {\n  "
+	for _, statement := range []string{
+		"try { return try risky() } catch (e) { return 0 }",
+		"try { return try risky() } finally { }",
+		"try { return try risky() } catch { return 0 } finally { }",
+	} {
+		checkSyntaxDiagnostic(t, CodeEffectTryStatement, prelude+statement+"\n}", statement, effectTryStatementMessage, prelude+"return try risky() catch () => 0\n}")
+	}
+	// The issue #515 program: Code 503 starts at the try statement on line 4.
+	source := prelude + "try { return try risky() } catch (e) { return 0 }\n}"
+	ds := Project(source, testContext).Diagnostics
+	if len(ds) != 1 || ds[0].Code != CodeEffectTryStatement || strings.Count(source[:ds[0].Start], "\n") != 3 || !strings.HasPrefix(source[ds[0].Start:], "try { return") {
+		t.Fatalf("issue #515 effect try statement: %+v", ds)
+	}
+	for _, plain := range []string{
+		"function g(): number { return 1 }\nexport function f(): number {\n  try { g() } finally { return 1 }\n}",
+		"function f() { while (true) { try {} finally { return; } } }",
+		"function f() { while (true) { try {} finally { break; } } }",
+		"function f() { while (true) { try {} finally { continue; } } }",
+		"function f() { try { return 1 } catch (e) { return 2 } }",
+		"export effect function main() { const f = () => { try { return 1 } finally { return 2 } }; return f() }",
+	} {
+		if ds := Project(plain, testContext).Diagnostics; len(ds) != 0 {
+			t.Errorf("plain try statement is JavaScript: %s: %+v", plain, ds)
+		}
+	}
+}
+
+// A try in a provide value runs in the effect body around the provide, as
+// it does when hoisted into a const (docs: building-an-http-api block 5).
+func TestSyntaxProvideValueTry(t *testing.T) {
+	source := "import { Context, Effect } from \"effect\"\nconst Key = Context.Service<number>(\"Key\")\ndeclare const make: () => Effect.Effect<number>\nexport effect function main() {\n  provide Key = try make() {\n    return 1\n  }\n}"
+	p := Project(source, testContext)
+	if len(p.Diagnostics) != 0 || !strings.Contains(p.Text, "$try(make())") {
+		t.Fatalf("provide value try must run in the effect body: %+v\n%s", p.Diagnostics, p.Text)
 	}
 }
 

@@ -8,11 +8,13 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { emitMigratedJs } from "../lib/steps.mjs"
 import { wireEsbuildBuilds } from "../lib/esbuild-builds.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url))
 const require = createRequire(join(repo, "packages/runtime/package.json"))
+const compilerRequire = createRequire(join(repo, "packages/compiler/package.json"))
 const ts = require("typescript")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 const put = (root, file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
 const packages = [{ dir: ".", tsconfig: "tsconfig.json", sources: ["src", "db"] }]
 const run = (root, file) => spawnSync(process.execPath, [file], { cwd: root, encoding: "utf8", env: { ...process.env, NODE_OPTIONS: "" } })
@@ -28,7 +30,7 @@ function fixture(t, name) {
   mkdirSync(join(root, "node_modules/.bin"), { recursive: true })
   for (const [name, source] of [
     ["typescript", dirname(require.resolve("typescript/package.json"))],
-    ["esbuild", dirname(require.resolve("esbuild/package.json"))],
+    ["esbuild", dirname(compilerRequire.resolve("esbuild/package.json"))],
     ["effect", dirname(require.resolve("effect/package.json"))],
     ["vibelang", join(repo, "packages/compiler")],
     ["vibelang-runtime", join(repo, "packages/runtime")],
@@ -40,7 +42,7 @@ function fixture(t, name) {
 for (const [name, runner] of [
   ["smithers-plain-node-migration", "ops/entry.test.ts"],
   ["smithers-test-local-esbuild", "src/tab.test.mjs"]
-]) test(name + ": the real emit step prepares a private package with no exports", { skip: !compiler && "set VIBELANG_BINARY" }, async t => {
+]) test(name + ": the real emit step prepares a private package with no exports", async t => {
   const { root, files } = fixture(t, name)
   const failed = run(root, runner)
   assert.notEqual(failed.status, 0)
@@ -57,7 +59,7 @@ for (const [name, runner] of [
   }
 })
 
-test("ordinary esbuild script gets the real native plugin and bundles the converted module", { skip: !compiler && "set VIBELANG_BINARY" }, async t => {
+test("ordinary esbuild script gets the real native plugin and bundles the converted module", async t => {
   const { root } = fixture(t, "smithers-test-local-esbuild")
   const script = 'import { build } from "esbuild"\nconst result = await build({ entryPoints: ["src/browser.ts"], bundle: true, format: "esm", platform: "browser", write: false, logLevel: "silent" })\nconst module = await import("data:text/javascript;base64," + Buffer.from(result.outputFiles[0].text).toString("base64"))\nif (module.answer !== 42) throw new Error("wrong result")\n'
   put(root, "scripts/build.mjs", script)
@@ -68,7 +70,7 @@ test("ordinary esbuild script gets the real native plugin and bundles the conver
   assert.equal(built.status, 0, built.stderr)
 })
 
-test("a plain TypeScript consumer reads source reexports with relocated sidecars", { skip: !compiler && "set VIBELANG_BINARY" }, async t => {
+test("a plain TypeScript consumer reads source reexports with relocated sidecars", async t => {
   const { root } = fixture(t, "smithers-test-local-esbuild")
   const json = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
   json.exports = { ".": "./src/browser.ts" }

@@ -87,7 +87,7 @@ Effect.runSync(Effect.succeed(42)) // 42
 { "vibe": { "severities": { "EK0801": "error", "EK4609": "off", "EK38100": "warning" } } }
 ```
 
-Keys are whole printed codes: `EK3801` and `EK38100` identify different rules. Only VibeLang's own warnings and assigned imported lint codes are configurable. A VibeLang error code, an interim `EK92xx` code, even one printed as a warning, or an unknown code is a config error (`EK3006`), including when set to `"error"` ([VIP-30](../vips/0030-config-files.md#decision), [VIP-38](../vips/0038-effect-lint-built-in.md#decision)). Thus `EK0801` is configurable; `EK4701` is not.
+Keys are whole printed codes: `EK3801` and `EK38100` identify different rules. Only VibeLang's own warnings and assigned imported lint codes are configurable. A VibeLang error code, any interim code in the [transitional table](900-appendices.md#transitional-compiler-diagnostics), including warnings, or an unknown code is a config error (`EK3006`), including when set to `"error"` ([VIP-30](../vips/0030-config-files.md#decision), [VIP-38](../vips/0038-effect-lint-built-in.md#decision)). For example, `{ "EK0801": "off" }` is valid, while `{ "EK4701": "off" }` and `{ "EK4814": "off" }` both report `EK3006`.
 
 | Code | Default | Trigger | Repair |
 | --- | --- | --- | --- |
@@ -365,8 +365,6 @@ vibelang lint -p tsconfig.json
 The existing Effect language-service configuration in `compilerOptions.plugins` selects the imported `effecttsgo/*` rules. They run on selected `.ts` and `.vibe` inputs, keeping the pinned upstream rule/file eligibility and declaration/library exclusions. VibeLang-specific language checks remain confined to `.vibe` ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)).
 
 Compiler builds, the language server and `vibelang lint` use the same activation and selection: a resolved plugin entry named `@effect/language-service` enables the rules; `diagnostics: false` or `diagnosticSeverity: null` disables its diagnostics. Inheritance and native options follow the pinned upstream. A `vibe.severities` entry never re-enables disabled diagnostics. Until the [severity-key activation migration](#severity-key-activation-migration) retires the legacy shortcut, an assigned `EK38xx` key in a config without a resolved plugin entry still activates the whole default plugin, as the legacy release did, and reports `EK3012`; after that retirement, such a key alone activates nothing. Once enabled, severity resolves from `vibe.severities`, then the repository's Effect language-service configuration, then the rule's default ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)). An override can enable a default-off rule; every assigned imported code accepts all four severity values, even `"off"` for a default-error rule.
-
-In `.vibe` code, `EK4814` warns when a `Schema.Class` subclass overrides its constructor. Decoding invokes the override. Move work that should happen only during explicit construction to a separate factory function.
 
 ### Reporting and exit status
 

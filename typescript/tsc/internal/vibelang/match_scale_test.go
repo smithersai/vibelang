@@ -127,7 +127,7 @@ func TestLiteralPatternNarrowingAllocations(t *testing.T) {
 // Exercise the exact budget boundary without allocating millions of union
 // members. The scaling test above covers the real checker path.
 func TestVariantPatternWorkLimit(t *testing.T) {
-	program, file, _, _ := editorProgram(t, "function f() { return 0 }\nfunction g() { return 1 }")
+	program, file, _, _ := editorProgram(t, "function /* matcher */ f() { return 0 }\nfunction g() { return 1 }")
 	c, done := program.GetTypeCheckerForFile(t.Context(), file)
 	defer done()
 	if diagnostics := c.GetDiagnostics(t.Context(), file); len(diagnostics) != 0 {
@@ -158,5 +158,8 @@ func TestVariantPatternWorkLimit(t *testing.T) {
 	diagnostics := c.GetDiagnostics(t.Context(), file)
 	if len(diagnostics) != 1 || diagnostics[0].Code() != 2563 {
 		t.Fatalf("want one TS2563 after budget exhaustion, got %v", diagnostics)
+	}
+	if span := file.Text()[diagnostics[0].Pos():diagnostics[0].End()]; span != "f" {
+		t.Fatalf("work limit span = %q, want f", span)
 	}
 }

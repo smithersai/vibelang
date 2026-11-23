@@ -8,6 +8,59 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Migration rewrote a package manifest in two-space indentation whenever it pointed an export or script at a converted module, and returning the module to TypeScript left that reformatting behind. Migration and revert now edit the manifest in place, keeping its indentation, line endings, final newline and string escapes, so a revert restores it byte for byte.
+- Migration treated a module path containing `(`, `)`, `~`, `|` or `&`, such as a route-group folder `app/(auth)/login.ts`, as a version-control expression, so reverting it failed or read the file as empty or absent. Such paths are now read and restored as literal files, and a version-control failure such as an unknown revision is reported instead of being read as a missing file.
+- Build mode and project references read a project from `vibe.config.json`. `vibelang -b`, `vibelang -b <dir>` and a `references` entry that names a directory looked only for `tsconfig.json` and reported TS6053 for a project configured in `vibe.config.json`. A directory now resolves as `-p <dir>` does: `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`.
+- The post-edit check that `vibelang agents init` installs for Claude Code, Codex, Cursor and opencode now runs after an edit to a TypeScript file whose first line is `// @vibe`. It ran only for `.vibe` and `.vibex` files, so errors in a directive file never reached the agent.
+- `node --import vibelang/register` names the `jsx` option when a `.vibe` module imports a `.vibex` module in a project that sets `"jsx": "preserve"`. Node reported a missing `.jsx` file with no VibeLang cause.
+- A function with a parameter or local named `join` can index it with a space before the bracket, as in `join [0]`; it no longer reports fork or join outside effect code.
+- `continue` to the label of a `for concurrent` loop whose head binds a name with `is` now ends that item, instead of reporting that the jump crosses a function boundary.
+- Converting an exhaustive Effect match no longer adds a fallback `default` arm when a pattern only has a shorthand binding, such as `{ let x }`.
+- Compiler options passed through the API no longer let the retired `trustedPackages` setting grant trust to foreign packages; it is ignored there as it is in a config file.
+- The error for a non-Effect return type on an `effect` function no longer tells you to write `infer _!!` for a written `: infer _`, which the compiler then rejected; it now tells you to leave the return type out.
+- Turned the `EK4840` Option-pipeline advice off by default, so a default compile no longer recommends the retired receiver-method form for `pipe(x, Option.map(f), Option.getOrElse(g))`; a project can still enable it.
+- With `rewriteRelativeImportExtensions`, a file emitted as CommonJS now names its imports by unescaped file path, so `require("./[id].js")` or `require("./a b.js")` loads instead of failing on a percent-encoded name.
+- A workflow body now reports `EK5505` for a module-level `let` read inside an object literal value or shorthand property, reports `EK5506` for destructuring reassignment such as `[a, b] = [b, a]`, and checks clock and randomness calls by what the name resolves to, so a local `Math` or `Date` is allowed and `globalThis.Math.random()` is reported.
+- `vibelang format` now formats a held form, such as a `provide` head, whose string or template literal spans lines without changing the literal, and formats a file that starts with a byte order mark followed by a `#!` line, keeping the mark.
+- A new `.vibex` file under an `include` wildcard now joins its project in the editor and triggers a `vibelang --watch` rebuild, renaming a `.vibex` file in the editor updates its importers, and projects that configure a content mapper still recognize new `.vibe` and `.vibex` files.
+- `#x in do { ... }` no longer reports `TS1451` or emits invalid JavaScript, `x as A!E ? +1 : 2` and other conditionals whose true branch starts with `+`, `~`, `++`, `try`, or a regular expression now parse, and a `schema` body with two nameless members reports only `EK1505` on each instead of an extra `TS1117`.
+- The migration's test gate now counts a test that Node's test runner reports as failed as a failure, instead of as a skipped test.
+- Migration now lints converted JSX modules: the generated ESLint helper maps TSX globs to the JSX module extension, parses both module kinds and tells the import plugin about both.
+- The generated typecheck runner now checks or reports converted JSX modules and modules under a `lib` directory, skipping only each project's declared output directories.
+- The migration test-glob check now refuses a widened glob that leaves JSX module declaration files selected.
+- Migration no longer corrupts non-ASCII text in command output when a multi-byte character spans two output chunks.
+- Migration now keeps scripts run through `pnpm tsx`, `yarn node`, `pnpm dlx tsx`, `env FOO=1 node` and `tsx watch` from losing the modules they load.
+- Calls to pinned `effect` and `@effect/platform-*` packages are now checked against the shipped per-declaration throws table instead of exempting the entire `effect` and `@effect/*` namespaces: non-throwing helpers such as `Option.some`, `Duration.seconds`, `Schedule.recurs`, and decoder/dual factories compile unwrapped, while throwing calls (such as `Schema.decodeUnknownSync(schema)(input)`, `DateTime.makeUnsafe`, `Duration.fromInputUnsafe`, `Option.getOrThrow`, `Result.getOrThrow`, `Redacted.value`, and direct or applied `*Unsafe` calls) now require `Effect.try` in effect code (`EK0403`) or a `try`/`catch` in plain code (`EK0401`). Unpinned `@effect/*` packages such as `@effect/vitest` now follow the standard external-package rule unless annotated with `@throws`. (#430)
+- Built-in throw tracking now covers `JSON.stringify`, `String.prototype.repeat`, `Number.prototype.toFixed`, `encodeURI`, `encodeURIComponent`, `Uint8Array` base64/hex methods (`fromBase64`, `fromHex`, `setFromBase64`, `setFromHex`), and every `Temporal.*.from` constructor method, while keeping `Date.prototype.toISOString` and `Intl` constructors non-throwing. (#433)
+- Stock TypeScript, the TypeScript language server and linters reading `vibelang --ts-projection` now see `.vibe` code under the explicit rules: a function, method or lambda with no `effect` modifier stays plain, and a call runs only under `try`, so a plain function's result is no longer typed as an Effect and an untried Effect is no longer typed as its success value.
+- The TypeScript view of a `.vibe` file no longer rewrites callback parameter types, wraps built-in calls such as `JSON.parse`, reads services through member calls on a key, or reports `EK9005` asking for a lambda's or a pipe topic's form.
+- The TypeScript view of a `.vibe` file now reports `EK0503` for a `try` statement in effect code, leaves `using` to TypeScript so a non-disposable initializer is an error, no longer reports `EK2006` for `return` in the `finally` of a plain function, and keeps a relative `./x.ts` import as written so TypeScript reports `TS5097` where the project does not allow the extension.
+- When the installed Effect version is incompatible, the error now includes the installed VibeLang runtime version.
+- The runtime package documentation now identifies the data-method helper as an import used by the text-only prototype.
+- The setup guides give the commands available in published packages.
+- The language guides show how to edit diagnosed source by hand.
+- The Welcome and existing-project examples include the TypeScript modules they import.
+- The setup guides give Bun 1.4.2 as the minimum supported version.
+- The TypeScript shim guide explains how to try the preview from a source checkout.
+- The Devtools example selects the Vitest project that includes VibeLang tests.
+- The developer tools guide shows how to run Oxlint on VibeLang source.
+- Clarified when task and workflow start declarations and when they remain ordinary names in expressions.
+- Clarified that direct platform access in certain older wrapper callbacks produces a migration warning, while unwrapped access is an error.
+- Corrected which parameter defaults still hit a compiler limitation when a do expression returns from the enclosing function.
+- Clarified that transitional compatibility warnings cannot be disabled through severity settings.
+- Documented how the compiler recognizes invalid schema and variant declarations so it can report specific errors, and how optional effect methods are parsed.
+- New apps created with pnpm install with the formatter build approved and the correct Effect version pinned.
+- Durable workflows release their in-memory state when they finish, while their results remain available from storage.
+- The compiler skips unused rewrite calculations when reporting syntax warnings.
+- Diagnostic messages preserve quoted source text that looks like a placeholder.
+- Invalid concurrency limits point to the operand.
+- Data pattern analysis limits point past leading whitespace and comments.
+- Missing service member separators now name the service in the error message.
+- Ambient abstract error declarations now report only the ambient declaration error.
+- Diagnostic severity directives take effect only in comments, so examples inside strings and template literals leave the surrounding file's warnings unchanged.
+- Diagnostic descriptions for misplaced yields and invalid task or workflow bodies now match the compiler.
+- Research and maintainer guides now use portable paths and cite published decisions.
+- Design proposals and decision history now explain their rationale without relying on private records.
 - Updated the VS Code TextMate grammars so `error`, `schema`, and `service` stay identifiers before `as`, `satisfies`, `is`, `instanceof`, and `in`, inline `when` arms in one-line `match` expressions are highlighted, and retired `control`, `handle`, and `await.*` rules are removed.
 - Fixed a syntax error in the tree-sitter property test suite and updated the VS Code and Neovim editor suites and setup docs to expect `EK0102` on `old-await.vibe` and current `forms.vibe` syntax.
 - Fixed the `EK1003` parser diagnostic for `fork do { ... }` to suggest `fork effect { ... }` instead of the transitional bare `fork { ... }` spelling, and aligned Appendix B with Chapter 7 on the `EK1707` migration hold and `EK1003` block-`do` coverage.

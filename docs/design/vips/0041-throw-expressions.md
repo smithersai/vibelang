@@ -6,7 +6,7 @@
 
 > "Refer to tc39 spec for answer"
 
-Recorded in `WILL-ANSWERS.md`, 2026-11-02. As with VIP-2's do expressions, adopt the proposal text exactly for grammar, precedence and positions requiring parentheses.
+Decision recorded on 2026-11-02. As with VIP-2's do expressions, adopt the proposal text exactly for grammar, precedence and positions requiring parentheses.
 
 ## Decision
 

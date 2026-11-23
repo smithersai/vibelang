@@ -10,6 +10,6 @@ var (
 )
 
 func init() {
-	registry[EK1504.Code] = EK1504
-	registry[EK1605.Code] = EK1605
+	registerDiagnostic(EK1504)
+	registerDiagnostic(EK1605)
 }

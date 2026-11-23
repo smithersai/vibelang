@@ -25,9 +25,9 @@ var EK1015 = message(1015, errorCategory, "Calls run in VibeLang; remove yield*.
 var EK0103 = message(103, errorCategory, "await waits for a promise, but {0} is an Effect, which await never runs.")
 
 func init() {
-	registry[EK1015.Code] = EK1015
-	registry[EK1017.Code] = EK1017
-	registry[EK0103.Code] = EK0103
+	registerDiagnostic(EK1015)
+	registerDiagnostic(EK1017)
+	registerDiagnostic(EK0103)
 	fileChecks = append(fileChecks, checkSyntax)
 }
 

@@ -80,7 +80,7 @@ effect function preparedMessage() {
 }
 
 const pending = Effect.runPromise(preparedMessage())
-// pending: Promise<string>
+// The pending value has type Promise<string>.
 // Output: prepared
 ```
 

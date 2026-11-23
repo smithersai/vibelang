@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { splitPlatform } from "../lib/platform.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // codemod-gap:platform-split-file-pragmas (drive-t3code-apps 2026-11-02T02:42Z):
 // t3code Desktop's ActiveWindow.ts and LinuxSnapShot.ts open with
@@ -16,7 +17,7 @@ import { splitPlatform } from "../lib/platform.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const ts = require("typescript")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 
 const activeWindow = readFileSync(new URL("./corpus/t3code-platform-file-directives.ts", import.meta.url), "utf8")
 const linux = `// @effect-diagnostics globalTimers:off -- D-Bus deadlines run at a native async boundary.
@@ -37,7 +38,7 @@ test("t3code Desktop: the platform sibling keeps the file's @effect-diagnostics 
   assert.equal(two.platform.split("\n\n")[0], linux.split("\n\n")[0])
 })
 
-test("t3code Desktop: the split compiles natively under the target's nodeBuiltinImport error setting", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("t3code Desktop: the split compiles natively under the target's nodeBuiltinImport error setting", () => {
   const root = mkdtempSync(join(tmpdir(), "platform-directives-"))
   try {
     const { module, platform } = splitPlatform(activeWindow, "ActiveWindow.ts", ts)

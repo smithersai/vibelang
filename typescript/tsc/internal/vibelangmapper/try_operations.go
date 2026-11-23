@@ -2,6 +2,7 @@ package vibelangmapper
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -48,9 +49,7 @@ func (p *projector) tryOperation(call *ast.Node, e env) {
 		target = p.names.prelude("Effect") + ".raceAll"
 	}
 	p.plan.replace(start, p.tokenStart(operand), target+"(")
-	operandEnv := e
-	operandEnv.holdCalls = true
-	p.visit(operand, operandEnv)
+	p.visit(operand, e)
 	p.plan.insert(call.End(), close)
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }
@@ -59,7 +58,21 @@ func (p *projector) tryOperation(call *ast.Node, e env) {
 // legacy call-form classifier: a plain factory may return this Effect.
 func (p *projector) tryOperandExpression(node *ast.Node, e env) {
 	if !e.effect {
-		p.formChoice(node, "A try must run in an Effect body; move it into an effect function or block.")
+		if p.ctx.Lint || e.trailingBlock {
+			// A linter reads the operand; the compiler reports the try.
+			valueEnv := e
+			valueEnv.rawTry = node
+			p.visit(node, valueEnv)
+			return
+		}
+		// The diagnostic covers the written try and its operand.
+		start := p.tokenStart(node)
+		for _, k := range p.keywords {
+			if k.with == "   " && k.at < start && strings.TrimSpace(p.text[k.at:start]) == "" {
+				start = k.at
+			}
+		}
+		p.diagnostics = append(p.diagnostics, Diagnostic{Start: start, Length: max(0, node.End()-start), Code: CodeTryPlacement, Message: "A try must run in an Effect body; move it into an effect function or block."})
 		return
 	}
 	start := p.tokenStart(node)
@@ -67,63 +80,18 @@ func (p *projector) tryOperandExpression(node *ast.Node, e env) {
 		p.plan.insert(start, ";")
 		delete(p.statementStarts, start)
 	}
-	p.plan.mark(editRun, partOpen, start, start, "")
+	p.plan.mark(editRun, partOpen, start, start, "try")
 	p.plan.insert(start, helperRef("$try")+"(")
 	valueEnv := e
 	valueEnv.rawTry = node
 	p.visit(node, valueEnv)
 	p.plan.insert(node.End(), ")")
-	p.plan.mark(editRun, partClose, node.End(), node.End(), "")
+	p.plan.mark(editRun, partClose, node.End(), node.End(), "try")
 }
 
 type tryOperandMark struct {
 	kind         ast.Kind
 	keyword, end int
-}
-
-// lower reparses after blanking call-form try keywords. Preserve their
-// syntax only inside the new operands, where calls otherwise stay values.
-func tryOperandMarks(file *ast.SourceFile, text string) []tryOperandMark {
-	var marks []tryOperandMark
-	var visit func(*ast.Node, bool)
-	visit = func(node *ast.Node, operand bool) {
-		if operand && node.Flags&ast.NodeFlagsVibeLangTry != 0 {
-			marks = append(marks, tryOperandMark{node.Kind, scanner.SkipTrivia(text, node.Pos()), node.End()})
-		}
-		if isCatchExpression(node) {
-			visit(node.Arguments()[0].Body(), true)
-			visit(node.Arguments()[1], operand)
-			return
-		}
-		if tryOperationHelper(node) != "" || isFiberHelper(node, "$join", 1) || isFiberHelper(node, "$try", 1) {
-			visit(node.Arguments()[0], true)
-			return
-		}
-		if isForkOwner(node) {
-			arguments := node.Arguments()
-			for i, argument := range arguments {
-				visit(argument, operand || i == len(arguments)-1)
-			}
-			return
-		}
-		if node.Kind == ast.KindComputedPropertyName {
-			visit(node.Expression(), true)
-			return
-		}
-		if ast.IsVariableDeclaration(node) && node.Type() != nil {
-			node.ForEachChild(func(child *ast.Node) bool {
-				visit(child, operand || child == node.Initializer())
-				return false
-			})
-			return
-		}
-		if ast.IsFunctionLike(node) && !(ast.IsArrowFunction(node) && node.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0) {
-			operand = false
-		}
-		node.ForEachChild(func(child *ast.Node) bool { visit(child, operand); return false })
-	}
-	file.AsNode().ForEachChild(func(node *ast.Node) bool { visit(node, false); return false })
-	return marks
 }
 
 // tryOfBlock returns where the word try starts when it runs the effect block
@@ -211,7 +179,6 @@ func (p *projector) trySettledOperation(call, operand *ast.Node, start int, e en
 		mode = "literal"
 	}
 	mark(editSettledCall, partOpen, start, p.tokenStart(operand), mode)
-	e.holdCalls = true
 	if ast.IsArrayLiteralExpression(inner) {
 		for _, element := range inner.Elements() {
 			kind, arg := editSettledElement, mode

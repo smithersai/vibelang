@@ -1,19 +1,22 @@
 // Written by VibeLang's setup; a rerun refreshes it. A repository that runs
 // ESLint itself names its files as *.ts, in its configurations and in the
 // helpers they share, so a .vibe module meets none of its rules. withVibe gives
-// a flat configuration's TypeScript blocks to the matching .vibe files too, has
-// vibelang/eslint parse them, and keeps ESLint off the files vibelang writes.
+// a flat configuration's TypeScript blocks to the matching .vibe and .vibex
+// files too (*.tsx becomes *.vibex), has vibelang/eslint parse them, and keeps
+// ESLint off the files vibelang writes.
 import parser from "vibelang/eslint"
 
 const extension = /\.(?:[cm]?tsx?|\{([^{}]*)\})$/
 
-/** The .vibe glob a TypeScript glob stands for, or null: a declaration file has none. */
+/** The VibeLang glob a TypeScript glob stands for, or null: a declaration file has none. */
 export function vibeGlob(glob) {
   if (typeof glob !== "string" || /\.d\.[^/]*$/.test(glob)) return null
   const match = extension.exec(glob)
   if (!match) return null
-  if (match[1] !== undefined && !match[1].split(",").some((name) => /^[cm]?tsx?$/.test(name.trim()))) return null
-  return glob.slice(0, match.index) + ".vibe"
+  const names = (match[1] ?? match[0].slice(1)).split(",").map((name) => name.trim()).filter((name) => /^[cm]?tsx?$/.test(name))
+  const plain = names.some((name) => !name.endsWith("x")), jsx = names.some((name) => name.endsWith("x"))
+  if (!plain && !jsx) return null
+  return glob.slice(0, match.index) + (plain && jsx ? ".{vibe,vibex}" : jsx ? ".vibex" : ".vibe")
 }
 
 // A nested array means every glob in it must match, so it keeps its other
@@ -54,19 +57,19 @@ function typedRulesOff(blocks) {
 
 // eslint-plugin-import parses a module it follows with the parser its
 // extension maps to, and follows only the extensions it is told about. Both
-// apply to .ts files importing a .vibe module, so this block has no files.
+// apply to .ts files importing a .vibe or .vibex module, so this block has no files.
 function importSettings(blocks) {
   const settings = {}
   for (const name of ["import", "import-x"]) {
     if (!blocks.some((block) => block.plugins?.[name])) continue
     const known = blocks.map((block) => block.settings?.[`${name}/extensions`]).filter(Boolean).at(-1) ?? [".js", ".mjs", ".cjs", ".jsx"]
-    settings[`${name}/extensions`] = [...new Set([...known, ".vibe"])]
-    settings[`${name}/parsers`] = { "vibelang/eslint": [".vibe"] }
+    settings[`${name}/extensions`] = [...new Set([...known, ".vibe", ".vibex"])]
+    settings[`${name}/parsers`] = { "vibelang/eslint": [".vibe", ".vibex"] }
   }
   return settings
 }
 
-/** A flat configuration, or a promise of one, whose TypeScript blocks also apply to .vibe files. */
+/** A flat configuration, or a promise of one, whose TypeScript blocks also apply to .vibe and .vibex files. */
 export function withVibe(config) {
   if (typeof config?.then === "function") return config.then(withVibe)
   const blocks = [config].flat(Infinity).map((block) => ({
@@ -79,6 +82,6 @@ export function withVibe(config) {
     { ignores: ["**/*.d.vibe.ts", "**/*.d.vibex.ts", "**/*.vibe.*.d.ts", "**/*.vibex.*.d.ts", "**/.vibelang/js/**"] },
     ...blocks,
     ...(Object.keys(settings).length ? [{ settings }] : []),
-    { files: ["**/*.vibe"], languageOptions: { parser }, rules: typedRulesOff(blocks) }
+    { files: ["**/*.{vibe,vibex}"], languageOptions: { parser }, rules: typedRulesOff(blocks) }
   ]
 }

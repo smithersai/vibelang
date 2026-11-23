@@ -29,11 +29,14 @@ import (
 // before them runs, rather than before, cannot tell apart; each stage has the
 // overload its call needs; and the pipeline's comments are inside its stages.
 
-// EK4840 (D473): an Option pipeline. {0} names it, {1} the chain.
-var EK4840 = message(4840, warningCategory, "{0} pipes a value through Option's functions; method syntax writes it: {1}.")
+// EK4840 (D473; off by default): an Option pipeline. {0} names it, {1} the
+// chain. Appendix B keeps it as an interim legacy-migration rule only: the
+// method syntax it names is the retired receiver-method form (EK1402), so a
+// default compile must not recommend it.
+var EK4840 = messageOff(4840, "{0} pipes a value through Option's functions; method syntax writes it: {1}.")
 
 func init() {
-	registry[EK4840.Code] = EK4840
+	registerDiagnostic(EK4840)
 	tsFormMessages = append(tsFormMessages, EK4840)
 	tsFormRules[EK4840.Code] = &tsFormRule{
 		message: EK4840,

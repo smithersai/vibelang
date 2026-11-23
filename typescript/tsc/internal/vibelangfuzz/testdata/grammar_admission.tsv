@@ -483,6 +483,7 @@ vibelang/imports.go:lowering.visitImportOrExport	admission:imports	007-tooling.m
 vibelang/imports.go:lowering.outputSpecifier	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
 vibelang/imports.go:outputSpecifierText	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
 vibelang/imports.go:outputSpecifierTextWithJSX	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
+vibelang/imports.go:outputSpecifierTextForFormat	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
 vibelang/lower.go:newLowering	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
 vibelang/lower.go:lowering.visit	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
 vibelang/lower.go:lowering.visitSource	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
@@ -1045,6 +1046,7 @@ parser/vibelang_match.go:Parser.bindsIs	admission:is-binding-tdz	004-match.md	su
 parser/vibelang_match.go:Parser.restructureVibeLangDo	admission:is-binding-tdz	004-match.md	support	VIP-7: give `do…while` conditions fresh loop-head binding cells
 vibelang/is_binding_tdz.go:lowering.resetIsBindingIteration	admission:is-binding-tdz	004-match.md	support	VIP-7: reset `test` and `update` bindings after native environment copying
 parser/vibelang_fibers.go:Parser.concurrentHeadEnvironment	admission:for-concurrent	002-running.md,900-appendices.md#ForConcurrent	support	VIP-19: retain uninitialized RHS head cells and evaluate a written limit before their environment; introduces no additional syntax
+parser/vibelang_fibers.go:concurrentHeadCallIndex	admission:for-concurrent	002-running.md,900-appendices.md#ForConcurrent	support	VIP-19: find the loop call of a RHS head environment after its hoisted is-binding declarations; introduces no additional syntax
 parser/vibelang_fibers.go:VibeLangConcurrentCall	admission:for-concurrent	002-running.md,900-appendices.md#ForConcurrent	support	VIP-19: recognize a source loop through generated head environments without treating ordinary source blocks as loops
 parser/vibelang_match_cache.go:MatchPropertyCaches	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths
 parser/vibelang_match_cache.go:Parser.cachePatternRead	admission:match	004-match.md	support	VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths

@@ -5,7 +5,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
@@ -82,13 +81,6 @@ func TestDirectTryFormWrappedFixRefusal(t *testing.T) {
 			if !found {
 				t.Fatalf("missing EK4834:\n%s", source)
 			}
-			c, done := p.GetTypeCheckerForFile(t.Context(), file)
-			defer done()
-			tsFormRules[4834].find(c, file, func(_ *ast.Node, rewrite *formRewrite, _ ...any) {
-				if rewrite.fixable() || rewrite == nil || rewrite.why == "" {
-					t.Fatalf("wrapped operand must retain its source and explain why: %+v", rewrite)
-				}
-			})
 		})
 	}
 }

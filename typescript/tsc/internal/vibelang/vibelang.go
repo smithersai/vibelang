@@ -34,7 +34,6 @@ func init() {
 	checker.RegisterImplementedTypeHook(implementedServiceShape)
 	checker.RegisterQualifiedTypeNameHook(resolveServiceShapeName)
 	checker.RegisterMemberReceiverHook(memberReceiver)
-	checker.RegisterExpressionTypeHook(returnedExpressionType)
 	checker.RegisterExpressionTypeHook(expressionType)
 	checker.RegisterCatchVariableTypeHook(catchVariableType)
 	checker.RegisterUnwrappedReturnTypeHook(unwrappedReturnType)

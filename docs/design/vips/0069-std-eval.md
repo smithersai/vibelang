@@ -7,7 +7,7 @@
 
 ## Summary
 
-THESIS 8 also applies: "Agentic behavior is probabilistic, so evals become as basic as tests."
+Agentic behavior is probabilistic, so evals are as fundamental as tests.
 
 **One sentence.** `Experimental.Eval` runs a fixed set of cases against a target, `Experimental.Scorer` grades each answer from 0 to 1, and a gate compares the scores with a committed baseline and returns an exit code.
 
@@ -209,7 +209,7 @@ The reference engine's program loads the baseline and runs the gate by hand. In 
 
 - **TypeScript-first.** A call with a record, the shape Evalite and Vitest set.
 - **Effect-second.** A target, a scorer and a run are Effects. Effect has no eval module to reuse.
-- **Optimized for agentic programs.** GOAL measures Vibe itself by evals. The same module measures a user's agent.
+- **Optimized for agentic programs.** The same module can evaluate agents in this project and in users’ projects.
 - **Highly forkable.** A scorer is a function. A gate is a pure function. A fork replaces either.
 - **Factory-first.** Each release's eval baseline is a committed file, and the comparison that passed it is reproducible.
 

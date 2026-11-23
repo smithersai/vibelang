@@ -253,6 +253,18 @@ func (o *Orchestrator) setupBuildTask(
 	return task
 }
 
+// resolvedProjectPaths gives each project the command names its config file. A
+// directory, and the "." a bare -b stands for, resolves as -p <dir> does:
+// vibe.config.json, then tsconfig.json, then jsconfig.json.
+func (o *Orchestrator) resolvedProjectPaths() []tspath.RootedFilePath {
+	return core.Map(o.opts.Command.Projects, func(project string) tspath.RootedFilePath {
+		return core.ResolveConfigFileNameOfProjectReferenceInDirectory(
+			tspath.ToRootedPath(project, o.currentDirectory),
+			o.opts.Sys.FS().FileExists,
+		)
+	})
+}
+
 func (o *Orchestrator) GenerateGraphReusingOldTasks() {
 	tasks := o.tasks
 	o.tasks = &collections.SyncMap[tspath.PathKey, *BuildTask]{}
@@ -262,7 +274,7 @@ func (o *Orchestrator) GenerateGraphReusingOldTasks() {
 }
 
 func (o *Orchestrator) GenerateGraph(oldTasks *collections.SyncMap[tspath.PathKey, *BuildTask]) {
-	projects := o.opts.Command.ResolvedProjectPaths()
+	projects := o.resolvedProjectPaths()
 	// Parse all config files in parallel
 	wg := core.NewWorkGroup(o.opts.Command.CompilerOptions.SingleThreaded.IsTrue())
 	o.createBuildTasks(oldTasks, projects, wg)
@@ -423,8 +435,9 @@ func (o *Orchestrator) getBuildOrderFor(project string) ([]*BuildTask, bool) {
 		return o.order, true
 	}
 
-	config := core.ResolveConfigFileNameOfProjectReference(
+	config := core.ResolveConfigFileNameOfProjectReferenceInDirectory(
 		tspath.ToRootedPath(project, o.currentDirectory),
+		o.opts.Sys.FS().FileExists,
 	)
 	target, ok := o.tasks.Load(o.caseSensitivity.PathKey(config.AsPath()))
 	if !ok {

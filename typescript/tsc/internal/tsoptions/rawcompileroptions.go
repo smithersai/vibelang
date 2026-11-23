@@ -50,8 +50,8 @@ func (o *RawCompilerOptions) UnmarshalJSONFrom(dec *json.Decoder) error {
 		}
 		var value any
 		if key == "vibelang" {
-			// API options serialize core.CompilerOptions, including both modern
-			// and legacy Vibe fields. This is not the legacy tsconfig object.
+			// API options serialize core.CompilerOptions. This is not the legacy
+			// tsconfig object. Finalize drops retired fields such as trustedPackages.
 			var vibe *core.VibeLangOptions
 			if decodeErr := json.UnmarshalDecode(dec, &vibe); decodeErr != nil {
 				return decodeErr
@@ -81,6 +81,11 @@ func (o *RawCompilerOptions) Finalize(basePath tspath.RootedDirectoryPath) (*cor
 	for key, value := range o.values.Entries() {
 		if key == "vibelang" {
 			options.VibeLang, _ = value.(*core.VibeLangOptions)
+			if options.VibeLang != nil {
+				// trustedPackages is retired (EK3010): it grants no trust from any
+				// source, so the API path drops it like the config path does.
+				options.VibeLang.TrustedPackages = nil
+			}
 			continue
 		}
 		option := CommandLineCompilerOptionsMap.Get(key)

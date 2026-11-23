@@ -196,9 +196,6 @@ func (p *projector) hasEffectBody(fn *ast.Node) bool {
 // in it some other way. Nested functions count: their own Effect bodies
 // make the body not provably pure, as the executable rendering decides.
 func (p *projector) plainEdits(fn *ast.Node) bool {
-	if p.plainBuiltinBodies[fn] != nil {
-		return true
-	}
 	body := fn.Body()
 	lo, hi := p.tokenStart(body)+1, body.End()-1
 	for _, e := range p.plan.edits {
@@ -226,9 +223,6 @@ func (p *projector) plainEdits(fn *ast.Node) bool {
 // for a call of a name:
 // the obstacle a same-file function's call is, and whether the name is one.
 func (p *projector) bodyObstacle(fn *ast.Node, callee func(name string) (obstacle, bool)) obstacle {
-	if p.plainBuiltinBodies[fn] != nil {
-		return obstacleNone
-	}
 	for _, parameter := range fn.Parameters() {
 		if runsTry(parameter) {
 			return obstacleBlocking

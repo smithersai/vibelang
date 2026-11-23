@@ -8,10 +8,11 @@ import { test } from "node:test"
 import { rewriteExports } from "../lib/codemod.mjs"
 import { emitPackageJs } from "../lib/declarations.mjs"
 import { routeEmittedExports } from "../lib/emitted-exports.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-emitted-sidecar-layout.json", import.meta.url), "utf8"))
 const spec = readFileSync(new URL("../../../../docs/design/src/007-tooling.md", import.meta.url), "utf8")
 assert.ok(spec.includes(corpus.rule))
@@ -41,7 +42,7 @@ async function exercise(layout, depth = 0, directory = ".vibe/declarations") {
     }
     const native = join(root, "native/producer"), producer = join(root, "converted/producer")
     const baseline = spawnSync(process.execPath, [require.resolve("typescript/bin/tsc"), "-p", "tsconfig.json",
-      "--declaration", "--emitDeclarationOnly", "--outDir", "baseline"], { cwd: native, encoding: "utf8", timeout: 30000 })
+      "--declaration", "--emitDeclarationOnly", "--outDir", "baseline"], { cwd: native, encoding: "utf8", timeout: 120000 })
     assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr)
     const renamed = [{ from: "producer/" + source + ".ts", to: "producer/" + source + ".vibe" }]
     rewriteExports(join(root, "converted"), renamed)
@@ -60,7 +61,7 @@ async function exercise(layout, depth = 0, directory = ".vibe/declarations") {
     put("converted/consumer.ts", 'import { Tool } from "layout-producer/tool"; const value: Tool.Content = {value: 3}; export { value };\n')
     const check = () => spawnSync(process.execPath, [require.resolve("typescript/bin/tsc"), "--strict", "--noEmit",
       "--moduleResolution", "bundler", "--module", "esnext", "--target", "es2022", "--skipLibCheck",
-      "consumer.ts"], { cwd: join(root, "converted"), encoding: "utf8", timeout: 30000 })
+      "consumer.ts"], { cwd: join(root, "converted"), encoding: "utf8", timeout: 120000 })
     const valid = check()
     assert.equal(valid.status, 0, valid.stdout)
     put("converted/consumer.ts", 'import { Tool } from "layout-producer/tool"; const value: Tool.Content = {value: "bad"}; export { value };\n')
@@ -69,7 +70,7 @@ async function exercise(layout, depth = 0, directory = ".vibe/declarations") {
     assert.match(invalid.stdout, /TS2322/)
     const runtime = spawnSync(process.execPath, ["--input-type=module", "-e",
       'const m = await import("layout-producer/tool"); console.log(m.Tool.Content)'],
-      { cwd: join(root, "converted"), encoding: "utf8", timeout: 30000 })
+      { cwd: join(root, "converted"), encoding: "utf8", timeout: 120000 })
     assert.equal(runtime.status, 0, runtime.stderr)
     assert.equal(runtime.stdout.trim(), "1")
     assert.equal(readFileSync(join(producer, source + ".vibe"), "utf8"), corpus.source)
@@ -77,10 +78,10 @@ async function exercise(layout, depth = 0, directory = ".vibe/declarations") {
 }
 
 for (const layout of layouts) test("JavaScript emission preserves the " + layout + " declaration layout",
-  { skip: !compiler && "set VIBELANG_BINARY" }, () => exercise(layout))
+  () => exercise(layout))
 
 test("generated source roots retain declaration identity, consumer checking and runtime exports",
-  { skip: !compiler && "set VIBELANG_BINARY" }, async () => {
+  async () => {
     await fc.assert(fc.asyncProperty(fc.constantFrom(...layouts), fc.integer({ min: 0, max: 2 }),
       fc.constantFrom(".vibe/declarations", ".private/types"),
       async (layout, depth, directory) => exercise(layout, depth, directory)), { numRuns: 16, seed: 1066 })

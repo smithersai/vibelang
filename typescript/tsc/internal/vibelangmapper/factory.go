@@ -208,76 +208,6 @@ func factoryReturnOwner(expr *ast.Node) *ast.Node {
 	return nil
 }
 
-// A factory keeps its declared function type and its synchronous JavaScript
-// body; returned literals alone take D7's program form.
-func (p *projector) factory(fn *ast.Node) {
-	p.checkFactoryBody(fn)
-	if contractOf(fn.Type()) != contractInfer {
-		p.visitChildren(fn, env{})
-		return
-	}
-	// Keep A pinned while TypeScript infers E/R from the returned programs.
-	// The witnesses disappear in execution; the call-time body stays plain.
-	slots, ok := p.factoryContractSlots(fn.Type())
-	if !ok {
-		p.unprojected(fn.Type())
-		return
-	}
-	p.plan.replace(p.colonBefore(fn.Type()), fn.Type().End(), "")
-	var returns []*ast.Node
-	factoryReturnExpressions(fn, func(expr *ast.Node) {
-		if expr != nil {
-			returns = append(returns, expr)
-			p.plan.witness(p.tokenStart(expr), helperRef("$contract")+"<"+slots+">()(")
-		}
-	})
-	fn.ForEachChild(func(child *ast.Node) bool {
-		if child != fn.Type() {
-			p.visit(child, env{})
-		}
-		return false
-	})
-	for _, expr := range returns {
-		p.plan.witness(expr.End(), ")")
-	}
-}
-
-func (p *projector) factoryContractSlots(annotation *ast.Node) (string, bool) {
-	previous := p.plan
-	p.plan = plan{}
-	p.effectType(annotation, true)
-	slots := p.plan
-	p.plan = previous
-	start := p.tokenStart(annotation)
-	for i := range slots.edits {
-		slots.edits[i].pos -= start
-		slots.edits[i].end -= start
-	}
-	text, _, _, ok := slots.render(checking{names: p.names}, p.text[start:annotation.End()], func() string { return "" })
-	return text, ok
-}
-
-func (p *projector) checkFactoryBody(fn *ast.Node) {
-	r := p.forms.(*Resolver)
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if formsBoundary(n) {
-			return false
-		}
-		if d := r.Argument(n); d.ByName {
-			return false
-		}
-		if ast.IsCallExpression(n) && p.plainContractEffectCall(n) {
-			p.diagnostics = append(p.diagnostics, Diagnostic{Start: p.tokenStart(n), Length: n.End() - p.tokenStart(n), Code: 2115, Message: "This function returns a program, so its body runs when called and cannot run an Effect. Move it into return () => { … }."})
-			return false
-		}
-		return n.ForEachChild(visit)
-	}
-	visit(fn.Body())
-	// The checking rendering keeps the whole written Effect return type, so
-	// TypeScript checks each returned value and every implicit return path.
-}
-
 // D248: a member typed by an imported interface may be a D269 factory.
 // Its success type is outside this file, so never silently choose a phase.
 func (r *Resolver) factoryContextHidden(fn *ast.Node) bool {
@@ -398,22 +328,4 @@ func factoryUsesTypeParameter(t *ast.Node, parameters []*ast.Node) bool {
 		return n.ForEachChild(visit)
 	}
 	return visit(t)
-}
-
-// A factory has no D9 plain variant even though its eager phase is JavaScript.
-func (p *projector) rejectFactoryCallback(node *ast.Node, d Decision) {
-	if d.Class&ClassPlainFn == 0 || d.Class&ClassEffectFn != 0 {
-		return
-	}
-	r := p.forms.(*Resolver)
-	fn := node
-	if ast.IsIdentifier(node) {
-		fn = r.binding(node, node.Text())
-		if fn != nil && ast.IsVariableDeclaration(fn) {
-			fn = fn.Initializer()
-		}
-	}
-	if r.isFactory(fn) {
-		p.diagnostics = append(p.diagnostics, Diagnostic{Start: p.tokenStart(node), Length: node.End() - p.tokenStart(node), Code: 4301, Message: "This factory returns a program, but this position expects a plain function, which returns a value."})
-	}
 }

@@ -29,7 +29,6 @@ type plan struct {
 	effects                    map[*ast.Node]bool // functions lowered to Effect.fnUntraced generators
 	programs                   map[*ast.Node]bool // lambdas lowered to Effect.gen programs (design D7)
 	runs                       map[*ast.Node]bool // calls in those functions emitted as yield*
-	returns                    map[*ast.Node]bool // returned Effect subtypes executed at an Effect return boundary
 	chainedCatches             map[*ast.Node]bool // catch expressions whose value the catch outside them runs
 	prelude                    []string           // prelude names the file uses as values (prelude.go)
 	intrinsics                 map[*ast.Node]bool // intrinsics a source binding would capture, reached through the lowering's own import (prelude.go)
@@ -71,7 +70,6 @@ func newFilePlan() *plan {
 	p.schemaGenerics = map[*ast.Node]*ast.Node{}
 	p.parameterWrites = map[*ast.Node]bool{}
 	p.sourceTryDelegation = map[*ast.Node]bool{}
-	p.returns = map[*ast.Node]bool{}
 	p.chainedCatches = map[*ast.Node]bool{}
 	p.fieldlessErrorConstructors = map[*ast.Node]bool{}
 	p.handlerPlan = newHandlerPlan()
@@ -214,9 +212,6 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 				return false
 			})
 			p.planScopes(a, node)
-		}
-		if a.returnedProgram(node) != nil {
-			p.returns[node] = true
 		}
 		if ast.IsCallExpression(node) && a.chainedCatchValue(node) != nil {
 			p.chainedCatches[node] = true
@@ -377,10 +372,9 @@ type analyzer struct {
 	lambdas         map[*ast.Node]*lambdaState
 	effectInterface *checker.Type // the generic Effect interface, once seen
 
-	returnedPrograms map[*ast.Node]*checker.Type // structured programs at Effect return boundaries
-	valueTyping      map[*ast.Node]bool          // by-name arguments whose own type is being read (valueTypeOf)
-	classifying      map[*ast.Node]bool          // values whose position is being classified (expressionType)
-	keywordValues    map[*ast.Node]*checker.Type // keyword operands' values (keywords.go)
+	valueTyping   map[*ast.Node]bool          // by-name arguments whose own type is being read (valueTypeOf)
+	classifying   map[*ast.Node]bool          // values whose position is being classified (expressionType)
+	keywordValues map[*ast.Node]*checker.Type // keyword operands' values (keywords.go)
 
 	programEffect         *checker.Type // effect's Effect interface, found in the program's files
 	programEffectSearched bool
@@ -410,10 +404,9 @@ func analyzerFor(c *checker.Checker) *analyzer {
 			contracts:  map[*ast.Node]*contract{},
 			lambdas:    map[*ast.Node]*lambdaState{},
 
-			returnedPrograms: map[*ast.Node]*checker.Type{},
-			valueTyping:      map[*ast.Node]bool{},
-			classifying:      map[*ast.Node]bool{},
-			keywordValues:    map[*ast.Node]*checker.Type{},
+			valueTyping:   map[*ast.Node]bool{},
+			classifying:   map[*ast.Node]bool{},
+			keywordValues: map[*ast.Node]*checker.Type{},
 		}
 	}).(*analyzer)
 }

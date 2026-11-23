@@ -30,7 +30,7 @@ The native `vibelang` compiler compiles `.vibe` sources to JavaScript. Version 0
 
 ## Prerequisites
 
-Install Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.4 or later. To [run sources with Bun](../setup/vibelang-cli.md#run-sources-with-bun), use Bun 1.4.2 or later. Bun is optional.
+Install Node 22.22.3 (22.x) or Node 24.11.1 or later. Bun is optional. If you use it, install Bun 1.4.2 or later. See how to [run sources with Bun](../setup/vibelang-cli.md#run-sources-with-bun).
 
 `vibelang` installs one platform binary via optional dependencies — keep optional dependencies enabled (avoid `--omit=optional`):
 

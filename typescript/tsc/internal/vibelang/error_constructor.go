@@ -13,7 +13,7 @@ import (
 var EK1301 = message(1301, errorCategory, "An error declaration cannot have a constructor: its fields are the constructor's one argument.")
 
 func init() {
-	registry[EK1301.Code] = EK1301
+	registerDiagnostic(EK1301)
 	fileChecks = append(fileChecks, checkErrorConstructors)
 
 }

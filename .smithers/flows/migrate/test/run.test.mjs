@@ -356,3 +356,16 @@ test("writeJson replaces files atomically via durableWrite instead of truncating
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test("run decodes a multi-byte character split across output chunks", async () => {
+  const { run } = await import("../lib/util.mjs")
+  const dir = mkdtempSync(join(tmpdir(), "migrate-run-utf8-"))
+  try {
+    const text = "x" + "é".repeat(300000)
+    writeFileSync(join(dir, "big.txt"), text)
+    const out = await run("cat big.txt; cat big.txt >&2", { cwd: dir })
+    assert.equal(out.stdout.length, text.length)
+    assert.equal(out.stdout, text)
+    assert.equal(out.stderr, text)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})

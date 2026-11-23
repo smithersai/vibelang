@@ -2,6 +2,7 @@ package parser
 
 import (
 	"slices"
+	"strconv"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
@@ -361,8 +362,25 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 	}
 	// A postfix ? after the type is TypeScript's, as parsePostfixTypeOrHigher
 	// gives it: the tuple parser makes [A!E?] and [A!!?] optional elements, and
-	// anywhere else the checker refuses it (TS17019).
-	if p.token == ast.KindQuestionToken && !p.hasPrecedingLineBreak() && !p.lookAhead((*Parser).nextIsStartOfType) {
+	// anywhere else the checker refuses it (TS17019). A ? before the start of a
+	// type or an expression stays the conditional's (Appendix A, EffectOperand):
+	// x as A!E ? +1 : 2.
+	// Binary operators, which isStartOfExpression admits for error recovery,
+	// start no branch.
+	startsBranch := func(p *Parser) bool {
+		p.nextToken()
+		if p.isStartOfType(false /*inStartOfParameter*/) || p.isStartOfLeftHandSideExpression() {
+			return true
+		}
+		switch p.token {
+		case ast.KindPlusToken, ast.KindMinusToken, ast.KindTildeToken, ast.KindExclamationToken, ast.KindDeleteKeyword,
+			ast.KindTypeOfKeyword, ast.KindVoidKeyword, ast.KindPlusPlusToken, ast.KindMinusMinusToken, ast.KindLessThanToken,
+			ast.KindAwaitKeyword, ast.KindYieldKeyword, ast.KindPrivateIdentifier, ast.KindAtToken:
+			return true
+		}
+		return p.isIdentifier()
+	}
+	if p.token == ast.KindQuestionToken && !p.hasPrecedingLineBreak() && !p.lookAhead(startsBranch) {
 		p.nextToken()
 		return p.finishNode(p.factory.NewJSDocNullableType(reference), result.Pos())
 	}
@@ -1424,6 +1442,29 @@ func (p *Parser) vibelangSchemaPropertyName(name *ast.Node) *ast.Node {
 // field schemas, one for each of members, the members of a type literal.
 func (p *Parser) vibelangSchemaProperties(members []*ast.Node) []*ast.Node {
 	var properties []*ast.Node
+	// namelessKey returns the key of the next member without a name: the
+	// next of "", "#1", "#2", … that no member is named.
+	nextKey := 0
+	namelessKey := func() string {
+		taken := func(key string) bool {
+			for _, member := range members {
+				if name := member.Name(); name != nil && ast.IsPropertyNameLiteral(name) && name.Text() == key {
+					return true
+				}
+			}
+			return false
+		}
+		for {
+			key := ""
+			if nextKey > 0 {
+				key = "#" + strconv.Itoa(nextKey)
+			}
+			nextKey++
+			if !taken(key) {
+				return key
+			}
+		}
+	}
 	for _, member := range members {
 		name := member.Name()
 		if name == nil || !ast.IsPropertySignatureDeclaration(member) || member.Type() == nil {
@@ -1432,7 +1473,9 @@ func (p *Parser) vibelangSchemaProperties(members []*ast.Node) []*ast.Node {
 			// EK1505 at it (schemas.go); in a schema alias's object type it
 			// keeps EK2109, the alias's own code (D247).
 			if name == nil {
-				name = p.vibelangSynthesized(p.factory.NewStringLiteral("", ast.TokenFlagsNone), member.Loc)
+				// Each nameless member gets its own key, so the object
+				// literal holds no duplicate (TS1117) beside its EK1505.
+				name = p.vibelangSynthesized(p.factory.NewStringLiteral(namelessKey(), ast.TokenFlagsNone), member.Loc)
 			}
 			placeholder := p.vibelangUnsupportedSchema(member.Loc)
 			if p.vibelangSchemaBody {

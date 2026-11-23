@@ -152,8 +152,10 @@ function emitted(file) {
 }
 
 // vibelang rewrites a .vibe module's relative imports to the emitted .js names.
-// From source, those names are the .vibe or TypeScript files beside it.
-const sources = { ".js": [".vibe", ".vibex", ".ts", ".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] }
+// From source, those names are the .vibe or TypeScript files beside it. A
+// project that preserves JSX names a .vibex or .tsx module .jsx; resolving it
+// to its source lets the load name the jsx option instead of a missing file.
+const sources = { ".js": [".vibe", ".vibex", ".ts", ".tsx"], ".jsx": [".vibex", ".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] }
 const clean = (url) => url.replace(/[?#].*$/, "")
 
 // A module declaration's output that is not on disk: the compile serves it.

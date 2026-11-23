@@ -12,9 +12,11 @@ import (
 // VibeLang ships its own (VIP-4): JSON.parse throws SyntaxError, Math.max
 // throws never. globalThrowsCurated lists the members of the ES lib files
 // that throw an expected failure: each parses or validates data that comes
-// from outside the program. Every other ES member throws never; what it
-// throws on a misuse, such as a negative String.repeat count, is a defect,
-// as an implicit throw is (VIP-4). The DOM lib's members are annotated only
+// from outside the program, together with the tracked ES argument-validation
+// throws chapter 3 specifies (JSON.stringify, String.repeat, Number.toFixed).
+// Every other ES member throws never; what it throws on misuse, such as
+// Date.toISOString on an invalid Date or an Intl constructor misuse, is a
+// defect, as an implicit throw is (VIP-4). The DOM lib's members are annotated only
 // where the list names them: the web globals a .vibe file may use, which
 // are not platform I/O (EK4402). Keys are path.Match patterns over the keys
 // globalKey gives; a key itself wins over a pattern, and a longer pattern
@@ -25,16 +27,26 @@ import (
 // and the lib files, is the annotation of every member. A lib member that
 // is not in it has no @throws, so it throws unknown.
 var globalThrowsCurated = map[string]string{
-	"JSON.parse":                "SyntaxError",
-	"decodeURI":                 "URIError",
-	"decodeURIComponent":        "URIError",
-	"BigIntConstructor()":       "SyntaxError | RangeError",
-	"RegExpConstructor()":       "SyntaxError",
-	"FunctionConstructor()":     "SyntaxError",
-	"eval":                      "unknown",
-	"Intl.getCanonicalLocales":  "RangeError",
-	"Intl.supportedValuesOf":    "RangeError",
-	"Intl.*.supportedLocalesOf": "RangeError",
+	"JSON.parse":                       "SyntaxError",
+	"JSON.stringify":                   "TypeError",
+	"String.repeat":                    "RangeError",
+	"Number.toFixed":                   "RangeError",
+	"decodeURI":                        "URIError",
+	"decodeURIComponent":               "URIError",
+	"encodeURI":                        "URIError",
+	"encodeURIComponent":               "URIError",
+	"Uint8ArrayConstructor.fromBase64": "SyntaxError",
+	"Uint8ArrayConstructor.fromHex":    "SyntaxError",
+	"Uint8Array.setFromBase64":         "SyntaxError",
+	"Uint8Array.setFromHex":            "SyntaxError",
+	"Temporal.*Constructor.from":       "RangeError",
+	"BigIntConstructor()":              "SyntaxError | RangeError",
+	"RegExpConstructor()":              "SyntaxError",
+	"FunctionConstructor()":            "SyntaxError",
+	"eval":                             "unknown",
+	"Intl.getCanonicalLocales":         "RangeError",
+	"Intl.supportedValuesOf":           "RangeError",
+	"Intl.*.supportedLocalesOf":        "RangeError",
 
 	// The DOM lib's web globals.
 	"TextEncoder.*":              "never",

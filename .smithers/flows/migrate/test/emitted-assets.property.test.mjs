@@ -7,6 +7,7 @@ import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { emitPackageJs } from "../lib/declarations.mjs"
 import { routeEmittedExports } from "../lib/emitted-exports.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-emitted-text-asset.json", import.meta.url), "utf8"))
@@ -77,7 +78,7 @@ test("asset relocation preserves actual Bun bundles across import forms and nest
   await fc.assert(fc.asyncProperty(fc.constantFrom("src", "src/deep", "lib"), fc.constantFrom("snapshot.txt", "data/prompt.txt", "text with space.txt", "snapshot.sql"), fc.constantFrom("static", "dynamic", "reexport"), async (dir, asset, form) => fixture({ dir, asset, form })), { seed: 560056, numRuns: 100 })
 })
 
-test("the minimized Opencode text-asset pattern works with the actual compiler and Bun", { skip: !process.env.VIBELANG_BINARY && "set VIBELANG_BINARY" }, async () => fixture({ native: process.env.VIBELANG_BINARY }))
+test("the minimized Opencode text-asset pattern works with the actual compiler and Bun", async () => fixture({ native: nativeCompiler() }))
 
 test("emitted asset imports follow the documented source-file identity contract", () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes('Relative non-code imports in emitted JavaScript resolve to their original source assets.'))

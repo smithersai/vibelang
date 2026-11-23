@@ -4,7 +4,7 @@ Get a working VibeLang project running and tested in under two minutes, then see
 
 ## 1. Create and run the starter
 
-You need Node `22.22.3` (`22.x`) or Node `24.11.1` or later. Bun is optional, at 1.4 or later; [running sources with Bun](setup/vibelang-cli.md#run-sources-with-bun) needs 1.4.2 or later.
+You need Node `22.22.3` (`22.x`) or Node `24.11.1` or later. Bun is optional. If you use it, install Bun 1.4.2 or later. See how to [run sources with Bun](setup/vibelang-cli.md#run-sources-with-bun).
 
 ```sh
 npm create vibelang@latest my-app

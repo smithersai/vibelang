@@ -607,16 +607,6 @@ func mentionsName(node *ast.Node, name string) bool {
 	return visit(node)
 }
 
-// slicesMentionName reports whether any of nodes mentions name.
-func slicesMentionName(nodes []*ast.Node, name string) bool {
-	for _, node := range nodes {
-		if mentionsName(node, name) {
-			return true
-		}
-	}
-	return false
-}
-
 // writtenShape returns the shape of a service of any shape (D281) as the
 // declaration transform wrote it, the type argument of declared's extends
 // clause $service<Type>, or nil when class declares another service.

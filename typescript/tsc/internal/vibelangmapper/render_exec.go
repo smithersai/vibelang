@@ -86,7 +86,9 @@ func renderExec(e edit) (text string, keep bool) {
 		if e.arg == "return" {
 			return pick(e.part, "(yield* "+helperRef("$returnRun")+"(", "", "))"), true
 		}
-		if e.arg == "service" {
+		if e.arg == "service" || e.arg == "try" {
+			// A written try runs its operand whatever it is: an Effect, a
+			// service key or a Config (VIP-5).
 			return pick(e.part, "(yield* ", "", ")"), true
 		}
 		// L3: an Effect runs, any other value is the call's value.
@@ -107,8 +109,12 @@ func renderExec(e edit) (text string, keep bool) {
 		// The contract's slots stay in a return annotation, which the
 		// transpiler erases: f(p): $Contract<A, $Infer, R> { return $gen(...) }.
 		gen := helperRef("$gen") + "(function* () "
-		if e.arg == "self" {
+		arg, arrow := strings.CutSuffix(e.arg, lintArrowSuffix)
+		if arg == "self" {
 			gen = helperRef("$gen") + "({ self: this }, function* () "
+		}
+		if arrow {
+			return pick(e.part, ": $Contract<", "> => { return "+gen, ")}"), true
 		}
 		return pick(e.part, ": $Contract<", "> { return "+gen, ")}"), true
 	case editProgram:
@@ -610,7 +616,7 @@ type execLowering struct {
 func (p *projector) execPlan() *plan {
 	l := &execLowering{
 		p:          p,
-		edits:      p.directBuiltinEdits(),
+		edits:      append([]edit(nil), p.plan.edits...),
 		calls:      map[[2]int]*ast.Node{},
 		receivers:  map[[2]int]*ast.Node{},
 		valueCalls: map[int]bool{},
@@ -1050,14 +1056,24 @@ func (l *execLowering) lowerCalls() {
 				l.set(s.open, "")
 				l.set(s.close, "")
 			}
+			if !f.pure {
+				// A fast entry gives the value when the body finished at once.
+				l.edits[s.open].arg, l.edits[s.close].arg = "", ""
+			}
 			l.insert(callee.End(), strings.TrimPrefix(f.direct, name))
 			continue
 		}
 		if from, ok := l.p.names.importedFrom[name]; ok && strings.HasPrefix(from, ".") && l.p.names.declarations[name] == 1 && !l.valueCalls[l.p.tokenStart(callee)] {
 			t, direct := helperRef("$t"), helperRef("$direct")
+			// Without a direct entry the call's value runs: always under a
+			// written try, and when it is an Effect otherwise.
+			run := "(" + helperRef("$isRun") + "(" + t + ") ? (yield* " + t + ") : " + t + ")"
+			if l.edits[s.open].arg == "try" {
+				run = "(yield* " + t + ")"
+			}
 			l.set(s.open, "(("+t+" = (")
 			l.insert(callee.End(), "["+direct+"] ?? "+name+")")
-			l.set(s.close, "), "+name+"["+direct+"] ? "+t+" : ("+helperRef("$isRun")+"("+t+") ? (yield* "+t+") : "+t+"))")
+			l.set(s.close, "), "+name+"["+direct+"] ? "+t+" : "+run+")")
 		}
 	}
 }
@@ -1108,9 +1124,11 @@ func (l *execLowering) lowerServiceCalls() {
 	}
 }
 
-// lowerImports rewrites a relative import or export of a .vibe module to
-// the JavaScript the module compiles to, ./users.vibe to ./users.js, as
-// the fork's emit does.
+// lowerImports rewrites a relative import or export of a .vibe or .ts module
+// to the JavaScript the module compiles to, ./users.vibe to ./users.js, as
+// the fork's emit does. Only this rendering rewrites: the checking rendering
+// keeps the specifier as written, so TypeScript reports TS5097 where the
+// project does not allow a .ts extension.
 func (l *execLowering) lowerImports() {
 	for _, statement := range l.p.file.Statements.Nodes {
 		var specifier *ast.Node
@@ -1124,20 +1142,24 @@ func (l *execLowering) lowerImports() {
 			continue
 		}
 		module := specifier.Text()
-		if !strings.HasPrefix(module, ".") || !strings.HasSuffix(module, ".vibe") {
+		extension := ".vibe"
+		if strings.HasSuffix(module, ".ts") {
+			extension = ".ts"
+		}
+		if !strings.HasPrefix(module, ".") || !strings.HasSuffix(module, extension) {
 			continue
 		}
 		start := l.p.tokenStart(specifier)
 		quote := l.p.text[start : start+1]
-		l.replace(start, specifier.End(), quote+strings.TrimSuffix(module, ".vibe")+".js"+quote)
+		l.replace(start, specifier.End(), quote+strings.TrimSuffix(module, extension)+".js"+quote)
 	}
 }
 
 // entry appends the entry statement of a module that exports a function
 // named main with no parameters and calls no runner at its top level
 // (D135): $entry(import.meta.main, import.meta.url, main, () =>
-// $runMain(main())), as the fork writes it (entry.go). A main with a plain
-// return annotation runs through Effect.sync. The fork runs with
+// $runMain(main())), as the fork writes it (entry.go). A main with no effect
+// modifier is plain and runs through Effect.sync. The fork runs with
 // @effect/platform-node's NodeRuntime when that package resolves; a
 // projection cannot resolve packages, so this one always uses the
 // runtime's copy of the runner.
@@ -1156,8 +1178,9 @@ func (l *execLowering) entry() {
 	if main == nil || !isProjectedFunction(main) {
 		return
 	}
+	// Only a main written effect returns a program; a plain main is called.
 	program := "main()"
-	if contractOf(main.Type()) == contractPlain {
+	if main.Flags&ast.NodeFlagsVibeLangEffect == 0 {
 		program = helperRef("$sync") + "(main)"
 	}
 	l.insert(len(l.p.text), "\n"+helperRef("$entry")+"(import.meta.main, import.meta.url, main, () => "+helperRef("$runMain")+"("+program+"));\n")

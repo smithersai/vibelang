@@ -521,3 +521,21 @@ test("mock aliases and ambient names cannot bypass binding or factory protection
     }
   }
 })
+
+test("a widened glob that excludes only .d.vibe.ts sidecars is refused for a .vibex rename", () => {
+  const a = 'const p = import.meta.glob("../src/*.{ts,tsx}")'
+  const b = 'const p = import.meta.glob(["../src/*.{ts,tsx,vibe,vibex}", "!../src/*.d.vibe.ts"])'
+  const fixed = 'const p = import.meta.glob(["../src/*.{ts,tsx,vibe,vibex}", "!../src/*.d.vibe.ts", "!../src/*.d.vibex.ts"])'
+  const renames = [{ from: "src/View.tsx", to: "src/View.vibex" }]
+  const verify = text => {
+    const scratch = mkdtempSync(join(tmpdir(), "test-diff-"))
+    try {
+      return verifyTestDiff({ ts, before: { "src/View.tsx": "", "test/x.test.ts": a },
+        after: { "src/View.vibex": "", "test/x.test.ts": text }, renames, glob, scratch, cwd: "test" })
+    } finally { rmSync(scratch, { recursive: true, force: true }) }
+  }
+  const bad = verify(b)
+  assert.equal(bad.ok, false, JSON.stringify(bad))
+  const good = verify(fixed)
+  assert.equal(good.ok, true, JSON.stringify(good))
+})

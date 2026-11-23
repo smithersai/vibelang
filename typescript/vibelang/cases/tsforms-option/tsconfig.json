@@ -10,7 +10,12 @@
     "types": [],
     "skipLibCheck": true,
     "outDir": "out",
-    "declaration": true
+    "declaration": true,
+    "vibelang": {
+      "diagnostics": {
+        "EK4840": "warning"
+      }
+    }
   },
   "include": [
     "*.vibe"

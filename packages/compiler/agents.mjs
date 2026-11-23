@@ -10,6 +10,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs"
 import { dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { isVibeLangFile } from "./vibe-directive.mjs"
 
 const packageDirectory = dirname(fileURLToPath(import.meta.url))
 const skillSource = join(packageDirectory, "skills/vibelang/SKILL.md")
@@ -17,6 +18,14 @@ const hookTag = "vibelang agents hook"
 const sectionStart = "<!-- vibelang agents: start. `npx vibelang agents init` writes this section; rerun it to update. -->"
 const sectionEnd = "<!-- vibelang agents: end -->"
 const header = "Written by `npx vibelang agents init`; rerun it to update."
+// The generated opencode plugin runs without this package, so it carries the
+// rules of vibe-directive.mjs for a TypeScript source with the `// @vibe`
+// directive; test/agents-vibex.test.mjs holds the two copies together.
+const directiveRules = {
+  directive: String.raw`^\uFEFF?(?:#![^\n]*\n)?\/\/ @vibe[ \t]*(?:[\r\n]|$)`,
+  typeScriptSource: String.raw`\.(?:tsx?|[cm]ts)$`,
+  typeScriptDeclaration: String.raw`\.d\.(?:[cm]ts|(?:[^./\\]+\.)?ts)$`
+}
 
 export async function main(args, findBinary) {
   const [command, ...rest] = args
@@ -188,11 +197,22 @@ function opencodeLsp(command) {
 
 function opencodePlugin(command) {
   return `// ${header}
-// After opencode edits a .vibe or .vibex file, checks its project and
-// appends the diagnostics left to the tool's result, which the agent reads.
+// After opencode edits a .vibe or .vibex file, or a TypeScript file whose
+// first line is // @vibe, checks its project and appends the diagnostics left
+// to the tool's result, which the agent reads.
 import { execFile } from "node:child_process"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 
 const command = ${JSON.stringify([...command, "agents", "check"])}
+const directive = new RegExp(${JSON.stringify(directiveRules.directive)})
+const typeScriptSource = new RegExp(${JSON.stringify(directiveRules.typeScriptSource)})
+const typeScriptDeclaration = new RegExp(${JSON.stringify(directiveRules.typeScriptDeclaration)})
+const vibeLang = (directory, file) => {
+  if (/\\.vibex?$/.test(file)) return true
+  if (!typeScriptSource.test(file) || typeScriptDeclaration.test(file)) return false
+  try { return directive.test(readFileSync(resolve(directory, file), "utf8")) } catch { return false }
+}
 const patchFiles = (patch) =>
   [...patch.matchAll(/^\\*\\*\\* (?:Add File|Update File|Move to): (.+)$/gm)].map((match) => match[1].trim())
 
@@ -201,7 +221,7 @@ export const VibeLang = async ({ directory }) => ({
     if (!["edit", "write", "multiedit", "apply_patch", "patch"].includes(input.tool)) return
     const args = input.args ?? {}
     const files = [args.filePath, ...(typeof args.patchText === "string" ? patchFiles(args.patchText) : [])]
-      .filter((file) => typeof file === "string" && /\\.vibex?$/.test(file))
+      .filter((file) => typeof file === "string" && vibeLang(directory, file))
     if (files.length === 0) return
     const report = await new Promise((done) =>
       execFile(command[0], [...command.slice(1), ...files], { cwd: directory, maxBuffer: 1 << 24 }, (_, stdout, stderr) =>
@@ -251,7 +271,7 @@ function hook(findBinary) {
     return 0
   }
   const cwd = typeof event.cwd === "string" ? event.cwd : process.cwd()
-  const files = editedFiles(event, cwd).filter((file) => /\.vibex?$/.test(file) && existsSync(file))
+  const files = editedFiles(event, cwd).filter((file) => existsSync(file) && isVibeLangFile(file))
   if (files.length === 0) return 0
   const result = checkFiles(files, findBinary(), cwd)
   if (failed(result)) {

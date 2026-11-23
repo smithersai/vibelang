@@ -5,7 +5,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-var serviceExplicitKeyDiagnostic = message(903, errorCategory, "This service has no derived key in this scope. Write static readonly key initialized with a string literal.")
+var EK0903 = message(903, errorCategory, "This service has no derived key in this scope. Write static readonly key initialized with a string literal.")
 
 func serviceNeedsExplicitKey(c *checker.Checker, class *ast.Node) bool {
 	if !ast.IsClassDeclaration(class) || class.Name() == nil || declarationWord(class) != "service" {
@@ -50,7 +50,7 @@ func checkExplicitServiceKeys(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if serviceNeedsExplicitKey(c, node) {
-			report(c, node.Name(), serviceExplicitKeyDiagnostic)
+			report(c, node.Name(), EK0903)
 
 		}
 		return node.ForEachChild(visit)
@@ -59,9 +59,9 @@ func checkExplicitServiceKeys(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func init() {
-	registry[serviceExplicitKeyDiagnostic.Code] = serviceExplicitKeyDiagnostic
+	registerDiagnostic(EK0903)
 	fileChecks = append(fileChecks, checkExplicitServiceKeys)
-	tsFormRules[serviceExplicitKeyDiagnostic.Code] = &tsFormRule{
-		message: serviceExplicitKeyDiagnostic,
+	tsFormRules[EK0903.Code] = &tsFormRule{
+		message: EK0903,
 	}
 }

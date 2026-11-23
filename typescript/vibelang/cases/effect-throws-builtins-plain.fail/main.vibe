@@ -1,0 +1,18 @@
+// expect: EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401
+// Issue #433: built-ins that parse outside data or carry tracked chapter 3 throws
+// report EK0401 in plain code; Date.toISOString and Intl constructors stay never.
+export function check(s: string, buf: Uint8Array, v: object) {
+  const a = Uint8Array.fromBase64(s)
+  const b = Uint8Array.fromHex(s)
+  const c = buf.setFromBase64(s)
+  const d = buf.setFromHex(s)
+  const e = Temporal.PlainDate.from(s)
+  const f = encodeURI(s)
+  const g = encodeURIComponent(s)
+  const h = JSON.stringify(v)
+  const i = "ab".repeat(2)
+  const j = (1.5).toFixed(2)
+  const okDate = new Date(s).toISOString()
+  const okIntl = new Intl.DateTimeFormat("en-US")
+  return [a, b, c, d, e, f, g, h, i, j, okDate, okIntl]
+}

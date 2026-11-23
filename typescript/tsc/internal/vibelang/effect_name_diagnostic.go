@@ -11,10 +11,10 @@ import (
 // A module that two of effect's subpath packages list is not in scope
 // (VIP-14, detail 55): EK1401 names every exporter, so the
 // program imports the one it means.
-var namespaceAmbiguityDiagnostic = message(1401, errorCategory, "{0} is exported by {1}, so it needs an explicit import. Choose one: {2}.")
+var EK1401 = message(1401, errorCategory, "{0} is exported by {1}, so it needs an explicit import. Choose one: {2}.")
 
 func init() {
-	registry[namespaceAmbiguityDiagnostic.Code] = namespaceAmbiguityDiagnostic
+	registerDiagnostic(EK1401)
 	checker.RegisterDiagnosticsFilterHook(explainMissingEffectName)
 }
 
@@ -38,7 +38,7 @@ func explainMissingEffectName(c *checker.Checker, file *ast.SourceFile, all []*a
 			for j, p := range packages {
 				imports[j] = "import { " + name.Text() + " } from \"" + p + "\""
 			}
-			all[i] = newDiagnosticAt(optionsFor(c, file), file, d.Loc(), namespaceAmbiguityDiagnostic, name.Text(), strings.Join(packages, " and "), strings.Join(imports, "; "))
+			all[i] = newDiagnosticAt(optionsFor(c, file), file, d.Loc(), EK1401, name.Text(), strings.Join(packages, " and "), strings.Join(imports, "; "))
 		}
 	}
 	return all

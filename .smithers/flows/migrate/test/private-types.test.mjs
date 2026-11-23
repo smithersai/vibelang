@@ -5,7 +5,8 @@ import { test } from "node:test"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { canonicalize, compareDeclarations, loadTypeScript, privateUnusedTypes } from "../lib/declarations.mjs"
+import { compareDeclarations, loadTypeScript } from "../lib/declarations.mjs"
+import { canonicalize, privateUnusedTypes } from "./helpers/canonical-declarations.mjs"
 
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))

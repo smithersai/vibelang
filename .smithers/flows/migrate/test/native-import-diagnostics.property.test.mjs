@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { test } from "node:test"
 import { runtimeEdges } from "../lib/emitted-imports.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-native-import-diagnostic.json", import.meta.url)))
 
@@ -56,10 +57,10 @@ test("property: exit status cannot suppress a native parser diagnostic or admit 
   }), { seed: 801347, numRuns: 80 })
 })
 
-test("native compiler command failures preserve the actual diagnostic", { skip: !process.env.VIBELANG_BINARY }, () => {
+test("native compiler command failures preserve the actual diagnostic", () => {
   const root = mkdtempSync(join(tmpdir(), "native-import-command-")), compiler = join(root, "compiler.sh")
   try {
-    const binary = resolve(process.env.VIBELANG_BINARY)
+    const binary = resolve(nativeCompiler())
     writeFileSync(join(root, "wiki.vibe"), corpus.source)
     writeFileSync(compiler, '#!/usr/bin/env node\nconst r=require("node:child_process").spawnSync(' + JSON.stringify(binary) + ',["--singleThreaded",...process.argv.slice(2)],{input:require("node:fs").readFileSync(0),stdio:["pipe",1,2]});process.exit(r.status ?? 1)\n', { mode: 0o755 })
     assert.throws(() => runtimeEdges(corpus.source, "wiki.vibe", undefined, compiler, root), error =>

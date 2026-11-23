@@ -45,7 +45,7 @@ var patternBlockSiblings = map[string][2]string{
 	"uninterruptible": {`uninterruptible { try load(5) }`, ""},
 	"interruptible":   {`interruptible { try load(5) }`, ""},
 	"restore":         {`uninterruptible { restore { try load(5) } }`, ""},
-	"effect-lambda":   {`const h = (n: number): number!! => try.race [load(n)]`, `Effect.raceAllFirst([load(n)])`},
+	"effect-lambda":   {`const h = effect (n: number): number!! => try.race [load(n)]`, `Effect.raceAllFirst([load(n)])`},
 	"fork-loop":       {`for (let i = 0; i < 2; i++) { const f = fork load(i); try.all [load(1)] }`, `Effect.all([load(1)], { concurrency: "unbounded" })`},
 }
 

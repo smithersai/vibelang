@@ -40,9 +40,6 @@ func TestInferredFormsKeepWrittenEffectBlock(t *testing.T) {
 			t.Errorf("projection reports %d diagnostics\n%s", got, source)
 		}
 	}
-	if got := choices(`import { take } from "./host"; export function run() { return take(() => { return 1 }) }`); got != 1 {
-		t.Errorf("an unkeyworded callback keeps its form choice, got %d", got)
-	}
 }
 
 func TestEffectBlockSourceOwnership(t *testing.T) {

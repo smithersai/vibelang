@@ -28,7 +28,7 @@ import (
 // native Effect values; exit(program) is a native Effect function.
 
 func init() {
-	registry[EK2111.Code] = EK2111
+	registerDiagnostic(EK2111)
 	fileChecks = append(fileChecks, checkPrimitives)
 	ls.RegisterQuickInfoHook(primitiveQuickInfo)
 }

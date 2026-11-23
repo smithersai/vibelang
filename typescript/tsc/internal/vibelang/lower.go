@@ -46,7 +46,6 @@ type lowering struct {
 	eagerBudget  *ast.Node           // remaining budget passed between native cycle members
 	rawPlain     bool                // the original JS body used across synchronous callback boundaries
 	rawCallbacks bool                // nested callbacks of a plain cycle retain their original JS recursion
-	plain        bool                // visiting the body of a .vibe function that compiles to plain JavaScript
 	imports      []namedImport       // named imports the lowering adds, such as a @throws class
 	commonJS     bool                // the file is emitted as CommonJS, which has no import.meta (entry.go) and reads imported plain variants from the module (plain_lower.go)
 
@@ -99,9 +98,9 @@ func (tx *lowering) visit(node *ast.Node) *ast.Node {
 	// the call. Visit their complete subtree as native parameter code;
 	// nested source callables establish their own lowering context.
 	if tx.inEffect && inParameterListOf(node, enclosingFunction(node)) {
-		saved, savedPlain := tx.inEffect, tx.plain
-		tx.inEffect, tx.plain = false, false
-		defer func() { tx.inEffect, tx.plain = saved, savedPlain }()
+		saved := tx.inEffect
+		tx.inEffect = false
+		defer func() { tx.inEffect = saved }()
 	}
 
 	if cache := tx.matchPropertyCaches[node]; cache != nil {
@@ -140,12 +139,6 @@ func (tx *lowering) visitSource(node *ast.Node) *ast.Node {
 	}
 	if ast.IsForStatement(node) && ast.IsForStatement(visited) {
 		visited = tx.resetIsBindingIteration(node, visited)
-	}
-	if tx.inEffect && tx.plan.returns[node] {
-		result := tx.Factory().NewYieldExpression(tx.Factory().NewToken(ast.KindAsteriskToken), visited)
-		tx.EmitContext().SetOriginal(result, node)
-		result.Loc = node.Loc
-		return result
 	}
 	return visited
 }
@@ -233,8 +226,6 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitMaskBlock(node, maskWord(node)) // uninterruptible { ... } (primitives.go)
 	case tx.inEffect && tx.plan.scoped(node):
 		return tx.visitScoped(node)
-	case node.Kind == ast.KindCallExpression && tx.inEffect && tx.frame.handleClause != nil && tx.isClauseResume(node):
-		return tx.visitClauseResume(node)
 	case tx.plan.chainedCatches[node]:
 		// (a catch h) catch k: the outer catch runs the Effect a catch h gives.
 		f := tx.Factory()
@@ -248,8 +239,6 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitTry(node) // try e passed by name passes e (try.go)
 	case isInvocation(node) && tx.inEffect && tx.plan.trusted[node] != nil:
 		return tx.visitTrustedCall(node)
-	case isInvocation(node) && tx.plain && tx.plan.trusted[node] != nil:
-		return tx.visitTrustedPlainCall(node)
 	case tx.plan.recording[node] != "":
 		return tx.visitAcquisitionReference(node) // Effect's acquireRelease, as the runtime's (D401, scopes_lower.go)
 	case node.Kind == ast.KindPropertyAccessExpression && tx.inEffect && tx.plan.looksUp(node):
@@ -273,9 +262,7 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 	case isProvideLayer(node):
 		return nil // visitProvideBlock lowers the layer expression itself
 	case isClauseBinding(node):
-		return nil // clauseFunction binds a handle clause's parameters itself
-	case tx.inEffect && tx.frame.handleClause != nil && node.Kind == ast.KindReturnStatement && tx.isClauseResume(node.Expression()):
-		return tx.visitClauseResumeReturn(node)
+		return nil // retired handler syntax has no lowered clause bindings
 	case tx.inEffect && node.Kind == ast.KindThrowStatement:
 		return tx.visitThrowStatement(node)
 	case tx.inEffect && tx.frame.clause && node.Kind == ast.KindReturnStatement && tx.plan.tailResumeOf(node.Expression()) != nil:
@@ -603,8 +590,8 @@ func (tx *lowering) generatorFrom(node *ast.Node, parameters *ast.NodeList, body
 func (tx *lowering) loweredBody(node *ast.Node) (*ast.NodeList, *ast.Node) {
 	ec := tx.EmitContext()
 
-	saved, savedFrame, savedPlain := tx.inEffect, tx.frame, tx.plain
-	tx.inEffect, tx.plain = false, false // a generator's parameter list cannot yield
+	saved, savedFrame := tx.inEffect, tx.frame
+	tx.inEffect = false // a generator's parameter list cannot yield
 	parameters := ec.VisitParameters(node.ParameterList(), tx.Visitor())
 	tx.inEffect = true
 	tx.frame = &frame{name: sourceName(node), clause: tx.plan.resumesInTail(node)}
@@ -616,7 +603,7 @@ func (tx *lowering) loweredBody(node *ast.Node) (*ast.NodeList, *ast.Node) {
 		// the comment after the arrow would also appear inside the block.
 		body.AsBlock().Statements.Loc = core.UndefinedTextRange()
 	}
-	tx.inEffect, tx.frame, tx.plain = saved, savedFrame, savedPlain
+	tx.inEffect, tx.frame = saved, savedFrame
 	return parameters, body
 }
 

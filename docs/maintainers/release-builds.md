@@ -75,7 +75,9 @@ Windows packages and the shim before the packed-install rehearsal.
 
 Run `sh scripts/release/rehearse.sh` after packaging. It installs the tarballs
 from an isolated registry with npm, Bun and pnpm, then checks the installed
-compiler version, both formatter entry points, builds, startup and tests.
+compiler version, both formatter entry points, builds, startup and tests. It
+also checks the starter with Bun’s isolated linker and verifies the TypeScript
+shim.
 `check-app.sh <registry-url> <version>` defaults to all three managers;
 pass manager names after the version to select a subset. Every manager
 scaffolds `create-vibelang` at that version, so `verify-published.sh <version>`
@@ -107,7 +109,14 @@ in that fixture when the packager gains an import. Its smoke check must reach
 all six missing-binary diagnostics without building or staging packages;
 the generated invalid-pin controls then check the actual metadata policy.
 
-## Publisher paths in registry metadata
+## Publishing tarballs
+
+Run `sh scripts/release/publish.sh --dry-run`, then run
+`sh scripts/release/publish.sh` in a terminal. The publisher prompts for an npm
+one-time password with terminal echo disabled. For noninteractive publication,
+provide `NPM_OTP` through the environment.
+
+### Publisher paths in registry metadata
 
 `publish.sh` copies the selected tarballs to a private staging directory under
 `/tmp`, publishes those copies and removes staging on exit, including failure.

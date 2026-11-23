@@ -8,43 +8,32 @@ import (
 	"testing"
 )
 
-// TestBuiltinUncaughtContract keeps a built-in's expected failure in both
-// renderings even when its enclosing Effect function does not catch it.
-func TestBuiltinUncaughtContract(t *testing.T) {
-	source := `export function parse(text: string) { return JSON.parse(text) as { port: number } }`
-	for name, p := range map[string]Projection{"checking": Project(source, testContext), "executable": Executable(source, testContext)} {
-		t.Run(name, func(t *testing.T) {
-			if !strings.Contains(p.Text, "$trusted") || !strings.Contains(p.Text, "[SyntaxError]") {
-				t.Fatalf("missing uncaught contract:\n%s", p.Text)
-			}
-			if strings.Contains(p.Text, "parse$direct") {
-				t.Fatalf("escaping failure compiled as plain:\n%s", p.Text)
-			}
-		})
-	}
-}
-
-// TestBuiltinVIP4Contract projects a global that VIP-4's table annotates
-// beyond JSON.parse and decodeURI with its shipped failure class: "the Intl
-// locale lookups RangeError".
-func TestBuiltinVIP4Contract(t *testing.T) {
-	source := `export function locales(tag: string) { return Intl.getCanonicalLocales(tag) }`
-	for name, p := range map[string]Projection{"checking": Project(source, testContext), "executable": Executable(source, testContext)} {
-		t.Run(name, func(t *testing.T) {
-			if !strings.Contains(p.Text, "$trusted") || !strings.Contains(p.Text, "[RangeError]") {
-				t.Fatalf("missing Intl.getCanonicalLocales contract:\n%s", p.Text)
-			}
-		})
-	}
-}
-
-// TestBuiltinPlainCatch pins D54's synchronous direct entry, which a plain
-// Array.map callback must call with JavaScript exception handling (D260).
+// TestBuiltinPlainCatch runs an unmarked function, plain JavaScript (VIP-1),
+// from a plain Array.map callback: its own try/catch receives JSON.parse's
+// SyntaxError natively, with no Effect wrapper or plain-form adapter.
 func TestBuiltinPlainCatch(t *testing.T) {
 	source := `function parseOr(text: string, fallback: number) { try { return JSON.parse(text) as number } catch(e) { return fallback } } export function main() { return ["1", "{"].map((text) => parseOr(text, 0)) }`
-	p := Executable(source, testContext)
-	if !strings.Contains(p.Text, "function parseOr$direct(") || strings.Contains(p.Text, "$trustedPlain") || strings.Contains(p.Text, "$caught") {
-		t.Fatalf("plain body must retain native exceptions:\n%s", p.Text)
+	js, _, ds := Emit(source, testContext)
+	if len(ds) > 0 {
+		t.Fatalf("%v", ds)
+	}
+	for _, retired := range []string{"$gen", "$trustedPlain", "$caught", "parseOr$direct"} {
+		if strings.Contains(js, retired) {
+			t.Fatalf("plain body must stay JavaScript, found %s:\n%s", retired, js)
+		}
+	}
+	dir, _ := stockBuiltinProject(t)
+	if err := os.WriteFile(filepath.Join(dir, "main.mjs"), []byte(js+"\nconsole.log(JSON.stringify(main()))"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("node", "--no-warnings", "main.mjs")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("exec: %v\n%s\n%s", err, out, js)
+	}
+	if strings.TrimSpace(string(out)) != "[1,0]" {
+		t.Fatalf("wrong plain catch result: %s\n%s", out, js)
 	}
 }
 
@@ -167,33 +156,31 @@ func TestBuiltinContractsCase(t *testing.T) {
 	}
 }
 
-// TestBuiltinPlainCatchExceptions pins D260 for nested catches, catches
-// without a binding, and explicit throws. An
-// Effect catch still lets an unlisted exception through as a defect.
+// TestBuiltinPlainCatchExceptions runs unmarked functions, plain JavaScript
+// (VIP-1), whose try/catch handles nested catches, catches without a binding,
+// and rethrows natively: the expected SyntaxError and an unlisted TypeError
+// alike reach the catch or escape as JavaScript exceptions.
 func TestBuiltinPlainCatchExceptions(t *testing.T) {
-	source := `import { Effect } from "effect";
-export function read(text: string) { try { return JSON.parse(text) as number } catch (e) { return e.name } }
+	source := `export function read(text: string) { try { return JSON.parse(text) as number } catch (e) { return e.name } }
 export function anonymous(text: string) { try { return JSON.parse(text) as number } catch { return "fallback" } }
 export function nested(text: string) { try { try { return JSON.parse(text) as number } catch (e) { throw e } } catch (e) { return e.name } }
-export function unsafe(text: string) { try { return JSON.parse(text) as number } catch(e) { throw e } }
-export function effectful(text: string) { try { Effect.succeed(0); return JSON.parse(text) as number } catch { return "caught" } }`
+export function unsafe(text: string) { try { return JSON.parse(text) as number } catch(e) { throw e } }`
 	t.Run("exceptions", func(t *testing.T) {
 		dir, _ := stockBuiltinProject(t)
-		ctx := testContext
-		js, _, ds := Emit(source, ctx)
+		js, _, ds := Emit(source, testContext)
 		if len(ds) > 0 {
 			t.Fatalf("%v", ds)
 		}
 		runner := `
-import { Effect as Runner, Cause as RunnerCause, Exit as RunnerExit } from "effect";
-const expected = [await Runner.runPromise(read("{")), await Runner.runPromise(anonymous("{")), await Runner.runPromise(nested("{"))];
-const escaped = await Runner.runPromise(Runner.flip(unsafe("{")));
+const thrown = (f) => { try { f(); return "none" } catch (e) { return e.name } };
+const expected = [read("{"), anonymous("{"), nested("{")];
+const escaped = thrown(() => unsafe("{"));
 const original = JSON.parse;
 JSON.parse = () => { throw new TypeError("defect") };
-const caught = await Promise.all([read("{"), anonymous("{"), nested("{")].map((p) => Runner.runPromise(p)));
-const defects = await Promise.all([unsafe("{"), effectful("{")].map((p) => Runner.runPromise(Runner.exit(p))));
+const caught = [read("{"), anonymous("{"), nested("{")];
+const rethrown = thrown(() => unsafe("{"));
 JSON.parse = original;
-console.log(JSON.stringify([expected, escaped.name, caught, defects.every((e) => RunnerExit.isFailure(e) && RunnerCause.hasDies(e.cause))]));`
+console.log(JSON.stringify([expected, escaped, caught, rethrown]));`
 		if err := os.WriteFile(filepath.Join(dir, "main.mjs"), []byte(js+runner), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -203,8 +190,8 @@ console.log(JSON.stringify([expected, escaped.name, caught, defects.every((e) =>
 		if err != nil {
 			t.Fatalf("exec: %v\n%s\n%s", err, out, js)
 		}
-		if strings.TrimSpace(string(out)) != `[["SyntaxError","fallback","SyntaxError"],"SyntaxError",["TypeError","fallback","TypeError"],true]` {
-			t.Fatalf("wrong plain/Effect catch behavior: %s", out)
+		if strings.TrimSpace(string(out)) != `[["SyntaxError","fallback","SyntaxError"],"SyntaxError",["TypeError","fallback","TypeError"],"TypeError"]` {
+			t.Fatalf("wrong plain catch behavior: %s", out)
 		}
 	})
 }

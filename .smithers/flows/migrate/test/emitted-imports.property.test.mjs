@@ -16,7 +16,6 @@ const require = createRequire(join(repo, "packages/runtime/package.json"))
 const fc = require("fast-check")
 const ts = loadTypeScript([join(repo, "packages/compiler/test/eslint"), join(repo, ".smithers")])
 const compiler = join(repo, "packages/compiler/native/vibelang")
-const oracle = { skip: !process.env.VIBELANG_EMITTED_IMPORTS_ORACLE && "set VIBELANG_EMITTED_IMPORTS_ORACLE=1 (built compiler, installed Vite/Rolldown)" }
 const corpus = name => readFileSync(new URL("./corpus/foldkit-rolldown-emitted/" + name, import.meta.url), "utf8")
 const put = (root, file, text) => { mkdirSync(join(root, file, ".."), { recursive: true }); writeFileSync(join(root, file), text) }
 
@@ -99,11 +98,12 @@ test("package import type targets follow the ordinary .ts to .vibe rename while 
   } finally { f.cleanup() }
 })
 
-test("foldkit-97/98: real Rolldown and Vite's bundled config loader consume existing emitted JavaScript with unchanged oracles", oracle, async () => {
+test("foldkit-97/98: real Rolldown and Vite's bundled config loader consume existing emitted JavaScript with unchanged oracles", async () => {
   const f = fixture()
   try {
     for (const name of ["rolldown", "vite"]) symlinkSync(resolve(repo, "packages/vite/node_modules", name), join(f.root, "node_modules", name), "dir")
-    // The handed-off Foldkit minimized oracle, byte-for-byte. Only product
+    // The handed-off Foldkit minimized oracle, with its return slot in current
+    // syntax: plain Rolldown cannot parse the annotation. Only product
     // entry specifiers and package imports are wiring; no plugin is added.
     put(f.root, "bundle.mjs", corpus("bundle.mjs"))
     put(f.root, "entry.ts", corpus("entry.before.ts"))
@@ -138,7 +138,7 @@ test("foldkit-97/98: real Rolldown and Vite's bundled config loader consume exis
   } finally { f.cleanup() }
 })
 
-test("generated Unicode and nested native module paths run through exact emitted aliases without a source hook", oracle, () => {
+test("generated Unicode and nested native module paths run through exact emitted aliases without a source hook", () => {
   fc.assert(fc.property(fc.constantFrom("rule", "café", "機械", "nested/with space", "nested/λ"), stem => {
     const f = fixture({ stem })
     try {
@@ -155,7 +155,7 @@ test("generated Unicode and nested native module paths run through exact emitted
   }), { seed: 979801, numRuns: 20 })
 })
 
-test("native product import edges use the compiler tree and ignore quoted examples", oracle, () => {
+test("native product import edges use the compiler tree and ignore quoted examples", () => {
   const f = fixture()
   try {
     f.compiler = compiler
@@ -224,7 +224,7 @@ test("emitted aliases refuse compiler command overrides of the configured output
   }
 })
 
-test("native product import ranges account for non-ASCII text preceding the import", oracle, () => {
+test("native product import ranges account for non-ASCII text preceding the import", () => {
   for (const prefix of ["// café機械\n", "// 😀é\n"]) {
     const f = fixture()
     try {

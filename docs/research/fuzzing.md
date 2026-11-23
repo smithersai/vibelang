@@ -1,6 +1,8 @@
 # Fuzzing the VibeLang compiler
 
-Researched 2026-10-27; suite built 2026-10-27 and 2026-10-28. This is a snapshot; `typescript/tsc/internal/vibelangfuzz/` is the live suite.
+The current suite lives in `typescript/tsc/internal/vibelangfuzz/`. Its
+`*_test.go` files define the runnable targets. The original campaign and
+review results record the suite as it ran in October 2026.
 
 Compiled regression replays in the spec gate use the same `VIBELANG_FUZZ_HANG=120s` stage budget as the full seed suite, so emitted-output checks retain their normal allowance on a busy host.
 
@@ -14,7 +16,7 @@ Contextual-keyword witnesses construct each value reference before embedding it 
 
 Each `FuzzDataSpecRules` row names the diagnostic it expects. A bare code permits one or more occurrences of that code and rejects every other error; `only:` pins the complete multiset and its counts. An empty code requires acceptance. Rule names are unique, so each keyed seed selects one rule.
 
-`FuzzDoDeclarationIdentity` and `FuzzDoContextualResult` compare declaration API identity under Chapter 1, including the permitted generated `@throws {never}` addition. Their `api:` finding keys describe that comparison. `FuzzDeclarationNativeImporter` separately compares inferred import specifiers exactly, including their extensions. `FuzzDeclarationStyleRules` checks one `EK3011` warning per configured retired option and unchanged declaration output under both configuration paths.
+`FuzzDoDeclarationIdentity` and `FuzzDoContextualResult` compare declaration API identityChapter 1, including the permitted generated `@throws {never}` addition. Their `api:` finding keys describe that comparison. `FuzzDeclarationNativeImporter` separately compares inferred import specifiers exactly, including their extensions. `FuzzDeclarationStyleRules` checks one `EK3011` warning per configured retired option and unchanged declaration outputboth configuration paths.
 
 Declaration-order seeds use inferred returns and must emit all three functions before comparing them. Editor token-navigation seeds check that returned spans stay within the source, touching spans contain the requested offset, and preceding spans begin at or before it. Stock-only API-preflight controls are table tests, not compiler fuzz campaigns.
 
@@ -68,48 +70,6 @@ The `FuzzEffectGlobals` clash inputs cover direct values, type queries, object s
 
 `FuzzCatchExecutionHead` quotes VIP-5 and pairs each execution head with an actual source-parentheses barrier. Its keyed corpus covers erased wrappers and unary/binary paths with both scalar and Effect-valued results, so operand-type errors cannot hide `EK0505`. Existing keys retain their Effect-valued inputs; `scalar:` keys select the additional result family.
 
-## Quick-fix behavior oracle
-
-`FuzzQuickFixBehavior` reads the EK inventory from the compiler's registered
-code-fix providers. `TestQuickFixBehaviorRegistry` fails when any registered
-code has no keyed generator; its knockout test removes a real generator and
-introduces an unknown code to prove the gate detects both. Retained providers
-remain visible in the inventory even when their diagnostics are no longer
-emitted. A missing trigger is reported as coverage debt, never as a successful
-repair. Error-recovery output is not a runnable reference: a generator that
-needs a native twin records that debt instead of treating the invalid emit as
-a behavioral pass. Some rejected legacy spellings have hand-written admitted
-references for the same specification rule. Coverage labels those comparisons
-as `golden`, separately from executable before-source comparisons and native
-TypeScript twins.
-
-The target runs the CLI and each editor action from independent original
-snapshots. Applied edits must retain comments and pass stock TypeScript
-`5.9.3` assignments between the two emitted APIs in both directions. A
-JavaScript adapter shares the existing Node worker and outcome comparator:
-it observes ordinary returns, awaited Promise results, every generated
-iterator step including its completion value, thrown values, Effect exits,
-and a generator-owned `traceOf` before the call, after the call and after
-execution. Knockout controls change each observable to prove it is seen.
-
-Refused-site fixtures protect a generator-owned source span until the CLI's
-original-source refusal ranges are available. The CLI checks the span's
-bytes; editor checks additionally reject every overlapping edit, including
-an edit replacing a byte with itself. Changes elsewhere in the same file
-may move the protected span. Files whose bytes do not change must keep their
-mtime, and a second `--fix` must change neither bytes nor mtimes.
-
-The short seed run replays the generator-completion witness;
-the plain registry test checks every generator on every run. Full runs also
-replay CRLF and astral-comment trivia for every registered code. The stored
-`registry-EKxxxx` inputs name both the code and its census case. Short runs
-report the larger registry, alias and mixed-refusal replays as skipped; they are not behavioral
-passes. Set `VIBELANG_FUZZ_SEEDS=all` or omit `-short` to replay every registered
-code, including its exact pending witnesses. Keyed corpus files preserve the opencode generator
-return and refused-write witnesses, mixed applied/refused sites, and the
-schema and Effect alias API neighborhoods. Pending gaps name their specific
-oracle and owner; they do not count as behavioral passes.
-
 ## Missing-runtime package oracle
 
 `FuzzMissingRuntimeDependency` follows the conditional rule quoted from
@@ -154,9 +114,9 @@ interface collisions, declaration order, and native TypeScript controls.
 
 The registry and default severity oracle reads [Appendix B](../design/src/900-appendices.md#appendix-b-diagnostics), plus VibeLang’s own warning table in [Configuration and tooling](../design/src/007-tooling.md). A rule starting with `warning` or `lint warning` is a warning; other language rules are errors. Only those warnings and imported `EK38xx` codes are configurable through `vibe.severities`. Reused numbers are current rules, not retired codes.
 
-Appendix B's generated imported lint table states each `EK38xx` code and its default severity, and those rows are the whole imported registry. The repository's Effect language-service configuration can override a default, so a project that sets one is exempt from the default check. Historical warning counts, lint ranges, mixed defaults, tracing options and `--fix` code ranges are no longer diagnostic facts. The retired injection targets remain retired; their retained witnesses cite current chapters.
+Appendix B's generated imported lint table states each `EK38xx` code and its default severity, and those rows are the whole imported registry. The repository's Effect language-service configuration can override a default, so a project that sets one is exempt from the default check. Historical warning counts, lint ranges, mixed defaults and tracing options are no longer diagnostic facts. Active static checks cite current chapters.
 
-An emitted code missing from the current registry fails under `registry:EKxxxx`; an assigned code with the wrong default or configuration behavior fails under `ek:EKxxxx`. Appendix B's transitional inventory registers the interim `EK92xx` codes with the category their row states; they are not language rules, so no `vibe.severities` entry admits them. A `registry:` pending key becomes dead when the specification assigns its number, and an `ek:` key becomes dead when it no longer does. Neither can preserve a historical registry fact. Every registered code must state a category; an unknown default never accepts a reported category. Configured `suggestion` severities are checked as suggestions.
+An emitted code missing from the current registry fails`registry:EKxxxx`; an assigned code with the wrong default or configuration behavior fails`ek:EKxxxx`. Appendix B's transitional inventory registers the interim `EK92xx` codes with the category their row states; they are not language rules, so no `vibe.severities` entry admits them. A `registry:` pending key becomes dead when the specification assigns its number, and an `ek:` key becomes dead when it no longer does. Neither can preserve a historical registry fact. Every registered code must state a category; an unknown default never accepts a reported category. Configured `suggestion` severities are checked as suggestions.
 
 The Appendix B registry distinguishes VibeLang rules from imported lint rules. VibeLang-specific diagnostics stay on `.vibe` sources and configuration diagnostics keep their JSON/global scope; imported `EK38xx` rules retain VIP-38’s upstream eligibility on selected `.ts` and `.vibe` inputs. `TestImportedDiagnosticScope` checks every assigned imported code in both kinds of source, with language-only, unknown-code, configuration and default-category controls. The `effect-lint-scope-*` Compile corpus varies calls, values and bindings with the plugin enabled.
 
@@ -164,31 +124,21 @@ Contextual defaults are read from the diagnostic's Appendix B row. A row that ex
 
 The registry-debt corpus names the unassigned diagnostic it must still reach. `EK1001` uses a module-level throw; `EK4602` and `EK4603` use ordinary function bodies, independently of native top-level `await`. `TestRegistryDebtWitnessIdentity` verifies these receipts so another known violation cannot mask a stale witness. These inventory checks never admit an unassigned diagnostic into the current registry.
 
-`FuzzFix` keeps its general safety, meaning and second-run checks against the current tooling chapter, which now states that one `vibelang --fix` run reaches a fixed point. The historical per-code completion and refusal oracle was removed; its corpus inputs remain.
-
-`FuzzFixGate` compares batched fixes with one-at-a-time checks. Its `cross` and `hidden` fixtures use explicit `effect function` and `try` so rewriting a running `Effect.succeed("fast")` can narrow an exported array and add an error in another file. `TestFixGateRefusalWitnesses` requires an `EK4834` refusal naming that consumer for each fixture, at three project positions, in both gate modes. The `hidden` consumer reads the `Effect` return type through an import type; the `cross` consumer runs the imported function. Keyed corpus inputs keep both paths active independently of other refusal fixtures.
-
 Stock baseline commands keep each compiler's tuning separate. Native TypeScript receives `--singleThreaded`, `GOGC=off`, and `GOMEMLIMIT=1GiB`; the JavaScript TypeScript baseline receives only its supported compiler options. The regression runs both compilers on valid programs and checks retained `TS2322` errors. The alchemy union/pipe corpus checks diagnostics, spans, and emitted output.
 
 Declaration comparisons skip an ineligible stock baseline only when `tsc` prints a TypeScript error diagnostic. A launcher or runtime failure instead fails the test with the process output, so broken tooling cannot make `FuzzDeclarationIdentity` or `FuzzErrorDeclarationTwin` silently pass.
 
-HTTP handler migration fixtures load `dom` alongside `esnext`, because their public declarations use `Request` and `Response`. `FuzzHttpHandlerDeclarations` replays both the original and repaired examples under the strict native and stock consumers, including renamed exports and CRLF source. Its keyed corpus retains the minimized web-handler pattern independently of the changing case sample.
+HTTP handler migration fixtures load `dom` alongside `esnext`, because their public declarations use `Request` and `Response`. `FuzzHttpHandlerDeclarations` replays both the original and repaired examplesthe strict native and stock consumers, including renamed exports and CRLF source. Its keyed corpus retains the minimized web-handler pattern independently of the changing case sample.
 
-The declaration consumer runs independently of diagnostic, JavaScript and source-map gaps. Only an invalid declaration's own output check omits that declaration. Both consumers report every error under its TypeScript code and enclosing declaration; a pending first error cannot hide a later error. The stock consumer excludes package and supplied declaration files by the diagnostic's file location, never by a package path quoted in its message.
+The declaration consumer runs independently of diagnostic, JavaScript and source-map gaps. Only an invalid declaration's own output check omits that declaration. Both consumers report every errorits TypeScript code and enclosing declaration; a pending first error cannot hide a later error. The stock consumer excludes package and supplied declaration files by the diagnostic's file location, never by a package path quoted in its message.
 
-The stock TypeScript declaration consumer keeps the producer's native module and resolution policy. A package selecting extensionless declaration imports for a bundler is checked with bundler resolution; native `NodeNext` and `Node16` consumers keep their own explicit-extension checks. A keyed resolution target covers both policies and TypeScript-extension imports. Native JSX output imports are attributed to their written `.tsx` source under `preserve` and `react-native`; unrelated source suffixes and ordinary string literals do not authorize `.jsx` imports.
-
-Contextual `Effect.fn` factory repairs are positive declaration-identity checks, including named and unnamed wrappers in `satisfies`, returned and generic factories. Keyed mutations retain import aliases, documentation and CRLF line endings; a changed-requirements control must still fail the API comparison. The minimized factory remains in the corpus after its resolved pending records are removed.
-
-The generator defect-bridge scan includes foreign `new` expressions without changing the general call classifier. Direct, member and aliased constructor regressions require a preserving repair; constructor operands containing `yield*` or direct `eval` retain their manual boundary. The existing constructor corpus also checks exact thrown-object identity, inferred contracts and second-pass stability.
-
-The sections below record the original suite design and campaign history, including rules that accepted VIPs have since replaced.
+The stock TypeScript declaration consumer keeps the producer's native module and resolution policy. A package selecting extensionless declaration imports for a bundler is checked with bundler resolution; native `NodeNext` and `Node16` consumers keep their own explicit-extension checks. A keyed resolution target covers both policies and TypeScript-extension imports. Native JSX output imports are attributed to their written `.tsx` source`preserve` and `react-native`; unrelated source suffixes and ordinary string literals do not authorize `.jsx` imports.
 
 ## Summary
 
 Fuzz VibeLang with Go's native fuzzer, and take every oracle from the specification.
 
-The compiler is a Go fork of TypeScript 7, so the engine is `go test -fuzz`: coverage-guided, in-process, with failing inputs kept as regression tests in `testdata/fuzz/`. The engine is the easy part. Compiler-fuzzing research finds bugs through oracles: a program the generator knows is valid must compile, two programs the specification calls equivalent must behave the same, and a program with one injected rule violation must draw exactly the diagnostic the specification assigns. `internal/vibelangfuzz` implements those oracles in the targets below, reads its facts from `docs/design/src` at test time, and records each place the specification is ahead of the compiler as a pending gap instead of encoding today's behavior.
+The compiler is a Go fork of TypeScript 7, so the engine is `go test -fuzz`: coverage-guided, in-process, with failing inputs kept as regression tests in `testdata/fuzz/`. The engine is the easy part. Compiler-fuzzing research finds bugs through oracles: a program the generator knows is valid must compile, two programs the specification calls equivalent must behave the same, and a program with one injected rule violation must draw exactly the diagnostic the specification assigns. `internal/vibelangfuzz` implements those oracles, reads its facts from `docs/design/src` at test time, and records each place the specification is ahead of the compiler as a pending gap instead of encoding today's behavior.
 
 ## Check claim aliases before starting a fix
 
@@ -229,7 +179,10 @@ including an Effect value that remains unrun, as Chapter 2 specifies.
 
 `FuzzMigrationSourceChildLint` checks stored target requirements for generated launcher imports and comments independently. Its fixture models those requirements rather than importing the target application’s plugin; a pending namespace finding cannot excuse a comment finding. The migration reference properties also check reference-free projects beside unrelated vendored configurations and preserve genuine missing-reference failures before any output is cleared.
 
-The complete short corpus has a 40-minute test deadline. The graph target `//:go-vibelangfuzz` adds 25 minutes for admission and compilation, so its task deadline cannot cancel a test that still has time left. The per-process hang watchdog stays at 120 seconds.
+Allow 40 minutes for a direct run of the complete short corpus as shown
+below. The graph suite `//:go-vibelangfuzz` runs independent seed shards
+and support-package targets. Each sets an eight-minute Go test timeout and
+a ten-minute graph deadline. The per-process hang watchdog is 120 seconds.
 
 ```sh
 cd typescript/tsc
@@ -240,7 +193,7 @@ VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s go test -short -count=1 -p 8 -ti
 
 | Tool | Engine | Status | Use it for |
 | --- | --- | --- | --- |
-| [fast-check](https://github.com/dubzzz/fast-check) | Property-based: typed generators, shrinking to a minimal counterexample | Maintained; runs under Jest, Vitest, Mocha, AVA, `bun test` | Invariants of TypeScript logic: round trips, idempotence, model equivalence |
+| [fast-check](https://github.com/dubzzz/fast-check) | Property-based: typed generators, shrinking to a minimal counterexample | Maintained; runsJest, Vitest, Mocha, AVA, `bun test` | Invariants of TypeScript logic: round trips, idempotence, model equivalence |
 | [Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) | Coverage-guided, in-process, libFuzzer | Its maintainers stopped open-source maintenance; the product moved to commercial CI Fuzz | Not for new work |
 | jsfuzz | Coverage-guided JavaScript fuzzer | GitLab's own issue reports it could not fuzz TypeScript except as compiled JavaScript | Not for new work |
 
@@ -276,50 +229,42 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 ## The suite
 
 ```
-             generator bytes        mutated cases, snippets, archives
-                   │                              │
-        ┌──────────▼──────────┐        ┌──────────▼──────────┐
-        │ specgen: valid      │        │ 750 acceptance cases │
-        │ programs over 48    │        │ ~700 doc snippets    │
-        │ Part I features     │        │ 227 rule injections  │
-        └──────────┬──────────┘        └──────────┬──────────┘
-                   │  .vibe + Effect TS print     │
-                   ▼                              ▼
-   parse ─► check ─► diagnostics ─► emit JS, .d.ts, maps ─► run on Node
-     │        │           │                 │                  │
- FuzzParse  FuzzSpec   FuzzSpecRules     FuzzCompile      FuzzSpecPrograms
-            Programs   FuzzSpecAllowed   FuzzTypeScript-  FuzzSpecVariants
-                       FuzzConfig        Parity           FuzzFix (outcome)
-                                      FuzzDeclarationIdentity
-   tools: FuzzFormat (vibelangfmt) · FuzzFix (--fix) · FuzzEditor (LSP) · FuzzIncremental (edits)
-   the binary: FuzzCommandLine (every flag, --lsp, --api, --estree, --fix, --watch)
+    generated programs, project archives, saved corpus
+                          │
+     parse ─► check ─► diagnostics ─► emit ─► run on Node
+       │        │           │           │           │
+   FuzzParse    └── FuzzCompile ────────┘     FuzzVIPDifferential
+                        │               FuzzDeclarationIdentity
+                     FuzzConfig         FuzzTypeScriptParity
+   tools: FuzzFormat (formatter) · FuzzEditor (LSP) · FuzzIncremental (edits)
+   CLI: FuzzCommandLine
 ```
 
 | Target | Input | Oracles, each from the specification |
 | --- | --- | --- |
 | `FuzzCurrentDiagnosticPolicy` | Keyed Fiber/Deferred await advisories, category and override bytes | Current Appendix B warning defaults and warning overrides (VIP-5, VIP-30, VIP-34); fixed language errors cannot be downgraded. A direct acceptance-case replay prevents sampling from hiding the configured-warning witness. |
 | `FuzzDiagnosticSeverityScope` | Keyed Fiber/Deferred/fixed-error codes, category and own/unrelated setting bytes | VIP-30 entry-by-code overrides, exact configured categories, and unchanged defaults for other codes. |
-| `FuzzCompile` | Archive of a project, seeded with the cases and snippets | No panic or hang. Every `EK` code has a current Appendix B, tooling-warning or accepted VIP assignment and is not retired. Current tables determine default categories and configurability. Each code follows its own effective `vibe.severities` entry, including inheritance; unrelated codes keep their defaults. Parsed legacy `vibelang.diagnostics` entries also apply per code, with modern settings taking precedence; invalid legacy entries leave defaults in force. VibeLang-specific codes occur only in `.vibe` sources; imported `EK38xx` rules retain upstream eligibility in selected `.ts` and `.vibe` inputs (VIP-38). Configuration diagnostics retain their JSON/global scope. Spans inside their files. Same result on a fresh compilation, in reverse file order, and emitting first. With no error: emitted JavaScript parses; it imports only effect, the runtime, written specifiers, module files and an entry's platform package (Chapter 27, D365, D403, D312); runtime helpers exist; source maps are version 3, stay inside the source and map each emitted statement into its statement (D34); every requested output exists; `.d.ts` files parse, and a consumer that calls every export type-checks under the fork and under stock TypeScript (D366); runtime helpers are the runtime's executable exports |
+| `FuzzCompile` | Archive of a project, seeded with the cases and snippets | No panic or hang. Every `EK` code has a current Appendix B, tooling-warning or accepted VIP assignment and is not retired. Current tables determine default categories and configurability. Each code follows its own effective `vibe.severities` entry, including inheritance; unrelated codes keep their defaults. Parsed legacy `vibelang.diagnostics` entries also apply per code, with modern settings taking precedence; invalid legacy entries leave defaults in force. VibeLang-specific codes occur only in `.vibe` sources; imported `EK38xx` rules retain upstream eligibility in selected `.ts` and `.vibe` inputs (VIP-38). Configuration diagnostics retain their JSON/global scope. Spans inside their files. Same result on a fresh compilation, in reverse file order, and emitting first. With no error: emitted JavaScript parses; it imports only effect, the runtime, written specifiers, module files and an entry's platform package (Chapter 27, D365, D403, D312); runtime helpers exist; source maps are version 3, stay inside the source and map each emitted statement into its statement (D34); every requested output exists; `.d.ts` files parse, and a consumer that calls every export type-checksthe fork andstock TypeScript (D366); runtime helpers are the runtime's executable exports |
 | `FuzzSourceMapTokens` | Archive of a project and a text variant (plain, CRLF, BOM, astral, U+2028, U+2029), seeded with generated programs, cases and snippets | Reads both ends of each map with arithmetic of its own: maps are sorted and in range, `sourcesContent` is the text, and a token emit keeps reads back as itself (`docs/maintainers/source-maps.md`). `FuzzEmitSourceMap`, in `internal/vibelangmapper`, holds `Emit`'s map to the same bounds |
 | `FuzzParse` | One text, parsed as `.vibe`, `.ts`, `.tsx`, `.d.ts` | No panic; well-formed tree; deterministic; ESTree output is JSON with ranges inside the text (Chapter 28 Linting, D277) |
 | `FuzzConfig` | A `vibe` settings object and a source | Invalid keys and values draw the current configuration diagnostic; `sidecarDir` accepts directory strings and rejects other JSON types; a valid severity sets a warning or imported `EK38xx` code; a non-adjustable or unknown code draws `EK3006`; `suggestion` is language-server-only (Appendix B; Configuration and tooling, rule 6) |
 | `FuzzTypeScriptParity` | A `.ts`-only project | Same diagnostics, with complete spans, JavaScript, declarations and maps as stock TypeScript 7.1.0-beta (D266) |
 | `FuzzPreludeGlobalMember` | Keyed DOM, Worker-host and ambient-class globals and member names; Alchemy Response.json corpus | Chapter 5 rule 3: a bare web-global name resolves to Effect’s module; a missing member names `globalThis` only when that member exists there, and host Worker access stays platform code. |
 | `FuzzDeclarationIdentity` | The parity projects with `.ts` sources renamed to `.vibe`, plus saved corpus | For a valid stock project with no `.vibe` error diagnostic: declarations equal stock TypeScript 7.1.0-beta after the migrate identity gate canonicalizes them (Chapter 1, Declaration output; intro principle 4). Importers retain `./x.js` (D298). The Go harness calls `.smithers/flows/migrate/lib/declarations.mjs` through Node using the TypeScript 5.9.3 JS API in `$EFFECT_NODE_MODULES/typescript` |
-| `FuzzDeclarationOrder` | Plain functions returning object unions, contract comments, line endings and quoted declaration text | Chapter 1 declaration identity under function-order changes. Parsed function boundaries retain each function’s own `@throws` comment, overloads and return type; another declaration’s comments and string literals cannot create differences. |
-| `FuzzEffectFnParameterDeclaration` | Named and untraced `Effect.fn` functions with readonly, branded, structural, union, tuple, generic and callback parameters; unannotated parameters, defaulted or bare, which the native tuple types as `any`, including before a stage; keyed branded aliases, arrays and unions | Chapter 1 API identity and Chapter 7 preservation: compare exported types and documentation with the native Effect TypeScript twin through the API identity gate; equivalent alias spellings remain valid |
-| `FuzzForeignThunkDefectBridge` | A TypeScript function passed straight to `Effect.promise` or `Effect.sync`: async and promise-returning declarations, `const` arrows, signal-taking and optional-parameter callees that return, throw a primitive, a marker object or an `Error`, in each `--fix` scope | Chapter 3 thunk admission and Chapter 7 preservation: `--fix` writes the defect bridge, which compiles cleanly, keeps the stock twin's declaration and its exact `Exit`, and is stable under a second fix |
+| `FuzzDeclarationOrder` | Plain functions returning object unions, contract comments, line endings and quoted declaration text | Chapter 1 declaration identityfunction-order changes. Parsed function boundaries retain each function’s own `@throws` comment, overloads and return type; another declaration’s comments and string literals cannot create differences. |
+| `FuzzEffectFnParameterDeclaration` | Retired | Historical target. |
+| `FuzzForeignThunkDefectBridge` | Retired | Historical target. |
 | `FuzzErrorDeclarationTwin` | An `error` or `schema error` declaration: up to four fields, each optional or not, a getter, a method, and braces on a fieldless one; keyed `error-twin:id;count?;getter` | Its declarations equal those stock TypeScript 7.1.0-beta writes for the `Data.TaggedError` class Chapter 3 says it declares exactly, with no type argument when it has no fields, after the migrate identity gate canonicalizes both (Chapter 3, Meaning; Chapter 1, Declaration output). Corpus `alchemy-fieldless-tagged-error`: alchemy's 171 `Data.TaggedError("X") {}` classes |
 | `FuzzSchemaErrorEffectKeys` | Nested struct, optional, array and tuple fields with string, number or symbol keys that run Effects; plain-schema controls | Chapter 2 evaluates an `extends` expression in its enclosing Effect code, and Chapter 3 maps schema-error fields as schema fields. Every well-typed key must compile. Keyed corpus and precise pending entries retain the known class-boundary gap. |
-| `FuzzErrorMigrationDeclarationBytes` | Bare and explicit empty `Data.TaggedError` payloads, up to four fields, optional fields; keyed `error-twin:braces` | Declaration bytes before and after `--fix` equal stock TypeScript output (Chapter 7, safe quick fixes; detail 273). Corpus `foldkit-fieldless-error-explicit-empty-payload` preserves the written `<{}>` |
-| `FuzzReviewColdConsole` | Host console value, member, optional, alias and destructuring forms at three homes, local-shadow and Effect.log controls (loop r5 ASTRA-3; spec owner sl5-apply) | Chapters 2 and 5 on platform globals: console references in cold code follow the global-ban and shadowing rules |
-| `FuzzMigrationMemberComments` | 48 source-bearing corpora, first, later, readonly and default members, class and interface controls, four stock TypeScript JSDoc consumers (alchemy-33; owner migfix-alchemy) | Chapter 1 Declaration output: declaration emit carries member JSDoc as the Effect counterpart's emit does |
-| `FuzzMigrationServiceImports` | Root and subpath Context imports across four field shapes, written and default readonly (alchemy-4, foldkit-37; owner migfix-alchemy) | Chapter 1 Declaration output: a service declaration imports Context exactly as idiomatic Effect TypeScript declares it |
-| `FuzzMigrationFunctionResources` | Three success function types, three factory homes, four operations, the foldkit cleanup source (foldkit-15; owner core-land) | Chapter 1 function kinds: a plain function's resource calls keep ordinary JavaScript evaluation and the function stays plain |
-| `FuzzMigrationAssertedCold` | Object, array and nested values in arrow, function and method homes; the foldkit source byte for byte (foldkit-2; owner core-land) | Chapter 1 function kinds and VIP-1: casts, satisfies and parentheses around a plain function's value do not change its kind |
-| `FuzzReviewProducerScope` | Inferred, written, effect and foreign producers with scope or finalizer use and a service (loop r1 ASTRA-3; owners sl1-apply, core-land) | Chapter 2 Producers: a producer's scope or finalizer requirement matches its written contract |
-| `FuzzMigrationSeverityIsolation` | 34 keyed configurations by code, category and direct or extended config (foldkit-14; product f58798560fe7) | Chapter 7 and VIP-34: VibeLang lint severities come from vibe.severities independently of the Effect lint table |
-| `FuzzMigrationEffectBlockLint` | Nested, bare, effect-arrow and ordinary-arrow-inside forms at depths 0 to 3 (alchemy-27; owner migfix-alchemy) | Chapter 7 and VIP-13: the effect-block lint and its safe quick fix apply to every EffectBlock form |
+| `FuzzErrorMigrationDeclarationBytes` | Retired | Historical target. |
+| `FuzzReviewColdConsole` | Host console value, member, optional, alias and destructuring forms at three homes, local-shadow and Effect.log controls | Chapters 2 and 5 on platform globals: console references in cold code follow the global-ban and shadowing rules |
+| `FuzzMigrationMemberComments` | 48 source-bearing corpora, first, later, readonly and default members, class and interface controls, four stock TypeScript JSDoc consumers | Chapter 1 Declaration output: declaration emit carries member JSDoc as the Effect counterpart's emit does |
+| `FuzzMigrationServiceImports` | Root and subpath Context imports across four field shapes, written and default readonly | Chapter 1 Declaration output: a service declaration imports Context exactly as idiomatic Effect TypeScript declares it |
+| `FuzzMigrationFunctionResources` | Three success function types, three factory homes, four operations, the foldkit cleanup source | Chapter 1 function kinds: a plain function's resource calls keep ordinary JavaScript evaluation and the function stays plain |
+| `FuzzMigrationAssertedCold` | Object, array and nested values in arrow, function and method homes; the foldkit source byte for byte | Chapter 1 function kinds and VIP-1: casts, satisfies and parentheses around a plain function's value do not change its kind |
+| `FuzzReviewProducerScope` | Inferred, written, effect and foreign producers with scope or finalizer use and a service | Chapter 2 Producers: a producer's scope or finalizer requirement matches its written contract |
+| `FuzzMigrationSeverityIsolation` | 34 keyed configurations by code, category and direct or extended config | Chapter 7 and VIP-34: VibeLang lint severities come from vibe.severities independently of the Effect lint table |
+| `FuzzMigrationEffectBlockLint` | Nested, bare, effect-arrow and ordinary-arrow-inside forms at depths 0 to 3 | Chapter 7 and VIP-13: the effect-block lint  apply to every EffectBlock form |
 | `FuzzPreludeImportShadow` | Seven import/local forms, six prelude names, source/output extension spellings, and the minimized `opencode` source | Chapter 5 binding shadowing; native TypeScript control and `node --check` of emitted JavaScript |
 | `FuzzPreludeModuleClash` | `Headers`, `Response`, `Event` or `Worker` in a value read, `new Name()`, a type position, a public signature, or shadowed by a local class; keyed `clash:<name>:<position>` | The .vibe program reports the same error codes as its counterpart with the module imported from its subpath, or with no import where the bare name is the DOM type (Chapter 5: precedence applies per meaning; bare `Worker` is `effect/workers`, detail 76) |
 | `FuzzVibexNativeParity` | Nine ordinary TSX forms across missing/preserve/react-native/react JSX settings; keyed source/options corpus | VIP-39 requires native JSX diagnostics, output suffixes and preservation. Covers round 4 options, scanner, throw-expression and emit findings; quote gate `TestVibexNativeParityQuoted`. |
@@ -328,13 +273,13 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzPlainMatchKinds` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestPlainMatchKindsQuoted`; migration and review neighbourhoods |
 | `FuzzTopLevelAwait` | Twelve keyed module-level forms with native TypeScript controls; all corpus files retained | VIP-26 quote checked by `TestTopLevelAwaitVIPQuoted`; `TestTopLevelAwait` retains the parser witnesses. Resolved Promise forms are strict checks; the separate module-level `for await` gap remains pending for `migfix-foldkit`. |
 | `FuzzEffectGlobals` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestEffectGlobalsQuoted`; migration and review neighbourhoods |
-| `FuzzLegacyHatchTypes` | Keyed local, alias, parameter, property, imported, instantiated and factory-return annotations | VIP-6/VIP-34; exact JavaScript and declaration reference, owned edits and idempotence |
+| `FuzzLegacyHatchTypes` | Retired | Historical target. |
 | `TestSidecarEntryGlobsQuoted` | Expanded bundler entry globs retain source entries and exclude declaration sidecars; actual fast-glob and Rolldown integration, keyed Alchemy witness. |
-| `FuzzReviewIsStatementHomes` | Keyed lexical-home and leak-control matrices | Chapter 4 scope quotes checked by `TestReviewIsStatementHomesQuoted` |
+| `FuzzReviewIsStatementHomes` | Retired | Historical target. |
 | `FuzzReviewIsRedeclarations` | Keyed lexical-home and leak-control matrices | Chapter 4 scope quotes checked by `TestReviewIsRedeclarationsQuoted` |
 | `FuzzReviewIsBindingHomes` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestReviewIsBindingHomesQuoted`; migration and review neighbourhoods |
 | `FuzzEffectBlockDeclarationTwin` | An `effect { … }` block as a default export, a named constant, a default or named `effect` arrow, a default `effect function`, or nested in another block, with a body that sleeps, returns a value, throws a typed failure or returns an object, naming `Effect` through the prelude or an explicit import; keyed `block-twin:<export>:<body>:<imports>` | Its declarations equal those stock tsc writes for the `Effect.gen(function* () { … })` twin Chapter 2 names, after the migrate identity gate canonicalizes both (Chapter 2, `effect` blocks, Meaning; Chapter 1, Declaration output). t3code: `export default effect { … }` declared a function returning void |
-| `FuzzMatchBindingHomes` | A Chapter 4 Typing-table pattern (`Exit.Success`, `Exit.Failure`, `Option.Some`, `Result.Success`/`Failure`, an `error` class, a discriminated object, a tuple, a nested fixed pattern, `Cause.TimeoutError`) in a function, arrow or method, under `strict` plus `noUncheckedIndexedAccess` and/or `exactOptionalPropertyTypes`; keyed `binding:<pattern>:<home>:<options>`, and `literal:smithers-exit-success-binding` for the smithers source | The arm returns the binding as the table's type, so the program compiles without errors whatever the options, after its TypeScript counterpart compiles as the control (Chapter 4, Typing: a `let` binding has the type TypeScript gives the value it is bound to in the counterpart; detail 79) |
+| `FuzzMatchBindingHomes` | A Chapter 4 Typing-table pattern (`Exit.Success`, `Exit.Failure`, `Option.Some`, `Result.Success`/`Failure`, an `error` class, a discriminated object, a tuple, a nested fixed pattern, `Cause.TimeoutError`) in a function, arrow or method,`strict` plus `noUncheckedIndexedAccess` and/or `exactOptionalPropertyTypes`; keyed `binding:<pattern>:<home>:<options>`, and `literal:smithers-exit-success-binding` for the smithers source | The arm returns the binding as the table's type, so the program compiles without errors whatever the options, after its TypeScript counterpart compiles as the control (Chapter 4, Typing: a `let` binding has the type TypeScript gives the value it is bound to in the counterpart; detail 79) |
 | `FuzzMatchOpenSubject` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestMatchOpenSubjectQuoted`; migration and review neighbourhoods |
 | `FuzzTrailingBlockBoundaries` | Recognized Effect/mask/match/declaration blocks and dotted native namespaces remain admitted beside the legacy trailing-block rejection; whitespace/comment and lexical-block neighbours. |
 | `FuzzSchemaMappedBinding` | Library, local, imported and qualified generic type names, plus value-only shadows | Chapter 6 and VIP-15: a schema reference needs a decoder; a shadowed type name cannot silently select a library mapping |
@@ -345,57 +290,29 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzAlchemyUnionPipeRequirements` | Alchemy union/pipe inferred service requirements, parameter/provider renames; same diagnostics, spans and output as stock TypeScript, with precise known-gap markers. |
 | `FuzzModuleMetadataBounds` | VIP-33 module metadata: direct `.url` access, forbidden host/Vite members, aliases, computed reads, arguments and spreads across module/function/arrow/effect-function homes. Native TypeScript controls and Foldkit directory/glob/config/entry corpus. |
 | `FuzzVibexDeclarationSpelling` | Default public declarations over JSX output modes, import/reexport/import-type forms and quotes, byte comparison with the specified native `.tsx` twin. Nondefault declaration-style mappings await their own rule. |
-| `TestPlatformBoundaryContractsQuoted` | Platform splitting retains file-scoped pragmas, schema value bindings and initializer order; real compiler controls and keyed T3code witnesses. |
+| `TestPlatformBoundaryContractsQuoted` | Retired | Historical target. |
 | `TestSidecarStyleScopeQuoted` | Actual native sidecar/package emits over all declaration styles and stock TypeScript consumers, with malformed-reference and wrong-field-type controls. |
 | `FuzzPlatformBoundaryHomes` | 72 keyed platform accesses across function, arrow, async and Effect-wrapper homes, static member spellings and local shadows | VIP-33 requires `EK4402` for resolved platform access in every home; native TypeScript and local bindings remain controls |
-| `FuzzPlatformCallSplit` | 23 keyed `<shape>:<wrapper>` inputs: `Buffer.from` and `process` reads on a file binding inside `Effect.try` (options and thunk), `tryPromise` and `sync`, on fuzzed bytes; t3code Desktop ElectronSafeStorage and SafariCookies corpus | Chapter 5's EK4402 row: `--fix` moves the platform code to a new sibling `.ts` module; the fixed program has no error and runs as its native `.ts` twin |
+| `FuzzPlatformCallSplit` | Retired | Historical target. |
 | `FuzzServiceNativeMemberTypes` | Omitted and explicit member types, optional methods/properties and member-local generics across loose, strict and explicit noImplicitAny overrides | Chapter 5 native PropertySignature/MethodSignature rules, VIP-9 and detail 276; independent TypeScript controls retain TS7010/TS7008 rather than an Effect-only prohibition |
 | `FuzzPlatformConstructorBindings` | Twelve DOM constructors and pure web helpers across capture, `new`, `instanceof` and local-shadow bindings; 72 keyed inputs | VIP-33 resolved host-library declarations and the checked Chapter 5 inventory classify every binding; native TypeScript is an independent syntax/type control |
-| `FuzzTopLevelAwait` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestTopLevelAwaitQuoted`; migration and review neighbourhoods |
-| `FuzzEffectGlobals` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestEffectGlobalsQuoted`; migration and review neighbourhoods |
-| `FuzzLegacyHatchTypes` | Keyed local, alias, parameter, property, imported, instantiated and factory-return annotations | VIP-6/VIP-34; exact JavaScript and declaration reference, owned edits and idempotence |
-| `TestSidecarEntryGlobsQuoted` | Expanded bundler entry globs retain source entries and exclude declaration sidecars; actual fast-glob and Rolldown integration, keyed Alchemy witness. |
-| `FuzzReviewIsStatementHomes` | Keyed lexical-home and leak-control matrices | Chapter 4 scope quotes checked by `TestReviewIsStatementHomesQuoted` |
-| `FuzzReviewIsRedeclarations` | Keyed lexical-home and leak-control matrices | Chapter 4 scope quotes checked by `TestReviewIsRedeclarationsQuoted` |
-| `FuzzReviewIsBindingHomes` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestReviewIsBindingHomesQuoted`; migration and review neighbourhoods |
-| `FuzzEffectBlockDeclarationTwin` | An `effect { … }` block as a default export, a named constant, a default or named `effect` arrow, a default `effect function`, or nested in another block, with a body that sleeps, returns a value, throws a typed failure or returns an object, naming `Effect` through the prelude or an explicit import; keyed `block-twin:<export>:<body>:<imports>` | Its declarations equal those stock tsc writes for the `Effect.gen(function* () { … })` twin Chapter 2 names, after the migrate identity gate canonicalizes both (Chapter 2, `effect` blocks, Meaning; Chapter 1, Declaration output). t3code: `export default effect { … }` declared a function returning void |
-| `FuzzSchemaConstantDeclarationFix` | A `Schema.Struct` constant that is private, exported, exported through an export list or a renamed one, or the default export, with or without its own `type X = typeof X.Type`, referenced not at all, as a value, in a type query, through `Schema.Schema.Type`, in an inferred type or inside a function, at module level or in a namespace; keyed `schema-decl:<export>:<own>:<use>:<scope>` | In a project that emits declarations, the module and what `vibelang --fix` writes for it emit the same declaration bytes (Chapter 7's quick-fix preservation rule with Chapter 6's synthesized alias; quote gate `TestSchemaConstantDeclarationFixQuoted`) |
+| `FuzzSchemaConstantDeclarationFix` | Retired | Historical target. |
 | `FuzzExpandoDeclarations` | A function declaration, arrow or function expression host with up to four property assignments (`f.x = …` or `f["x"] = …`) of an alias, a literal or an arrow, so one property may be assigned several times; keyed `expando:<host>:<property>.<form>.<value>,…` | Stock tsc accepts the emitted declarations with library checking on, and each property's type in them is assignable both ways to its type in the same-text `.ts` twin (Chapter 1, Declaration output, API identity; quote gate `TestExpandoDeclarationsQuoted`) |
-| `FuzzMatchBindingHomes` | A Chapter 4 Typing-table pattern (`Exit.Success`, `Exit.Failure`, `Option.Some`, `Result.Success`/`Failure`, an `error` class, a discriminated object, a tuple, a nested fixed pattern, `Cause.TimeoutError`) in a function, arrow or method, under `strict` plus `noUncheckedIndexedAccess` and/or `exactOptionalPropertyTypes`; keyed `binding:<pattern>:<home>:<options>`, and `literal:smithers-exit-success-binding` for the smithers source | The arm returns the binding as the table's type, so the program compiles without errors whatever the options, after its TypeScript counterpart compiles as the control (Chapter 4, Typing: a `let` binding has the type TypeScript gives the value it is bound to in the counterpart; detail 79) |
-| `FuzzMatchOpenSubject` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestMatchOpenSubjectQuoted`; migration and review neighbourhoods |
-| `FuzzTrailingBlockBoundaries` | Recognized Effect/mask/match/declaration blocks and dotted native namespaces remain admitted beside the legacy trailing-block rejection; whitespace/comment and lexical-block neighbours. |
-| `FuzzSchemaMappedBinding` | Library, local, imported and qualified generic type names, plus value-only shadows | Chapter 6 and VIP-15: a schema reference needs a decoder; a shadowed type name cannot silently select a library mapping |
-| `FuzzProducerWrittenContract` | Omitted and written `Stream` returns, aliases, normalized/genuine unions, erased types and nested callable ownership | Chapter 2 and VIP-21: a written producer return exposes its Stream contract; native controls retain valid annotations |
-| `FuzzCollectionOperandDomain` | `Stream`, iterable and readonly `Effect` array domains; `any`/`never`/`unknown`, aliases and optional unions in two block homes | Chapter 2 and VIP-18/19/20: the named operand domain follows TypeScript assignability; native assignments independently test admission |
-| `FuzzEffectQualifierBinding` | Three collision modules with implicit, root/subpath/renamed imports, local objects and explicit imports with modules disabled | Chapter 5 and VIP-14: written bindings shadow the implicit qualifier and keep ordinary TypeScript members |
-| `FuzzSidecarResolvedPathView` | Package `exports`, `paths` and `imports`; real/logical symlink paths; published/workspace layouts; both Vibe suffixes | Chapter 7, VIP-27/39: module view follows the final resolved path; direct source inclusion is checked independently of nominal assignability |
-| `FuzzAlchemyUnionPipeRequirements` | Alchemy union/pipe inferred service requirements, parameter/provider renames; same diagnostics, spans and output as stock TypeScript, with precise known-gap markers. |
-| `FuzzModuleMetadataBounds` | VIP-33 module metadata: direct `.url` access, forbidden host/Vite members, aliases, computed reads, arguments and spreads across module/function/arrow/effect-function homes. Native TypeScript controls and Foldkit directory/glob/config/entry corpus. |
-| `FuzzVibexDeclarationSpelling` | Default public declarations over JSX output modes, import/reexport/import-type forms and quotes, byte comparison with the specified native `.tsx` twin. Nondefault declaration-style mappings await their own rule. |
-| `TestPlatformBoundaryContractsQuoted` | Platform splitting retains file-scoped pragmas, schema value bindings and initializer order; real compiler controls and keyed T3code witnesses. |
-| `TestSidecarStyleScopeQuoted` | Actual native sidecar/package emits over all declaration styles and stock TypeScript consumers, with malformed-reference and wrong-field-type controls. |
-| `FuzzPlatformBoundaryHomes` | 72 keyed platform accesses across function, arrow, async and Effect-wrapper homes, static member spellings and local shadows | VIP-33 requires `EK4402` for resolved platform access in every home; native TypeScript and local bindings remain controls |
-| `FuzzServiceNativeMemberTypes` | Omitted and explicit member types, optional methods/properties and member-local generics across loose, strict and explicit noImplicitAny overrides | Chapter 5 native PropertySignature/MethodSignature rules, VIP-9 and detail 276; independent TypeScript controls retain TS7010/TS7008 rather than an Effect-only prohibition |
-| `FuzzPlatformConstructorBindings` | Twelve DOM constructors and pure web helpers across capture, `new`, `instanceof` and local-shadow bindings; 72 keyed inputs | VIP-33 resolved host-library declarations and the checked Chapter 5 inventory classify every binding; native TypeScript is an independent syntax/type control |
 | `TestMatchBindingHomesQuoted`, `TestSidecarResolvedPathViewQuoted` | Current project-option and final-path clauses | Preserve match native controls and resolved sidecar identity cases; VIP-39 is read through `SpecText` like the chapter. |
-| `FuzzEffectFnParameterDeclaration`, `FuzzEffectQualifierBinding` | Resolved feature and corpus records now run strictly; all keyed corpus inputs retained | Native controls and unchanged specification oracles continue to report genuine pending gaps separately. |
 | `FuzzMigrationPlainRoots`, `FuzzPlainMatchKinds`, `FuzzPlainTryCatch` | Resolved feature and corpus records now run strictly; all keyed corpus inputs retained | Native controls and unchanged specification oracles continue to report genuine pending gaps separately. |
-| `FuzzReviewNativeLoops` | Resolved corpus records now run strictly; all keyed corpus inputs retained | Native controls and unchanged specification oracles continue to report genuine pending gaps separately. |
-| `MigrationSchemaConstructorGate` | Actual T3code native constructor fixture and 120 properties across class/file identity, diagnostic category/order, batch scope and line endings | A refused class conversion preserves its constructor warning; errors and unrelated classes remain gated. Spec quotes are checked by `TestSchemaConstructorGateQuoted`. |
+| `FuzzReviewNativeLoops` | Retired | Historical target. |
 | `MigrationDprintPinnedPlugins` | Smithers pinned-plugin setup: fresh and stale wiring, checksums, package scope, format modes and idempotence; exact stale own-plugin gap remains with `migfix-smithers`. | Fast-check property and keyed native configuration corpus. |
 | `FuzzReviewLocalServiceShape` | Seven lexical homes, recursive own members and external projections; 56 keyed corpus inputs and independent stock TypeScript controls | VIP-9 and Chapter 5 distinguish the service-own private alias from an unavailable local namespace; known compiler gaps keep precise keys. |
 | `TestBunRolldownBarrelContractQuoted` | Alchemy bare-package TypeScript barrel and relative VibeLang imports, plus eight generated names/depth/value variants | Actual Bun execution and Rolldown builds with native and adapter controls; omitting the adapter must fail at the intended parse stage. |
-| `FuzzDeclarationIdentity`, `TestDeclarationEffectValueImports` | Nine Opencode-named corpus inputs: `Random`, `Clock` and `Schema` values across named, renamed and mixed type-only imports | Compare with stock TypeScript declarations under the existing identity oracle; regression admission cannot silently skip. |
+| `FuzzDeclarationIdentity`, `TestDeclarationEffectValueImports` | Nine Opencode-named corpus inputs: `Random`, `Clock` and `Schema` values across named, renamed and mixed type-only imports | Compare with stock TypeScript declarationsthe existing identity oracle; regression admission cannot silently skip. |
 | `FuzzEffectTypeHintParentheses` | Four enclosing type positions, three success unions and four error/requirement slot sets; keyed inputs and a non-union advisory control | Chapter 7: `EK4833` preserves required parentheses in the proposed `A!E!R` spelling (round 15 applied finding 3) |
-| `FuzzEffectAliasRepair` | Keyed aliases named `Effect`, varying parameter order, defaults, wrapped success types, service requirements, unions, forwarding chains and enclosing types; CLI and editor repairs | Chapter 7: repairs preserve types and declarations; stock `tsc 5.9.3` checks the emitted contract in both directions and with generic equality |
-| `FuzzFix` T3code cold construction | Mixed program branches, a default-exported SQL-service `asVoid` value, a `catch` callback returning `Effect.void` and stored generator pipelines under two import forms. | Native-reference safe-fix oracle; stored-pipeline control observes state before and after running; SQL service output is checked by contract and module construction, not by an invented database. |
-| `FuzzFix` T3code function wrappers | Keyed `Effect.fn.Return`, `import.meta`, nongenerator bodies and contextual default-parameter witnesses under namespace and named imports. | Existing native-reference contract, outcome and safe-fix oracles. Default parameters also use the exact stock declaration oracle, since `any` and `string` can be mutually assignable. Four exact declaration/corpus pairs keep the current narrowing gap visible under `codemod-alchemy`. |
-| `FuzzFix` T3code callback/object results | Plain callback properties, function-valued `Option.match` handlers, generator result spreads and concrete contextual results under two import forms. | Native TypeScript controls and existing safe-fix contract/outcome oracle; larger unminimized MCP and preview failures remain owner-pending. |
+| `FuzzEffectAliasRepair` | Retired | Historical target. |
+| `FuzzFix` | Retired | Historical target. |
 | `FuzzMigrationDoReturn` | Seven callable homes and two outside controls, direct, conditional and match forms, nesting depth 0 to 2, parameter defaults; the three minimized foldkit sources byte for byte (foldkit-44). Callable-body returns are strict passing checks; parameter-default gaps remain pending for migfix-foldkit/core-block | Chapter 2 and VIP-2 (TC39 do): an outward return from a do expression is checked at the enclosing activation |
 | `FuzzGenericNeverOverloadAssignment` | Minimized Foldkit generic-overload witness plus explicit per-signature `never` contracts at assignments, aliases, returns and arguments; unchanged-signature and throwing controls | Chapter 3 admission and overload rules, with stock TypeScript 5.9.3 twins. The raw npm witness is a separate stock control; informational inventory annotations do not supply its contract |
 | `FuzzEffectBareReturnDiagnostics` | Minimized Foldkit bare-return pair, arrows, methods, finalizers, nested branches, explicit `undefined` and complete-return controls; both `noImplicitReturns` settings | Chapter 1's `Effect.gen` counterparts define the TypeScript diagnostic oracle. A partial value-return control keeps genuine `TS7030` errors significant |
 | `FuzzMigrationMutability` | Fourteen source corpora from foldkit-10 (owner migfix-foldkit) | Chapter 6 and VIP-15: declaration emit keeps the source's written readonly modifiers exactly |
-| `FuzzReviewComputedKeys` | schema, schema error, error and data bodies with number, literal and symbol keys as entity, parenthesized, element and call forms (loop r1 ASTRA-4; owner sl1-apply, data owner impl-hunt-data) | Chapter 6 (VIP-15, VIP-29): computed field keys follow the native counterpart's admission and codes |
+| `FuzzReviewComputedKeys` | schema, schema error, error and data bodies with number, literal and symbol keys as entity, parenthesized, element and call forms | Chapter 6 (VIP-15, VIP-29): computed field keys follow the native counterpart's admission and codes |
 | `FuzzSchemaLibraryBinding` | Twenty-eight keyed library alias/field cases with native TypeScript and explicit Schema controls | VIP-15/detail 286: resolve genuine `Array` and `ReadonlyArray` bindings, including qualified, imported and cross aliases; retain precise decoder gaps for `impl-hunt-data`. Implemented array-alias cases run without their former 40 feature/corpus allowances. |
 | `FuzzVIPDifferential` interruption scopes | Restore-bearing statement masks in uncertain source scopes use the existing fresh-function interruption probe. Root masks retain inline and helper forms. | 2,048 structural scope/void/depth variants retain restores in their own activation; the compiler and differential oracle remain unchanged. |
 | `FuzzLintDirectiveScope` | Retained lint comment scopes, inert double/single/template text and equivalent severity settings; Alchemy12 source fixtures, Oxlint/ESLint spellings, CRLF, nesting and UTF-16 positions | VIP-38 configuration precedence and inherited TypeScript lexical classification. Finite position variants establish strict native diagnostic controls; every candidate is checked by the actual CLI. |
@@ -404,10 +321,9 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |
 | `FuzzSpecVariants` | Retired | Equivalent-form semantics use `FuzzVIPDifferential`. |
 | `FuzzFormat` | One source | A file with a syntax error is refused and a file without one is not; the output emits the same JavaScript token stream and diagnostics as the input, keeps each comment between the same tokens, and a second pass changes nothing (Chapter 28 Idempotence, D276, D372) |
-| `FuzzFix` | Project archive | `--fix` converges, adds no error, keeps comments and contracts, is a fixed point and keeps every exported program's outcome (Configuration and tooling, rule 2). Historical code ranges no longer establish a completion promise. The current tooling chapter explicitly names the `EK1101` codemod and preserves the existing safe-fix/refusal checks; those checks remain. File-scope checks remain pending the current-spec wording for decided detail 270. |
-| `FuzzEditor` | Project archive and offsets | No panic, hang or request error; ranges inside documents; hover, definition and completion answer at a reference to a project declaration; edits stay in their documents, do not overlap, keep a parsing file parsing; an EK quick fix removes its diagnostic and adds no error (D61, D291, D372) |
+| `FuzzEditor` | Project archive and offsets | No panic, hang or request error; ranges inside documents; hover, definition and completion answer at a reference to a project declaration; edits stay in their documents, do not overlap, keep a parsing file parsing (D61, D372) |
 | `FuzzIncremental` | Archive and edit script over any file of the project; contextual words read from Appendix A, with insertion/removal seeds for `effect` and `try` | After each partial edit, the server's diagnostics equal a fresh compilation's (D32, D61) |
-| `FuzzCommandLine` | Archive and a fuzzed argument list | The built binary never panics or hangs; exit statuses as Chapter 28 gives them; printed diagnostics equal the library's; `--fix` as above; `--estree` equals the library conversion; `--help`, `--version`, `--watch`, an LSP and an API session end cleanly |
+| `FuzzCommandLine` | Archive and a fuzzed argument list | The built binary never panics or hangs; exit statuses as Chapter 28 gives them; printed diagnostics equal the library's; `--estree` equals the library conversion; `--help`, `--version`, `--watch`, an LSP and an API session end cleanly |
 
 The `FuzzFormat` module-body corpus varies names, Unicode identifiers, missing names, nested invalid syntax and layout across five modes for eight invalid TypeScript patterns, with native identifier, function, string and comment controls.
 
@@ -415,7 +331,7 @@ The `FuzzFormat` module-body corpus varies names, Unicode identifiers, missing n
 
 The admission parser loads Appendix A's productions, contextual keyword table and active prose restrictions. `TestGrammarLoadsCurrentAppendix` rejects an unmatched registered prose reader. It does not run an exhaustive ambiguity search or a random grammar search.
 
-`FuzzIsCallbackInference` requires an inferred `boolean`, rejects `any` and literal-only results, and checks that a `number` annotation fails. `FuzzLegacyEffectAliasRepair` compiles qualified heritage types and requires the unparenthesized shorthand controls to report syntax errors. `FuzzHeldComputedMethodKey` records gaps under the selected row's stable key.
+`FuzzIsCallbackInference` requires an inferred `boolean`, rejects `any` and literal-only results, and checks that a `number` annotation fails. `FuzzHeldComputedMethodKey` records gapsthe selected row's stable key.
 
 Completeness is checked, not claimed. Each of these tests reads the specification at test time and fails when it grows:
 
@@ -430,7 +346,7 @@ Completeness is checked, not claimed. Each of these tests reads the specificatio
 | every whole run of a target | With `VIBELANG_FUZZ_REQUIRE=1`, a pending line of the target that no oracle raised or deliberately omitted (`XPASS`): the key is stale or misspelt |
 | `TestPendingHangs` | A pending hang's reproduction finishes within its deadline (XPASS) |
 
-A pending line skips only the disagreement its own key names. A reproduction's `corpus:` line marks it for XPASS and never excuses a new failure. A line under an oracle's own key must stay reachable: a run of the whole target, with the tests `PendingCompanion` registers for it, fails when no seed raises its gap or deliberately omits its feature, so a fix that leaves its line behind fails in the next run that covers the target. A key that names one probe fails at the probe through `ExpectPending`. Sampled generators include one witness per pending key through `pendingSeedInputs`; selecting that witness does not itself prove the gap still exists. The merge queue runs `//:go-vibelangfuzz-pending` before landing a change on `vibe`; the full short seed corpus runs post-merge. The pending target requires `//:go-vibelangfuzz-hangs`, which runs `TestPendingHangs` in its own cached check because named corpus tests skip known hangs. Every `feature:` hang exclusion also needs a same-target `corpus:` hang line whose reason names the feature key. `TestPendingLines` rejects an exclusion without that independent witness: recording a deliberate omission does not establish that the hang still exists. Remove both lines when the bounded probe completes. A resolved hang marker therefore fails the merge gate. Verbose probe logs report the target, key, elapsed time, exit status and whether a stage watchdog or outer deadline ended the child. Compiler progress summaries contain fixed harness phase names rather than project payloads. Missing dependencies fail these checks instead of skipping.
+A pending line skips only the disagreement its own key names. A reproduction's `corpus:` line marks it for XPASS and never excuses a new failure. A linean oracle's own key must stay reachable: a run of the whole target, with the tests `PendingCompanion` registers for it, fails when no seed raises its gap or deliberately omits its feature, so a fix that leaves its line behind fails in the next run that covers the target. A key that names one probe fails at the probe through `ExpectPending`. Sampled generators include one witness per pending key through `pendingSeedInputs`; selecting that witness does not itself prove the gap still exists. The merge queue runs `//:go-vibelangfuzz-pending` before landing a change on `vibe`; the full short seed corpus runs post-merge. The pending target requires `//:go-vibelangfuzz-hangs`, which runs `TestPendingHangs` in its own cached check because named corpus tests skip known hangs. Every `feature:` hang exclusion also needs a same-target `corpus:` hang line whose reason names the feature key. `TestPendingLines` rejects an exclusion without that independent witness: recording a deliberate omission does not establish that the hang still exists. Remove both lines when the bounded probe completes. A resolved hang marker therefore fails the merge gate. Verbose probe logs report the target, key, elapsed time, exit status and whether a stage watchdog or outer deadline ended the child. Compiler progress summaries contain fixed harness phase names rather than project payloads. Missing dependencies fail these checks instead of skipping.
 
 The formatter fork-owner corpus varies scope expressions and adjacent operands beginning with ASCII, Unicode or escaped identifiers, numbers and unary keywords. The projected prefix keeps its native TypeScript keyword boundary, while the existing `FuzzFormat` oracle independently checks parsed meaning, compiler diagnostics, comments and idempotence. Grouped operands and comments before operands remain controls.
 
@@ -442,26 +358,26 @@ A fixed hang graduates to an active regression instead of retaining a time-depen
 
 ## Results
 
-Campaigns ran on the shared build host (48 cores, load average 70 to 110) at `-parallel 6`, so the counts are low for Go fuzzing. A compilation with a type check and emit costs about 20 ms on an idle core.
+The October 2026 campaigns ran on a shared build host at `-parallel 6`, so the counts are low for Go fuzzing. A compilation with a type check and emit costs about 20 ms on an idle core.
 
 | Target | Campaign | Inputs run | New failures |
 | --- | --- | --- | --- |
 | `FuzzCompile` | 10 min | 2,684 | none beyond the seeds' |
 | `FuzzParse` | 5 min | 170,772 | none |
-| `FuzzConfig` | A `vibe` settings object and a source | Invalid keys and values draw the current configuration diagnostic; `sidecarDir` accepts directory strings and rejects other JSON types; a valid severity sets a warning or imported `EK38xx` code; a non-adjustable or unknown code draws `EK3006`; `suggestion` is language-server-only (Appendix B; Configuration and tooling, rule 6) |
 | `FuzzTypeScriptParity` | 5 min | 12,025 | none |
 | `FuzzSpecRules` | 16 min | 39,774 | none beyond the gaps below |
 | `FuzzSpecAllowed` | 11 min | 45,813 | none |
 | `FuzzSpecPrograms` | 13 min | about 6,000 | bug 7 below |
 | `FuzzFormat` | 17 min in 4 runs | about 773,000 | bugs 1 and 19 |
-| `FuzzFix` | Project archive | `--fix` converges, adds no error, keeps comments and contracts, is a fixed point and keeps every exported program's outcome (Configuration and tooling, rule 2). Historical code ranges no longer establish a completion promise. The current tooling chapter explicitly names the `EK1101` codemod and preserves the existing safe-fix/refusal checks; those checks remain. File-scope checks remain pending the current-spec wording for decided detail 270. |
-| `FuzzEditor` | 1 min 20 s | seeds only | bugs 3, 4 and 15 to 18, on the seeds |
+| `FuzzEditor` | 1 min 20 s | seeds only | bugs 3 and 4, plus historical editor-conversion findings |
 | `FuzzIncremental` | 90 s, all spent replaying its corpus | 554 corpus inputs | none |
 | `FuzzCommandLine` | 2.5 min | 1,913 | none |
 
-After both reviews' fixes, one 90-second pass over all 13 targets found bug 24 in `FuzzParse` after 12,741 inputs. It also found two test bugs, both fixed: `FuzzCommandLine` deadlocked the fuzz engine, and `FuzzFix` did not accept a warning that says what a fix would change, which Chapter 28 permits. Several targets spent the 90 seconds replaying the corpus earlier campaigns had grown, so a pass needs about 5 minutes per target.
+A follow-up campaign found bug 24 in `FuzzParse` after 12,741 inputs.
+It also found a fuzz-engine deadlock in `FuzzCommandLine`, which was fixed.
 
-While this change waited in the merge queue, the fiber ownership change landed first. It made EK4838 an error that no setting lowers and fixed bug 17, and the gate's seed run failed with four XPASS reports, one for each pending line those fixes closed. This change deletes those lines. The same run found two more test bugs, both fixed: `FuzzFix` required `--fix` to apply every quick fix the registry lists, such as EK4802's, where Chapter 28 names only its Effect-form lint codes, the retired spellings and EK1002, and the EK4609 injection held owned fibers in an array that is not `join`'s operand, which Chapter 7 also makes EK4838 (D409), so it now uses detached fibers. Before it landed, two more changes closed the EK1019 and EK4701 gaps, which also failed as XPASS, and Chapter 28 added EK4839 and EK4840, which `TestSpecRuleCoverage` required injections for.
+The fiber-ownership change made `EK4838` an error and produced four
+XPASS reports. The corresponding pending lines were removed.
 
 No VibeLang program's outcome differed from its Effect TypeScript reading, and no declared contract differed from the inferred one.
 
@@ -501,14 +417,9 @@ Each open bug has a minimal reproduction in `typescript/tsc/internal/vibelangfuz
 | 12 | Declarations | A D12 callback parameter is written `Effect<B, E, R>`: TS2709 in a consumer | Chapter 27 rule 4, D366 |
 | 13 | Declarations | A module declaration's `.d.ts` keeps `./more.ts` | D365 |
 | 14 | Declarations | A module body's `.d.ts` needs `Symbol.dispose` from a lib only the implicit `effect` import brings: TS2550 in a consumer | D366 |
-| 15 | Refactor | "Convert to a pipe" turns `Console.log(String({ a: 1 }))` into `{ a: 1 } \|> ...`, which does not parse | D245, D372 |
-| 16 | Quick fix | The EK4832 fix is offered for `Schema.Struct({ a: Missing.fields.a })` and adds EK2109 | D291, D372 |
-| 17 | Quick fix, **fixed on `main`** by the fiber ownership change | The EK4838 fix writes `detach({ log("x") })`, which does not parse | D291, D372 |
-| 18 | Quick fix | The EK4835 fix inside a pipe stage writes `%() catch ...`, calling the topic | D291, D372 |
 | 19 | Formatter, **fixed in this change set** | Not idempotent on `{{0!\n("")}}` and `{{x\n+ y}}`: a line break added before a token shifted only its own node's indentation. TypeScript 6.0.3 does the same; upstream PR [microsoft/TypeScript#64994](https://github.com/microsoft/TypeScript/pull/64994) | Chapter 28 Idempotence |
 | 20 | Crash, **fixed in this change** | Declaration emit of several `.vibe` files in parallel stops with "concurrent map read and map write": each file's transform read the checker's prelude maps after releasing its lock | A compiler stops |
 | 21 | Formatter | Refuses `module {}`, which parses without a syntax error | D276 |
-| 22 | `--fix` | `catch (e: Error)` draws EK2112, a retired spelling Chapter 28 gives a quick fix, with no fix and no explanation, and `--fix` leaves it | Chapter 28, D216 |
 | 23 | Hover | Empty for a declared function called inside a retired `select` arm | D61, D77 |
 | 24 | Parse tree, **fixed in this change set** | `export {}; await + f(const 0 await !x` keeps two overlapping statements: the top-level await reparse read to the end of the file and the original statements after it stayed. TypeScript 6.0.3 also overlaps on the original input; upstream PR [microsoft/TypeScript#64993](https://github.com/microsoft/TypeScript/pull/64993) | D266 |
 
@@ -524,7 +435,7 @@ Each open bug has a minimal reproduction in `typescript/tsc/internal/vibelangfuz
 | Reported twice | EK1001 for a top-level `provide` that contains calls |
 | Listed after the table, not reported yet | EK1018, EK2129, EK3208, EK4410, EK4411, EK4613 |
 
-`new f()` on a `.vibe` function now uses TypeScript's own errors under [VIP-1](../design/vips/0001-effect-and-async-functions.md); the historical `EK1020` entry above records the old rule. `FuzzNativeNewDiagnostic` checks native diagnostic identity across callable forms, casts and `@ts-ignore`.
+`new f()` on a `.vibe` function now uses TypeScript's own errors[VIP-1](../design/vips/0001-effect-and-async-functions.md); the historical `EK1020` entry above records the old rule. `FuzzNativeNewDiagnostic` checks native diagnostic identity across callable forms, casts and `@ts-ignore`.
 
 ### Added before landing
 
@@ -537,24 +448,24 @@ The same change set adds what the first results argued for:
 | 15 more generated runtime forms: joined fiber literals, detached, scoped and scope-held forks, Cause values, interruptible regions, held fibers interrupted inside `try`/`finally` with `using`, failures beside defects | VibeLang and Effect agreed on every seed. `yield` in a producer's `do` block is TS1163, and writing the inferred contract on a function holding an async hatch is TS7024 |
 | `nightly.sh`: every seed, then every target's campaign, against the latest `main` each night on the build host, the race detector on Sundays | Its first test run found the formatter refusing a field comma (EK1013), recorded in `tools.txt` |
 
-The splicer also has fixed same-file fixtures for every category, including explicit function and callback bodies. VIP-11's retired trailing blocks remain in the denial corpus, while the splicer generates ordinary bodies; the old numeric category slot and named corpus key still replay. `TestSpliceMutationCategories` guarantees a witness without selecting from the changing donor pool; `FuzzSpliceMutation` varies node, donor and selection-mode choices under named category keys and checks replay, source spans and category preservation. `TestSpliceMutation` retains both real-corpus samples and its explicit fallback for a rare category.
+The splicer also has fixed same-file fixtures for every category, including explicit function and callback bodies. VIP-11's retired trailing blocks remain in the denial corpus, while the splicer generates ordinary bodies; the old numeric category slot and named corpus key still replay. `TestSpliceMutationCategories` guarantees a witness without selecting from the changing donor pool; `FuzzSpliceMutation` varies node, donor and selection-mode choicesnamed category keys and checks replay, source spans and category preservation. `TestSpliceMutation` retains both real-corpus samples and its explicit fallback for a rare category.
 
 ## Independent review
 
-Two independent reviews ran before the suite landed. Codex Astra (`gpt-6-astra`) reviewed it against the specification first. It found every registered code and every Forms row accounted for, and eight classes of weakness. Each was fixed before landing, except where the table says otherwise:
+Two independent reviews ran before the suite landed. The first reviewed it against the specification. It found every registered code and every Forms row accounted for, and eight classes of weakness. Each was fixed before landing, except where the table says otherwise:
 
 | Finding | Fix |
 | --- | --- |
 | A pending reproduction skipped on any failure, so a new failure in it passed; the rules area's reproductions could never XPASS; a hang could never XPASS | A corpus line only marks XPASS; each gap needs its own key; the rules reproductions have corpus lines; `TestPendingHangs` probes hangs in a child process |
 | The Node worker turned a plain return into an Effect and kept only the first failure of a cause; the smoke test accepted any defect; agreeing crashes passed | The worker reports `plain` and every reason of the cause; crashes, timeouts and plain results disagree |
-| The declaration consumer only took `typeof` and ran on the fork; outputs could be missing; any string literal authorized an import; source maps were checked only for bounds | The consumer calls every export, under stock TypeScript too; requested outputs must exist; imports come from parsed module specifiers; statements map into their statements |
+| The declaration consumer only took `typeof` and ran on the fork; outputs could be missing; any string literal authorized an import; source maps were checked only for bounds | The consumer calls every export,stock TypeScript too; requested outputs must exist; imports come from parsed module specifiers; statements map into their statements |
 | The command line had no target | `FuzzCommandLine` |
 | The formatter oracle used the formatter's own `SameProgram` guard; refusals passed; editor request errors passed; incremental failures compared as empty | An emitted-JavaScript token comparison; refusals of valid input and request errors are gaps |
 | Some expectations came from the compiler | Each such comparison is metamorphic (the same compiler on two inputs the specification says must agree) and says so, or now reads the specification |
 | Generator gaps: one module per program, depth 3, first code span only, unreachable incremental tokens | Programs of up to three modules, deeper nesting, every code span, every token reachable |
 | A missing toolchain skipped every target; `campaign.sh` exited 0 after a failure | `VIBELANG_FUZZ_REQUIRE=1` fails instead; the script's status reports failures |
 
-Claude Fable then reviewed the result. It confirmed the race fix: each transform copies the maps at the point the old code took them, after the file's last write, and a single-file program sees what it saw before. It found that the suite still tested less than it said, and those findings were fixed too:
+The second review examined the updated suite. It confirmed the race fix: each transform copies the maps at the point the old code took them, after the file's last write, and a single-file program sees what it saw before. It found that the suite still tested less than it said, and those findings were fixed too:
 
 | Finding | Fix |
 | --- | --- |
@@ -563,7 +474,6 @@ Claude Fable then reviewed the result. It confirmed the race fix: each transform
 | The programs target keyed every gap by its reproduction | Each gap is keyed by its oracle |
 | The parse, config and parity targets skipped any panic of a pending reproduction | A panic is keyed by the function that panicked |
 | `--lsp` and `--api` sessions passed when the server exited before `initialize` | The `initialize` reply is required |
-| `FuzzFix` compared outcomes without their causes | Causes are compared |
 | A pending key could name a code or injection no input reaches | `TestPendingLines` rejects it |
 
 Left on purpose: ESTree token parity with `typescript-estree` (not installed in the repository, and dependency changes need approval); the installation, scaffold, loader, Vite and editor-extension packages, which are TypeScript, not the compiler (fuzz them with fast-check); the "exactly once" reading of a rule's report, which the specification implies but does not state.
@@ -604,11 +514,11 @@ Added 2026-10-29. VIP-31: "Each VIP's VibeLang and Effect TS pair is a different
 | Construct registry | `vipgen/model.go` | A construct is `vipNN.<name>` with its VIP, `Requires`, citations, and hooks: `Focus` (its probe), `Stmt`, `Operand` (an Effect for `try`), `Declare` (a function form). One file per VIP registers its constructs from `init`, so a new construct never touches the core |
 | Constructs | `vipgen/vip01_effect_function.go`, `vip04_throw.go`, `vip05_try.go` | `effect function` as `function f(p) { return Effect.gen(function* () { … }) }`; `throw e` as `return yield* Effect.fail(e)`; `try e` as `yield* e`. The core (`core.go`) writes events, `if`, `return`, numbers and `Effect.succeed`/`sync`/`fail`/`die`, written `Effect.x` so VIP-6 is not needed |
 | Worker | `vip.go`, the `vip` mode of `node.go` | Each print imports `ev` from `vip-events` (`testdata/vip`, `@throws {never}`). The encoding tags `undefined`, `bigint`, `NaN`, the infinities, `-0`, classes and errors (class, name, message, own fields, cause), drops stacks and annotations, and renames fiber ids by first appearance. An Exit, Cause or reason nested anywhere in a value or payload, recognized by Effect's own type ids (`~effect/Exit`, `~effect/Cause`, `~effect/Cause/Reason`, strings in effect 4.0.6) and never by `_tag`, is encoded like the top-level Exit (`$exit`, `$cause`, `$reason`), and its fiber ids share the top-level renaming, so `Effect.all(xs.map(Effect.exit))` compares exactly across runs. A module with no `main` export runs its `default` export. Reasons and events are never sorted |
-| Gating | `testdata/pending/vip.txt` | One `feature:<construct>` line per construct the compiler lacks, owned by `compiler`, naming the VIP and the lane. Campaigns leave pending constructs out unless `VIBELANG_FUZZ_PENDING=1`. A gap is keyed `compile:<code>/<construct>` or `exit:<aspect>/<construct>`; a compile gap of a program holding a pending construct is that construct's line, an Exit gap never is |
+| Gating | `testdata/pending/vip.txt` | One `feature:<construct>` line per construct the compiler lacks,`compiler`, naming the VIP and the lane. Campaigns leave pending constructs out unless `VIBELANG_FUZZ_PENDING=1`. A gap is keyed `compile:<code>/<construct>` or `exit:<aspect>/<construct>`; a compile gap of a program holding a pending construct is that construct's line, an Exit gap never is |
 
 | Test | Fails when |
 | --- | --- |
-| `TestVIPConstructs` | A construct's key, VIP or `Requires` is malformed; a probe fails with no pending line for it or what it requires; or a pending probe passes (XPASS). It runs every probe under `-short` too |
+| `TestVIPConstructs` | A construct's key, VIP or `Requires` is malformed; a probe fails with no pending line for it or what it requires; or a pending probe passes (XPASS). It runs every probe`-short` too |
 | `TestVIPTemplatesCited` | A citation's quote is not verbatim in its VIP; a template is neither in a code block of its VIP nor given a `Reading`; a reading the VIP now shows in code is still there; or a probe's reference print lacks its template. It lists every reading |
 | `TestVIPCoverage` | An accepted VIP in the README has no construct, `not-runtime` line or `not generated` line, or a pending line names a construct or VIP that does not exist |
 | `TestVIPExitEncoding`, `TestVIPCanonicalExit` | Hand-written Exits (success, typed failure, defect, interruption, `ensuring(fail(A), die(D))`, a sleep, `never`, a hot and a plain `main`) encode wrongly, or the comparison names the wrong aspect |
@@ -618,7 +528,7 @@ The target generates VIP-1 effect functions, VIP-2 effect blocks, VIP-4 throw, V
 
 The designs' probes found VIP-21's `Stream.callback` never ending its queue and VIP-18 not stating `allSettled`'s lowering; both VIPs now state them (`Queue.end`, and `Effect.all(xs.map(Effect.exit), { concurrency: "unbounded" })`). Where a VIP states its Effect TS only in prose or a table, as VIP-5's `catch` and VIP-7's `match` do, the construct carries a `Reading` that `TestVIPTemplatesCited` lists. Runs stay deterministic: forks synchronize through `Deferred` gates, a held child signals ready from inside its `ensuring` (a child interrupted before it reaches `ensuring` registers no finalizer), and the elements of a `try` operation wait on distinct virtual deadlines.
 
-A program has one of two forms. An effect program's main is `export effect function main()`. A plain program's main is a plain function, `export function main() { … return Effect.succeed(v) }`, the same text in both prints, built only from constructs that work in plain code: the pipe operator, `match`, data, generic data and error classes, each a `-plain` key. Plain programs are compared before VIP-1's declaration form is implemented. Their first comparison (2026-10-29) agreed on every Exit and event, and found one VIP-1 gap: the compiler still infers a plain `main` to be an Effect function, so calling it runs nothing (`exit:called`, pending under lane vip-core2). Only effect programs are checked for coldness; a plain main runs its body when called, and the `called` aspect compares what that call logs.
+A program has one of two forms. An effect program's main is `export effect function main()`. A plain program's main is a plain function, `export function main() { … return Effect.succeed(v) }`, the same text in both prints, built only from constructs that work in plain code: the pipe operator, `match`, data, generic data and error classes, each a `-plain` key. Plain programs are compared before VIP-1's declaration form is implemented. Their first comparison (2026-10-29) agreed on every Exit and event, and found one VIP-1 gap: the compiler still infers a plain `main` to be an Effect function, so calling it runs nothing (`exit:called`, pendinglane vip-core2). Only effect programs are checked for coldness; a plain main runs its body when called, and the `called` aspect compares what that call logs.
 
 Versioned swarm inputs start with `swarm:`. An indexed input then reads a two-byte little-endian focus index modulo the enabled construct count, so every registered construct is reachable without preserving a key string. A named input uses `swarm:key:<construct key>\x00`. Both read `ceil(n / 8)` mask bytes, where `n` is the number of enabled constructs compatible with the focus's plain or Effect form: bit `i` enables only construct `i` and its dependency closure. Exhausted bytes are zero. `vipgen.IndexSeed` supplies each construct's probe seed; `vipgen.SwarmSeed` supplies stable named corpus inputs. The rich seed of each construct (every construct on, then random bytes) keeps the legacy named form, so its program stays the one the seed corpus has vetted; the campaign mutates both forms. Focused campaigns retain the input's encoding and mask.
 
@@ -647,7 +557,7 @@ has a precise `feature:` key and corpus reproduction in
 and the VIP-6 wrappers compare the same events and `Exit` against Effect.
 
 The existing `FuzzChapter007OrdinaryThrows` placement target also checks
-VIP-41 throw expressions under VIP-4. Its `expr-` keys cover plain bodies,
+VIP-41 throw expressionsVIP-4. Its `expr-` keys cover plain bodies,
 caught throws, nested arrows, methods, accessors, generators, initializers,
 eager defaults and contextually throwing callbacks, with async and effect
 controls. Four expression forms (nullish, conditional, unary and array) run
@@ -696,9 +606,10 @@ record the mode, build wall time and child CPU; each seed also logs library
 compilation and command wall times, so setup overhead can be distinguished
 from oracle execution without weakening the CPU budget.
 
-The build-graph seed target declares `GOMAXPROCS` capped at the smaller of `24` and the machine CPU count and `GOFLAGS=-p=6`
-inside its shell. The outer runner's environment is deliberately filtered,
-so its Go concurrency settings do not reach a shell unless declared.
+The graph's main seed shards cap `GOMAXPROCS` at 24 and set `GOFLAGS=-p=6`.
+The separate differential and support-package targets use `GOMAXPROCS=4`
+and `GOFLAGS=-p=4`. The graph declares these Go concurrency settings in
+each target's shell.
 
 ```sh
 cd typescript/tsc
@@ -707,8 +618,11 @@ export ES_REMOTE_HOST=ubuntu@<host> ES_REMOTE_KEY=~/.ssh/<key>
 # The seed corpus, as the smoke run does it:
 sh ../../scripts/remote.sh sh -c 'GOFLAGS= go test -short ./internal/vibelangfuzz/...'
 
+# Confirm the target is listed before starting its campaign:
+sh ../../scripts/remote.sh sh -c 'GOFLAGS= go test -list "^FuzzVIPDifferential$" ./internal/vibelangfuzz/'
+
 # One target's campaign:
-sh ../../scripts/remote.sh sh -c 'GOFLAGS= go test -run "^$" -fuzz "^FuzzSpecPrograms$" -fuzztime 10m -parallel 6 ./internal/vibelangfuzz/'
+sh ../../scripts/remote.sh sh -c 'GOFLAGS= go test -run "^$" -fuzz "^FuzzVIPDifferential$" -fuzztime 10m -parallel 6 ./internal/vibelangfuzz/'
 
 # Every target, then statement coverage per package:
 sh ../../scripts/remote.sh sh internal/vibelangfuzz/campaign.sh 5m
@@ -759,7 +673,7 @@ rejection and a nullable ambiguity independently of VibeLang's current rules.
 `TestGrammarLoadsCurrentAppendix` checks that every current production loads.
 
 Inherited productions use an embedded subset pinned to ECMAScript 2025 and
-TypeScript 5.9 (the `tsSubset` constant), rather than the compiler under test.
+TypeScript 5.9 (the `tsSubset` constant), rather than the compilertest.
 The subset covers expressions, statements, functions, class members and types;
 it does not claim complete TypeScript coverage. Unknown names and prose
 terminals are retained and listed explicitly by `grammarLab.describe`.
@@ -769,7 +683,7 @@ rules separately, allowing searches to compare productions with prose.
 ### Seed samples by name
 
 A target that runs part of the cases or snippets keeps a seed when the
-SHA-256 of the target's name and the seed's name falls under a fixed
+SHA-256 of the target's name and the seed's name fallsa fixed
 threshold, about one seed in every `n` (`toolsSample`). Membership depends on
 the seed's name only, never on its place in the list, so adding or removing a
 case or a documentation snippet changes no other seed's membership, and a gate
@@ -783,7 +697,7 @@ from.
 
 ### Short compile seed selection
 
-With c9's approval, `FuzzCompile` retains every disk corpus input and generated
+`FuzzCompile` retains every disk corpus input and generated
 pending witness, plus about one ordinary acceptance case in `120` and one
 snippet in `64`, sampled by name. Probes remain unchanged. Campaigns, non-short
 runs and `VIBELANG_FUZZ_SEEDS=all` keep the complete generated lists; `smoke.sh`
@@ -810,16 +724,14 @@ regression threshold to tolerate contention. Campaigns, non-short runs and
 
 `FuzzTypeScriptParity` and `FuzzDeclarationIdentity` share `ParitySeeds`. Of the distinct TypeScript projects left after filtering and
 deduplication, the short run keeps every generated pending witness and every
-explicit `typescript/` twin. `FuzzFix` samples `16` cases instead of
-`22`, retaining every `tsforms-*` case and generated pending witness even
-when these exceed the sample size. Disk corpus files and probes are unchanged.
+explicit `typescript/` twin. Disk corpus files and probes are unchanged.
 Campaign caps remain unchanged; full-seed nightly runs retain every seed.
 `campaign.sh` also runs the ordinary short selection, saves `short-budget.log`,
 and lists every target above `120` in `summary.txt`, even for a full-seed nightly.
 
 ## Match, data and schema chapter coverage
 
-`FuzzDataSpecRules` selects a named static witness from chapters 3, 4 and 6 and checks its diagnostic or acceptance. Each witness quotes its chapter verbatim, checked at test time; `TestDataSpecRulesQuoted` also runs in the documentation gate. Its named corpus files preserve each pending reproduction as the witness list grows. Known disagreements live under precise `feature:` keys in `testdata/pending/data.txt` and fail as `XPASS` once the compiler implements them.
+`FuzzDataSpecRules` selects a named static witness from chapters 3, 4 and 6 and checks its diagnostic or acceptance. Each witness quotes its chapter verbatim, checked at test time; `TestDataSpecRulesQuoted` also runs in the documentation gate. Its named corpus files preserve each pending reproduction as the witness list grows. Known disagreements liveprecise `feature:` keys in `testdata/pending/data.txt` and fail as `XPASS` once the compiler implements them.
 
 Static declaration witnesses also compile a consumer of emitted declarations and compare its instance and constructor types with the chapter's independently written Effect TypeScript, including readonly payloads and all four generic arities. Finite-match controls also check open subjects, fixed cases, required versus optional fields, bare bindings, unions of alternatives and patterns that do not establish static coverage. Four generic helper checks also occupy both preferred names and inspect the emitted collision suffix required by chapter 6. Their quotation follows the public rule without internal decision provenance; the four keyed corpus witnesses remain active.
 
@@ -871,7 +783,7 @@ are recorded as compiler gaps, never treated as proof that a construct works.
 
 The stock declaration baseline uses one pinned native TypeScript API process per fuzz target. Each input creates an independent root snapshot, opens its configured project, invalidates filesystem and resolution state, checks every diagnostic category used by the CLI, and emits again. A fresh root also discards inherited compiler options when an unchanged configuration wrapper extends an edited file. The preceding snapshot stays alive until the next one has acquired unchanged parsed dependencies, then is released. Diagnostics and outputs are never cached. CLI parity controls repeatedly edit source files, dependency declarations, inherited configurations, module mode and emit options at the same paths. Unsupported baseline executables retain the CLI adapter. Worker shutdown waits for the native child before the existing CPU guard measures the target.
 
-A baseline whose source has a suppression comment also gets the stock API preflight: its emitted declarations are checked with `skipLibCheck` off, and only an owned TS2709 makes it ineligible. The preflight runs in a second long-lived TypeScript API worker, which parses the baselines own declarations each time and shares parsed dependency declarations through TypeScripts document registry. The cold command runs the same module (`declaration_stock_api_preflight.mjs`) without that sharing, and parity controls require their records and verdicts to match. The probe worker keeps each files diagnostics across inputs under the gates `fileDiagnosticKeys` key, a hash of the compiler options, every file that changes the global scope or declares a module, and the module graph the file reaches. A control changes only a dependencys global script at the same paths and requires the warm worker to report the cold processs diagnostic again.
+A baseline whose source has a suppression comment also gets the stock API preflight: its emitted declarations are checked with `skipLibCheck` off, and only an owned TS2709 makes it ineligible. The preflight runs in a second long-lived TypeScript API worker, which parses the baselines own declarations each time and shares parsed dependency declarations through TypeScripts document registry. The cold command runs the same module (`declaration_stock_api_preflight.mjs`) without that sharing, and parity controls require their records and verdicts to match. The probe worker keeps each files diagnostics across inputsthe gates `fileDiagnosticKeys` key, a hash of the compiler options, every file that changes the global scope or declares a module, and the module graph the file reaches. A control changes only a dependencys global script at the same paths and requires the warm worker to report the cold processs diagnostic again.
 
 With `VIBELANG_FUZZ_BUDGET_LOG` set, declaration checks also write `.declaration.jsonl` stage records and a `.declaration.pprof` Go CPU profile beside the budget log. Records include input names and sizes, stock subprocess CPU, each API probe's CPU and cache counters, total parent and child CPU, allocations and collection counts. They omit source text and diagnostic payloads. The seed list, comparisons and CPU limit are unchanged.
 
@@ -903,7 +815,7 @@ end infers `void` even when the operation cannot succeed. Void helpers keep the
 bare operation. The `vip05-try-fatal-result` differential corpus preserves
 the minimized typed-helper witness; the runtime Exit and event-log oracle is unchanged.
 
-The `FuzzTryNested` corpus also varies native Effect calls, stored native arrows and member aliases over zero to three held Effect layers. The written-forms arrow has one `try` for one layer; an extra `try` must report `EK0502` under Chapter 2.
+The `FuzzTryNested` corpus also varies native Effect calls, stored native arrows and member aliases over zero to three held Effect layers. The written-forms arrow has one `try` for one layer; an extra `try` must report `EK0502`Chapter 2.
 
 The `vip05.try-match` differential constructs put `try` before a `match` whose arms give Effects, at eleven positions: a `const` initializer, a `return`, an expression statement, parentheses, a binary operand, a call argument, an `effect` block, an `effect` arrow, inside a `do` block, before a `do` block, and with a nested `match` arm. The reference is `yield*` of the match's reading, so the Exit and event log show the selected arm's Effect running once and no other arm's. The bare construct is also an operand, so any generated `try`, `catch` or `fork` may run such a match. The `lang-flows-try-match-*` corpus files keep the dispatcher pattern that compiled without running its arm before the fix.
 
@@ -917,13 +829,9 @@ The Alchemy Bun namespace-capture corpus, `alchemy-pnpm-node-path-namespace.json
 
 The migration flow property `solution-projects.property.test.mjs` retains Alchemy’s solution-style project pattern. It varies directory and config-file references, leaf counts, JSON comments, formatting and strictness. Each selected original and renamed implementation must report its deliberate native `TS2322` error; the empty solution root is an explicit zero-file control. Unreferenced projects stay outside the selected set.
 
-The migration flow property `solution-projects.property.test.mjs` retains Alchemy’s solution-style project pattern. It varies directory and config-file references, leaf counts, JSON comments, formatting and strictness. Each selected original and renamed implementation must report its deliberate native `TS2322` error; the empty solution root is an explicit zero-file control. Unreferenced projects stay outside the selected set.
-
 The tools property `react-emitted-phi.property.test.mjs` feeds the native emit adapter's actual JavaScript to the pinned Oxc React Compiler, against untouched TypeScript controls. The minimized T3code nested-loop/IIFE corpus and generated local-name, guard and comment mutations must pass the actual React check. The corpus records the historical phi invariant; the existing clean-hook control must optimize identically.
 
 The docs-tools gate inventories every static-rule quote test against the root build gate. Its generated-name property checks that comments, formatting and unrelated lists cannot hide an omitted test. A spec edit therefore checks all registered static-rule quotations before merge.
-
-When a quick-fix check reports added errors, its file-and-code counts decide the failure. The diagnostic printed below that count includes its file, code and byte span. It comes from the edited program after matching the original diagnostic messages as a multiset, so an existing error with the same code does not hide the added diagnostic. A changed message alone does not change the count oracle.
 
 The loader script-project property covers Opencode's excluded script, missing projects, nested script paths and custom config names through both Node and Bun. Native TypeScript scripts remain controls; an explicit `VIBELANG_PROJECT` selects a config that includes the `.vibe` script.
 
@@ -933,9 +841,9 @@ The loader script-project property covers Opencode's excluded script, missing pr
 
 `FuzzMigrationCallableData` compares TypeScript call admission with a VibeLang rename through required or optional noncallable union members, generic constraints, arrays, tuples and nested readonly wrappers. Synchronous callback requirements and ordinary data provide negative controls.
 
-`FuzzMigrationPlainRoots` puts root runners in plain function, arrow, method, getter, callback and asynchronous homes, retaining T3code's captured SDK runner. `FuzzMigrationEffectOperands` adds SQL Statement exact, inherited, branded and generic subtypes, comparing stored values with direct calls under `try`, `catch` and `try.all`.
+`FuzzMigrationPlainRoots` puts root runners in plain function, arrow, method, getter, callback and asynchronous homes, retaining T3code's captured SDK runner. `FuzzMigrationEffectOperands` adds SQL Statement exact, inherited, branded and generic subtypes, comparing stored values with direct calls`try`, `catch` and `try.all`.
 
-The oracles come from [functions](../design/src/001-functions.md) and [Effect operands](../design/src/002-running.md). The 114 keyed neighborhood files and four original migration archives retain the Alchemy, Foldkit and T3code patterns. The 53 observed feature gaps have separate feature and corpus pending entries owned by the migration lanes; a passing original witness stays in the corpus.
+The oracles come from [functions](../design/src/001-functions.md) and [Effect operands](../design/src/002-running.md). The 114 keyed neighborhood files and four original migration archives retain the Alchemy, Foldkit and T3code patterns. The 53 observed feature gaps have separate feature and corpus pending entriesthe migration lanes; a passing original witness stays in the corpus.
 
 ### Declaration output neighborhoods
 
@@ -943,7 +851,7 @@ The oracles come from [functions](../design/src/001-functions.md) and [Effect op
 
 `FuzzMigrationInferredImports` compares decoder and encoder declarations across root or subpath imports, aliases, comments, export forms and local `SchemaAST` shadows. Its [declaration oracle](../design/src/001-functions.md) is the native TypeScript output, not the compiler's current qualifier choice.
 
-The 58 keyed neighborhood files and two original migration archives retain the Foldkit and OpenCode patterns. The 25 observed feature gaps have exact feature and corpus pending entries owned by those migration lanes.
+The 58 keyed neighborhood files and two original migration archives retain the Foldkit and OpenCode patterns. The 25 observed feature gaps have exact feature and corpus pending entriesthose migration lanes.
 
 ### Execution diagnostic neighborhoods
 
@@ -953,11 +861,9 @@ The 118 keyed inputs vary spacing, comments and the line breaks the catalog expl
 
 ### Implicit namespace meanings
 
-`FuzzReviewNamespaceMeanings` checks the [per-meaning precedence rule](../design/src/005-services.md) for `KeyFormat` and `Transferable`. Six type positions retain either the DOM type or a local type alias while the value or namespace position reads Effect's module. The control imports that module under a fresh explicit name.
+`FuzzReviewNamespaceMeanings` checks the [per-meaning precedence rule](../design/src/005-services.md) for `KeyFormat` and `Transferable`. Six type positions retain either the DOM type or a local type alias while the value or namespace position reads Effect's module. The control imports that modulea fresh explicit name.
 
-All 24 keyed inputs remain in the corpus. Twelve observed local-type shadowing gaps have precise feature and corpus entries owned by the spec apply lane. `TestReviewNamespaceMeaningsQuoted` keeps the precedence and fresh-import-name rules in the spec gate.
-
-The T3code `slide-text` Option-match corpus retains object payloads, local block declarations and explicitly plain callbacks. `FuzzFix` varies `Some`/`None`, imports and handler getters while checking the original and fixed value, event order and convergence through its existing oracle. A flow must rerun safe fixes after marking plain functions; this test does not claim that orchestration already converges.
+All 24 keyed inputs remain in the corpus. Twelve observed local-type shadowing gaps have precise feature and corpus entriesthe spec apply lane. `TestReviewNamespaceMeaningsQuoted` keeps the precedence and fresh-import-name rules in the spec gate.
 
 Alchemy's parenthesized contract declarations are checked against their explicit Effect TypeScript twins by `FuzzContractDeclarationParens`. Keyed cases cover unions, intersections, arrays, optional tuples, conditionals, generic collections, indexed access and nested records, with varying success, error and environment types. The oracle compares raw declaration bytes so redundant contract parentheses cannot disappear through normalization.
 
@@ -966,8 +872,6 @@ The compiler harness's isolation property varies package scopes, nesting depth, 
 `FuzzReviewSidecarWrites` runs the real CLI over explicit and discovered sidecars in ordinary emit, `noEmit` and `declaration: false` modes. Independent stock TypeScript controls check input selection and native write triggers; Chapter 7 supplies the distinct unconditional VibeLang compatibility-write rule. Keyed corpus cases vary paths, spaces, nesting and values, and retain exact pending overwrite gaps with their owner.
 
 `FuzzUnrelatedDeclarationSpecifier` compares the raw declaration of an unchanged native TypeScript or TSX importer before and after migrating an unrelated implementation. Its T3code corpus and generated quote, directory and result-shape neighbours preserve inferred import specifiers without canonicalization.
-
-Alchemy's K2 decoder corpus keeps the JSON parser outside the inner schema-error mapper. Twenty-four `FuzzFix` projects vary invalid JSON, schema mismatch, success and whitespace through pipe, direct and nested calls. A keyed `native-ts:` input supplies its real TypeScript reference when the pre-fix VibeLang form is invalid. The existing outcome comparator checks preservation; native-control tests require valid, runnable references, and result-gap keys include the exact source hash and fix mode.
 
 Declaration-comparison controls vary private compiler probes, explicitly private graphs, resolved public manifests and explicit public graphs. They retain structural counterpart equivalence for private probes while detecting changed literals, readonly modifiers and file sets; public package snapshots retain byte checks. These controls run in `spec-tests`, keyed on the migration sources that implement the comparator.
 
@@ -981,67 +885,15 @@ The migration property `nonrelative-ts-extension.property.test.mjs` covers retai
 
 The compiler property `incremental-diagnostics.property.test.mjs` keeps Foldkit's minimized metadata-access source and compares cold, cached and byte-identical relocated-executable diagnostics, with native TypeScript and platform-free controls. Generated names, metadata properties and source kinds widen the same-artifact neighbourhood. The separate change between semantically different compiler artifacts remains explicitly pending; a copied executable does not prove invalidation across versions.
 
-The Foldkit compiler-identity fixtures contain unmodified build metadata emitted by an actual earlier compiler, including its SHA-256 and complete portable source/configuration inputs. They preserve the same TypeScript version across two real artifacts. The current compiler must agree on warm and fresh diagnostics; `hot` and `env` remain precise pending gaps owned by `migfix-foldkit`, while `url` is an active control. Generated source edits invalidate that historical cache and must agree immediately. The old compiler binary is not shipped or required to replay these real cache bytes.
+The Foldkit compiler-identity fixtures contain unmodified build metadata emitted by an actual earlier compiler, including its SHA-256 and complete portable source/configuration inputs. They preserve the same TypeScript version across two real artifacts. The current compiler must agree on warm and fresh diagnostics; `hot` and `env` remain precise pending gaps`migfix-foldkit`, while `url` is an active control. Generated source edits invalidate that historical cache and must agree immediately. The old compiler binary is not shipped or required to replay these real cache bytes.
 
 Inferred Effect default properties retain T3code's typed-provider corpus and compare the TypeScript importer's raw declaration across 18 arity/syntax/form pairs and 24 generated import-route, namespace and nesting variants. Resolved omitted-default cases require byte identity.
 
 Vite alias-neighbourhood properties start servers through `devServer`, the shared fixture helper that disables dependency optimization during cleanup. Native TypeScript importer resolution remains the paired control across prefixes, nesting and query suffixes.
 
-The tools property `react-emitted-phi.property.test.mjs` feeds the native emit adapter's actual JavaScript to the pinned Oxc React Compiler, against untouched TypeScript controls. The minimized T3code nested-loop/IIFE corpus and generated local-name, guard and comment mutations must pass the actual React check. The corpus records the historical phi invariant; the existing clean-hook control must optimize identically.
-
-The docs-tools gate inventories every static-rule quote test against the root build gate. Its generated-name property checks that comments, formatting and unrelated lists cannot hide an omitted test. A spec edit therefore checks all registered static-rule quotations before merge.
-
-When a quick-fix check reports added errors, its file-and-code counts decide the failure. The diagnostic printed below that count includes its file, code and byte span. It comes from the edited program after matching the original diagnostic messages as a multiset, so an existing error with the same code does not hide the added diagnostic. A changed message alone does not change the count oracle.
-
-The loader script-project property covers Opencode's excluded script, missing projects, nested script paths and custom config names through both Node and Bun. Native TypeScript scripts remain controls; an explicit `VIBELANG_PROJECT` selects a config that includes the `.vibe` script.
-
-## Spec and migration static neighborhoods
-
-### Migrated callable boundaries
-
-`FuzzMigrationCallableData` compares TypeScript call admission with a VibeLang rename through required or optional noncallable union members, generic constraints, arrays, tuples and nested readonly wrappers. Synchronous callback requirements and ordinary data provide negative controls.
-
-`FuzzMigrationPlainRoots` puts root runners in plain function, arrow, method, getter, callback and asynchronous homes, retaining T3code's captured SDK runner. `FuzzMigrationEffectOperands` adds SQL Statement exact, inherited, branded and generic subtypes, comparing stored values with direct calls under `try`, `catch` and `try.all`.
-
-The oracles come from [functions](../design/src/001-functions.md) and [Effect operands](../design/src/002-running.md). The 114 keyed neighborhood files and four original migration archives retain the Alchemy, Foldkit and T3code patterns. The 53 observed feature gaps have separate feature and corpus pending entries owned by the migration lanes; a passing original witness stays in the corpus.
-
-### Declaration output neighborhoods
-
-`FuzzMigrationDataDeclarations` compares the exact public declaration bytes of the [documented data counterpart](../design/src/006-data.md), including payload modifiers and Foldkit's lazy-cache reason. It does not normalize declaration order or replace a published type with a merely assignable spelling.
-
-`FuzzMigrationInferredImports` compares decoder and encoder declarations across root or subpath imports, aliases, comments, export forms and local `SchemaAST` shadows. Its [declaration oracle](../design/src/001-functions.md) is the native TypeScript output, not the compiler's current qualifier choice.
-
-The 58 keyed neighborhood files and two original migration archives retain the Foldkit and OpenCode patterns. The 25 observed feature gaps have exact feature and corpus pending entries owned by those migration lanes.
-
-### Execution diagnostic neighborhoods
-
-`FuzzReviewExecutionDiagnostics` reads the [diagnostic catalog](../design/src/900-appendices.md) at test time. It varies fork owners and scope operands, aggregate names, concurrency limits, async-match jumps and retired aggregate spellings. Valid repairs are controls; an arbitrary rejection cannot satisfy a required diagnostic.
-
-The 118 keyed inputs vary spacing, comments and the line breaks the catalog explicitly allows. The 84 observed feature gaps retain separate corpus entries and the spec apply-lane owner. `TestReviewExecutionDiagnosticsQuoted` keeps every quoted code assignment and token-separation rule in the spec gate.
-
-### Implicit namespace meanings
-
-`FuzzReviewNamespaceMeanings` checks the [per-meaning precedence rule](../design/src/005-services.md) for `KeyFormat` and `Transferable`. Six type positions retain either the DOM type or a local type alias while the value or namespace position reads Effect's module. The control imports that module under a fresh explicit name.
-
-All 24 keyed inputs remain in the corpus. Twelve observed local-type shadowing gaps have precise feature and corpus entries owned by the spec apply lane. `TestReviewNamespaceMeaningsQuoted` keeps the precedence and fresh-import-name rules in the spec gate.
-
-The T3code `slide-text` Option-match corpus retains object payloads, local block declarations and explicitly plain callbacks. `FuzzFix` varies `Some`/`None`, imports and handler getters while checking the original and fixed value, event order and convergence through its existing oracle. A flow must rerun safe fixes after marking plain functions; this test does not claim that orchestration already converges.
-
-Alchemy's parenthesized contract declarations are checked against their explicit Effect TypeScript twins by `FuzzContractDeclarationParens`. Keyed cases cover unions, intersections, arrays, optional tuples, conditionals, generic collections, indexed access and nested records, with varying success, error and environment types. The oracle compares raw declaration bytes so redundant contract parentheses cannot disappear through normalization.
-
-Retained schema binding coverage keeps the original mapped-type witnesses in `FuzzDataSpecRules` and `FuzzFix`: namespace and function homes, escaped names, value-only declarations and leaving a scope. Its exact known gaps stay keyed in `schema-binding-retained.txt`; remove a gap only after its implementation produces the observed XPASS, retaining the corpus and oracle. These are static rules from the [schema mapping](../design/src/006-data.md#shadowing-mapped-built-ins), not a second runtime differential model.
-
 After the mapped schema library-binding fixes, retained namespace, function and escaped-name rules run without pending exemptions. Each `feature:` and `corpus:` marker is retired only after its own observed `XPASS`; all minimized inputs and strict value-only-shadow and scope-exit controls remain.
 
-Retained schema binding coverage keeps the original mapped-type witnesses in `FuzzDataSpecRules` and `FuzzFix`: namespace and function homes, escaped names, value-only declarations and leaving a scope. Its exact known gaps stay keyed in `schema-binding-retained.txt`; remove a gap only after its implementation produces the observed XPASS, retaining the corpus and oracle. These are static rules from the [schema mapping](../design/src/006-data.md#shadowing-mapped-built-ins), not a second runtime differential model.
-
-T3code migration controls retain filtered `catchIf`/`catchTags` unions, exported cold programs and their dependent importer, nested plain callbacks, and `Effect.fnUntraced` context reads across namespace and named imports. `FuzzFix` checks native outcomes where a native single-file reference exists and safe refusal, declarations, and convergence for the original multi-file and legacy `infer _` witnesses. The deterministic context control does not establish garbage-collection liveness: the reported WeakRef failure remains unisolated and owned by `codemod-alchemy`.
-
-The saved two-file T3code importer also exposes a second-run fixed-point gap. Its three exact input hashes, covering the importer and both single-file import forms, and paired corpus allowances remain pending under `core-land`; the runnable single-file counterparts continue to require equal native outcomes.
-
-Retained schema binding coverage keeps the original mapped-type witnesses in `FuzzDataSpecRules` and `FuzzFix`: namespace and function homes, escaped names, value-only declarations and leaving a scope. Its exact known gaps stay keyed in `schema-binding-retained.txt`; remove a gap only after its implementation produces the observed XPASS, retaining the corpus and oracle. These are static rules from the [schema mapping](../design/src/006-data.md#shadowing-mapped-built-ins), not a second runtime differential model.
-
-The migration declaration gate has 160 generated generic-signature controls and two T3code corpus inputs for `R | Scope` versus `Exclude<R, ParentSpan> | Scope`. Formatting, union order, and normalization idempotence stay equivalent; removing a generic requirement is rejected. This checks the unchanged public-contract comparator, not a repair to the historical span rewrite, which remains owned by `codemod-alchemy`.
+The migration declaration gate has 160 generated generic-signature controls and two T3code corpus inputs for `R | Scope` versus `Exclude<R, ParentSpan> | Scope`. Formatting, union order, and normalization idempotence stay equivalent; removing a generic requirement is rejected. This checks the unchanged public-contract comparator, not a repair to the historical span rewrite, which remains`codemod-alchemy`.
 
 ## Keyword bindings and source contexts
 
@@ -1081,33 +933,17 @@ functions, field and enum initializers, static blocks and module code, with
 native-reserved words retained as property names. An ordinary `async` home
 has identical native emit in the static target.
 
-Retained schema binding coverage keeps the original mapped-type witnesses in `FuzzDataSpecRules` and `FuzzFix`: namespace and function homes, escaped names, value-only declarations and leaving a scope. Its exact known gaps stay keyed in `schema-binding-retained.txt`; remove a gap only after its implementation produces the observed XPASS, retaining the corpus and oracle. These are static rules from the [schema mapping](../design/src/006-data.md#shadowing-mapped-built-ins), not a second runtime differential model.
+`HiddenNativeCacheAddition` checks the actual cache component after two unchanged warm hits. Its 32 generated variants and six Foldkit corpus inputs cover explicitly included hidden filenames, hidden parent directories, native extensions, visible additions, and edits to existing sources listed by `files`. A 250 ms settle precedes snapshots and post-write lookup. The known hidden-glob miss remains a strict pending `register-cache:hidden-added-native-source` assertion`migfix-foldkit`; `HIDDEN_CACHE_RAW=1` exposes the desired failing invalidation assertion, and a fixed implementation must remove that allowance. The separate Node reproduction covers registration and cold compilation.
 
-`HiddenNativeCacheAddition` checks the actual cache component after two unchanged warm hits. Its 32 generated variants and six Foldkit corpus inputs cover explicitly included hidden filenames, hidden parent directories, native extensions, visible additions, and edits to existing sources listed by `files`. A 250 ms settle precedes snapshots and post-write lookup. The known hidden-glob miss remains a strict pending `register-cache:hidden-added-native-source` assertion under `migfix-foldkit`; `HIDDEN_CACHE_RAW=1` exposes the desired failing invalidation assertion, and a fixed implementation must remove that allowance. This component proof does not replace the owner’s saved Node register/cold-compile reproduction.
-
-The same cache neighborhood minimized a visible `.vibex` addition that also leaves a stale warm entry. `cache.mjs:vibex-input-invalidation` is already claimed by `vibex-bundlers`. Visible `.vibex`, hidden `.vibe`, and combined hidden `.vibex` failures have distinct strict pending scopes; existing-file edits remain positive controls. The hidden-cache report’s canonical source id is Foldkit 17075, renamed from the colliding 17074.
-
-After the mapped schema library-binding fixes, retained namespace, function and escaped-name rules run without pending exemptions. Each `feature:` and `corpus:` marker is retired only after its own observed `XPASS`; all minimized inputs and strict value-only-shadow and scope-exit controls remain.
-
-Retained schema binding coverage keeps the original mapped-type witnesses in `FuzzDataSpecRules` and `FuzzFix`: namespace and function homes, escaped names, value-only declarations and leaving a scope. Its exact known gaps stay keyed in `schema-binding-retained.txt`; remove a gap only after its implementation produces the observed XPASS, retaining the corpus and oracle. These are static rules from the [schema mapping](../design/src/006-data.md#shadowing-mapped-built-ins), not a second runtime differential model.
-
-`FuzzServiceAccessMigration` retains the T3code service-call upgrade pattern across service values, class tags, defaulted references, same-name namespaces, and renamed identifiers. It first requires each normative bare-tag control to compile, then asks the existing `--fix` path to repair the old call spelling. Missing repairs are exact pending keys owned by `migfix-t3code`; the test does not grant service tags call signatures.
-
-The service-access migration matrix includes ordinary callable controls whose parentheses must remain. Four exact service-kind keys and paired T3code corpus inputs record the missing repairs; the raw baseline fails all twelve legacy cases while every admitted bare-tag control compiles.
-
-After the mapped schema library-binding fixes, retained namespace, function and escaped-name rules run without pending exemptions. Each `feature:` and `corpus:` marker is retired only after its own observed `XPASS`; all minimized inputs and strict value-only-shadow and scope-exit controls remain.
+The same cache neighborhood minimized a visible `.vibex` addition that also leaves a stale warm entry. `cache.mjs:vibex-input-invalidation` is already`vibex-bundlers`. Visible `.vibex`, hidden `.vibe`, and combined hidden `.vibex` failures have distinct strict pending scopes; existing-file edits remain positive controls. The hidden-cache report’s canonical source id is Foldkit 17075, renamed from the colliding 17074.
 
 The T3code/Foldkit 109 `FuzzEditor` neighborhood includes explicit namespace `Option.Option` payloads with 4, 8, 15, 16, 17, 32, and 64 fields. A named package declares Effect and disables implicit Effect modules. Admission guards require every source to compile and produce `EK4839` before the existing editor oracle applies code actions; setup failures cannot count as successful coverage. Each literal corpus retains the reported minimized field access and the shared safe-fix/type/declaration contract.
 
-After the mapped schema library-binding fixes, retained namespace, function and escaped-name rules run without pending exemptions. Each `feature:` and `corpus:` marker is retired only after its own observed `XPASS`; all minimized inputs and strict value-only-shadow and scope-exit controls remain.
+`FuzzServiceShorthandContexts` retains Smithers Egress catch-head shapesthe current VIP-10 denial: get the service, then call it. Sixteen keyed syntax/alias variants pair rejected static calls with admitted instance calls, covering direct `try`, catch operands, parentheses, and `Effect.option`. This static oracle does not restore the retired shortcut or assign runtime semantics to rejected source.
 
-`FuzzServiceShorthandContexts` retains Smithers Egress catch-head shapes under the current VIP-10 denial: get the service, then call it. Sixteen keyed syntax/alias variants pair rejected static calls with admitted instance calls, covering direct `try`, catch operands, parentheses, and `Effect.option`. This static oracle does not restore the retired shortcut or assign runtime semantics to rejected source.
+The current-vibe raw matrix admits all eight dotted shortcut variants and rejects their computed-member twins. Eight exact rejection keys and paired corpus records remain pending`migfix2-smithers`. Every explicit-service counterpart compiles; this is an admission gapthe denied shorthand, not a new runtime promise.
 
-The current-vibe raw matrix admits all eight dotted shortcut variants and rejects their computed-member twins. Eight exact rejection keys and paired corpus records remain pending under `migfix2-smithers`. Every explicit-service counterpart compiles; this is an admission gap under the denied shorthand, not a new runtime promise.
-
-The `FuzzEditor` corpus retains T3code’s `ForwardCompatibleOptional` helper and eight `Schema.optionalKey` neighbourhoods. Required-reference `EK2109` and native codec controls run before code-action safety checks; optional source positions remain positive controls.
-
-The `FuzzFix` idempotence oracle checks the exact pending key derived from its input and mode after verifying that a second `--fix` invocation changes nothing. A passing idempotence check rejects its stale marker even when a later contract or runtime oracle finds a separate gap. The keyed `t3code-cold-generator-*` corpus covers stored and default-exported generators, direct and piped forms, and value and suspension bodies.
+The `FuzzEditor` corpus retains T3code’s `ForwardCompatibleOptional` helper and eight `Schema.optionalKey` neighbourhoods. Required-reference `EK2109` and native codec controls run alongside the editor checks; optional source positions remain positive controls.
 
 The declaration-twin documentation controls include native async functions and async arrows. A minimized T3code Mobile declaration keeps authored prose unchanged while adding the required `@throws {never}` contract to its TypeScript twin; the raw untagged declaration remains a negative control, so generated metadata is never ignored wholesale.
 
@@ -1137,7 +973,7 @@ controls and deletion controls require the missing body to report `TS2307`.
 This tests resolution without prescribing a body filename encoding.
 
 The module-sidecar neighbourhood retains 19 precise `.vibex` emit gaps and
-23 corpus pending markers owned by `conf-data`. VIP-39 names the expected
+23 corpus pending markers`conf-data`. VIP-39 names the expected
 compatibility sidecars; the current emitter's spelling is not used as the oracle.
 
 The Effect pin oracle quotes the accepted previous-patch clarification verbatim; its older, previous-patch, next-patch, prerelease, exact-pin and nested-resolution checks remain unchanged.
@@ -1152,8 +988,6 @@ lookalike checks; changing the citation does not change their filtering oracle.
 `FuzzCatchValueDiagnostics` compares invalid handlers with the same expressions outside `catch`: native syntax uses TypeScript, while Effect-only syntax uses a normal VibeLang value context. Keyed generator, async-function, Effect-generator and Effect-block inputs, with parentheses and comments, require one `EK0509` and preserve independent source errors without inventing callback-call diagnostics.
 
 `FuzzCatchOutsideDiagnostics` checks catches in plain functions, async functions and plain callbacks nested in Effect code. Keyed inputs vary arrow, function and Effect handlers, bad left-side arguments and properties, handler-body errors, and valid controls. Chapter 2 requires `EK0504`; chapter 7 requires the independent TypeScript diagnostic codes and source spans to match the same operands checked separately in a TypeScript function.
-
-`FuzzAmbientErrorFix` checks 30 keyed declaration shapes: `error` and `schema error`, bodyless, empty and optional payload bodies, and five explicit or inherited ambient contexts. Each source must receive its owning `EK1307` diagnostic before the editor is queried. A repair may refuse; every offered repair must type-check and keep its ambient class erased from JavaScript. Independently written native ambient classes provide type-checking and erasure controls; their namespace import plans may differ. The Opencode matcher regression retains its repository-named corpus and precise pending repair keys, rather than allowing unrelated diagnostics or executing an ambient declaration.
 
 `vip02.do-computed-assignment-key-plain` keeps native assignment operators in its independent reference. It varies `=`, `+=`, `-=`, logical assignments, changing and symbol keys, getters/setters, abrupt key/RHS/store completion and nested no-jump `do` operands. This distinguishes object-literal key timing from the assignment operator's own conversion timing.
 
@@ -1176,15 +1010,11 @@ The canonical migration-eval corpus checks authored throw documentation and expo
 
 The loop-head differential generators keep the historical selector bytes for retired `var` heads, emitting native assignment heads over initialized outer `let` bindings instead. Their closure, TDZ and per-iteration observations stay in `FuzzVIPDifferential`; `FuzzVarDenial` separately rejects the old outer/head declarations across simple and destructured `for…of` operands, including `do`. Legacy corpus labels identify the assignment counterpart rather than an admitted `var` program.
 
-The quick-fix behavior registry includes keyed `EK4856` alias, channel and heritage inputs. Each uses the existing CLI/editor, declaration API identity and runtime preservation oracle.
-
 Registered declaration-identity cases use their written VibeLang and Effect TypeScript counterparts. Unrecognized archives still test an unchanged `.ts`-to-`.vibe` rename. The short seed list, keyed corpus and half-admission guard remain unchanged.
 
 Four resolved data differential witnesses for local options, nested schemas, matcher-free matches and schema-error matcher properties now execute without stale pending exemptions. Their keyed corpus inputs and shared runtime comparisons are retained.
 
 The loader project-selection, Vite native-config, workspace-barrel and bundler sidecar-entry properties cite the current tooling interoperability sentence. Their Opencode, Foldkit and Alchemy corpus witnesses and generated cases remain intact when that sentence is reworded.
-
-Ambient-error repair and fix properties cite the current mechanical-repair, preservation and native-diagnostic wording. Their declaration shapes, negative controls, editor actions, keyed corpus and repaired-program checks are unchanged.
 
 The producer buffering citation keeps the accepted sequential-emitter qualifier: one buffered item plus one pending offer is not a global lead bound for concurrent yields. Its reference template explicitly records how the typed, zero-argument VIP sample generalizes to generated numeric parameters. A quoted guard and named `FuzzVIPDifferential` seed retain that distinction without changing either printer.
 
@@ -1200,10 +1030,6 @@ Owner-syntax coverage cites the complete current `EK0512` row and mutates closed
 
 The failures matrix quotes the current field-initializer and static-block source-context rule. Its existing `EK0401` expectations, marked spans, programs and mutation model remain unchanged.
 
-Generic-assertion repair cites the current parse-preservation sentence in chapter 7. The existing token, comment, declaration-identity and idempotence checks remain active across every assertion and whitespace key.
-
-Explicit-fork migration cites the current chapter 7 contract. Every existing owner, fix mode, options mutation and convergence check remains active; no expected output changes.
-
 Catch-operand diagnostics cover only the rejected operand's argument mismatch. A stock-TypeScript differential property checks bad call arguments, overloads, generic constraints, satisfaction checks and handler assignments through source wrappers; valid inner expressions remain clean while `EK0506` still reports the invalid operand.
 
 The no-throw wrapper fixture uses the VIP-5 catch join point without a second execution head. Its positive oracle, foreign throwing declaration, wrapped inner call and source mutations remain unchanged.
@@ -1216,7 +1042,7 @@ The diagnostic-link oracle retains the round-36 `EK4857` duplicate-`Meaning` wit
 
 Error and schema-error declaration counterparts follow the 2026-11-04 VIP-27 ruling implemented by `5df13e0fc559`: generated matcher members and runtime references stay out of published types. The strict API oracle remains unchanged. Coverage includes computed payloads, fieldless errors, schema codecs and an accessor, including the schema fixture’s second source file; keyed archives retain those paired inputs.
 
-Reserved Effect-expression names are owned by the VIP-17 parser diagnostic. Exact-count controls include functions, producers, escaped identifiers, Unicode prefixes, nested source contexts and the existing rename checks. The callable-name property retains its original count oracle and adds escaped-name mutations and keyed inputs.
+Reserved Effect-expression names arethe VIP-17 parser diagnostic. Exact-count controls include functions, producers, escaped identifiers, Unicode prefixes, nested source contexts and the existing rename checks. The callable-name property retains its original count oracle and adds escaped-name mutations and keyed inputs.
 
 The retired-formatter and public compatibility-code fuzz targets register the same short-seed CPU guard as every other target. Their original seeds, mutation oracles and twelve-minute limit remain unchanged; `TestShortTargetsBudgeted` checks the registration.
 
@@ -1224,19 +1050,9 @@ The mapper non-field schema oracle follows `f41346523af5` (`EK1505`): a method r
 
 The ten failure contracts graduated by `588d171a7946` also retire their matching `corpus:` debt rows. Original saved inputs and thirty mutation corpus files remain active. `TestPendingLines` validates the ledger and the original ten named inputs run through `FuzzFailuresSpec` without new pending entries.
 
-## Smithers factory-construction regressions
-
-`FuzzMigrationFactoryBinding` compares migrated code with the original TypeScript under Chapter 7's preservation rule. Its Smithers corpus covers repeated result and error identity, captured map values and directory arrays, call-time property reads, validation of a synthetic redacted wrapper, and held operations crossing callbacks or getters. Named functions, inferred arrows, written return types and object methods retain the reported forms. Deliberately lazy success and failure factories are controls.
-
-For plain factories, only `factory.vibe` is migrated; the observer remains `main.ts`. For held-operation cases, the observer body is the migration input and the factory remains TypeScript. Both paths use the existing outcome comparator. The minimized pin19 witnesses already pass fresh ordinary `--fix`; this coverage does not claim a new compiler repair or validate an old converted application module. Retrying a previously converted module starts from its original TypeScript and retains the application and public-declaration gates.
-
-The foreign `count` fixture declares `@throws {never}`: it only reads its module counter. Chapter 3 requires a written contract for this plain `.ts` call inside effect code. The quoted guard checks that rule alongside the migration-preservation rule; the factory-construction and identity observations stay unchanged.
-
 `FuzzCatchBlockHandler` keeps six keyed recovery neighbourhoods for native errors in handler bodies and parameter defaults, nested arrows, commented heads and grouped handlers. The Chapter 2 oracle requires `EK0509` alongside an independent `TS2322` or the native `TS1005` for a nested arrow also missing `=>`; the outer recovery must not consume that inner diagnostic. The target checks the aggregate diagnostic pipeline used by the CLI.
 
 The plain-runner property covers async callbacks invoked through `tryPromise`, preserving all six root-runner choices. The unit witness also retains the unwrapped call and requires exactly one `EK0404` there, while the wrapped callback keeps zero `EK1005` reports. Chapter 3 supplies the Promise boundary rule; callback kind still follows VIP-1.
-
-`FuzzProducerContractCLIRepair` crosses declaration and method forms with direct, readonly, and aliased incompatible `Stream` contracts. It requires project fixes to preserve the producer body, remove the annotation error, and retain independent assignment errors.
 
 `FuzzExplicitDiagnosticCategoryVariants` checks every diagnostic category against Appendix B’s explicit error/warning rows for `EK1010` and `EK4402`. Suggestions and messages remain invalid, and all configured overrides remain rejected. Source-context generators continue to determine where each allowed category applies.
 
@@ -1247,8 +1063,6 @@ Mapper recovery-block coverage varies braced and unbraced concurrent and Stream 
 Iterable `is` cache declarations use the source pattern span but are generated statements, not source calls. Projection tests retain all 200 parenthesized-subject mutations and add plain, arrow, Effect and nested block homes. Runtime witnesses verify early return, failed patterns, cache-name collisions and throwing property reads close the iterator; keyed tuple corpus entries also exercise the recovery-block oracle. This follows the iterator cleanup introduced by `d4c0dd4a`.
 
 `FuzzMapperNativeEffectValues` covers direct references, aliases, local shadows, and nested shadows of `interrupt` and `yieldNow`. Mapper regression tests check the projected types with stock TypeScript and execute the emitted modules to compare native Effect value identities.
-
-The `FuzzMatchTagDestructure` corpus includes `Match.tagsExhaustive` with `Match.withReturnType`, block handlers, destructuring, and mutated fallback strings. Each input reaches the existing before/after runtime and declaration oracle.
 
 The `t3code-node-ambient-process-env` property checks declaration API identity using the real pinned `@types/node` package. A minimized `NodeJS.ProcessEnv` corpus drives explicit and automatic types, inherited settings, custom `typeRoots`, nested declaration paths and public type mutations. Stock TypeScript validates both inputs; missing packages and explicit empty type lists remain unavailable, and comparison options retain their override behavior.
 

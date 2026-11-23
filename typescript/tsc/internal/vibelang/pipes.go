@@ -128,7 +128,7 @@ func checkPipes(c *checker.Checker, file *ast.SourceFile) {
 		switch {
 		case isTopic(n):
 			if pipeOfTopic(n) == nil {
-				report(c, n, EK2301StrayTopic)
+				report(c, n, EK2301.With("% is the topic of a pipe and stands only in a pipe's body, after |>."))
 			}
 		case isPipe(n):
 			body := n.AsBinaryExpression().Right
@@ -136,7 +136,7 @@ func checkPipes(c *checker.Checker, file *ast.SourceFile) {
 				break // the parser already reports the missing operand
 			}
 			if len(topicsOf(n)) == 0 {
-				d := report(c, body, EK2301MissingTopic)
+				d := report(c, body, EK2301.With("This pipe's body does not use its topic, %, so the value before |> would go nowhere."))
 				note(d, "Write % where the value goes:   {0} |> {1}", nodeText(file, n.AsBinaryExpression().Left), "f(%)")
 			}
 		}

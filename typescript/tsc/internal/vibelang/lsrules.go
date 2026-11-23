@@ -69,7 +69,7 @@ func init() {
 	// Ordinary generic repairs are excluded from the historical VIP migration.
 	for _, m := range []*Message{EK4801, EK4802, EK4803, EK4804, EK4805, EK4806, EK4807, EK4808, EK4809, EK4810,
 		EK4811, EK4812, EK4813, EK4814, EK4815, EK4816, EK4817, EK4818} {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
 	fileChecks = append(fileChecks, checkEffectRules)
 }

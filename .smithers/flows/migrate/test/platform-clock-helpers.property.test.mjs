@@ -7,6 +7,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { splitPlatformToModule } from "../lib/platform.mjs"
 import { materialize, restore, statements } from "./helpers/host-operations-oracle.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // A moved call's helper was typed `typeof crypto.randomUUID`. The compiler
 // reports a host clock or randomness read by the declaration its call
@@ -18,7 +19,7 @@ import { materialize, restore, statements } from "./helpers/host-operations-orac
 const runtime = new URL("../../../../packages/runtime/", import.meta.url)
 const require = createRequire(new URL("package.json", runtime))
 const ts = require("typescript"), fc = require("fast-check")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 const split = (text, globals) => splitPlatformToModule(text, "src/x.ts", ts, { globals })
 
 const reads = [
@@ -79,7 +80,7 @@ test("reads in any position restore to the source", () => {
   }), { numRuns: 60, seed: 4402603 })
 })
 
-test("the compiler accepts the module and reports no platform code", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("the compiler accepts the module and reports no platform code", () => {
   const root = mkdtempSync(join(tmpdir(), "clock-helpers-native-"))
   try {
     mkdirSync(join(root, "src"))

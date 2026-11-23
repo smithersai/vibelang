@@ -15,17 +15,10 @@ import (
 //
 //	const port = yield* runtime.$trusted(() => parsePortTrusted(text), [PortError])
 //
-// and inside a try with a catch in a function that compiles to plain
-// JavaScript (D54) it becomes
-//
-//	const port = runtime.$trustedPlain(() => parsePortTrusted(text), [PortError])
-//
 // The generated code tests instanceof against each class. It imports a class
 // from the module this file imports it, or the trusted function, from
-// (reachClass); a global class such as SyntaxError needs no import. In a
-// function with a plain contract, outside a try whose catch belongs to it,
-// the call stays an ordinary call and its exceptions propagate as JavaScript
-// exceptions (D282).
+// (reachClass); a global class such as SyntaxError needs no import. Calls in
+// plain functions keep JavaScript exception semantics (D282).
 
 // trustedPlan records the calls whose expected failures the lowering
 // converts. A tagged template calls its tag, with the tag's contract.
@@ -46,15 +39,12 @@ type classRef struct {
 	alias  bool   // a class of the file that a binding around the call shadows, reached through the alias declared after it (classAliases)
 }
 
-// planTrustedCalls records the calls with expected failures in file's
-// functions: each one in a function the lowering turns into an Effect or a
-// program, and each one inside a try with a catch in a function that
-// compiles to plain JavaScript.
+// planTrustedCalls records calls with expected failures in lowered bodies.
 func (p *plan) planTrustedCalls(c *checker.Checker, a *analyzer, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if isLowerable(node) {
-			effect := p.isEffect(node) || p.isProgram(node)
+		effect := p.isEffect(node) || p.isProgram(node)
+		if effect || p.heads[node] {
 			a.forEachFailingCall(node, func(call *ast.Node, caught bool) bool {
 				if !effect && !caught {
 					return false
@@ -129,13 +119,6 @@ func (a *analyzer) addFailures(info *effectInfo, call *ast.Node) {
 	for _, f := range a.expectedFailures(call) {
 		info.addError(f.t, call)
 	}
-}
-
-// hasEscapingFailure reports whether a call in fn's own body has expected
-// failures that can end fn: one that no try block of fn with a catch clause
-// encloses. Such a function is an Effect, as one with an escaping throw is.
-func (a *analyzer) hasEscapingFailure(fn *ast.Node) bool {
-	return a.forEachFailingCall(fn, func(call *ast.Node, caught bool) bool { return !caught })
 }
 
 // forEachFailingCall calls cb for each call in fn's own body that has
@@ -232,15 +215,6 @@ func (tx *lowering) visitTrustedCall(node *ast.Node) *ast.Node {
 	tx.EmitContext().SetOriginal(run, node)
 	tx.EmitContext().AssignCommentAndSourceMapRanges(run, node)
 	return run
-}
-
-// visitTrustedPlainCall turns a call with expected failures in a function
-// that compiles to plain JavaScript into `runtime.$trustedPlain(thunk, [classes])`.
-func (tx *lowering) visitTrustedPlainCall(node *ast.Node) *ast.Node {
-	call := tx.runtimeCall("$trustedPlain", tx.trustedThunk(node), tx.classArray(node))
-	tx.EmitContext().SetOriginal(call, node)
-	tx.EmitContext().AssignCommentAndSourceMapRanges(call, node)
-	return call
 }
 
 func (tx *lowering) classArray(node *ast.Node) *ast.Node {

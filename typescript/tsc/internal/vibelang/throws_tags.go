@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"strings"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
@@ -23,7 +21,7 @@ import (
 var EK0406 = message(406, errorCategory, "{0} is not allowed in a VibeLang file: VibeLang functions never throw, so they have no thrown type to describe.")
 
 func init() {
-	registry[EK0406.Code] = EK0406
+	registerDiagnostic(EK0406)
 	fileChecks = append(fileChecks, checkVibeThrowsTags)
 }
 
@@ -55,56 +53,4 @@ func isContractTag(tag *ast.Node) bool {
 // tagNameRange is the range of @name at the start of tag.
 func tagNameRange(tag *ast.Node) core.TextRange {
 	return core.NewTextRange(tag.Pos(), tag.TagName().End())
-}
-
-// contractTagRemoval returns the range of text that removing tag from
-// comment, its JSDoc, deletes.
-func contractTagRemoval(text string, comment, tag *ast.Node) (int, int) {
-	alone := len(comment.Comments()) == 0
-	for _, other := range jsdocTags(comment) {
-		alone = alone && isContractTag(other)
-	}
-	if alone {
-		// A JSDoc's range takes in its leading trivia, so find its opening.
-		return wholeLines(text, strings.LastIndex(text[:jsdocTags(comment)[0].Pos()], "/**"), comment.End())
-	}
-	end := tag.End()
-	for _, other := range jsdocTags(comment) {
-		if other.Pos() > tag.Pos() && other.Pos() < end {
-			end = other.Pos()
-		}
-	}
-	// A tag's range can take in the next line's margin; stop at its text.
-	end = tag.Pos() + len(strings.TrimRight(text[tag.Pos():end], " \t\r\n*"))
-	lineStart := strings.LastIndexByte(text[:tag.Pos()], '\n') + 1
-	if strings.Trim(text[lineStart:tag.Pos()], " \t*") == "" {
-		if lineEnd := strings.IndexByte(text[end:], '\n'); lineEnd >= 0 && strings.TrimSpace(text[end:end+lineEnd]) == "" {
-			return lineStart, end + lineEnd + 1
-		}
-	}
-	for end < len(text) && (text[end] == ' ' || text[end] == '\t') {
-		end++
-	}
-	return tag.Pos(), end
-}
-
-// wholeLines widens start..end to the lines it covers when only whitespace
-// shares them, so that removing it leaves no blank line; otherwise it takes
-// the whitespace after end.
-func wholeLines(text string, start, end int) (int, int) {
-	lineStart := strings.LastIndexByte(text[:start], '\n') + 1
-	after := end
-	for after < len(text) && (text[after] == ' ' || text[after] == '\t') {
-		after++
-	}
-	if strings.TrimSpace(text[lineStart:start]) == "" && after < len(text) && (text[after] == '\n' || text[after] == '\r') {
-		if text[after] == '\r' {
-			after++
-		}
-		if after < len(text) && text[after] == '\n' {
-			after++
-		}
-		return lineStart, after
-	}
-	return start, after
 }

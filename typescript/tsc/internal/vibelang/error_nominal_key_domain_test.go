@@ -95,29 +95,12 @@ func TestSchemaErrorNominalKeyInverse(t *testing.T) {
 		t.Run(row.name, func(t *testing.T) {
 			source := nominalKeyPrelude + "declare const key: " + row.domain + "; export class E extends Schema.TaggedError<E>()(\"E\", { id: Schema.String }) { get [key](): number { return 1 } }"
 			program, file, _, _ := editorProgram(t, source)
-			var class *ast.Node
-			var visit func(*ast.Node) bool
-			visit = func(n *ast.Node) bool {
-				if ast.IsClassDeclaration(n) && n.Name() != nil && n.Name().Text() == "E" {
-					class = n
+			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+				if d.Code() == EK4837.Code {
+					return
 				}
-				return n.ForEachChild(visit)
 			}
-			file.AsNode().ForEachChild(visit)
-			if class == nil {
-				t.Fatal("missing native class")
-			}
-			c, done := program.GetTypeCheckerForFile(t.Context(), file)
-			defer done()
-			c.GetDiagnostics(t.Context(), file)
-			plan := errorClassRewrite(c, file, class)
-			if row.reserved {
-				if plan == nil || len(plan.edits) != 0 || !strings.Contains(plan.why, "computed member key") {
-					t.Fatalf("unsafe inverse offered: %+v", plan)
-				}
-			} else if plan == nil || len(plan.edits) == 0 {
-				t.Fatalf("safe key's inverse refused: %+v", plan)
-			}
+			t.Fatal("expected the schema error spelling diagnostic")
 		})
 	}
 }

@@ -30,15 +30,9 @@ import (
 // A direct value or throw cannot preserve a written generic instantiation.
 var directTypeArgumentsForm = EK4834.With("{0} has an explicit type-argument contract; keep the native call.")
 
-const directTypeArgumentsNote = "No quick fix: keep the native call to preserve its explicit type arguments and written contract."
-
 var directOptionalCallForm = EK4834.With("{0} uses optional chaining; keep the native call.")
 
-const optionalCallFormNote = "No quick fix: keep the native call to preserve optional chaining and conditional argument evaluation."
-
 var directSpreadCallForm = EK4834.With("{0} uses spread arguments; keep the native call.")
-
-const spreadCallFormNote = "No quick fix: keep the native call to preserve spread iteration and argument evaluation."
 
 // directFailMessage is EK4834's text for Effect.fail.
 var directFailMessage = EK4834.With("{0} runs here, so it fails the function as a throw does: {1}.")
@@ -71,14 +65,14 @@ func directFormCall(c *checker.Checker, call *ast.Node) string {
 func findDirectForms(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ast.IsCallExpression(node) && directFormCall(c, node) != "" {
-			rewrite := directFormRewrite(c, file, node)
+		if name := directFormCall(c, node); name != "" {
+			rewrite := directFormDiagnostic(c, file, node, name)
 			if rewrite == nil {
-				rewrite = &formRewrite{why: directTrySafetyNote}
+				rewrite = &formRewrite{}
 			}
-			if !rewrite.fixable() && rewrite.message == nil {
+			if rewrite.description == "" && rewrite.message == nil {
 				rewrite.description = shortText(expressionText(file, node.Arguments()[0]), "the argument")
-				if directFormCall(c, node) == "fail" {
+				if name == "fail" {
 					rewrite.description = "throw " + rewrite.description
 					rewrite.message = directFailMessage
 				}
@@ -133,26 +127,22 @@ func directPositionOf(call *ast.Node) directPosition {
 	return positionOther
 }
 
-// directFormRewrite plans EK4834's fix for call.
-func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
-	name := directFormCall(c, call)
-	if name == "" {
+// directFormDiagnostic chooses the wording and source example for EK4834.
+func directFormDiagnostic(c *checker.Checker, file *ast.SourceFile, call *ast.Node, name string) *formRewrite {
+	if ast.IsElementAccessExpression(call.Expression()) {
 		return nil
 	}
-	if ast.IsElementAccessExpression(call.Expression()) {
-		return &formRewrite{why: computedCallFormNote}
-	}
 	if hasSpreadFormArguments(call) {
-		return &formRewrite{message: directSpreadCallForm, why: spreadCallFormNote}
+		return &formRewrite{message: directSpreadCallForm}
 	}
 	if ast.IsOptionalChain(call) {
-		return &formRewrite{message: directOptionalCallForm, why: optionalCallFormNote}
+		return &formRewrite{message: directOptionalCallForm}
 	}
 	if call.TypeArguments() != nil {
-		return &formRewrite{message: directTypeArgumentsForm, why: directTypeArgumentsNote}
+		return &formRewrite{message: directTypeArgumentsForm}
 	}
 	if directTryFormSite(call) != call {
-		return &formRewrite{why: directTryWrapperNote}
+		return nil
 	}
 	argument := call.Arguments()[0]
 	argumentText := expressionText(file, argument)
@@ -162,7 +152,6 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		argumentText = "(" + file.Text()[argument.Pos():argument.End()] + ")"
 	}
 	position := directPositionOf(call)
-	start, end := nodeStart(file, call), call.End()
 	var text string
 	switch name {
 	case "succeed":
@@ -190,12 +179,8 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	case "fail":
 		operand := argumentText
 		switch position {
-		case positionStatement:
+		case positionStatement, positionReturn:
 			text = "throw " + operand
-		case positionReturn:
-			start = nodeStart(file, call.Parent)
-			text = "throw " + operand
-			end = call.End()
 		case positionArrowBody, positionRightValue:
 			if needsOperandParentheses(argument) {
 				operand = "(" + operand + ")"
@@ -205,7 +190,7 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 			return nil
 		}
 	}
-	rewrite := withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{{start, end, text}}, description: shortText(text, core.IfElse(name == "fail", "a throw", "its argument alone"))})
+	rewrite := &formRewrite{description: shortText(text, core.IfElse(name == "fail", "a throw", "its argument alone"))}
 	if name == "fail" {
 		rewrite.message = directFailMessage
 	}

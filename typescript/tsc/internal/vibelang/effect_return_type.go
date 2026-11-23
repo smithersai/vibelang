@@ -25,7 +25,7 @@ const inferredEffectReturn = "no return annotation (infer the Effect)"
 var effectReturnTypeOmitted = EK0106.With("An effect function returns an Effect, so its return type can't be {0}: leave the return type out, and the function infers its Effect.")
 
 func init() {
-	registry[EK0106.Code] = EK0106
+	registerDiagnostic(EK0106)
 	fileChecks = append(fileChecks, checkEffectReturnTypes)
 	tsFormRules[EK0106.Code] = &tsFormRule{
 		message: EK0106,
@@ -84,7 +84,10 @@ func effectReturnTypeRewrite(c *checker.Checker, file *ast.SourceFile, t *ast.No
 	// A broad annotation did not constrain the success, failure or environment.
 	// Keep the marked body intact and infer all three, rather than inventing
 	// empty error/requirement slots. Bodyless signatures still need a contract.
-	if written := c.GetTypeFromTypeNode(t); written.Flags()&checker.TypeFlagsAnyOrUnknown != 0 && t.Parent.Body() != nil {
+	// A written `infer _` has no meaning in a return annotation (Chapter 1),
+	// and its T!! spelling, infer _!!, is EK4857, so its only repair is the
+	// same deletion.
+	if written := c.GetTypeFromTypeNode(t); (written.Flags()&checker.TypeFlagsAnyOrUnknown != 0 || ast.IsInferTypeNode(t)) && t.Parent.Body() != nil {
 		// The shared comment guard also recognizes comment-looking literal
 		// text. Do not turn that text into an actual comment when omitting T.
 		literalComment := false
@@ -125,6 +128,11 @@ func effectReturnTypeRewrite(c *checker.Checker, file *ast.SourceFile, t *ast.No
 			joined = strings.TrimSuffix(joined, "!") // A!E, as Chapter 1 writes User!NotFound
 		}
 		return &formRewrite{edits: []sourceEdit{{nodeStart(file, t), t.End(), joined}}, description: joined}
+	}
+	if ast.IsInferTypeNode(t) {
+		// A bodyless signature has nothing to infer from: no spelling of the
+		// written infer is a repair, so name the deletion without a quick fix.
+		return &formRewrite{description: inferredEffectReturn, why: "No quick fix: a signature without a body needs a written Effect return type."}
 	}
 	text := nodeText(file, t)
 	if ast.IsUnionTypeNode(t) || ast.IsIntersectionTypeNode(t) || ast.IsFunctionTypeNode(t) || ast.IsConditionalTypeNode(t) {

@@ -10,7 +10,7 @@ import (
 var EK1302 = message(1302, errorCategory, "An error declaration cannot contain a static member. Move it outside the declaration, or write the error as a TypeScript class.")
 
 func init() {
-	registry[EK1302.Code] = EK1302
+	registerDiagnostic(EK1302)
 	fileChecks = append(fileChecks, checkErrorStaticMembers)
 	checker.RegisterDiagnosticsFilterHook(filterErrorStaticShapeDiagnostics)
 }

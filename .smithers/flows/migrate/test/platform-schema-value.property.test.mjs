@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { splitPlatform } from "../lib/platform.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // codemod-gap:platform-split-schema-value-import (drive-t3code-apps
 // 2026-11-02T02:42Z): t3code Desktop's MacSettingsWindow.ts declares a schema
@@ -17,7 +18,7 @@ import { splitPlatform } from "../lib/platform.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const ts = require("typescript")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 
 const ambient = `declare module "node:fs" { export function existsSync(path: string): boolean }\n`
 // A stand-in for effect/Schema: the split reads names, not Effect's types.
@@ -58,7 +59,7 @@ test("t3code Desktop MacSettingsWindow: a moved value read takes the value, and 
   assert.deepEqual(after.errors, [], result.module + "\n---\n" + result.platform)
 })
 
-test("t3code Desktop MacSettingsWindow: the refused module compiles natively as written", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("t3code Desktop MacSettingsWindow: the refused module compiles natively as written", () => {
   const root = mkdtempSync(join(tmpdir(), "platform-schema-value-"))
   try {
     writeFileSync(join(root, "Schema.ts"), schema)

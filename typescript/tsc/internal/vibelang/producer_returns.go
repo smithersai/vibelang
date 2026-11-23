@@ -16,7 +16,7 @@ import (
 var EK2128 = message(parser.ProducerReturnValueCode, errorCategory, parser.ProducerReturnValueMessage)
 
 func init() {
-	registry[EK2128.Code] = EK2128
+	registerDiagnostic(EK2128)
 	fileChecks = append(fileChecks, checkProducerReturns)
 }
 

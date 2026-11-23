@@ -34,14 +34,6 @@ func TestFormDiagnosticsMatchesProjection(t *testing.T) {
 	for _, tc := range projectionCases {
 		cases = append(cases, struct{ name, source, virtual string }{name: tc.name, source: tc.source, virtual: tc.virtual})
 	}
-	for _, source := range []string{
-		`function f() { return pipe(() => { throw new Offline() }, retry({ times: 2 }), timeout("1 second")) }`,
-		`import { opaque } from "./other"; function f() { return pipe(() => a(), opaque) }`,
-		`import { opaque } from "./other"; function f() { const job = () => a(); return pipe(job, opaque) }`,
-		`function f() { return pipe((() => a()), retry({ times: 2 })) }`,
-	} {
-		cases = append(cases, struct{ name, source, virtual string }{name: source, source: source})
-	}
 	// Reuse the docs checker's materializer so cross-block imports, generated
 	// exports, fragments and deliberate errors match the production census.
 	cases = append(cases, docsFormCases(t)...)

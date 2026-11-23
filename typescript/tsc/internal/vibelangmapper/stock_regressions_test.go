@@ -8,11 +8,12 @@ import (
 )
 
 // TestStockProjectionGoldens pins D31 imports and D4 service context in
-// both renderings, then checks stock tsc.
+// both renderings, then checks stock tsc. The checking rendering keeps a
+// relative ./x.ts import as written, so stock tsc allows .ts import paths.
 func TestStockProjectionGoldens(t *testing.T) {
 	cases := map[string]string{
 		"imports": `import { name } from "./names.ts"; export { name } from "./names.ts"; export function value() { return name }`,
-		"service": `import { Effect } from "effect"; service Names { lookup(id: number): Effect<string, never, never> } export const live = Layer.succeed(Names, { lookup(id) { return String(id) } })`,
+		"service": `import { Effect } from "effect"; service Names { lookup(id: number): Effect<string, never, never> } export const live = Layer.succeed(Names, { effect lookup(id) { return String(id) } })`,
 	}
 	for name, source := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -47,7 +48,7 @@ func TestStockProjectionGoldens(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "names.ts"), []byte(`export const name = "Ada"`), 0600); err != nil {
 				t.Fatal(err)
 			}
-			cmd := exec.Command(stock, "--ignoreConfig", "--noEmit", "--strict", "--target", "es2022", "--module", "nodenext", "main.ts")
+			cmd := exec.Command(stock, "--ignoreConfig", "--noEmit", "--strict", "--allowImportingTsExtensions", "--target", "es2022", "--module", "nodenext", "main.ts")
 			cmd.Dir = dir
 			if out, err := cmd.CombinedOutput(); err != nil {
 				t.Fatalf("%v\n%s", err, out)

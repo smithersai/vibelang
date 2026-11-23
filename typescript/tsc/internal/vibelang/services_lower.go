@@ -193,22 +193,3 @@ func (tx *lowering) visitServiceClass(node *ast.Node) *ast.Node {
 	ec.SetOriginal(class, node)
 	return class
 }
-
-// operationArity is the number of parameters a control operation declares,
-// not counting a this parameter, or -1 when it has a rest parameter. The
-// runtime pads a call's arguments to it, so a clause always receives its
-// continuation after the declared parameters, also when the call left an
-// optional argument out.
-func operationArity(method *ast.Node) int {
-	n := 0
-	for _, parameter := range method.Parameters() {
-		if ast.IsThisParameter(parameter) {
-			continue
-		}
-		if parameter.AsParameterDeclaration().DotDotDotToken != nil {
-			return -1
-		}
-		n++
-	}
-	return n
-}

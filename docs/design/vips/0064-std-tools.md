@@ -146,7 +146,7 @@ A direct call is nearly the same in both. The gap opens when a model uses the to
 
 - **TypeScript-first.** Functions and values.
 - **Effect-second.** `Tool` and `Toolkit` are Effect's. This module is a set of them. No second tool type.
-- **Optimized for agentic programs.** THESIS 7: tool calls are "as basic as HTTP and files". The standard set is in scope.
+- **Optimized for agentic programs.** The standard set makes tool calls as straightforward as HTTP and file operations.
 - **Highly forkable.** A fork adds or removes a tool in one list. The search service already has three implementations behind one seam.
 - **Factory-first.** The factory's agents use these tools and no private ones.
 

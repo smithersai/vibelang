@@ -213,7 +213,7 @@ Today's program replaces the `provide` line with `Layer.provide(AnthropicLanguag
 
 - **TypeScript-first.** Function calls. A seat is a string.
 - **Effect-second.** The interface is Effect's and so is the provider code. This VIP adds only what Effect has no module for.
-- **Optimized for agentic programs.** THESIS 7: model calls are "as basic as HTTP and files". Here a model call is one line and one `provide`, and a replay does not pay twice.
+- **Optimized for agentic programs.** Model calls should be as straightforward as HTTP and file operations. Here a model call is one line and one `provide`, and a replay does not pay twice.
 - **Highly forkable.** A fork adds a provider by adding a row to one table. `Model.compatible` covers most without a fork.
 - **Factory-first.** Every model call the factory makes goes through this module and lands in a journal.
 

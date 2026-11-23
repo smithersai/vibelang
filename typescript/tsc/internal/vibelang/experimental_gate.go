@@ -35,7 +35,7 @@ import (
 var EK3013 = message(3013, errorCategory, "{0} comes from the open proposal {1} and is experimental. Opt in with \"vibe\": { \"experimental\": [\"{2}\"] } in tsconfig.json or vibe.config.json.")
 
 func init() {
-	registry[EK3013.Code] = EK3013
+	registerDiagnostic(EK3013)
 	fileChecks = append(fileChecks, checkExperimentalGate)
 }
 

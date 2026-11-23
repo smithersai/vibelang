@@ -6,10 +6,11 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { splitBatchPlatform, splitPlatformToModule } from "../lib/platform.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-platform-merged-namespace.json", import.meta.url), "utf8"))
 const spec = readFileSync(new URL("../../../../docs/design/vips/0040-module-declarations.md", import.meta.url), "utf8")
 assert.ok(spec.includes(corpus.rule))
@@ -64,9 +65,9 @@ function exercise(text, name = "Asset") {
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
-test("a throwing class keeps its merged namespace across the module boundary", { skip: !compiler && "set VIBELANG_BINARY" }, () => exercise(corpus.source))
+test("a throwing class keeps its merged namespace across the module boundary", () => exercise(corpus.source))
 
-test("reopened nested namespaces retain their local types and runtime constructor", { skip: !compiler && "set VIBELANG_BINARY" }, () => exercise(fixture("Resource", true, true, true), "Resource"))
+test("reopened nested namespaces retain their local types and runtime constructor", () => exercise(fixture("Resource", true, true, true), "Resource"))
 
 test("namespaces with runtime initialization refuse a partial split", () => {
   const source = corpus.source.replace("export interface Input { readonly value: number }",
@@ -84,7 +85,7 @@ test("an unrelated namespace without host or throwing code is unchanged", () => 
   assert.equal(split("export namespace Safe { export interface Input { value: number } }\nexport const kept = 1\n"), null)
 })
 
-test("generated merged namespace shapes preserve native types and constructor behavior", { skip: !compiler && "set VIBELANG_BINARY" }, async () => {
+test("generated merged namespace shapes preserve native types and constructor behavior", async () => {
   await fc.assert(fc.asyncProperty(
     fc.constantFrom("Asset", "Resource", "Entry"), fc.integer({ min: 0, max: 3 }), fc.boolean(), fc.boolean(),
     async (name, nested, reopened, shadow) => exercise(fixture(name, nested, reopened, shadow), name)

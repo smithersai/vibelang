@@ -15,10 +15,11 @@ import { loaderRecord } from "../../../../packages/compiler/cache.mjs"
 import { renameBatch, rewriteExports } from "../lib/codemod.mjs"
 import { routeEmittedExports } from "../lib/emitted-exports.mjs"
 import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 const hasBun = spawnSync("bun", ["--version"]).status === 0
 const quote = "names the source under the `vibelang-source` condition and the emitted JavaScript under `.vibelang/js/` by `default`"
 
@@ -127,7 +128,7 @@ test("emitted-js-selection: the emit keeps exactly the JavaScript of the package
 // opencode-32, end to end with the real compiler: @opencode/schema's
 // `"./*": "./src/*.ts"` after a batch migrates skill.ts, which imports a
 // TypeScript helper; an app imports @opencode/schema/skill.
-test("a migrated package's exports and emit let plain node and the bun build CLI read it", { skip: !compiler && "set VIBELANG_BINARY" }, async (t) => {
+test("a migrated package's exports and emit let plain node and the bun build CLI read it", async (t) => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(quote), "update the quoted exports rule")
   const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-schema-bun-build.json", import.meta.url), "utf8"))
   const root = realpathSync(mkdtempSync(join(tmpdir(), "migrate-emitted-js-")))
@@ -154,7 +155,7 @@ test("a migrated package's exports and emit let plain node and the bun build CLI
 // opencode cold start: with the emitted JavaScript, the emit step writes the
 // loader record of the package's project, which a cold loader uses in place
 // of the compile (packages/compiler/test/loader-record.test.mjs).
-test("the emit step writes each loader project's record, which a cold lookup accepts", { skip: !compiler && "set VIBELANG_BINARY" }, async (t) => {
+test("the emit step writes each loader project's record, which a cold lookup accepts", async (t) => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-schema-bun-build.json", import.meta.url), "utf8"))
   const root = realpathSync(mkdtempSync(join(tmpdir(), "migrate-loader-record-")))
   t.after(() => rmSync(root, { recursive: true, force: true }))
@@ -215,7 +216,7 @@ console.log(JSON.stringify(await writeLoaderRecords({ compiler: "vibelang", pack
   assert.match(entry.error, /^vibelang\/project is not installed for this package/)
 })
 
-test("a staged flow writes a loader record with only the target's installed vibelang in reach", { skip: !compiler && "set VIBELANG_BINARY" }, async (t) => {
+test("a staged flow writes a loader record with only the target's installed vibelang in reach", async (t) => {
   const { top, flow } = stageFlow(t)
   const root = join(top, "target")
   const target = join(root, "packages/schema")
@@ -341,7 +342,7 @@ test("exported-test-support-closure: the emit keeps exactly what the exports rea
 
 // The witness, unfaked: plain Node, with no loader, imports an exported
 // test-support module whose relative imports reach a .vibe module.
-test("smithers-test-support: plain Node loads an exported test-support module", { skip: !compiler }, async () => {
+test("smithers-test-support: plain Node loads an exported test-support module", async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-emitted-js-"))
   try {
     write(root, {
@@ -368,7 +369,7 @@ test("smithers-test-support: plain Node loads an exported test-support module", 
 
 // RD-018: use the compiler's actual source maps when writing the header that
 // the runtime loaders consume. Neither input order nor sibling suffix wins.
-test("RD-018: migration attributes each actual JSX-preserve output to its own source", { skip: !compiler && "set VIBELANG_BINARY" }, async (t) => {
+test("RD-018: migration attributes each actual JSX-preserve output to its own source", async (t) => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "migrate-emitted-siblings-")))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   write(root, {
@@ -515,7 +516,7 @@ async function inlineModuleFixture({ source = inlineCorpus.source, module = inli
 }
 
 test("smithers inline module emit keeps the parent and companion loadable in plain Node", async () => inlineModuleFixture())
-test("smithers inline module emit with the native compiler loads in plain Node", { skip: !compiler && "set VIBELANG_BINARY" }, async () => inlineModuleFixture({ native: true }))
+test("smithers inline module emit with the native compiler loads in plain Node", async () => inlineModuleFixture({ native: true }))
 test("smithers inline module emit property: ordering, paths, names and test ownership retain the complete graph", async () => {
   await fc.assert(fc.asyncProperty(
     fc.constantFrom("src", "src/deep", "test", "src/__tests__"),
@@ -528,7 +529,7 @@ test("smithers inline module emit property: ordering, paths, names and test owne
 })
 
 
-test("smithers inline module emit native filenames preserve case and Unicode code points", { skip: !compiler && "set VIBELANG_BINARY" }, async t => {
+test("smithers inline module emit native filenames preserve case and Unicode code points", async t => {
   for (const module of ["Text", "text", "Über", "café", "cafe\u0301", "𐐀"]) {
     await t.test(module, async () => inlineModuleFixture({ module, value: 17, native: true }))
   }
@@ -609,5 +610,5 @@ test("smithers module bodies property: body count, directory depth, output order
     async (directory, modules, stale, reverse) => moduleBodiesFixture({ directory, modules, stale, reverse })
   ), { seed: 40217, numRuns: 40 })
 })
-test("smithers module bodies with the native compiler: three bodies, a nested directory and stale companions load in plain Node", { skip: !compiler && "set VIBELANG_BINARY" }, async () => moduleBodiesFixture({ modules: ["$throw$ts", "$call$ts", "Helpers"], stale: true, native: true }))
-test("smithers module bodies with the native compiler: the Smithers pattern under src", { skip: !compiler && "set VIBELANG_BINARY" }, async () => moduleBodiesFixture({ directory: "src", modules: [bodyCorpus.module], stale: true, native: true }))
+test("smithers module bodies with the native compiler: three bodies, a nested directory and stale companions load in plain Node", async () => moduleBodiesFixture({ modules: ["$throw$ts", "$call$ts", "Helpers"], stale: true, native: true }))
+test("smithers module bodies with the native compiler: the Smithers pattern under src", async () => moduleBodiesFixture({ directory: "src", modules: [bodyCorpus.module], stale: true, native: true }))

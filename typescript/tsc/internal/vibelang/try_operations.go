@@ -22,7 +22,7 @@ var tryOperationHints = map[string]string{
 
 func init() {
 	checker.RegisterCallArgumentDiagnosticsFilterHook(filterRejectedTryOperationArgumentDiagnostics)
-	registry[EK1801.Code] = EK1801
+	registerDiagnostic(EK1801)
 	fileChecks = append(fileChecks, checkTryOperations)
 }
 

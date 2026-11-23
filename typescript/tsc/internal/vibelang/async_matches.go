@@ -9,7 +9,7 @@ import (
 var EK0706 = message(706, errorCategory, "A return, break or continue cannot leave an async match. Keep its target inside the async match.")
 
 func init() {
-	registry[EK0706.Code] = EK0706
+	registerDiagnostic(EK0706)
 	fileChecks = append(fileChecks, checkAsyncMatchPromises)
 }
 

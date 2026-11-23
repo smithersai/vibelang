@@ -228,8 +228,11 @@ const migrateLoaderValidation = S.Shell.Test({
 })
 
 // Each file is a separate scheduler node. Keep the complete old input closure:
-// migration tests import shared helpers, fixtures and package adapters.
+// migration tests import shared helpers, fixtures and package adapters. The
+// shards set no environment: tests find the native compiler, and the esbuild,
+// Oxlint, Vite and Rolldown that scripts/ci.sh installs, in the tree.
 const migrateTestData = [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
+  S.file("vite/package.json"), S.file("vite/bun.lock"), S.file("unplugin/package.json"), S.file("unplugin/bun.lock"),
   S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
   S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"),
   S.file("//scripts/testing/migrate-progress.mjs"), S.file("//scripts/testing/migrate-shards.mjs"),
@@ -423,6 +426,20 @@ const toolingAdapterSources = S.Filegroup({
 /** Every file in the npm packages, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
+// vibelang/eslint against ESLint, typescript-eslint and the plugins Smithers lints with, at the versions the
+// suite's own lockfile pins: run.sh installs it, so this target reads the registry. corpus.test.mjs parses and
+// lints every .vibe file in the checkout, one compiler process each: about 3 minutes on an idle 4-vCPU box.
+const compilerEslintTest = S.Shell.Test({
+  summary: "ESLint bridge: vibelang/eslint parses and lints .vibe files, and typedProgram types the .ts files beside them.",
+  shell: "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/compiler/test/eslint/run.sh",
+  data: [compilerNative, compilerSupport, S.glob("compiler/test/eslint/*.test.mjs"), tree,
+    S.glob("//typescript/**/*.vibe"), S.glob("//.smithers/flows/**/*.vibe"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun")],
+  sandbox: "none",
+  timeout: "30m"
+})
+
 export const Package = S.Package({
   targets: {
     ...Object.fromEntries([...compilerTestEntries, ...runtimeTestEntries, ...viteTestEntries, ...unpluginTestEntries,
@@ -445,6 +462,7 @@ export const Package = S.Package({
     "compiler-test-2": compilerSuite(2),
     "compiler-test-3": compilerSuite(3),
     "compiler-test-4": compilerSuite(4),
+    "compiler-eslint-test": compilerEslintTest,
     "migrate-helper-identity": migrateHelperIdentity,
     "migrate-source-child-native": migrateSourceChildNative,
     "vite-paths-imports-copy": vitePathsImportsCopy,

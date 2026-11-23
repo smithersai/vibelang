@@ -57,7 +57,7 @@ func init() {
 	compiler.RegisterRecoverableSyntacticDiagnosticCallback(func(d *ast.Diagnostic) bool {
 		return d.Source() == diagnosticSource && recoverableSyntaxCodes[d.Code()] || recoverableNativeSyntax(d)
 	})
-	registry[EK0509.Code] = EK0509
+	registerDiagnostic(EK0509)
 }
 
 // malformedCatchHandler returns the handler of a catch expression the parser

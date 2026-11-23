@@ -27,7 +27,7 @@ var (
 )
 
 func init() {
-	registry[EK2114.Code] = EK2114
+	registerDiagnostic(EK2114)
 	fileChecks = append(fileChecks, checkCatchExpressions)
 	ls.RegisterQuickInfoHook(catchExpressionQuickInfo)
 }

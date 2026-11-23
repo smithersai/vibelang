@@ -7,5 +7,5 @@ import "github.com/microsoft/TypeScript/tsc/internal/parser"
 var EK0904 = message(904, errorCategory, parser.VibeLangServiceHeritageMessage)
 
 func init() {
-	registry[EK0904.Code] = EK0904
+	registerDiagnostic(EK0904)
 }

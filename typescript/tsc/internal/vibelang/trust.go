@@ -17,7 +17,8 @@ import (
 //	formatName(user)          // plain TypeScript: EK0403 without a boundary
 //	parsePortTrusted(text)    // @vibelang trusted, @throws {PortError}: PortError joins E
 //	JSON.parse(text)          // a built-in: SyntaxError joins E
-//	Option.getOrThrow(o)      // effect's own export: exceptions are defects
+//	Option.some(1)            // pinned effect export typed never: no wrapper needed
+//	Option.getOrThrow(o)      // pinned effect export typed Error: wrap in Effect.try
 //	Effect.try(() => legacyParse(text))   // a boundary: plain calls are allowed inside
 //
 // The foreign-call gate applies only to code a fiber runs: a module's top level, and the
@@ -110,9 +111,13 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 	// A const that re-exports a library function with the tag trusts it (D23),
 	// so the tag on what the callee names wins over the library's declaration.
 	candidates := foreignCallBindingCandidates(c, call, true)
-	switch pkg := packageOf(c, file); {
-	case isLibFile(c, file):
+	if isLibFile(c, file) {
 		return tagged(c, call, candidates, builtinTrust(c, call, decl))
+	}
+	if module, ok := pinnedEffectModule(c, file); ok {
+		return tagged(c, call, candidates, effectTrust(c, call, decl, module))
+	}
+	switch pkg := packageOf(c, file); {
 	case isTrustedPackage(c, ast.GetSourceFileOfNode(call), pkg):
 		return tagged(c, call, candidates, &trust{kind: trustEffect})
 	case isPlatformPackage(pkg):
@@ -241,6 +246,9 @@ func tagged(c *checker.Checker, call *ast.Node, candidates []*ast.Node, otherwis
 	for _, candidate := range candidates {
 		file := ast.GetSourceFileOfNode(candidate)
 		if file == nil || isLibFile(c, file) || isTrustedPackage(c, ast.GetSourceFileOfNode(call), packageOf(c, file)) {
+			continue
+		}
+		if _, ok := pinnedEffectModule(c, file); ok {
 			continue
 		}
 		for _, host := range jsdocHosts(candidate) {
@@ -873,9 +881,14 @@ func (a *analyzer) performsEffectful(call *ast.Node) bool {
 	if !ast.IsCallExpression(call) || !a.runs(call) || returnsEffectful(a.checker, call) {
 		return true
 	}
-	switch callTrust(a.checker, call).kind {
+	t := callTrust(a.checker, call)
+	switch t.kind {
 	case trustForeign, trustTagged, trustUnknown:
 		return false
+	case trustBuiltin:
+		if len(t.failures) > 0 {
+			return false
+		}
 	}
 	return true
 }
@@ -951,9 +964,8 @@ func reachClass(c *checker.Checker, file *ast.SourceFile, f failure) (module str
 	return "", "", false
 }
 
-// legacyTrustUsesTag matches planTrustedCalls' function/body predicate so
-// EK4406 only offers a migration where lowering uses the failure contract.
-// A plain callback's uncaught call stays plain; a caught D54 call uses the tag.
+// legacyTrustUsesTag identifies the Effect calls and caught calls that draw
+// EK4406 for a legacy trust contract.
 func (a *analyzer) legacyTrustUsesTag(call *ast.Node) bool {
 	fn := enclosingFunction(call)
 	if fn == nil || !isLowerable(fn) {

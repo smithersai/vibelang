@@ -408,6 +408,23 @@ test("runs .vibex modules, as an entry and imported from TypeScript and .vibe", 
   ])
 })
 
+// Issue 480: under "jsx": "preserve" a .vibe module's import of a .vibex
+// sibling is emitted as ./Row.jsx, a file that does not exist beside the source.
+test("names the jsx option when a .vibe module imports a .vibex module that compiles to preserved JSX", { skip }, (t) => {
+  const { run } = project(t, {
+    ...jsxRuntime,
+    "tsconfig.json": jsxProject("preserve"),
+    "src/Row.vibex": row,
+    "src/use.vibe": "import { Row } from \"./Row.vibex\"\nexport const element = Row({ label: \"vibe\" })\n",
+    "src/main.ts": "import { element } from \"./use.vibe\"\nconsole.log(typeof element)\n"
+  }, "vibelang-register-vibex-preserve-importer-")
+  const result = run("src/main.ts")
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /ERR_VIBELANG_JSX/)
+  assert.match(result.stderr, /Row\.vibex/)
+  assert.doesNotMatch(result.stderr, /ERR_MODULE_NOT_FOUND/)
+})
+
 test("names the jsx option when a .vibex module compiles to preserved JSX", { skip }, (t) => {
   const { run } = project(t, {
     ...jsxRuntime,

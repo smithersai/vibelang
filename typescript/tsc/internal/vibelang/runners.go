@@ -142,47 +142,6 @@ func checkProgramStarts(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// passedAsProgram reports whether call, at a module's top level, is an
-// argument where a program is expected, as main() is in
-// NodeRuntime.runMain(main()), or is evaluated by an expression passed by
-// name, such as a pipe's left side whose topic is passed by name: a call
-// there runs nothing and builds the program the callee receives (D147,
-// D155), so EK1001 does not apply.
-func (a *analyzer) passedAsProgram(call *ast.Node) bool {
-	if holdsProgram(a.checker, call) {
-		return true
-	}
-	return a.atProgramPosition(call) || a.inProgramPipe(call)
-}
-
-// atProgramPosition reports whether node, an Effect, is an argument where its
-// callee expects a program.
-func (a *analyzer) atProgramPosition(node *ast.Node) bool {
-	owner, path := ownerCall(node)
-	if owner == nil || !isEffectType(a.checker, a.checker.GetTypeAtLocation(node)) {
-		return false
-	}
-	signature := a.checker.GetResolvedSignature(owner)
-	if signature == nil {
-		return false
-	}
-	return a.classify(a.expectedAt(owner, signature, path, node)).program
-}
-
-// inProgramPipe reports whether node is the left side of a pipe, or the body
-// of a pipe that is, whose topic lands where a program is expected (D154). At
-// a module's top level the left side keeps its Effect type, so its topic
-// converts nothing, and the pipe passes it as a call argument there is
-// passed: unrun, as the program the callee receives.
-func (a *analyzer) inProgramPipe(node *ast.Node) bool {
-	n := node
-	for n.Parent != nil && (ast.IsParenthesizedExpression(n.Parent) || isPipe(n.Parent) && n.Parent.AsBinaryExpression().Right == n) {
-		n = n.Parent
-	}
-	pipe := pipeOfLeft(n)
-	return pipe != nil && slices.ContainsFunc(topicsOf(pipe), a.atProgramPosition)
-}
-
 // isTryOperationElement reports whether node is an element of the array
 // literal a try operation takes, try.all [a(), b()]: the literal is built
 // natively, in element order, with a spread element iterated once, as
@@ -270,10 +229,6 @@ func runningFunctionName(fn *ast.Node) string {
 	}
 	return "the enclosing function"
 }
-
-// moduleThrowNote names the escape for code that must throw a JavaScript
-// exception, such as a test's throwing getter.
-const moduleThrowNote = "Or escape to TypeScript, whose throw is JavaScript's: move the code to a module block or a .ts file."
 
 // plainCodeName names node, a constructor, accessor or class static block, in
 // a diagnostic: "the constructor of Port", "get value", "the static block of

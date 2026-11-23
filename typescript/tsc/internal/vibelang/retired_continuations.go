@@ -9,7 +9,7 @@ import (
 var EK3501 = message(3501, errorCategory, parser.RetiredControlMessage)
 
 func init() {
-	registry[EK3501.Code] = EK3501
+	registerDiagnostic(EK3501)
 	fileChecks = append(fileChecks, checkRetiredContinuations)
 }
 

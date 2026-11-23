@@ -1,0 +1,59 @@
+// expect: EK5505 EK5506
+// A workflow body reads no module-level let, wherever the read sits, and
+// assigns no variable, destructuring included (VIP-55). The clock and
+// randomness rule follows what a name resolves to: a local Math is not the
+// global, and globalThis.Math is.
+let counter = 0
+
+task Fetch {
+  static readonly retryPolicy = { initialMs: 10, factor: 2, maxMs: 40, maxAttempts: 3 }
+  effect call(id: string): number!string { return id.length }
+}
+
+workflow Direct {
+  effect call(id: string): number!string { const n = try Fetch(id); return n + counter }
+}
+
+workflow InProperty {
+  effect call(id: string) { const n = try Fetch(id); return { n: counter, m: n } }
+}
+
+workflow Shorthand {
+  effect call(id: string) { const n = try Fetch(id); return { counter, n } }
+}
+
+workflow Swap {
+  effect call(id: string) {
+    let a = 1
+    let b = 2;
+    [a, b] = [b, a]
+    const n = try Fetch(id)
+    return n + a + b
+  }
+}
+
+workflow Unpack {
+  effect call(id: string) {
+    let a = 1
+    let rest: number[] = [];
+    ({ x: [a = 3, ...rest] } = { x: [4, 5] })
+    const n = try Fetch(id)
+    return n + a + rest.length
+  }
+}
+
+workflow SeededMath {
+  effect call(id: string) {
+    const n = try Fetch(id)
+    const Math = { random: () => 4 }
+    const Date = { now: () => 5 }
+    return n + Math.random() + Date.now()
+  }
+}
+
+workflow GlobalMath {
+  effect call(id: string) {
+    const n = try Fetch(id)
+    return n + globalThis.Math.random() + (globalThis.Date.now())
+  }
+}

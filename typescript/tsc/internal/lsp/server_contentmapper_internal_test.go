@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/glob"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"gotest.tools/v3/assert"
@@ -167,4 +168,16 @@ func TestParseContentMapperContributionsRejectsExtensionPaths(t *testing.T) {
 			assert.ErrorContains(t, err, "invalid output extension mapping")
 		}
 	}
+}
+
+// The client sends workspace/willRenameFiles only for files the filter
+// matches; renaming a .vibe or .vibex file must update its importers.
+func TestFileRenameFiltersMatchVibeLangFiles(t *testing.T) {
+	t.Parallel()
+	pattern, err := glob.Parse(fileRenameFilters[0].Pattern.Glob)
+	assert.NilError(t, err)
+	for _, name := range []string{"src/App.vibex", "src/main.vibe", "src/a.ts", "src/b.tsx"} {
+		assert.Assert(t, pattern.Match(name), name)
+	}
+	assert.Assert(t, !pattern.Match("src/notes.md"))
 }

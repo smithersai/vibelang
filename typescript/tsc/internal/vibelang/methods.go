@@ -66,13 +66,13 @@ func (tx *lowering) lowerMethod(node *ast.Node) *ast.Node {
 	ec := tx.EmitContext()
 	method := node.AsMethodDeclaration()
 
-	saved, savedFrame, savedPlain := tx.inEffect, tx.frame, tx.plain
-	tx.inEffect, tx.plain = false, false // a parameter list cannot yield
+	saved, savedFrame := tx.inEffect, tx.frame
+	tx.inEffect = false // a parameter list cannot yield
 	parameters := ec.VisitParameters(node.ParameterList(), tx.Visitor())
 	tx.inEffect = true
 	tx.frame = &frame{name: functionName(node), clause: tx.plan.resumesInTail(node)}
 	body := ec.VisitFunctionBody(node.Body(), tx.Visitor())
-	tx.inEffect, tx.frame, tx.plain = saved, savedFrame, savedPlain
+	tx.inEffect, tx.frame = saved, savedFrame
 
 	if !hasSimpleParameters(node) || tx.plan.parameterWrites[node] {
 		if isMarkedEffect(node) {

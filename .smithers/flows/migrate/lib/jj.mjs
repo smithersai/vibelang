@@ -5,9 +5,12 @@ import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { join, posix } from "node:path"
 import { promisify } from "node:util"
-import { must, quote, run } from "./util.mjs"
+import { must, quote } from "./util.mjs"
 
 const execFileAsync = promisify(execFile)
+
+/** One repository-relative file as a jj fileset: a literal path, so ( ) ~ | & in a name are not operators. */
+const literalFile = path => "root-file:" + JSON.stringify(path)
 
 export async function ensureRepo(root) {
   if (existsSync(join(root, ".jj"))) return { initialized: false }
@@ -107,7 +110,7 @@ export async function trackFiles(root, files) {
     }
   }
   for (let i = 0; i < selected.length; i += 100) {
-    await execFileAsync("jj", ["file", "track", "--include-ignored", "--", ...selected.slice(i, i + 100).map(file => "root-file:" + JSON.stringify(file))], { cwd: root })
+    await execFileAsync("jj", ["file", "track", "--include-ignored", "--", ...selected.slice(i, i + 100).map(literalFile)], { cwd: root })
   }
   return selected
 }
@@ -149,19 +152,24 @@ export async function commit(root, message) {
 /** Restores paths in the working copy from a revision; a path absent there is removed. */
 export async function restore(root, revision, paths) {
   if (!paths.length) return
-  await must(`jj restore --from ${quote(revision)} ${paths.map(quote).join(" ")}`, { cwd: root })
+  await execFileAsync("jj", ["restore", "--from", revision, "--", ...paths.map(literalFile)], { cwd: root, maxBuffer: 2 ** 30 })
 }
 
-/** A file's text at a revision, or null when it does not exist there. */
+/** A file's text at a revision, or null when it does not exist there. Any other jj failure throws: an unknown revision or a held lock is not an absent file. */
 export async function fileAt(root, revision, path) {
-  const result = await run(`jj file show -r ${quote(revision)} ${quote(path)}`, { cwd: root })
-  return result.code === 0 ? result.stdout : null
+  try {
+    const { stdout } = await execFileAsync("jj", ["file", "show", "-r", revision, "--", literalFile(path)], { cwd: root, encoding: "utf8", maxBuffer: 2 ** 30 })
+    return stdout
+  } catch (error) {
+    if (String(error.stderr).includes("No such path")) return null
+    throw error
+  }
 }
 
 /** A file's exact bytes at a revision, or null when it does not exist there. Reads no working copy, so calls can run in parallel. */
 export async function bytesAt(root, revision, path) {
   try {
-    const { stdout } = await execFileAsync("jj", ["--ignore-working-copy", "file", "show", "-r", revision, "--", `root-file:${JSON.stringify(path)}`], { cwd: root, encoding: "buffer", maxBuffer: 2 ** 30 })
+    const { stdout } = await execFileAsync("jj", ["--ignore-working-copy", "file", "show", "-r", revision, "--", literalFile(path)], { cwd: root, encoding: "buffer", maxBuffer: 2 ** 30 })
     return stdout
   } catch (error) {
     if (String(error.stderr).includes("No such path")) return null
@@ -186,16 +194,16 @@ export async function changedPathsAt(root, revision) {
   return parseChangedPaths(stdout)
 }
 
-/** The repository-relative paths of the files a revision tracks under dir. */
+/** The repository-relative paths of the files a revision tracks under dir: none when it tracks nothing there. A jj failure throws. */
 export async function filesAt(root, revision, dir = ".") {
-  const result = await run(`jj file list -r ${quote(revision)} ${quote(`root:${JSON.stringify(dir)}`)}`, { cwd: root })
-  return result.code === 0 ? result.stdout.split("\n").filter(Boolean) : []
+  const { stdout } = await execFileAsync("jj", ["file", "list", "-r", revision, "--", "root:" + JSON.stringify(dir)], { cwd: root, encoding: "utf8", maxBuffer: 2 ** 30 })
+  return stdout.split("\n").filter(Boolean)
 }
 
-/** The commit a bookmark points to, or null when it does not exist. */
+/** The commit a bookmark points to, or null when it does not exist. A jj failure throws. */
 export async function bookmarkTarget(root, name) {
-  const result = await run(`jj log -r ${quote(`bookmarks(exact:${JSON.stringify(name)})`)} --no-graph -T 'commit_id ++ "\\n"'`, { cwd: root })
-  const ids = result.code === 0 ? result.stdout.split("\n").filter(Boolean) : []
+  const { stdout } = await execFileAsync("jj", ["log", "-r", `bookmarks(exact:${JSON.stringify(name)})`, "--no-graph", "-T", 'commit_id ++ "\\n"'], { cwd: root, encoding: "utf8" })
+  const ids = stdout.split("\n").filter(Boolean)
   return ids.length === 1 ? ids[0] : null
 }
 

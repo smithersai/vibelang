@@ -5,7 +5,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-var serviceLiteralKeyDiagnostic = message(901, errorCategory, "A service key must be a readonly static property initialized with a string literal. Write static readonly key = \"app/Service\".")
+var serviceLiteralKeyDiagnostic = EK0901.With("A service key must be a readonly static property initialized with a string literal. Write static readonly key = \"app/Service\".")
 
 // checkServiceLiteralKey applies VIP-9's literal-key rule to a written service
 // declaration. It returns false for ordinary Context.Service classes and other
@@ -32,5 +32,3 @@ func checkServiceLiteralKey(c *checker.Checker, class, member *ast.Node) bool {
 	}
 	return true
 }
-
-func init() { registry[serviceLiteralKeyDiagnostic.Code] = serviceLiteralKeyDiagnostic }

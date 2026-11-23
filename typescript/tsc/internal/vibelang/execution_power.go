@@ -8,5 +8,5 @@ import (
 var EK0510 = message(parser.VibeLangExecutionPowerCode, errorCategory, parser.VibeLangExecutionPowerMessage)
 
 func init() {
-	registry[EK0510.Code] = EK0510
+	registerDiagnostic(EK0510)
 }

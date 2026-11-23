@@ -8,10 +8,9 @@ import (
 // VIP-9 permits named property/method signatures, KeyMember and DefaultMember.
 // Index signatures and constructors are class members without a Name node;
 // the ordinary named-member contract checks cannot validate them.
-var serviceNamelessMemberDiagnostic = message(902, errorCategory, "A service cannot declare {0}; declare named properties and methods, and put implementations in a layer.")
+var serviceNamelessMemberDiagnostic = EK0902.With("A service cannot declare {0}; declare named properties and methods, and put implementations in a layer.")
 
 func init() {
-	registry[serviceNamelessMemberDiagnostic.Code] = serviceNamelessMemberDiagnostic
 	fileChecks = append(fileChecks, checkServiceNamelessMembers)
 }
 

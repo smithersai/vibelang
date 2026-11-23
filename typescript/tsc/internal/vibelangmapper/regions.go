@@ -314,115 +314,6 @@ func (p *projector) generatorClose(block *ast.Node) string {
 	return ")"
 }
 
-// tryStatement lowers a try statement in an Effect body to its region:
-// `$catch(try, (e) => catch)` for a catch clause and `$finally(try, finally)`
-// for a finally block, each block a generator. A typed catch clause, the
-// retired form (L4), and a clause typed Cause (D176) are not lowered yet.
-func (p *projector) tryStatement(node *ast.Node, e env) {
-	statement := node.AsTryStatement()
-	tryBlock, catch, finally := statement.TryBlock, statement.CatchClause, statement.FinallyBlock
-	if catch != nil {
-		if variable := catch.AsCatchClause().VariableDeclaration; variable != nil &&
-			(variable.Type() != nil || variable.Flags&ast.NodeFlagsReparsed != 0 || variable.Name().Flags&ast.NodeFlagsReparsed != 0) {
-			p.unprojected(variable)
-			p.visitChildren(node, e)
-			return
-		}
-	}
-	r := &region{tail: isTailRegion(node, e), labeled: node.Parent != nil && node.Parent.Kind == ast.KindLabeledStatement}
-	name := p.freshCompletion()
-	// Reserved first: a handle statement followed by catch or finally is
-	// the try block itself, and its own edits start at the same position.
-	opening := p.plan.reserve(editRegion, partOpen, p.tokenStart(node), p.tokenStart(tryBlock))
-	// The try block of `try { } handle ... catch` is the handle statement,
-	// with no braces of its own; its generator gets them.
-	synthetic := p.text[p.tokenStart(tryBlock)] != '{'
-	tryNormal, closeTry := p.regionBlock(tryBlock, tryBlock.Statements(), r, e)
-	if synthetic {
-		closeTry = func() {
-			text := " }"
-			if tryNormal && len(r.jumps) > 0 && !r.tail {
-				text = "; return " + helperRef("$end") + " }"
-			}
-			p.plan.markText(editRecord, partWhole, tryBlock.End(), tryBlock.End(), text)
-		}
-	}
-	normal := tryNormal
-	var closeCatch, closeFinally func()
-	var catchBlock *ast.Node
-	if catch != nil {
-		catchBlock = catch.AsCatchClause().Block
-		catchNormal, closer := p.regionBlock(catchBlock, catchBlock.Statements(), r, e)
-		closeCatch = closer
-		normal = tryNormal || catchNormal
-	}
-	exit := (*ast.Node)(nil)
-	if finally != nil {
-		// The finalizer's value is dropped; a jump out of it is a record too.
-		statements := finally.Statements()
-		if exit = exitBinding(finally); exit != nil {
-			statements = statements[1:]
-		}
-		finallyNormal, closer := p.regionBlock(finally, statements, r, e)
-		closeFinally = closer
-		normal = normal && finallyNormal
-	}
-	closeTry()
-	if closeCatch != nil {
-		closeCatch()
-	}
-	if closeFinally != nil {
-		closeFinally()
-	}
-
-	open := openRegion(r, name)
-	if finally != nil {
-		if exit != nil {
-			open += helperRef("$finallyExit") + "("
-		} else {
-			open += helperRef("$finally") + "("
-		}
-	}
-	if catch != nil {
-		open += helperRef("$catch") + "("
-	}
-	if synthetic {
-		open += p.generatorOpen(tryBlock) + "{ "
-	} else {
-		open += p.generatorOpen(tryBlock)
-	}
-	p.plan.edits[opening].text = open
-	after := tryBlock.End()
-	if catch != nil {
-		clause := catch.AsCatchClause()
-		if variable := clause.VariableDeclaration; variable != nil {
-			p.plan.markText(editRegion, partMiddle, after, p.tokenStart(variable), p.generatorClose(tryBlock)+", (")
-			p.visit(variable, env{})
-			p.plan.markText(editRegion, partMiddle, variable.End(), p.tokenStart(catchBlock), ") => "+p.generatorOpen(catchBlock))
-		} else {
-			p.plan.markText(editRegion, partMiddle, after, p.tokenStart(catchBlock), p.generatorClose(tryBlock)+", () => "+p.generatorOpen(catchBlock))
-		}
-		after = catchBlock.End()
-		p.plan.markText(editRegion, closeUnless(finally != nil), after, after, p.generatorClose(catchBlock)+")")
-	} else {
-		p.plan.markText(editRegion, closeUnless(finally != nil), after, after, p.generatorClose(tryBlock))
-	}
-	if finally != nil && exit != nil {
-		// finally (exit) { ... }: the finalizer receives the try's Exit.
-		brace := p.braceAfter(exit.End())
-		p.plan.markText(editRegion, partMiddle, after, p.tokenStart(exit), ", (")
-		p.visit(exit, env{})
-		p.plan.markText(editRegion, partMiddle, exit.End(), brace, ") => "+p.generatorOpen(finally))
-		after = finally.End()
-		p.plan.markText(editRegion, partClose, after, after, p.generatorClose(finally)+")")
-	} else if finally != nil {
-		p.plan.markText(editRegion, partMiddle, after, p.tokenStart(finally), ", "+p.generatorOpen(finally))
-		after = finally.End()
-		p.plan.markText(editRegion, partClose, after, after, p.generatorClose(finally)+")")
-	}
-	p.plan.markText(editDispatch, partWhole, after, after, p.dispatch(r, name, normal, e))
-}
-
 // closeUnless returns partMiddle when more of the construct follows, and
 // partClose when this edit ends it.
 func closeUnless(more bool) part {
@@ -490,7 +381,7 @@ func (p *projector) provideBlock(node *ast.Node, e env) {
 	}
 	p.plan.markText(editRegion, partOpen, p.tokenStart(node), p.tokenStart(first), open)
 	for i, item := range items {
-		p.provider(item)
+		p.provider(item, e)
 		if i < len(items)-1 {
 			continue
 		}
@@ -520,10 +411,11 @@ func isProvideService(node *ast.Node) bool {
 }
 
 // provider lowers one provider of a provide block: Key = value becomes
-// $provideService(Key, "Key", value); any other provider stays.
-func (p *projector) provider(item *ast.Node) {
+// $provideService(Key, "Key", value); any other provider stays. A provider
+// is evaluated in the enclosing Effect body, so a try in it runs there.
+func (p *projector) provider(item *ast.Node, e env) {
 	if !isProvideService(item) {
-		p.visit(item, env{})
+		p.visit(item, e)
 		return
 	}
 	arguments := item.Arguments()
@@ -531,7 +423,7 @@ func (p *projector) provider(item *ast.Node) {
 	p.plan.insert(p.tokenStart(key), helperRef("$provideService")+"(")
 	p.visit(key, env{})
 	p.plan.replace(key.End(), p.tokenStart(value), ", "+strconv.Quote(label.Text())+", ")
-	p.visit(value, env{})
+	p.visit(value, e)
 	p.plan.insert(value.End(), ")")
 }
 
@@ -896,61 +788,6 @@ func (p *projector) tailResume(node *ast.Node, e env) {
 	p.continuationArguments(call, e)
 }
 
-// isUsingDeclaration reports whether node declares with using: in an
-// Effect body, an acquisition or a Disposable the block releases (D47).
-func isUsingDeclaration(node *ast.Node) bool {
-	if node.Kind != ast.KindVariableStatement {
-		return false
-	}
-	list := node.AsVariableStatement().DeclarationList
-	return list.Flags&ast.NodeFlagsUsing != 0 && list.Flags&ast.NodeFlagsAwaitUsing != ast.NodeFlagsAwaitUsing
-}
-
-// usingDeclaration lowers `using x = acquire()` in an Effect body to
-// `const x = (yield* $acquire(acquire()))`. The initializer passes by name:
-// its own call does not run, so $acquire receives the acquisition, and the
-// block's Scope leaves its R (D14). A Disposable is acquired as itself.
-func (p *projector) usingDeclaration(node *ast.Node, e env) {
-	list := node.AsVariableStatement().DeclarationList
-	start := p.tokenStart(list)
-	if !strings.HasPrefix(p.text[start:], "using") {
-		p.unprojected(node)
-		return
-	}
-	p.plan.replace(start, start+len("using"), "const")
-	for _, declaration := range list.AsVariableDeclarationList().Declarations.Nodes {
-		p.visit(declaration.Name(), env{})
-		if t := declaration.Type(); t != nil {
-			p.visit(t, env{})
-		}
-		init := declaration.Initializer()
-		if init == nil {
-			continue
-		}
-		p.plan.mark(editUsing, partOpen, p.tokenStart(init), p.tokenStart(init), "")
-		p.byName(init, e)
-		p.plan.mark(editUsing, partClose, init.End(), init.End(), "")
-	}
-}
-
-// byName walks expr, an argument passed by name: a call at its top does not
-// run, though its callee and arguments are lowered as in any call.
-func (p *projector) byName(expr *ast.Node, e env) {
-	if expr.Kind == ast.KindCallExpression && isRunnableCall(expr) {
-		// D14: defer only the outer run, retaining data-method rewrites
-		// and the runs of nested receivers and arguments.
-		first := len(p.plan.edits)
-		p.runCall(expr, e)
-		last := len(p.plan.edits) - 1
-		if first <= last && p.plan.edits[first].kind == editRun && p.plan.edits[last].kind == editRun && p.plan.edits[first].pos == p.tokenStart(expr) && p.plan.edits[last].pos == expr.End() {
-			p.plan.edits = append(p.plan.edits[:last], p.plan.edits[last+1:]...)
-			p.plan.edits = append(p.plan.edits[:first], p.plan.edits[first+1:]...)
-		}
-		return
-	}
-	p.visit(expr, e)
-}
-
 // maskWord returns the interruption block's word, uninterruptible, restore,
 // or interruptible, when node is such a block: a block whose first statement
 // calls the parser's marker, such as $uninterruptibleBlock(). It returns "".
@@ -999,25 +836,6 @@ func (p *projector) maskBlock(node *ast.Node, word string, e env) {
 	p.plan.markText(editRegion, partOpen, start, brace, openRegion(r, name)+p.names.prelude(word)+"("+p.generatorOpen(node))
 	p.plan.markText(editRegion, partClose, node.End(), node.End(), p.generatorClose(node)+")")
 	p.plan.markText(editDispatch, partWhole, node.End(), node.End(), p.dispatch(r, name, normal, e))
-}
-
-// exitBinding returns the name a `finally (exit)` block binds (D178): the
-// parser writes `const exit = $exit()` as the block's first statement.
-func exitBinding(finally *ast.Node) *ast.Node {
-	statements := finally.Statements()
-	if len(statements) == 0 || statements[0].Kind != ast.KindVariableStatement {
-		return nil
-	}
-	declarations := statements[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
-	if len(declarations) != 1 {
-		return nil
-	}
-	init := declarations[0].Initializer()
-	if init == nil || init.Kind != ast.KindCallExpression || init.Flags&ast.NodeFlagsReparsed == 0 ||
-		!ast.IsIdentifier(init.Expression()) || init.Expression().Text() != "$exit" {
-		return nil
-	}
-	return declarations[0].Name()
 }
 
 // scopeBlock lowers a block of an Effect body whose own statements hold a
@@ -1096,8 +914,8 @@ func selfPrefix(block *ast.Node) string {
 	return ""
 }
 
-// holdsScope reports whether statements, a region's own, hold a using
-// declaration or a call of the prelude's fork that the region owns: one
+// holdsScope reports whether statements, a region's own, hold a call of the
+// prelude's fork that the region owns (using is TypeScript's, VIP-8): one
 // outside the functions and the regions nested in them (D408). A block that
 // is only braces, such as an if branch, owns nothing, so its forks are the
 // region's, and so are those of a do block, a match expression, and a catch
@@ -1113,13 +931,13 @@ func (p *projector) holdsScope(statements []*ast.Node) bool {
 
 // holdsScopeIn reports whether root, a region's whole body that is not a
 // block, such as an arrow's expression body or a loop body without braces,
-// holds a using declaration or a fork the region owns.
+// holds a fork the region owns.
 func (p *projector) holdsScopeIn(root *ast.Node) bool {
 	return p.holdsScopeFrom(root, root)
 }
 
-// holdsScopeFrom reports whether node, code of a region, holds a using
-// declaration or a fork the region owns, outside the functions and the
+// holdsScopeFrom reports whether node, code of a region, holds a fork the
+// region owns, outside the functions and the
 // regions nested in it other than root.
 func (p *projector) holdsScopeFrom(node *ast.Node, root *ast.Node) bool {
 	found := false
@@ -1127,9 +945,6 @@ func (p *projector) holdsScopeFrom(node *ast.Node, root *ast.Node) bool {
 	visit = func(node *ast.Node) bool {
 		switch {
 		case found:
-			return true
-		case isUsingDeclaration(node):
-			found = true
 			return true
 		case ast.IsFunctionLike(node) && !isRegionTransparent(node), ast.IsClassLike(node), node != root && ownsForks(node):
 			return false
@@ -1144,7 +959,7 @@ func (p *projector) holdsScopeFrom(node *ast.Node, root *ast.Node) bool {
 
 // ownsForks reports whether node, nested in a region, is a region of its own
 // (D408): a loop body, with or without braces, a try, catch, or finally
-// block, a block that declares using, or a provide or mask block.
+// block, or a provide or mask block.
 func ownsForks(node *ast.Node) bool {
 	parent := node.Parent
 	switch {
@@ -1158,11 +973,6 @@ func ownsForks(node *ast.Node) bool {
 		return true
 	case isProvideBlock(node), maskWord(node) != "":
 		return true
-	}
-	for _, statement := range node.Statements() {
-		if isUsingDeclaration(statement) {
-			return true
-		}
 	}
 	return false
 }

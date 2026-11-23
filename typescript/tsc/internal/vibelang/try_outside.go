@@ -13,7 +13,7 @@ import (
 var EK0501 = message(501, errorCategory, "try runs an Effect only in effect code, but {0}.")
 
 func init() {
-	registry[EK0501.Code] = EK0501
+	registerDiagnostic(EK0501)
 	fileChecks = append(fileChecks, checkTriesOutsideEffectCode)
 	tsFormRules[EK0501.Code] = &tsFormRule{
 		message: EK0501,

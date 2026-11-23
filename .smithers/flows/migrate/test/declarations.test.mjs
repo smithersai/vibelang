@@ -4,7 +4,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { canonicalize, compareDeclarations, emitDeclarations, emitErrorsIn, lineDiff, listDeclarations, loadTypeScript } from "../lib/declarations.mjs"
+import { compareDeclarations, emitDeclarations, emitErrorsIn, lineDiff, listDeclarations, loadTypeScript } from "../lib/declarations.mjs"
+import { canonicalize } from "./helpers/canonical-declarations.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])

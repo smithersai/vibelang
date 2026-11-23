@@ -247,7 +247,7 @@ func (tx *lowering) visitScopeBlock(block *ast.Node) *ast.Node {
 	r := &region{}
 	saved := tx.frame
 	if !isBody {
-		tx.frame = &frame{name: saved.name, region: r, handleClause: saved.handleClause}
+		tx.frame = &frame{name: saved.name, region: r}
 	}
 	statements := tx.Visitor().VisitNodes(block.AsBlock().Statements).Nodes
 	tx.frame = saved
@@ -427,7 +427,7 @@ func (tx *lowering) usingIteration(r *region, node *ast.Node, value *ast.Node) *
 	body := loop.Statement
 	scope := tx.scopeName(body)
 	saved := tx.frame
-	tx.frame = &frame{name: saved.name, region: r, handleClause: saved.handleClause}
+	tx.frame = &frame{name: saved.name, region: r}
 	using := f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), tx.usingCall(scope, declaration, tx.succeed(value)))
 	statements := []*ast.Node{f.NewVariableStatement(nil /*modifiers*/, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{
 		f.NewVariableDeclaration(tx.Visitor().VisitNode(declaration.Name()), nil /*exclamationToken*/, nil /*typeNode*/, using),
@@ -472,7 +472,7 @@ func (tx *lowering) visitUsingFor(node *ast.Node) *ast.Node {
 
 	r := &region{}
 	saved := tx.frame
-	tx.frame = &frame{name: saved.name, region: r, handleClause: saved.handleClause}
+	tx.frame = &frame{name: saved.name, region: r}
 	var declarations []*ast.Node
 	for _, declaration := range statement.Initializer.AsVariableDeclarationList().Declarations.Nodes {
 		value := f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), tx.usingCall(scope, declaration, tx.acquisition(declaration.Initializer())))

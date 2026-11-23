@@ -20,6 +20,8 @@ async function check(t, { kind, prefix = "", newline = "\n", label, id = 0 }) {
   let source = corpus[kind].replace(/\bread\b/g, name)
   let exercise = kind === "plain"
     ? 'expect(read({tag:"ready",value:17})).toBe(17);expect(read({tag:"idle"})).toBe(0)'
+    : kind === "relabel"
+    ? 'expect(Effect.runSync(Effect.flip(read(Effect.fail({_tag:"A"}))))).toEqual({_tag:"Relabelled"});expect(Effect.runSync(Effect.flip(read(Effect.fail({_tag:"B"}))))).toEqual({_tag:"B"})'
     : 'expect((await Effect.runPromiseExit(read({_tag:"ConfigError"})))._tag).toBe("Failure");expect((await Effect.runPromiseExit(read({_tag:"Other"})))._tag).toBe("Failure")'
   if (label) {
     const original = kind === "plain" ? "ready" : "ConfigError"
@@ -46,7 +48,9 @@ async function check(t, { kind, prefix = "", newline = "\n", label, id = 0 }) {
   assert.equal(file.f[missed[0]], 0)
 }
 
-for (const kind of ["plain", "effect"]) {
+// "relabel" is the program of issue 651: a match on the next line after a
+// catch effect arrow, whose arms throw an object literal and the subject.
+for (const kind of ["plain", "effect", "relabel"]) {
   test("Smithers match scaffolding coverage retains only authored statements: " + kind, async t => {
     await check(t, { kind })
   })

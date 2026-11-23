@@ -376,6 +376,7 @@ func (p *Parser) initializeState(opts ast.SourceFileParseOptions, sourceText str
 		p.contextFlags = ast.NodeFlagsNone
 	}
 	p.scanner.SetText(p.sourceText)
+	p.scanner.SetCollectVibeDiagnosticComments(p.vibelangSource)
 	p.scanner.SetOnError(p.scanError)
 	p.scanner.SetLanguageVariant(p.languageVariant)
 }
@@ -583,6 +584,7 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 
 func (p *Parser) finishSourceFile(result *ast.SourceFile, isDeclarationFile bool) {
 	result.CommentDirectives = p.scanner.CommentDirectives()
+	result.VibeDiagnosticComments = p.scanner.VibeDiagnosticComments()
 	result.Pragmas = getCommentPragmas(&p.factory, p.sourceText)
 	p.processPragmasIntoFields(result)
 	result.SetDiagnostics(attachFileToDiagnostics(p.diagnostics, result))

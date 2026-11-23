@@ -186,9 +186,10 @@ func TestDirectiveCategory(t *testing.T) {
 		{15, EK4801, diagnostics.CategoryWarning, true},
 		{15, EK4818, diagnostics.CategoryError, true},
 	}
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePathFromAbsolute("/main.vibe")}, text, core.ScriptKindTS)
 	for _, test := range tests {
 		category, on := category(nil, test.m, "")
-		got, gotOn := directiveCategoryIn(text, at(test.line), test.m, category, on)
+		got, gotOn := directiveCategory(file, at(test.line), test.m, category, on)
 		if got != test.want || gotOn != test.on {
 			t.Errorf("line %d, %s: got %v, %v; want %v, %v", test.line, test.m, got, gotOn, test.want, test.on)
 		}

@@ -31,7 +31,7 @@ import (
 var EK1703 = message(1703, errorCategory, "fork runs an Effect on a new fiber, but {0} is {1}.")
 
 func init() {
-	registry[EK1703.Code] = EK1703
+	registerDiagnostic(EK1703)
 	fileChecks = append(fileChecks, checkKeywordOperands)
 	checker.RegisterCallArgumentDiagnosticsFilterHook(filterRejectedForkArgumentDiagnostics)
 }

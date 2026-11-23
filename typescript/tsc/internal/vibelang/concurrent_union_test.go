@@ -13,7 +13,7 @@ func TestConcurrentUnionIteration(t *testing.T) {
 		{"iterables", "Iterable<string> | Iterable<number>", "item", "const checked:string|number=item;void checked"},
 		{"generators", "Generator<string> | Generator<number>", "item", "const checked:string|number=item;void checked"},
 		{"tuples", "[string,number][] | Set<[number,string]>", "[first,second]", "const a:string|number=first;const b:string|number=second;void a;void b"},
-		{"objects", "Array<{kind:'n',value:number}> | Set<{kind:'s',value:string}>", "item", "if(item.kind==='n'){item.value.toFixed()}else{item.value.toUpperCase()}"},
+		{"objects", "Array<{kind:'n',value:number}> | Set<{kind:'s',value:string}>", "item", "if(item.kind==='n'){item.value.toExponential()}else{item.value.toUpperCase()}"},
 		{"nullable-items", "Array<string|null> | Set<number|undefined>", "item", "const checked:string|number|null|undefined=item;void checked"},
 	} {
 		for _, kind := range []string{"const", "let"} {

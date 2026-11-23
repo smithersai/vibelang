@@ -7,6 +7,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { splitPlatformToModule } from "../lib/platform.mjs"
 import { materialize, restore, statements } from "./helpers/host-operations-oracle.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // A moved call got a helper typed as its callee, `typeof fetch.bind`. bind,
 // call and apply are Function.prototype methods whose signatures take the
@@ -20,7 +21,7 @@ const runtime = new URL("../../../../packages/runtime/", import.meta.url)
 const require = createRequire(new URL("package.json", runtime))
 const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-platform-bound-fetch.json", import.meta.url), "utf8"))
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 const split = (text, globals) => splitPlatformToModule(text, "src/x.ts", ts, { globals })
 const options = { strict: true, target: ts.ScriptTarget.ES2022, lib: ["lib.es2022.d.ts", "lib.dom.d.ts"], module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.Bundler, types: [], skipLibCheck: true, declaration: true, emitDeclarationOnly: true, allowImportingTsExtensions: true }
@@ -80,7 +81,7 @@ test("property: a Function.prototype call in any position keeps its type and res
   }), { numRuns: 12, seed: 4402701 })
 })
 
-test("the compiler accepts the module and reports no platform code", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("the compiler accepts the module and reports no platform code", () => {
   const root = mkdtempSync(join(tmpdir(), "function-method-helper-native-"))
   try {
     mkdirSync(join(root, "src"))

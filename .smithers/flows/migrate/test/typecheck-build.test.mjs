@@ -191,3 +191,24 @@ test("preparation diagnostics identify the step without echoing shell environmen
   const receipt = readFileSync(join(root, ".cache/vibelang-typecheck.json"), "utf8")
   assert.ok(!receipt.includes("EXAMPLE_PRIVATE_VALUE") && !receipt.includes("fixture-only"))
 }))
+
+test("ownership covers .vibex modules and sources under a lib directory, and skips only declared output", () => fixture({
+  "tsconfig.json": { files: [] },
+  "pkg/lib/a.vibe": "export const a = 1",
+  "pkg/src/view.vibex": "export const View = () => <div/>",
+  "out/tsconfig.json": { compilerOptions: { outDir: "dist" } },
+  "out/dist/copied.vibe": "export const c = 1"
+}, root => {
+  const invoke = args => ({ status: 0, stdout: JSON.stringify(relative(root, args[2]) === "out/tsconfig.json" ? { compilerOptions: { outDir: "./dist" }, files: [] } : { files: [] }) })
+  assert.throws(() => planBuild(root, { projects: ["tsconfig.json"] }, invoke), error => {
+    assert.match(error.message, /No prepared source project owns/)
+    assert.match(error.message, /pkg\/lib\/a\.vibe/)
+    assert.match(error.message, /pkg\/src\/view\.vibex/)
+    return true
+  })
+  assert.throws(() => planBuild(root, { projects: ["tsconfig.json", "out/tsconfig.json"] }, invoke), error => {
+    assert.match(error.message, /pkg\/lib\/a\.vibe/)
+    assert.doesNotMatch(error.message, /copied\.vibe/)
+    return true
+  })
+}))

@@ -21,12 +21,9 @@ var (
 	EK0507 = message(507, errorCategory, "This plain catch handler's result may be a Promise or thenable, which catch neither awaits nor assimilates.")
 	EK0508 = message(508, warningCategory, "This plain catch handler's result may be an Effect, which catch gives as data without running it.")
 	EK0801 = message(801, warningCategory, "Using in effect code; use acquireDisposable inside scoped. Use acquireDisposable inside scoped for an Effect resource.")
-	EK5501 = message(parser.DurableCallDiagnosticCode, errorCategory, "A task or workflow holds one `effect call(…)` method and `static readonly` options, nothing else.")
+	EK5501 = message(parser.DurableCallDiagnosticCode, errorCategory, parser.DurableCallDiagnosticText)
 	EK0901 = message(901, errorCategory, "A static key without readonly, or whose initializer is not a string literal. Declare service contracts only, and supply a static readonly string-literal key if no key can be derived.")
 	EK0902 = message(902, errorCategory, "A service member that is not a PropertySignature, MethodSignature, KeyMember or DefaultMember. Declare service contracts only, and supply a static readonly string-literal key if no key can be derived.")
-	EK0903 = message(903, errorCategory, "A service with no derived key and no static readonly key. Declare service contracts only, and supply a static readonly string-literal key if no key can be derived.")
-	EK1201 = message(1201, errorCategory, "Provide outside effect code. Move provide into an effect function or effect block.")
-	EK1401 = message(1401, errorCategory, "A namespace name that two subpaths export, or a subpath and the root. Import the conflicting modules under distinct names.")
 	EK1701 = message(1701, errorCategory, "Fork or join outside effect code. Move fork or join into an effect function or effect block.")
 	EK1901 = message(1901, errorCategory, "for concurrent requires an Iterable. Pass an iterable value; consume a Stream with for try instead.")
 	EK1902 = message(1902, errorCategory, "For concurrent outside effect code. Iterate an Iterable inside effect code, and use continue to end an item.")
@@ -39,12 +36,12 @@ var (
 	EK2202 = message(2202, errorCategory, "Restore in an effect arrow or block nested in an uninterruptible block. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
 	// EK2301: pipe grammar early errors; the parser supplies the form-specific text.
 	EK2301 = message(2301, errorCategory, parser.PipeConditionalMessage)
-	EK2803 = message(2803, errorCategory, "A default on a generic data type parameter. Use at most four unconstrained type parameters without defaults.")
+	EK2803 = message(2803, errorCategory, "{0} cannot have a default in a data declaration. Write the default on a type alias, or write this declaration as its Effect TypeScript.")
 	EK3006 = message(3006, errorCategory, "An error code or an unknown code in vibe.severities; remove the entry. Remove the invalid entry from vibe.severities; only warning codes may be configured.")
 )
 
 func init() {
-	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0107, EK0401, EK0402, EK0403, EK0404, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK1907, EK2102, EK2103, EK2201, EK2202, EK2301, EK2803, EK3006} {
-		registry[m.Code] = m
+	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0107, EK0401, EK0402, EK0403, EK0404, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0801, EK0901, EK0902, EK1701, EK1901, EK1902, EK1905, EK1907, EK2102, EK2103, EK2104, EK2201, EK2202, EK2301, EK2803, EK3006, EK5501} {
+		registerDiagnostic(m)
 	}
 }

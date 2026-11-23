@@ -75,9 +75,6 @@ type frame struct {
 	region  *region  // the region whose closure this is; nil for the function's own body
 	targets []target // the statements a break or continue can jump to, innermost last
 	clause  bool     // the generator is a handler clause's own body, where a return can resume in tail position
-	// handleClause is the clause of a handle statement whose code this frame
-	// emits: the clause's own frame and the frames of regions inside it.
-	handleClause *clauseState
 }
 
 // A target is a statement that break or continue can jump to: a loop, a
@@ -272,7 +269,7 @@ func (tx *lowering) visitTryStatement(node *ast.Node) *ast.Node {
 // inside r (scopes_lower.go).
 func (tx *lowering) regionStatements(r *region, block *ast.Node) []*ast.Node {
 	saved := tx.frame
-	tx.frame = &frame{name: saved.name, region: r, handleClause: saved.handleClause}
+	tx.frame = &frame{name: saved.name, region: r}
 	var statements []*ast.Node
 	if tx.plan.scopeBlocks[block] {
 		statements = tx.visitScopeBlock(block).AsBlock().Statements.Nodes
@@ -349,7 +346,7 @@ func (tx *lowering) regionFunction(r *region, role string, binding *ast.Node, bl
 // visitInFrame visits node as code of region r's closure.
 func (tx *lowering) visitInFrame(r *region, node *ast.Node) *ast.Node {
 	saved := tx.frame
-	tx.frame = &frame{name: saved.name, region: r, handleClause: saved.handleClause}
+	tx.frame = &frame{name: saved.name, region: r}
 	visited := tx.Visitor().VisitNode(node)
 	tx.frame = saved
 	return visited
@@ -548,83 +545,6 @@ func (tx *lowering) hoist(name *ast.Node) {
 			tx.hoist(element.Name())
 		}
 	}
-}
-
-// Plain-JavaScript regions (D54). A function that compiles to plain
-// JavaScript cannot pause, so its try, catch, and finally stay JavaScript's.
-// Every throw in it is caught by one of its own catch clauses, or it would be
-// an Effect, so its throws mark the thrown value as an expected failure, and
-// its catch clauses unwrap that mark. A plain function's catch then receives
-// anything else as it is, as JavaScript's does (detail 205), and an Effect
-// function's rethrows it, a defect, as D13 requires:
-//
-//	try { if (n > 0) throw new Invalid() } catch (e) { return -1 }
-//
-// becomes
-//
-//	try { if (n > 0) throw runtime.$expected(new Invalid()) } catch (e) { e = runtime.$thrown(e); return -1 }
-//
-// What plain code throws stands for the Cause a frame would carry, so the
-// runtime decides what a catch recovers as $catch does. A finally block keeps
-// JavaScript's meaning (VIP-4): a return, break, continue, or throw in it
-// replaces the completion in flight, a throw or a return, which is discarded.
-
-// visitPlainThrowStatement turns `throw e` into `throw runtime.$expected(e)`.
-func (tx *lowering) visitPlainThrowStatement(node *ast.Node) *ast.Node {
-	statement := tx.Factory().NewThrowStatement(tx.runtimeCall("$expected", tx.Visitor().VisitNode(node.Expression())))
-	tx.EmitContext().SetOriginal(statement, node)
-	statement.Loc = node.Loc
-	return statement
-}
-
-// isNativeCatch reports whether clause is the catch of JavaScript's try
-// statement: a plain function's or a plain generator's (detail 205). An Effect
-// function that compiles to plain JavaScript still catches typed failures only.
-func (tx *lowering) isNativeCatch(clause *ast.Node) bool {
-	original := tx.EmitContext().MostOriginal(clause)
-	fn := ast.GetContainingFunction(original)
-	return fn == nil || !tx.plan.isEffect(fn)
-}
-
-// visitPlainCatchClause makes a catch clause start with `runtime.$thrown`, which
-// unwraps an expected failure, or in an Effect function `runtime.$caught`, which
-// also rethrows a defect. A plain function's catch with no variable has nothing
-// to unwrap and stays as written.
-func (tx *lowering) visitPlainCatchClause(node *ast.Node) *ast.Node {
-	f := tx.Factory()
-	clause := node.AsCatchClause()
-	declaration := clause.VariableDeclaration
-	unmark := "$caught"
-	if tx.isNativeCatch(node) {
-		if declaration == nil {
-			return tx.Visitor().VisitEachChild(node)
-		}
-		unmark = "$thrown"
-	}
-	var unwrap *ast.Node
-	switch {
-	case declaration != nil && ast.IsIdentifier(declaration.Name()):
-		// catch (e) { e = runtime.$caught(e); ... }
-		name := declaration.Name().Text()
-		unwrap = f.NewExpressionStatement(f.NewAssignmentExpression(f.NewIdentifier(name), tx.runtimeCall(unmark, f.NewIdentifier(name))))
-		declaration = tx.Visitor().VisitNode(declaration)
-	default:
-		// catch ({ id }) { const { id } = runtime.$caught(error); ... }, and
-		// catch { ... } as catch (error) { runtime.$caught(error); ... }
-		error := f.NewUniqueName("error")
-		if declaration != nil {
-			unwrap = f.NewVariableStatement(nil /*modifiers*/, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{
-				f.NewVariableDeclaration(tx.Visitor().VisitNode(declaration.Name()), nil /*exclamationToken*/, nil /*typeNode*/, tx.runtimeCall(unmark, error)),
-			}), ast.NodeFlagsConst))
-		} else {
-			unwrap = f.NewExpressionStatement(tx.runtimeCall(unmark, error))
-		}
-		declaration = f.NewVariableDeclaration(error, nil /*exclamationToken*/, nil /*typeNode*/, nil /*initializer*/)
-	}
-	block := tx.Visitor().VisitNode(clause.Block)
-	statements := append([]*ast.Node{unwrap}, block.AsBlock().Statements.Nodes...)
-	block = f.UpdateBlock(block.AsBlock(), f.NewNodeList(statements), true /*multiLine*/)
-	return f.UpdateCatchClause(clause, declaration, block)
 }
 
 func init() {

@@ -28,7 +28,7 @@ func checkConcurrentLimit(c *checker.Checker, file *ast.SourceFile, limit *ast.N
 	if source == nil || target == nil || c.IsTypeAssignableTo(source, target) {
 		return
 	}
-	reportAt(c, file, limit.Loc, EK1907)
+	report(c, limit, EK1907)
 	coverArgument(c, limit)
 	// Contextual object diagnostics point past source parentheses. Keep
 	// coverage on the operand itself so errors in its calls still survive.

@@ -18,7 +18,7 @@ Draft B's token totals are close because its examples are the API of the referen
 
 ## How the review was done
 
-1. Read the feature scope, both draft sets and their reports; the accepted VIPs 9, 14, 33 and 44; the proposals page; the 0.0.13 skill; `PRINCIPLES.md`, `THESIS.md`, `GOAL.md`, `OVERVIEW.md` and the open VIP-54 draft.
+1. Read the feature scope, both draft sets and their reports; the accepted VIPs 9, 14, 33 and 44; the proposals page; the 0.0.13 skill and the open VIP-54 draft.
 2. Checked every disputed API at the source: the reference engine at `main@origin` `bcf8076a4ff4` (72 files), Effect 4.1.1 from the installed package, and two Effect provider packages from npm.
 3. Probed `vibelang` 0.0.13: which names are in scope, and how `Experimental` resolves.
 4. Compiled every final example that uses existing syntax, type-checked every comparison, and recounted every token total.
@@ -47,7 +47,7 @@ Draft B's token totals are close because its examples are the API of the referen
 | durable-waits | Draft B's decision, Draft A's surface | Draft B is right that waits need recognition and no keyword. Draft A's `Human` calls, tables and comparison are the better page | `signal` keyword removed. A signal is `Experimental.Durable.signal(name, schema)`: 13 tokens more, no clash with TC39 Signals, and the address already holds the workflow and the run |
 | workers-remote | Draft A | "we just use rpc" (VIP-44). `schema service` is an Rpc group; Draft B's `worker task` puts a journal under a pure function | `Remote` became `Experimental.Rpc`. Added Draft B's durable placement as a `task` member, with two reference-engine gaps it found in `PlacedAction` and `Hosts`. Stated limits and what cancellation does not prove |
 | capabilities | Draft A, corrected by Draft B | Draft A's page reads better; Draft B's rules are truer | Fixed rule order, globs and the `attended` default. Dropped the claim that VIP-33's ban is the kernel's guarantee: VIP-54 may relax it. Separated a grant from a ceiling. Added `Capability.journaled` |
-| eval-declarations | Draft A | A file kind, a command and an exit code are the standing THESIS 8 asks for | The default run replays and spends nothing; `--live` spends. An unguarded live eval can start many agent sessions |
+| eval-declarations | Draft A | A file kind, a command and an exit code make evals as accessible as tests | The default run replays and spends nothing; `--live` spends. An unguarded live eval can start many agent sessions |
 | std-durable | Draft A's API, Draft B's guarantees | One module organized by run beats eight re-exported packages | Removed the dependency cycle with the language VIP. Added at-least-once, `plan_changed`, and `replay` with no jj (`ReadOnlyTimeTravel`). No default engine, decided |
 | std-triggers | Draft A | `Trigger.cron(W, …)` types `input`; Draft B kept `flowId` strings | Added the rule that an occurrence is its own run even with equal input, which VIP-44's identity would otherwise join. Named the `Runner` adapter that must be written. A queue is not a broker |
 | std-model | Draft A's interface | Effect's `LanguageModel` and `DecisionModel` are in scope | **Provider code flipped to Effect's packages.** `@effect/ai-anthropic` 4.1.1 compiles in Vibe 0.0.13 today in 152 tokens; the published reference engine cannot run on Effect 4.1.1. Module renamed `Experimental.Model`. Recording moved to the `LanguageModel` service. An unreachable decision model never answers yes |

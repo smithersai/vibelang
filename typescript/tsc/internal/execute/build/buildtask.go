@@ -211,7 +211,7 @@ func (t *BuildTask) updateDownstream(orchestrator *Orchestrator, path tspath.Pat
 				}
 			case upToDateStatusTypeUpstreamErrors:
 				upstreamErrors := downStream.status.upstreamErrors()
-				refConfig := core.ResolveConfigFileNameOfProjectReference(upstreamErrors.ref)
+				refConfig := core.ResolveConfigFileNameOfProjectReferenceInDirectory(upstreamErrors.ref, orchestrator.opts.Sys.FS().FileExists)
 				if orchestrator.caseSensitivity.PathKey(tspath.RootedPath(refConfig)) == path {
 					downStream.resetStatus()
 				}

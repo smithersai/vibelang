@@ -38,17 +38,22 @@ function publicDecisionAttributions(text) {
 // gate whenever VIBELANG_LEAK_PATTERNS was unset.
 export const publishedFile = file => /^(?:docs\/(?:design|user|research|maintainers)\/|site\/src\/|packages\/compiler\/skills\/)/.test(file) ||
   /(?:^|\/)(?:README|CONTRIBUTING|MAINTAINERS|AGENTS|SECURITY)\.md$/.test(file)
-export const buildHostName = /\bnyc-?0\d\b|\bnyc[12]\b|\bcfbox\b/
+export const buildHostName = /\bnyc-?0\d\b|\bnyc[12]\b|\bcfbox\b/i
 export const privateHomePath = /(?:~|\$HOME|\$\{HOME\})\/(?:vibe|migrate|lanes|vl|\.vibe-orch|\.cfbox|\.smithers\/accounts)(?:\/|\b)/
+const localCheckout = /(?:~|\$HOME|\$\{HOME\})\/[a-z0-9][\w.-]*/i
 const privateInfrastructure = [
   ["a build host name", buildHostName],
   ["a private home path", privateHomePath],
   ["an agent session name", /(?<![\w/.-])(?:claude|codex|effectscript|smithers|kimi|opus|fable)-\d+[a-z]?\b(?![\w.-]*\/)/],
 ]
+const researchOrMaintainerPage = file => /^docs\/(?:research|maintainers)\//.test(file)
+const vipPage = file => /^(?:docs\/design\/vips|site\/src\/pages\/vips)\//.test(file)
+
 export function privateInfrastructureProblems(file, text) {
   if (!publishedFile(file)) return []
+  const checkoutDocs = researchOrMaintainerPage(file) || vipPage(file)
   return privateInfrastructure.flatMap(([what, pattern]) => {
-    const match = pattern.exec(text)
+    const match = pattern.exec(text) ?? (checkoutDocs && pattern === privateHomePath ? localCheckout.exec(text) : null)
     return match ? [what + ": " + JSON.stringify(match[0])] : []
   })
 }
@@ -62,15 +67,30 @@ export function publicHygiene(file, text) {
       scratchRoots.some(name => text.includes(name + "/"))) {
     problems.push("a removed review artifact or scratch path")
   }
-  const spec = file.startsWith("docs/design/src/") || file.startsWith("docs/design/history/") ||
-    file.startsWith("site/src/pages/spec/")
-  const provenance = file.startsWith("docs/design/src/") || file.startsWith("site/src/pages/spec/")
-    ? publicDecisionAttributions(text) : text
-  if (spec && (/\b(?:Codex|Fable|GPT-\d|Will)\b|effectscript-4a|Smithers twin|will-direct-session|owner.s decisions/.test(provenance) ||
-      /review probe R\d|(?:prototype )?finding \d+|VibeLang language lead|review, (?:finding|must-fix) \d/i.test(provenance))) {
+  const currentSpec = file.startsWith("docs/design/src/") || file.startsWith("site/src/pages/spec/")
+  const designHistory = file.startsWith("docs/design/history/")
+  const provenance = currentSpec ? publicDecisionAttributions(text) : text
+  const specProvenance = (currentSpec || designHistory) && (/\b(?:Codex|Fable|GPT-\d|Will)\b|effectscript-4a|Smithers twin|will-direct-session/.test(provenance) ||
+      /review probe R\d|(?:prototype )?finding \d+|VibeLang language lead|review, (?:finding|must-fix) \d/i.test(provenance))
+  const researchOrMaintainer = researchOrMaintainerPage(file)
+  const vip = vipPage(file)
+  const recordedApproval = file === "docs/design/retirement-allowlist.json"
+  const internalAuthority = /\bowner['’]s\s+(?:decisions?|rulings?|rules|words)\b|\bwork[ -]stream\s+brief\b/i
+  const privateRepository = /\bprivate (?:[\w-]+ )?repositor(?:y|ies)\b[^\n]*github\.com\/[\w.-]+\/[\w.-]+|github\.com\/[\w.-]+\/[\w.-]+`?[, ]+private\b/i
+  const privateCitation = /\b(?:will-answers\.md|decide-live-[\w-]+\.md|factory\/rulings\.md|PROC-\d+)\b/i
+  const privatePlanning = /\b(?:THESIS|PRINCIPLES) \d+\b|\bGOAL (?:asks|measures)\b|`(?:THESIS|GOAL|PRINCIPLES|PROBLEM|OVERVIEW)\.md`/
+  if (specProvenance ||
+      ((currentSpec || designHistory || researchOrMaintainer || recordedApproval || vip) && internalAuthority.test(provenance)) ||
+      (designHistory && privateRepository.test(text)) ||
+      ((vip || researchOrMaintainer) && privateCitation.test(text)) ||
+      (vip && privatePlanning.test(text)) ||
+      (researchOrMaintainer && /\b[A-Z][a-z]+['’]s\s+\d{4}-\d{2}-\d{2}\b|\bWill must\b|\b(?:owners?\s+`?\w+-[\w-]+|migfix\d*-[\w-]+)\b|\b(?:shared with other agents|other agents were loading)\b/.test(text)) ||
+      (recordedApproval && (/\bWill\b/.test(text) || /\b(?:current (?:user )?task|current diag-identity task|lane brief|RED repair task)\b/i.test(text))) ||
+      (/^typescript\/tsc\/internal\/vibelang(?:fuzz)?\//.test(file) &&
+        /\btwins['’] D-\d+ recipe\b|\bthe owner is the (?:work[ -]stream|lane) or person\b/i.test(text))) {
     problems.push("internal decision or review provenance")
   }
-  const history = file.startsWith("docs/research/") || file.startsWith("docs/design/history/") ||
+  const history = file.startsWith("docs/research/") || designHistory ||
     /(?:^|\/)(?:CHANGELOG|KERNEL-CHANGES)\.md$/.test(file)
   if (!history && /(?:~|\$HOME|\$\{HOME\})\/effectscript\//i.test(text)) {
     problems.push("a private checkout default")

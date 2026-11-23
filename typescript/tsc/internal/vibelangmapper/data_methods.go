@@ -151,16 +151,10 @@ func (p *projector) dataMethod(call *ast.Node, e env) bool {
 		return false
 	}
 	receiver := access.Expression()
-	// A predicate stays a direct call: wrapping its boolean in $run would
-	// discard TypeScript's narrowing of the original receiver.
-	guard := dataGuards[module+"#"+name]
 	start := p.tokenStart(call)
 	if p.statementStarts[start] {
 		p.plan.insert(start, ";")
 		delete(p.statementStarts, start)
-	}
-	if e.effect && !guard {
-		p.plan.mark(editRun, partOpen, start, start, "")
 	}
 	namespace := strings.TrimPrefix(module, "effect/")
 	p.plan.insert(start, p.names.prelude(namespace)+"."+name+"(")
@@ -171,37 +165,6 @@ func (p *projector) dataMethod(call *ast.Node, e env) bool {
 		comma = ", "
 	}
 	p.plan.replace(receiver.End(), end, comma)
-	p.callArguments(call, e)
-	if e.effect && !guard {
-		p.plan.mark(editRun, partClose, call.End(), call.End(), "")
-	}
-	return true
-}
-
-// predicateCall preserves narrowing and contextual inference in pinned
-// predicates and explicitly curried plain calls.
-// Resolving its canonical import first excludes local functions with the
-// same spelling, whose calls may return Effects instead of booleans.
-func (p *projector) predicateCall(call *ast.Node, e env) bool {
-	r, ok := p.forms.(*Resolver)
-	if !ok {
-		return false
-	}
-	key := r.Callee(call).Canonical
-	plain := dataGuards[key] || p.plainArrayPipeStage(call, key) || p.plainMatchPipeStage(call, key)
-	if !plain && dataLastMethods[key] {
-		candidates := formsCandidates(r.table.Signatures(key), len(call.Arguments()))
-		plain = len(candidates) > 0
-		for _, sig := range candidates {
-			if sig.Self || sig.Result == "effect/Effect" {
-				plain = false
-			}
-		}
-	}
-	if !plain {
-		return false
-	}
-	p.callee(call, e)
 	p.callArguments(call, e)
 	return true
 }
@@ -278,7 +241,9 @@ func (p *projector) dynamicDataMethod(call *ast.Node, e env) bool {
 		guard = guard || dataGuards["effect/"+module+"#"+name]
 	}
 	receiver := access.Expression()
-	service := e.effect && p.mayBeServiceKey(receiver) && !p.keyOwnedMember(access)
+	// A method call is a value: nothing runs it, reads a service through it,
+	// or needs a witness for its narrowing (VIP-1, VIP-5).
+	const service, running = false, false
 	if call.TypeArgumentList() != nil {
 		p.diagnostics = append(p.diagnostics, Diagnostic{Start: p.tokenStart(call), Length: call.End() - p.tokenStart(call), Code: CodeUnprojectedForm, Message: "Write this data-method call as an annotated module function call; explicit method type arguments cannot be transferred without an annotation."})
 		return false
@@ -290,13 +255,13 @@ func (p *projector) dynamicDataMethod(call *ast.Node, e env) bool {
 	}
 
 	witnessEdit := -1
-	if guard && e.effect {
+	if guard && running {
 		// A generated predicate witness narrows in both branches. Its result
 		// argument keeps the real call's value and Effect channels.
 		witnessEdit = len(p.plan.edits)
 		p.plan.witness(start, "")
 	}
-	if e.effect {
+	if running {
 		p.plan.mark(editRun, partOpen, start, start, "")
 	}
 	fragmentStart := len(p.plan.edits)
@@ -345,7 +310,7 @@ func (p *projector) dynamicDataMethod(call *ast.Node, e env) bool {
 		p.plan.edits = append(p.plan.edits, edit{pos: call.End() - 1, end: call.End(), kind: editDataMethod, text: ")", arg: "])", fields: []string{name}})
 	}
 	fragmentEnd := len(p.plan.edits)
-	if e.effect {
+	if running {
 		p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 	}
 
@@ -601,6 +566,11 @@ func (p *projector) nativeDataMember(receiver *ast.Node, name string, callable b
 		}
 		if t := formsUnwrapType(member.Type()); t != nil && t.Kind == ast.KindFunctionType {
 			return true
+		}
+		// Only a property holds an initializer: a shorthand, a spread or an
+		// accessor is no proof of a callable member.
+		if member.Kind != ast.KindPropertyAssignment && member.Kind != ast.KindPropertyDeclaration {
+			continue
 		}
 		if init := member.Initializer(); init != nil && (ast.IsArrowFunction(init) || ast.IsFunctionExpression(init)) {
 			return true

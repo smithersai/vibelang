@@ -1,0 +1,20 @@
+// expect: EK0403 EK0403 EK0403 EK0403 EK0403 EK0403
+// Issue #430: throwing pinned Effect callables (returned decoders, *Unsafe
+// constructors, *OrThrow unwrappers, and direct/applied dual calls) require
+// Effect.try in effect code, while building a decoder or data-last partial
+// application does not throw.
+import * as DateTime from "effect/DateTime"
+import * as Duration from "effect/Duration"
+
+export effect function main(o: Option.Option<number>) {
+  const some = Option.some(1)
+  const dec = Schema.decodeUnknownSync(Schema.String)
+  const s = dec(42)
+  const dt = DateTime.makeUnsafe("2026-01-01")
+  const dur = Duration.fromInputUnsafe("1 second")
+  const unwrapped = Option.getOrThrow(o)
+  const half = Effect.Number.divideUnsafe(2)
+  const q1 = half(4)
+  const q2 = Effect.Number.divideUnsafe(4, 2)
+  return [Option.isSome(some), s, dt, dur, unwrapped, q1, q2]
+}

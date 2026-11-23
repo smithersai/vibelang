@@ -132,7 +132,7 @@ export const program = Effect.logInfo("triage started").pipe(
 - **Effect-second.** The strongest case in the set. Logging, tracing, metrics and the exporter are Effect's. This VIP adds a composition, not a system.
 - **Optimized for agentic programs.** A prompt and a tool result are the largest log lines a program writes and the likeliest to hold a secret. Scrubbing and a size cap are the two properties an agent's telemetry needs.
 - **Highly forkable.** A fork adds an exporter by providing a layer.
-- **Factory-first.** PRINCIPLES 5: "every prompt, LLM call, tool call and decision is public". `Experimental.Logger.journal` is how a run's logs become part of its public record.
+- **Factory-first.** Published run records can include prompts, model calls, tool calls and decisions. `Experimental.Logger.journal` adds the run’s logs to its journal.
 
 ## What this changes
 

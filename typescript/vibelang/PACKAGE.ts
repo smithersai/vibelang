@@ -29,7 +29,6 @@ const shared = [
   S.file("harness.mjs"),
   S.file("harness-command.mjs"),
   S.file("late-start-scheduler.mjs"),
-  S.file("rewrite-preservation.mjs"),
   S.file("lsp-connection.mjs"),
   S.file("lsp-framing.mjs"),
   S.file("cases/package.json"),

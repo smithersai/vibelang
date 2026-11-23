@@ -214,3 +214,28 @@ test("concurrent branches calling the same task keep their own results after a c
   expect(result).toEqual(["a => summary(issues-of-a)", "b => summary(issues-of-b)"])
   expect(summarizeCalls).toBe(2)
 })
+
+test("completed runs release engine state and can still be joined", async () => {
+  const Step = Durable.task("race#EvictedStep", { payload: { n: Schema.Number }, success: Schema.Number })
+  const W = Durable.workflow("race#EvictedRun", { payload: { n: Schema.Number }, success: Schema.Number })
+  let calls = 0
+  const layer = W.toLayer((payload) => Step(payload)).pipe(
+    Layer.provide(Step.toLayer(({ n }) => Effect.sync(() => {
+      calls++
+      return n
+    }))),
+    Layer.provideMerge(Durable.layerStore(Durable.makeMemoryStore()))
+  )
+  await Effect.runPromise(Effect.gen(function*() {
+    const { internals } = yield* Durable.Durable
+    for (let n = 0; n < 20; n++) {
+      const payload = { n }
+      const id = yield* W.executionId(payload)
+      expect(yield* W.execute(payload)).toBe(n)
+      expect(internals.executionCount()).toBe(0)
+      expect(Option.getOrThrow(yield* W.poll(id))._tag).toBe("Complete")
+      expect(yield* W.execute(payload)).toBe(n)
+    }
+  }).pipe(Effect.provide(layer)))
+  expect(calls).toBe(20)
+})

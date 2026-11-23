@@ -12,7 +12,7 @@ import (
 // Existing run/program edits supply both renderings' generator boundaries.
 func (p *projector) forConcurrent(call *ast.Node, e env) {
 	if !e.effect {
-		p.formChoice(call, "for concurrent must run in an Effect body; move it into an Effect function with an explicit contract.")
+		p.syntaxToken(call, 1902, "For concurrent outside effect code. Iterate an Iterable inside effect code, and use continue to end an item.")
 		return
 	}
 	args := call.Arguments()

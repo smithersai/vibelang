@@ -138,12 +138,12 @@ func emittedRouteEntry(imports *collections.OrderedMap[string, packagejson.Expor
 // emittedRouteSpecifier is how output from file names the routed source:
 // its relative output name, ./user.js, or, in a compatibility sidecar, which
 // preserves source identity, the source's own relative name, ./user.vibe.
-func emittedRouteSpecifier(c *checker.Checker, file, source *ast.SourceFile, jsx core.JsxEmit, sidecar bool) string {
+func emittedRouteSpecifier(c *checker.Checker, file, source *ast.SourceFile, jsx core.JsxEmit, sidecar, commonJS bool) string {
 	relative := tspath.EnsurePathIsNonModuleName(tspath.GetRelativePathFromDirectory(file.FileName().Directory().AsString(), source.FileName().AsString(), c.Program().CaseSensitivity()))
 	if sidecar {
 		return relative
 	}
-	output, _ := outputSpecifierTextWithJSX(relative, jsx)
+	output, _ := outputSpecifierTextForFormat(relative, jsx, commonJS)
 	return output
 }
 
@@ -197,11 +197,12 @@ func newEmittedRouteRewriter(opts *transformers.TransformOptions, file *ast.Sour
 	if !ok {
 		return nil
 	}
+	commonJS := opts.GetEmitModuleFormatOfFile != nil && opts.GetEmitModuleFormatOfFile(file) == core.ModuleKindCommonJS
 	rewrites := map[string]string{}
 	r.WithChecker(func(c *checker.Checker) {
 		emittedRouteSites(file, func(specifier *ast.Node) {
 			if target := resolveEmittedRoute(c, file, specifier.Text()); target.source != nil {
-				rewrites[specifier.Text()] = emittedRouteSpecifier(c, file, target.source, opts.CompilerOptions.Jsx, false)
+				rewrites[specifier.Text()] = emittedRouteSpecifier(c, file, target.source, opts.CompilerOptions.Jsx, false, commonJS)
 			}
 		})
 	})
@@ -275,7 +276,7 @@ func emittedRouteDeclarations(resolver printer.EmitResolver, file *ast.SourceFil
 					return
 				}
 				if target := resolveEmittedRoute(c, file, specifier.Text()); target.source != nil {
-					rewrites[specifier.Text()] = emittedRouteSpecifier(c, file, target.source, core.JsxEmitNone, sidecar)
+					rewrites[specifier.Text()] = emittedRouteSpecifier(c, file, target.source, core.JsxEmitNone, sidecar, false /*commonJS*/)
 				}
 			})
 		})

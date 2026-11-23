@@ -3,8 +3,14 @@
 Nothing enters VibeLang through implementation precedent. Accepted VIPs and
 their public amendments decide admission; Appendix A states its grammar.
 
-The checked table is
+The census reads the generated table
 `typescript/tsc/internal/vibelangfuzz/testdata/grammar_admission.tsv`.
+Edit its source, `docs/design/registry/grammar-admission.tsv`, when a hook
+changes. From the repository root, run
+`node scripts/generate-grammar-admission.mjs` to update both projections.
+Keep the generated table and Appendix A's census with the source change.
+`//:grammar-admission-check` checks that the projections match the source.
+
 `TestGrammarAdmissionInventory` scans every non-test function in
 `parser/vibelang.go` and `parser/vibelang_*.go`, including helpers and recovery
 paths, every function in a file with a method on `vibelang.lowering` or a
@@ -65,9 +71,10 @@ The full fuzz package retains its inventory assertion too:
 go test -count=1 -run '^TestGrammarAdmissionInventory$' ./internal/vibelangfuzz
 ```
 
-The fast specification gate runs the census. Add a row when adding a hook,
-remove it when deleting the hook, and cite the authority that admits the
-actual form. Do not cite a denied or open VIP as admission.
+The fast specification gate runs the census. Add or remove the hook's row
+in the source registry and cite the accepted rule that governs that hook.
+The [build guide](../maintainers/build.md#grammar-admission-tables) lists the
+generation and drift-check commands.
 
 
 `FuzzGrammarAdmission` checks the reverse implication with the compiler parser:
@@ -131,14 +138,10 @@ positions: `effect[a]` is an element access, though `[` follows `effect` on an
 Type-directed meaning such as aggregate `join` is outside this syntax oracle.
 Saved interruption-block witnesses outside Effect code are rejection controls
 for `EK2201`; their former pending entries are removed after XPASS.
-Unannotated synchronous generator declarations and expressions remain a separate
-`admission:interruption-in-generator` gap: the compiler still treats them as
-implicit producers. Their interruption blocks have no Appendix A derivation,
-even when a producer return diagnostic such as `EK2128` rejects the program.
-The precise pending family excludes annotated native iterators, async generators,
-generator methods and nested plain callables. Explicit `effect` generators and
-blocks remain separate controls. A keyed corpus retains this remaining gap
-without restoring the retired general outside-Effect exemption.
+The `admission:interruption-in-generator` family is no longer pending.
+The keyed witness uses an unannotated synchronous generator. Annotated
+iterators, async generators, methods and nested plain callables remain
+separate controls, alongside explicit Effect generators and blocks.
 The outside-Effect prefix family includes `join {}`, which has no native
 call or element-access reading; `join(p)`, `join[0]` and an identifier before
 a line break and block remain separate native controls.
@@ -149,8 +152,10 @@ duplicating tokens and moving line boundaries. Each unclassified mutation
 gets a separate key. Exact keyed witnesses replay their registered program. A mutation
 of that text drives the named seed's bounded token generator; it cannot bypass
 the subset by injecting arbitrary JavaScript source. Known gaps use `Gap` and
-`testdata/pending/grammar-admission.txt`; passing pending witnesses fail as
-`XPASS`, requiring their pending entries to be removed with the fix.
+`testdata/pending/grammar-admission.txt`. The ledger determines which fuzz
+witnesses have waivers. The hook registry describes implementation coverage.
+Passing pending witnesses fail as `XPASS`, so remove their ledger entries
+when the relevant regression passes.
 
 Every Appendix A production has a valid seed, so mutation reaches `match`, `is`,
 `do`, declarations, loops, `provide` and `A!E!R`. The lab reads the pinned
@@ -161,8 +166,10 @@ binding, destructuring and assignment heads and line breaks between `for`,
 `await` and `(`. Its negative controls exclude `in`, a three-clause head,
 a binding initializer and a missing iterable. A `for await` outside an async function or module reports native `TS1103`,
 which counts as grammar rejection even when the checker reaches it before
-a malformed head. Warnings and foreign diagnostic-source collisions do not. Bounds: no decorators, conditional types or regular
-expressions in the subset.
+a malformed head. Warnings and foreign diagnostic-source collisions do not.
+The lab also derives native regular-expression literals and ordinary class
+and class-member decorators. A decorator before a VibeLang-only declaration
+is a separate rejection witness under `admission:declaration-decorators`.
 
 The pipe lab recognizes `|>` as one token and incorporates the pinned
 proposal's `%` primary only in the VibeLang grammar. Its recognition models
@@ -205,8 +212,9 @@ Effect span does not make a nested plain function, arrow or method Effect
 code. Explicit nested Effect callables and blocks restore their own context;
 parser-generated in-place arrows for `do` and `match` preserve the source
 context. These parser flags choose only the known-gap key. Appendix A
-remains the independent derivation oracle. The nested plain-callable `join`
-witness stays under `admission:join-outside-effect`, with corpus XPASS coverage.
+remains the independent derivation oracle. The classifier still names the
+nested plain-callable witness. The `admission:join-outside-effect` family
+is no longer pending in the fuzz ledger.
 
 Reserved binding names inside `or` and `not` patterns now retain their
 native syntax diagnostics after lowering. The former
@@ -231,15 +239,12 @@ diagnostic source, or an operand type error still grants no syntax rejection.
 The `reserved-expression-name` corpus preserves the throw-wrapped campaign
 witness, alongside declaration and method-name controls.
 
-A parse warning is not a syntax rejection either. VIP-41's migration policy
-makes the punctuator-only comma after a throw expression's operand
-(`[throw e, 1]`, `g(throw e, 1)`, `{ a: throw e, b: 1 }`) the warning
-`EK1010` until the parenthesizing `vibelang --fix` ships, while Appendix A's
-`ThrowExpressionInvalidPunctuator` still excludes the comma. The compiler
-accepts those programs, so the oracle now checks them instead of reading the
-warning as rejection. The `throw-comma-warning` seed and corpus stay pending
-until the comma is an error again; then both XPASS and their pending lines go.
-Operator-left `EK1010` violations stay errors and remain syntax rejection.
+VIP-41's throw-expression lookahead rejects an ungrouped throw before a
+comma separator, such as `[throw e, 1]`, `g(throw e, 1)` or
+`{ a: throw e, b: 1 }`. The `admission:throw-comma-warning` family is no
+longer pending. Grouping the whole throw expression, as in
+`[(throw e), 1]`, leaves the separator outside that expression. A
+TypeScript throw statement can still have a comma expression as its operand.
 
 `EK0108` is a syntax rejection when its source is `EK` and its category is an
 error. Appendix A recognizes `effect` in TypeScript's `async` recovery
@@ -277,14 +282,6 @@ member that is not a `Field`, the data counterpart of a malformed schema
 field. The checker reports it, so the parse gate never saw it; campaign183
 found `data D { A { x : number` and a line break before `number } ; B }`,
 whose second member has no type.
-
-The `throw-comma-warning` key covers a throw in any expression position:
-after an operator or an opening punctuator, or after a word that takes an
-operand (`return`, `join`, `fork`, `try`, `await`, `typeof`, `void`,
-`delete`, `yield`, `in`, `instanceof`, `case`). Campaign189 found
-`[join throw e, 1]`, which the first classifier left unkeyed. After `;`,
-`{`, `}`, `)`, `]` or any other word, `throw` starts a `ThrowStatement`,
-whose comma expression is ordinary.
 
 `EK1505`, VIP-15's rejection of a `schema` body member that is not a
 `Field`, counts the same way; campaign192 found `schema C {` followed by
@@ -330,11 +327,10 @@ that names `import.defer` and `import.source`), and native target placement
 reports `TS17013`; error-category diagnostics reject syntax. An uncalled
 `import.defer` or `import.source` gets the checker's `'(' expected`
 (`TS1005`), which already counts.
-VibeLang's platform check instead covers `import.x` before its native
-grammar check, leaving only `EK4402`. That exact bad-name/incomplete-phase
-family remains pending under `admission:import-meta-property`. Ordinary
-member names and native URL-whitelist recovery remain separate controls.
-Phase-import calls remain outside the generated subset.
+The `admission:import-meta-property` family is no longer pending. It covers
+bad names and incomplete phase imports, with ordinary member names and
+`import.meta.url` as separate controls. The lab derives
+`import.source(x)` and `import.defer(x)`.
 
 An `async` modifier on a schema field is also outside Appendix A's
 `Field` production. An unresolved schema reference reports `EK2109`
@@ -351,9 +347,9 @@ The same mapped-type gap included JSDoc's postfix `?`, as in
 Native optional tuple elements, optional property names and conditional
 types remain separate from this suffix recovery.
 
-The inherited tuple subset derives optional, labeled and rest elements, including
-a trailing comma. These are positive controls in both native and VibeLang
-grammars; a postfix nullable schema type is still a separate pending gap.
+The inherited tuple subset derives optional, labeled and rest elements,
+including a trailing comma. Those are positive controls in both native and
+VibeLang grammars.
 
 Reserved words used as identifier module specifiers, such as `import static;`,
 remain pending as `admission:module-specifier-keyword`. The parser replaces the
@@ -703,16 +699,11 @@ whose value is a flagged `Schema.Unknown` placeholder;
 `checkSchemaValue` reports `EK2109` for that placeholder. The generated
 companion type does not retain the original unsupported member shape.
 
-A reserved binding in a schema-alias signature has its own
-`admission:schema-signature-reserved-binding` family. For example,
-`schema S = { readonly; (static) }` reports only `EK2109`, while its
-TypeScript twin reports `TS1212`. The strict-mode binding words remain
-reserved in typed, optional, rest and destructured parameters.
-This is separate from a parameter modifier: `(static static)` retains
-`admission:schema-signature-parameter-modifier`.
-The classifier reads binding positions; property keys, type references
-and initializer expressions do not become reserved parameter bindings.
-The compiler is unchanged and the known witnesses remain pending.
+The `admission:schema-signature-reserved-binding` regression
+`schema S = { readonly; (static) }` retains `TS1214` beside `EK2109`.
+The classifier checks binding positions, including typed, optional, rest and
+destructured parameters. Property keys, type references and initializer
+expressions are separate controls.
 
 An `effect` method signature in a schema alias is
 `admission:schema-effect-method`. Appendix A rejects an interface or
@@ -729,41 +720,21 @@ break does not change that. A method named `effect`, an `effect` modifier
 ended by a line break and the named-body `EK1505` rejection stay outside the
 family. An optional `effect id?()` signature is a method in this family.
 
-A `fork` or `join` that heads a `new` callee or an `extends` clause in
-Effect code is `admission:fiber-primary-reference`. Appendix A reserves
-both words wherever an `IdentifierReference` could stand under `[+Effect]`,
-as `await` is reserved under `[+Await]`. The parser tests for them only
-where a unary expression starts, so `effect function f() { return new
-join.target; }` reads `join` as an identifier. The compiler then reports
-only the old compiler compatibility error `EK4410` for a stored intrinsic and `TS2339` for the member, not the
-reservation error `EK1702`. `class extends fork.C {}` in the same body
-reports only `TS2339`. A non-null assertion inside the head, as in
-`new join.target!`, does not change the reading. The `async function f() { return new await.target;
-}` twin reports `TS1109`. A shorthand property `{ join }` already reports
-`EK1702`, and `new (join).target` reports `TS1109`, so both stay outside
-the family. A nested plain callable resets the context, as do plain code
-and a member name such as `new x.join`, and these remain ordinary
-identifiers. The compiler is unchanged and the witnesses remain pending.
+VIP-17 reserves `fork` and `join` as identifier references in Effect code.
+The `admission:fiber-primary-reference` witnesses for `new` and class heritage
+reject with `EK1702`. The `admission:fiber-pattern-reference` witnesses also
+reject with `EK1702`, including `p is join` inside an Effect function. A nested
+plain callable and a member name such as `new x.join` retain their ordinary
+identifier rules.
 
-The `admission:schema-signature-parameter-modifier` family also covers an
-`async` parameter modifier and a modifier before a binding pattern or rest
-parameter, as TypeScript's `canFollowModifier` reads them.
-`schema S = { (async {p}: Missing): Missing }` reports only `EK2109`; its
-`type` twin reports `TS1090`. `async` must share the line with what follows,
-as TypeScript requires. A parameter named `async`, as in `(async: T)`,
-`(async, b)` or `(async?: T)`, is not a modifier. `(static {p})` and
-`(public ...p)` were keyed as reserved bindings; they now key as parameter
-modifiers. `(static: T)` and `(...static: T[])` remain reserved bindings.
-The compiler is unchanged and the witnesses remain pending.
+The `admission:schema-signature-parameter-modifier` family is no longer
+pending. It covers forms such as `schema S = { (async {p}: Missing): Missing }`,
+which retains `TS1090` beside `EK2109`. A parameter named `async`, as in
+`(async: T)`, is an ordinary binding.
 
-An optional schema-alias member with an initializer keeps
-`admission:schema-field-initializer` after a modifier prefix.
-`schema S = { readonly 1 ? =\nMissing }` and `readonly id ? = Missing`
-report only `EK2109`; the `type` twins report `TS1247`. Without the `?`,
-`readonly 1 = Missing` and `readonly id = Missing` already report a
-syntax error, and `static [k] = Missing` reports the `static` type-member
-rejection. These stay outside the family. The compiler is unchanged and
-the witnesses remain pending.
+The `admission:schema-field-initializer` regression also covers optional alias
+members with a modifier prefix, such as `readonly id ? = Missing`. They
+retain `TS1247` alongside the schema type/value diagnostic.
 
 ## The compiler cases as admission seeds
 
@@ -806,13 +777,12 @@ interfaces and type literals (`admission:mutable-default`). Two write
 `abstract error Root {}`, which Appendix A's `ErrorStart` does not admit; the
 compiler accepts it with the interim `EK1308` warning, and it is now the
 pending key `admission:abstract-error`. The rest are lab limits: the lexer
-joins `>` with `=` (`Effect<number>={…}`, `type F<A, B>=(…)`), `!!=` and
-`\u` escapes in identifiers; decorators are outside the subset; a computed
+joined `>` with `=` (`Effect<number>={…}`, `type F<A, B>=(…)`) and `!!=`.
+Earlier runs also missed escaped identifiers and a computed
 class-member key holding `try` inside an effect function (`[try k()]() {}`)
-does not derive although `ClassElementName` carries the enclosing parameters;
-and `effect is (Object)` does not derive where `effect is Object` and
-`x is (Object)` do, so the keyword table's reading of `effect` before an is
-test with a parenthesized pattern is still wrong.
+despite `ClassElementName` inheriting the enclosing parameters. The keyword
+table also misread `effect is (Object)`. These lab gaps are covered by the
+rescan and derivation checks below.
 
 Two witnesses came from the campaigns. An ordinary campaign found
 `effect function f(s, p) { return fork.in(s) p is join }`: a fork owner form
@@ -841,13 +811,6 @@ outside the listed words, then `(` or `<`, so `effect is (Object)` derives
 with `effect` as an identifier while `effect run(x) { … }` keeps its keyword
 reading.
 
-The `new` callee and heritage witnesses under `admission:fiber-primary-reference`
-are now rejected with `EK1702`, and that key is recovery. An is pattern's
-head still reads `fork` or `join` as a pattern identifier
-(`effect function f(p) { return p is join }`, also as the operand of
-`fork.in(s) p is join`), so those witnesses are the pending key
-`admission:fiber-pattern-reference`.
-
 A computed member name is evaluated where its class or object literal is
 written. The lab parameterized every symbol of a callable production as plain
 code, computed names included, although its Await scoping already gave
@@ -860,52 +823,21 @@ signature, a construct signature and a definitely assigned field, so the
 service cases that write `[name: string]: unknown` or `key!: string` derive and
 their rejection is the static rule's.
 The lexer reads `\uXXXX` and `\u{…}` escapes as part of an identifier, so the
-escaped-identifier cases derive. With these, 3,359 of 3,871 case programs
-derive; the lexer's `>` joined with `=`, `!!=`, and decorators remain the
-known lab limits, next to the pending admission keys the cases write.
+escaped-identifier cases derive. At that stage, 3,359 of 3,871 case programs derived.
 
-A case-seeded campaign found a duplicated rest marker in a pattern in a
-`for` condition: `xs is [let first, ... ...]`. The pinned
-`MatchRestElement` has one `...`, optionally followed by a
-`MatchPattern`; `MatchPattern` has no ellipsis alternative. The compiler
-reports only checker errors when the condition binds a name and the loop
-initializer uses `var`; the same pattern in an ordinary binding or a loop
-with a `let` initializer receives `EK0707`. The witness remains pending under
-`admission:pattern-rest-ellipsis`. The classifier examines recorded
-`is` patterns and `match` arm heads; ordinary spread expressions,
-comments, strings and regular-expression literals do not acquire that key.
+Case-seeded campaigns found deferred pattern syntax errors hidden behind
+placement markers. The witnesses included a doubled rest marker in
+`xs is [let first, ... ...]` and missing patterns or elements after a rest
+in `is` expressions with no binding home. The parser now retains the
+deferred errors through the placement check. These are regression witnesses
+for `admission:pattern-rest-ellipsis` and `admission:unhomed-pattern-grammar`.
+A strict-mode reserved binding or reference still has its narrower pending
+key, `admission:unhomed-pattern-reserved-identifier`.
 
-A later campaign put `=>` between the two rest markers and found the same
-loss with a different malformed element: `xs is [let first, ... => ...]`.
-The parser defers several pattern syntax errors to the checker: a missing
-pattern, an element after the rest, a relational pattern that compares with a
-call. An `is` pattern that binds names waits behind a placement marker until a
-lexical home claims it, and a pattern no home claims is never compiled, so the
-placement error (`EK4703`, or `EK0705` in a parameter default or an enum
-initializer) is the only diagnostic. The pinned `MatchList` puts its one rest
-element last, and a `MatchProperty` colon takes a `MatchPattern`. Directed
-probes found the loss in every position that has no home: a `for` head whose
-initializer is a `var` or `using` list, a `switch` discriminant or case, a
-parameter default, an enum initializer, a computed class member name, a class
-heritage, an `export default` operand, a `match` subject and a `catch`
-expression head. These witnesses are pending under
-`admission:unhomed-pattern-grammar`. The classifier reads the placement marker
-the parser wrote, then parses the marked text again as an `if` condition and
-keys the witness only when that reading carries a deferred pattern syntax
-error, so a well-formed pattern in the same position keeps its ordinary
-verdict.
-
-The same probes named type-space declarations `fork` and `join` in effect
-code. Appendix A reserves the two words there as `await` is reserved under
-`[+Await]`: no `BindingIdentifier` can be either. The compiler reports
-`EK1702` for a variable, parameter, function, class or label with either
-name, and nothing for a type alias, an interface, an enum or a type
-parameter: `effect function f() { type fork = 1 }` compiles with no
-diagnostic. Stock TypeScript 5.9.3 rejects each `await` twin in an `async`
-function (`TS2457`, `TS2427`, `TS1003`, `TS1139`). These witnesses are pending
-under `admission:fiber-type-name`. The form classifier read `enum fork { }` as
-a bare `fork` block until now, because `fork` stands before `{` there; it
-asks the parser for the declaration first.
+VIP-17 also reserves `fork` and `join` in type-space declaration bindings
+inside Effect code. The `admission:fiber-type-name` witnesses include type
+aliases, interfaces, enums and type parameters. The regression controls
+include plain and member-name positions where the reservation does not apply.
 
 The probes also showed six native grammar diagnostics the oracle did not
 count as syntax rejection, so a correctly rejected program read as a
@@ -926,8 +858,6 @@ literal types followed: TypeScript's parser reads `in` and `out` on any type
 parameter and its checker rejects them outside a class, interface or type
 alias (`TS1274`), so the lab reads them on every type parameter and the
 oracle counts the checker's rejection, as it does for a misplaced `const`.
-The lab still has no decorators; a program that uses one reads as a mismatch
-and is not evidence about the compiler.
 
 A type query's first name followed. TypeScript's parser reads it with
 reserved words allowed (`parseTypeQuery` calls `parseEntityName` with
@@ -937,23 +867,22 @@ error is the checker's `TS2304`; only `import` can't start the name, because
 took an `IdentifierReference`, so a campaign mutation that replaced a schema
 name with `try` read as a mismatch. It now takes any reserved word but
 `import` as the first name, and the compiler agrees on every reserved word.
-In effect code `fork` and `join` stay outside it: VIP-17 reserves them, and
-the compiler's acceptance there is the keyed `admission:fiber-type-name` gap.
+In Effect code, VIP-17's reservation of `fork` and `join` still applies.
 
 A Cases campaign mutation of `await.race [a, b]` into `await.race 1 [a, b]`
 showed the retired VIP-18 await operations. `await.race [a, b]` derives as a
 member expression indexed by a comma expression, so the oracle never saw the
 form; with `1` between them nothing derives, and the compiler reported only
 `EK1802`. The parser still reads `await . <operation> <operand>` (the
-inventory's `admission:legacy-await` hooks) to report `EK1802` and drive
-`--fix`; the form has no production, so `EK1802` now counts as syntax
-rejection, as the retired declaration codes `EK0909` and `EK2121` do.
+inventory's `admission:legacy-await` hooks) to report `EK1802`. The oracle
+counts that error as syntax rejection, alongside the retired declaration
+errors `EK0909` and `EK2121`.
 
 Two more campaign shapes followed. `xs is [let let, ...]` behind a
 placement marker: the binder, not the parser, rejects a strict-mode reserved
 word as a binding name (`TS1214`, with `TS2480` for `let`), so the homed copy
-the `admission:unhomed-pattern-grammar` classifier compiles carries no parser
-marker; the classifier now also reads the marked pattern's own tokens for a
+carries no parser marker. The `admission:unhomed-pattern-reserved-identifier`
+classifier reads the marked pattern's own tokens for a
 `let` or `const` followed by such a word. And `module twice { export export
 const b = 2 }` after another `module twice`: alone the body reports `TS1030`,
 but a module that redeclares a name reports `EK4005` and its body is never
@@ -966,8 +895,8 @@ The redeclared-module pending family takes precedence over forms inside its unch
 
 An unhomed `is` binding can discard its subject independently of deferred pattern syntax errors. The valid pattern `[let first, ...1]` in a parameter default hides an outside-Effect `join` or `fork` in that subject behind `EK0705`. A recorded fiber prefix inside the generated placement marker keeps the separate `admission:unhomed-pattern-subject` key. Keyed corpus, quoted `[+Effect]` productions, parameter-default and enum mutations, and native-prefix, ordinary-call, homed and inert-text controls preserve that boundary.
 
-A reserved reference inside the same unhomed pattern is also a member of
-`admission:unhomed-pattern-grammar`: `function g(a = xs is [let first,
+A reserved reference inside the same unhomed pattern also uses
+`admission:unhomed-pattern-reserved-identifier`: `function g(a = xs is [let first,
 static, 1]) {}` reports only `EK0705`, while an `if` condition exposes the
 binder's `TS1214`. The classifier binds its homed copy and reads native
 grammar diagnostics, including reserved binding names. Property names,
@@ -1103,13 +1032,9 @@ TypeScript leaves an alias's empty list unchecked. The parser now reports
 `data D<> { Value { value: number } }` is rejected and
 `admission:data-empty-type-parameters` is no longer pending.
 
-Another case mutation passed a producer to `Effect.gen` and left an empty
-`const` line in its body. A producer given to a native generator API
-reports `EK1002`, and that diagnostic covers the whole argument, so the
-body's `TS1123` disappears with its type errors. The same body in a plain
-`function*`, or in a producer declaration, still reports `TS1123`. The form
-is pending under `admission:producer-cover-grammar`, keyed by a producer
-written as a call argument.
+The `admission:producer-cover-grammar` family is no longer pending. Its
+regression witness passes a producer with an empty `const` line to
+`Effect.gen` and checks that the outer `EK1002` does not hide `TS1123`.
 
 A later campaign reduced a case to `.00`, which the compiler accepts with no
 diagnostic, as stock TypeScript does: ECMAScript's `DecimalLiteral` may start

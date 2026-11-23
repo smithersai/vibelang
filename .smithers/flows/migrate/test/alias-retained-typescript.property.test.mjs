@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { pathAliases, renameBatch, rewriteImports } from "../lib/codemod.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // codemod-gap:nonrelative-ts-extension:
 // a migrated t3code web module imported a module that stays TypeScript as
@@ -15,7 +16,7 @@ import { pathAliases, renameBatch, rewriteImports } from "../lib/codemod.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 const write = (root, files) => {
   for (const [file, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, file)), { recursive: true })
@@ -115,7 +116,7 @@ function emitTypeScript(root) {
   assert.deepEqual([...ts.getPreEmitDiagnostics(program), ...emitted.diagnostics].map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n")), [])
 }
 
-test("t3code web: native output preserves declaration types and records the VibeLang callable contract", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("t3code web: native output preserves declaration types and records the VibeLang callable contract", () => {
   const root = t3code()
   try {
     emitTypeScript(root)

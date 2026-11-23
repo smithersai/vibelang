@@ -93,6 +93,8 @@ const runs = [
   ["packages/create-vibelang/test/pin.property.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/pin.property.test.mjs"],
   // A fixture project: coverage.test.mjs runs Vitest over it.
   ["packages/vite/test/coverage/test/*.test.ts", "packages/vite/test/coverage.test.mjs", "test/coverage"],
+  // compiler-eslint-test runs run.sh, whose node --test line takes every test file beside it (#625).
+  ["packages/compiler/test/eslint/*.test.mjs", "packages/PACKAGE.ts", "sh packages/compiler/test/eslint/run.sh"],
   // run.sh names each file on its node --test line; a file it leaves out runs nowhere.
   ...unpluginRunFiles().map((file) => [`packages/unplugin/${file}`, "packages/unplugin/test/run.sh", file]),
 ]
@@ -109,7 +111,6 @@ const unrun = [
   ["typescript/packages/**", "upstream TypeScript's own packages, outside VibeLang's"],
   ["editors/vscode/**", "validate.sh's vscode step runs them, outside the build graph"],
   ["packages/ts-mapper/test/**", "validate.sh's go step runs them, outside the build graph"],
-  ["packages/compiler/test/eslint/*.test.mjs", "run.sh installs its own lockfile; remaining failures cover synthesized match reports, corpus parsing and declaration token ranges; the effect-modifier oracle runs in compiler-test"],
   ["packages/create-vibelang/test/e2e.test.mjs", "requires workspace compiler/runtime/Vite setup; scripts/e2e.sh covers the install/build/run path"],
   ["packages/create-vibelang/test/format.test.mjs", "requires VIBELANG_DPRINT and the built compiler formatting plugin"],
   ["packages/create-vibelang/test/create.property.test.mjs", "requires real packed compiler/runtime packages and package-manager installs for the scaffold build matrix"],
@@ -149,6 +150,15 @@ const testFiles = () => {
 test("every test file runs in a target or says why not", () => {
   const all = [...runs.map(([glob]) => glob), ...unrun.map(([glob]) => glob)].map(matcher)
   assert.deepEqual(testFiles().filter((file) => !all.some((re) => re.test(file))), [])
+})
+
+// The ESLint bridge suite ran in no target from the day `effect` functions broke it until #625: the exemption that
+// recorded it as failing let three classes of defect in a published export pass the gate.
+test("the ESLint bridge suite runs whole in a registered target", () => {
+  const graph = read("packages/PACKAGE.ts")
+  assert.match(graph, /"compiler-eslint-test": compilerEslintTest,/)
+  assert.match(read("packages/compiler/test/eslint/run.sh"), /^node --test "\$@" \.\/\*\.test\.mjs$/m)
+  assert.deepEqual(unrun.filter(([glob]) => glob.startsWith("packages/compiler/test/eslint")), [])
 })
 
 test("each runner names the test files it is said to run", () => {

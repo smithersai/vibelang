@@ -106,7 +106,7 @@ var (
 		{
 			Scheme: new("file"),
 			Pattern: &lsproto.FileOperationPattern{
-				Glob: "**/*.{ts,tsx,js,jsx,cts,cjs,mts,mjs,json,vibe}",
+				Glob: "**/*.{ts,tsx,js,jsx,cts,cjs,mts,mjs,json,vibe,vibex}",
 			},
 		},
 	}

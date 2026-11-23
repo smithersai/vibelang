@@ -14,7 +14,7 @@ import (
 var EK5503 = message(5503, errorCategory, "Another task or workflow in this package has the tag {0}, and a tag names its recorded runs. Rename one, or give it static readonly key.")
 
 func init() {
-	registry[EK5503.Code] = EK5503
+	registerDiagnostic(EK5503)
 	fileChecks = append(fileChecks, checkDurableKeys)
 }
 

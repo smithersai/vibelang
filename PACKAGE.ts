@@ -1741,11 +1741,6 @@ const targets = {
   // The registry test alone, for spec-push (~/vibe/mq/mq.py SPEC_LINT_TARGETS; fix-main-red 2026-11-03): spec-direct
   // commits gave Appendix B 15 codes the registry lacked, and only post-merge's //:spec-tests saw it. spec-push
   // tolerates a target main carries red, so a target of one test still blocks while //:spec-tests is red for others.
-  // The --fix fixed twins and cost guards, for the merge gate (validate.sh selects it for a non-test source change
-  // in the parser, internal/vibelang or internal/effectglobals; fix-main-red 2026-11-03). VIP-6's 77843b2ee56b, a
-  // parser and prelude change, made 3f57b5b4694e's prelude pass rewrite every Effect.x call to its bare global:
-  // the tsforms and migrate fixed twins changed again on a second --fix run and TestFixGateChecksAFewTimes built
-  // more programs than its bound, and only post-merge's //:go-vibelang and //:spec-tests saw it.
   "go-failure-aliases": goVibelang(
     "Failure aliases retain their declaration-site tags without admitting ordinary throwing calls.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestFailuresSpec|FuzzFailuresSpec)$/^(alias-declaration-tag-not-admitted|foreign-alias-tag-.*)$' ./internal/vibelangfuzz/`,

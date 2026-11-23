@@ -4,7 +4,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
-var serviceContractModifierDiagnostic = message(902, errorCategory, "A service member is a property or method signature, without class-only modifiers. Remove the modifier; readonly is allowed only on a property.")
+var serviceContractModifierDiagnostic = EK0902.With("A service member is a property or method signature, without class-only modifiers. Remove the modifier; readonly is allowed only on a property.")
 
 // serviceContractClassSyntax recognizes class-only syntax in the written
 // instance contracts of VIP-9 services. Ordinary classes, controls, and the
@@ -31,5 +31,3 @@ func serviceContractClassSyntax(member *ast.Node) bool {
 	}
 	return false
 }
-
-func init() { registry[serviceContractModifierDiagnostic.Code] = serviceContractModifierDiagnostic }

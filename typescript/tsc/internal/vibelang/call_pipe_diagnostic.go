@@ -13,7 +13,7 @@ import (
 var EK4502 = message(4502, errorCategory, "{0} already ran and returned its success value, which has no pipe method.")
 
 func init() {
-	registry[EK4502.Code] = EK4502
+	registerDiagnostic(EK4502)
 	checker.RegisterDiagnosticsFilterHook(explainCallPipe)
 }
 

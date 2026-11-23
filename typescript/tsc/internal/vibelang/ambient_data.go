@@ -15,8 +15,8 @@ var (
 )
 
 func init() {
-	registry[EK1506.Code] = EK1506
-	registry[EK1607.Code] = EK1607
+	registerDiagnostic(EK1506)
+	registerDiagnostic(EK1607)
 	fileChecks = append(fileChecks, checkAmbientSchemaData)
 	checker.RegisterDiagnosticsFilterHook(filterAmbientSchemaDataInitializers)
 }

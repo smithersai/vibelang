@@ -64,19 +64,19 @@ func packageRootOf(c *checker.Checker, directory tspath.RootedDirectoryPath) (ts
 	return "", ""
 }
 
-// isEffectPackage reports whether name is effect, an @effect/* package, or
-// vibelang-runtime, the packages whose exports VibeLang trusts
-// (D22).
-func isEffectPackage(name string) bool {
-	return name == "effect" || strings.HasPrefix(name, "@effect/") || name == "vibelang-runtime"
+// isRuntimePackage reports whether name is VibeLang's own runtime package.
+// Pinned Effect packages are typed explicitly through effectThrowsTable
+// (effect_throws.go), and unpinned @effect/* packages such as @effect/vitest
+// follow the single external-package rule (no @throws means unknown).
+func isRuntimePackage(name string) bool {
+	return name == "vibelang-runtime"
 }
 
-// isTrustedPackage extends D22's built-in package trust with project globs
-// (D261). Match the package.json name, including for workspace packages. The
-// globs are those of the project that owns from, the file that makes the call
-// (D297).
+// isTrustedPackage reports whether name has built-in runtime trust
+// (vibelang-runtime) or matches a legacy trustedPackages glob (retired and
+// cleared by tsoptions).
 func isTrustedPackage(c *checker.Checker, from *ast.SourceFile, name string) bool {
-	if isEffectPackage(name) {
+	if isRuntimePackage(name) {
 		return true
 	}
 	if name == "" {

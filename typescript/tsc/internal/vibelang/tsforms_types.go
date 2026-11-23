@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"fmt"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
@@ -73,7 +71,7 @@ func findEffectTypes(c *checker.Checker, file *ast.SourceFile, report func(at *a
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsTypeReferenceNode(node) && ast.IsQualifiedName(node.AsTypeReferenceNode().TypeName) && isEffectTypeName(c, node) && !inUnionEffectReturn(c, node) {
-			if rewrite := effectTypeRewrite(c, file, node); rewrite != nil {
+			if rewrite := effectTypeDiagnostic(c, file, node); rewrite != nil {
 				report(node, rewrite, messageText(node, "This Effect type"), rewrite.description)
 			}
 		}
@@ -106,8 +104,8 @@ func isBodyReturnAnnotation(node *ast.Node) bool {
 	return fn != nil && ast.IsFunctionLike(fn) && fn.Type() == node && fn.Body() != nil
 }
 
-// effectTypeRewrite plans EK4833's fix for reference.
-func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.Node) *formRewrite {
+// effectTypeDiagnostic computes the shorthand example for EK4833.
+func effectTypeDiagnostic(c *checker.Checker, file *ast.SourceFile, reference *ast.Node) *formRewrite {
 	if !isEffectTypeName(c, reference) {
 		return nil
 	}
@@ -175,28 +173,8 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 	if needsBangParentheses(reference) {
 		text = "(" + text + ")"
 	}
-	if grouped {
-		name := expressionText(file, reference.AsTypeReferenceNode().TypeName)
-		if name != "Effect.Effect" {
-			return &formRewrite{description: text, why: fmt.Sprintf("No quick fix: the shorthand would replace %s with Effect.Effect in declaration output.", name)}
-		}
-	}
-	// Newly required grouping disappears again when emptySlots emits the
-	// named Effect type. Source-written grouping, however, would disappear
-	// too; retain it until declarations can distinguish those parentheses.
-	if reference.Parent != nil && ast.IsParenthesizedTypeNode(reference.Parent) {
-		return &formRewrite{description: text, why: "No quick fix: declaration emission would remove the source-written parentheses around this Effect type."}
-	}
-	for i, argument := range arguments {
-		if ast.IsParenthesizedTypeNode(argument) {
-			return &formRewrite{description: text, why: fmt.Sprintf("No quick fix: declaration emission would remove the source-written parentheses in Effect type argument %d.", i+1)}
-		}
-	}
-	rewrite := &formRewrite{edits: []sourceEdit{{nodeStart(file, reference), reference.End(), text}}, description: text}
-	if !editsPreserveComments(file.Text(), rewrite.edits) {
-		return &formRewrite{description: text, why: "No quick fix: rewriting this Effect type would discard or reorder comments between its type arguments."}
-	}
-	return rewrite
+
+	return &formRewrite{description: text}
 }
 
 // Use parsed kinds rather than scanning operand text: operator-looking
@@ -243,27 +221,4 @@ func needsBangParentheses(reference *ast.Node) bool {
 		return parent.AsTypeReferenceNode().TypeName.Flags&ast.NodeFlagsReparsed != 0
 	}
 	return false
-}
-
-// Detail260's deterministic trigger does not add grouping to migrate a legacy
-// alias. Existing source parentheses remain available; an enclosing position
-// or channel that needs new parentheses instead retains the qualified type.
-func effectShorthandKeepsGrouping(file *ast.SourceFile, node *ast.Node) bool {
-	if needsBangParentheses(node) || node.Parent != nil &&
-		(ast.IsHeritageClause(node.Parent) || ast.IsParenthesizedTypeNode(node.Parent)) {
-		return false
-	}
-	for i, argument := range node.TypeArguments() {
-		// emptySlots deliberately removes bang grouping from declarations.
-		// Qualification retains the source's existing parentheses and exact
-		// declaration bytes, as the migration contract requires (detail277).
-		if ast.IsParenthesizedTypeNode(argument) {
-			return false
-		}
-		text := expressionText(file, argument)
-		if hasTopLevel(text, "|") || hasTopLevel(text, "&") || bangSlot(text, i > 0) != text {
-			return false
-		}
-	}
-	return true
 }

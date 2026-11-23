@@ -56,7 +56,7 @@ var tsFormMessages = []*Message{EK4830, EK4831, EK4832, EK4833, EK4834, EK4835, 
 
 func init() {
 	for _, m := range tsFormMessages {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
 	fileChecks = append(fileChecks, checkTypeScriptForms)
 }
@@ -88,8 +88,6 @@ type tsFormRule struct {
 	// find calls report for each construct in file, with the node the
 	// diagnostic stands at and the plan of its rewrite.
 	find func(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any))
-	// check, when set, reports diagnostics without computing discarded rewrite plans.
-	check func(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any))
 }
 
 // tsFormRules are registered by the rules' files.
@@ -100,20 +98,13 @@ func checkTypeScriptForms(c *checker.Checker, file *ast.SourceFile) {
 	checkFormRules(c, file, tsFormMessages)
 }
 
-// checkFormRules shares rewrite diagnostics between teaching warnings and
-// mandatory migration errors, without making errors adjustable lint.
 func checkFormRules(c *checker.Checker, file *ast.SourceFile, messages []*Message) {
 	for _, m := range messages {
 		rule := tsFormRules[m.Code]
 		if rule == nil {
 			continue
 		}
-		scan := rule.check
-		if scan == nil {
-			scan = rule.find
-		}
-		scan(c, file, func(at *ast.Node, rewrite *formRewrite, args ...any) {
-			rewrite = preserveRewriteComments(file, rewrite)
+		rule.find(c, file, func(at *ast.Node, rewrite *formRewrite, args ...any) {
 			m := rule.message
 			if rewrite != nil && rewrite.message != nil {
 				m = rewrite.message
@@ -615,14 +606,4 @@ func directEffectFormName(c *checker.Checker, callee *ast.Node, names ...string)
 		return ""
 	}
 	return name
-}
-
-const computedCallFormNote = "No quick fix: keep the native call to preserve computed member lookup and argument evaluation."
-
-// tryText returns text, the source of node, an Effect, run with try.
-func tryText(node *ast.Node, text string) string {
-	if isTry(node) || needsOperandParentheses(node) {
-		text = "(" + text + ")"
-	}
-	return "try " + text
 }

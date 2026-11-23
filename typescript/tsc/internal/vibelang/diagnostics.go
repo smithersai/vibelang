@@ -73,12 +73,6 @@ var (
 	EK1003 = message(1003, errorCategory, "{0} is not part of VibeLang: a call already waits.")
 	// EK1005: a runner inside code that a fiber runs. {0} is the runner, {1} the function.
 	EK1005 = message(1005, errorCategory, "{0} starts a new root fiber, but {1} already runs on one.")
-	// EK2301 (Appendix B, VIP-23): the pinned pipe proposal's missing-topic
-	// early error, a pipe whose body never uses its topic.
-	EK2301MissingTopic = message(2301, errorCategory, "This pipe's body does not use its topic, %, so the value before |> would go nowhere.")
-	// EK2301 (Appendix B, VIP-23): the pinned pipe proposal's early error for
-	// a % outside every pipe's body.
-	EK2301StrayTopic = message(2301, errorCategory, "% is the topic of a pipe and stands only in a pipe's body, after |>.")
 	// EK1010: a throw expression followed by a token VIP-41 forbids. {0} is its operand, {1} the token.
 	EK1010 = message(parser.VibeLangThrowLookaheadCode, errorCategory, parser.VibeLangThrowLookaheadMessage)
 	// EK1011: a function compiles to an Effect in a program without effect's Effect type. {0} is the function.
@@ -203,8 +197,15 @@ var (
 	EK4409 = message(4409, warningCategory, "{0} calls a value of type any, so {1} succeeds with whatever it returns and runs no program it returns.")
 )
 
-// registry lists every message above by code.
+// registry lists canonical messages by code.
 var registry = map[int32]*Message{}
+
+func registerDiagnostic(m *Message) {
+	if existing := registry[m.Code]; existing != nil && existing != m {
+		panic(fmt.Sprintf("duplicate diagnostic %s: %q and %q", m, existing.Text, m.Text))
+	}
+	registry[m.Code] = m
+}
 
 func init() {
 	for _, m := range []*Message{
@@ -216,7 +217,7 @@ func init() {
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK9211, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207, EK2601,
 		EK4201, EK4202, EK4301, EK4401, EK4402, EK4406, EK4001, EK4002, EK4003, EK4004, EK4005, EK4006, EK4007, EK4008, EK4009, EK4409, EK4501,
 	} {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
 }
 
@@ -381,10 +382,14 @@ func note(d *ast.Diagnostic, text string, args ...any) *ast.Diagnostic {
 
 // format replaces {0}, {1}, … in text with args.
 func format(text string, args []any) string {
-	for i, arg := range args {
-		text = strings.ReplaceAll(text, "{"+strconv.Itoa(i)+"}", fmt.Sprint(arg))
+	if len(args) == 0 {
+		return text
 	}
-	return text
+	replacements := make([]string, 0, 2*len(args))
+	for i, arg := range args {
+		replacements = append(replacements, "{"+strconv.Itoa(i)+"}", fmt.Sprint(arg))
+	}
+	return strings.NewReplacer(replacements...).Replace(text)
 }
 
 // fileChecks run once for each .vibe file that a checker checks, after

@@ -704,7 +704,14 @@ Each row runs the function with the iterable `xs` described; unless the row says
 | `j` | `xs` is empty | `Success(9)`; `return` is not called |
 | `i` | `return` returns an object | `Failure("f")`; `return` is not called: the generator is abandoned |
 
-**Diagnostics.** A `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error, ending in a declaration, a loop or an `if` without an `else`, is `EK0201`. `var` in a `do` expression in a parameter list is `EK0203`. A `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop is `EK0205`. Every label in a contiguous chain around that loop names the same loop, so `outer: inner: while (do { continue outer; true }) {}` is also `EK0205`. A jump to a label on a different enclosing loop remains exempt from this early error. `EK0204` is a compiler gap, not a language rule: where the compiler still compiles a `do` to a function, it rejects an outward completion (`return`, `var`, a jump, `await` or `yield`) that VIP-2 keeps legal, such as the parameter-default `return` in the table above ([transitional diagnostics](900-appendices.md#transitional-compiler-diagnostics)).
+**Diagnostics.** A `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error, ending in a declaration, a loop or an `if` without an `else`, is `EK0201`. `var` in a `do` expression in a parameter list is `EK0203`. A `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop is `EK0205`. Every label in a contiguous chain around that loop names the same loop, so `outer: inner: while (do { continue outer; true }) {}` is also `EK0205`. A jump to a label on a different enclosing loop remains exempt from this early error. `EK0204` is a compiler gap, not a language rule: where the compiler still compiles a `do` to a function, it rejects an outward completion (`return`, `var`, a jump, `await` or `yield`) that VIP-2 keeps legal, such as a `return` that leaves a native generator through a parameter default ([transitional diagnostics](900-appendices.md#transitional-compiler-diagnostics)).
+
+```vibe es
+// expect-error: EK0204
+function* nativeDefault(value = do { return null }) {
+  yield value
+}
+```
 
 ## `fork` and `join`
 

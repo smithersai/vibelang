@@ -134,7 +134,6 @@ Run `vibelang -p tsconfig.aot.json` then `node dist/build.js`. Set `"rootDirs": 
 ```vibe
 // fragment
 // application.vibe
-// pending: VIP-1, VIP-5, VIP-14
 import "./generated/parcel-validators.js"
 import { Parcel } from "./schemas/Parcel.vibe"
 

@@ -137,11 +137,12 @@ func FuzzProjectionSpans(f *testing.F) {
 }
 
 // A recovered missing operand must not produce overlapping edits that discard
-// the valid functions after the incomplete statement (malformed-pipe-topic).
+// the valid functions after the incomplete statement (malformed-pipe-topic):
+// the provably pure effect function after it keeps its direct entry.
 func TestIncompletePipePreservesFollowingFunction(t *testing.T) {
 	for _, source := range []string{
-		"const e = |> %; export function main() { return 1 }",
-		"const e = 1 |> ; export function main() { return 1 }",
+		"const e = |> %; export effect function main() { return 1 }",
+		"const e = 1 |> ; export effect function main() { return 1 }",
 	} {
 		checking := Project(source, testContext)
 		executable := Executable(source, testContext)

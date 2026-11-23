@@ -53,13 +53,8 @@ func (p *projector) pipeExpression(node *ast.Node, e env) {
 		p.plan.insert(start, "(() => ")
 	}
 	p.plan.insert(start, "{ const "+topic+" = ")
-	// A linter reads syntax, so Lint keeps the input where it is written.
-	byName := !p.ctx.Lint && p.pipeProgramTopic(node)
-	if byName {
-		p.delayedProgram(binary.Left)
-	} else {
-		p.visit(binary.Left, e)
-	}
+	// The input is the value written, evaluated once where the pipe stands.
+	p.visit(binary.Left, e)
 	p.plan.replace(binary.Left.End(), p.tokenStart(binary.Right), "; return ")
 	p.visit(binary.Right, e)
 	p.plan.insert(node.End(), " }")
@@ -71,15 +66,10 @@ func (p *projector) pipeExpression(node *ast.Node, e env) {
 	}
 }
 
-// pipeValueTopics validates the topic boundary before recording edits. Mixed
-// value/program uses and opaque parameter contracts need an annotation rather
-// than silently evaluating the input at the wrong time.
+// pipeValueTopics checks that the pipe's body uses its topic (EK2301). A
+// topic is always the input's value: no parameter makes it a program.
 func (p *projector) pipeValueTopics(pipe *ast.Node) bool {
-	r := p.forms.(*Resolver)
-	ok := true
 	topics := 0
-	program, value := false, false
-	var valueTopic *ast.Node
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if isPipeExpression(node) {
@@ -88,22 +78,6 @@ func (p *projector) pipeValueTopics(pipe *ast.Node) bool {
 		}
 		if formsIsTopic(node) {
 			topics++
-			d := p.forms.Argument(node)
-			if d.ByName {
-				program = true
-			} else {
-				value = true
-				if valueTopic == nil {
-					valueTopic = node
-				}
-			}
-			if d.Call != nil {
-				sigs, _ := r.signaturesOf(d.Callee)
-				if !p.ctx.Lint && (d.Ambiguous || len(formsCandidates(sigs, len(d.Call.Arguments()))) == 0) {
-					p.formChoice(node, "The mapper cannot decide whether this pipe topic is a value or a program. Annotate the callee's parameter, or bind the input to an explicitly annotated value before the pipe.")
-					ok = false
-				}
-			}
 			return false
 		}
 		return node.ForEachChild(visit)
@@ -116,22 +90,7 @@ func (p *projector) pipeValueTopics(pipe *ast.Node) bool {
 		})
 		return false
 	}
-	if program && value {
-		// D155 requires a running left side before a topic can pass it by
-		// name. An opaque call does not prove that native condition.
-		left := pipe.AsBinaryExpression().Left
-		if p.ctx.Lint {
-			return ok
-		}
-		if pauses, _ := p.runningExpressionCalls(left); ok && pauses {
-			text := p.text[p.tokenStart(left):left.End()]
-			p.fiberDiagnostic(valueTopic, CodeUnprojectedForm, "% stands for "+text+", which this pipe passes by name to a program elsewhere, so it cannot also be a value here.")
-		} else {
-			p.formChoice(pipe, "A pipe cannot use its topic as both a program and a value; bind an explicitly annotated value or split the pipe.")
-		}
-		return false
-	}
-	return ok
+	return true
 }
 
 // pipeTopic resolves % through the syntax tree, so a topic in a nested

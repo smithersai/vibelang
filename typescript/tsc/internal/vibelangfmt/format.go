@@ -20,6 +20,15 @@ type TypeScriptFormatter func(text string) (string, error)
 // changes nothing, on a file with syntax errors, and when the result would not
 // parse to the program source parses to.
 func Format(fileName, source string, formatter TypeScriptFormatter) (string, error) {
+	// The compiler's host drops a leading byte order mark before parsing, so
+	// a #! line may follow one. Format the text after it and keep the mark.
+	if rest, ok := strings.CutPrefix(source, byteOrderMark); ok {
+		result, err := Format(fileName, rest, formatter)
+		if err != nil {
+			return "", err
+		}
+		return byteOrderMark + result, nil
+	}
 	enc, err := encode(fileName, source)
 	if err != nil {
 		return "", prefix(fileName, err)
@@ -50,6 +59,8 @@ func Format(fileName, source string, formatter TypeScriptFormatter) (string, err
 	}
 	return result, nil
 }
+
+const byteOrderMark = "\ufeff"
 
 func prefix(fileName string, err error) error {
 	if fileName == "" {

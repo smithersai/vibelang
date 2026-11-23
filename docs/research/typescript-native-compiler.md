@@ -14,8 +14,7 @@ team promises to keep backward compatible through 7.x. The typescript-go history
 rewritten SHAs, so typescript-go pins (including Effect's 7.0.2 pin `2bd066d`) do not resolve in
 `microsoft/TypeScript`. Go enforces `internal` by import-path prefix, which is why effect-tsgo's shim
 modules named `github.com/microsoft/typescript-go/shim/...` compile while a module under any other
-path fails (reproduced below). The local `~/effect-tsgo` checkout (0.27.1, typescript-go `5b1047d`,
-cloned 2026-08-03) is a post-check linter and language-service extension: 23 small patches add
+path fails (reproduced below). The [Effect TypeScript compiler snapshot](https://github.com/Effect-TS/tsgo/tree/431711f645f6e8368efaed5a4fdf0005fc511302) (0.27.1, typescript-go `5b1047d`) is a post-check linter and language-service extension: 23 small patches add
 package-level callbacks that Effect packages register from `init()`, and no patch touches emit.
 Upstream Effect-TS/tsgo (0.53.1) now pins a `microsoft/TypeScript` submodule at `9eedcb0` and
 maintains a second 27-patch stack for it. Recommendation: fork `microsoft/TypeScript` `main` at an

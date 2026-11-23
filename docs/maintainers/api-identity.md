@@ -114,8 +114,7 @@ options, self comparisons, type, value, name and documentation mutations,
 and four generated samples remain required.
 
 Callable parameter and return signatures keep their own documentation in the comparison, including inline function types. A function type, an arrow and a function expression inherit the JSDoc of the binding they type or initialize; that prose is compared on the binding, and each signature keeps only the comments written on it. A documented `.ts` arrow therefore matches the declaration `tsc` emits for it. The compiler’s migration-fixture Go test uses this same gate while retaining its unannotated stock-twin goldens.
-This implements Will’s 2026-11-04 answer: “Yes this is normal that it doesn't
-exactly match”. Inline `{@link ...}`, `{@linkcode ...}` and `{@linkplain ...}` comments
+See [VIP-27’s 2026-11-04 API-identity amendment](../design/vips/0027-declaration-output.md#decision). Inline `{@link ...}`, `{@linkcode ...}` and `{@linkplain ...}` comments
 retain their targets, labels and rendering kinds when a private target resolves
 in only one snapshot. Link formatting is normalized through TypeScript display
 parts, including the boundary between a resolved target and its label.
@@ -235,7 +234,7 @@ diagnostic. The `failure` record identifies the stage, elapsed milliseconds and
 process memory use. The CLI prints the same result with `--json` and exits `2`.
 A failed comparison supplies no type-difference verdict.
 
-The CLI runs its comparison in a child with a `2 GiB` V8 heap limit. A fatal
+The CLI runs its comparison in a child with an initial `2 GiB` V8 heap limit. If the child is killed, the CLI can retry at `4 GiB` and then `8 GiB` when the machine has enough memory. A fatal
 allocation failure, a signal or an empty successful exit is an invalid receipt,
 printed as JSON with `--json` and exit `2`. The receipt records the child's
 signal, exit status and diagnostic byte count. Imported callers can use
@@ -354,9 +353,9 @@ any other:
 | An error in the module's body | Blocking, as for any input file. |
 | Source saved on one side only | Neither side is projected; the rules above apply. |
 
-In a package without `exports`, where every module is an entry point, the saved
-module is an entry point too. In a package with `exports`, it counts through the
-entry points that reach it, as a private module does.
+Without a `package.json`, every module is an entry point, including the saved module.
+A manifest with `types` and no `exports` declares one entry point. A saved module
+that is private counts through the published entry points that reach it.
 
 `result.absentDeclarations` marks such a record with `comparedFromSource: true`.
 Its `equal` field still reports the emit diagnostics, but it decides nothing:

@@ -206,16 +206,18 @@ type ScannerState struct {
 	tokenValue                string         // Parsed value of current token
 	tokenFlags                ast.TokenFlags // Flags for current token
 	commentDirectives         []ast.CommentDirective
+	vibeDiagnosticComments    []core.TextRange
 	skipJSDocLeadingAsterisks int // Leading asterisks to skip when scanning types inside JSDoc. Should be 0 outside JSDoc
 }
 
 type Scanner struct {
-	text            string
-	end             int
-	languageVariant core.LanguageVariant
-	scriptTarget    core.ScriptTarget
-	onError         ErrorCallback
-	skipTrivia      bool
+	text                          string
+	end                           int
+	languageVariant               core.LanguageVariant
+	scriptTarget                  core.ScriptTarget
+	onError                       ErrorCallback
+	skipTrivia                    bool
+	collectVibeDiagnosticComments bool
 	ScannerState
 
 	numberCache    map[string]string
@@ -288,6 +290,23 @@ func (s *Scanner) TokenRange() core.TextRange {
 
 func (s *Scanner) CommentDirectives() []ast.CommentDirective {
 	return s.commentDirectives
+}
+
+// VibeDiagnosticMarker introduces a VibeLang diagnostic directive.
+const VibeDiagnosticMarker = "@vibelang-diagnostics"
+
+func (s *Scanner) SetCollectVibeDiagnosticComments(collect bool) {
+	s.collectVibeDiagnosticComments = collect
+}
+
+func (s *Scanner) VibeDiagnosticComments() []core.TextRange {
+	return s.vibeDiagnosticComments
+}
+
+func (s *Scanner) recordVibeDiagnosticComment() {
+	if s.collectVibeDiagnosticComments && strings.Contains(s.TokenText(), VibeDiagnosticMarker) {
+		s.vibeDiagnosticComments = append(s.vibeDiagnosticComments, s.TokenRange())
+	}
 }
 
 func (s *Scanner) Mark() ScannerState {
@@ -645,6 +664,7 @@ func (s *Scanner) Scan() ast.Kind {
 				}
 
 				s.processCommentDirective(s.tokenStart, s.pos, false)
+				s.recordVibeDiagnosticComment()
 
 				if s.skipTrivia {
 					continue
@@ -688,6 +708,7 @@ func (s *Scanner) Scan() ast.Kind {
 				}
 
 				s.processCommentDirective(lastLineStart, s.pos, true)
+				s.recordVibeDiagnosticComment()
 
 				if !commentClosed {
 					s.error(diagnostics.Asterisk_Slash_expected)

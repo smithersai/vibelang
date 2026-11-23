@@ -32,10 +32,10 @@ import (
 // The keyword matches Effect.provide.
 
 // EK1201: a provide statement at module scope requires effect code.
-var moduleProvideDiagnostic = message(1201, errorCategory, "A provide block requires effect code. Move it into an effect function or an effect { } block.")
+var EK1201 = message(1201, errorCategory, "A provide block requires effect code. Move it into an effect function or an effect { } block.")
 
 func init() {
-	registry[moduleProvideDiagnostic.Code] = moduleProvideDiagnostic
+	registerDiagnostic(EK1201)
 	fileChecks = append(fileChecks, checkProvideBlocks, checkProvideProviders)
 	ls.RegisterQuickInfoHook(providerQuickInfo)
 }
@@ -357,7 +357,7 @@ func checkProvideBlocks(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if isProvideBlock(n) && !inEffectCode(n) {
-			report(c, n, moduleProvideDiagnostic)
+			report(c, n, EK1201)
 		}
 		return n.ForEachChild(visit)
 	}

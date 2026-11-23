@@ -545,7 +545,7 @@ export function verifyTestDiff({ ts, before, after, renames, bridges = [], gener
               hunk.toolRoot = globRoot ?? null
               // Check that the new selector actually excludes sidecars even if
               // this snapshot happens not to contain any yet.
-              const side = Object.keys(after).filter(p => /\.(vibe|vibex)$/.test(p)).map(p => p.replace(/\.(vibe|vibex)$/, ".d.vibe.ts"))
+              const side = Object.keys(after).filter(p => /\.(vibe|vibex)$/.test(p)).map(p => p.replace(/\.(vibex?)$/, ".d.$1.ts"))
               for (const p of side) { mkdirSync(dirname(join(roots.after, p)), { recursive: true }); writeFileSync(join(roots.after, p), "") }
               const includesSidecar = selectGlob(toolGlob, bp, roots.after, file, options, globRoot).some(p => /\.d\.vibex?\.ts$/.test(p))
               for (const p of side) if (!Object.hasOwn(after, p)) rmSync(join(roots.after, p))

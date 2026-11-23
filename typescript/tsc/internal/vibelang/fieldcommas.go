@@ -25,9 +25,9 @@ var (
 )
 
 func init() {
-	registry[EK1013.Code] = EK1013
-	registry[EK1306.Code] = EK1306
-	registry[EK0908.Code] = EK0908
+	registerDiagnostic(EK1013)
+	registerDiagnostic(EK1306)
+	registerDiagnostic(EK0908)
 	fileChecks = append(fileChecks, checkFieldCommas)
 }
 
@@ -57,7 +57,7 @@ func checkFieldCommas(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// fieldDeclarationKind names the declaration that wrote class, for EK1013.
+// fieldDeclarationKind names the declaration that wrote class, for separator diagnostics.
 func fieldDeclarationKind(class *ast.Node) string {
 	switch form, _ := errorFormOf(class); form {
 	case errorFormRoot, errorFormSubclass:
@@ -67,6 +67,9 @@ func fieldDeclarationKind(class *ast.Node) string {
 	}
 	if classKindOf(class) == controlClass {
 		return "a control"
+	}
+	if declarationWord(class) == "service" {
+		return "a service"
 	}
 	return "a declaration"
 }

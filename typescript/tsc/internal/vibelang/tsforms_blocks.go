@@ -2,7 +2,6 @@ package vibelang
 
 import (
 	"slices"
-	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -34,8 +33,6 @@ var withSpanGlobalForm = EK4836.With("{0} is the global withSpan written through
 // Explicit instantiation can widen the result beyond a provide block's type.
 var provideTypeArgumentsForm = EK4836.With("{0} has an explicit type-argument contract; keep the native call.")
 
-const provideTypeArgumentsNote = "No quick fix: keep the native call to preserve its explicit type arguments and written contract."
-
 var blockOptionalCallForm = EK4836.With("{0} uses optional chaining; keep the native call.")
 
 var blockSpreadCallForm = EK4836.With("{0} uses spread arguments; keep the native call.")
@@ -43,8 +40,6 @@ var blockSpreadCallForm = EK4836.With("{0} uses spread arguments; keep the nativ
 // VIP-12 builds a Layer for Key = value; the native provideService does not.
 // VIP-34 permits a quick fix only when it preserves that observable behavior.
 var provideServiceNativeForm = EK4836.With("{0} installs a service without building a Layer; keep the native call.")
-
-const provideServiceScopeNote = "No quick fix: a provide block builds a Layer and changes Scope and Layer.CurrentMemoMap; keep Effect.provideService to preserve its behavior."
 
 func init() {
 	tsFormRules[EK4836.Code] = &tsFormRule{
@@ -94,121 +89,15 @@ func findBlockForms(c *checker.Checker, file *ast.SourceFile, report func(at *as
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if name := blockFormOf(c, node); name != "" {
-			rewrite := blockFormRewrite(c, file, node)
-			if rewrite == nil && name != "withSpan" {
-				rewrite = &formRewrite{why: directTrySafetyNote}
-			}
-			if rewrite != nil {
-				form := "withSpan(program, name)"
-				switch name {
-				case "provide":
-					form = "provide Layer { … }"
-				case "provideService":
-					form = "provide Key = value { … }"
-				}
-				report(node, rewrite, "Effect."+name, form)
+			message, example := blockFormDiagnostic(c, file, node, name)
+			if message != nil {
+				report(node, &formRewrite{message: message}, "Effect."+name, example)
 			}
 		}
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
 }
-
-// blockFormRewrite plans EK4836's fix for call.
-func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
-	name := blockFormOf(c, call)
-	if name == "" {
-		return nil
-	}
-	if ast.IsElementAccessExpression(call.Expression()) {
-		return &formRewrite{why: computedCallFormNote}
-	}
-	if hasSpreadFormArguments(call) {
-		return &formRewrite{message: blockSpreadCallForm, why: spreadCallFormNote}
-	}
-	if ast.IsOptionalChain(call) {
-		return &formRewrite{message: blockOptionalCallForm, why: optionalCallFormNote}
-	}
-	if name != "withSpan" && call.TypeArguments() != nil {
-		return &formRewrite{message: provideTypeArgumentsForm, why: provideTypeArgumentsNote}
-	}
-	if name != "withSpan" && directTryFormSite(call) != call {
-		return &formRewrite{why: directTryWrapperNote}
-	}
-	arguments := call.Arguments()
-	if name == "withSpan" {
-		if shadowed(call, "withSpan") {
-			return nil
-		}
-		callee := call.Expression()
-		result := "withSpan" + file.Text()[callee.End():call.End()]
-		return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{{nodeStart(file, callee), callee.End(), "withSpan"}}, description: shortText(result, "the global withSpan"), message: withSpanGlobalForm})
-	}
-	operand := ast.SkipParentheses(arguments[0])
-	if !isEffectType(c, c.GetTypeAtLocation(operand)) {
-		return nil
-	}
-	program := tryText(arguments[0], expressionText(file, arguments[0]))
-	text := file.Text()
-	start, end := nodeStart(file, call), call.End()
-	indent := lineIndent(text, start)
-	var result string
-	switch name {
-	case "provide", "provideService":
-		statement := call.Parent
-		returns := ast.IsReturnStatement(statement)
-		if !returns && !ast.IsExpressionStatement(statement) {
-			return &formRewrite{why: blockPositionNote}
-		}
-		if !analyzerFor(c).runs(call) {
-			return &formRewrite{why: blockPositionNote}
-		}
-		capture := !coldProgram(c, file, operand) && isEffectBlock(operand)
-		if !coldProgram(c, file, operand) && !capture {
-			return &formRewrite{why: eagerProgramNote}
-		}
-		var providers []string
-		if name == "provide" {
-			layers := arguments[1]
-			elements := []*ast.Node{layers}
-			if ast.IsArrayLiteralExpression(layers) {
-				elements = layers.Elements()
-			}
-			if len(elements) == 0 {
-				return nil
-			}
-			for _, element := range elements {
-				if ast.IsSpreadElement(element) || ast.IsOmittedExpression(element) {
-					return nil
-				}
-				providers = append(providers, providerText(file, element))
-			}
-		} else {
-			key := arguments[1]
-			if !ast.IsEntityNameExpression(key) {
-				return nil
-			}
-			return &formRewrite{message: provideServiceNativeForm, why: provideServiceScopeNote}
-		}
-		start, end = nodeStart(file, statement), statement.End()
-		if capture {
-			name := freshName(file, "automatic")
-			program = "try " + name
-			result = "{\n" + indent + "  const " + name + " = " + expressionText(file, arguments[0]) + ";\n" + indent + "  provide " + strings.Join(providers, ", ") + blockText(program, indent+"  ", returns) + "\n" + indent + "}"
-		} else {
-			result = "provide " + strings.Join(providers, ", ") + blockText(program, indent, returns)
-		}
-	}
-	return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{{start, end, result}}, description: shortText(result, "the block form")})
-}
-
-// blockPositionNote explains why a provide or provideService call that does
-// not stand as a statement or a return keeps its call.
-const blockPositionNote = "No quick fix: a provide block stands only as a statement or a return; run the call in one, such as a function that returns it."
-
-// eagerProgramNote explains why an eagerly evaluated program expression keeps
-// its call.
-const eagerProgramNote = "No quick fix: a block would evaluate its program expression after the other arguments; bind it to a const first."
 
 // coldProgram reports whether evaluating node, a program, does nothing: it
 // reads a stable binding, or calls an effect function, which builds its Effect
@@ -273,26 +162,38 @@ func stableBindingRead(c *checker.Checker, file *ast.SourceFile, node *ast.Node)
 	return !assigned
 }
 
-// blockText returns a block that runs program, returning its value when
-// returns is set: on one line when program is, else on lines of its own at
-// indent's next level.
-func blockText(program, indent string, returns bool) string {
-	statement := program
-	if returns {
-		statement = "return " + program
+// blockFormDiagnostic selects the advice for a recognized combinator.
+func blockFormDiagnostic(c *checker.Checker, file *ast.SourceFile, call *ast.Node, name string) (*Message, string) {
+	message := EK4836
+	example := "withSpan(program, name)"
+	switch name {
+	case "provide":
+		example = "provide Layer { … }"
+	case "provideService":
+		example = "provide Key = value { … }"
 	}
-	if !strings.ContainsAny(program, "\r\n") && len(statement) < 60 {
-		return " { " + statement + " }"
+	switch {
+	case ast.IsElementAccessExpression(call.Expression()):
+	case hasSpreadFormArguments(call):
+		message = blockSpreadCallForm
+	case ast.IsOptionalChain(call):
+		message = blockOptionalCallForm
+	case name != "withSpan" && call.TypeArguments() != nil:
+		message = provideTypeArgumentsForm
+	case name == "withSpan":
+		if shadowed(call, "withSpan") {
+			return nil, ""
+		}
+		message = withSpanGlobalForm
+	case name == "provideService" && directTryFormSite(call) == call:
+		args := call.Arguments()
+		operand := ast.SkipParentheses(args[0])
+		if (ast.IsReturnStatement(call.Parent) || ast.IsExpressionStatement(call.Parent)) &&
+			analyzerFor(c).runs(call) && ast.IsEntityNameExpression(args[1]) &&
+			isEffectType(c, c.GetTypeAtLocation(operand)) &&
+			(isEffectBlock(operand) || coldProgram(c, file, operand)) {
+			message = provideServiceNativeForm
+		}
 	}
-	return " {\n" + indent + "  " + statement + "\n" + indent + "}"
-}
-
-// providerText returns node's text as one provider of a provide block, in
-// parentheses when a comma or a conditional would split it.
-func providerText(file *ast.SourceFile, node *ast.Node) string {
-	text := expressionText(file, node)
-	if isLowPrecedence(node) {
-		return "(" + text + ")"
-	}
-	return text
+	return message, example
 }

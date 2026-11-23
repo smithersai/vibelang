@@ -8,17 +8,17 @@ import (
 )
 
 var (
-	EK2001     = message(2001, errorCategory, "for try consumes a Stream inside effect code; move this loop into an effect function or block.")
-	EK2002     = message(2002, errorCategory, "return cannot leave a for try body; use break to stop consuming the Stream, then return after the loop.")
-	EK2003     = message(2003, errorCategory, "A labeled jump cannot leave a for try body; move the decision after the loop.")
-	EK2004     = message(2004, errorCategory, "for try requires a Stream.")
+	EK2001 = message(2001, errorCategory, "for try consumes a Stream inside effect code; move this loop into an effect function or block.")
+	EK2002 = message(2002, errorCategory, "return cannot leave a for try body; use break to stop consuming the Stream, then return after the loop.")
+	EK2003 = message(2003, errorCategory, "A labeled jump cannot leave a for try body; move the decision after the loop.")
+	EK2004 = message(2004, errorCategory, "for try requires a Stream.")
 	// EK2004's conversion hint follows the operand's type: an AsyncIterable
 	// converts with Stream.fromAsyncIterable, an array or other Iterable with
 	// Stream.fromIterable, and any other operand gets no conversion.
 	ek2004AsyncIterable = EK2004.With("for try requires a Stream; convert this AsyncIterable with Stream.fromAsyncIterable first.")
 	ek2004Array         = EK2004.With("for try requires a Stream; convert this array with Stream.fromIterable first.")
 	ek2004Iterable      = EK2004.With("for try requires a Stream; convert this Iterable with Stream.fromIterable first.")
-	forTryHead = message(parser.StreamHeadDiagnosticCode, errorCategory, parser.StreamHeadDiagnosticText)
+	forTryHead          = message(parser.StreamHeadDiagnosticCode, errorCategory, parser.StreamHeadDiagnosticText)
 )
 
 func isForTry(n *ast.Node) bool {
@@ -27,9 +27,9 @@ func isForTry(n *ast.Node) bool {
 
 func init() {
 	for _, m := range []*Message{EK2001, EK2002, EK2003, EK2004} {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
-	registry[forTryHead.Code] = forTryHead
+	registerDiagnostic(forTryHead)
 	fileChecks = append(fileChecks, checkForTry)
 }
 

@@ -73,7 +73,7 @@ func FuzzRetiredHandlerMapperCompletion(f *testing.F) {
 
 		}
 		js, _, diagnostics := vibelangmapper.Emit(source, vibelangmapper.FileContext{})
-		if js == "" || !strings.Contains(js, "function half$direct(") {
+		if js == "" || !strings.Contains(js, "function half(") {
 			Gap(t, "FuzzRetiredHandlerMapperCompletion", clause.key, "retired handler damaged an independent pure declaration: %+v\n%s", diagnostics, js)
 		}
 		ExpectPending(t, "FuzzRetiredHandlerMapperCompletion", clause.key)

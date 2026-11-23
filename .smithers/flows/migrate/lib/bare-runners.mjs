@@ -18,7 +18,7 @@ const bunRegister = /(?:^|[\s"'=])vibelang-unplugin\/bun\/register(?=$|[\s"',;\]
 const hasLoader = (text, runner) => loader.test(text) || (runner === "bun" && bunRegister.test(text))
 const runners = new Set(["node", "bun", "tsx", "ts-node"])
 // Words that may stand before a runner in a script's command.
-const wrappers = new Set(["exec", "npx", "bunx", "time", "cross-env", "dotenv", "--", "if", "!", "then", "else", "elif", "while", "until", "do", "-", "run:"])
+const wrappers = new Set(["exec", "npx", "bunx", "env", "time", "cross-env", "dotenv", "--", "if", "!", "then", "else", "elif", "while", "until", "do", "-", "run:"])
 const managers = new Set(["pnpm", "npm", "yarn"])
 const bunCommands = new Set(["test", "t", "install", "i", "add", "a", "remove", "rm", "update", "link", "unlink", "pm", "x", "create", "c", "init", "build", "upgrade", "outdated", "publish", "repl", "patch"])
 const valueFlags = new Set(["--import", "--require", "-r", "--preload", "--loader", "--experimental-loader", "--env-file", "--conditions", "-C", "--tsconfig", "--tsconfig-override", "--config", "-c", "--cwd"])
@@ -41,8 +41,15 @@ export function scriptEntries(script, { locations = false } = {}) {
     const words = part.replace(/[()"']/g, " ").trim().split(/\s+/).filter(Boolean)
     while (words[0] && /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0])) words.shift()
     if (words[0] === "cd" && words[1]) { cwd = posix.normalize(posix.join(cwd, words[1])); continue }
-    if (managers.has(words[0]) && words[1] === "exec") words.splice(0, 2)
-    while (wrappers.has(words[0])) words.shift()
+    // Strip wrappers, environment assignments (`env FOO=1`) and a package
+    // manager that execs or directly runs a runner (`pnpm dlx tsx`, `yarn node`).
+    for (let before = -1; before !== words.length;) {
+      before = words.length
+      if (managers.has(words[0]) && (words[1] === "exec" || words[1] === "dlx")) words.splice(0, 2)
+      else if (managers.has(words[0]) && runners.has(words[1])) words.shift()
+      while (wrappers.has(words[0])) words.shift()
+      while (words[0] && /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0])) words.shift()
+    }
     const runner = words[0]
     if (!runners.has(runner)) continue
     const args = words.slice(1)
@@ -60,6 +67,7 @@ export function scriptEntries(script, { locations = false } = {}) {
         continue
       }
       if (runner === "bun" && word === "run") continue
+      if (runner === "tsx" && word === "watch") continue
       if (runner === "bun" && bunCommands.has(word)) { file = false; break }
       file = scriptEntry.test(word) ? word : false
     }

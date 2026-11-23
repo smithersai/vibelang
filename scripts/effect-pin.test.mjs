@@ -122,3 +122,12 @@ test("fast-check: nested fixture peers keep distinct package identities on the e
     }
   ), { seed: 32032, numRuns: 100 })
 })
+
+test("--write fails before changing the pin when a source literal is missing", (t) => {
+  const manifest = '{"peerDependencies":{"effect":"4.1.1"}}'
+  const file = SOURCES[0][0]
+  const root = fixture({ [RUNTIME]: manifest, [file]: 'export const SOMETHING_ELSE = "4.0.0"\n' })
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  assert.throws(() => write(root, "4.2.0"), { message: `${file}: missing Effect version literal` })
+  assert.equal(readFileSync(path.join(root, RUNTIME), "utf8"), manifest)
+})

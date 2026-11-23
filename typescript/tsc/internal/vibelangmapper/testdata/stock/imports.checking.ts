@@ -1,3 +1,2 @@
-import { type $PreludeLoaded, $gen } from "vibelang-ts-mapper/prelude"; true satisfies $PreludeLoaded;
-import { name } from "./names.js"; export { name } from "./names.js"; export function value() { return $gen(function* () { return name })}
-export declare namespace value { const $plain: import("vibelang-ts-mapper/prelude").$Plain<typeof value> }
+import { type $PreludeLoaded } from "vibelang-ts-mapper/prelude"; true satisfies $PreludeLoaded;
+import { name } from "./names.ts"; export { name } from "./names.ts"; export function value() { return name }

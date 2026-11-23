@@ -198,7 +198,7 @@ The two differ in kind. The reference engine declares a step: its tools are the 
 
 ## Principles
 
-- **TypeScript-first.** THESIS 1: "code mode, where agents call tools by writing TypeScript, will matter more". The cell loop is code mode.
+- **TypeScript-first.** Agents call tools by writing TypeScript in the cell loop.
 - **Effect-second.** The tool-call loop is Effect's and is not rebuilt. Tools are Effect `Tool`s. The model is Effect's `LanguageModel`.
 - **Optimized for agentic programs.** One call runs an agent, typed at both ends.
 - **Highly forkable.** The loop sits behind one service, as the reference engine's `Agent.Service` does: "a future agent that drives a foreign CLI is another implementation", not a second loop.

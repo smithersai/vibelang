@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test"
+import assert from "node:assert/strict"
 import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -7,14 +8,15 @@ import { fileURLToPath } from "node:url"
 const packageDir = fileURLToPath(new URL("..", import.meta.url))
 const effectDir = dirname(fileURLToPath(import.meta.resolve("effect/package.json")))
 const effectMetadata = JSON.parse(readFileSync(join(effectDir, "package.json"), "utf8"))
-const fixture = (version: string) => {
+const runtimeMetadata = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8"))
+const fixture = (version: string, runtimeVersion = runtimeMetadata.version) => {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-runtime-"))
   const runtime = join(dir, "node_modules/vibelang-runtime")
   const effect = join(dir, "node_modules/effect")
   mkdirSync(runtime, { recursive: true })
   mkdirSync(effect, { recursive: true })
   cpSync(join(packageDir, "dist"), join(runtime, "dist"), { recursive: true })
-  cpSync(join(packageDir, "package.json"), join(runtime, "package.json"))
+  writeFileSync(join(runtime, "package.json"), JSON.stringify({ ...runtimeMetadata, version: runtimeVersion }))
   writeFileSync(join(effect, "package.json"), JSON.stringify({ ...effectMetadata, version }))
   symlinkSync(join(effectDir, "dist"), join(effect, "dist"))
   writeFileSync(join(dir, "package.json"), '{"type":"module"}')
@@ -46,7 +48,8 @@ for (const kernelFirst of [false, true]) {
 
 for (const version of ["4.1.1", "4.1.0", "4.1.2", "3.99.0"]) {
   test(`package: Node, Bun, and browser bundles check effect@${version}`, async () => {
-    const dir = fixture(version)
+    const runtimeVersion = version === "3.99.0" ? "9.8.7-test.1" : runtimeMetadata.version
+    const dir = fixture(version, runtimeVersion)
     try {
       const bundled = await Bun.build({
         entrypoints: [join(dir, "main.js")], target: "browser", format: "esm",
@@ -68,9 +71,7 @@ for (const version of ["4.1.1", "4.1.0", "4.1.2", "3.99.0"]) {
         } else {
           // rule-evidence: docs/design/vips/0032-effect-version.md#5896fc765c34f201 | **Amended 2026-10-29: repos that already use VibeLang.** The published `vibelang-runtime` enforces its exact Effect pin, so the Effect upgrade lands together with the VibeLang release pinned to the new Effect, not before it (found while upgrading Smithers).
           expect(result.exitCode).not.toBe(0)
-          expect(output).toContain("vibelang-runtime requires effect@4.1.1")
-          // The pin belongs to the installed runtime, so the message names no runtime version that could go stale.
-          expect(output).not.toMatch(/vibelang-runtime@\d/)
+          expect(output).toContain(`${runtimeMetadata.name}@${runtimeVersion} requires effect@4.1.1`)
           expect(output).toContain(`found effect@${version}`)
           expect(output).toContain("npm install effect@4.1.1")
         }
@@ -129,6 +130,23 @@ test("package: guarded entry preserves every ABI export and its identity", async
   for (const name of Object.keys(abi) as Array<keyof typeof abi>) {
     expect(entry[name]).toBe(abi[name])
   }
+})
+
+test("README Public exports table matches the root module's value exports", async () => {
+  const actual = new Set(Object.keys(await import("vibelang-runtime")))
+  const readme = readFileSync(join(packageDir, "README.md"), "utf8")
+  const table = readme.split(/^## Public exports$/m)[1]?.split(/^## /m)[0]
+  assert.ok(table, "README has a Public exports section")
+  const documented = new Set<string>()
+  for (const line of table.split("\n")) {
+    if (!line.startsWith("| `")) continue
+    const [, nameCol, purposeCol = ""] = line.split("|")
+    if (nameCol.includes("(type)") || /^\s*Type of /.test(purposeCol)) continue
+    for (const match of nameCol.matchAll(/`([^`]+)`/g)) documented.add(match[1])
+  }
+  const extra = [...documented].filter((name) => !actual.has(name)).sort()
+  const omitted = [...actual].filter((name) => !documented.has(name)).sort()
+  assert.deepEqual({ extra, omitted }, { extra: [], omitted: [] })
 })
 
 test("package: the version check does not resolve an incompatible Effect graph", () => {

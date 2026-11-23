@@ -1,0 +1,18 @@
+// Issue #430: non-throwing pinned Effect callables, decoder/dual factories,
+// and bridged throwing calls compile and run cleanly in effect code.
+import * as Duration from "effect/Duration"
+import * as Schedule from "effect/Schedule"
+
+// expect-result: [true,5000,[2,3,4],2,"Failure"]
+export effect function main() {
+  const o = Option.some(1)
+  const d = Duration.seconds(5)
+  const s = Schedule.recurs(3)
+  const xs = pipe([1, 2, 3], Effect.Array.map((n) => n + 1))
+  const dec = Schema.decodeUnknownSync(Schema.String)
+  const half = Effect.Number.divideUnsafe(2)
+  const q = try Effect.try(() => half(4))
+  const bad = try Effect.exit(Effect.try(() => dec(42)))
+  void s
+  return [Option.isSome(o), Duration.toMillis(d), xs, q, bad._tag]
+}

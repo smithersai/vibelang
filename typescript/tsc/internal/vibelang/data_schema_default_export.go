@@ -7,6 +7,6 @@ var EK1501 = message(1501, errorCategory, parser.VibeLangDefaultSchemaExportMess
 var EK1603 = message(1603, errorCategory, parser.VibeLangDefaultDataExportMessage)
 
 func init() {
-	registry[EK1501.Code] = EK1501
-	registry[EK1603.Code] = EK1603
+	registerDiagnostic(EK1501)
+	registerDiagnostic(EK1603)
 }

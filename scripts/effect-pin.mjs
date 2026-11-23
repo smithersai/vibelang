@@ -109,7 +109,10 @@ export function write(root, version) {
   const target = version ?? runtimePin(root)
   if (version !== undefined && !/^\d+\.\d+\.\d+(?:-[\w.]+)?$/.test(version)) throw new Error(`${version} is not an exact version`)
   const byFile = new Map()
-  for (const d of drift(root, target)) byFile.set(d.file, [...(byFile.get(d.file) ?? []), d.name])
+  for (const d of drift(root, target)) {
+    if (d.section === "source" && d.pin === "(missing)") throw new Error(`${d.file}: missing Effect version literal`)
+    byFile.set(d.file, [...(byFile.get(d.file) ?? []), d.name])
+  }
   const changed = [], installs = []
   for (const [file, names] of byFile) {
     const at = path.join(root, file)

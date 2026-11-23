@@ -605,7 +605,7 @@ Where `Effect` is the compiler's implicit binding, `Effect.M`, where `M` is a mo
 
 The restrictions below apply to VibeLang code. A named top-level `module` body is TypeScript and follows the same rules as a sibling `.ts` file (VIP-40).
 
-1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. Outside a [TypeScript module body](001-functions.md#module-declarations), a `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). A wrapper changes how a failure is represented, not whether the platform may be called. Code that needs the platform lives in a `.ts` file or a `module` body ([VIP-40](../vips/0040-module-declarations.md)).
+1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. Outside a [TypeScript module body](001-functions.md#module-declarations), a `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). The compiler temporarily reports some wrapped uses as migration warnings, as described below. A wrapper changes how a failure is represented. Code that needs the platform lives in a `.ts` file or a `module` body ([VIP-40](../vips/0040-module-declarations.md)).
 2. **What Effect lacks goes under `Experimental.X`,** named after the Effect module it extends, and is written so it can be proposed upstream. Nothing that Effect already provides is reimplemented.
    `Experimental` is in scope in every `.vibe` and `.vibex` file with no import, as Effect's modules are: emitted code imports it as `import { Experimental } from "vibelang-runtime"`. A local value declaration or an import named `Experimental` shadows it; a local type alias or interface of that name keeps its type meaning without hiding the namespace. It is VibeLang's own module, so `vibe.effectModules: false` and `vibe.effectGlobals: false` leave it in scope (VIP-33, clarified).
    The additions include `Experimental.Dns` (Effect's `effect/net/Dns` service extended only with TXT queries sent directly to a supplied authority) and `Experimental.Encoding.decodeBase64Lenient` (pure `Result`, no service or layer). Node DNS queries only the supplied server for TXT; Worker DNS uses TCP with recursion disabled and requires AA, or fails typed `Unsupported` when the host lacks that transport. NS/A discovery and all existing DNS members and records remain Effect's; the Worker adapter uses recursive DoH only for discovery. Effect already supplies strict `Base64` and `Base64Url`; only Node-compatible leniency is added. See [Experimental platform APIs](../../user/src/vibelang-features/118-experimental-platform-apis.md) for layers and guarantees.
@@ -615,7 +615,6 @@ The restrictions below apply to VibeLang code. A named top-level `module` body i
    A name that two subpaths export, or a subpath and the root, is not in scope bare: using it is a compile error (`EK1401`) that names every exporter and offers one import per exporter. In effect 4.1.1 this covers `Model` (`effect/ai`, `effect/schema`), `Prompt` (`effect/ai`, `effect/cli`) and `Utils` (`effect`, `effect/rpc`). `Model.make(…)` is that error; `import { Model } from "effect/ai"` fixes it.
 
 ```vibe es
-// expect-error: EK4402
 effect function readConfig(path: string) {
   const fs = try FileSystem.FileSystem               // the module FileSystem exports the service key FileSystem
   return try fs.readFileString(path)
@@ -624,8 +623,19 @@ import { NodeServices } from "@effect/platform-node"   // a platform package: im
 effect function main() {
   provide NodeServices.layer { try readConfig("app.json") }
 }
+```
+
+```vibe es
+// expect-warning: EK4402
 effect function page(url: string) {
-  return try tryPromise(() => fetch(url))            // error: a platform call, even inside tryPromise
+  return try tryPromise(() => fetch(url))             // migration warning, which becomes an error after retirement
+}
+```
+
+```vibe es
+// expect-error: EK4402
+function plainFetch(url: string) {
+  return fetch(url)                                  // error outside a formerly accepted wrapper
 }
 ```
 
@@ -647,7 +657,7 @@ A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem`
 | in a `.vibe` file, an `import` or `export … from` declaration, or an `import(…)` call with a string-literal specifier, whose specifier names a Node builtin with or without `node:` (`node:fs`, `fs`, `child_process`: Node's `module.builtinModules`), except an `import type` or `export type … from` declaration | `EK4402` |
 | a statically named value that reaches the platform (rule below) anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. Move the code to a TypeScript boundary or use the Effect service (`HttpClient` for `fetch`) while preserving run phase, captures, receiver and public types | `EK4402` |
 
-During migration, `EK4402` in a formerly accepted `sync`, `callback`, `Effect.try` or `Effect.tryPromise` callback is a warning. The restriction and preserving repair still apply; unwrapped host access and Node value imports remain errors. Source changes are explicit ([Tooling](007-tooling.md#explicit-source-changes)).
+During migration, `EK4402` in a formerly accepted `sync`, `callback`, `Effect.try` or `Effect.tryPromise` callback is a warning. The warning remains nonfatal while preserving migration cannot handle some captured or stateful wrappers. After that migration tier retires, the wrapped access is an error. Unwrapped host access and Node value imports are already errors. Source changes are explicit ([Tooling](007-tooling.md#explicit-source-changes)).
 
 <a id="reaches-the-platform"></a>`EK4402` asks one question of a statically named value: does the symbol it resolves to reach the platform, by doing I/O, starting a timer, or reading or changing host state? Statically named means an identifier, `.name`, `?.name`, `["name"]`, a template with no substitutions, or a destructured property with such a key, and an alias keeps the symbol it copies. Two kinds of symbol reach the platform:
 

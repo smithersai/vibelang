@@ -39,5 +39,4 @@ func writtenTryFormSite(call *ast.Node) *ast.Node {
 
 // A wrapper can carry a written type check, assertion or non-null operation.
 // Keep it, along with its independent diagnostics, when no exact repair exists.
-const directTryWrapperNote = "No quick fix: keep the surrounding expression and its written type effects; rewrite the whole try only after checking its types and evaluation."
 const directTrySafetyNote = "No quick fix: an automatic rewrite has not been proved to preserve evaluation order, coldness, types, comments and declaration output."

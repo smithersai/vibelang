@@ -71,6 +71,9 @@ func TestEffectWrittenContainerMessage(t *testing.T) {
 		{"unknown", "its return type can't be unknown: leave the return type out, and the function infers its Effect."},
 		{"number", "its return type can't be number: write number!!, or leave the return type out."},
 		{"never", "its return type can't be never: write never!!, or leave the return type out."},
+		// A bare `: infer _` has no meaning in a return annotation (Chapter 1),
+		// and infer _!! reports EK4857, so the only repair is to delete it.
+		{"infer _", "its return type can't be infer _: leave the return type out, and the function infers its Effect."},
 	} {
 		t.Run(test.annotation, func(t *testing.T) {
 			source := "export effect function f(): " + test.annotation + " { return 1 }"
@@ -87,6 +90,41 @@ func TestEffectWrittenContainerMessage(t *testing.T) {
 			}
 			if !found {
 				t.Fatalf("no EK0106 in %s", source)
+			}
+		})
+	}
+}
+
+// The spelling EK0106 recommends compiles: following the message must not
+// lead to another error, such as EK4857 for infer _!!.
+func TestEffectWrittenContainerAdviceCompiles(t *testing.T) {
+	for _, annotation := range []string{"any", "unknown", "number", "never", "infer _"} {
+		t.Run(annotation, func(t *testing.T) {
+			source := "export effect function f(): " + annotation + " { return 1 as never }"
+			program, file, _, _ := editorProgram(t, source)
+			fixed := ""
+			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+				if d.Source() != diagnosticSource || d.Code() != EK0106.Code {
+					continue
+				}
+				text := d.String()
+				if _, rest, ok := strings.Cut(text, ": write "); ok {
+					advice, _, _ := strings.Cut(rest, ", or leave the return type out.")
+					fixed = strings.Replace(source, "(): "+annotation, "(): "+advice, 1)
+				} else if strings.Contains(text, "leave the return type out") {
+					fixed = strings.Replace(source, "(): "+annotation, "()", 1)
+				} else {
+					t.Fatalf("EK0106 text %q names no repair", text)
+				}
+			}
+			if fixed == "" {
+				t.Fatalf("no EK0106 in %s", source)
+			}
+			program, file, _, _ = editorProgram(t, fixed)
+			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+				if d.Category() == diagnostics.CategoryError {
+					t.Errorf("EK0106 advice %q reports %s%d: %s", fixed, d.Source(), d.Code(), d.String())
+				}
 			}
 		})
 	}

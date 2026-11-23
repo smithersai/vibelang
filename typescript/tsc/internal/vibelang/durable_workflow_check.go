@@ -26,7 +26,7 @@ var (
 
 func init() {
 	for _, m := range []*Message{EK5504, EK5505, EK5506, EK5507, EK5508, EK5509} {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
 	fileChecks = append(fileChecks, checkWorkflowBodies)
 }
@@ -158,7 +158,9 @@ func checkWorkflowBody(c *checker.Checker, file *ast.SourceFile, fn *ast.Node) {
 		case node.Kind == ast.KindForStatement || node.Kind == ast.KindForInStatement || node.Kind == ast.KindForOfStatement || node.Kind == ast.KindWhileStatement || node.Kind == ast.KindDoStatement:
 			report(c, node, EK5506, name)
 		case node.Kind == ast.KindBinaryExpression:
-			if ast.IsAssignmentOperator(node.AsBinaryExpression().OperatorToken.Kind) && ast.IsIdentifier(ast.SkipParentheses(node.AsBinaryExpression().Left)) && !insideLoop(node, fn) {
+			// A default inside a destructuring target, [a = 1] = xs, is part of
+			// the assignment that holds it, which reports once.
+			if ast.IsAssignmentOperator(node.AsBinaryExpression().OperatorToken.Kind) && assignsVariable(node.AsBinaryExpression().Left) && !ast.IsAssignmentTarget(node) && !insideLoop(node, fn) {
 				report(c, node.AsBinaryExpression().Left, EK5506, name)
 			}
 		case node.Kind == ast.KindPrefixUnaryExpression || node.Kind == ast.KindPostfixUnaryExpression:
@@ -187,6 +189,43 @@ func checkWorkflowBody(c *checker.Checker, file *ast.SourceFile, fn *ast.Node) {
 	if body := fn.Body(); body != nil {
 		body.ForEachChild(visit)
 	}
+}
+
+// assignsVariable reports whether target, the left side of an assignment,
+// assigns a variable: a name, or a name inside an array or object
+// destructuring target, through spreads, defaults and nested patterns.
+func assignsVariable(target *ast.Node) bool {
+	target = ast.SkipParentheses(target)
+	switch {
+	case ast.IsIdentifier(target):
+		return true
+	case ast.IsArrayLiteralExpression(target):
+		for _, element := range target.AsArrayLiteralExpression().Elements.Nodes {
+			if assignsVariable(element) {
+				return true
+			}
+		}
+	case ast.IsObjectLiteralExpression(target):
+		for _, property := range target.AsObjectLiteralExpression().Properties.Nodes {
+			switch {
+			case ast.IsShorthandPropertyAssignment(property):
+				return true
+			case ast.IsPropertyAssignment(property):
+				if assignsVariable(property.Initializer()) {
+					return true
+				}
+			case ast.IsSpreadAssignment(property):
+				if assignsVariable(property.Expression()) {
+					return true
+				}
+			}
+		}
+	case ast.IsSpreadElement(target):
+		return assignsVariable(target.Expression())
+	case ast.IsBinaryExpression(target) && target.AsBinaryExpression().OperatorToken.Kind == ast.KindEqualsToken:
+		return assignsVariable(target.AsBinaryExpression().Left)
+	}
+	return false
 }
 
 func isIncrementOrDecrement(node *ast.Node) bool {
@@ -221,18 +260,29 @@ func impureRead(c *checker.Checker, node *ast.Node, fn *ast.Node) string {
 	switch {
 	case ast.IsCallExpression(node) && ast.IsPropertyAccessExpression(node.Expression()):
 		callee := node.Expression()
-		if object := callee.Expression(); ast.IsIdentifier(object) {
-			switch object.Text() + "." + callee.Name().Text() {
+		if object := hostGlobal(c, callee.Expression()); object != "" {
+			switch object + "." + callee.Name().Text() {
 			case "Date.now", "Math.random", "performance.now", "crypto.randomUUID", "crypto.getRandomValues":
 				return entityText(callee) + "()"
 			}
 		}
-	case ast.IsNewExpression(node) && ast.IsIdentifier(node.Expression()) && node.Expression().Text() == "Date" &&
+	case ast.IsNewExpression(node) && hostGlobal(c, node.Expression()) == "Date" &&
 		(node.Arguments() == nil || len(node.Arguments()) == 0):
 		return "new Date()"
-	case ast.IsIdentifier(node) && node.Parent != nil && !(ast.IsPropertyAccessExpression(node.Parent) && node.Parent.Name() == node) &&
-		!(ast.IsDeclaration(node.Parent) && node.Parent.Name() == node) && !ast.IsPropertyAssignment(node.Parent):
-		symbol := c.GetSymbolAtLocation(node)
+	case ast.IsIdentifier(node) && node.Parent != nil:
+		var symbol *ast.Symbol
+		parent := node.Parent
+		switch {
+		case ast.IsShorthandPropertyAssignment(parent) && parent.Name() == node:
+			// { counter } reads counter: the name is also the value.
+			symbol = c.GetShorthandAssignmentValueSymbol(parent)
+		case ast.IsPropertyAccessExpression(parent) && parent.Name() == node,
+			ast.IsDeclaration(parent) && parent.Name() == node:
+			// A property name or a declared name, including { n: … }'s n.
+			return ""
+		default:
+			symbol = c.GetSymbolAtLocation(node)
+		}
 		if symbol == nil || symbol.ValueDeclaration() == nil {
 			return ""
 		}
@@ -248,6 +298,37 @@ func impureRead(c *checker.Checker, node *ast.Node, fn *ast.Node) string {
 			return ""
 		}
 		return node.Text()
+	}
+	return ""
+}
+
+// hostGlobal returns the name of the JavaScript global that node resolves to,
+// Math for Math or globalThis.Math, when a default library declares it, or ""
+// when node names anything else, such as a local const Math.
+func hostGlobal(c *checker.Checker, node *ast.Node) string {
+	node = ast.SkipParentheses(node)
+	var name *ast.Node
+	switch {
+	case ast.IsIdentifier(node):
+		name = node
+	case ast.IsPropertyAccessExpression(node) && ast.IsIdentifier(node.Name()) && hostGlobal(c, node.Expression()) == "globalThis":
+		name = node.Name()
+	default:
+		return ""
+	}
+	symbol := c.GetSymbolAtLocation(name)
+	if symbol == nil {
+		return ""
+	}
+	// The checker's own globalThis symbol has no declaration; a local named
+	// globalThis has one.
+	if name.Text() == "globalThis" && len(symbol.Declarations()) == 0 {
+		return "globalThis"
+	}
+	for _, declaration := range symbol.Declarations() {
+		if isLibFile(c, ast.GetSourceFileOfNode(declaration)) {
+			return name.Text()
+		}
 	}
 	return ""
 }

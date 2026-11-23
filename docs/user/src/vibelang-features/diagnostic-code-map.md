@@ -179,7 +179,7 @@ These identities remain in the compiler registry for older source and migration 
 | `EK1402` | A retired Effect receiver-method extension, such as `Option.some(1).map(f)`. Write `Option.map(Option.some(1), f)`. |
 | `EK2105` | A typed legacy catch has no literal `_tag` to match. Use a `catch` expression and test its handler value with `match` or `is`. |
 | `EK2107`, `EK2110`, `EK4202` | Legacy control-handler checks. Handlers are an open proposal; express the operation with supported Effect functions and services. |
-| `EK2120` | The editor recognizes a legacy `control class` spelling. Removing `class` repairs that spelling only; it does not make the open handler proposal available. A retired `service class` instead reports `EK0909`. |
+| `EK2120` | Legacy `control class` spelling. The handler proposal is open. Use Effect operations from the supported language. A retired `service class` reports `EK0909`. |
 | `EK3202` | A legacy wiring expression supplies more than one provider for a service. Use an explicit `provide` block with the intended provider. |
 | `EK4501` | A receiver-method extension is read as a value. Use the module function and pass the receiver explicitly; current code does not rely on receiver-method extensions. |
 | `EK4601` | A legacy `await` check found a call returning an unrun Effect in plain code. Mark the function `effect` and run it with `try`, or use `await runPromise(program)` in an `async` function. |
@@ -195,7 +195,7 @@ These identities remain in the compiler registry for older source and migration 
 | `EK1504` | Schema fields have no separator. Insert `;` or a line break; write `;`. |
 | `EK1705` | A `fork.` owner is unknown. Choose `fork.in(scope)`, `fork.scoped` or `fork.detached` for the intended lifetime. |
 | `EK1706` | A `fork.in(scope)` operand is not a `Scope.Scope`. Pass an acquired scope; a lifetime string or layer is not a scope. |
-| `EK4857` | A return channel still writes legacy `infer`. Run the preserving migration or write the inferred channel type explicitly. Remove an all-`infer` annotation only from an explicit `effect` callable when that preserves its contract. A repair is withheld when the returned Effect conflicts with a written channel. |
+| `EK4857` | A return channel still writes legacy `infer`. Write the channel type explicitly. Remove an all-`infer` annotation only from an explicit `effect` callable when that preserves its contract. |
 
 The following compatibility reports can still occur while older source is migrated. Use current forms when repairing them.
 

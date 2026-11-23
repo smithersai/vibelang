@@ -43,9 +43,7 @@ func (p *projector) join(call *ast.Node, e env) {
 	}
 	p.plan.mark(editRun, partOpen, start, start, "")
 	p.plan.replace(start, p.tokenStart(operand), helperRef("$join")+"(")
-	operandEnv := e
-	operandEnv.holdCalls = true
-	p.visit(operand, operandEnv)
+	p.visit(operand, e)
 	p.plan.insert(call.End(), ")")
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }
@@ -204,7 +202,8 @@ func (p *projector) tryValue(call *ast.Node, e env) {
 		return
 	}
 	if !e.effect {
-		p.formChoice(call, "A try must run in an Effect body; move it into an Effect function with an explicit contract.")
+		start := p.tokenStart(call)
+		p.diagnostics = append(p.diagnostics, Diagnostic{Start: start, Length: max(0, call.End()-start), Code: CodeTryPlacement, Message: "A try must run in an Effect body; move it into an effect function or block."})
 		return
 	}
 	start := p.tokenStart(call)
@@ -212,13 +211,11 @@ func (p *projector) tryValue(call *ast.Node, e env) {
 		p.plan.insert(start, ";")
 		delete(p.statementStarts, start)
 	}
-	p.plan.mark(editRun, partOpen, start, start, "")
+	p.plan.mark(editRun, partOpen, start, start, "try")
 	p.plan.replace(start, p.tokenStart(operand), helperRef("$try")+"(")
-	operandEnv := e
-	operandEnv.holdCalls = true
-	p.visit(operand, operandEnv)
+	p.visit(operand, e)
 	p.plan.insert(call.End(), ")")
-	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
+	p.plan.mark(editRun, partClose, call.End(), call.End(), "try")
 }
 
 // keyword is a VibeLang keyword lower writes over before it walks the
@@ -415,8 +412,10 @@ func withoutKeywords(segments []spanmap.Segment, keywords []keyword) []spanmap.S
 			continue
 		}
 		for _, k := range keywords {
-			start, end := core.TextPos(k.at), core.TextPos(k.at+len(k.with))
-			if start < segment.OriginalStart || end > segment.OriginalEnd {
+			// An edit can begin inside a keyword's replacement, as a program's
+			// does after the ( written over effect, so clip to the segment.
+			start, end := max(core.TextPos(k.at), segment.OriginalStart), min(core.TextPos(k.at+len(k.with)), segment.OriginalEnd)
+			if start >= end {
 				continue
 			}
 			if start > segment.OriginalStart {

@@ -145,7 +145,6 @@ export default Cloudflare.Worker(
 ```vibe
 // fragment
 // api.vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-7, VIP-12, VIP-13, VIP-14, VIP-33
 import * as Cloudflare from "@alchemy.run/cloudflare"
 
 // An R2 bucket of notes, keyed by the request path. Alchemy declares a
@@ -209,7 +208,6 @@ export default Alchemy.Stack(
 ```
 
 ```vibe
-// pending: VIP-2, VIP-5
 // fragment
 export default Alchemy.Stack(
   "NotesStack",

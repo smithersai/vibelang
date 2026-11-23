@@ -60,6 +60,9 @@ if (args[0] === "view") {
   process.exit(0)
 }
 if (args[0] === "publish") {
+  if (process.env.TEST_EXPECT_OTP && process.env.npm_config_otp !== process.env.TEST_EXPECT_OTP) {
+    console.error("npm_config_otp did not match the expected value"); process.exit(96)
+  }
   const file = args[1].slice(args[1].lastIndexOf("/") + 1)
   const original = readFileSync(${JSON.stringify(tarballs)} + "/" + file)
   if (!readFileSync(args[1]).equals(original)) { console.error("staged bytes changed"); process.exit(97) }
@@ -127,20 +130,15 @@ test("a failed dry-run stops immediately instead of prompting or publishing late
   assert.doesNotMatch(result.stdout, /Enter a new one-time password|dry run passed/)
 })
 
-test("an explicit --otp reaches npm alongside --dry-run in either argument order", (t) => {
-  for (const args of [["--otp", "123456", "--dry-run"], ["--dry-run", "--otp", "654321"]]) {
-    const result = run(fixture(t), {}, args)
-    assert.equal(result.status, 0, result.stderr)
-    assert.equal(result.publishes.length, names.length)
-    for (const call of result.publishes) {
-      assert.ok(call.includes("--dry-run"))
-      assert.equal(call[call.indexOf("--otp") + 1], args[args.indexOf("--otp") + 1])
-    }
-  }
+test("npm receives the one-time password through its environment", (t) => {
+  const result = run(fixture(t), { NPM_OTP: "123456", TEST_EXPECT_OTP: "123456" })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.publishes.length, names.length)
+  for (const call of result.publishes) assert.ok(!call.includes("--otp"))
 })
 
 test("invalid arguments stop before npm or archive processing", (t) => {
-  for (const args of [["--otp"], ["--otp", "--dry-run"], ["--dryrun"], ["--unknown"]]) {
+  for (const args of [["--otp", "123456"], ["--otp"], ["--otp", "--dry-run"], ["--dryrun"], ["--unknown"]]) {
     const result = run(fixture(t), {}, args)
     assert.equal(result.status, 2, result.stdout + result.stderr)
     assert.match(result.stderr, /usage:.*publish.sh/)
@@ -202,11 +200,11 @@ for (const [name, change, message] of [
   ["a tree that is no checkout", (f) => rmSync(join(f.root, ".jj"), { recursive: true }), /not a jj or git checkout/],
 ]) {
   test(`${name}: refused before repacking or invoking npm`, (t) => {
-    for (const args of [["--dry-run"], ["--otp", "123456"]]) {
+    for (const env of [{}, { NPM_OTP: "123456" }]) {
       const f = fixture(t)
       change(f)
       const before = readFileSync(join(f.tarballs, "manifest.json"))
-      const result = run(f, { TEST_LOGGED_IN: "1" }, args)
+      const result = run(f, { TEST_LOGGED_IN: "1", ...env })
       assert.equal(result.status, 1, result.stdout)
       assert.match(result.stderr, message)
       assert.equal(result.calls.length, 0)

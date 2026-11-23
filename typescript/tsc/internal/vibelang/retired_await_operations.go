@@ -20,7 +20,7 @@ var retiredAwaitReplacements = map[string]string{
 }
 
 func init() {
-	registry[EK1802.Code] = EK1802
+	registerDiagnostic(EK1802)
 	fileChecks = append(fileChecks, checkRetiredAwaitOperations)
 }
 

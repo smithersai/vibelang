@@ -1,0 +1,2 @@
+// expect: EK1307
+declare abstract error Root { id: string }

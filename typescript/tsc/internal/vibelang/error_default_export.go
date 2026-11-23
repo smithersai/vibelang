@@ -6,5 +6,5 @@ import "github.com/microsoft/TypeScript/tsc/internal/parser"
 var EK1305 = message(1305, errorCategory, parser.VibeLangDefaultErrorExportMessage)
 
 func init() {
-	registry[EK1305.Code] = EK1305
+	registerDiagnostic(EK1305)
 }

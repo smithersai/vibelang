@@ -7,6 +7,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { compareApiIdentity } from "../../../../scripts/api-identity.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const { splitPlatform, splitPlatformToModule } = await import(process.env.PLATFORM_DOCS_UNDER_TEST ?? "../lib/platform.mjs")
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
@@ -136,14 +137,14 @@ test("generated concrete factory exports preserve nested member docs and types",
   }), { seed: 561136, numRuns: 24 })
 })
 
-test("the generated body and kept initializer compile as VibeLang", { skip: !process.env.VIBELANG_BINARY }, () => {
+test("the generated body and kept initializer compile as VibeLang", () => {
   const root = mkdtempSync(join(tmpdir(), "platform-docs-compile-"))
   try {
     symlinkSync(modules, join(root, "node_modules"), "dir")
     write(root, "package.json", '{"type":"module"}')
     write(root, "index.vibe", splitPlatformToModule(corpus.source, "index.ts", ts).module)
     write(root, "tsconfig.json", JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: true, noEmit: true, types: ["node"] }, files: ["index.vibe"] }))
-    const result = spawnSync(process.env.VIBELANG_BINARY, ["-p", "tsconfig.json", "--pretty", "false", "--singleThreaded"], { cwd: root, encoding: "utf8", timeout: 90000 })
+    const result = spawnSync(nativeCompiler(), ["-p", "tsconfig.json", "--pretty", "false", "--singleThreaded"], { cwd: root, encoding: "utf8", timeout: 90000 })
     assert.equal(result.status, 0, result.stdout + result.stderr)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })

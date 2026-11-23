@@ -15,7 +15,7 @@ import (
 var EK0703 = message(703, warningCategory, "This pattern never matches: {0} extracts {1}, and the pattern lists {2}.")
 
 func init() {
-	registry[EK0703.Code] = EK0703
+	registerDiagnostic(EK0703)
 	fileChecks = append(fileChecks, checkExtractorArity)
 }
 
