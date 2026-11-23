@@ -1,6 +1,6 @@
 // Adds VibeLang's declaration and statement forms to the grammar derived from
 // TypeScript's. Scopes reuse TypeScript's names, so themes color an error
-// declaration like a class and a handle clause like catch.
+// declaration like a class and a catch expression like catch.
 //
 //   error NotFound { id: string }          schema User { name: string }
 //   schema Code = "a" | "b"                (D280, read as a type alias)
@@ -9,8 +9,6 @@
 //   data Delivery { Waiting; Sent { tracking: string } }   (D307, read as an enum)
 //   service Users { find(id: string): User!NotFound }
 //   task FetchIssues { effect call(repo: string): Issues!string { ... } }   workflow Triage { ... }   (VIP-55)
-//   control Approval { approve(request: string): boolean }
-//   try { ... } handle Approval.approve(request) { ... }
 //   getUser(id) catch (e) => match (e) { when NotFound: guest; }
 //   function find(id: string): User!NotFound!Db { ... }
 //   module text { ...TypeScript... }       import { clean } from text
@@ -30,7 +28,7 @@ const end = "(?<=\\})|(?<=[_$[:alnum:]>])(?=\\s*(?:$|;|//))"
 function declaration(words, body, header = "") {
   return {
     name: "meta.class.ts",
-    begin: `${start}\\b(${words})\\s+(${name})${header}`,
+    begin: `${start}\\b(${words})\\s+(?!(?:as|satisfies|is|instanceof|in)\\b)(${name})${header}`,
     beginCaptures: {
       1: { name: "keyword.control.export.ts" },
       2: { name: "storage.type.class.ts" },
@@ -62,8 +60,10 @@ function addEffectModifier(rule) {
 
 export function addVibeLangSyntax(grammar) {
   const { repository } = grammar
-  // VIP-39 removed the top-level shorthand declaration.
+  // VIP-39 removed the top-level shorthand declaration; handlers and await.* were retired.
   delete repository["vibelang-function-shorthand"]
+  delete repository["vibelang-handle-clause"]
+  delete repository["vibelang-await-operation"]
   for (const key of Object.keys(repository)) if (!key.startsWith("vibelang-")) repository[key] = addEffectModifier(repository[key])
   // effect { ... } builds an Effect from statements (VIP-2).
   repository["vibelang-effect-block"] = {
@@ -109,7 +109,7 @@ export function addVibeLangSyntax(grammar) {
   // type: its = and type are the alias's, and it ends where the alias does
   // or at a line that starts another VibeLang declaration.
   const alias = JSON.parse(
-    JSON.stringify(repository["type-alias-declaration"]).replaceAll("(?:abstract|", "(?:error|service|control|schema|abstract|")
+    JSON.stringify(repository["type-alias-declaration"]).replaceAll("(?:abstract|", "(?:error|service|schema|abstract|")
   )
   repository["vibelang-schema-alias"] = {
     ...alias,
@@ -125,7 +125,7 @@ export function addVibeLangSyntax(grammar) {
   // extends and implements, and a class body, whose fields read as properties.
   repository["vibelang-error-declaration"] = {
     name: "meta.class.ts",
-    begin: `${start}(?:(abstract)\\s+)?(?:(schema)\\s+)?\\b(error)\\s+(${name})`,
+    begin: `${start}(?:(abstract)\\s+)?(?:(schema)\\s+)?\\b(error)\\s+(?!(?:as|satisfies|is|instanceof|in)\\b)(${name})`,
     beginCaptures: {
       1: { name: "keyword.control.export.ts" },
       2: { name: "storage.modifier.ts" },
@@ -181,15 +181,11 @@ export function addVibeLangSyntax(grammar) {
       }
     ]
   }
-  // service and control (D128, D223).
-  repository["vibelang-member-declaration"] = declaration("service|control", "#class-or-interface-body")
+  // service (D128).
+  repository["vibelang-member-declaration"] = declaration("service", "#class-or-interface-body")
   // task and workflow (VIP-55): a class-shaped body. task as T, task
   // satisfies T and task is T stay TypeScript.
-  repository["vibelang-durable-declaration"] = declaration("task|workflow", "#class-or-interface-body", "(?<!\\b(?:as|satisfies|is))(?=\\s*\\{)")
-  repository["vibelang-handle-clause"] = {
-    match: `\\b(handle)\\s+(?=${name}\\s*\\.\\s*${name}\\s*\\()`,
-    captures: { 1: { name: "keyword.control.trycatch.ts" } }
-  }
+  repository["vibelang-durable-declaration"] = declaration("task|workflow", "#class-or-interface-body", "(?=\\s*\\{)")
   // The fiber forms (D166, D169, D196, D225): fork operand, join operand, await.all [...] and the other await operations, for concurrent (...).
   repository["vibelang-fork"] = {
     match: "(?<![_$[:alnum:]])(fork)\\s+(?!(?:in|instanceof|as|satisfies)\\b)(?=[_$[:alpha:]{]|this\\b|new\\b|await\\b)",
@@ -199,14 +195,6 @@ export function addVibeLangSyntax(grammar) {
   repository["vibelang-join"] = {
     match: "(?<![_$[:alnum:].])(join)\\s+(?!(?:in|instanceof|as|satisfies)\\b)(?=[_$[:alpha:]{\\[]|this\\b)",
     captures: { 1: { name: "keyword.control.flow.ts" } }
-  }
-  repository["vibelang-await-operation"] = {
-    match: "(?<![_$[:alnum:].])(await)\\s*(\\.)\\s*(all|allSettled|race|any)(?![_$[:alnum:]])",
-    captures: {
-      1: { name: "keyword.control.flow.ts" },
-      2: { name: "punctuation.accessor.ts" },
-      3: { name: "keyword.control.flow.ts" }
-    }
   }
   // Interruption forms are blocks; the same words remain ordinary identifiers.
   repository["vibelang-interruption"] = {
@@ -224,10 +212,14 @@ export function addVibeLangSyntax(grammar) {
   }
   // Pattern matching (D206-D225): match (x) { when P: v; }, x is P, and the
   // and, or, and not combinators before a pattern.
+  repository["vibelang-match-when"] = {
+    match: "(?:^|(?<=[{;]))\\s*(when)(?=\\s+(?!:))",
+    captures: { 1: { name: "keyword.control.switch.ts" } }
+  }
   repository["vibelang-match"] = {
     patterns: [
       { match: "(?<![_$[:alnum:].])(match)\\s*(?=\\(.*\\)\\s*\\{)", captures: { 1: { name: "keyword.control.switch.ts" } } },
-      { match: "^\\s*(when)(?=\\s)", captures: { 1: { name: "keyword.control.switch.ts" } } },
+      { include: "#vibelang-match-when" },
       { match: "(?<=[_$[:alnum:])\\]])\\s+(is)(?=\\s+[^\\s=])", captures: { 1: { name: "keyword.operator.expression.instanceof.ts" } } },
       { match: "(?<=[\\s(])(and|or|not)(?=\\s+(?:let|const|var|not|if|[\\[{(\"'`0-9]|[A-Z]))", captures: { 1: { name: "keyword.operator.expression.instanceof.ts" } } }
     ]
@@ -280,12 +272,23 @@ export function addVibeLangSyntax(grammar) {
     match: `(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))\\b(import)\\s+${specifier}`,
     captures: { 1: { name: "keyword.control.import.ts" }, 2: { name: "entity.name.type.module.ts" } }
   }
-  const vibelangIncludes = ["#vibelang-for-try", "#vibelang-module-import", "#vibelang-error-declaration", "#vibelang-data-declaration", "#vibelang-schema-alias", "#vibelang-type-declaration", "#vibelang-member-declaration", "#vibelang-durable-declaration", "#vibelang-handle-clause", "#vibelang-provide", "#vibelang-for-concurrent", "#vibelang-interruption", "#vibelang-fork", "#vibelang-join"]
-  const statements = repository.statements.patterns.filter((pattern) => !vibelangIncludes.includes(pattern.include))
+  const vibelangIncludes = ["#vibelang-for-try", "#vibelang-module-import", "#vibelang-error-declaration", "#vibelang-data-declaration", "#vibelang-schema-alias", "#vibelang-type-declaration", "#vibelang-member-declaration", "#vibelang-durable-declaration", "#vibelang-provide", "#vibelang-for-concurrent", "#vibelang-interruption", "#vibelang-fork", "#vibelang-join"]
+  const retiredIncludes = ["#vibelang-handle-clause"]
+  const statements = repository.statements.patterns.filter((pattern) => !vibelangIncludes.includes(pattern.include) && !retiredIncludes.includes(pattern.include))
   repository.statements.patterns = [...vibelangIncludes.map((include) => ({ include })), ...statements]
-  const vibelangExpressions = ["#vibelang-try-operation", "#vibelang-try-expression", "#vibelang-effect-block", "#vibelang-fork-form", "#vibelang-pipe", "#vibelang-await-operation", "#vibelang-fork", "#vibelang-join", "#vibelang-match", "#vibelang-catch-expression"]
-  const expressions = repository.expression.patterns.filter((pattern) => !vibelangExpressions.includes(pattern.include))
+  const vibelangExpressions = ["#vibelang-try-operation", "#vibelang-try-expression", "#vibelang-effect-block", "#vibelang-fork-form", "#vibelang-pipe", "#vibelang-fork", "#vibelang-join", "#vibelang-match", "#vibelang-catch-expression"]
+  const retiredExpressions = ["#vibelang-await-operation"]
+  const expressions = repository.expression.patterns.filter((pattern) => !vibelangExpressions.includes(pattern.include) && !retiredExpressions.includes(pattern.include))
   repository.expression.patterns = [...vibelangExpressions.map((include) => ({ include })), ...expressions]
+  // Match expression bodies inside an initializer open TypeScript's object-literal rule;
+  // allow inline `when <pattern>` right after `{` while leaving `{ when: 1 }` as a property key.
+  const objectLiteral = repository["object-literal"]
+  if (objectLiteral && Array.isArray(objectLiteral.patterns)) {
+    objectLiteral.patterns = [
+      { include: "#vibelang-match-when" },
+      ...objectLiteral.patterns.filter((pattern) => pattern.include !== "#vibelang-match-when")
+    ]
+  }
   // `!` separates the slots of an Effect type: Result!Error!Dependencies.
   const effectSlot = { name: "keyword.operator.type.effect.ts", match: "!" }
   repository.type.patterns = [effectSlot, ...repository.type.patterns.filter((pattern) => pattern.name !== effectSlot.name)]

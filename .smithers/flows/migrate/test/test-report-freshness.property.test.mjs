@@ -40,8 +40,9 @@ async function inspect(input) {
     assert.equal(current.code, input.code)
     if (input.mode === "missing") assert.equal(current.tests, null, "a report from the baseline is not this invocation's report")
     else assert.deepEqual(current.tests, baseline.tests)
-    assert.equal(compareTests(baseline, current).ok, !(input.baselineCode === 0 && input.code !== 0),
-      "a nonzero command must regress a passing baseline even when every reported assertion passed")
+    const expectedOk = input.mode !== "missing" && !(input.baselineCode === 0 && input.code !== 0)
+    assert.equal(compareTests(baseline, current).ok, expectedOk,
+      "a missing report or a nonzero command against a passing baseline must fail comparison")
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -69,9 +70,14 @@ test("test comparison cannot discard a process failure behind unchanged assertio
   }), ({ baselineCode, code, cases }) => {
     const tests = index => Object.fromEntries(cases.flatMap((pair, i) => pair[index] === "absent" ? [] : [["case "+i, pair[index]]]))
     const before = tests(0), after = tests(1)
-    const expected = !(baselineCode === 0 && code !== 0)
+    const beforeFailed = Object.values(before).some((value) => value === "failed")
+    const afterFailed = Object.values(after).some((value) => value === "failed")
+    const unexplainedExit = code !== 0 && (baselineCode === 0 || (beforeFailed && !afterFailed))
+    const emptyAfterNonEmpty = Object.keys(before).length > 0 && Object.keys(after).length === 0
+    const expected = !unexplainedExit
+      && !emptyAfterNonEmpty
       && !Object.entries(after).some(([name, value]) => value === "failed" && before[name] !== "failed")
-      && !Object.entries(before).some(([name, value]) => value === "passed" && !(name in after))
+      && !Object.entries(before).some(([name, value]) => value === "passed" && (!(name in after) || (after[name] !== "passed" && after[name] !== "failed")))
     assert.equal(compareTests({ code: baselineCode, tests: before }, { code, tests: after }).ok, expected)
   }), { seed: 215329, numRuns: 1000, endOnFailure: true })
 })

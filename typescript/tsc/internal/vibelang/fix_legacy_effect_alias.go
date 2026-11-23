@@ -15,7 +15,7 @@ func init() {
 	registry[EK4856.Code] = EK4856
 	tsFormMessages = append(tsFormMessages, EK4856)
 	tsFormRules[EK4856.Code] = &tsFormRule{
-		message: EK4856, find: findLegacyEffectAliases,
+		message: EK4856, find: findLegacyEffectAliases, check: checkLegacyEffectAliases,
 	}
 }
 func legacyEffectAliasNode(node *ast.Node) bool {
@@ -52,6 +52,17 @@ func findLegacyEffectAliases(c *checker.Checker, file *ast.SourceFile, report fu
 	visit = func(node *ast.Node) bool {
 		if legacyEffectAliasNode(node) && isLegacyEffectAlias(c, file, node) {
 			report(node, legacyEffectAliasRewrite(c, file, node))
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+}
+
+func checkLegacyEffectAliases(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if legacyEffectAliasNode(node) && isLegacyEffectAlias(c, file, node) {
+			report(node, nil)
 		}
 		return node.ForEachChild(visit)
 	}

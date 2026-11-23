@@ -23,6 +23,9 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	if hasComment(file.Text()[nodeStart(file, call):nodeStart(file, value)]) || hasComment(file.Text()[value.End():nodeStart(file, handlers)]) || hasComment(file.Text()[handlers.End():call.End()]) {
 		return &formRewrite{why: "No quick fix: a comment stands between Option.match's arguments."}
 	}
+	if !ast.IsPropertyAccessExpression(call.Expression()) {
+		return nil
+	}
 	option := expressionText(file, call.Expression().Expression())
 	if ast.IsSpreadElement(value) || ast.IsSpreadElement(handlers) {
 		return nil

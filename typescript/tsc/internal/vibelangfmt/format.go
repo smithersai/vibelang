@@ -251,22 +251,51 @@ func statements(node *ast.Node, nodes []*ast.Node) []*ast.Node {
 // counted as statements counts them, without the empty statement dprint's
 // "asi" setting writes: in alchemy's `if (c) {\n  ;(try x) catch h\n}` the
 // block still holds one statement, as it did before formatting.
+// isForConcurrentBodyBlock reports whether node is the synthetic callback
+// block of a lowered `$forConcurrent(items, limit, ($concurrentItem) => { ... })`
+// loop, whose last statement is the user-written loop body.
+func isForConcurrentBodyBlock(node *ast.Node) bool {
+	if node.Kind != ast.KindBlock || node.Parent == nil || node.Parent.Kind != ast.KindArrowFunction || node.Parent.Flags&ast.NodeFlagsVibeLang == 0 {
+		return false
+	}
+	call := node.Parent.Parent
+	if call == nil || call.Kind != ast.KindCallExpression || len(call.Arguments()) != 3 || call.Arguments()[2] != node.Parent {
+		return false
+	}
+	callee := call.Expression()
+	return callee != nil && callee.Kind == ast.KindIdentifier && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$forConcurrent"
+}
+
 func unbraced(node *ast.Node, nodes []*ast.Node) []*ast.Node {
 	switch node.Kind {
 	case ast.KindIfStatement, ast.KindForStatement, ast.KindForInStatement, ast.KindForOfStatement, ast.KindWhileStatement, ast.KindDoStatement:
+		result := slices.Clone(nodes)
+		for i, child := range result {
+			if child.Kind != ast.KindBlock {
+				continue
+			}
+			if inner := statements(child, child.AsBlock().Statements.Nodes); len(inner) == 1 && inner[0].Kind != ast.KindVariableStatement && !ast.IsDeclarationStatement(inner[0]) {
+				result[i] = inner[0]
+			}
+		}
+		return result
+	case ast.KindBlock:
+		if !isForConcurrentBodyBlock(node) || len(nodes) == 0 {
+			return nodes
+		}
+		last := nodes[len(nodes)-1]
+		if last.Kind != ast.KindBlock {
+			return nodes
+		}
+		if inner := statements(last, last.AsBlock().Statements.Nodes); len(inner) == 1 && inner[0].Kind != ast.KindVariableStatement && !ast.IsDeclarationStatement(inner[0]) {
+			result := slices.Clone(nodes)
+			result[len(result)-1] = inner[0]
+			return result
+		}
+		return nodes
 	default:
 		return nodes
 	}
-	result := slices.Clone(nodes)
-	for i, child := range result {
-		if child.Kind != ast.KindBlock {
-			continue
-		}
-		if inner := statements(child, child.AsBlock().Statements.Nodes); len(inner) == 1 && inner[0].Kind != ast.KindVariableStatement && !ast.IsDeclarationStatement(inner[0]) {
-			result[i] = inner[0]
-		}
-	}
-	return result
 }
 
 // sortsChildren reports whether a formatter may reorder node's children:

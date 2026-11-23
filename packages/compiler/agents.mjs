@@ -8,7 +8,7 @@
 // docs/maintainers/coding-agents.md cites each agent's documentation.
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs"
-import { dirname, join, relative, resolve } from "node:path"
+import { dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const packageDirectory = dirname(fileURLToPath(import.meta.url))
@@ -115,8 +115,12 @@ export function invocation(root, cwd = process.cwd()) {
 
 function invocationArguments(root, cwd = process.cwd()) {
   const has = (directory) => existsSync(join(directory, "node_modules/.bin/vibelang"))
+  const strictlyInside = (directory) => {
+    const path = relative(root, directory)
+    return path !== "" && !path.startsWith("..") && !isAbsolute(path)
+  }
   if (!has(root)) {
-    for (let directory = resolve(cwd); directory.startsWith(`${root}/`); directory = dirname(directory)) {
+    for (let directory = resolve(cwd); strictlyInside(directory); directory = dirname(directory)) {
       if (has(directory)) {
         const path = relative(root, directory)
         return ["npx", "--no", "--prefix", path.startsWith("-") ? "./" + path : path, "--", "vibelang"]
@@ -294,17 +298,24 @@ export function checkFiles(files, binary, cwd) {
     const run = spawnSync(binary, ["-p", project, "--noEmit", "--pretty", "false"], {
       cwd: directory, encoding: "utf8", maxBuffer: 1 << 26
     })
-    if (run.error || run.signal || run.status !== 0) {
-      result.failures.push({ project, status: run.status, signal: run.signal, error: run.error?.message, stderr: run.stderr ?? "" })
-    }
     const output = `${run.stdout ?? ""}${run.stderr ?? ""}`
+    let locatedErrors = 0
     for (const diagnostic of parseDiagnostics(output, directory)) {
       if (!diagnostic.file) {
         result.projectDiagnostics.push(diagnostic)
       } else if (!members.includes(diagnostic.file)) {
-        if (diagnostic.severity === "error") result.otherErrors++
-      } else if (diagnostic.severity === "error") result.errors.push(diagnostic)
-      else result.warnings.push(diagnostic)
+        if (diagnostic.severity === "error") {
+          result.otherErrors++
+          locatedErrors++
+        }
+      } else if (diagnostic.severity === "error") {
+        result.errors.push(diagnostic)
+        locatedErrors++
+      } else result.warnings.push(diagnostic)
+    }
+    const completedWithErrors = !run.error && !run.signal && (run.status === 1 || run.status === 2) && (run.stderr ?? "").trim() === "" && locatedErrors > 0
+    if ((run.error || run.signal || run.status !== 0) && !completedWithErrors) {
+      result.failures.push({ project, status: run.status, signal: run.signal, error: run.error?.message, stderr: run.stderr ?? "" })
     }
   }
   return result

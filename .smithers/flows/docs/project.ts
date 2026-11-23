@@ -36,6 +36,7 @@ export const layout: readonly (readonly [path: string, responsibility: string])[
   ["`packages/create-vibelang/`, `templates/app/`", "The starter generator and the starter app"],
   ["`packages/vite/`, `packages/unplugin/`", "Vite, webpack, Rspack and other bundler integrations"],
   ["`packages/ts-mapper/`", "TypeScript mapping utilities"],
+  ["`packages/typescript-shim/`", "`vibelang-typescript`: TypeScript 7 compatibility shim for tools that resolve `typescript`"],
   ["`editors/`", "VS Code and Cursor extension, Neovim and Zed setup, tree-sitter grammar"],
   ["`examples/`", "Runnable example projects"],
   ["`docs/user/`, `docs/design/`", "User guides, the specification and the decision log"],
@@ -74,7 +75,7 @@ export const labels: readonly (readonly [label: string, meaning: string])[] = [
 ];
 
 export const releaseSteps: readonly string[] = [
-  "**Align versions.** Every package version must equal the compiler's, in `typescript/tsc/internal/vibelang/identity.go`; `make-packages.mjs` refuses a mismatch. Review breaking changes.",
+  "**Align versions.** Every VibeLang package version must equal the compiler's in `typescript/tsc/internal/vibelang/identity.go`, except `vibelang-typescript` which follows `7.1.<patch>`; `make-packages.mjs` checks both rules and refuses a mismatch. Review breaking changes.",
   "**Check.** Run setup, `{{e2e}}`, the compiler cases, affected package tests, editor tests and `bun docs/tools/check-snippets.ts`. Before publication, run `VIBELANG_RELEASE_NOTES_FINAL=1 VIBELANG_LAST_PUBLISHED_VERSION=$(npm view vibelang version) node --test docs/tools/release-docs.test.mjs` to check the candidate notes against npm. Record commands, toolchain versions and results. A skipped platform is untested.",
   "**Build.** `sh scripts/release/build-binaries.sh` cross-compiles the candidate platform binaries. `node scripts/release/make-packages.mjs` assembles the candidate packages and their tarballs in `dist-npm/`. Commit first: the packager and the publisher refuse a tree with uncommitted changes, and binaries or tarballs built from another commit. Check manifests, the bundled extension, licenses and notices.",
   "**Rehearse.** `sh scripts/release/rehearse.sh` publishes the tarballs to a throwaway registry, then scaffolds, builds, starts and tests an app with npm and with Bun. It clears checkout compiler and runtime overrides so the app uses its installed packages. It runs on one host, so it can't prove the other platforms' binaries work.",
@@ -196,7 +197,7 @@ Timeline and commitment labels state a maintainer's current belief, not a promis
     },
     {
       heading: "Release process",
-      body: `The release contains six platform binaries (macOS, Linux and Windows on arm64 and x64) and eleven packages. Include both Windows packages, \`@smthrs/cli-win32-x64\` and \`@smthrs/cli-win32-arm64\`, in rehearsal and publication.
+      body: `The release contains six platform binaries (macOS, Linux and Windows on arm64 and x64) and twelve packages. Include both Windows packages, \`@smthrs/cli-win32-x64\` and \`@smthrs/cli-win32-arm64\`, in rehearsal and publication.
 
 {{releaseSteps}}
 

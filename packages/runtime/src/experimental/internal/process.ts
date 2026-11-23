@@ -79,6 +79,13 @@ const target = (
       description: "process groups are POSIX only; Windows has none"
     }))
   }
+  if (group === true && pid === 1) {
+    return Effect.fail(PlatformError.badArgument({
+      module: "Process",
+      method,
+      description: "cannot target process group 1: POSIX kill(-1, ...) signals every process"
+    }))
+  }
   return Effect.succeed(pid === 0 ? 0 : group === true ? -pid : pid)
 }
 

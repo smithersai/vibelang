@@ -1,6 +1,7 @@
 // The target repository's version control, through jj only. A Git checkout
 // becomes a colocated jj repository, so its Git history stays as it was.
-import { execFile } from "node:child_process"
+import { execFile, execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { join, posix } from "node:path"
 import { promisify } from "node:util"
@@ -18,6 +19,30 @@ export async function ensureRepo(root) {
 export async function commitId(root, revision = "@-") {
   const { stdout } = await must(`jj log -r ${quote(revision)} --no-graph -T commit_id`, { cwd: root })
   return stdout.trim()
+}
+
+/** Synchronous commit id lookup for synchronous step inspection. */
+export function commitIdSync(root, revision = "@-") {
+  return execFileSync("jj", ["log", "-r", revision, "--no-graph", "-T", "commit_id"], { cwd: root, encoding: "utf8" }).trim()
+}
+
+/** The change id of a revision, preserved across jj commit. */
+export async function changeId(root, revision = "@") {
+  const { stdout } = await must(`jj log -r ${quote(revision)} --no-graph -T change_id`, { cwd: root })
+  return stdout.trim()
+}
+
+/** The full commit description of a revision. */
+export async function description(root, revision = "@-") {
+  const { stdout } = await must(`jj log -r ${quote(revision)} --no-graph -T description`, { cwd: root })
+  return stdout
+}
+
+/** A cryptographic fingerprint of revision's parent and git diff, matching @ before commit and @- after. */
+export async function diffDigest(root, revision = "@") {
+  const parent = await commitId(root, `${revision}-`)
+  const { stdout } = await execFileAsync("jj", ["diff", "--git", "--color", "never", "-r", revision], { cwd: root, encoding: "buffer", maxBuffer: 2 ** 30 })
+  return createHash("sha256").update(parent).update("\0").update(stdout).digest("hex")
 }
 
 /**

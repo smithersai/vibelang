@@ -75,3 +75,25 @@ test("existing excluded formatting inputs stay unchanged while missing neighbour
     ), { numRuns: 16 })
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+
+
+test("directory arguments expand to their VibeLang sources for --check and --write", () => {
+  const root = mkdtempSync(join(tmpdir(), "vibelang-format-dir-"))
+  try {
+    mkdirSync(join(root, "src/[id]"), { recursive: true })
+    mkdirSync(join(root, "empty"), { recursive: true })
+    const file = join(root, "src/[id]/a.vibe")
+    writeFileSync(file, "export   const   a   =   1\n")
+    const checked = run(root, ["--check", "src"], true)
+    assert.equal(checked.status, 1, checked.stdout + checked.stderr)
+    assert.match(checked.stdout + checked.stderr, /a\.vibe/)
+    const dotChecked = run(root, ["--check", "."], true)
+    assert.equal(dotChecked.status, 1, dotChecked.stdout + dotChecked.stderr)
+    const emptyChecked = run(root, ["--check", "empty"], true)
+    assert.notEqual(emptyChecked.status, 0, "empty explicit directory must fail")
+    assert.match(emptyChecked.stderr, /no files match/)
+    const written = run(root, ["--write", "src"], true)
+    assert.equal(written.status, 0, written.stdout + written.stderr)
+    assert.equal(run(root, ["--check", "src"], true).status, 0)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})

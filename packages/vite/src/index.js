@@ -1,11 +1,11 @@
 import { clientUrls, moduleUrls } from "./url-output.js"
 import { relativeOutput } from "./relative-output.js"
-import { aliasImport } from "./paths-imports.js"
+import { aliasImport, forgetPaths } from "./paths-imports.js"
 import { extensionlessImport } from "./relative-imports.js"
 import { existsSync, readFileSync, realpathSync } from "node:fs"
 import { createRequire } from "node:module"
 import { isVibeLangFile } from "./vibe-directive.js"
-import { basename, dirname, isAbsolute, join, resolve } from "node:path"
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 // Vite's default resolve.extensions, which a config that sets none uses.
@@ -105,6 +105,10 @@ function nearestConfig(directory) {
     configs.set(directory, own ?? (parent === directory ? undefined : nearestConfig(parent)))
   }
   return configs.get(directory)
+}
+function forgetConfigCaches() {
+  configs.clear()
+  forgetPaths()
 }
 
 // The compiler writes this declaration beside its owning source while serving
@@ -307,7 +311,25 @@ export default function vibelang(options = {}) {
     return written
   }
 
+  function projectConfig(importerFile) {
+    const selected = current?.projectOf?.(importerFile)
+    if (selected) return selected
+    if (project && root) {
+      const path = relative(root, importerFile)
+      if (!path.startsWith("..") && !isAbsolute(path)) {
+        for (let directory = dirname(importerFile); directory !== root && dirname(directory) !== directory; directory = dirname(directory)) {
+          const own = directoryConfig(directory)
+          if (own !== undefined) return own
+          if (existsSync(join(directory, "package.json"))) return project
+        }
+        return project
+      }
+    }
+    return backend?.nearestProject?.(importerFile) ?? nearestConfig(dirname(importerFile)) ?? project
+  }
+
   function close() {
+    forgetConfigCaches()
     writtenImports.clear()
     urlVersions.clear()
     contractFiles.clear()
@@ -315,7 +337,8 @@ export default function vibelang(options = {}) {
     modules = undefined
     current = undefined
     const work = Promise.resolve(closing).then(async () => {
-      const projects = await pending
+      // A backend that failed to load failed its build already; it has nothing to close.
+      const projects = await pending?.catch(() => undefined)
       await projects?.close()
     })
     closing = work
@@ -381,6 +404,7 @@ export default function vibelang(options = {}) {
     const graph = environment?.moduleGraph ?? context.server.moduleGraph
     const channel = environment?.hot ?? context.server.ws
     debug(`hot ${context.type ?? "update"} ${context.file}; environment=${environment?.name ?? "legacy"}, modules=${context.modules.length}`)
+    if (context.file.endsWith(".json")) forgetConfigCaches()
     const projects = await loaded()
     projects.invalidate()
     // Any source can change the contracts used to compile a .vibe importer.
@@ -489,7 +513,7 @@ export default function vibelang(options = {}) {
       if (!importer) return
       if (!source.startsWith(".")) {
         if (isCompiled(cleanId(importer))) {
-          const target = aliasImport(nearestConfig(dirname(cleanId(importer))), file)
+          const target = aliasImport(projectConfig(sourceFile(cleanId(importer))), file)
           if (target !== undefined) return serve(target)
         }
         // A package's exports can name JSX source even when its import is bare.
@@ -529,11 +553,18 @@ export default function vibelang(options = {}) {
     async load(id) {
       const file = cleanId(id)
       if (!isCompiled(file) || !isModuleId(id)) return
-      const { project, code, map, errors, warnings, error } = await loadModule(sourceFile(file))
+      const { project, code, map, inputs, errors, warnings, error } = await loadModule(sourceFile(file))
       this.addWatchFile(project)
       // Handling load bypasses Vite's filesystem loader, which normally adds
       // watches for source files outside its root.
       this.addWatchFile(backend.moduleDeclarationSource?.(file) ?? sourceFile(file))
+      // In build watch mode, register all project inputs (including type-only
+      // imports not present in emitted JavaScript) so edits trigger rebuilds.
+      if (!serving && this.meta?.watchMode) {
+        for (const input of inputs ?? []) {
+          if (existsSync(input)) this.addWatchFile(input)
+        }
+      }
       if (errors.length) this.error(diagnostics(errors, file))
       for (const warning of warnings) logger.warn(backend.formatDiagnostic(warning))
       if (error) this.error(error)
@@ -562,6 +593,7 @@ export default function vibelang(options = {}) {
     watchChange(id) {
       if (isCompilerCacheEntry(id)) { debug("ignore compiler cache " + id); return }
       if (isGeneratedDeclaration(id)) { debug(`ignore generated declaration ${id}`); return }
+      if (id.endsWith(".json")) forgetConfigCaches()
       if (/\.(?:vibex?|[cm]?[jt]sx?|json)$/.test(id)) current?.invalidate()
     },
     async hotUpdate(context) {

@@ -29,7 +29,7 @@ function metadataFixture(t) {
   for (const path of [
     "scripts/release/make-packages.mjs", "scripts/release/zip-times.mjs", "scripts/release/packed-hygiene.mjs", "scripts/release/revision.mjs", "scripts/template-files.mjs", "docs/tools/release-docs.mjs",
     "typescript/tsc/internal/vibelang/identity.go",
-    ...["compiler", "runtime", "vite", "unplugin", "create-vibelang", "typescript-shim"].map(name => "packages/" + name + "/package.json"),
+    ...["compiler", "runtime", "vite", "unplugin", "create-vibelang", "typescript-shim", "ts-mapper"].map(name => "packages/" + name + "/package.json"),
     "templates/app/package.json",
   ]) {
     mkdirSync(dirname(join(root, path)), { recursive: true })
@@ -96,4 +96,31 @@ test("release rejects a matching Effect range and accepts matching exact pins", 
   assert.notEqual(exact.status, 0)
   assert.match(exact.stderr, /missing .*dist-npm\/bin/)
   assert.doesNotMatch(exact.stderr, /effect peer must/)
+})
+
+test("plugin READMEs, starter README, ts-mapper peer pin, and Vite docs match actual behavior", (t) => {
+  const viteReadme = readFileSync(join(repo, "packages/vite/README.md"), "utf8")
+  const starterReadme = readFileSync(join(repo, "templates/app/README.md"), "utf8")
+  const unpluginReadme = readFileSync(join(repo, "packages/unplugin/README.md"), "utf8")
+  const unpluginOptions = readFileSync(join(repo, "packages/unplugin/src/options.d.ts"), "utf8")
+  const viteDocs = readFileSync(join(repo, "docs/user/src/setup/vite.md"), "utf8")
+  const runtime = read(join(repo, "packages/runtime/package.json"))
+  const template = read(join(repo, "templates/app/package.json"))
+  const tsMapper = read(join(repo, "packages/ts-mapper/package.json"))
+
+  assert.doesNotMatch(viteReadme, /node_modules\/\.vibelang/)
+  assert.doesNotMatch(starterReadme, /node_modules\/\.vibelang/)
+  assert.ok(viteReadme.includes("vitest@" + template.devDependencies.vitest), "Vite README vitest pin must match starter")
+  assert.doesNotMatch(unpluginReadme, /overrides `rootDir` to the root\b/)
+  assert.doesNotMatch(unpluginOptions, /with rootDir set to it/)
+  assert.match(viteDocs, /vibelang-unplugin\/rolldown/)
+  assert.equal(tsMapper.peerDependencies?.["vibelang-runtime"], runtime.version)
+  assert.equal(tsMapper.peerDependencies?.effect, runtime.peerDependencies.effect)
+
+  const root = metadataFixture(t)
+  const mapperPath = join(root, "packages/ts-mapper/package.json")
+  writeFileSync(mapperPath, JSON.stringify({ ...tsMapper, peerDependencies: { ...tsMapper.peerDependencies, "vibelang-runtime": "0.0.1" } }))
+  const drifted = spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build"], { encoding: "utf8", timeout: 10_000 })
+  assert.notEqual(drifted.status, 0)
+  assert.match(drifted.stderr, /vibelang-ts-mapper: peer vibelang-runtime 0\.0\.1, expected/)
 })

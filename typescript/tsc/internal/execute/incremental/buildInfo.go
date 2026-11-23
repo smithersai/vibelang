@@ -5,12 +5,12 @@ import (
 	"iter"
 	"slices"
 
-	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/contentmapper"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 	"github.com/microsoft/TypeScript/tsc/internal/json"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -491,6 +491,7 @@ type BuildInfo struct {
 	FileIdsList                [][]BuildInfoFileId                  `json:"fileIdsList,omitzero"`
 	Options                    *collections.OrderedMap[string, any] `json:"options,omitzero"`
 	Effect                     *etscore.EffectPluginOptions         `json:"effect,omitzero"`
+	VibeLang                   *core.VibeLangOptions                `json:"vibelang,omitzero"`
 	ReferencedMap              []*BuildInfoReferenceMapEntry        `json:"referencedMap,omitzero"`
 	SemanticDiagnosticsPerFile []*BuildInfoSemanticDiagnostic       `json:"semanticDiagnosticsPerFile,omitzero"`
 	EmitDiagnosticsPerFile     []*BuildInfoDiagnosticsOfFile        `json:"emitDiagnosticsPerFile,omitzero"`
@@ -578,6 +579,7 @@ func (b *BuildInfo) GetCompilerOptions(buildInfoDirectory tspath.RootedDirectory
 
 	}
 	options.Effect = b.Effect
+	options.VibeLang = b.VibeLang
 	return options
 }
 

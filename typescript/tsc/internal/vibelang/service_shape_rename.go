@@ -14,10 +14,38 @@ func init() {
 // resolver already supplies that member; editor symbol lookup must retain the
 // qualifier's class/import identity when it asks for namespace meaning.
 func serviceShapeQualifierName(c *checker.Checker, location *ast.Node, name string, meaning ast.SymbolFlags) *ast.Symbol {
-	if !asksForModule(meaning) || !ast.IsIdentifier(location) || location.Text() != name {
+	if !asksForModule(meaning) || location == nil {
 		return nil
 	}
-	return serviceShapeQualifierSymbol(c, location)
+	if ast.IsIdentifier(location) {
+		if location.Text() != name {
+			return nil
+		}
+		return serviceShapeQualifierSymbol(c, location)
+	}
+	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) {
+		return nil
+	}
+	// Declaration emit checks entity-name visibility from an enclosing
+	// declaration rather than the qualifier identifier (emitsupport.go).
+	// Resolve the service class or alias so hasVisibleDeclarations late-paints
+	// a non-exported service referenced via Name.Shape into the .d.ts output.
+	sym := c.ResolveName(name, location, ast.SymbolFlagsClass|ast.SymbolFlagsAlias, false)
+	if sym == nil {
+		return nil
+	}
+	target := sym
+	if target.Flags()&ast.SymbolFlagsAlias != 0 {
+		target = c.GetAliasedSymbol(target)
+	}
+	if target == nil || target.Flags()&ast.SymbolFlagsClass == 0 {
+		return nil
+	}
+	declaration := target.ValueDeclaration()
+	if classKindOf(declaration) != serviceClass || !serviceShapeNamespaceScope(declaration) {
+		return nil
+	}
+	return sym
 }
 
 func serviceShapeQualifierMember(c *checker.Checker, name *ast.Node, namespace *ast.Symbol, right *ast.Node, meaning ast.SymbolFlags) *ast.Symbol {

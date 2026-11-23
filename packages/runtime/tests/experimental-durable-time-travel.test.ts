@@ -146,6 +146,41 @@ test("a rewind is busy while this engine runs the run, and fences out another en
   expect(Cause.pretty(exit.cause)).toContain("FenceLost")
 })
 
+test("a refused rewind does not claim the run or fence out the engine driving it", async () => {
+  const store = Durable.makeMemoryStore()
+  const hold = Deferred.makeUnsafe<void>()
+  const entered = Deferred.makeUnsafe<void>()
+  const Send = Durable.task("tt5r#Send", { payload: { id: Schema.String }, tier: "irreversible", success: Schema.String })
+  const Finish = Durable.task("tt5r#Finish", { payload: { id: Schema.String }, success: Schema.String })
+  const Flow = Durable.workflow("tt5r#Flow", { payload: { id: Schema.String }, success: Schema.String })
+  const layer = Flow.toLayer(({ id }) =>
+    Effect.gen(function*() {
+      const sent = yield* Send({ id })
+      const done = yield* Finish({ id })
+      return `${sent}:${done}`
+    })
+  ).pipe(
+    Layer.provide(Send.toLayer(({ id }) => Effect.succeed(`sent:${id}`))),
+    Layer.provide(Finish.toLayer(({ id }) =>
+      Effect.gen(function*() {
+        yield* Deferred.succeed(entered, void 0)
+        yield* Deferred.await(hold)
+        return `done:${id}`
+      })
+    )),
+    Layer.provideMerge(Durable.layerStore(store))
+  )
+  const run = await Effect.runPromise(Flow.executionId({ id: "r" }))
+  const live = Effect.runFork(Flow.execute({ id: "r" }).pipe(Effect.provide(layer)))
+  await Effect.runPromise(Deferred.await(entered))
+  const sendSeq = await seqOf(store, run, "StepStarted", "tt5r#Send/1")
+  expect(codeOf(await readExit(store, Durable.rewind({ run, seq: 1 })))).toBe("invalid")
+  expect(codeOf(await readExit(store, Durable.rewind({ run, seq: sendSeq })))).toBe("irreversible")
+  Effect.runSync(Deferred.succeed(hold, void 0))
+  const exit = await Effect.runPromise(Fiber.await(live))
+  expect(exit).toEqual(Exit.succeed("sent:r:done:r"))
+})
+
 test("start always begins a new run; spawn joins the run equal input names", async () => {
   const { effects, Order, layer } = make("tt6", "sealed")
   const store = Durable.makeMemoryStore()

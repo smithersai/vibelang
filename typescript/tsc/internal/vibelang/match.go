@@ -223,9 +223,14 @@ func matchRemainder(c *checker.Checker, call *ast.Node) (declared, left *checker
 	if declared == nil {
 		return nil, nil
 	}
+	declared = c.GetReducedType(declared)
 	if !isFiniteMatchType(c, declared) {
 		constraint := c.GetBaseConstraintOfType(declared)
-		if constraint == nil || constraint == declared || !isFiniteMatchType(c, constraint) {
+		if constraint == nil || constraint == declared {
+			return nil, nil
+		}
+		constraint = c.GetReducedType(constraint)
+		if !isFiniteMatchType(c, constraint) {
 			return nil, nil
 		}
 		declared = constraint
@@ -261,7 +266,7 @@ func matchSubjectTypes(c *checker.Checker, call *ast.Node) (declared, left *chec
 	if declared == nil {
 		return nil, nil
 	}
-	return declared, remainingPatternMembers(c, call, left)
+	return declared, remainingPatternMembers(c, call, c.GetReducedType(left))
 }
 
 // isFiniteMatchType reports whether t is a finite union a match can cover:

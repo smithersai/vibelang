@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isMain } from "./is-main.mjs"
 // The repository's Effect pin: one version, read from vibelang-runtime's
 // peerDependencies, that every manifest naming effect or an @effect/* package
 // pins exactly, and that the runtime's and the compiler's version literals
@@ -124,7 +125,7 @@ export function write(root, version) {
   return { version: target, changed, installs }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (isMain(import.meta.url)) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
   const args = process.argv.slice(2)
   if (args[0] === "--write") {

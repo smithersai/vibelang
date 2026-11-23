@@ -536,3 +536,37 @@ test("property: server status versions remain opaque across restart", () => prop
     report(previous, first)
     verify(second)
   }))
+
+test("on win32 finds vibelang.exe (Bun) ahead of vibelang.cmd (npm) and enables shell for .cmd shims (#571)", async () => {
+  const realDescriptor = Object.getOwnPropertyDescriptor(process, "platform")!
+  Object.defineProperty(process, "platform", { value: "win32", configurable: true })
+  try {
+    // 1. Bun layout: only vibelang.exe exists -> found and launched without shell: true
+    const bunProject = join(scratch, "bun-win-app")
+    const exe = join(bunProject, "node_modules", ".bin", "vibelang.exe")
+    mkdirSync(dirname(exe), { recursive: true })
+    writeFileSync(exe, "")
+    chmodSync(exe, 0o755)
+    settings["vibelang.server.path"] = ""
+    workspace.workspaceFolders = [{ uri: { scheme: "file", fsPath: bunProject } }]
+    process.env.PATH = ""
+    await start()
+    expect(clients).toHaveLength(1)
+    expect(clients[0].server.command).toBe(exe)
+    expect(clients[0].server.options?.shell).not.toBe(true)
+
+    // 2. npm layout: only vibelang.cmd exists -> found and launched with shell: true
+    const npmProject = join(scratch, "npm win app")
+    const cmd = join(npmProject, "node_modules", ".bin", "vibelang.cmd")
+    mkdirSync(dirname(cmd), { recursive: true })
+    writeFileSync(cmd, "@echo off\r\n")
+    chmodSync(cmd, 0o755)
+    workspace.workspaceFolders = [{ uri: { scheme: "file", fsPath: npmProject } }]
+    await command("restartServer")
+    expect(clients).toHaveLength(2)
+    expect(clients[1].server.options?.shell).toBe(true)
+    expect(clients[1].server.command).toContain("vibelang.cmd")
+  } finally {
+    Object.defineProperty(process, "platform", realDescriptor)
+  }
+})

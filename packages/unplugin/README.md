@@ -283,7 +283,7 @@ rebuild. The compiler writes to a directory under the system temporary
 directory; the plugin reads the JavaScript and source maps into memory and
 deletes it. It forces JavaScript and source-map emission,
 checks and emits only the `.vibe` files under the root (`--loader-root`),
-embeds source content, overrides `rootDir` to the root, and disables
+embeds source content, overrides `rootDir` to the filesystem root, and disables
 declarations and incremental output. A source saved
 during a compile starts another compile before any module is served.
 

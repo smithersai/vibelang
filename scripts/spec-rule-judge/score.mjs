@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isMain } from "../is-main.mjs"
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
@@ -45,7 +46,7 @@ export function score(run, labels, expectedPolicy = policyHash()) {
     qualified: expectedPolicy === policyHash() && labels.length >= 22 && inconclusive === 0 && good.size >= 15 && citedGood.size >= 15 && fp === 0 && tp > 0
   };
 }
-if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const run = JSON.parse(readFileSync(process.argv[2], "utf8"));
   const cases = JSON.parse(readFileSync(new URL("../../.smithers/evals/spec-rule-judge/cases.json", import.meta.url), "utf8"));
   const result = score(run, cases);

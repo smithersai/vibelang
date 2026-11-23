@@ -233,6 +233,7 @@ function project(compiler, file) {
       if (status !== 0) fail(new Error(`vibelang/oxlint: the compiler failed on ${file}: ${Buffer.concat(err).toString("utf8").trim()}`))
       else done(JSON.parse(Buffer.concat(out).toString("utf8")))
     })
+    child.stdin.on("error", () => {})
     child.stdin.end(readFileSync(file))
   })
 }

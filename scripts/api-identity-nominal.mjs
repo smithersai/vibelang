@@ -337,6 +337,10 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
           const properties = entries.map(({member}) => factory.createPropertySignature(
             [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], factory.createStringLiteral(member.name.text), undefined, qualified(member)))
           properties.push(...enumIndexes(enumSymbol))
+          if (node.modifiers?.some(m => m.kind === ts.SyntaxKind.ConstKeyword)) properties.push(factory.createPropertySignature(
+            [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)],
+            factory.createStringLiteral("__api_const_enum"), undefined,
+            factory.createLiteralTypeNode(factory.createTrue())))
           const variable = factory.createVariableStatement(ambientMods, factory.createVariableDeclarationList([
             factory.createVariableDeclaration(node.name, undefined, factory.createTypeLiteralNode(properties), undefined)
           ], ts.NodeFlags.Const))

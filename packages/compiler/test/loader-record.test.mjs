@@ -6,14 +6,16 @@
 // input holds, in place or in a moved checkout, and an edit compiles again.
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
+import { performance } from "node:perf_hooks"
 import { test } from "node:test"
 import { setTimeout as sleep } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
 import { loaderRecordFile } from "../cache.mjs"
-import { writeLoaderRecord } from "../project.mjs"
+import { loaderScope } from "../loader-scope.mjs"
+import { checkLoaderRecord, compileProjectSync, writeLoaderRecord } from "../project.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compilerPackage = fileURLToPath(new URL("../", import.meta.url))
@@ -128,4 +130,92 @@ test("a project with a type error leaves no record", { skip }, async (t) => {
   const written = writeLoaderRecord({ project: join(protocol, "tsconfig.json"), compiler })
   assert.ok(written.errors.some((error) => error.code === "TS2322"), JSON.stringify(written))
   assert.equal(existsSync(loaderRecordFile(join(protocol, "tsconfig.json"))), false)
+})
+
+
+test("a source edited while a loader record is validated is not stored as a fresh cache entry", (t) => {
+  const top = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-loader-race-")))
+  t.after(() => rmSync(top, { recursive: true, force: true }))
+  const root = join(top, "app")
+  mkdirSync(join(root, "src"), { recursive: true })
+  const project = join(root, "tsconfig.json")
+  const source = join(root, "src/a.vibe")
+  writeFileSync(join(root, "package.json"), JSON.stringify({ name: "race-app", type: "module" }))
+  writeFileSync(project, JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", outDir: "dist" }, include: ["src/**/*.vibe"] }))
+  writeFileSync(source, 'export const value = "original"\n')
+  const calls = join(top, "calls")
+  const compiler = join(top, "compiler.mjs")
+  writeFileSync(compiler, `#!/usr/bin/env node
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { dirname, join, relative } from "node:path"
+const args = process.argv.slice(2)
+appendFileSync(${JSON.stringify(calls)}, "compile\\n")
+const outDir = args[args.indexOf("--outDir") + 1]
+const rootDir = args[args.indexOf("--rootDir") + 1]
+const src = readFileSync(${JSON.stringify(source)}, "utf8")
+const out = join(outDir, relative(rootDir, ${JSON.stringify(source)}).replace(/\\.vibe$/, ".js"))
+mkdirSync(dirname(out), { recursive: true })
+writeFileSync(out, src + "\\n//# sourceMappingURL=a.js.map\\n")
+writeFileSync(out + ".map", JSON.stringify({ version: 3, sources: [${JSON.stringify(source)}], mappings: "" }))
+console.log(${JSON.stringify(source)})
+`)
+  chmodSync(compiler, 0o755)
+
+  // Keep every initial file timestamp well behind our synthetic clock base so
+  // recordFile accepts the files when writing the loader record and testing.
+  const baseNow = Date.now() + 10_000
+  const old = (baseNow - 60_000) / 1000
+  for (const f of [join(root, "package.json"), project, source, compiler]) utimesSync(f, old, old)
+
+  let fakeNow = baseNow
+  let dateCalls = 0
+  t.mock.method(Date, "now", () => {
+    dateCalls++
+    return fakeNow
+  })
+
+  const written = writeLoaderRecord({ project, root, compiler })
+  assert.equal(written.modules, 1, JSON.stringify(written))
+  assert.equal(readFileSync(calls, "utf8").trim().split("\n").length, 1)
+
+  const cache = { directory: join(top, "cache") }
+  dateCalls = 0
+  let doneCalls = 0
+  let edited = false
+  const realPerfNow = performance.now.bind(performance)
+  const perfMock = t.mock.method(performance, "now", () => {
+    const stack = new Error().stack ?? ""
+    if (!edited && stack.includes("at done (")) {
+      doneCalls++
+      // Edit a.vibe right after the loader-record validation stage finishes
+      // (done #2 when store.begin() has not run yet; done #3 when snapshot ran
+      // before record validation). Set mtime to baseNow + 100.5 and advance
+      // Date.now() to baseNow + 200 so a snapshot taken after validation sees
+      // the edited file as non-racy, while a snapshot taken before validation
+      // sees it as racy.
+      if ((doneCalls === 2 && dateCalls === 0) || doneCalls === 3) {
+        edited = true
+        writeFileSync(source, 'export const value = "edited"\n')
+        const editTime = (baseNow + 100.5) / 1000
+        utimesSync(source, editTime, editTime)
+        fakeNow = baseNow + 200
+      }
+    }
+    return realPerfNow()
+  })
+
+  const first = compileProjectSync({ project, root, compiler, cache, [loaderScope]: true })
+  assert.equal(edited, true, "test hook must fire after loader record validation")
+  assert.match(first.outputs.get(source).code, /original/)
+  perfMock.mock.restore()
+
+  // The loader record is now stale because a.vibe changed.
+  assert.ok(checkLoaderRecord({ project, root, compiler }).miss)
+
+  // A subsequent compile must miss the cache and compile the edited source,
+  // never serving the stale output from a poisoned cache entry.
+  fakeNow = baseNow + 10_000
+  const second = compileProjectSync({ project, root, compiler, cache, [loaderScope]: true })
+  assert.match(second.outputs.get(source).code, /edited/)
+  assert.equal(readFileSync(calls, "utf8").trim().split("\n").length, 2)
 })

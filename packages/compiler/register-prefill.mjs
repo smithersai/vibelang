@@ -8,7 +8,7 @@ import { availableParallelism } from "node:os"
 import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loaderScope } from "./loader-scope.mjs"
-import { findCompiler, packageRoot, projectBackend } from "./project.mjs"
+import { configIn, findCompiler, packageRoot, projectBackend } from "./project.mjs"
 
 const runtimeFields = ["dependencies", "peerDependencies", "optionalDependencies"]
 
@@ -62,8 +62,8 @@ export function coldProjects(directories) {
   }
   directories.forEach((directory) => visit(realpathSync(directory)))
   return [...packages]
-    .filter((directory) => existsSync(join(directory, "tsconfig.json")) && holdsVibe(directory))
-    .map((directory) => join(directory, "tsconfig.json"))
+    .map((directory) => holdsVibe(directory) ? configIn(directory) : undefined)
+    .filter(Boolean)
 }
 
 async function compileAll(projects, limit, debug) {

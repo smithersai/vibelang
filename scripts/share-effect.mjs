@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isMain } from "./is-main.mjs"
 // Gives packages/runtime the Effect packages experiments installed, as links.
 //
 // Each repository fixture links vibelang-runtime to packages/runtime and takes
@@ -49,6 +50,6 @@ export function share(root) {
   return linked
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   share(path.resolve(process.argv[2] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), "..")))
 }

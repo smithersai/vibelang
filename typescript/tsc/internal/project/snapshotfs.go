@@ -644,7 +644,9 @@ func (s *snapshotFSBuilder) isRelevantFileName(uri lsproto.DocumentUri, contentM
 // or JavaScript extension that can affect the project.
 func isRelevantExtension(ext string) bool {
 	switch ext {
-	case ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".json":
+	case tspath.ExtensionJs, tspath.ExtensionJsx, tspath.ExtensionMjs, tspath.ExtensionCjs,
+		tspath.ExtensionTs, tspath.ExtensionTsx, tspath.ExtensionMts, tspath.ExtensionCts,
+		tspath.ExtensionVibe, tspath.ExtensionVibex, tspath.ExtensionJson:
 		return true
 	}
 	return false

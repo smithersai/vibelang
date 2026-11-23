@@ -76,6 +76,9 @@ const compiler = path.join(project, "node_modules", "vibelang")
 mkdirSync(path.join(compiler, "bin"), { recursive: true })
 mkdirSync(path.join(compiler, "native"))
 cpSync(path.join(repo, "packages", "compiler", "package.json"), path.join(compiler, "package.json"))
+for (const file of readdirSync(path.join(repo, "packages", "compiler"))) {
+  if (file.endsWith(".mjs")) cpSync(path.join(repo, "packages", "compiler", file), path.join(compiler, file))
+}
 cpSync(path.join(repo, "packages", "compiler", "bin", "vibelang"), path.join(compiler, "bin", "vibelang"))
 chmodSync(path.join(compiler, "bin", "vibelang"), 0o755)
 symlinkSync(vibelang, path.join(compiler, "native", "vibelang"))

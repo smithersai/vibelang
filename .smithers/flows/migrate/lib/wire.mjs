@@ -153,9 +153,14 @@ export function addEffectExitOptions(text, ts) {
  * compiler a shell separator ends, as in `tsc; node x`.
  */
 export function replaceTsc(scripts = {}) {
-  const command = new RegExp(`(^|[\\s;&|(])(?:${typeScriptCompilers.join("|")})(?=[\\s;&|)]|$)`, "g")
+  const envPrefix = String.raw`(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|[^\s;&|()]+)\s+)*`
+  const launcherPrefix = String.raw`(?:(?:npx|bunx|yarn|bun\s+x|(?:pnpm|npm|yarn)(?:\s+--?[^\s;&|()]+(?:\s+(?:"[^"]*"|'[^']*'|[^\s;&|()]+))?)*\s+exec)\s+)?`
+  const command = new RegExp(
+    "(^|[;&|(`{])(\\s*" + envPrefix + launcherPrefix + ")(?:" + typeScriptCompilers.join("|") + ")(?=[\\s;&|)`}]|$)",
+    "g",
+  )
   const next = {}
-  for (const [name, script] of Object.entries(scripts)) next[name] = replaceBunCheck(script).replace(command, "$1vibelang")
+  for (const [name, script] of Object.entries(scripts)) next[name] = replaceBunCheck(script).replace(command, "$1$2vibelang")
   return next
 }
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isMain } from "./is-main.mjs"
 // Reject grounded violations by default; unavailable judgments always fail open.
 import { createHash, randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
@@ -392,4 +393,4 @@ async function main() {
     emit({ status: "unavailable", category: stage + "-unavailable", verdict: null, wouldReject: false, enforced: false });
   }
 }
-if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await main();
+if (isMain(import.meta.url)) await main();

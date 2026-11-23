@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
@@ -191,6 +192,11 @@ func (p *Parser) parseDurableDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 			p.vibelangDurableTasks = map[string]bool{}
 		}
 		p.vibelangDurableTasks[name.Text()] = true
+	} else {
+		if p.vibelangDurableWorkflows == nil {
+			p.vibelangDurableWorkflows = map[string]bool{}
+		}
+		p.vibelangDurableWorkflows[name.Text()] = true
 	}
 	span := core.NewTextRange(name.Pos(), p.nodePos())
 	expression = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, p.newNodeList(span, arguments), ast.NodeFlagsNone), span)
@@ -353,66 +359,189 @@ func (p *Parser) durableSelfHandoffs(body *ast.Node, name string, parameters *as
 	body.ForEachChild(visit)
 }
 
-// durableReached returns two thunks of the names a workflow's body calls, as
-// A(…), A.child(…) or A.to(…), that the body does not declare itself and that
-// are not the workflow's own: () => [T, …] for tasks declared earlier in this
-// file, whose types give W.layer's requirements, and
-// (): ReadonlyArray<unknown> => [B, …] for the rest. The runtime composes
-// W.layer from the tasks and workflows among them. The second thunk's
-// written return type keeps its names out of W's type, so workflows that
-// reach each other do not make their types depend on each other (TS7022).
-func (p *Parser) durableReached(body *ast.Node, name string, parameters *ast.NodeList, anchor core.TextRange) (*ast.Node, *ast.Node) {
-	declared := map[string]bool{name: true}
-	for _, parameter := range parameters.Nodes {
-		if parameter.Name() != nil && ast.IsIdentifier(parameter.Name()) {
-			declared[parameter.Name().Text()] = true
+type pendingDurableWorkflow struct {
+	taskArray  *ast.Node
+	otherArray *ast.Node
+	anchor     core.TextRange
+	order      []string
+	uses       map[string]*ast.Node
+	directCall map[string]bool
+}
+
+func addBindingNames(scope map[string]bool, name *ast.Node) {
+	if name == nil {
+		return
+	}
+	switch name.Kind {
+	case ast.KindIdentifier:
+		scope[name.Text()] = true
+	case ast.KindObjectBindingPattern, ast.KindArrayBindingPattern:
+		for _, elem := range name.Elements() {
+			if ast.IsBindingElement(elem) {
+				addBindingNames(scope, elem.Name())
+			}
 		}
 	}
-	var order []string
-	var uses = map[string]*ast.Node{}
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		switch {
-		case ast.IsBindingElement(node) || ast.IsVariableDeclaration(node) || ast.IsParameterDeclaration(node) || ast.IsFunctionDeclaration(node) || ast.IsClassDeclaration(node):
-			if node.Name() != nil && ast.IsIdentifier(node.Name()) {
-				declared[node.Name().Text()] = true
+}
+
+func collectVarBindings(scope map[string]bool, node *ast.Node) {
+	if node == nil {
+		return
+	}
+	var walk func(*ast.Node) bool
+	walk = func(n *ast.Node) bool {
+		if ast.IsFunctionLike(n) {
+			return false
+		}
+		if ast.IsVariableDeclarationList(n) && n.Flags&(ast.NodeFlagsLet|ast.NodeFlagsConst|ast.NodeFlagsUsing) == 0 {
+			for _, decl := range n.AsVariableDeclarationList().Declarations.Nodes {
+				addBindingNames(scope, decl.Name())
 			}
-		case ast.IsCallExpression(node):
+		}
+		n.ForEachChild(walk)
+		return false
+	}
+	node.ForEachChild(walk)
+}
+
+func collectStatementScopeBindings(scope map[string]bool, statements []*ast.Node) {
+	for _, stmt := range statements {
+		switch {
+		case ast.IsVariableStatement(stmt):
+			list := stmt.AsVariableStatement().DeclarationList.AsVariableDeclarationList()
+			for _, decl := range list.Declarations.Nodes {
+				addBindingNames(scope, decl.Name())
+			}
+		case ast.IsFunctionDeclaration(stmt), ast.IsClassDeclaration(stmt):
+			addBindingNames(scope, stmt.Name())
+		}
+	}
+}
+
+// durableReached returns two thunks of the names a workflow's body calls, as
+// A(…), A.child(…) or A.to(…), that are free in the lexical scope of the call
+// and not the workflow's own name. Elements are populated in
+// finalizeDurableWorkflows once the full file has been parsed so tasks
+// declared below the workflow or imported from another module flow into
+// W.layer's requirements while workflows stay in the untyped thunk (preventing
+// TS7022 on mutually recursive workflows).
+func (p *Parser) durableReached(body *ast.Node, name string, parameters *ast.NodeList, anchor core.TextRange) (*ast.Node, *ast.Node) {
+	rootScope := map[string]bool{name: true}
+	for _, parameter := range parameters.Nodes {
+		addBindingNames(rootScope, parameter.Name())
+	}
+	if body != nil {
+		collectVarBindings(rootScope, body)
+	}
+	var order []string
+	uses := map[string]*ast.Node{}
+	directCall := map[string]bool{}
+	var walk func(node *ast.Node, scope map[string]bool)
+	walk = func(node *ast.Node, scope map[string]bool) {
+		if node == nil {
+			return
+		}
+		childScope := scope
+		switch node.Kind {
+		case ast.KindBlock:
+			childScope = maps.Clone(scope)
+			collectStatementScopeBindings(childScope, node.Statements())
+		case ast.KindCaseClause, ast.KindDefaultClause:
+			childScope = maps.Clone(scope)
+			collectStatementScopeBindings(childScope, node.Statements())
+		case ast.KindForStatement:
+			childScope = maps.Clone(scope)
+			if init := node.AsForStatement().Initializer; init != nil && ast.IsVariableDeclarationList(init) {
+				for _, decl := range init.AsVariableDeclarationList().Declarations.Nodes {
+					addBindingNames(childScope, decl.Name())
+				}
+			}
+		case ast.KindForInStatement, ast.KindForOfStatement:
+			childScope = maps.Clone(scope)
+			if init := node.Initializer(); init != nil && ast.IsVariableDeclarationList(init) {
+				for _, decl := range init.AsVariableDeclarationList().Declarations.Nodes {
+					addBindingNames(childScope, decl.Name())
+				}
+			}
+		case ast.KindCatchClause:
+			childScope = maps.Clone(scope)
+			if v := node.AsCatchClause().VariableDeclaration; v != nil {
+				addBindingNames(childScope, v.Name())
+			}
+		case ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindArrowFunction,
+			ast.KindMethodDeclaration, ast.KindGetAccessor, ast.KindSetAccessor, ast.KindConstructor:
+			childScope = maps.Clone(scope)
+			if node.Kind == ast.KindFunctionExpression || node.Kind == ast.KindFunctionDeclaration {
+				addBindingNames(childScope, node.Name())
+			}
+			for _, param := range node.Parameters() {
+				addBindingNames(childScope, param.Name())
+			}
+			if fnBody := node.Body(); fnBody != nil {
+				collectVarBindings(childScope, fnBody)
+			}
+		case ast.KindClassDeclaration, ast.KindClassExpression:
+			childScope = maps.Clone(scope)
+			addBindingNames(childScope, node.Name())
+		case ast.KindCallExpression:
 			callee := node.AsCallExpression().Expression
+			workflowOnly := false
 			if ast.IsPropertyAccessExpression(callee) && (callee.Name().Text() == "child" || callee.Name().Text() == "to") {
+				workflowOnly = true
 				callee = callee.Expression()
 			}
-			if ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsVibeLangIntrinsic == 0 {
-				if _, seen := uses[callee.Text()]; !seen {
-					uses[callee.Text()] = callee
-					order = append(order, callee.Text())
+			if ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsVibeLangIntrinsic == 0 && !scope[callee.Text()] {
+				key := callee.Text()
+				if _, seen := uses[key]; !seen {
+					uses[key] = callee
+					order = append(order, key)
+				}
+				if !workflowOnly {
+					directCall[key] = true
 				}
 			}
 		}
-		node.ForEachChild(visit)
-		return false
+		node.ForEachChild(func(child *ast.Node) bool {
+			walk(child, childScope)
+			return false
+		})
 	}
 	if body != nil {
-		body.ForEachChild(visit)
+		walk(body, rootScope)
 	}
-	var tasks, others []*ast.Node
-	for _, used := range order {
-		if declared[used] {
-			continue
-		}
-		id := p.vibelangSynthesized(p.factory.NewIdentifier(used), uses[used].Loc)
-		if p.vibelangDurableTasks[used] {
-			tasks = append(tasks, id)
-		} else {
-			others = append(others, id)
-		}
-	}
-	taskArray := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(anchor, tasks), false /*multiLine*/), anchor)
-	otherArray := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(anchor, others), false /*multiLine*/), anchor)
+	taskArray := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(anchor, nil), false /*multiLine*/), anchor)
+	otherArray := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(anchor, nil), false /*multiLine*/), anchor)
+	p.vibelangPendingWorkflows = append(p.vibelangPendingWorkflows, pendingDurableWorkflow{
+		taskArray:  taskArray,
+		otherArray: otherArray,
+		anchor:     anchor,
+		order:      order,
+		uses:       uses,
+		directCall: directCall,
+	})
 	otherThunk := p.vibelangProgramArrow(nil, otherArray, anchor)
 	unknown := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindUnknownKeyword), anchor)
 	readonlyArray := p.vibelangSynthesized(p.factory.NewIdentifier("ReadonlyArray"), anchor)
 	otherThunk.AsArrowFunction().Type = p.vibelangSynthesized(p.factory.NewTypeReferenceNode(readonlyArray, p.newNodeList(anchor, []*ast.Node{unknown})), anchor)
 	p.overrideParentInImmediateChildren(otherThunk)
 	return p.vibelangProgramArrow(nil, taskArray, anchor), otherThunk
+}
+
+func (p *Parser) finalizeDurableWorkflows() {
+	for _, pending := range p.vibelangPendingWorkflows {
+		var tasks, others []*ast.Node
+		for _, used := range pending.order {
+			id := p.vibelangSynthesized(p.factory.NewIdentifier(used), pending.uses[used].Loc)
+			if !pending.directCall[used] || (p.vibelangDurableWorkflows[used] && !p.vibelangDurableTasks[used]) {
+				others = append(others, id)
+			} else {
+				tasks = append(tasks, id)
+			}
+		}
+		pending.taskArray.AsArrayLiteralExpression().Elements = p.newNodeList(pending.anchor, tasks)
+		p.overrideParentInImmediateChildren(pending.taskArray)
+		pending.otherArray.AsArrayLiteralExpression().Elements = p.newNodeList(pending.anchor, others)
+		p.overrideParentInImmediateChildren(pending.otherArray)
+	}
+	p.vibelangPendingWorkflows = nil
 }

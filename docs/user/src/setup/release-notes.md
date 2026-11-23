@@ -8,6 +8,69 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Updated the VS Code TextMate grammars so `error`, `schema`, and `service` stay identifiers before `as`, `satisfies`, `is`, `instanceof`, and `in`, inline `when` arms in one-line `match` expressions are highlighted, and retired `control`, `handle`, and `await.*` rules are removed.
+- Fixed a syntax error in the tree-sitter property test suite and updated the VS Code and Neovim editor suites and setup docs to expect `EK0102` on `old-await.vibe` and current `forms.vibe` syntax.
+- Fixed the `EK1003` parser diagnostic for `fork do { ... }` to suggest `fork effect { ... }` instead of the transitional bare `fork { ... }` spelling, and aligned Appendix B with Chapter 7 on the `EK1707` migration hold and `EK1003` block-`do` coverage.
+- Deleting or renaming a `.vibe` or `.vibex` file now prunes its stale `.d.vibe.ts` and `.d.ts` sidecars and prevents module resolution from matching orphaned generated forwarders, failed `noEmitOnError` and syntax-error builds preserve existing valid sidecars, and `vibelang -b` restores deleted sidecar declarations.
+- ESTree output for non-binding `x is P` tests (such as `x is 1` or `x is null`) now emits a `VibeIsExpression` spanning from subject through pattern instead of a `BinaryExpression` whose range excluded its left operand, preventing ESLint rules like `space-infix-ops` from crashing.
+- The `EK1005` note for nested runners inside effect code now suggests `try <effect>` and `fork.detached <effect>` instead of invalid `detach(() => ...)`.
+- A `workflow` declaration's `.layer` now retains task requirements regardless of declaration order, module imports, or nested bindings sharing a task's name, and named function or class expressions inside a workflow body no longer trigger undeclared-name errors.
+- Migration setup now rewrites `tsc`/`tsgo`/`tsrs` and `prettier` only in command position, preserves existing `eslint` and `typescript-eslint` version pins (warning on incompatible majors), skips protected test and fixture config files, and quotes shell paths containing spaces or metacharacters.
+- Corrected `docs/maintainers/coding-agents.md` to document that the opencode plugin runs `vibelang agents check` rather than `vibelang --fix`, and marked the `EK9206` research note as resolved.
+- Updated `MAINTAINERS.md`, `CONTRIBUTING.md`, and `README.md` so the published package count (twelve), `vibelang-typescript` version rule, `packages/typescript-shim/` layout entry, and Apache-2.0 package list match the release scripts.
+- Incremental builds now store `vibe` settings in `.tsbuildinfo` so unchanged builds reuse cached outputs and removed settings invalidate stale diagnostics, `--listEmittedFiles` lists written declaration sidecars, and editor on-type formatting no longer invokes the whole-document formatter or errors on incomplete VibeLang code.
+- Declaration files now declare a non-exported `service` whenever an exported annotation references its `Name.Shape` type, so downstream TypeScript consumers no longer fail with `TS2503` or silently resolve the shape to `any`.
+- Exhaustiveness checks on `match` expressions now reduce impossible intersection branches before checking finite domains, so guarded or incomplete matches over refined tagged unions report `EK4701`.
+- The API-identity checker now rejects changes to constructor visibility, `abstract` and `accessor` class members, `in`/`out`/`const` type-parameter modifiers, explicit `this` parameters, method-versus-property signatures, `const enum` modifiers, type-only re-exports inside namespace re-exports, and optional properties versus explicit `undefined`.
+- Fixed VS Code compiler discovery on Windows to look for `vibelang.exe` (Bun installs) ahead of `vibelang.cmd` and spawn `.cmd`/`.bat` shims with `shell: true`, and updated the Neovim plugin to walk upward for hoisted `node_modules/.bin/vibelang` binaries in monorepos.
+- Fixed `paths-imports` rejecting UTF-8 BOM tsconfigs and corrupting `,}` or `,]` inside string values, updated `vibelang/register` cold-start prefill to discover `vibe.config.json` and `jsconfig.json` projects, and unified `VIBELANG_BINARY` resolution across the launcher, cache, project backend, ESLint, and formatter so bare `PATH` names and cwd-relative paths resolve consistently.
+- Synced shared import-resolution helpers across `vibelang`, `vibelang-vite`, and `vibelang-unplugin` so unplugin resolves extensionless `.vibex` imports and watches `.vibex` changes, fixed `vibelang-vite`'s `close()` so a failed backend load does not poison subsequent builds, and registered type-only project inputs as watch files under `vite build --watch`.
+- `vibelang agents check` and `vibelang agents hook` no longer label ordinary type-check error exits (status 1 or 2 with clean stdout diagnostics and empty stderr) as `check incomplete`, and `vibelang agents init` now uses platform-independent path containment when discovering workspace binaries on Windows.
+- Fixed stale documentation and manifest pins across the Vite, starter, and unplugin READMEs, `vibelang-unplugin`'s `root` option JSDoc, the Vite setup guide's Rolldown declaration section, and `vibelang-ts-mapper`'s `vibelang-runtime` peer pin.
+- Fixed CLI scripts under `scripts/` (including `repack.mjs`, `select.mjs`, `generate-grammar-admission.mjs`, `go-shard-seconds.mjs`, and `api-identity.mjs`) silently exiting `0` without running when invoked through a symlinked directory path; entrypoint checks now resolve real paths via `isMain`.
+- Requesting signature help inside a `match` expression (such as after `match (`, inside a literal pattern, or inside array-pattern arms) could panic the language server with a parent-child span assertion failure. Synthesized `match` nodes now span all of their children.
+- Fixed `scripts/remote.sh` interpolating workspace directory names and relative subdirectories unquoted into remote SSH shell commands; paths are now single-quoted beside `"$HOME"`.
+- Fixed `scripts/apply-patch.sh` silently exiting `0` and applying partial changes on truncated or CRC-corrupted gzip patch payloads; patches are now decompressed and validated to a temporary file before invoking `git apply`.
+- Formatting a file containing a single-line braced `for concurrent` body (such as `for concurrent(2) (const id of ids) { try Console.log(id) }`) failed with an internal error when the TypeScript formatter removed or added braces around the single-statement body. The formatter's equivalence check now treats `for concurrent` loop bodies like native loop bodies.
+- Fixed compiler and language server crashes on named-import `Option.match` calls, `Match` block handlers with an incomplete `return`, and `service` declarations combining `static readonly default` with a computed static member; diagnostic checks no longer compute discarded legacy rewrite plans for `EK4839`, `EK4855`, `EK4856`, and `EK4857`.
+- Declaring a `service` inside a generic function with a member typed by a recursive type alias (such as a fluent builder `Builder<[...T, U]>`) caused the compiler and language server to loop without terminating. Outer type-parameter checks now short-circuit concrete external aliases and bound recursive alias expansion.
+- The migration flow now binds `verify.json` to the verified working-copy commit so edits made after verification trigger re-verification, writes a pending record intent before committing so crashes or bookmark failures after `jj commit` resume cleanly, and writes JSON receipts and `config.json` atomically.
+- The Vite plugin now resolves `paths` aliases from the tsconfig or `vibe.config.json` that compiled each `.vibe` module (including referenced configs and custom `project` options) and refreshes its config and alias caches when JSON config files change without requiring a server restart.
+- Migration setup crashed with a JSON `SyntaxError` on YAML `.prettierrc` files or commented `dprint.json` files after modifying other files. Non-JSON Prettier files and commented dprint configs are now left untouched with a located warning.
+
+- Migration run-phase verification treated a crashed, missing, or nonzero-exiting compiler as an unchecked parse error and passed the gate. Compiler execution failures now fail the run-phase check instead of passing silently.
+- The language server dropped watched-file change and deletion events for closed `.vibe` and `.vibex` files, leaving open files with stale types and diagnostics after external edits. Watched `.vibe` and `.vibex` files now refresh just like `.ts` and `.tsx`.
+
+- Package `#imports` and `exports` targets pointing into `outDir` (such as `./out/util.js`) failed to map back to `.vibe` and `.vibex` sources on a clean build. Output-to-source extension resolution now includes `.vibe` and `.vibex` beside `.ts` and `.tsx`.
+
+- A bigint literal property key inside an object pattern (such as `when { 1n: 1 }`) crashed the compiler and language server. It now reports `EK0707` without crashing, including while editing incomplete prefixes.
+
+- CommonJS bundler configurations (such as `webpack.config.js` and `rspack.config.js` without `"type": "module"`) failed to `require("vibelang-unplugin")` or its bundler subpaths with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Each export entry now includes a `default` condition.
+
+- On Windows, a located error in one `.vibe` file was treated as project-wide because listed source paths used forward slashes while diagnostic paths used backslashes. Path separators are now normalized before matching diagnostics to files.
+
+- Passing a directory (such as `vibelang format --check src` or `.`) read no files and exited `0` without formatting or reporting unformatted sources. Directory arguments now recursively format and check matching VibeLang sources inside them.
+
+- `vibelang/oxlint` could crash with an uncaught `EPIPE` error when the compiler exited before reading stdin, leaving temporary files behind. Early compiler exits are now reported cleanly as `vibelang(unprojected)` diagnostics.
+
+- Migration package verification invoked GNU-only `tar --quoting-style=literal`, which failed under BSD `tar` on macOS. Tarball entries are now read directly in Node without shelling out to `tar`.
+
+- Migration test verification could accept a candidate run that produced no per-test report when the baseline already exited nonzero, or accept a previously passing test that became skipped. Both now fail verification.
+
+- The `vibelang-runtime` README listed `interrupt` and `yieldNow` as root exports even though neither exists, and omitted `forkIn`. The root exports table now matches the package exports.
+
+- `catch` did not recover a typed failure when its cause also carried an interruption with a negative interruptor id, such as internal interruptions from Effect's `FiberSet`, `FiberMap`, or `FiberHandle`. Abandonment sentinels are now identified by a private annotation instead of the sign of the fiber id.
+
+- A refused `Experimental.Durable.rewind` (for an invalid position or an irreversible or compensable step) still claimed the run and fenced out the engine driving it. Rewind now validates the journal before claiming the run.
+
+- `Experimental.Process.kill(1, { group: true })` and `isRunning(1, { group: true })` passed `-1` to POSIX `kill`, which addresses every process rather than process group 1. Both now fail with `BadArgument` without calling the host.
+
+- Concurrent branches calling the same `Experimental.Durable.task` could swap their recorded results after a crash or restart when earlier steps finished in a different order than replay. Task journal entries now match by payload identity as well as occurrence.
+
+- A source file with a modification time ahead of the system clock caused bundler builds and dev servers to recompile forever. Files timestamped in the future no longer trigger repeated recompiles.
+
+- Editing a source file while a cold loader validated a committed loader record could store the stale output in the compile cache under the new file's hash. The cache snapshot is now taken before record validation, so concurrent edits are not cached.
+
 - Rejected service member headers could add misleading implicit return type, overload, or duplicate implementation errors. Each rejected member now reports its service rule, while ordinary nested classes and interfaces keep their native errors.
 
 - Constructing a service key could hide unknown names and type errors in its arguments. Those errors now appear alongside `EK3003`.

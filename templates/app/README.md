@@ -17,8 +17,8 @@ installed yet, for example after `--no-install`, run `bun install` first.
 `Recovered from EmptyName`. `dev` builds once, starts `vibelang --watch`, then starts Node's output watcher
 only after the compiler is watching; press Ctrl+C to stop both. Vitest runs
 `src/**/*.test.vibe` and `src/**/*.test.vibex` through `vibelang-vite` and `@effect/vitest`. The plugin
-checks the project with `vibelang`, serves compiled JavaScript from
-`node_modules/.vibelang/`, and maps assertion stacks to the original `.vibe`
+checks the project with `vibelang`, compiles to a temporary directory and serves
+the JavaScript from memory, and maps assertion stacks to the original `.vibe`
 lines. `test` needs no prior build.
 
 `format` formats the `.vibe` files with `vibelang format --write`. `lint` runs `vibelang lint`, the type checker with VibeLang's and Effect's lint rules, over sources and tests; `check` runs `vibelang format --check`, then `lint`, and fails on either, for CI.

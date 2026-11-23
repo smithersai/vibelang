@@ -17,6 +17,7 @@ import { temporaryRoot } from "./temporary.mjs"
 import { performance } from "node:perf_hooks"
 import { basename, dirname, isAbsolute, join, parse, relative, resolve } from "node:path"
 import { launcherBinary, loaderRecord, loaderRecordFile, parseJsonc, projectCache } from "./cache.mjs"
+import { executablePath, isNodeScript } from "./compiler-override.mjs"
 
 const slash = (path) => path.replaceAll("\\", "/")
 const located = /^(.+?)\((\d+),(\d+)\):\s+(error|warning|suggestion)\s+(\w+\d+):\s?(.*)$/
@@ -34,27 +35,12 @@ const exitIgnoredLine = /^VIBELANG-EXIT-IGNORED: (\w+) (\w+\d+)$/
  */
 export function findCompiler(root, compiler) {
   if (compiler) return resolve(root, compiler)
-  if (process.env.VIBELANG_BINARY) return resolve(root, process.env.VIBELANG_BINARY)
+  if (process.env.VIBELANG_BINARY) return executablePath(process.env.VIBELANG_BINARY, root)
   const require = createRequire(join(resolve(root), "package.json"))
   return join(dirname(require.resolve("vibelang/package.json")), "bin/vibelang")
 }
 
-// The npm launcher and the native platform packages both install bin/vibelang,
-// so read the shebang instead of trusting the filename.
-function isNodeLauncher(path) {
-  if (/\.(?:[cm]?js)$/.test(path)) return true
-  let file
-  try {
-    file = openSync(path, "r")
-    const header = Buffer.alloc(256)
-    const bytes = readSync(file, header, 0, header.length, 0)
-    return /^#![^\r\n]*\bnode(?:\s|$)/.test(header.subarray(0, bytes).toString("utf8"))
-  } catch {
-    return false
-  } finally {
-    if (file !== undefined) closeSync(file)
-  }
-}
+const isNodeLauncher = isNodeScript
 
 // The vibelang launcher only finds the native compiler and runs it, so a
 // compile runs that binary itself and skips starting Node for the launcher.
@@ -119,7 +105,7 @@ export function parseOutput(output, root) {
       // Keep existing input paths even when their spelling resembles a
       // comment. Once file listing starts, missing paths remain inputs too.
       !(diagnostic && /^\/[*/]/.test(line.trim()) && !existsSync(line.trim()))) {
-      files.push(line.trim())
+      files.push(process.platform === "win32" ? resolve(line.trim()) : line.trim())
       listed.add(index)
       diagnostic = undefined
     } else if (diagnostic && line) {
@@ -368,16 +354,18 @@ function cached({ project, root, compiler, cache, debug, loader, onMiss, scope =
     debug(`${project} from the cache in ${elapsed(started)}`)
     return hit.result
   }
+  const snapshot = stages.time("snapshot", () => store?.begin())
   // A cold cache: the project's committed loader record (cache.mjs) serves the
   // compile when every input it names still holds, and the cache keeps it.
+  // Taking the cache snapshot first ensures an input edited while the record is
+  // validated fails the cache's race check rather than caching stale output.
   const recorded = scope === "loader" && store && existsSync(loaderRecordFile(project))
     ? stages.time("record", () => loaderRecord({ project, root, compiler }).lookup()) : undefined
   if (recorded?.result) {
-    stages.time("store", () => store.store(store.begin(), recorded.result, recorded.files))
+    stages.time("store", () => store.store(snapshot, recorded.result, recorded.files))
     debug(`${project} from its loader record in ${elapsed(started)}: ${stages}`)
     return recorded.result
   }
-  const snapshot = stages.time("snapshot", () => store?.begin())
   const finish = ({ result, files }) => {
     stages.time("store", () => store?.store(snapshot, result, files))
     const modules = new Set(result.outputs.values()).size
@@ -560,7 +548,7 @@ export function checkLoaderRecord({ project, root = packageRoot(project), compil
 
 // The preferred config in directory, or undefined. A custom name such as
 // tsconfig.app.json is never discovered, as in TypeScript: it must be named.
-const configIn = (directory) =>
+export const configIn = (directory) =>
   ["vibe.config.json", "tsconfig.json", "jsconfig.json"].map((name) => join(directory, name)).find((path) => existsSync(path))
 
 /** Returns the preferred config in the nearest directory above file, or undefined. */
@@ -718,16 +706,24 @@ function fileState(file) {
   }
 }
 
-// Returns a source modified after time, or one that is gone.
-function changedSince(files, time) {
+// Returns a source modified between start and end, or one that is gone.
+// A file whose modification time is ahead of the wall clock is reported via
+// future instead of triggering an unbounded recompile loop.
+function changedSince(files, start, end) {
+  let future
   for (const file of files) {
     try {
       const mtime = statSync(file).mtimeMs
-      if (mtime > time) return { file, mtime }
+      if (mtime > end) {
+        future ??= { file, mtime }
+        continue
+      }
+      if (mtime > start) return { file, mtime }
     } catch (error) {
       return { file, error: error.code }
     }
   }
+  return future ? { future } : undefined
 }
 
 // Module code for a failed compile. The bundler reports the real error.
@@ -800,10 +796,13 @@ export function projects({ root, project, compiler, cache, debug = () => {}, pre
             debug(`compile ${state.tsconfig} ${started} finished in ${Math.round(performance.timeOrigin + performance.now() - time)}ms: ${value.outputs.size} outputs, ${value.errors.length} errors`)
             // A file saved during the compile may be missing from its output. esbuild records
             // watch files when a load returns, so it would not rebuild for that save. Compile again.
+            const finished = Math.max(performance.timeOrigin + performance.now(), Date.now() + 1)
             const changed = fileState(state.tsconfig) !== configBefore
               ? { file: state.tsconfig, error: "config state changed" }
-              : changedSince(value.inputs.filter((file) => file !== state.tsconfig), time)
-            if (changed) {
+              : changedSince(value.inputs.filter((file) => file !== state.tsconfig), time, finished)
+            if (changed?.future) {
+              debug(`${changed.future.file} has a future modification time during compile ${started}: mtime=${changed.future.mtime}, finished=${finished}`)
+            } else if (changed) {
               revision++
               debug(`${changed.file} changed during compile ${started}: revision ${revision}; mtime=${changed.mtime ?? changed.error}, started=${time}`)
             }

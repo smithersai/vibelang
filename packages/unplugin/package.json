@@ -27,43 +27,53 @@
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
-      "import": "./src/index.js"
+      "import": "./src/index.js",
+      "default": "./src/index.js"
     },
     "./webpack": {
       "types": "./src/webpack.d.ts",
-      "import": "./src/webpack.js"
+      "import": "./src/webpack.js",
+      "default": "./src/webpack.js"
     },
     "./rollup": {
       "types": "./src/rollup.d.ts",
-      "import": "./src/rollup.js"
+      "import": "./src/rollup.js",
+      "default": "./src/rollup.js"
     },
     "./rolldown": {
       "types": "./src/rolldown.d.ts",
-      "import": "./src/rolldown.js"
+      "import": "./src/rolldown.js",
+      "default": "./src/rolldown.js"
     },
     "./esbuild": {
       "types": "./src/esbuild.d.ts",
-      "import": "./src/esbuild.js"
+      "import": "./src/esbuild.js",
+      "default": "./src/esbuild.js"
     },
     "./rspack": {
       "types": "./src/rspack.d.ts",
-      "import": "./src/rspack.js"
+      "import": "./src/rspack.js",
+      "default": "./src/rspack.js"
     },
     "./bun": {
       "types": "./src/bun.d.ts",
-      "import": "./src/bun.js"
+      "import": "./src/bun.js",
+      "default": "./src/bun.js"
     },
     "./vite": {
       "types": "./src/vite.d.ts",
-      "import": "./src/vite.js"
+      "import": "./src/vite.js",
+      "default": "./src/vite.js"
     },
     "./deferred": {
       "types": "./src/deferred.d.ts",
-      "import": "./src/deferred.js"
+      "import": "./src/deferred.js",
+      "default": "./src/deferred.js"
     },
     "./bun/register": {
       "types": "./src/bun-register.d.ts",
-      "import": "./src/bun-register.js"
+      "import": "./src/bun-register.js",
+      "default": "./src/bun-register.js"
     },
     "./rolldown/register": {
       "types": "./src/register.d.ts",

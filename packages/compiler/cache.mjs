@@ -1,4 +1,5 @@
-import { checkedOverride } from "./compiler-override.mjs"
+import { isNodeScript } from "./compiler-override.mjs"
+import { resolveNativeBinary } from "./binary.mjs"
 // The persistent compile cache behind vibelang/project.
 //
 // A whole-project compile costs hundreds of milliseconds, and every Node
@@ -156,24 +157,15 @@ function fileHolds(record) {
  */
 export function launcherBinary(compiler) {
   if (basename(dirname(compiler)) !== "bin" || basename(compiler) !== "vibelang") return undefined
+  const packageDir = dirname(dirname(compiler))
   try {
-    const manifest = JSON.parse(readFileSync(join(dirname(compiler), "../package.json"), "utf8"))
+    const manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8"))
     if (manifest.name !== "vibelang") return undefined
   } catch {
     return undefined
   }
   if (!isNodeScript(compiler)) return undefined
-  if (process.env.VIBELANG_BINARY) return resolve(checkedOverride(process.env.VIBELANG_BINARY, compiler))
-  const executable = process.platform === "win32" ? "vibelang.exe" : "vibelang"
-  const local = join(dirname(compiler), "../native", executable)
-  if (existsSync(local)) return local
-  try {
-    const name = process.platform === "win32" ? `@smthrs/cli-win32-${process.arch}` : `vibelang-${process.platform}-${process.arch}`
-    const target = `${name}/package.json`
-    return join(dirname(createRequire(compiler).resolve(target)), "bin", executable)
-  } catch {
-    return undefined
-  }
+  return resolveNativeBinary({ from: compiler, packageDir, launcher: compiler })
 }
 
 // The compiler a project compiles with: the given file, and, for the vibelang
@@ -183,19 +175,6 @@ function compilerFiles(compiler) {
   return binary === undefined ? [compiler] : [compiler, binary]
 }
 
-function isNodeScript(path) {
-  let file
-  try {
-    file = openSync(path, "r")
-    const header = Buffer.alloc(256)
-    const bytes = readSync(file, header, 0, header.length, 0)
-    return /^#![^\r\n]*\bnode(?:\s|$)/.test(header.subarray(0, bytes).toString("utf8"))
-  } catch {
-    return false
-  } finally {
-    if (file !== undefined) closeSync(file)
-  }
-}
 
 // Stat-only and read at every lookup: a rebuilt compiler is a new file.
 const compilerIdentity = (compiler) =>

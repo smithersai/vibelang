@@ -13,7 +13,7 @@ const fc = require("fast-check")
 test("smithers run 2: a test whose name prints the run's date is the same test", () => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-test-name-date.json", import.meta.url), "utf8"))
   const comparison = compareTests({ code: 0, tests: corpus.baseline }, { code: 0, tests: corpus.current })
-  assert.deepEqual(comparison, { ok: true, newFailures: [], missing: [], fixed: [] })
+  assert.deepEqual(comparison, { ok: true, newFailures: [], missing: [], skipped: [], fixed: [] })
 })
 
 // For any date and any spelling of it a run prints, two runs that differ only
@@ -27,7 +27,7 @@ test("compareTests matches tests whose names differ only in a printed date", () 
     assert.equal(stableName(name(first)), stableName(name(second)))
     const other = "test/Permission.test > accepts a record"
     const baseline = { code: 0, tests: { [name(first)]: status, [other]: "passed" } }
-    assert.deepEqual(compareTests(baseline, { code: 0, tests: { [name(second)]: status, [other]: "passed" } }), { ok: true, newFailures: [], missing: [], fixed: [] })
+    assert.deepEqual(compareTests(baseline, { code: 0, tests: { [name(second)]: status, [other]: "passed" } }), { ok: true, newFailures: [], missing: [], skipped: [], fixed: [] })
     const gone = compareTests(baseline, { code: 0, tests: { [name(second)]: status } })
     assert.deepEqual(gone.missing, [other])
     if (status === "passed") assert.deepEqual(compareTests(baseline, { code: 0, tests: { [name(second)]: "failed", [other]: "passed" } }).newFailures, [stableName(name(first))])
@@ -40,5 +40,5 @@ test("stableName leaves other names and keeps two dated tests apart", () => {
   for (const name of ["a > 2026 plan", "b > 12:00:00 noon", "c > v2026-10-31", "d > Sat Oct 31"]) assert.equal(stableName(name), name)
   const tests = { "f > at 2026-10-31T16:29:01.000Z": "passed", "f > at 2026-10-31T16:29:02.000Z": "failed" }
   const next = { "f > at 2027-01-01T00:00:00.000Z": "passed", "f > at 2027-01-01T00:00:01.000Z": "failed" }
-  assert.deepEqual(compareTests({ code: 0, tests }, { code: 0, tests: next }), { ok: true, newFailures: [], missing: [], fixed: [] })
+  assert.deepEqual(compareTests({ code: 0, tests }, { code: 0, tests: next }), { ok: true, newFailures: [], missing: [], skipped: [], fixed: [] })
 })

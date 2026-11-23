@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isMain } from "./is-main.mjs"
 // The hook census describes implementation coverage, never admission authority.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
@@ -89,7 +90,7 @@ export function generate(root, { check = false } = {}) {
   } finally { if (check) rmSync(temp, { recursive: true, force: true }) }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const at = process.argv.indexOf("--root")
   const root = resolve(at < 0 ? fileURLToPath(new URL("../", import.meta.url)) : process.argv[at + 1])
   const stale = generate(root, { check: process.argv.includes("--check") })

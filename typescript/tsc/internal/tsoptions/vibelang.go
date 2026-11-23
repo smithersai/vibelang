@@ -20,8 +20,10 @@ import (
 //	}
 //
 // It is added by hand to the generated option tables: its declaration in
-// declarations_generated.go; its parse, merge, comparison, and serialization
-// cases in options_generated.go; and core.CompilerOptions.VibeLang.
+// declarations_generated.go; its parse, merge, semantic/emit comparison, and
+// serialization cases in options_generated.go; core.CompilerOptions.VibeLang
+// plus its Clone and Equals handling in core/options_generated.go; and
+// BuildInfo.VibeLang persistence in execute/incremental.
 
 var (
 	// vibeLangAdjustableCodes are the EK codes whose category a project may

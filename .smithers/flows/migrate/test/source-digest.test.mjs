@@ -44,7 +44,7 @@ async function converted({ root, target }, text, { base = text } = {}) {
   writeJson(p.plan, { batches: [{ files: ["src/X.ts"], reason: "regression" }] })
   writeJson(p.codemod("01"), { renames: [{ from: "src/X.ts", to: "src/X.vibe" }], fix: { totals: {}, refused: [] } })
   writeJson(p.codemodState("01"), { originals: [journal("src/X.ts", text)] })
-  writeJson(p.verify("01"), { ok: true, checks: { packs: true } })
+  writeJson(p.verify("01"), { ok: true, checks: { packs: true }, commit: await Jj.commitId(target, "@") })
   return { run, p }
 }
 

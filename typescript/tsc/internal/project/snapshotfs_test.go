@@ -1498,4 +1498,27 @@ func TestExpandAndFilterWatchEvents(t *testing.T) {
 		assert.Assert(t, !expanded.Deleted.Has("file:///src"),
 			"the directory URI itself should be replaced by its files")
 	})
+
+	t.Run("preserves closed .vibe and .vibex file change and deletion watch events", func(t *testing.T) {
+		t.Parallel()
+		builder := newBuilder(vfstest.FromMap(map[string]string{
+			"/project/a.vibe":  "export const a = 1;",
+			"/project/b.vibe":  "export const b = 1;",
+			"/project/c.vibex": "export const c = 1;",
+		}, tspath.CaseInsensitive))
+
+		change := FileChangeSummary{}
+		change.Changed.Add("file:///project/b.vibe")
+		change.Changed.Add("file:///project/c.vibex")
+		change.Deleted.Add("file:///project/b.vibe")
+		change.Deleted.Add("file:///project/c.vibex")
+
+		expanded := builder.expandAndFilterWatchEvents(change, nil, nil, nil, nil)
+		assert.Assert(t, expanded.Changed.Has("file:///project/b.vibe"), "closed .vibe change should be preserved")
+		assert.Assert(t, expanded.Changed.Has("file:///project/c.vibex"), "closed .vibex change should be preserved")
+		assert.Assert(t, expanded.Deleted.Has("file:///project/b.vibe"), "closed .vibe deletion should be preserved")
+		assert.Assert(t, expanded.Deleted.Has("file:///project/c.vibex"), "closed .vibex deletion should be preserved")
+		assert.Assert(t, isRelevantExtension(tspath.ExtensionVibe), ".vibe must be a relevant extension")
+		assert.Assert(t, isRelevantExtension(tspath.ExtensionVibex), ".vibex must be a relevant extension")
+	})
 }

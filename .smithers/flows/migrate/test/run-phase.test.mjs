@@ -139,13 +139,21 @@ test("alchemy-62: verify fails a batch that marks a plain function effect", nati
   }
 })
 
-test("alchemy-62: a module the compiler cannot parse is listed unchecked, never blocking", () => {
+test("alchemy-62: a module the compiler cannot parse is listed unchecked; a failing compiler fails the run-phase gate", native, () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-run-phase-"))
   try {
+    writeFileSync(join(root, "main.vibe"), "export const x = (\n")
+    const unparsable = runPhaseCheck({ compiler, ts, target: root, files: ["main.vibe"], original: () => ({ path: "main.ts", text: "export const x = 1\n" }) })
+    assert.equal(unparsable.blocking.length, 0)
+    assert.equal(unparsable.failed.length, 0)
+    assert.equal(unparsable.unchecked.length, 1)
+
     writeFileSync(join(root, "main.vibe"), "export const x = 1\n")
-    const result = runPhaseCheck({ compiler: "/bin/false", ts, target: root, files: ["main.vibe"], original: () => ({ path: "main.ts", text: "export const x = 1\n" }) })
-    assert.equal(result.blocking.length, 0)
-    assert.equal(result.unchecked.length, 1)
+    for (const broken of ["/bin/false", "/nonexistent/vibelang"]) {
+      const crashed = runPhaseCheck({ compiler: broken, ts, target: root, files: ["main.vibe"], original: () => ({ path: "main.ts", text: "export const x = 1\n" }) })
+      assert.equal(crashed.unchecked.length, 0, broken)
+      assert.equal(crashed.failed.length, 1, broken)
+    }
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 

@@ -1,0 +1,6 @@
+// expect-result: 3
+import { a } from "#util"
+import { b } from "#tsutil"
+export effect function main() {
+  return a + b
+}

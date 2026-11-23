@@ -472,11 +472,23 @@ export const task = <
       })
       return value
     })
+  const payloadDigest = (payload: P): Effect.Effect<string> =>
+    Effect.suspend(() => {
+      try {
+        return canonical.sha256(canonical.canonicalJson(canonical.snapshot(payloadSchema, payload)))
+      } catch {
+        return Effect.succeed("")
+      }
+    })
   const call = (payload: P) =>
     Effect.gen(function*() {
       const instance = yield* WorkflowEngine.WorkflowInstance
       const handler = yield* Handler
       const n = nextOccurrence(instance, key)
+      const digest = yield* payloadDigest(payload)
+      const stepKey = digest === ""
+        ? `${key}/${n}`
+        : `${key}@${digest}/${steps.nextOccurrence(instance, `${key}\u0001${digest}`, `Task ${key}`)}`
       // Credentials never reach the journal, which stores a step's result and error.
       let body: Effect.Effect<unknown, unknown> = handler.run(payload).pipe(
         Effect.tap((value) => Effect.sync(() => canonical.refuseRedacted(value, `The result of task ${key}`))),
@@ -497,7 +509,7 @@ export const task = <
       const step = policy === undefined
         ? activity
         : Activity.retry(activity, { while: () => retryAllows(policy, ++attempts) })
-      return yield* Effect.provideService(step, engineInternal.StepInfo, info)
+      return yield* Effect.provideService(step, engineInternal.StepInfo, { ...info, stepKey })
     }) as ReturnType<Task<Key, Payload, Success, Error>>
   const self = Object.assign((payload: P) => call(payload), {
     key,
@@ -710,22 +722,28 @@ export const rewind = (at: Position): Effect.Effect<void, TimeTravelError, Durab
   Effect.gen(function*() {
     const durable = yield* Durable
     const store = durable.internals.store
-    yield* journalOf(durable, at.run)
+    const validate = (entries: ReadonlyArray<JournalEntry>) =>
+      Effect.gen(function*() {
+        if (!Number.isInteger(at.seq) || at.seq < 2 || at.seq > entries.length + 1) {
+          return yield* refuse("invalid", `A rewind of run ${at.run} keeps entries before 2 to ${entries.length + 1}, not ${at.seq}`)
+        }
+        for (const entry of entries) {
+          if (entry.seq < at.seq || entry.eventType !== "StepStarted") continue
+          const { step, tier } = entry.payload as { readonly step: string; readonly tier?: Tier }
+          if (tier === "irreversible") return yield* refuse("irreversible", `Step ${step} at ${entry.seq} is irreversible`)
+          if (tier === "compensable") {
+            return yield* refuse("compensation_failed", `Step ${step} at ${entry.seq} is compensable, and compensation is not built`)
+          }
+        }
+      })
+    const initial = yield* journalOf(durable, at.run)
     if (durable.internals.isLive(at.run)) return yield* refuse("busy", `Run ${at.run} is running`)
-    // Claim first, so no other engine appends a step between the check and the truncate.
+    // Validate before claiming so a refused rewind leaves another engine driving the run undisturbed.
+    yield* validate(initial.entries)
+    // Claim and re-validate so no concurrent step appended before the claim is silently truncated.
     yield* Effect.orDie(store.claim(at.run, durable.internals.owner, yield* Clock.currentTimeMillis))
     const { entries } = yield* journalOf(durable, at.run)
-    if (!Number.isInteger(at.seq) || at.seq < 2 || at.seq > entries.length + 1) {
-      return yield* refuse("invalid", `A rewind of run ${at.run} keeps entries before 2 to ${entries.length + 1}, not ${at.seq}`)
-    }
-    for (const entry of entries) {
-      if (entry.seq < at.seq || entry.eventType !== "StepStarted") continue
-      const { step, tier } = entry.payload as { readonly step: string; readonly tier?: Tier }
-      if (tier === "irreversible") return yield* refuse("irreversible", `Step ${step} at ${entry.seq} is irreversible`)
-      if (tier === "compensable") {
-        return yield* refuse("compensation_failed", `Step ${step} at ${entry.seq} is compensable, and compensation is not built`)
-      }
-    }
+    yield* validate(entries)
     const now = yield* Clock.currentTimeMillis
     yield* durable.internals.evict(at.run)
     const fence = yield* Effect.orDie(store.truncate(at.run, at.seq, durable.internals.owner, now))

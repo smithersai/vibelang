@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isMain } from "./is-main.mjs"
 import { readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -32,7 +33,7 @@ export function check(root) {
   return checkAdoptedServiceShape(loadRows(root), readFileSync(join(root, "docs/design/src/900-appendices.md"), "utf8"))
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const root = fileURLToPath(new URL("../", import.meta.url))
   for (const problem of check(root)) {
     console.error(problem)

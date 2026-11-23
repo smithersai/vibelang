@@ -1,3 +1,4 @@
+import { isMain } from "../is-main.mjs"
 import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
@@ -22,7 +23,7 @@ export function select(paths) {
   return selected.sort()
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const args = process.argv.slice(2)
   let paths
   if (!args.length) paths = readFileSync(0, "utf8")

@@ -9,6 +9,8 @@ import { addVitePlusIgnores, addEslintIgnore, addEslintImportParsers, addEslintV
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
 import { wireTsdownConfigs } from "./tsdown.mjs"
 import { dprintConfigNames, editDprintConfig, prettierConfig, readDprintConfig } from "./formatter-configs.mjs"
+import { isProtectedFile } from "./test-diff.mjs"
+import { quote } from "./util.mjs"
 
 // An ast-grep rule's ignores gain the declaration sidecars, x.d.vibe.ts, which
 // a TypeScript rule otherwise scans as TypeScript, reporting each finding of a
@@ -241,6 +243,50 @@ function group(script) {
 // again from the scripts oxlint invocations, so an older runs passes follow
 // the configurations the script names with -c.
 const generatedPasses = /^\((.*)\)((?: && (?:(?:NODE_OPTIONS=(?:"[^"]*"|'[^']*'|[^\s]+) )?eslint --config \S*\.vibelang\/eslint\.(?:[\w-]+\.)?config\.mjs(?: (?!--no-error)[^\s;&|]+)* --no-error-on-unmatched-pattern(?: --max-warnings(?:=| )0)?|node \S*\.vibelang\/oxlint\.mjs --vibe-native(?: [^\s;&|]+)*))+)$/
+
+function stripJsonComments(text) {
+  let out = "", inString = false, escape = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i], next = text[i + 1]
+    if (inString) {
+      out += ch
+      if (escape) escape = false
+      else if (ch === "\\") escape = true
+      else if (ch === "\"") inString = false
+      continue
+    }
+    if (ch === "\"") { inString = true; out += ch; continue }
+    if (ch === "/" && next === "/") {
+      i += 2
+      while (i < text.length && text[i] !== "\n") i++
+      if (i < text.length) out += "\n"
+      continue
+    }
+    if (ch === "/" && next === "*") {
+      i += 2
+      while (i + 1 < text.length && !(text[i] === "*" && text[i + 1] === "/")) i++
+      i++
+      continue
+    }
+    out += ch
+  }
+  return out.replace(/,(\s*[}\]])/g, "$1")
+}
+
+function parseJsoncObject(text) {
+  try {
+    const value = JSON.parse(text)
+    return value && typeof value === "object" && !Array.isArray(value) ? { value, strict: true } : null
+  } catch {
+    try {
+      const value = JSON.parse(stripJsonComments(text))
+      return value && typeof value === "object" && !Array.isArray(value) ? { value, strict: false } : null
+    } catch {
+      return null
+    }
+  }
+}
+
 export function wireDeveloperTools({ root, specsFor, ts }) {
   const changed = [], builds = [], warnings = []
   const write = (file, text) => {
@@ -249,7 +295,7 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
     writeFileSync(join(root, file), text); changed.push(file)
   }
   // Only the repository's own packages: a vendored tree keeps its scripts and configs.
-  const all = files(root).filter(ownedPaths(root))
+  const all = files(root).filter(ownedPaths(root)).filter(file => !isProtectedFile(file))
 
   const manifests = all.filter(file => posix.basename(file) === "package.json")
   warnings.push(...wireNodeSourceHooks({ root, all, manifests, ts, specsFor, write }).warnings)
@@ -306,7 +352,8 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
         needsCompiler = true
       }
       if (commandAt("prettier").test(next) && !next.includes("vibelang/prettier")) {
-        next = next.replace(/\bprettier\b/, "prettier --plugin vibelang/prettier")
+        const prettierCmd = /(^|[;&|(`{])(\s*(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|[^\s;&|()]+)\s+)*(?:(?:npx|bunx|yarn|bun\s+x|(?:pnpm|npm|yarn)(?:\s+--?[^\s;&|()]+(?:\s+(?:"[^"]*"|'[^']*'|[^\s;&|()]+))?)*\s+exec)\s+)?)prettier(?=[\s;&|)`}]|$)/
+        next = next.replace(prettierCmd, "$1$2prettier --plugin vibelang/prettier")
         needsCompiler = true
       }
       if (commandAt(String.raw`oxlint|vp\s+lint`).test(next)) {
@@ -675,12 +722,15 @@ export default await configFor()
       }
       write(rule, jsxGrammar ? sidecarIgnoreOf(sidecarIgnoreOf(original), jsxSidecar) : sidecarIgnoreOf(original))
     }
-    builds.push({ cwd: dir, command: `node ${posix.relative(dir, ".") ? posix.relative(dir, ".") + "/" : ""}node_modules/vibelang/bin/vibelang-ast-grep ${library}` })
+    const shellArg = value => /[\s"'\\$`|&;()<>*?[\]{}#!~]/.test(value) ? quote(value) : value
+    const binPath = `${posix.relative(dir, ".") ? posix.relative(dir, ".") + "/" : ""}node_modules/vibelang/bin/vibelang-ast-grep`
+    builds.push({ cwd: dir, command: `node ${shellArg(binPath)} ${shellArg(library)}` })
     needsCompiler = true
   }
   if (builds.length) {
+    const shellArg = value => /[\s"'\\$`|&;()<>*?[\]{}#!~]/.test(value) ? quote(value) : value
     const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
-    const commands = builds.map(b => `(cd ${b.cwd} && ${b.command})`).join(" && ")
+    const commands = builds.map(b => `(cd ${shellArg(b.cwd)} && ${b.command})`).join(" && ")
     const previous = pkg.scripts?.postinstall ?? ""
     if (!previous.includes("vibelang-ast-grep")) {
       pkg.scripts = { ...pkg.scripts, postinstall: previous ? `(${previous}) && ${commands}` : commands }
@@ -693,7 +743,18 @@ export default await configFor()
     const path = "package.json"
     const pkg = JSON.parse(readFileSync(join(root, path), "utf8"))
     pkg.devDependencies = { ...pkg.devDependencies, vibelang: specsFor(".").vibelang }
-    if (needsLint) Object.assign(pkg.devDependencies, { eslint: "^9.39.5", "typescript-eslint": "^8.69.0" })
+    if (needsLint) {
+      const existingEslint = pkg.dependencies?.eslint ?? pkg.devDependencies?.eslint
+      if (!existingEslint) pkg.devDependencies.eslint = "^9.39.5"
+      else {
+        const major = /\d+/.exec(existingEslint)?.[0]
+        if (major !== undefined && Number(major) < 9) {
+          warnings.push(`package.json pins eslint ${existingEslint}; kept the existing pin instead of replacing it with ^9.39.5 required by the generated flat ESLint config`)
+        }
+      }
+      const existingTsEslint = pkg.dependencies?.["typescript-eslint"] ?? pkg.devDependencies?.["typescript-eslint"]
+      if (!existingTsEslint) pkg.devDependencies["typescript-eslint"] = "^8.69.0"
+    }
     write(path, JSON.stringify(pkg, null, 2) + "\n")
   }
   return { changed: [...new Set(changed)], builds, warnings }

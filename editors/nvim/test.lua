@@ -109,10 +109,10 @@ check("diagnostics: TS2322 on broken.vibe", function()
   end)
 end)
 
-check("diagnostics: EK1003 with source EK on wait.vibe", function()
-  local buf = edit("src/wait.vibe")
-  wait_for("EK1003", function()
-    return has_diagnostic(buf, 1003, "EK")
+check("diagnostics: EK0102 with source EK on old-await.vibe", function()
+  local buf = edit("src/old-await.vibe")
+  wait_for("EK0102", function()
+    return has_diagnostic(buf, 102, "EK")
   end)
 end)
 
@@ -180,8 +180,8 @@ check("parse: fixture sources have their expected syntax", function()
     if name:match("%.vibe$") then
       local text = table.concat(vim.fn.readfile(vim.fs.joinpath(project, "src", name)), "\n")
       local root = vim.treesitter.get_string_parser(text, "vibe"):parse()[1]:root()
-      if name == "malformed-pipe.vibe" then
-        -- This LSP recovery fixture deliberately has no pipe topic/left operand.
+      if name == "malformed-pipe.vibe" or name == "old-catch.vibe" or name == "old-declarations.vibe" then
+        -- malformed-pipe.vibe has no pipe operand; old-catch.vibe and old-declarations.vibe keep retired syntax.
         assert(root:has_error(), name .. " must retain its intentional parse error")
       else
         assert(not root:has_error(), name .. " has an ERROR or MISSING node")
@@ -196,22 +196,22 @@ local tokens = {
   { "mutable items", 0, "keyword.modifier" },
   { "export schema", 7, "keyword.type" },
   { "export service", 7, "keyword.type" },
-  { "export control", 7, "keyword.type" },
   { "string!Gone", 6, "operator" },
   { "boolean!!", 7, "operator" },
   { "boolean!!", 8, "operator" },
-  { "} handle", 2, "keyword.exception" },
+  { "export effect function admit", 7, "keyword.coroutine" },
   { "provide SeatsLive", 0, "keyword" },
-  { "fork Seats", 0, "keyword.coroutine" },
-  { "join [first", 0, "keyword.coroutine" },
-  { "await.all", 6, "keyword.coroutine" },
+  { "fork seats.take", 0, "keyword.coroutine" },
+  { "join first", 0, "keyword.coroutine" },
+  { "try.all [", 0, "keyword.exception" },
+  { "try.all [", 4, "keyword.coroutine" },
   { "for concurrent", 4, "keyword.repeat" },
-  { 'catch "guest"', 0, "keyword.exception" },
+  { 'catch () => "guest"', 0, "keyword.exception" },
   { "catch (e) => match", 0, "keyword.exception" },
   { "match (e)", 0, "keyword.conditional" },
   { "when Gone", 0, "keyword.conditional" },
   { "?? throw", 3, "keyword.exception" },
-  { "do { sleep", 0, "keyword.repeat" },
+  { "effect { try sleep", 0, "keyword.coroutine" },
   { "|> %", 0, "operator" },
   { "|> %", 3, "operator" },
   { "is Exit", 0, "keyword.operator" },
@@ -259,7 +259,7 @@ if nvim_treesitter ~= "" then
     local buf = quiet_buffer("src/forms.vibe")
     local names = capture_at(buf, "Array<string>", 0)
     assert(vim.tbl_contains(names, "type"), "Array: " .. table.concat(names, " "))
-    names = capture_at(buf, "export function admit", 0)
+    names = capture_at(buf, "export effect function admit", 0)
     assert(vim.tbl_contains(names, "keyword.import"), "export: " .. table.concat(names, " "))
     for _, query in ipairs({ "injections", "locals", "folds", "indents" }) do
       assert(vim.treesitter.query.get("vibe", query), "no " .. query .. " query")

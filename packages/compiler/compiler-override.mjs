@@ -1,8 +1,11 @@
-import { accessSync, closeSync, constants, openSync, readFileSync, readSync, realpathSync, statSync } from "node:fs"
+import { accessSync, closeSync, constants, existsSync, openSync, readFileSync, readSync, realpathSync, statSync } from "node:fs"
 import { basename, delimiter, dirname, join, resolve, sep } from "node:path"
 
-function executablePath(value) {
-  if (value.includes(sep) || process.platform === "win32" && value.includes("/")) return resolve(value)
+export function executablePath(value, baseDir = process.cwd()) {
+  if (value.includes(sep) || process.platform === "win32" && value.includes("/")) {
+    const fromCwd = resolve(value)
+    return existsSync(fromCwd) ? fromCwd : resolve(baseDir, value)
+  }
   const suffixes = process.platform === "win32" ? ["", ...(process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";")] : [""]
   for (const directory of (process.env.PATH ?? "").split(delimiter)) {
     for (const suffix of suffixes) {
@@ -14,7 +17,7 @@ function executablePath(value) {
       } catch {}
     }
   }
-  return resolve(value)
+  return resolve(baseDir, value)
 }
 
 function sameFile(left, right) {
@@ -48,4 +51,18 @@ export function checkedOverride(value, launcher) {
     throw new Error("vibelang: VIBELANG_BINARY points to a JavaScript launcher; select the native compiler executable instead.")
   }
   return value
+}
+
+// The npm launcher and the native platform packages both install bin/vibelang,
+// so read the shebang instead of trusting the filename.
+export function isNodeScript(file) {
+  if (/\.(?:[cm]?js)$/.test(file)) return true
+  let descriptor
+  try {
+    descriptor = openSync(file, "r")
+    const header = Buffer.alloc(256)
+    const count = readSync(descriptor, header, 0, header.length, 0)
+    return /^#![^\r\n]*\bnode(?:\s|$)/.test(header.subarray(0, count).toString("utf8"))
+  } catch { return false }
+  finally { if (descriptor !== undefined) closeSync(descriptor) }
 }

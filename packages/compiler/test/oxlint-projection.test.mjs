@@ -258,3 +258,21 @@ test("module body re-exports reach native lint rules across export forms", async
     }
   ), { seed: 341106, numRuns: 36 })
 })
+
+
+test("lintProjected reports unprojected diagnostics without crashing on EPIPE when the compiler exits early", async (t) => {
+  const large = "export const s = " + JSON.stringify("x".repeat(400_000)) + "\n"
+  const files = Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`src/f${i}.vibe`, large]))
+  const root = project(t, files)
+  const failing = join(root, "fail.sh")
+  writeFileSync(failing, "#!/bin/sh\nexit 1\n", { mode: 0o755 })
+  const result = await lintProjected({
+    config: {},
+    base: root,
+    cwd: root,
+    paths: ["."],
+    compiler: failing
+  })
+  const unprojected = result.output.diagnostics.filter((d) => d.code === "vibelang(unprojected)")
+  assert.equal(unprojected.length, 6, JSON.stringify(result.output.diagnostics))
+})

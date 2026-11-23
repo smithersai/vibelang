@@ -6,7 +6,7 @@
 //   node scripts/release/revision.mjs [root]                    # prints "<revision> <true|false>"; true is a clean tree
 //   node scripts/release/revision.mjs --manifest <file> [root]  # exits 1 unless this checkout may publish that manifest
 import { execFileSync } from "node:child_process"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync , realpathSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -75,7 +75,7 @@ export function publishProblems(root, manifest) {
   return problems
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if ((() => { try { return Boolean(process.argv[1]) && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)) } catch { return false } })()) {
   const args = process.argv.slice(2)
   const manifest = args[0] === "--manifest" ? args.splice(0, 2)[1] : undefined
   const root = resolve(args[0] ?? fileURLToPath(new URL("../../", import.meta.url)))

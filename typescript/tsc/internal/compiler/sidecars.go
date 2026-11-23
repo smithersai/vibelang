@@ -87,13 +87,16 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 		output = outputs[0]
 	}
 	sources := p.declarationSidecarSources()
+	gateOnDiagnostics := projectSidecarOptions || p.Options().NoEmitOnError.IsTrue()
 	if len(sources) == 0 {
+		if output != nil && !gateOnDiagnostics {
+			p.pruneStaleOwnedSidecars(nil, output)
+		}
 		return nil
 	}
-	// Private project emission may serve unaffected modules despite errors.
-	// Compatibility declarations are shared project outputs: publish them only
-	// after checking and declaration serialization both succeed.
-	if projectSidecarOptions {
+	// Private project emission and noEmitOnError builds publish compatibility
+	// declarations only after checking and declaration serialization both succeed.
+	if gateOnDiagnostics {
 		diagnostics := GetDiagnosticsOfAnyProgram(ctx, p, nil, true, p.GetBindDiagnostics, p.GetSemanticDiagnostics)
 		if ctx.Err() != nil || diagnosticsAffectBuild(diagnostics) {
 			return &EmitResult{EmitSkipped: true}
@@ -101,14 +104,25 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	}
 	// Overlapping roots can make one module's old colocated sidecar another
 	// module's selected output. Cleanup must not remove any selected output,
-	// regardless of the order in which the sources emit.
+	// regardless of the order in which the sources emit. Keep syntactically
+	// invalid files in selected too so their previous good sidecar is preserved.
 	selected := make(map[tspath.PathKey]bool, len(sources))
+	var emittable []*ast.SourceFile
 	for _, file := range sources {
 		sidecar, _ := p.vibeSidecarPaths(string(file.FileName()))
 		selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(sidecar))] = true
 		if native, ok := p.nativeDeclarationTarget(file); ok {
 			selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(native))] = true
 		}
+		if len(p.GetSyntacticDiagnostics(ctx, file)) == 0 {
+			emittable = append(emittable, file)
+		}
+	}
+	if len(emittable) == 0 {
+		if output != nil && !gateOnDiagnostics {
+			p.pruneStaleOwnedSidecars(selected, output)
+		}
+		return &EmitResult{EmitSkipped: true}
 	}
 	bodies := map[string]*ast.SourceFile{} // a body's file name, without its extension
 	for _, file := range sources {
@@ -118,12 +132,13 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	}
 	var publication []func() error
 	var publicationMutex sync.Mutex
+	var emittedFiles []tspath.RootedFilePath
 	// Declaration emit runs files in parallel; write is the caller's function
 	// and is called one at a time, so a caller may collect into a plain map.
 	publish := func(action func() error) error {
 		publicationMutex.Lock()
 		defer publicationMutex.Unlock()
-		if !projectSidecarOptions {
+		if !gateOnDiagnostics {
 			return action()
 		}
 		publication = append(publication, action)
@@ -208,6 +223,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				if err := write(native, want); err != nil {
 					return err
 				}
+				emittedFiles = append(emittedFiles, tspath.RootedFilePathFromNormalized(native))
 			}
 			if output == nil {
 				return nil
@@ -274,6 +290,9 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				if isBody && p.emitsDeclarationAt(data.SourceFile, sidecar) {
 					return nil
 				}
+				publicationMutex.Lock()
+				selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(sidecar))] = true
+				publicationMutex.Unlock()
 				if err := publish(func() error {
 					// Publish the replacement before pruning its old layout. A
 					// failed write must leave the previous declaration available.
@@ -281,6 +300,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 						if err := write(sidecar, text); err != nil {
 							return err
 						}
+						emittedFiles = append(emittedFiles, tspath.RootedFilePathFromNormalized(sidecar))
 					}
 					if output == nil {
 						return nil
@@ -302,7 +322,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 			},
 		})
 	}
-	result := emit(sources)
+	result := emit(emittable)
 	if result == nil {
 		return nil
 	}
@@ -322,7 +342,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	}
 	result.Diagnostics = append(result.Diagnostics, nativeDiagnostics...)
 	result.EmitSkipped = result.EmitSkipped || blocked.Load()
-	if projectSidecarOptions {
+	if gateOnDiagnostics {
 		if ctx.Err() != nil || result.EmitSkipped || diagnosticsAffectBuild(result.Diagnostics) {
 			result.EmitSkipped = true
 			return result
@@ -335,6 +355,10 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 			}
 		}
 	}
+	if output != nil && (!gateOnDiagnostics || !result.EmitSkipped) {
+		p.pruneStaleOwnedSidecars(selected, output)
+	}
+	result.EmittedFiles = emittedFiles
 	return result
 }
 

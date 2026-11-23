@@ -275,11 +275,9 @@ func (p *Parser) vibelangProgramArrow(params []*ast.Node, body *ast.Node, anchor
 	}
 	arrowToken := p.vibelangSynthesized(p.factory.NewToken(ast.KindEqualsGreaterThanToken), anchor)
 	arrow := p.factory.NewArrowFunction(nil, nil, p.newNodeList(paramsLoc, params), nil, nil, arrowToken, body)
-	start := body.Pos()
-	if len(params) != 0 {
-		start = params[0].Pos()
-	}
-	return p.vibelangSpanning(arrow, core.NewTextRange(start, body.End()))
+	span := nodesSpan(body.Loc, arrowToken)
+	span = nodesSpan(span, params...)
+	return p.vibelangSpanning(arrow, span)
 }
 
 // vibelangValueArrow reads a captured value without creating an Effect.

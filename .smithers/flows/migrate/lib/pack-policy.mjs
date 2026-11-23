@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync, statSync } from "node:fs"
 // Export routing and packing must describe the same public runtime tree.
 // Keep receipts outside js/: only js/ (including its loader records) is public.
 import { createHash } from "node:crypto"
+import { gunzipSync } from "node:zlib"
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, sep } from "node:path"
 
@@ -138,6 +139,64 @@ export function comparePacks(baseline, candidate, migrated = {}) {
 }
 
 /** Pack with the repository's publication config and lifecycle. Only the original tree may establish pack exclusions. */
+
+function parseTarSize(buf, offset) {
+  const first = buf[offset]
+  if ((first & 0x80) !== 0) {
+    let n = 0
+    for (let i = 1; i < 12; i++) n = n * 256 + buf[offset + i]
+    return n
+  }
+  const raw = buf.subarray(offset, offset + 12).toString("ascii").replace(/\0.*$/, "").trim()
+  return raw ? parseInt(raw, 8) : 0
+}
+
+function readTarEntries(archive) {
+  const data = gunzipSync(readFileSync(archive))
+  const entries = []
+  let offset = 0
+  let paxPath = null
+  let gnuLongName = null
+  while (offset + 512 <= data.length) {
+    const header = data.subarray(offset, offset + 512)
+    if (header.every(byte => byte === 0)) break
+    const nameField = header.subarray(0, 100).toString("utf8").replace(/\0.*$/, "")
+    const size = parseTarSize(header, 124)
+    const typeflag = String.fromCharCode(header[156] || 0x30)
+    const prefix = header.subarray(345, 500).toString("utf8").replace(/\0.*$/, "")
+    offset += 512
+    const body = data.subarray(offset, offset + size)
+    offset += Math.ceil(size / 512) * 512
+    if (typeflag === "L") {
+      gnuLongName = body.toString("utf8").replace(/\0.*$/, "")
+      continue
+    }
+    if (typeflag === "x") {
+      const text = body.toString("utf8")
+      let pos = 0
+      while (pos < text.length) {
+        const space = text.indexOf(" ", pos)
+        if (space < 0) break
+        const len = parseInt(text.slice(pos, space), 10)
+        if (!Number.isFinite(len) || len <= 0) break
+        const record = text.slice(space + 1, pos + len).replace(/\n$/, "")
+        const eq = record.indexOf("=")
+        if (eq > 0 && record.slice(0, eq) === "path") paxPath = record.slice(eq + 1)
+        pos += len
+      }
+      continue
+    }
+    if (typeflag === "g") continue
+    const fullName = paxPath ?? gnuLongName ?? (prefix ? `${prefix}/${nameField}` : nameField)
+    paxPath = null
+    gnuLongName = null
+    const clean = fullName.replace(/^\.\//, "")
+    if (typeflag === "5" || clean.endsWith("/")) continue
+    entries.push({ name: clean, body })
+  }
+  return entries
+}
+
 export async function packRepository(config, out, { upstream = false, baseline } = {}) {
   mkdirSync(out, { recursive: true })
   const packages = {}, skipped = {}
@@ -186,10 +245,11 @@ export async function packRepository(config, out, { upstream = false, baseline }
       const archives = generated ? [generated] : readdirSync(directory).filter(file => file.endsWith(".tgz"))
       if (archives.length !== 1) throw new Error("expected one package tarball for " + pkg.dir)
       const archive = join(generated ? root : directory, archives[0])
-      const listed = await must("tar --quoting-style=literal -tzf " + quote(archive), { cwd: root })
-      const files = listed.stdout.split("\n").filter(file => file && !file.endsWith("/")).map(file => file.replace(/^package\//, "")).sort()
-      const packed = await must("tar -xOzf " + quote(archive) + " package/package.json", { cwd: root })
-      const published = JSON.parse(packed.stdout)
+      const entries = readTarEntries(archive)
+      const files = entries.map(entry => entry.name.replace(/^package\//, "")).sort()
+      const manifestEntry = entries.find(entry => entry.name === "package/package.json")
+      if (!manifestEntry) throw new Error("expected package/package.json in tarball for " + pkg.dir)
+      const published = JSON.parse(manifestEntry.body.toString("utf8"))
       const refs = value => typeof value === "string" ? (isSidecar(value) ? [value] : [])
         : value && typeof value === "object" ? Object.values(value).flatMap(refs) : []
       const sidecarTargets = ["types", "typings", "main", "module", "exports", "imports"].flatMap(field => refs(published[field]))

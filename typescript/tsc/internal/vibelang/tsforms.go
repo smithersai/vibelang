@@ -88,6 +88,8 @@ type tsFormRule struct {
 	// find calls report for each construct in file, with the node the
 	// diagnostic stands at and the plan of its rewrite.
 	find func(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any))
+	// check, when set, reports diagnostics without computing discarded rewrite plans.
+	check func(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any))
 }
 
 // tsFormRules are registered by the rules' files.
@@ -106,7 +108,11 @@ func checkFormRules(c *checker.Checker, file *ast.SourceFile, messages []*Messag
 		if rule == nil {
 			continue
 		}
-		rule.find(c, file, func(at *ast.Node, rewrite *formRewrite, args ...any) {
+		scan := rule.check
+		if scan == nil {
+			scan = rule.find
+		}
+		scan(c, file, func(at *ast.Node, rewrite *formRewrite, args ...any) {
 			rewrite = preserveRewriteComments(file, rewrite)
 			m := rule.message
 			if rewrite != nil && rewrite.message != nil {

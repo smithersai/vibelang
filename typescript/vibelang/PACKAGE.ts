@@ -39,6 +39,8 @@ const shared = [
   S.file("//docs/tools/package.json"),
   S.file("//docs/tools/bun.lock"),
   S.file("//packages/compiler/bin/vibelang"),
+  S.file("//packages/compiler/binary.mjs"),
+  S.file("//packages/compiler/compiler-override.mjs"),
   S.file("//packages/compiler/format.mjs"),
   S.file("//packages/compiler/package.json"),
   S.file("//packages/compiler/bun.lock")

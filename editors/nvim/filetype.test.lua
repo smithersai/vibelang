@@ -46,5 +46,30 @@ for _, extension in ipairs({ "vibex", "vibe" }) do
     assert(vim.bo.syntax == (extension == "vibex" and "typescriptreact" or "typescript"), extension .. ": wrong fallback syntax")
   end
 end
+-- Monorepo hoisted compiler discovery (#571): nested package has its own tsconfig.json
+-- while node_modules/.bin/vibelang lives in an ancestor workspace directory.
+do
+  local root = vim.fn.tempname()
+  local bin_dir = vim.fs.joinpath(root, "node_modules", ".bin")
+  local pkg_src = vim.fs.joinpath(root, "packages", "app", "src")
+  vim.fn.mkdir(bin_dir, "p")
+  vim.fn.mkdir(pkg_src, "p")
+  local hoisted = vim.fs.joinpath(bin_dir, "vibelang")
+  vim.fn.writefile({ "#!/bin/sh", "exit 0" }, hoisted)
+  vim.fn.setfperm(hoisted, "rwxr-xr-x")
+  vim.fn.writefile({ "{}" }, vim.fs.joinpath(root, "packages", "app", "tsconfig.json"))
+  local nested_file = vim.fs.joinpath(pkg_src, "main.vibe")
+  vim.fn.writefile({ "export const n = 1" }, nested_file)
+  vim.cmd("enew")
+  vim.cmd("file " .. vim.fn.fnameescape(nested_file))
+  vim.cmd("filetype detect")
+  local started = starts[vim.api.nvim_get_current_buf()]
+  local expected = vim.uv.fs_realpath(hoisted) or hoisted
+  local got = started and (vim.uv.fs_realpath(started.cmd[1]) or started.cmd[1]) or nil
+  vim.fn.delete(root, "rf")
+  assert(started, "monorepo nested file: LSP not attached")
+  assert(got == expected, "expected hoisted compiler " .. expected .. ", got " .. tostring(got))
+end
+
 print("vibe/vibex filetypes, parsers and LSP attachment passed")
 vim.cmd("qa!")

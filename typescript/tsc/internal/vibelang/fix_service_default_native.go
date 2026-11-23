@@ -117,7 +117,7 @@ func legacyDefaultNativeClass(c *checker.Checker, file *ast.SourceFile, n *ast.N
 			continue
 		}
 		if ast.IsStatic(member) {
-			if name := member.Name(); name != nil && name.Text() == "key" {
+			if name := member.Name(); name != nil && !ast.IsComputedPropertyName(name) && name.Text() == "key" {
 				continue
 			}
 			statics = append(statics, span(member.Pos(), member.End()))

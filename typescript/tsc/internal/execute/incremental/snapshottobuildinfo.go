@@ -19,11 +19,16 @@ func snapshotToBuildInfo(snapshot *snapshot, program *compiler.Program, buildInf
 	if err != nil {
 		return nil, err
 	}
+	var vibeLang *core.VibeLangOptions
+	if !snapshot.options.VibeLang.EffectiveEquals(nil) {
+		vibeLang = snapshot.options.VibeLang
+	}
 	buildInfo := &BuildInfo{
 		Version:                 core.Version(),
 		Compiler:                CompilerBuild(),
 		ContentMapperIdentities: contentMapperIdentities,
 		Effect:                  snapshot.options.Effect,
+		VibeLang:                vibeLang,
 	}
 	to := &toBuildInfo{
 		snapshot:                snapshot,

@@ -200,6 +200,6 @@ Report a bug in the published packages, with a minimal reproduction, in [Issues]
 
 ## License
 
-[MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
+[MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it — `vibelang`, `vibelang-<platform>`, `@smthrs/cli-win32-x64`, `@smthrs/cli-win32-arm64`, and `vibelang-typescript` — which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,554 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,586 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

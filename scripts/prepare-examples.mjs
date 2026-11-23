@@ -1,3 +1,4 @@
+import { isMain } from "./is-main.mjs"
 // Stage example sources for repository checks without changing their published pins.
 import { cpSync, readFileSync, writeFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
@@ -18,7 +19,7 @@ export function prepareExample(source, destination, packages, effect) {
   writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n")
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const [repository, destination, runtime] = process.argv.slice(2)
   if (!repository || !destination || !runtime) throw new Error("usage: prepare-examples.mjs <repository> <destination> <runtime.tgz>")
   const effect = JSON.parse(readFileSync(join(repository, "packages/runtime/package.json"), "utf8")).peerDependencies.effect

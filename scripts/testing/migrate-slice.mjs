@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isMain } from "../is-main.mjs"
 // Legacy file selector for external runners using the aggregate shell target.
 // The current migrate-test Suite schedules per-file targets and does not read
 // scripts/migrate-test-slice. Keep this helper for older checkouts.
@@ -31,7 +32,7 @@ export function selectedFiles(files, text, host = hostname()) {
   return sliceFiles(files, slice)
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isMain(import.meta.url)) {
   const text = existsSync(sliceFile) ? readFileSync(sliceFile, "utf8") : undefined
   try {
     const selected = selectedFiles(process.argv.slice(2), text)

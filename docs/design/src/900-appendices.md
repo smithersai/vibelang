@@ -1034,7 +1034,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1096 records)</summary>
+<summary>Parser and lowering hooks (1101 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1225,6 +1225,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.mToken ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.mString ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.mBinary ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
+| ` parser/vibelang_match.go:nodesSpan ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.mParens ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.mCall ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.mProperty ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
@@ -2000,6 +2001,10 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_durable.go:Parser.durableSchemaOf ` | ` admission:durable ` | ` 900-appendices.md#TaskDeclaration ` | ` support ` | VIP-44/55: never and void boundaries map to Schema.Never and Schema.Void |
 | ` parser/vibelang_durable.go:Parser.durableSelfHandoffs ` | ` admission:durable ` | ` 900-appendices.md#WorkflowDeclaration ` | ` support ` | VIP-55: return W.to(…) in W's own body, typed by W's parameters |
 | ` parser/vibelang_durable.go:Parser.durableReached ` | ` admission:durable ` | ` 900-appendices.md#WorkflowDeclaration ` | ` support ` | VIP-55: the tasks and workflows a workflow body reaches, which W.layer composes |
+| ` parser/vibelang_durable.go:Parser.finalizeDurableWorkflows ` | ` admission:durable ` | ` 900-appendices.md#WorkflowDeclaration ` | ` support ` | VIP-55: deferred workflow W.layer composition after full-file parsing |
+| ` parser/vibelang_durable.go:addBindingNames ` | ` admission:durable ` | ` 900-appendices.md#WorkflowDeclaration ` | ` support ` | VIP-55: lexical binding tracking for workflow W.layer reachability |
+| ` parser/vibelang_durable.go:collectStatementScopeBindings ` | ` admission:durable ` | ` 900-appendices.md#WorkflowDeclaration ` | ` support ` | VIP-55: lexical block scope tracking for workflow W.layer reachability |
+| ` parser/vibelang_durable.go:collectVarBindings ` | ` admission:durable ` | ` 900-appendices.md#WorkflowDeclaration ` | ` support ` | VIP-55: hoisted var scope tracking for workflow W.layer reachability |
 | ` parser/vibelang_effect_assertion.go:Parser.withVibeLangExpressionASI ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
 | ` parser/vibelang_effect_assertion.go:Parser.parseVibeLangExpressionAllowInASI ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
 | ` parser/vibelang_effect_assertion.go:Parser.parseVibeLangExpressionInitializer ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
@@ -2262,7 +2267,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1704` | a `join` operand not assignable to `Fiber.Fiber<any, any>` | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1705` | a `fork.` owner other than `in(s)`, `scoped` or `detached`: `fork.other e` | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1706` | a `fork.in(s)` scope operand not assignable to `Scope.Scope` | 17 | [Running Effects](002-running.md#fork-and-join) |
-| `EK1707` | a bare `fork { … }` block; write `fork effect { … }` | 2, 17 | [Migration](007-tooling.md#legacy-fork-try-statement-and-wire-migration) |
+| `EK1707` | a bare `fork { … }` block; write `fork effect { … }` (enforcement held pending migration completion, per Chapter 7) | 2, 17 | [Migration](007-tooling.md#legacy-fork-try-statement-and-wire-migration) |
 | `EK1801` | an operand that is not an array of Effects, using assignability to `ReadonlyArray<Effect.Effect<any, any, any>>`, for `try.all`, `try.race`, `try.any` or `try.allSettled` | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
 | `EK1802` | a retired `await.all`, `await.race`, `await.any` or `await.allSettled`; write the `try` operation that replaces it | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
 | `EK1803` | a name after `try.` other than `all`, `race`, `any` or `allSettled`: `try.map x` | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
@@ -2385,7 +2390,7 @@ A transitional compiler may still print compatibility diagnostics from the old l
 | interim `EK9206` | error: a recursive function has a success type that depends on its own result, or the legacy partial-contract inference cannot break its call cycle | 1, 3 | Ordinary TypeScript inference and its own recursion diagnostics; no VibeLang recursion diagnostic |
 | interim `EK9207` | error: a service or control contract member has a body or initializer, or an instance member is placed in a legacy shape-only service body | 9 | Accepted service-member restrictions use `EK0902`; control syntax remains historical, not an accepted construct |
 | interim `EK9208` | error: a static service member has the same name as an instance service member | 9 | Accepted service shapes and their restricted static members follow the ordinary `Context.Service` counterpart |
-| interim `EK1003` | error: legacy compiler compatibility — `await using` is rejected by the legacy non-async fallback. Ordinary async code permits Promise-based iteration/disposal; effect code uses `EK0102`. Replay [example: main.vibe:1:1](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK1003). | 1, 5 | [Rule chapter](002-running.md) |
+| interim `EK1003` | error: legacy compiler compatibility — `await using` is rejected by the legacy non-async fallback, and `do` after `fork`, `uninterruptible`, `interruptible`, or `restore` is rejected by the parser (guiding `fork do { … }` to `fork effect { … }`). Ordinary async code permits Promise-based iteration/disposal; effect code uses `EK0102`. Replay [example: main.vibe:1:1](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK1003). | 1, 5 | [Rule chapter](002-running.md) |
 | interim `EK1015` | error: legacy compiler compatibility — the legacy checker rejects `yield*` in code it classified as an implicit program. Use `try` in effect code; ordinary JavaScript generators retain `yield*`. Replay [example: main.vibe:1:17](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK1015). | 1, 21 | [Rule chapter](002-running.md) |
 | interim `EK1017` | error: legacy compiler compatibility — `provide` is used as an expression. Use a `provide` statement and return from its block. Replay [example: main.vibe:1:37](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK1017). | 12 | [Rule chapter](005-services.md) |
 | interim `EK2114` | error: legacy compiler compatibility — a catch expression appears inside a legacy hatch body. Hatches are retired; native `.ts` code uses JavaScript try statements. Replay [example: main.vibe:1:42](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK2114). | 5, 6 | [Rule chapter](003-failures.md) |

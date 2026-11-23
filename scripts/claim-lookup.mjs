@@ -1,3 +1,4 @@
+import { isMain } from "./is-main.mjs"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
@@ -40,7 +41,7 @@ export function lookup(text, query, now = Date.now(), hours = 6) {
   }).sort((a, b) => Number(b.active) - Number(a.active) || Date.parse(b.timestamp) - Date.parse(a.timestamp))
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const [file, query, ...args] = process.argv.slice(2)
   let now = Date.now()
   if (args.length === 2 && args[0] === "--now") now = Date.parse(args[1])

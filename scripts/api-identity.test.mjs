@@ -1130,3 +1130,86 @@ test("sidecar self fixtures retain native library errors and semantic mutations"
     }, { types: "./index.d.ts" })
   }
 })
+
+test("declaration properties ignored by type identity differ (#539)", () => {
+  const pairs = [
+    ["constructor visibility",
+      "export declare class C { private constructor(); static make(): C }",
+      "export declare class C { constructor(); static make(): C }"],
+    ["protected constructor visibility",
+      "export declare class C { protected constructor(); static make(): C }",
+      "export declare class C { constructor(); static make(): C }"],
+    ["abstract member",
+      "export declare abstract class A { abstract m(): void }",
+      "export declare abstract class A { m(): void }"],
+    ["variance annotation",
+      "export interface Box<in out T> { v: T }",
+      "export interface Box<T> { v: T }"],
+    ["const type parameter",
+      "export declare function f<const T>(x: T): T",
+      "export declare function f<T>(x: T): T"],
+    ["explicit this parameter",
+      "export declare class C { m(this: C): void; static s: 1; n: number }",
+      "export declare class C { m(): void; static s: 1; n: number }"],
+    ["auto-accessor modifier",
+      "export declare class C { m(this: C): void; static s: 1; n: number }",
+      "export declare class C { m(this: C): void; static s: 1; accessor n: number }"],
+    ["method versus property signature",
+      "export interface I { m(x: string): void }",
+      "export interface I { m: (x: string) => void }"],
+  ]
+  for (const [label, before, after] of pairs) {
+    pass(before, before)
+    pass(after, after)
+    const diff = compare(before, after)
+    assert.equal(diff.comparisonComplete, true, label + ": " + JSON.stringify(diff))
+    assert.equal(diff.identical, false, label + " should differ: " + JSON.stringify(diff))
+    assert.ok(diff.typeDifferences.length > 0, label + " should report a type difference: " + JSON.stringify(diff))
+  }
+})
+
+test("declare enum and declare const enum differ (#539)", () => {
+  const plain = "export declare enum E { A = 1 }"
+  const constant = "export declare const enum E { A = 1 }"
+  pass(plain, plain)
+  pass(constant, constant)
+  const diff = compare(plain, constant)
+  assert.equal(diff.comparisonComplete, true, JSON.stringify(diff))
+  assert.equal(diff.identical, false, JSON.stringify(diff))
+})
+
+test("value re-export becoming type-only inside namespace re-export differs (#539)", () => {
+  const shared = {
+    "index.d.ts": 'export * as ns from "./dep";',
+    "x.d.ts": "export declare class X { a: number }",
+  }
+  fixture(
+    { ...shared, "dep.d.ts": 'import { X } from "./x"; export { X };' },
+    { ...shared, "dep.d.ts": 'import type { X } from "./x"; export { X };' },
+    (a, b) => {
+      const diff = compareApiIdentity(ts, a, b)
+      assert.equal(diff.comparisonComplete, true, JSON.stringify(diff))
+      assert.equal(diff.identical, false, JSON.stringify(diff))
+      assert.ok(
+        diff.nameDifferences.some(d => d.export === "ns.X" && d.meaning === "runtime value" && d.side === "before"),
+        JSON.stringify(diff),
+      )
+    },
+    { types: "./index.d.ts" },
+  )
+})
+
+test("exactOptionalPropertyTypes distinguishes a?: T from a?: T | undefined (#539)", () => {
+  const tsconfig = JSON.stringify({ compilerOptions: { strict: true, exactOptionalPropertyTypes: true } })
+  fixture(
+    { "tsconfig.json": tsconfig, "index.d.ts": "export declare const o: { a?: string };" },
+    { "tsconfig.json": tsconfig, "index.d.ts": "export declare const o: { a?: string | undefined };" },
+    (a, b) => {
+      const diff = compareApiIdentity(ts, a, b)
+      assert.equal(diff.comparisonComplete, true, JSON.stringify(diff))
+      assert.equal(diff.identical, false, JSON.stringify(diff))
+      assert.ok(diff.typeDifferences.length > 0, JSON.stringify(diff))
+    },
+    { types: "./index.d.ts" },
+  )
+})

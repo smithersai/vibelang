@@ -27,6 +27,16 @@ func init() {
 			}
 			file.AsNode().ForEachChild(visit)
 		},
+		check: func(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
+			var visit func(*ast.Node) bool
+			visit = func(node *ast.Node) bool {
+				if isLowerable(node) && node.Type() != nil && inferSlotAnnotation(c, node.Type()) {
+					report(node.Type(), nil)
+				}
+				return node.ForEachChild(visit)
+			}
+			file.AsNode().ForEachChild(visit)
+		},
 	}
 }
 

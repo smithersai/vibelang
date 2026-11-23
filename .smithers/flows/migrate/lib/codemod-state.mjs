@@ -1,7 +1,8 @@
 import { captureSourceSnippets, refreshSourceSnippets } from "./source-snippets.mjs"
 // Write-ahead state for the batch's mechanical edits. Completion remains a
 // separate receipt: nextStep must never mistake "compiler started" for "done".
-import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, lstatSync, readFileSync, renameSync, statSync } from "node:fs"
+import { durableWrite, syncDirectory } from "./util.mjs"
 import { dirname, join } from "node:path"
 import { commandFiles } from "./bare-runners.mjs"
 import { isFixtureFile, isTestFile } from "./inventory.mjs"
@@ -16,23 +17,7 @@ import { assertModuleBoundary, rewriteExports, rewriteImports, rewriteScripts, v
 import { rewriteBuildEntrypoints } from "./build-entrypoints.mjs"
 import { assertComputedBuildEntrypoints } from "./computed-build-entrypoints.mjs"
 
-function syncDirectory(path) {
-  const fd = openSync(path, "r")
-  try { fsyncSync(fd) } finally { closeSync(fd) }
-}
-
-/** Replace atomically, and flush both the contents and the directory entry. */
-export function durableWrite(path, data, mode = 0o600) {
-  mkdirSync(dirname(path), { recursive: true })
-  const temp = path + ".migrate-tmp"
-  const fd = openSync(temp, "w", mode)
-  try {
-    writeFileSync(fd, data)
-    fsyncSync(fd)
-  } finally { closeSync(fd) }
-  renameSync(temp, path)
-  syncDirectory(dirname(path))
-}
+export { durableWrite }
 
 export const saveState = (path, state) => durableWrite(path, JSON.stringify(state, null, 2) + "\n")
 

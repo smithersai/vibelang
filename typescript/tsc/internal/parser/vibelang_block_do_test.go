@@ -20,12 +20,17 @@ func TestVibeLangBlockDoDiagnostic(t *testing.T) {
 				t.Fatalf("expected one EK1003, got %v", items)
 			}
 			d := items[0]
-			if !strings.Contains(d.MessageText(), keyword+" { ... }") || text[d.Pos():d.End()] != "do" {
-				t.Fatalf("wrong message or range: %v", d)
+			want := keyword + " { ... }"
+			if keyword == "fork" {
+				want = "fork effect { ... }"
+			}
+			if !strings.Contains(d.MessageText(), want) || text[d.Pos():d.End()] != "do" {
+				t.Fatalf("wrong message or range (want %q): %v", want, d)
 			}
 		})
 	}
 	for _, text := range []string{
+		"function f() { const fiber = fork effect { log(\"x\") } }",
 		"function f() { const fiber = fork { log(\"x\") } }",
 		"function f() { uninterruptible { restore { log(\"x\") } } }",
 		"function f() { do { work() } while (false) }",

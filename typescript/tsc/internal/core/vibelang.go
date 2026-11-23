@@ -67,6 +67,26 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.SidecarDir == other.SidecarDir && slices.Equal(o.Experimental, other.Experimental) && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
 }
 
+// EffectiveEquals compares only the compile-time VibeLang settings that affect
+// checking or emit (ignoring merge bookkeeping such as VibeOnly and
+// InvalidSeverities, and treating nil and an all-default struct as equal).
+func (o *VibeLangOptions) EffectiveEquals(other *VibeLangOptions) bool {
+	var a, b VibeLangOptions
+	if o != nil {
+		a = *o
+	}
+	if other != nil {
+		b = *other
+	}
+	return maps.Equal(a.Severities, b.Severities) &&
+		a.EffectGlobals == b.EffectGlobals &&
+		a.EffectModules == b.EffectModules &&
+		a.SidecarDir == b.SidecarDir &&
+		slices.Equal(a.Experimental, b.Experimental) &&
+		slices.Equal(a.TrustedPackages, b.TrustedPackages) &&
+		maps.Equal(a.Diagnostics, b.Diagnostics)
+}
+
 // VibeSeverityCode implements VIP-30/34/38, details 57 and 77. Legacy
 // checker messages outside Appendix B remain available only through the legacy
 // configuration. Appendix B categories, not legacy defaults, decide admission.

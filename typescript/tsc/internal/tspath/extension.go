@@ -239,5 +239,5 @@ func GetPossibleOriginalInputExtensionForExtension(path string) []string {
 		inner := ext[len(".d.") : len(ext)-len(".ts")]
 		return []string{"." + inner}
 	}
-	return []string{ExtensionTsx, ExtensionTs, ExtensionJsx, ExtensionJs}
+	return []string{ExtensionTsx, ExtensionTs, ExtensionVibex, ExtensionVibe, ExtensionJsx, ExtensionJs}
 }

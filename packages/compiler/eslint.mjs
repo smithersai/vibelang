@@ -1,3 +1,4 @@
+import { resolveNativeBinary } from "./binary.mjs"
 // vibelang/eslint: an ESLint parser for .vibe and .vibex files.
 //
 //   import vibelang from "vibelang/eslint"
@@ -58,7 +59,7 @@ export const vibeVisitorKeys = Object.freeze({
   VibeEffectType: ["success", "failure", "requirements"],
   VibeInferType: [],
   VibeForConcurrentStatement: ["iterable", "concurrency", "body"],
-  VibeIsExpression: ["callee", "arguments"],
+  VibeIsExpression: ["callee", "arguments", "subject", "pattern"],
   VibeMaskStatement: ["body"],
   VibeModuleDeclaration: ["id", "body"],
   VibePatternAssignment: ["expression"],
@@ -68,23 +69,14 @@ export const vibeVisitorKeys = Object.freeze({
   VibeServiceProvider: ["key", "value"]
 })
 
-const executable = process.platform === "win32" ? "vibelang.exe" : "vibelang"
-
 // nativeCompiler finds the compiler as bin/vibelang does, without starting
 // Node for each file: VIBELANG_BINARY, then native/vibelang beside this
 // package (a checkout build), then the installed platform package.
 function nativeCompiler() {
-  if (process.env.VIBELANG_BINARY) return resolve(process.env.VIBELANG_BINARY)
-  const local = fileURLToPath(new URL(`./native/${executable}`, import.meta.url))
-  if (existsSync(local)) return local
+  const found = resolveNativeBinary()
+  if (found !== undefined) return found
   const target = `${process.platform}-${process.arch}`
-  const name = process.platform === "win32" ? `@smthrs/cli-${target}` : `vibelang-${target}`
-  try {
-    const platform = createRequire(import.meta.url).resolve(`${name}/package.json`)
-    return join(dirname(platform), "bin", executable)
-  } catch {
-    throw new Error(`vibelang/eslint: no native compiler is installed for ${target}. Reinstall vibelang without omitting optional dependencies, or set VIBELANG_BINARY.`)
-  }
+  throw new Error(`vibelang/eslint: no native compiler is installed for ${target}. Reinstall vibelang without omitting optional dependencies, or set VIBELANG_BINARY.`)
 }
 
 // typescriptEslint loads scope analysis and visitor keys: beside this package

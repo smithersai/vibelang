@@ -89,11 +89,16 @@ async function start(): Promise<void> {
 
   const languages = servesTypeScriptFiles() ? [...vibeLanguages, ...typeScriptLanguages] : vibeLanguages
   output.info(`Starting ${server.command} --lsp --stdio (from ${server.from}) for ${languages.join(", ")} documents`)
+  const needsShell = process.platform === "win32" && /\.(?:cmd|bat)$/i.test(server.command)
+  const command = needsShell && /[\s&()^%!]/i.test(server.command) ? `"${server.command}"` : server.command
   const serverOptions: ServerOptions = {
-    command: server.command,
+    command,
     args: ["--lsp"],
     transport: TransportKind.stdio,
-    options: { cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath }
+    options: {
+      cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+      ...(needsShell ? { shell: true } : {})
+    }
   }
   const clientOptions: LanguageClientOptions = {
     documentSelector: languages.flatMap((language) => [
@@ -170,7 +175,7 @@ function findServer(): Server | undefined {
     return { command, from: "the vibelang.server.path setting" }
   }
 
-  const executable = process.platform === "win32" ? "vibelang.cmd" : "vibelang"
+  const executables = process.platform === "win32" ? ["vibelang.exe", "vibelang.cmd"] : ["vibelang"]
   const starts: string[] = []
   const active = vscode.window.activeTextEditor?.document
   if (active && vibeLanguages.includes(active.languageId) && active.uri.scheme === "file") starts.push(path.dirname(active.uri.fsPath))
@@ -180,15 +185,20 @@ function findServer(): Server | undefined {
   for (const folder of folders) starts.push(folder.uri.fsPath)
   for (const start of starts) {
     for (let dir = start; ; dir = path.dirname(dir)) {
-      const candidate = path.join(dir, "node_modules", ".bin", executable)
-      if (isExecutableFile(candidate)) return { command: candidate, from: path.join(path.basename(dir), "node_modules", ".bin") }
+      for (const executable of executables) {
+        const candidate = path.join(dir, "node_modules", ".bin", executable)
+        if (isExecutableFile(candidate)) return { command: candidate, from: path.join(path.basename(dir), "node_modules", ".bin") }
+      }
       if (path.dirname(dir) === dir) break
     }
   }
 
   for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
-    const candidate = dir === "" ? "" : path.join(dir, executable)
-    if (candidate !== "" && isExecutableFile(candidate)) return { command: candidate, from: "PATH" }
+    if (dir === "") continue
+    for (const executable of executables) {
+      const candidate = path.join(dir, executable)
+      if (isExecutableFile(candidate)) return { command: candidate, from: "PATH" }
+    }
   }
   return undefined
 }
