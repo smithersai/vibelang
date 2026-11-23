@@ -21,9 +21,13 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfsmatch"
 )
 
-const (
-	fileGlobPattern          = "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,vibe}"
-	recursiveFileGlobPattern = "**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,vibe}"
+// fileGlobExtensions are the source extensions a wildcard include matches:
+// VibeLang treats .vibe as .ts and .vibex as .tsx (007-tooling.md, "Config files").
+var fileGlobExtensions = []string{"js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "json", "vibe", "vibex"}
+
+var (
+	fileGlobPattern          = "*.{" + strings.Join(fileGlobExtensions, ",") + "}"
+	recursiveFileGlobPattern = "**/" + fileGlobPattern
 )
 
 // fileGlobPatterns returns the include file glob patterns for this command line, augmenting the
@@ -34,8 +38,7 @@ func (p *ParsedCommandLine) fileGlobPatterns() (fileGlob string, recursiveFileGl
 	if len(mapperExtensions) == 0 {
 		return fileGlobPattern, recursiveFileGlobPattern
 	}
-	extensions := make([]string, 0, 10+len(mapperExtensions))
-	extensions = append(extensions, "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "json", "vibelang")
+	extensions := slices.Clone(fileGlobExtensions)
 	for _, extension := range mapperExtensions {
 		extensions = append(extensions, strings.TrimPrefix(extension, "."))
 	}

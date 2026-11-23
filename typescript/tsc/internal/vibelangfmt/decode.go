@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -767,13 +768,84 @@ func (d *decoder) reindent(holder placeholder, pos int) string {
 		return holder.text
 	}
 	indent := lineIndent(d.text, pos)
+	literals := literalSpans(holder.text)
 	lines := strings.Split(holder.text, "\n")
+	at := len(lines[0]) + 1
 	for i := 1; i < len(lines); i++ {
+		start := at
+		at += len(lines[i]) + 1
+		if insideSpan(literals, start) {
+			// The line continues a string or template literal: its
+			// indentation is part of the literal's value.
+			continue
+		}
 		if strings.HasPrefix(lines[i], holder.indent) {
 			lines[i] = indent + lines[i][len(holder.indent):]
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+// literalSpans returns the spans of the string, template and regular
+// expression tokens of text, a held form's source text.
+func literalSpans(text string) []core.TextRange {
+	var spans []core.TextRange
+	s := scanner.NewScanner()
+	s.SetText(text)
+	// braces holds, for each open brace, whether it is a template's ${.
+	var braces []bool
+	previous := ast.KindUnknown
+	for token := s.Scan(); token != ast.KindEndOfFile; token = s.Scan() {
+		switch token {
+		case ast.KindOpenBraceToken:
+			braces = append(braces, false)
+		case ast.KindTemplateHead:
+			braces = append(braces, true)
+		case ast.KindCloseBraceToken:
+			if len(braces) != 0 && braces[len(braces)-1] {
+				if token = s.ReScanTemplateToken(false); token == ast.KindTemplateTail {
+					braces = braces[:len(braces)-1]
+				}
+			} else if len(braces) != 0 {
+				braces = braces[:len(braces)-1]
+			}
+		case ast.KindSlashToken, ast.KindSlashEqualsToken:
+			if !endsOperand(previous) {
+				token = s.ReScanSlashToken()
+			}
+		}
+		switch token {
+		case ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral, ast.KindTemplateHead,
+			ast.KindTemplateMiddle, ast.KindTemplateTail, ast.KindRegularExpressionLiteral:
+			spans = append(spans, core.NewTextRange(s.TokenStart(), s.TokenEnd()))
+		}
+		previous = token
+	}
+	return spans
+}
+
+// endsOperand reports whether a / after token divides rather than starts a
+// regular expression.
+func endsOperand(token ast.Kind) bool {
+	switch token {
+	case ast.KindIdentifier, ast.KindPrivateIdentifier, ast.KindNumericLiteral, ast.KindBigIntLiteral,
+		ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral, ast.KindTemplateTail,
+		ast.KindRegularExpressionLiteral, ast.KindCloseParenToken, ast.KindCloseBracketToken,
+		ast.KindCloseBraceToken, ast.KindThisKeyword, ast.KindSuperKeyword, ast.KindTrueKeyword,
+		ast.KindFalseKeyword, ast.KindNullKeyword, ast.KindPlusPlusToken, ast.KindMinusMinusToken:
+		return true
+	}
+	return false
+}
+
+// insideSpan reports whether pos lies strictly inside one of spans.
+func insideSpan(spans []core.TextRange, pos int) bool {
+	for _, span := range spans {
+		if span.Pos() < pos && pos < span.End() {
+			return true
+		}
+	}
+	return false
 }
 
 // apply writes the edits into the formatted text.

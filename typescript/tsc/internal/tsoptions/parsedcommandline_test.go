@@ -193,6 +193,9 @@ func TestParsedCommandLine(t *testing.T) {
 			// possible root file, or the config's root files are never reloaded for it.
 			assert.Assert(t, parsedCommandLine.PossiblyMatchesFileName("/dev/src/new.box"))
 			assert.Assert(t, parsedCommandLine.PossiblyMatchesFileName("/dev/src/new.ts"))
+			// The mapper's extensions add to VibeLang's own, never replace them.
+			assert.Assert(t, parsedCommandLine.PossiblyMatchesFileName("/dev/src/New.vibe"))
+			assert.Assert(t, parsedCommandLine.PossiblyMatchesFileName("/dev/src/New.vibex"))
 			assert.Assert(t, !parsedCommandLine.PossiblyMatchesFileName("/dev/src/new.vue"))
 			assert.Assert(t, !parsedCommandLine.PossiblyMatchesFileName("/dev/other/new.box"))
 
@@ -286,4 +289,18 @@ func TestParsedCommandLine(t *testing.T) {
 			assert.DeepEqual(t, withTypings.FileNames(), []tspath.RootedFilePath{"/dev/index.ts", "/cache/@types/pkg/index.d.ts"})
 		})
 	})
+}
+
+// 007-tooling.md, "Config files": include treats .vibe as .ts and .vibex as
+// .tsx, so a created file of either kind is a possible root file.
+func TestPossiblyMatchesVibeLangFileNames(t *testing.T) {
+	t.Parallel()
+	fs := tsoptionstest.NewVFS(map[string]string{}, tspath.CaseSensitive)
+	configFileName := "/p/tsconfig.json"
+	tsconfigSourceFile := tsoptions.NewTsconfigSourceFileFromFilePath(tspath.RootedFilePathFromNormalized(configFileName), "/p/tsconfig.json", `{ "include": ["src"] }`)
+	parsedCommandLine := tsoptions.ParseJsonSourceFileConfigFileContent(tsconfigSourceFile, fs, "/p", nil, nil, nil, nil)
+	assert.Assert(t, parsedCommandLine.PossiblyMatchesFileName("/p/src/New.vibe"))
+	assert.Assert(t, parsedCommandLine.PossiblyMatchesFileName("/p/src/nested/New.vibex"))
+	assert.Assert(t, !parsedCommandLine.PossiblyMatchesFileName("/p/src/New.vibelang"))
+	assert.Assert(t, !parsedCommandLine.PossiblyMatchesFileName("/p/other/New.vibex"))
 }

@@ -2265,12 +2265,13 @@ func (l *doLowering) spill(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 // preserves its value. Names can be reassigned, and property reads can call
 // getters, so neither is safe even when its syntax has no assignment.
 // Reading this can throw before super() initializes a derived constructor,
-// so it must also stay before any later operand's lifted statements.
+// so it must also stay before any later operand's lifted statements. The
+// #x of #x in o is a name, not a read, and cannot be read into a constant.
 func isPureRead(e *ast.Node) bool {
 	switch e.Kind {
 	case ast.KindNumericLiteral, ast.KindBigIntLiteral, ast.KindStringLiteral,
 		ast.KindNoSubstitutionTemplateLiteral, ast.KindTrueKeyword, ast.KindFalseKeyword,
-		ast.KindNullKeyword:
+		ast.KindNullKeyword, ast.KindPrivateIdentifier:
 		return true
 	}
 	return false
