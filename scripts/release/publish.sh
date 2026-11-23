@@ -6,8 +6,7 @@
 #
 #   sh scripts/release/publish.sh            # asks for a one-time password once
 #   sh scripts/release/publish.sh --dry-run  # checks everything, publishes nothing
-#   sh scripts/release/publish.sh --otp 123456
-#   NPM_OTP=123456 sh scripts/release/publish.sh
+# Set NPM_OTP in the environment for noninteractive publishing.
 #   VIBELANG_SKIP=win32 sh scripts/release/publish.sh  # omits win32 packages and their optional dependencies
 #
 # An identical tarball already published at this version is skipped, so rerunning after a
@@ -20,18 +19,14 @@ tarballs="$root/dist-npm/tarballs"
 registry=${VIBELANG_REGISTRY:-https://registry.npmjs.org/}
 dry=""
 otp=${NPM_OTP:-}
+unset NPM_OTP
 usage() {
-  echo "usage: sh scripts/release/publish.sh [--dry-run] [--otp <one-time-password>]" >&2
+  echo "usage: sh scripts/release/publish.sh [--dry-run]" >&2
   exit 2
 }
 while [ "$#" -gt 0 ]; do
   case $1 in
     --dry-run) dry=--dry-run; shift ;;
-    --otp)
-      [ "$#" -ge 2 ] && [ -n "$2" ] || usage
-      case $2 in -*) usage ;; esac
-      otp=$2
-      shift 2 ;;
     *) usage ;;
   esac
 done
@@ -86,7 +81,14 @@ done
 # npm records an absolute _resolved even for a relative tarball argument.
 # Ignore TMPDIR: it may point into the publisher's home or release bundle.
 stage=$(mktemp -d /tmp/vibelang-publish.XXXXXX)
-trap 'rm -rf "$stage"' EXIT
+tty_state=""
+restore_tty() {
+  if [ -n "$tty_state" ]; then
+    stty "$tty_state"
+    tty_state=""
+  fi
+}
+trap 'restore_tty; rm -rf "$stage"' EXIT
 trap 'exit 1' HUP INT TERM
 stage=$(CDPATH= cd -- "$stage" && pwd -P)
 for item in $todo; do
@@ -104,9 +106,19 @@ for item in $todo; do
   cp "$tarballs/$file" "$publish_path"
 done
 
+read_otp() {
+  tty_state=$(stty -g)
+  stty -echo
+  printf '%s' "$1" >&2
+  read_status=0
+  IFS= read -r otp || read_status=$?
+  restore_tty
+  printf '\n' >&2
+  return "$read_status"
+}
+
 if [ -z "$dry" ] && [ -z "$otp" ]; then
-  printf 'npm one-time password (press Enter if your account does not use one): '
-  read -r otp
+  read_otp 'npm one-time password (press Enter if your account does not use one): '
 fi
 
 for item in $todo; do
@@ -116,15 +128,13 @@ for item in $todo; do
   file=${rest#*=}
   while :; do
     set -- npm publish "$stage/$file" --registry "$registry" --access public
-    [ -z "$otp" ] || set -- "$@" --otp "$otp"
     [ -z "$dry" ] || set -- "$@" --dry-run
-    if "$@"; then
+    if npm_config_otp="${otp:-${npm_config_otp:-}}" "$@"; then
       if [ -n "$dry" ]; then echo "publish: $name@$package_version checked (dry run)"; else echo "publish: $name@$package_version published"; fi
       break
     fi
     [ -z "$dry" ] || exit 1
-    printf 'publish: %s failed. Enter a new one-time password to retry, or press Enter to stop: ' "$name"
-    read -r otp
+    read_otp "publish: $name failed. Enter a new one-time password to retry, or press Enter to stop: "
     [ -n "$otp" ] || { echo "publish: stopped. Rerun this script to resume." >&2; exit 1; }
   done
 done

@@ -79,5 +79,5 @@ else
 fi
 
 echo "setup: local file dependencies point to $root; keep this checkout available."
-echo "setup: in projects created before this run, run bun update vibelang-runtime to install the new runtime."
+echo "setup: in projects created before this run, run bun update vibelang-runtime vibelang vibelang-vite to update the runtime, compiler, and Vite integration."
 printf '\nNext commands:\n  bun create vibelang my-app --no-git\n  cd my-app\n  bun run start\n'

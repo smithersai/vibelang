@@ -20,3 +20,13 @@ test("current install surfaces describe the six native release packages", () => 
     assert.doesNotMatch(text, /Windows binaries are not (?:available|published)|Windows via WSL|publishes four native|one of four/, path)
   }
 })
+
+test("the Windows maintainer guide lists the packed Windows tarballs", () => {
+  const compiler = JSON.parse(read("packages/compiler/package.json"))
+  const expected = Object.keys(compiler.optionalDependencies)
+    .filter(name => name.includes("win32"))
+    .map(name => `${name.slice(1).replace("/", "-")}-\${VERSION}.tgz`)
+    .sort()
+  const guide = read("docs/maintainers/windows-release.md")
+  assert.deepEqual([...new Set(guide.match(/[\w-]+-win32-[\w-]+-\$\{VERSION\}\.tgz/g))].sort(), expected)
+})

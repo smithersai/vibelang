@@ -10,10 +10,10 @@ const source = process.env.VIBELANG_COMPILER_BENCH_ROOT ?? fileURLToPath(new URL
 const quote = value => "'" + value.replaceAll("'", "'\\''") + "'"
 
 for (const mode of ["docs-1-empty", "docs-7-empty", "docs-1-partial", "docs-7-partial", "docs-0-complete"]) {
-  const docsExit = mode.startsWith("docs-") ? Number(mode.split("-")[1]) : 0
+  const docsExit = Number(mode.split("-")[1])
   const partial = mode.endsWith("-partial")
   const complete = mode.endsWith("-complete")
-  test((docsExit ? "compiler benchmark stops failed docs extraction: " : "compiler benchmark uses the requested build artifact: ") + mode, t => {
+  test((docsExit ? "compiler benchmark stops failed docs extraction: " : "compiler benchmark compiles the extracted docs corpus: ") + mode, t => {
     const root = mkdtempSync(join(tmpdir(), "vibelang bench contract-"))
     t.after(() => rmSync(root, { recursive: true, force: true }))
     const put = (path, text) => {
@@ -43,10 +43,7 @@ for (const mode of ["docs-1-empty", "docs-7-empty", "docs-1-partial", "docs-7-pa
     ].join("\n"))
     const compiler = (path, name) => executable(path,
       "#!/bin/sh\nexec " + quote(process.execPath) + " " + quote(core) + " " + quote(name) + ' "$@"\n')
-    const artifact = mode === "legacy" ? "typescript/built/local/tsc" : "packages/compiler/native/" + (mode === "windows-native" ? "vibelang.exe" : "vibelang")
-    const nativeName = mode === "legacy" ? "legacy" : "native"
-    compiler(artifact, nativeName)
-    const override = compiler("alternate/compiler", "override")
+    compiler("packages/compiler/native/vibelang", "native")
     // Only documentation extraction is substituted; synthetic generation,
     // module staging, measurement and table rendering run their real scripts.
     const corpus = join(root, "docs-corpus")
@@ -58,11 +55,9 @@ for (const mode of ["docs-1-empty", "docs-7-empty", "docs-1-partial", "docs-7-pa
     executable("bin/bun", docsExit || complete
       ? "#!/bin/sh\nprintf '%s' " + quote(extractionOutput) + "\necho fixture-docs-failed >&2\nexit " + docsExit + "\n"
       : "#!/bin/sh\nexit 0\n")
-    if (mode === "windows-native") executable("bin/uname", "#!/bin/sh\necho MINGW64_NT-fixture\n")
     const trace = join(root, "calls.jsonl")
     const env = { ...process.env, PATH: join(root, "bin") + delimiter + process.env.PATH, BENCH_CONTRACT_TRACE: trace }
     delete env.VIBELANG
-    if (mode === "override") env.VIBELANG = override
     const out = join(root, "output")
     const result = spawnSync("sh", [
       join(root, "scripts/bench/compiler.sh"), "--modules", "2", "--runs", "1", "--scale", "", "--out", out
@@ -81,8 +76,7 @@ for (const mode of ["docs-1-empty", "docs-7-empty", "docs-1-partial", "docs-7-pa
     }
     const calls = readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line))
     assert.equal(calls.length, complete ? 4 : 3)
-    const expected = mode === "override" ? "override" : nativeName
-    assert.ok(calls.every(call => call.compiler === expected))
+    assert.ok(calls.every(call => call.compiler === "native"))
     assert.deepEqual(calls[0].args, ["--version"])
     assert.deepEqual(calls.slice(1, 3).map(call => call.args), ["vibelang", "effect-ts"].map(name => [
       "-p", join(out, "synth", name, "tsconfig.json"), "--extendedDiagnostics", "--pretty", "false"

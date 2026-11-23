@@ -47,8 +47,8 @@ bun run start >"$scratch/stdout.txt" 2>&1 || {
   exit "$code"
 }
 cat "$scratch/stdout.txt"
-/usr/bin/grep -Fq 'Hello, VibeLang!' "$scratch/stdout.txt"
-/usr/bin/grep -Fq 'Recovered from EmptyName' "$scratch/stdout.txt"
+grep -Fq 'Hello, VibeLang!' "$scratch/stdout.txt"
+grep -Fq 'Recovered from EmptyName' "$scratch/stdout.txt"
 echo "e2e: PASS start (greeting and typed recovery)"
 step=test
 echo "e2e: test"

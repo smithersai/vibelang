@@ -235,7 +235,7 @@ diagnostic. The `failure` record identifies the stage, elapsed milliseconds and
 process memory use. The CLI prints the same result with `--json` and exits `2`.
 A failed comparison supplies no type-difference verdict.
 
-The CLI runs its comparison in a child with a `2 GiB` V8 heap limit. A fatal
+The CLI runs its comparison in a child with an initial `2 GiB` V8 heap limit. If the child is killed, the CLI can retry at `4 GiB` and then `8 GiB` when the machine has enough memory. A fatal
 allocation failure, a signal or an empty successful exit is an invalid receipt,
 printed as JSON with `--json` and exit `2`. The receipt records the child's
 signal, exit status and diagnostic byte count. Imported callers can use
@@ -354,9 +354,9 @@ any other:
 | An error in the module's body | Blocking, as for any input file. |
 | Source saved on one side only | Neither side is projected; the rules above apply. |
 
-In a package without `exports`, where every module is an entry point, the saved
-module is an entry point too. In a package with `exports`, it counts through the
-entry points that reach it, as a private module does.
+Without a `package.json`, every module is an entry point, including the saved module.
+A manifest with `types` and no `exports` declares one entry point. A saved module
+that is private counts through the published entry points that reach it.
 
 `result.absentDeclarations` marks such a record with `comparedFromSource: true`.
 Its `equal` field still reports the emit diagnostics, but it decides nothing:
