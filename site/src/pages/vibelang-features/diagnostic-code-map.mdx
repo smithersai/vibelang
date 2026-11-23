@@ -94,12 +94,15 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK1302` | a user-written `static` member or setter in an `error` or `schema error` body |
 | `EK1303` | type parameters on an `error` or `schema error` declaration |
 | `EK1304` | any other `RejectedElement` in an `error` or `schema error` body; an `implements` clause |
+| `EK1306` | two `error` or `schema error` body members on one line with no separator (`;` or newline) |
 | `EK1307` | an `error` or `schema error` declaration in a native TypeScript ambient context; use a native ambient class for an erased declaration |
+| `EK1308` | warning: an `abstract error` root is a legacy declaration form; use a union or an Effect TypeScript class |
 | `EK1401` | a namespace name that two subpaths export, or a subpath and the root |
 | `EK1501` | `export default schema S …`; write `export { S as default }` |
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory |
 | `EK1603` | `export default data D { … }`; write `export { D as default }` |
 | `EK1701` | `fork` or `join` outside effect code |
+| `EK1702` | `fork` or `join` used as a binding, label, or `effect` expression name inside effect code or its parameters |
 | `EK1703` | a `fork` operand that is not an Effect |
 | `EK1801` | a `try.all` operand that is not an array of Effects |
 | `EK1803` | a name after `try.` other than `all`, `race`, `any` or `allSettled` |
@@ -108,6 +111,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK1903` | `break` leaving a `for concurrent` body |
 | `EK1904` | `return` in a `for concurrent` body |
 | `EK1905` | a labeled `continue` naming a statement that encloses the `for concurrent` |
+| `EK1907` | a `for concurrent` limit not assignable to `Types.Concurrency` (`number \| "unbounded"`) |
 | `EK2001` | `for try` outside effect code |
 | `EK2002` | `return` in a `for try` head binding initialization or body |
 | `EK2003` | a labeled `break` or `continue` from a `for try` head binding initialization or body to a statement outside it |
@@ -134,6 +138,9 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK4609` | lint warning: `await` on a `Fiber` in an `async` function; use `await runPromise(Fiber.join(fiber))` |
 | `EK4610` | lint warning: `await` on a `Deferred` in an `async` function; use `await runPromise(Deferred.await(deferred))` |
 | `EK4701` | a `match` with no `default` over a finite union that misses a case; a guarded arm covers nothing |
+| `EK4703` | legacy compatibility: an `is` binding in a lexical position the legacy lowering cannot supply a home for |
+| `EK4853` | warning: omitted requirement slot on an Effect return type; write the requirements explicitly or omit the annotation to infer |
+| `EK4854` | warning: retired abstract-class service spelling; write a `service` declaration with its members and key |
 
 `EK0510` reports an unparenthesized `try`, `fork` or `join` on the left of `**`. Parenthesize the whole execution expression, as in `(try program) ** 2`. Native TypeScript unary expressions retain `TS17006`.
 

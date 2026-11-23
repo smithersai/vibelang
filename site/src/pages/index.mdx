@@ -150,6 +150,8 @@ await Effect.runPromise(main)
 
 Both programs print `Hello, Ada`, and both run on Effect. `error` declares the tagged error class, `service` declares the dependency, `effect function` returns an Effect, `try` runs one, `catch` handles the declared failure, and `provide` supplies the layer. The compiler infers the type of `greet` as `string!!Users`, which is `Effect<string, never, Users>`. [Welcome](/001-onboarding) walks through this program, and [Why VibeLang?](/getting-started/002-why-effect) makes the case, including Effect's own argument against a language.
 
+<figure className="vibe-diagram"><img className="vibe-diagram__light" src="/diagrams/effect-three-channels.svg" alt="Every Effect carries three compile-time channels: Success (A), Expected Errors (E), and Required Services (R)" /><img className="vibe-diagram__dark" src="/diagrams/effect-three-channels-dark.svg" alt="Every Effect carries three compile-time channels: Success (A), Expected Errors (E), and Required Services (R)" /><figcaption>Every Effect carries three compile-time channels: Success (A), Expected Errors (E), and Required Services (R)</figcaption></figure>
+
 ### TypeScript stays one step away
 
 The compiler is a fork of the TypeScript 7 compiler. It checks `.vibe` and `.ts` files in one program and emits JavaScript plus a `.d.vibe.ts` declaration beside each `.vibe` file, so TypeScript imports VibeLang functions as ordinary Effect functions. A `.ts` file can sit beside any `.vibe` file. Based on [Effect's Creating Effects](https://effect.website/docs/v4/getting-started/creating-effects#trypromise), this adapter wraps an `async` function from a `.ts` file:

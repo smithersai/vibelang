@@ -1,8 +1,8 @@
 # Getting Started
 
-Create a project, run it, test it, and find the guide you need. [Welcome](001-onboarding.md) explains what VibeLang is. This page gets a program running.
+Get a working VibeLang project running and tested in under two minutes, then see how every piece fits together. ([Welcome](001-onboarding.md) explains the motivation; this page gets code running on your machine.)
 
-## Create and run a project
+## 1. Create and run the starter
 
 You need Node `22.22.3` (`22.x`) or Node `24.11.1` or later. Bun is optional, at 1.4 or later; [running sources with Bun](setup/vibelang-cli.md#run-sources-with-bun) needs 1.4.2 or later.
 
@@ -29,15 +29,23 @@ Hello, VibeLang!
 Recovered from EmptyName
 ```
 
-`src/greeting.vibe` declares an `EmptyName` error and a `greeting` function that fails with it. `src/main.vibe` declares a `Greeter` service, supplies it with a `Layer.succeed` layer, looks it up with `const greeter = try Greeter`, recovers from the typed failure with a `catch effect` handler, and runs `main` with `NodeRuntime.runMain` at the top of the module. `src/greeting.test.vibe` tests both paths with `it.effect`. Vitest compiles `src/**/*.test.vibe` through `vibelang-vite`, so the tests need no build step.
+### What just ran?
 
-`npm run dev` (or `bun run dev`) waits until the compiler is watching before starting Node, then recompiles on every change and restarts Node when the output changes. Ctrl+C stops both watchers.
+Open the scaffolded files to see the three pieces of a VibeLang app:
 
-A build writes JavaScript to `dist/`, and for stock TypeScript tools a declaration pair per module, such as `greeting.d.vibe.ts` and the forwarding `greeting.d.ts`, with hidden `.vibelang-sidecar-*.owner` receipts, into `.vibe/declarations/`; the starter's `.gitignore` lists both folders, so `src/` holds only your sources.
+| File | Role |
+| --- | --- |
+| `src/greeting.vibe` | Declares `error EmptyName` and `effect function greeting(name)` that throws it on empty input. |
+| `src/main.vibe` | Declares a `Greeter` service, wires it with `Layer.succeed`, reads it via `try Greeter`, recovers from `EmptyName` with `catch effect`, and calls `NodeRuntime.runMain(main())` at module top level. |
+| `src/greeting.test.vibe` | Tests both success and failure paths with `it.effect` from `@effect/vitest`. Vitest compiles `.test.vibe` on the fly through `vibelang-vite`. |
 
-## Your first program
+Run `npm run dev` (or `bun run dev`) during development: it starts `vibelang --watch`, waits for the first build, and restarts Node whenever output changes. Press Ctrl+C to stop both.
 
-The starter's behavior fits in one file. An `effect` function returns an Effect, `throw` fails it with a typed error, `try` runs an Effect, `catch` handles the failure, and `NodeRuntime.runMain` starts `main`:
+A build writes JavaScript to `dist/` and declaration pairs (`greeting.d.vibe.ts`, forwarding `greeting.d.ts`, and `.vibelang-sidecar-*.owner` receipts) into `.vibe/declarations/`. Both directories are gitignored so `src/` stays clean.
+
+## 2. Your first program in one file
+
+Everything in the starter fits in 17 lines. Read it top to bottom — notice there are no imports for `Console`, `Effect`, or `try`/`catch`:
 
 ```vibe
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
@@ -60,42 +68,46 @@ NodeRuntime.runMain(main())
 // Output: Recovered from EmptyName
 ```
 
-The compiler infers the type of `greeting` as `string!EmptyName`, which is `Effect<string, EmptyName, never>`. A caller without a return annotation infers `EmptyName` in its own error channel when it runs `greeting`. A caller that declares a failure slot excluding `EmptyName` gets a compile error if it leaves that failure unhandled. For example, `effect function caller(): string!! { return try greeting("") }` promises no failures and is rejected; catch the error or include `EmptyName` in the return type. [The Effect Type](getting-started/003-the-effect-type.md) explains the contract, [Creating Effects](getting-started/005-creating-effects.md) adds failures, and [Running Effects](getting-started/009-running-effects.md) runs a program at the application boundary.
+> **Watch the compiler work for you.**
+> The compiler infers `greeting` as `string!EmptyName` (`Effect<string, EmptyName, never>`).
+>
+> - If a caller runs `try greeting(s)` with no return annotation, `EmptyName` automatically flows into the caller's own error channel.
+> - If a caller promises no failures (`effect function caller(): string!! { return try greeting("") }`), the compiler refuses to build until you either catch `EmptyName` or add it to the signature.
 
-## Set up your editor
+To understand the contract in depth, read [The Effect Type](getting-started/003-the-effect-type.md), [Creating Effects](getting-started/005-creating-effects.md), and [Running Effects](getting-started/009-running-effects.md).
 
-The editor extension ships inside the compiler package. For diagnostics and hovers in VS Code or Cursor, install it and open the project:
+## 3. Set up your editor
+
+The VS Code / Cursor extension ships inside the `vibelang` package:
 
 ```sh
 code --install-extension node_modules/vibelang/editor/vibelang.vsix
 ```
 
-[Installation](getting-started/004-installation.md) covers prerequisites, supported platforms, Neovim and Zed, and adding VibeLang to an existing project.
+For Neovim, Zed, platform prerequisites, or adding VibeLang to an existing codebase, see [Installation](getting-started/004-installation.md).
 
-## Debug your first program
+## 4. Debug with source maps and spans
 
-Run the emitted JavaScript with `node --enable-source-maps`, and stack traces map back to `.vibe` lines. Source maps do not record the caller chain, and VibeLang adds no spans of its own. Name a span where it matters with `try withSpan(effect { ... }, "load")`. [Debug stack traces](getting-started/012-devtools.md#debug-stack-traces) covers source maps, named spans and a debugging entry.
+Run emitted JavaScript with `node --enable-source-maps` so stack traces point back to `.vibe` lines. Source maps do not record async caller chains and VibeLang adds no hidden spans; attach a named span where it helps with `try withSpan(effect { ... }, "load")`. See [Debug stack traces](getting-started/012-devtools.md#debug-stack-traces).
 
-## Documentation versions
+## 5. Pick your next guide
 
-These pages target Effect **4.1.1**, the version the compiled output requires. On the Effect site, select version 4. Effect 3 examples use a different library version and do not establish which APIs exist here. When a signature on these pages differs from the one in your installed package, trust the package.
+These guides target **Effect 4.1.1**. On [effect.website](https://effect.website/docs/v4/api), select version 4 — Effect 3 APIs differ.
 
-## Find a subject
+| Goal | Start here |
+| --- | --- |
+| Learn the core model step by step | [The Effect Type](getting-started/003-the-effect-type.md) |
+| Handle typed failures, retries, timeouts | [Two Types of Errors](error-management/006-two-error-types.md) · [Expected Errors](error-management/014-expected-errors.md) |
+| Run work concurrently & safely cancel | [Basic Concurrency](concurrency/007-basic-concurrency.md) |
+| Wire dependencies with services & layers | [Managing Services](requirements-management/025-services.md) |
+| Guarantee resource cleanup | [Resource Management](resource-management/029-introduction.md) |
+| Validate external JSON & inputs | [Schema Introduction](schema/085-introduction.md) |
+| Logs, metrics, and tracing | [Logging](observability/031-logging.md) |
+| Process pull-based streams | [Streams Introduction](stream/053-introduction.md) |
+| Every VibeLang form vs. Effect TypeScript | [Cheat sheet](vibelang-features/115-cheat-sheet.md) |
 
-The directories group guides by task:
+## Using coding agents
 
-- [Error management](error-management/006-two-error-types.md): failures, recovery, retry and timeouts.
-- [Concurrency](concurrency/007-basic-concurrency.md): bounded parallel work and fiber lifetimes.
-- [Requirements](requirements-management/025-services.md): services and layers.
-- [Resources](resource-management/029-introduction.md): acquisition and cleanup.
-- [Schema](schema/085-introduction.md): decoding and validating external data.
-- [Observability](observability/031-logging.md): logs, metrics, spans and fibers.
-- [Streams](stream/053-introduction.md): incremental processing with backpressure.
-
-The numbered file names keep the learning sequence. You need not read every page in order. The [cheat sheet](vibelang-features/115-cheat-sheet.md) puts every VibeLang form beside the Effect code it replaces, and the [Effect 4 API reference](https://effect.website/docs/v4/api) lists the library signatures. In VibeLang, pass Effect values directly and run them with `try`.
-
-## Coding agents
-
-The `vibelang` package ships the skill an agent loads before it writes `.vibe` files, at `node_modules/vibelang/skills/vibelang/SKILL.md`. `npx vibelang agents init` installs it for the agents in a repository, with the language server and a check after each edit. [Coding agents](setup/coding-agents.md) has the steps. Give the model the guide for the task and your own `error` and `service` declarations, then check the result with the compiler and focused tests.
+The `vibelang` package ships an agent skill at `node_modules/vibelang/skills/vibelang/SKILL.md`. Run `npx vibelang agents init` to install it along with language-server hooks ([Coding agents](setup/coding-agents.md)). Point your agent at the relevant guide plus your `error` and `service` declarations, then verify with `vibelang` and tests.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started)

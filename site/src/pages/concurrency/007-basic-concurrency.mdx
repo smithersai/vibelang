@@ -1,17 +1,21 @@
 ---
 title: "Basic Concurrency"
-description: "Effect functions return Effect values without running them. Inside an effect function, use try to run an Effect. Effect's concurrency combinators overlap work, limit concurrency, and control..."
+description: "Running four independent network requests one after another wastes time. Launching four thousand at once melts your database. And if one fails halfway through, plain Promise.all leaves the other..."
 ---
 
 # Basic Concurrency
 
-Effect functions return Effect values without running them. Inside an effect function, use `try` to run an Effect. Effect's concurrency combinators overlap work, limit concurrency, and control cancellation; pass the work as Effect values so the combinator starts each operation at the right time.
+Running four independent network requests one after another wastes time. Launching four thousand at once melts your database. And if one fails halfway through, plain `Promise.all` leaves the other promises running in the background with no way to stop them.
 
-Running a completed Effect with `try` can continue in the same fiber turn. It adds no Promise job: Effect's scheduler decides when other fibers run, including through its cooperative work budget. Use `try yieldNow` to request a cooperative yield; one yield does not promise a global order for unrelated fibers.
+VibeLang gives you structured concurrency built on Effect fibers: overlap work on demand, bound how many run at once, and automatically cancel and clean up losers whenever a branch fails or a race finishes.
+
+<figure className="vibe-diagram"><img className="vibe-diagram__light" src="/diagrams/concurrency-modes.svg" alt="Timeline comparison of sequential all, bounded for concurrent(2), and unbounded try.all" /><img className="vibe-diagram__dark" src="/diagrams/concurrency-modes-dark.svg" alt="Timeline comparison of sequential all, bounded for concurrent(2), and unbounded try.all" /><figcaption>Timeline comparison of sequential all, bounded for concurrent(2), and unbounded try.all</figcaption></figure>
 
 ## Sequential, bounded, and unbounded work
 
 <figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/concurrent.jpg"><source src="/videos/concurrent.mp4" type="video/mp4" /></video><figcaption>try all runs calls together</figcaption></figure>
+
+Because calling an `effect function` returns an **unrun** Effect value, you hand those blueprints to a concurrency form and let it schedule them:
 
 ```vibe
 effect function task(id: number) {
@@ -27,10 +31,6 @@ effect function runTasks() {
   })
   const unbounded = try.all [task(5), task(6), task(7)]
   return { sequential, bounded, unbounded }
-}
-
-effect function stringify(value: unknown) {
-  return try Effect.try(() => JSON.stringify(value))
 }
 // Run in an effect function:
 //   {
@@ -49,39 +49,24 @@ effect function stringify(value: unknown) {
 // Output: {"sequential":[2,4],"bounded":[2,4,6,8],"unbounded":[10,12,14]}
 ```
 
-A head default or computed key runs inside the item's Effect, in both compiler and TypeScript-mapper output. It may use `try`; a default runs only when its bound value is `undefined`. The written body keeps its own block scope, so its local declarations do not shadow a head default.
+Choose the form that fits your workload:
 
-A destructuring head keeps native `for…of` binding inference. A default may supply a missing property of a fresh object literal, as in `for concurrent (const { n = 1 } of [{}]) { … }`. A named or explicitly typed `{}[]` still has no `n` property and reports `TS2339`, as in TypeScript.
+| Form | Concurrency | Best for |
+| --- | --- | --- |
+| `try all([a(), b()])` | Sequential (`1`) | Ordered steps or when you pass `{ concurrency: n }` / an object `{ user: load() }` |
+| `try.all [a(), b()]` | Unbounded | Fixed tuple of independent Effects (like `Promise.all`, plus cancellation) |
+| `try forEach(xs, f, { concurrency: 4 })` | Bounded (`4`) | Mapping a dynamic list into collected results without overwhelming a service |
+| `for concurrent(4) (const x of xs) { ... }` | Bounded (`4`) | Side-effecting concurrent loop (`continue` skips one item; `break` / `return` are errors) |
+| `try.allSettled [a(), b()]` | Unbounded | Collect every branch's `Exit<A, E>` without failing the whole batch |
 
-A non-iterable `for concurrent` operand reports `EK1901`; pass an `Iterable`, or use `for try` to consume a Stream. The item of a rejected operand has TypeScript’s error type, so a destructuring head or a read of the item in the body adds no further error, as in a TypeScript `for…of`. `any`, `never`, readonly arrays, sets and strings follow ordinary assignability, including a `Stream` that also implements `Iterable`. Independent type errors in an iterable operand or the loop body retain their TypeScript diagnostics. An iterable union keeps every possible element type: `number[] | Set<string>` gives `number | string` in the loop head, as a native `for...of` loop does.
+All of these preserve input order in their results, regardless of which fiber finishes first.
 
-An item from `any` keeps type `any`; identifier heads use ordinary TypeScript declarations and narrowing, just like pattern heads.
+> **Watch out: `for concurrent` bounds execution, not iterator pulling.**
+> For parallel concurrency (`> 1` or unbounded), Effect materializes a non-array iterable first (an existing array is reused by reference without calling a custom iterator). Never pass an infinite generator to `for concurrent` — use a `Stream` with `for try` for pull-based incremental consumption ([runtime witness](/spec/008-runtime#iterable-lifecycle)).
 
-With `noUnusedLocals`, an unused named head reports `TS6133`, as in native `for...of`; prefix an intentionally unused head with `_`.
+## Interrupting work and running cleanup
 
-`all` runs Effects sequentially by default; a positive integer limit bounds active operations. On Effect `4.1.1`, numeric limits below `1` still run every item sequentially. `for concurrent(n)` passes the limit unchanged to Effect, including fractional and non-finite values, without adding a range check or rounding. `try.all [...]` is the project's `Effect.all` with unbounded concurrency, like `Promise.all`. Its operands start in order, and one that fails before it suspends stops later ones from starting. Results keep the written order however the work finishes. Whitespace, comments and line breaks may separate `try`, the dot and the operation name. Parentheses let you access the result's properties: `(try.all [task(1), task(2)]).length` is `2`. For a constrained service or resource, set a finite limit with `forEach` or `for concurrent(n)`.
-
-The name after the dot in `try.all`, `try.race`, `try.any` or `try.allSettled` follows TypeScript's `new.target` naming rules. Unicode escapes are allowed in that name: `try.a\u006ey [job]` means `try.any [job]`.
-
-A concurrency limit bounds running work, not iterable pulling. In pinned Effect, `for concurrent(1)` pulls incrementally and an item failure does not call the iterator's `return()`. The parallel branch, including an omitted limit or `"unbounded"`, first materializes a non-array iterable; an endless one cannot finish that step. An existing array is reused by reference and its custom iterator is not called in that branch. Use a Stream with `for try` for ordered Stream consumption. See the [runtime witness](https://vibelang.sh/spec/008-runtime#iterable-lifecycle).
-
-A `return` cannot leave a `for concurrent` item, including its head binding initialization, computed member names and class heritage. These positions report `EK1904`. A nested method or function keeps its own returns. Use `continue` to finish one item. The same jump restrictions apply at every concurrency limit, including `1`. A labeled `continue` naming the concurrent loop itself, including any label in a chain, also finishes that item, including from a `do` expression; nested loops keep their own jump targets.
-
-A `break` or labeled `continue` cannot jump from an item to an enclosing statement (`EK1903` and `EK1905`). Class decorators, computed member names and heritage expressions keep the item's jump rules; member bodies keep their own context.
-
-A label cannot be repeated inside the statement it labels. Reusing an enclosing label in a `for concurrent` body reports `TS1114`; a nested function has its own label scope.
-
-A label named by `break` or `continue` in a `for concurrent` item counts as used for `allowUnusedLabels`, including references in class decorators, computed names and heritage expressions. In a chain, each label is checked separately.
-
-A written `for concurrent(limit())` limit is evaluated once, before the iterable expression, in both the native compiler and TypeScript mapper. The traversal calls the project's `Effect.forEach`, so item fibers and surrounding `fork` operations share the same Effect instance even when the runtime has a separate installation.
-
-Group a comma expression used as a limit with extra parentheses: `for concurrent((record(), 4)) (...)`. A bare comma list in the limit reports `TS1005`.
-
-A written concurrency limit must be assignable to Effect's `Types.Concurrency` (`number | "unbounded"`). Other types, including explicit `undefined` and `null`, report `EK1907`. Omitting the limit runs unbounded. Ordinary TypeScript assignability still admits `any` and `never`. If an unchecked written limit evaluates to `undefined` or `null`, Effect receives that value unchanged and runs items sequentially. The `"unbounded"` sentinel also works through a variable, parameter, type alias or generic constrained to `Types.Concurrency`.
-
-An explicit `try` in an object or class computed method name runs as the operands are built, before the collection starts. The method body remains deferred.
-
-## Interrupting computations
+When a computation is no longer needed, `Fiber.interrupt` cancels it and **waits** for all of its finalizers to finish before returning:
 
 ```vibe
 effect function cancelWork() {
@@ -98,9 +83,7 @@ effect function cancelWork() {
 // Output: true
 ```
 
-`Fiber.interrupt` requests cancellation and waits for termination, finalizers included; `Fiber.await` then returns an `Exit` describing the interruption instead of propagating it. `try interrupt` interrupts the current fiber. Interruption is outside the expected error channel, so ordinary `catch` doesn't handle it.
-
-## Attaching interruption cleanup
+Attach guaranteed cleanup with `ensuring` (runs on success, failure, defect, or cancellation) or `onInterrupt` (runs only on cancellation):
 
 ```vibe
 effect function cancelWithCleanup() {
@@ -123,11 +106,11 @@ effect function cancelWithCleanup() {
 // Output: interrupt returned
 ```
 
-The child signals `started` after both cleanup handlers are installed, and the parent awaits that `Deferred` before interrupting. Sleeping for an estimated startup time leaves a race: an interrupted child that never started has no cleanup to run.
+Notice the order of the output: both cleanup handlers finish **before** `interrupt returned` prints. The `Deferred` handshake ensures the child has started and installed its handlers before the parent interrupts it. (For acquired resources like file handles or connections, prefer `acquireRelease` inside `scoped` — see [Resource Management](/resource-management/029-introduction).)
 
-`ensuring` runs cleanup on every exit; `onInterrupt` adds work only for cancellation. Cleanup runs before the interrupting caller resumes. For acquired resources, `acquireRelease` inside `scoped(effect { ... })` registers release as part of acquisition, not in a later statement.
+## Automatic cancellation across siblings
 
-## Propagating cancellation across concurrent work
+If any branch inside `for concurrent` or `try.all` fails or is interrupted, Effect automatically interrupts every active sibling and waits for their cleanup:
 
 ```vibe
 effect function cancelBatch() {
@@ -150,17 +133,11 @@ effect function cancelBatch() {
 // Output: true
 ```
 
-The tokens in `for concurrent` use ordinary whitespace: a line break or multiline comment may separate `concurrent` from its limit or loop head. The `concurrent` keyword must be written literally; a Unicode escape reports `TS1260`, as in TypeScript's loop keywords. Ordinary identifiers may still contain Unicode escapes.
+All three branches run their `ensuring` cleanup even though branch 2 interrupted after 10 ms.
 
-Omitting the limit means unbounded concurrency. Local bindings, including a binding named `undefined`, do not change that default.
+## Racing: `try.race` vs. `try.any`
 
-The body's braces keep a separate scope from its `const` or `let` head binding, so a local declaration may reuse that binding's name.
-
-Above a limit of 1, `for concurrent` runs each item in its own fiber. At a limit of 1 or below, items run in order on the enclosing fiber. An interrupted branch stops the loop and interrupts its active siblings; so does an expected failure in the default concurrent traversal, cancelling work whose result is no longer needed. The parent waits for branch cleanup. A cause that holds a defect passes through ordinary `catch` with its failures re-raised as defects, as `Effect.catch` does. A cause with no expected failure, such as a lone interruption, never reaches the handler.
-
-The right-hand operand sees uninitialized loop-head bindings, as in JavaScript's `for…of`; a closure created there keeps those bindings rather than an outer or per-item binding. This also holds for an empty iterable and after an item reassigns a `let` head; calling the saved closure still encounters a `ReferenceError`. Outward `return` is rejected in both head binding initialization and the body (`EK1904`), including a `return` in a default's `do`. A `do` return in the concurrency-limit or iterable expression still targets the enclosing function. A labeled `break` from a `do` in the limit or iterable can leave an enclosing labeled block. The block keeps its own jump target when a declaration precedes the loop; an item-ending labeled `continue` must name the loop itself.
-
-## Racing under different winner rules
+<figure className="vibe-diagram"><img className="vibe-diagram__light" src="/diagrams/race-vs-any.svg" alt="try.race takes the first completion (failure included); try.any waits for the first success" /><img className="vibe-diagram__dark" src="/diagrams/race-vs-any-dark.svg" alt="try.race takes the first completion (failure included); try.any waits for the first success" /><figcaption>try.race takes the first completion (failure included); try.any waits for the first success</figcaption></figure>
 
 <figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/race.jpg"><source src="/videos/race.mp4" type="video/mp4" /></video><figcaption>try race: the first answer wins, the losers are cancelled</figcaption></figure>
 
@@ -194,9 +171,13 @@ effect function raceExamples() {
 // Output: {"firstSuccess":"replica","anySuccess":"east","firstCompletion":"primary"}
 ```
 
-The `try` operations (TC39 await operations proposal) keep the same-named `Promise` methods' choice of result, with two differences: the Effects that lose are interrupted, and an empty `try.race` or `try.any` never completes, where `Promise.any([])` rejects. `try.any` (`Effect.raceAll`) waits for a success, so an early failure doesn't defeat a branch that can still succeed; if none succeeds, it fails with the collected failure reasons. `try.race` (`Effect.raceAllFirst`) takes the earliest completion, failure included. Both interrupt and clean up the losers before returning. A named Effect function keeps Effect's meaning: `race`, like `Effect.race`, waits for a success.
+| Form | Winner rule | Losers | Empty array |
+| --- | --- | --- | --- |
+| `try.race [a(), b()]` | First completion (success **or** failure) | Interrupted & cleaned up | Never completes |
+| `try.any [a(), b()]` | First **success** (fails only if all fail) | Interrupted & cleaned up | Never completes |
+| `try race(a(), b())` | Effect's binary `race`: first **success** | Interrupted & cleaned up | N/A |
 
-## Inspecting the winner
+To observe which branch won a race without altering its outcome, pass an `onWinner` callback to `raceFirst`:
 
 ```vibe
 effect function inspectRace() {
@@ -226,23 +207,19 @@ effect function inspectRace() {
 // Output: [0]
 ```
 
-The synchronous `onWinner` callback observes the winning fiber and its index: zero for the first branch, one for the second. It doesn't replace the winning result and can't run an Effect. `Effect.result` captures expected failures as data; `Effect.exit` also captures defects and interruption.
-
 ## Coming from Effect
 
-`Effect.all([task(1), task(2)], { concurrency: "unbounded" })` becomes `try.all [task(1), task(2)]`, and `Effect.raceFirst(a, b)` becomes `try.race [a, b]`. Each element is an Effect value, so `task(1)` returns its Effect unrun and `try.all` starts it in its own fiber. Use `effect { ... }` for a branch that needs several statements.
+| Effect TypeScript | VibeLang |
+| --- | --- |
+| `Effect.all([a, b], { concurrency: "unbounded" })` | `try.all [a(), b()]` |
+| `Effect.raceAllFirst([a, b])` | `try.race [a(), b()]` |
+| `Effect.raceAll([a, b])` | `try.any [a(), b()]` |
+| `Effect.all([Effect.exit(a), Effect.exit(b)], { concurrency: "unbounded" })` | `try.allSettled [a(), b()]` |
+| `Effect.forEach(xs, f, { concurrency: 4, discard: true })` | `for concurrent(4) (const x of xs) { try f(x) }` |
 
-An operand that is not an array of Effects reports `EK1801`. TypeScript still reports independent errors inside its calls, literals and `satisfies` checks. A literal's `satisfies` check uses its written target type.
+`try.all`, `try.race`, `try.any`, and `try.allSettled` take arrays or tuples of Effects (`EK1801`). For an object of Effects, use `try all({ user: load() }, { concurrency: "unbounded" })`. The older `await.all` spellings are retired (`EK1802`).
 
-For `try.allSettled`, explicit array-literal elements keep their tuple positions and use the native `Effect.exit` argument checks. A literal without spreads wraps each element directly at runtime, adding no `.map` call for the source array. A named operand uses `xs.map(Effect.exit)` and produces an array. For a heterogeneous named tuple, write its known positions explicitly, `try.allSettled [xs[0], xs[1]]`. For an array whose element type is a union of different Effects, first widen it to one Effect type, such as `ReadonlyArray<Effect.Effect<number | string>>`; indexing that union array does not narrow each position. A literal spread contributes an array rest, even when its source is a fixed-length tuple. It is built once before its `.map(Effect.exit)` call. Use `try.allSettled []` when there are no tasks: mapping a named empty tuple or `never[]` inherits TypeScript's `unknown` service requirement.
-
-`try.all`, `try.race`, `try.any` and `try.allSettled` require arrays or tuples of Effects (`EK1801`). The check uses TypeScript assignability to `ReadonlyArray<Effect.Effect<any, any, any>>`, so `any`, arrays or tuples with `any` elements, and `never` pass; `unknown` does not. For an object, use `try all({ user: load() }, { concurrency: "unbounded" })`. The removed spellings `await.all`, `await.race`, `await.any` and `await.allSettled` report `EK1802`, including inside native `async` functions, arrows and methods. In effect code, use these operations instead. An async callable retains its JavaScript context: construct the corresponding Effect operation and wait with `await Effect.runPromise(...)`.
-
-Each operation runs its elements on separate fibers. Provide their service requirements around the combined `Effect`. The operations use the project's `Effect` instance, including the `Effect.exit` wrappers used by `try.allSettled`. A local binding named `Effect` does not change these operations.
-
-Both a braced body and a single statement support the same head patterns and `is` bindings in the TypeScript projection.
-
-The head of `for concurrent` must declare its item with `const` or `let`. A `var`, `using`, `await using`, or assignment head reports `EK1906`, including with `--noCheck`. To assign an existing variable, declare a fresh item and assign inside the body: `for concurrent (const item of items) { current = item }`.
+**Next:** [Fibers](/concurrency/047-fibers) for deep fiber control, or continue the Learning Path with [Effect's Modules](/getting-started/008-importing-effect).
 
 ---
 

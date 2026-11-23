@@ -1,54 +1,59 @@
 # Running Effects
 
-Runners start a program at an application boundary. Inside an effect function, `try` runs an Effect on the current fiber, so reserve runners for entry points and framework adapters.
+An Effect does nothing until you run it. There are only **two places** execution happens:
 
-A plain function cannot use `await`. Make it `async` to await a Promise, or mark it `effect` and write `try tryPromise(() => pending)` to wait for a Promise named `pending`. An Effect stays unrun when returned by a call: run it with `try program` in effect code, or `await runPromise(program)` in an `async` function. `sync(async () => …)` returns an Effect whose success is a Promise; it does not wait for that Promise.
+1. **Inside an `effect` function** — use `try program` to run an Effect on the current fiber.
+2. **At the application boundary** (module top level, HTTP handler, CLI entry) — call a **runner** once to kick off the fiber runtime.
 
-`try` before a value that is not an Effect, such as a number or a promise, is `EK0502`: drop the `try`, or wrap a promise with `Effect.tryPromise`. A `try` runs one Effect, including when parentheses, `as`, `satisfies` or a conditional wrap its operand. If that Effect succeeds with another Effect, the returned Effect stays cold until its own execution site. Plain calls inside the operand construct their values in source order.
+![Blueprint vs execution: try runs inside an effect function; a runner starts execution once at the edge](/diagrams/cold-vs-running.svg)
 
-Call a runner at module top level, in an `async` function, or in a plain function or callback (one that `effect` does not mark), such as a `describe` body or framework route handler, wherever it is passed. A runner directly inside code a fiber runs (an `effect` function or block) is EK1005; run the Effect with `try` or use `fork` instead. Tests in `.vibe` use `it.effect` from `@effect/vitest`; Promise-style tests stay in `.ts`.
+Calling a runner directly inside an `effect` function is a compile error (`EK1005`): you are already on a fiber, so use `try` or `fork` instead. Similarly, `try` works only on Effects inside effect code (`EK0501` outside, `EK0502` on non-Effects).
 
-An effect function at the top level builds an Effect without running it:
+## Choosing the right runner
+
+| Runner | Returns | When to use |
+| --- | --- | --- |
+| `NodeRuntime.runMain(main())` | `void` (handles signals & exit codes) | **CLI tools and Node servers** (default choice) |
+| `Effect.runPromise(program)` | `Promise<A>` | Integrating with `async`/Promise frameworks or top-level `await` |
+| `Effect.runPromiseExit(program)` | `Promise<Exit<A, E>>` | Need full `Cause` (errors, defects, interruption) without throwing |
+| `Effect.runSync(program)` | `A` | Guaranteed synchronous code only (throws `AsyncFiberError` if async) |
+| `Effect.runSyncExit(program)` | `Exit<A, E>` | Synchronous boundary that inspects the full `Exit` |
+| `Effect.runFork(program)` | `Fiber<A, E>` | Start background work at the edge and control/interrupt it later |
+
+> **Golden rule:** Every runner requires `R = never`. Provide your application's layers once at the edge (`provide AppLive { ... }` or `Effect.provide(main(), AppLive)`) before calling a runner.
+
+## Application entry point (`NodeRuntime.runMain`)
+
+A VibeLang module has no magic auto-run entry point — calling `main()` builds an Effect, and `NodeRuntime.runMain(main())` starts it and wires `SIGINT`/`SIGTERM` shutdown cleanly:
 
 ```vibe
-export const migrate = effect () => {
-  try Console.log("migrating")
+// main.vibe
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+
+export effect function main() {
+  try Console.log("application started")
 }
+
+NodeRuntime.runMain(main())
+// Output: application started
 ```
 
-Importing this module prints nothing. Calling `migrate()` builds an Effect; run it with `try migrate()` inside an effect function, or pass `migrate()` directly to a runner at module top level.
+With platform services: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`. In a browser, call `BrowserRuntime.runMain(Effect.provide(main(), layer))` ([Starting main in a browser](../platform/105-introduction.md#starting-main-in-a-browser)). When multiple framework route handlers need to share one long-lived service graph, use [ManagedRuntime](../036-runtime.md).
 
-An object-literal field can hold an effect function:
+### Starter scripts
 
-```vibe
-interface Journal { read(): number!! }
-const makeNoop = (): Journal => ({ read: effect () => 0 })
-```
-
-Constructing the object runs nothing; `journal.read()` returns an Effect, and `try journal.read()` runs it. Write a `Layer.sync` service literal's members the same way, `{ read: effect () => { return try work() } }`. A plain field stores the value its initializer returns, including an unrun Effect when the initializer calls an effect function.
-
-Constructing another Effect and rerunning one saved Effect are separate operations. Empty `effect` functions, arrows and blocks follow the same `Effect.gen` construction as nonempty bodies, including arrows with a written `void!!` contract; explicit sharing of a saved value remains sharing.
-
-Running the same Effect again starts a fresh execution of its body. Objects passed by the caller keep their identity; changing their contents remains visible to later executions. A factory that explicitly returns an Effect keeps the outer state it captured when called.
-
-`try` also accepts a union of Effects and keeps every alternative's success, error and requirement types. Its operand must be assignable to `Effect.Effect<any, any, any>`, as must a `catch` or `fork` operand and each element of a `try.all`, `try.race`, `try.any` or `try.allSettled` array. This admits `never` and `any`; narrow an `unknown` value or a possibly `undefined` Effect before running it. Merely having Effect's variance property is insufficient. An invalid `catch` operand, including a possibly `null` or `undefined` Effect, reports `EK0506` once while retaining independent TypeScript errors inside its arguments and handler. A computed `catch` head that runs other Effects first uses an explicit block, such as `effect { return (try load()).name } catch () => "guest"`.
-
-## Build and run a local project
-
-After [installing and scaffolding](004-installation.md), use the starter scripts:
+After scaffolding with `create vibelang` ([Installation](004-installation.md)):
 
 ```sh
-bun run build
-bun run start
-bun run dev
-bun run test
+bun run build   # Compile .vibe -> dist/ JS + .vibe/declarations/
+bun run start   # Build and run node --enable-source-maps dist/main.js
+bun run dev     # Watch-compile and auto-restart Node on change
+bun run test    # Run Vitest on src/**/*.test.vibe via vibelang-vite
 ```
 
-`build` runs `vibelang` with the project's `tsconfig.json`. `start` builds, then runs `node --enable-source-maps dist/main.js`. `dev` builds once, starts `vibelang --watch`, waits for its first successful watch build, then starts `node --watch --enable-source-maps dist/main.js`. `test` runs Vitest on `src/**/*.test.vibe` through `vibelang-vite`, which compiles the project with `vibelang` and serves the JavaScript, so tests need no prior build. Node and Vitest receive JavaScript; neither interprets `.vibe` sources.
+## Synchronous execution (`Effect.runSync`)
 
-The starter's `main.vibe` exports an effect function named `main` and calls `NodeRuntime.runMain(main())` at module top level, the application boundary reached by `node dist/main.js`. Its greeting and recovery messages quickly confirm that the service layer and typed failure both run.
-
-## Execute synchronous computations
+Use `runSync` only when you know the entire program completes synchronously:
 
 ```vibe
 // run: try Console.log(total)
@@ -57,13 +62,15 @@ effect function subtotal() {
 }
 
 const total = Effect.runSync(subtotal())
-// total: number, 56
+// total: number (56)
 // Output: 56
 ```
 
-`Effect.runSync` starts the program immediately and returns its result; an unhandled failure or defect escapes as a JavaScript exception at this boundary. If execution reaches asynchronous work, the runner throws `AsyncFiberError`, so use it only when the whole computation is known to stay synchronous.
+If any step suspends (like `sleep` or I/O), `runSync` throws `AsyncFiberError`.
 
-## Run promise-based computations
+## Promise execution (`Effect.runPromise`)
+
+For async work or Promise-based callers, `runPromise` executes the Effect and resolves to `A` (or rejects on failure):
 
 ```vibe
 // run: try Console.log(try promise(() => pending))
@@ -77,9 +84,9 @@ const pending = Effect.runPromise(preparedMessage())
 // Output: prepared
 ```
 
-`Effect.runPromise` starts execution and returns a promise for the success value, which rejects when the program fails. A foreign TypeScript caller can await that promise; a VibeLang caller runs `try preparedMessage()` inside its own effect function.
+## Inspecting full outcomes (`runSyncExit` / `runPromiseExit`)
 
-## Collect complete execution results
+To keep typed failures, defects, and interruption intact as data instead of throwing at the boundary, use the `Exit` variants:
 
 ```vibe
 // run: try Console.log(immediate._tag)
@@ -97,9 +104,9 @@ const eventual = Effect.runPromiseExit(preparedMessage())
 // Output: Failure
 ```
 
-An `Exit` is a success with a value or a failure with a `Cause`, which keeps expected failures, defects, and interruption instead of reducing them to an ordinary error value. `runSyncExit` reports asynchronous execution as a defect in its failure result; `runPromiseExit` supports work that pauses.
+## Background edge fibers (`Effect.runFork`)
 
-## Start and interrupt a fiber
+`runFork` starts a fiber immediately and returns a handle you can observe or interrupt:
 
 ```vibe
 // run: try Console.log(Exit.isFailure(try Fiber.await(running)))
@@ -116,41 +123,27 @@ Effect.runPromise(effect {
 // Output: true
 ```
 
-The empty logger layer keeps this heartbeat quiet. `Effect.runFork` returns a running `Fiber` to join, observe, or interrupt; `Fiber.interrupt` waits for its cleanup. Here a second runner acts as an external owner; in application logic, use `fork heartbeat()` and let the current fiber bound its lifetime.
+Inside application logic (already in an `effect` function), use `fork heartbeat()` instead of `Effect.runFork` so the child fiber's lifetime is tied to its parent.
 
-## Select an application boundary
+## Cold values and re-running
+
+Storing an Effect in a `const` or an object field executes nothing:
 
 ```vibe
-// main.vibe
-import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
-
-export effect function main() {
-  try Console.log("application started")
+export const migrate = effect () => {
+  try Console.log("migrating")
 }
-NodeRuntime.runMain(main())
-// node main.js loads the module and calls NodeRuntime.runMain
-// Output: application started
+
+interface Journal { read(): number!! }
+const makeNoop = (): Journal => ({ read: effect () => 0 })
 ```
 
-A module calls its runner explicitly. `main()` returns an Effect whether `main` is a function declaration or an effect arrow. `NodeRuntime.runMain(main())` follows Node's shutdown conventions. Import `NodeRuntime` from `@effect/platform-node/NodeRuntime`; the runner can receive a provided Effect, `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`, with `NodeServices` imported from `@effect/platform-node/NodeServices`. A browser entry calls `BrowserRuntime.runMain(Effect.provide(main(), layer))` at its top level, as [Starting main in a browser](../platform/105-introduction.md#starting-main-in-a-browser) shows. Top-level `await runPromise(main())` is another explicit boundary. Supply the application layer once around `main`: a runner needs all application requirements satisfied. For several framework entry points sharing services, use [ManagedRuntime](../036-runtime.md).
+Importing this module prints nothing. Running the same Effect value twice executes its body fresh each time. In tests, use `it.effect` from `@effect/vitest` rather than manual runners.
 
-| Runner | Result |
-| --- | --- |
-| `Effect.runSync` | `A` |
-| `Effect.runSyncExit` | `Exit<A, E>` |
-| `Effect.runPromise` | `Promise<A>` |
-| `Effect.runPromiseExit` | `Promise<Exit<A, E>>` |
-| `Effect.runFork` | `Fiber<A, E>` |
-
-The three contract channels do not say whether work runs synchronously. Prefer an asynchronous runner unless the host requires a synchronous answer and the operation can give one.
+> **Operator precedence tip (`EK0510`):** Parenthesize `try` before exponentiation: `(try program) ** 2`.
 
 ## Coming from Effect
 
-In `.vibe` and TypeScript files, pass the runner an Effect directly, as in `runPromise(main())`. Calling an exported effect function returns that Effect without running it.
+Pass the returned Effect straight to any runner: `runPromise(main())` or `NodeRuntime.runMain(main())`. Inside `.vibe` files, `runSync`, `runPromise`, `runSyncExit`, `runPromiseExit`, and `runFork` are also in scope without the `Effect.` prefix.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/running-effects)
-
-Before exponentiation, parenthesize the whole execution expression: `(try program) ** 2`. The unparenthesized form reports `EK0510`.
-
-
-A running call keeps a generic parameter's default unless an argument infers another type. A result variable's annotation does not create an omitted recovery branch or choose a different default by itself. Supply an explicit type argument when a producer with no inference input needs another instantiation.

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 340" role="img" aria-labelledby="t d">
+  <title id="t">Timeline comparison: sequential, bounded concurrency, and unbounded try.all</title>
+  <desc id="d">Compares execution timelines for 4 tasks under sequential all, bounded for concurrent(2), and unbounded try.all.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="340" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">Three ways to run multiple Effects</text>
+      <text x="36" y="64" class="sub">Time flows left to right. All three preserve result order and cancel active siblings if one fails.</text>
+
+      <!-- Row 1: Sequential -->
+      <text x="36" y="108" class="code" fill="#16202e">try all([a, b, c, d])</text>
+      <text x="36" y="126" class="p">Sequential (default)</text>
+      <rect x="270" y="90" width="130" height="38" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="335" y="114" text-anchor="middle" class="code-sm" fill="#16202e">a</text>
+      <rect x="406" y="90" width="130" height="38" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="471" y="114" text-anchor="middle" class="code-sm" fill="#16202e">b</text>
+      <rect x="542" y="90" width="130" height="38" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="607" y="114" text-anchor="middle" class="code-sm" fill="#16202e">c</text>
+      <rect x="678" y="90" width="130" height="38" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="743" y="114" text-anchor="middle" class="code-sm" fill="#16202e">d</text>
+
+      <!-- Row 2: Bounded -->
+      <text x="36" y="176" class="code" fill="#0f766e">for concurrent(2) (…)</text>
+      <text x="36" y="194" class="p">At most 2 active fibers</text>
+      <rect x="270" y="154" width="150" height="26" rx="6" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="345" y="171" text-anchor="middle" class="code-sm" fill="#0f766e">a</text>
+      <rect x="270" y="184" width="116" height="26" rx="6" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="328" y="201" text-anchor="middle" class="code-sm" fill="#0f766e">b</text>
+      <rect x="392" y="184" width="140" height="26" rx="6" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="462" y="201" text-anchor="middle" class="code-sm" fill="#0f766e">c (starts when b finishes)</text>
+      <rect x="426" y="154" width="130" height="26" rx="6" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="491" y="171" text-anchor="middle" class="code-sm" fill="#0f766e">d (starts when a finishes)</text>
+
+      <!-- Row 3: Unbounded -->
+      <text x="36" y="256" class="code" fill="#4338ca">try.all [a, b, c, d]</text>
+      <text x="36" y="274" class="p">Unbounded (all at once)</text>
+      <rect x="270" y="234" width="150" height="18" rx="4" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="345" y="247" text-anchor="middle" class="code-sm" fill="#4338ca">a</text>
+      <rect x="270" y="255" width="116" height="18" rx="4" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="328" y="268" text-anchor="middle" class="code-sm" fill="#4338ca">b</text>
+      <rect x="270" y="276" width="168" height="18" rx="4" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="354" y="289" text-anchor="middle" class="code-sm" fill="#4338ca">c</text>
+      <rect x="270" y="297" width="130" height="18" rx="4" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="335" y="310" text-anchor="middle" class="code-sm" fill="#4338ca">d</text>
+
+      <!-- Time axis -->
+      <line x1="270" y1="326" x2="824" y2="326" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <text x="826" y="330" class="k" fill="#6b7280">TIME</text>
+    
+</svg>

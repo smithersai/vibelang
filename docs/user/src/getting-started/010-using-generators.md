@@ -1,28 +1,22 @@
 # Sequencing Effects
 
-VibeLang sequences computations with effect functions and `try`, covering the control-flow tasks `Effect.gen` handles in TypeScript. `effect function*` produces Streams; plain `function*` keeps its JavaScript meaning.
+In Effect TypeScript, sequential code requires `Effect.gen(function* () { ... yield* ... })`. In VibeLang, you just write an `effect function` and use `try` where `async` functions use `await`.
 
-A function declaration keeps `function`: write `effect function load()` or `async function load()`. The removed shorthands `effect load()` and `async load()` report `EK0101`; write `function`. Methods keep `effect load()` and `async load()`, as in TypeScript. Computed names work in classes and object literals too: `effect [key]() { … }`, `static effect [key]() { … }` and `effect [key]<T>(value: T) { … }`.
+If you already know `async`/`await`, you already know 90% of VibeLang's control flow:
 
-`effect` and `async` remain identifiers outside their modifier positions. Expressions such as `effect as (Handler)` and `async satisfies (Handler)` keep TypeScript's assertion and checking rules.
+| JavaScript `async` | VibeLang `effect` |
+| --- | --- |
+| `async function load()` | `effect function load()` |
+| `async (x: number) => ...` | `effect (x: number) => ...` |
+| `class C { async run() {} }` | `class C { effect run() {} }` |
+| `await promise` | `try effectValue` |
+| `throw err` (untyped) | `throw new MyError()` (typed in `E`) |
 
-Typed `effect` arrows put their parameters in parentheses: `effect (x: number) => x`. Type parameters also require parentheses, as in `effect <T>(x: T) => x`. A bare typed or generic head reports `EK0109`, including with `--noCheck`; write the parentheses and preserves the body and comments.
+Always write `effect function name()` at declaration level (`effect name()` outside a class or object literal is `EK0101`), and parenthesize typed or generic arrow parameters: `effect (x: number) => x` (`EK0109`). Plain `function*` keeps JavaScript's generator meaning; `effect function*` builds a [Stream producer](../vibelang-features/112-producers.md).
 
-Optional class methods use `effect read?() { … }` or `effect [key]?() { … }`, as `async` methods do.
+## Step-by-step execution
 
-Method names follow TypeScript's property-name rules, including bigint literals: `effect 1n() { … }` works in a class or object literal.
-
-A class can extend a value named `effect`: in `class Derived extends effect { }`, the braces are the class body.
-
-`try` keeps native delegated iteration even when it is the function's only return. An unchecked empty iterable succeeds with `undefined`, an unchecked noniterable dies with its native `TypeError`, and iterator getters keep their evaluation order. An iterator getter on an `Effect` is still observed. Tail returns preserve the native error's `name` and `message`, including when a typed or generic operand receives an unchecked value.
-
-Comments do not supply a keyword: `export /* function */ effect load() { }` still needs `function` before `load`; retain that comment when adding the keyword.
-
-Pattern tests such as `effect is (Number)` and `async is (String)` keep their pattern meaning, including at the start of a statement. A method named `is` still uses `effect is(...) { ... }` or `async is(...) { ... }`.
-
-Write the `effect` keyword literally, as with `async`: Unicode escapes in a function modifier or an `effect` block report `TS1260`. Write the literal keyword. An ordinary identifier named `effect` may still use Unicode escapes.
-
-## Sequence computations
+Each `try` runs its Effect to completion before the next statement executes:
 
 ```vibe
 // run: try Console.log(try Effect.provide(invoice(3), ConfigProvider.layer(ConfigProvider.fromUnknown({ UNIT_PRICE: 4 }))))
@@ -36,11 +30,9 @@ effect function invoice(quantity: number) {
 // Output: 12
 ```
 
-Each `try` completes before the next statement runs. `Config.Finite("UNIT_PRICE")` builds a descriptor; `try` loads the setting and returns a number, and a loading failure stops the function. Effect functions use `try` where Effect TypeScript writes `yield*`; `Effect.gen` stays available as a library function.
+If `Config.Finite("UNIT_PRICE")` fails, execution short-circuits immediately — `Console.log` never runs, and `Config.ConfigError` flows into `invoice`'s error channel `E`.
 
-An unchecked `any` operand follows native `yield*` inference: its success remains `any` in exported declarations, with `unknown` error and environment channels. Returning that success keeps it as data; another `try` explicitly executes it.
-
-## Relate calls to async functions
+## Calling other effect functions
 
 ```vibe
 // run: try Console.log(try greeting())
@@ -56,11 +48,12 @@ effect function greeting() {
 // Output: Hello SORA
 ```
 
-`try delayedLabel("sora")` waits for the callee; the computation can pause and keeps typed errors, service requirements, and interruption support. At a promise-based framework boundary, run the exported function through a runner from `.ts`.
+> **Watch out for nested plain callbacks (`EK0501`).**
+> `try` is valid only inside an `effect` function, `effect` method, `effect` arrow, or `effect { ... }` block. A plain callback nested inside an effect function is still plain — mark it `effect` (or use `forEach` / `for` loops) if it needs to run Effects.
 
-`try` runs an Effect only in effect code: the body of an `effect` function, method or arrow, or an `effect { }` block. A plain function nested in an effect function is plain, so `try` in it is `EK0501`; mark that function `effect`. After reporting `EK0501`, the compiler checks the rejected expression as the Effect's success value, as TypeScript does for a rejected `await`; unrelated type errors still report. A return type written on an effect function is an Effect type, such as `effect function load(id: string): User!NotFound`; `User` alone is `EK0106`.
+## Ordinary `if`, `for`, `break`, and `continue`
 
-## Branches and loops
+Normal JavaScript control flow works as expected inside `effect` functions:
 
 ```vibe
 // run: try Console.log(try reportEven([1, 2, 3, 4, -1, 6]))
@@ -79,9 +72,11 @@ effect function reportEven(values: ReadonlyArray<number>) {
 // Output: 2
 ```
 
-Conditions, local variables, `break`, `continue`, and early returns keep JavaScript's evaluation order. This loop runs sequentially; for overlapping iterations, use `Effect.forEach` with an explicit concurrency limit.
+A standard `for...of` runs iterations sequentially. To run iterations in parallel with a concurrency cap, use `for concurrent(4) (const value of values) { ... }` or `Effect.forEach`.
 
-## Raise failures and stop early
+## Failing early and narrowing types
+
+Throwing a typed error exits the function immediately, so TypeScript's control-flow narrowing knows the error path cannot continue:
 
 ```vibe
 // run: try Console.log(try optionalTitle(undefined))
@@ -91,7 +86,7 @@ effect function titleLength(title: string | undefined) {
   if (title === undefined) throw new MissingTitle()
   return title.length
 }
-// number!MissingTitle
+// Inferred: number!MissingTitle
 
 effect function optionalTitle(title: string | undefined) {
   return titleLength(title) catch () => 0
@@ -99,11 +94,11 @@ effect function optionalTitle(title: string | undefined) {
 // Output: 0
 ```
 
-A throw stops the current sequence and adds its type to `E`. Control-flow analysis knows the missing-title branch cannot continue, so `title` is narrowed afterward. A `catch` expression handles expected failures; defects and interruption propagate. Use `try ensuring(work, cleanup)` to run cleanup when work ends. A cause containing a defect bypasses `catch`, with its expected failures re-raised as defects. A cause with an expected failure and no defect is recovered, even beside an interruption.
+After the `if (...) throw`, `title` is narrowed to `string`. `catch` recovers expected failures; defects and interruption pass through while still running `ensuring` cleanup.
 
-When a cause contains several expected failures and no defect or interruption, `catch` receives the first and handles the cause as a whole; use `Effect.catchCause` to inspect every failure. To keep processing after a failure without catching it immediately, use `try result(titleLength(title))` and inspect the resulting `Result`.
+## Methods keep `this`
 
-## Retain the receiver
+An `effect` method on a class or object literal preserves `this` naturally — no `Effect.gen(this, function* () { ... })` boilerplate:
 
 ```vibe
 // run: try Console.log(try label())
@@ -118,42 +113,16 @@ class Prefixer {
 
 effect function label() {
   const prefixer = new Prefixer("item")
-  return try prefixer.format("marker")
+  return try prefixer.format("notebook")
 }
 // Output: formatting label
-// Output: item: marker
+// Output: item: notebook
 ```
-
-Method calls preserve `this` and evaluate the receiver once: the compiler passes the method's `this` to its generator. To pass its Effect to an operator, use `prefixer.format("marker")`; the method call returns it unrun.
-
-## Generators produce values and streams
-
-```vibe
-// run: { const jsonValue = try firstTwo(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect function* ticks() {
-  for (let n = 0; n < 3; n += 1) {
-    try sleep("10 millis")
-    yield n
-  }
-}
-
-effect function firstTwo() {
-  const values: number[] = []
-  for try (const n of ticks()) {
-    values.push(n)
-    if (values.length === 2) break
-  }
-  return values
-}
-// Output: [0,1]
-```
-
-An `effect function*` returns a Stream for `for try`; `yield` emits a value, and `try` runs an Effect. Leaving the loop early runs the producer's cleanup. A plain `function*` remains a JavaScript generator. Existing `Effect.gen` code stays in `.ts` files, where JavaScript generators keep their usual Effect meaning.
-
-A producer returns a `Stream` directly, so `Stream.take(ticks(), 2)` uses Effect's operators directly. It compiles to `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. Closing it interrupts the producer's fiber and runs its cleanup. Register cleanup with `try addFinalizer(() => Effect.sync(cleanup))`: it belongs to the stream's scope and runs when that scope closes, after the current iteration's `using` value is disposed. A `try`/`finally` statement is not admitted in effect code. `for try` consumes an Effect Stream in order and closes it when the loop exits.
 
 ## Coming from Effect
 
-To convert a sequence, declare an effect function and replace each `yield*` with `try`. Use `effect function*` for a function that produces a Stream of values.
+`effect function` and `effect { ... }` replace `Effect.gen(function* () { ... })` and `Effect.fn`, and `try` replaces `yield*`. `Effect.gen` remains available as a library function when you need it.
+
+**Next:** [Building Pipelines](011-building-pipelines.md) — combine statements with the `|>` pipe operator.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/using-generators)

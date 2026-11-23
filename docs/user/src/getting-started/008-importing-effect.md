@@ -1,18 +1,18 @@
 # Effect's Modules
 
-In `.vibe` files, Effect's modules are already in scope: the prelude, every module `effect` exports from its root, such as `Console`, `Option`, `Stream`, `Schedule`, `Clock`, and `Duration`, and every module of its subpath packages, such as `HttpRouter` from `effect/http`, `ChildProcess` from `effect/process`, and `TestClock` from `effect/testing`. Platform packages such as `@effect/platform-node` still need imports.
+In `.vibe` files, Effect's entire standard library is already in scope — no boilerplate imports required. Every export of `Effect` (`sleep`, `retry`, `timeout`, `all`, `forEach`, `race`, `log`, `withSpan`, `sync`, `tryPromise`, `callback`, `scoped`, `acquireRelease`, `runPromise`, …), every root module (`Console`, `Option`, `Stream`, `Schedule`, `Clock`, `Duration`, `Layer`, `Schema`, …), and every subpath module (`HttpRouter`, `ChildProcess`, `TestClock`, `Hex`, …) resolves automatically and emits tree-shakeable imports in the compiled JavaScript.
 
-## Install the core package
+Only platform-specific packages such as `@effect/platform-node` require explicit imports.
+
+## Core package
 
 ```sh
 npm install effect@4.1.1
 ```
 
-The core package supplies Effect's data types, schedules, concurrency tools, and other modules. See [Installation](004-installation.md) for platform packages, `vibelang`, and `vibelang-runtime`.
+See [Installation](004-installation.md) for `vibelang`, `vibelang-runtime`, and platform packages. Root functions (`pipe`, `flow`, `identity`) and core modules (`Effect`, `Layer`, `Schema`, `Scope`) compile directly to `effect/*` imports; VibeLang syntax constructs (`error`, `service`, `match`, `for concurrent`) also use `vibelang-runtime`.
 
-`Effect`, `Layer`, `Schema` and `Scope` also resolve when only `effect` is installed. The root functions `pipe`, `flow`, `identity`, `absurd`, `cast` and `hole` resolve directly from `effect/Function` and need no runtime package. Their emitted imports and type-only uses keep the native Effect bindings. Language forms whose generated code imports `vibelang-runtime` still require that package.
-
-## Module and namespace imports
+## Using globals and handling name collisions
 
 ```vibe
 // run: try Console.log(Number.isFinite(try pauseBeforeRetry()))
@@ -26,23 +26,15 @@ const backoff = Schedule.exponential("50 millis")
 // Output: true
 ```
 
-`Effect` and every root module of `effect` need no import. Type exports are not global, so the type is `Effect.Effect<A, E, R>`, or `A!E!R`. Every export of the `Effect` module is global unless its name clashes with a keyword or JavaScript global. This includes `sleep`, `log`, `retry`, `repeat`, `timeout`, `all`, `forEach`, `race`, `withSpan`, `die`, `sync`, `tryPromise`, `callback`, `result`, and the runners. Names that clash stay qualified, such as `Effect.try`, `Effect.catch`, `Effect.match`, and `Effect.provide`. `pipe`, `flow`, and `identity` need no import either. `fork` and `join` use their language forms.
-
-These globals follow [VIP-6](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0006-effect-globals.md): a local declaration or an import of the same name shadows one, and the emitted JavaScript imports each one a file uses from `effect/Effect`. A name that clashes is not a global, and you write `Effect.x` instead:
+Any local variable or explicit `import` shadows an implicit global. When an Effect export would clash with a keyword or JavaScript global, qualify it with `Effect.`:
 
 | Clashes with | Write |
 | --- | --- |
-| A reserved word | `Effect.try`, `Effect.catch`, `Effect.void`, `Effect.let` |
-| A JavaScript global | `Effect.undefined` |
-| A VibeLang keyword | `Effect.match`, `Effect.when`, `Effect.service`, `Effect.provide`, `Effect.interruptible`, `Effect.uninterruptible` |
+| JavaScript keyword | `Effect.try`, `Effect.catch`, `Effect.void`, `Effect.let` |
+| JavaScript global | `Effect.undefined` |
+| VibeLang keyword | `Effect.match`, `Effect.when`, `Effect.service`, `Effect.provide`, `Effect.interruptible`, `Effect.uninterruptible` |
 
-Store or pass the native interruption functions as `Effect.interruptible` and `Effect.uninterruptible`. The statement forms are `interruptible { … }` and `uninterruptible { … }`.
-
-The compiler reads this list from the installed `effect` when it is built, so it follows the pinned Effect version's exports. The prelude's own names win over an export of the same name: `sync`, `interrupt`, and `yieldNow` are the prelude's. `callback` is Effect's native function, including in a direct call. To turn these globals off and write every one as `Effect.x`, set `"vibe": { "effectGlobals": false }` in `tsconfig.json` ([options](012-devtools.md)).
-
-`interrupt` and `yieldNow` are native Effect values: write `try interrupt` or `try yieldNow`. To select a numeric yield priority, write `try Effect.yieldNowWith(priority)`. An imported or local `yieldNow` keeps its binding.
-
-JavaScript's own globals keep their names: `Array`, `String`, `Number`, `Boolean`, `Symbol`, `BigInt`, `Function`, and `RegExp` mean JavaScript's, so import Effect's modules of those names under another name:
+JavaScript's core globals (`Array`, `String`, `Number`, `Boolean`, `Symbol`, `BigInt`, `Function`, `RegExp`, `Record`) keep their JavaScript meanings. Access Effect's modules of those names via `Effect.Array`, `Effect.String`, `Effect.Record`, or an aliased import:
 
 ```vibe
 // run: try Console.log(try Effect.try(() => JSON.stringify(firstTwo([1, 2, 3]))))
@@ -54,15 +46,11 @@ function firstTwo(values: ReadonlyArray<number>) {
 // Output: [1,2]
 ```
 
-Write this form where code imports one of these modules under its own name (EK4842).
+> **Note:** `Effect.Array` and `Effect.String` require the unshadowed implicit `Effect`. If you write `import { Effect } from "effect"` or disable implicit globals in `tsconfig.json` (`"vibe": { "effectGlobals": false, "effectModules": false }`), import collision modules separately as `import { Array as Arr } from "effect"`.
 
-JavaScript globals that are not platform-specific and TypeScript's own globals keep their meaning. Effect modules with those names are available as `Effect.Array`, `Effect.String`, `Effect.Record`, or through an aliased import. In a type, `typeof Effect.Array` is that module's type, and `Effect.Array.NonEmptyReadonlyArray<number>` one of its types. Platform-specific names use Effect's module: `Request`, `Option`, `Cache`, `FileSystem`, `Scheduler`, and `Console`. `Crypto` is the DOM's, because Effect has no root `Crypto` module; import `effect/crypto` to use Effect's. An import or local declaration named like a module shadows it in the meanings that declaration supplies, as `import * as Duration from "effect/Duration"` would. Importing `Effect` itself also replaces the implicit binding: `import { Effect } from "effect"` is Effect’s own module, which has no `Array` member (`TS2339`), so import `Array` from `effect` or drop the import. Value constructors such as `Duration.millis` build data; `try Clock.currentTimeMillis` and `try sleep(...)` run computations. A plain function known not to throw can be called directly; wrap a call that may throw with `Effect.try`.
+## Subpath modules and collision resolution
 
-Set `vibe.effectModules` to `false` to require imports for Effect's root and subpath exports, including `Effect`, `Schema`, `Layer`, `Scope`, `pipe` and `flow`. Explicit imports and local bindings still work. Compiler support for `A!E!R`, `effect`, `error`, `schema` and `service` remains available. Completion and spelling suggestions omit disabled implicit names.
-
-## Modules of subpath packages
-
-A subpath package's modules need no import either. The emitted JavaScript imports each module you use from its own file, such as `effect/encoding/Hex`, so a program loads only what it uses:
+Subpath modules are in scope too — the compiler emits direct per-file imports (such as `effect/encoding/Hex`) so your bundle includes only what you touch:
 
 ```vibe
 // run: try Console.log(hexOf("hi"))
@@ -72,7 +60,14 @@ function hexOf(text: string) {
 // Output: 6869
 ```
 
-Four rules settle a name that two globals share, in order: a JavaScript global that is not platform-specific wins in its meaning; a name exported by both the root and a subpath needs an explicit import; when two subpath packages have a module of the same name, neither is in scope, so import the one you mean; and an import or local declaration shadows any of them in the meanings it supplies. Ambient types and local type aliases or interfaces keep their type meanings independently. `EK1401` names every exporter of an ambiguous name and offers an import for each. For a previously bare `Utils`, add `import { Utils } from "effect"` to preserve the root module. In value and namespace positions, `Headers` is `effect/http/Headers`, `Response` is `effect/ai/Response`, `Event` is `effect/eventlog/Event` and `Worker` is `effect/workers/Worker`. So `Response.json(body)` is `TS2339`, and its note names the Fetch API's `globalThis.Response.json`. These are the names they settle for `effect@4.1.1`:
+When two modules share a name, four rules decide:
+
+1. Non-platform JavaScript globals keep their JavaScript meaning.
+2. A name exported by both root `effect` and a subpath requires an explicit import (`EK1401`).
+3. A name exported by two different subpaths requires an explicit import (`EK1401`).
+4. Any explicit import or local declaration shadows the implicit global.
+
+These are the exact resolutions for `effect@4.1.1`:
 
 <!-- D310 collisions: TestEffectNameCollisionsDocumented checks this table -->
 | Name | Modules | Without an import |
@@ -90,20 +85,15 @@ Four rules settle a name that two globals share, in order: a JavaScript global t
 
 ## A module's own export
 
-Many of Effect's modules export something of their own name: the module `Option` exports the type `Option.Option`, and the module `FileSystem` the service `FileSystem.FileSystem`. Name the export explicitly when writing a type or passing a service key:
+Many Effect modules export a type or service carrying the same name as the module: `Option.Option<T>`, `Chunk.Chunk<T>`, `FileSystem.FileSystem`, `Path.Path`. Always qualify the member when writing a type or reading a service with `try`:
 
-| You write | It means |
+| Write | Meaning |
 | --- | --- |
-| `Option.Option<number>` | Effect's optional number type |
-| `const fs = try FileSystem.FileSystem` | Reads the provided file-system implementation |
-| `try fs.readFileString(path)` | Runs a method of that implementation |
-| `(try Path.Path).sep` | Reads the provided path implementation's separator |
-| `const terminal = try Terminal.Terminal; try terminal.columns` | Runs the implementation's `columns` Effect |
-| `FileSystem.FileSystem.of(implementation)` | Checks a file-system implementation's shape |
-
-The module's exports stay namespace members: `Option.some`, `FileSystem.layerNoop`, and `Path.layer`. A service key as an argument stays explicit: `Layer.succeed(FileSystem.FileSystem, implementation)`.
-
-Assigning a module stores its namespace: `const fs = FileSystem`. To call implementation methods, read the service first: `const fs = try FileSystem.FileSystem`. The same rule applies to `Experimental.Process` and the other modules that name a service. Completion after a module lists its exports; implementation methods appear after the value returned by the explicit lookup.
+| `Option.Option<number>` | The Option type |
+| `const fs = try FileSystem.FileSystem` | Look up the `FileSystem` service |
+| `try fs.readFileString(path)` | Run a method on that implementation |
+| `(try Path.Path).sep` | Read a property on the `Path` implementation |
+| `FileSystem.FileSystem.of(impl)` | Type-check an implementation |
 
 ```vibe
 // run: provide Path.layer, FileSystem.layerNoop({ readFileString: effect (path) => `read ${path}` }) { try Console.log(try readConfig("/srv")); try Console.log(firstOr(Chunk.empty(), 7)) }
@@ -126,43 +116,21 @@ function firstOr(values: Chunk.Chunk<number>, fallback: number): number {
 // Output: 7
 ```
 
-Read a service before calling its implementation methods. These modules name a service:
+Modules that export a same-named service:
 
 <!-- D311 services: TestModuleServicesDocumented checks this list -->
 `AddressResolver`, `Aead`, `AtomRegistry`, `Chat`, `ChildProcessSpawner`, `Cipher`, `CircuitBreaker`, `CliConfig`, `Clock`, `ConfigProvider`, `Console`, `DatagramSocket`, `DecisionModel`, `DevToolsClient`, `Digest`, `Dns`, `EmbeddingModel`, `EventJournal`, `EventLog`, `EventLogEncryption`, `EventLogRemote`, `EventLogServerUnencrypted`, `FileSystem`, `GraphQLProtocol`, `HttpClient`, `HttpPlatform`, `HttpRouter`, `HttpServer`, `HttpServerRequest`, `IdGenerator`, `Jwks`, `K8sHttpClient`, `Kdf`, `KeyAgreement`, `KeyValueStore`, `KeyWrap`, `LanguageModel`, `Mac`, `McpClient`, `McpServer`, `MessageStorage`, `OtlpSerialization`, `Path`, `Persistence`, `Random`, `RateLimiter`, `Reactivity`, `Redis`, `ResponseIdTracker`, `RpcSerialization`, `RunnerHealth`, `RunnerStorage`, `Runners`, `Scheduler`, `SecureRandom`, `Sharding`, `ShardingConfig`, `Signature`, `Socket`, `SocketServer`, `SqlClient`, `Stdio`, `Terminal`, `TerminalCapabilities`, `Tokenizer`, `Tracer`, `UserDirectories`, `WorkflowEngine`.
 <!-- end D311 services -->
 
-These names have both an Effect namespace and an ambient global type. Value and namespace positions use Effect; bare type positions keep the ambient type:
+Names with both an Effect namespace (value position) and an ambient DOM type (bare type position — use `FileSystem.FileSystem` for Effect's type):
 
 <!-- D311 DOM types: TestModuleServicesDocumented checks this list -->
 `Cache`, `Console`, `Event`, `FileSystem`, `Headers`, `Iterable`, `KeyFormat`, `Record`, `Request`, `Response`, `Scheduler`, `Transferable`, `Worker`.
 <!-- end D311 DOM types -->
 
-These meanings apply in value and namespace positions. In a type position, a name the DOM declares as a type keeps the DOM's meaning, as in `type HostConsole = Console`. A local type alias or interface also shadows only the type meaning: `type KeyFormat = { readonly local: true }` keeps that local type while `KeyFormat.jwk` still reads Effect's namespace. A local value binding keeps its own members. Use a qualified member such as `FileSystem.FileSystem` for Effect's type. A contract that writes the DOM's `FileSystem` where its body reads Effect's service reports `EK9202`; write `FileSystem.FileSystem` there.
+## Writing reusable operators
 
-
-
-## Compose standalone functions
-
-```vibe
-// run: try Console.log(expirationWindow())
-function expirationWindow() {
-  const short = Duration.seconds(15)
-  return Duration.toMillis(short)
-}
-// number
-// Output: 15000
-```
-
-Effect exposes operations as module functions: call them with their data argument, or use their curried form in `pipe` where one exists. `pipe(x, f)` passes `x` as the value it is, so a function literal first stays a function: call the operation with the Effect instead, as in `timeout(work(), "1 second")`. `pipe` suits data-last functions with no data-first form, such as `Match.when`.
-
-## Bundling unused code
-
-Named module imports and direct namespace imports both expose the library without adding methods to your objects. Bundlers can drop unused exports when their module analysis supports it. The import spelling alone guarantees no particular size; check the generated bundle when size matters.
-
-VibeLang's global names are source conveniences: they refer to Effect and language support code, which still participates in the emitted module graph.
-
-## Reusable operators
+Because Effects are first-class values, write generic helpers that accept `A!E!R` and wrap it with Effect combinators:
 
 ```vibe
 // run: try Console.log(try example())
@@ -179,12 +147,10 @@ effect function example() {
 // Output: ready
 ```
 
-A helper can take an Effect value and apply library operators to it. Its contract keeps the program's errors and services and here adds `TimeoutError`. This extends your application without changing Effect's prototypes.
+`withinSecond` preserves the caller's `A`, `E`, and `R` while adding `TimeoutError` to `E`.
 
 ## Coming from Effect
 
-Skip imports from `effect`'s root in `.vibe`. In `.ts` integration files, import `Effect`, `Layer`, and the other names you use as usual.
+Drop boilerplate `import { Effect, Layer, Schema, ... } from "effect"` lines in `.vibe` files; keep normal imports in `.ts` files. `interrupt` and `yieldNow` are bare Effect values (`try interrupt`, `try yieldNow`).
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/importing-effect)
-
-The collision qualifiers `Effect.Array`, `Effect.String` and `Effect.Record` require the unshadowed implicit `Effect`. With `import { Effect } from "effect"` or `vibe.effectModules: false`, import each collision module separately, for example `import { Array as Arr } from "effect"`. Written local bindings and aliases keep their TypeScript members.

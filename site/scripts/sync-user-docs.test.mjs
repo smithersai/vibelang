@@ -94,6 +94,18 @@ test('Markdown copies drop video lines but keep them inside code fences', async 
   assert.equal(stripVideos(text), ['Intro.', '', '', '```md', '![Caption](/videos/a-1.mp4)', '```', '![Image](/images/a.png)'].join('\n'))
 })
 
+test('a diagram line renders paired light/dark SVG variants, preserves description, and strips cleanly in Markdown copies', async () => {
+  const page = render([
+    '# Example', '', '![Three channels A!E!R](/diagrams/effect-channels.svg)', '', 'The intro paragraph.', '',
+    '```md', '![kept](/diagrams/effect-channels.svg)', '```', ''
+  ].join('\n'))
+  assert.match(page, /<figure className="vibe-diagram"><img className="vibe-diagram__light" src="\/diagrams\/effect-channels\.svg" alt="Three channels A!E!R" \/><img className="vibe-diagram__dark" src="\/diagrams\/effect-channels-dark\.svg" alt="Three channels A!E!R" \/><figcaption>Three channels A!E!R<\/figcaption><\/figure>/)
+  assert.match(page, /description: "The intro paragraph\."/)
+  assert.match(page, /```md\n!\[kept\]\(\/diagrams\/effect-channels\.svg\)\n```/)
+  const { stripDiagrams } = await import('./user-docs.mjs')
+  assert.equal(stripDiagrams('Intro.\n\n![Cap](/diagrams/a-1.svg)\n\n```md\n![Cap](/diagrams/a-1.svg)\n```'), 'Intro.\n\n\n```md\n![Cap](/diagrams/a-1.svg)\n```')
+})
+
 test('rendered user docs drop the snippet checker experimental marker, not the code or the prose', () => {
   const page = render([
     '# Example', '', 'Opt in with "vibe": { "experimental": ["builtins"] }. The prose marker // experimental: builtins stays.', '',

@@ -1,12 +1,10 @@
 # Building Pipelines
 
-Use statements for dependent steps and the pipe operator, `|>`, for a series of transformations of a value. In `x |> f(%)`, the topic `%` stands for `x`: the body after `|>` says where the value goes, so a stage can take it in any argument position.
+Use plain statements (`const`, `try`, `if`) when steps depend on earlier results, and use the **pipe operator `|>`** when transforming a single value or wrapping an Effect through a chain of combinators.
 
-When a repair captures stages in a local function, it preserves the statement boundary after a declaration without a semicolon. Unbraced `if`, `else` and loop bodies keep their original control flow.
+In `x |> f(%)`, the topic token `%` stands for the value of the previous stage. You can place `%` in any argument position — no currying or data-last overloads required.
 
-Captures at the start of a larger expression also preserve the statement boundary, including `satisfies` and `as`, property or element access, and arithmetic or conditional expressions. Enclosing arguments and parentheses retain their original structure.
-
-## Compose reusable functions
+## Chaining transformations with `|>`
 
 ```vibe
 // run: try Console.log(try priceLabel())
@@ -16,29 +14,31 @@ function double(n: number) { return n * 2 }
 effect function priceLabel() {
   return 9 |> addMargin(%) |> double(%) |> `Price: ${%}`
 }
-// string!!; "Price: 24"
+// Inferred: string!!  ("Price: 24")
 // Output: Price: 24
 ```
 
-Each body reads the previous stage's result through `%`. Here `%` stands for a value, so the expression before `|>` runs once and the body receives its result. Standalone functions stay reusable without adding methods to a value's prototype, and bundlers can remove the Effect functions a program never calls.
+Each stage evaluates once, left to right. Every pipe body must use `%`, and an arrow function as an entire pipe stage needs parentheses: `1 |> (() => %)` (`EK2301`).
 
-Effect operators take Effect values directly, so nest them:
+### Wrapping Effects with combinators
+
+Because calling an effect function returns an unrun Effect, you can wrap it with `retry`, `timeout`, and `withSpan` either by nesting calls or piping with `|>`:
 
 ```vibe
 // run: try Console.log(try preparedPrice())
 effect function preparedPrice() {
-  return try withSpan(timeout(priceLabel(), "1 second"), "price-label")
+  return try (priceLabel() |> timeout(%, "1 second") |> withSpan(%, "price-label"))
 }
 // Output: Price: 24
 ```
 
-`timeout` runs `priceLabel()` under its deadline, and the span covers the timed work; `try` returns the final success value. To keep the work as a reusable Effect, bind it directly: `const prepared = timeout(priceLabel(), "1 second")`.
+Store the piped expression before `try` (`const prepared = priceLabel() |> timeout(%, "1 second")`) whenever you want to reuse the wrapped blueprint.
 
-A pipe's `%` is always the value of the expression before its `|>`, and its body must use `%`. Passing `%` to an Effect operator composes that Effect: `try (priceLabel() |> timeout(%, "1 second"))` runs it under the deadline.
+## Replacing `map`, `as`, `flatMap`, and `tap` with statements
 
-A whole arrow body needs parentheses: `1 |> (() => %)`, `1 |> (async () => %)` or `1 |> (effect () => %)`. A bare arrow after `|>` reports `EK2301`, including a block-bodied arrow. The arrow captures the pipe's once-evaluated input; arrows inside arguments, arrays or objects remain valid.
+In Effect TypeScript, pipelines often exist just to chain `map`, `flatMap`, and `tap`. In VibeLang, ordinary statements are shorter and clearer:
 
-## Map or replace a success
+### Transforming and logging (`map`, `as`, `tap`)
 
 ```vibe
 // run: try Console.log(try adjustedPrice())
@@ -54,9 +54,7 @@ effect function recordPrice() {
 // Output: 29
 ```
 
-Using the returned value replaces `Effect.map` for local transformations. A later constant return replaces the success after earlier work finishes, as `Effect.as` does; earlier failures still propagate, so replacing the success hides no error.
-
-## Sequence dependent computations
+### Dependent steps (`flatMap` / `andThen`)
 
 ```vibe
 // run: try Console.log(try total())
@@ -72,70 +70,11 @@ effect function total() {
   const reduced = try discounted(price, 12)
   return reduced + 2
 }
-// number!InvalidRate
+// Inferred: number!InvalidRate
 // Output: 27.52
 ```
 
-One `try` after another expresses the dependency that `flatMap` or `andThen` handles in TypeScript Effect. Each `try` runs once, in order; an unhandled failure stops later statements.
-
-## Integrate Option and Result
-
-```vibe
-// run: try Console.log([try positive(2), try validated(0)].join(", "))
-effect function positive(value: number) {
-  const optional = value > 0 ? Option.some(value) : Option.none()
-  return try fromOption(optional)
-}
-// number!NoSuchElementError
-
-effect function validated(value: number) {
-  const checked = value >= 0
-    ? Result.succeed(value)
-    : Result.fail("negative value")
-  return try fromResult(checked)
-}
-// number!string
-// Output: 2, 0
-```
-
-`Option` and `Result` are data values; keep them intact to inspect them. Explicit conversion builds Effects that run with `try`: a missing option adds `NoSuchElementError`, and a failed result adds its error type. Calling a constructor such as `Option.some` builds the container.
-
-## Call a data type's module functions
-
-```vibe
-// run: { const jsonValue = [nickname(-1), try Stream.runCollect(warnings(Stream.make(24, 26, 30, 28, 40)))]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-// expect-warning: EK4840
-function nickname(id: number) {
-  return Option.some(id).pipe(
-    Option.filter((n) => n > 0),
-    Option.map((n) => `user-${n}`),
-    Option.getOrElse(() => "anonymous")
-  )
-}
-
-function warnings(readings: Stream.Stream<number>) {
-  return readings.pipe(
-    Stream.filter((celsius) => celsius > 25),
-    Stream.map((celsius) => `${celsius} C`),
-    Stream.take(3)
-  )
-}
-// Output: ["anonymous",["26 C","30 C","28 C"]]
-```
-
-Effect data types, such as `Option`, `Stream`, `Chunk`, `Duration`, `Fiber`, and `Ref`, expose operations through their modules. `Option.map(value, f)` transforms an Option, and `Stream.map(value, f)` transforms a Stream. Use their curried forms in `.pipe(...)` to compose several operations. Arrays and strings keep JavaScript's own methods. A module function that returns an Effect builds it without running it: `try Fiber.join(fiber)` waits for the fiber.
-
-To pass a function as a callback, use its module name:
-
-```vibe
-// run: try Console.log(try Effect.try(() => JSON.stringify(totals([Option.some(2), Option.none()]))))
-function totals(values: ReadonlyArray<Option.Option<number>>) {
-  return values.map(Option.getOrElse(() => 0))
-}
-// Output: [2,0]
-```
-
-## Observe intermediate results
+### Observing intermediate values (`tap`)
 
 ```vibe
 // run: try Console.log(try quotedTotal())
@@ -148,9 +87,63 @@ effect function quotedTotal() {
 // Output: 27.52
 ```
 
-The local variable stays available after logging, as with `Effect.tap`. An observation that fails also fails the enclosing function; use a `catch` expression only to ignore that failure on purpose.
+## Lifting `Option` and `Result` into Effects
 
-## Collect multiple computations
+`Option` and `Result` are plain data types. Convert them into Effects explicitly when you want a `None` or `Failure` to short-circuit on the `E` channel:
+
+```vibe
+// run: try Console.log([try positive(2), try validated(0)].join(", "))
+effect function positive(value: number) {
+  const optional = value > 0 ? Option.some(value) : Option.none()
+  return try fromOption(optional)
+}
+// Inferred: number!NoSuchElementError
+
+effect function validated(value: number) {
+  const checked = value >= 0
+    ? Result.succeed(value)
+    : Result.fail("negative value")
+  return try fromResult(checked)
+}
+// Inferred: number!string
+// Output: 2, 0
+```
+
+## Transforming data types (`Option`, `Stream`, `Chunk`)
+
+Effect data types expose standalone module functions (`Option.map`, `Stream.filter`, `Stream.take`). Chain them with `|>`:
+
+```vibe
+// run: { const jsonValue = [nickname(-1), try Stream.runCollect(warnings(Stream.make(24, 26, 30, 28, 40)))]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+function nickname(id: number) {
+  return Option.some(id)
+    |> Option.filter(%, (n) => n > 0)
+    |> Option.map(%, (n) => `user-${n}`)
+    |> Option.getOrElse(%, () => "anonymous")
+}
+
+function warnings(readings: Stream.Stream<number>) {
+  return readings
+    |> Stream.filter(%, (celsius) => celsius > 25)
+    |> Stream.map(%, (celsius) => `${celsius} C`)
+    |> Stream.take(%, 3)
+}
+// Output: ["anonymous",["26 C","30 C","28 C"]]
+```
+
+Or pass a curried module helper straight to JavaScript's `Array.prototype.map`:
+
+```vibe
+// run: try Console.log(try Effect.try(() => JSON.stringify(totals([Option.some(2), Option.none()]))))
+function totals(values: ReadonlyArray<Option.Option<number>>) {
+  return values.map(Option.getOrElse(() => 0))
+}
+// Output: [2,0]
+```
+
+## Collecting multiple Effects
+
+`all` accepts either a tuple or a record of Effect values and preserves its shape:
 
 ```vibe
 // run: try Console.log(try summary())
@@ -164,11 +157,9 @@ effect function summary() {
 // Output: Price: 24, total=27.52
 ```
 
-`all` takes each computation as an Effect value and preserves the input's tuple or object shape. It runs sequentially by default; this example explicitly starts up to two computations at once. If a branch fails, the combined computation fails and concurrent siblings are interrupted and cleaned up.
+## Never discard a cold Effect
 
-For a dynamic collection, use `try forEach(values, (value) => work(value), { concurrency: 4 })`, or build a collection of Effects first, `const jobs = values.map((value) => work(value))`, then run `try all(jobs, { concurrency: 4 })`. `all` accepts iterables and records of Effects. A synchronous array callback can build an Effect; its work runs when the combinator runs it.
-
-## Avoid discarded programs
+An Effect expression without `try`, `catch`, `fork`, or a runner is just an unused value — its body never runs (`EK4801` warns when an Effect statement is discarded):
 
 ```vibe
 // run: try saveNotice()
@@ -181,10 +172,9 @@ effect function saveNotice() {
 // Output: finished
 ```
 
-An Effect value such as `notice` describes work and runs only with `try`, `catch`, a concurrency form, or a runner. `try notice` runs the log even when its success value is ignored. A bare call such as `log("saved")` builds an Effect that no runner uses.
-
 ## Coming from Effect
 
-`try` and statements replace `map`, `flatMap`, `andThen`, and `tap` in most effect functions. Retry, timeout and tracing take Effects directly: `try timeout(retry(work(), policy), "1 second")` runs `work().pipe(Effect.retry(policy), Effect.timeout("1 second"))`. Use module functions such as `Option.map(maybe, f)` or compose them with `pipe(maybe, Option.map(f), Option.getOrElse(() => 0))`. The global `pipe` still works and suits data-last functions with no data-first form, such as `Match.when`.
+- Statements + `try` replace `Effect.map`, `Effect.flatMap`, `Effect.andThen`, and `Effect.tap`.
+- `x |> f(%)` replaces `x.pipe(f)` and `pipe(x, f)`. The global `pipe` function remains available for data-last combinators.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/building-pipelines)

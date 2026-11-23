@@ -1,18 +1,29 @@
-import { VIDEO_LINE } from './user-docs.mjs'
+import { DIAGRAM_LINE, VIDEO_LINE } from './user-docs.mjs'
 
 export const LABELS = { effect: 'Effect', long: 'VibeLang long form', es: 'VibeLang', gen: 'Generated TypeScript', dts: 'Generated declaration' }
 const LANGS = { out: 'text', output: 'text', vibelang: 'vibe' }
 
+const escapeCaption = (caption) =>
+  caption.replace(/[{}<>&"]/g, (c) => ({ '{': '&#123;', '}': '&#125;', '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c])
+
 // The site's player: plain HTML5, poster frame, no autoplay, no third-party code.
 export function videoMarkup(name, caption) {
-  const text = caption.replace(/[{}<>&]/g, (c) => ({ '{': '&#123;', '}': '&#125;', '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c])
+  const text = escapeCaption(caption)
   return `<figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/${name}.jpg"><source src="/videos/${name}.mp4" type="video/mp4" /></video><figcaption>${text}</figcaption></figure>`
+}
+
+// A theme-aware vector diagram: paired light and dark SVGs toggled by CSS.
+export function diagramMarkup(name, caption) {
+  const text = escapeCaption(caption)
+  return `<figure className="vibe-diagram"><img className="vibe-diagram__light" src="/diagrams/${name}.svg" alt="${text}" /><img className="vibe-diagram__dark" src="/diagrams/${name}-dark.svg" alt="${text}" /><figcaption>${text}</figcaption></figure>`
 }
 
 // Escapes text outside inline code. Inline code spans pass through unchanged.
 export function convertText(line, fromRel, convertLink) {
   const video = VIDEO_LINE.exec(line)
   if (video) return videoMarkup(video[2], video[1])
+  const diagram = DIAGRAM_LINE.exec(line)
+  if (diagram) return diagramMarkup(diagram[2], diagram[1])
   let out = ''
   let i = 0
   while (i < line.length) {

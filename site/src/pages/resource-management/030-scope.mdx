@@ -1,11 +1,13 @@
 ---
 title: "Scope"
-description: "A scope owns registered finalizers and runs them when its lifetime ends. Use scoped for local resource ownership, or an explicit scope when several operations must share a lifetime independent of..."
+description: "A scope owns registered finalizers and runs them in reverse order (LIFO) when its lifetime ends. Use scoped for local resource ownership, or an explicit Scope.make() when several operations share..."
 ---
 
 # Scope
 
-A scope owns registered finalizers and runs them when its lifetime ends. Use `scoped` for local resource ownership, or an explicit scope when several operations must share a lifetime independent of one function call.
+A scope owns registered finalizers and runs them in reverse order (LIFO) when its lifetime ends. Use `scoped` for local resource ownership, or an explicit `Scope.make()` when several operations share a lifetime across calls.
+
+<figure className="vibe-diagram"><img className="vibe-diagram__light" src="/diagrams/scope-lifecycle.svg" alt="Scope lifecycle: resources acquire in order and release in reverse order even on failure or interruption" /><img className="vibe-diagram__dark" src="/diagrams/scope-lifecycle-dark.svg" alt="Scope lifecycle: resources acquire in order and release in reverse order even on failure or interruption" /><figcaption>Scope lifecycle: resources acquire in order and release in reverse order even on failure or interruption</figcaption></figure>
 
 
 ## Registering finalizers

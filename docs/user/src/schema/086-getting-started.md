@@ -1,16 +1,10 @@
 # Getting Started with Schema
 
-`Schema` uses the same descriptions and interpreters as in Effect. Start with a struct, extract its types, then pick a parser whose failure behavior fits the caller. The [call rules](085-introduction.md#configuring-compiler-prerequisites) apply to the plain builders below.
+Define your first struct or `schema` declaration, extract its decoded and encoded types, and choose the right decoder for your boundary.
 
-The `Schema` module is in scope without an import. An explicit `import { Schema } from "effect"` also works when only `schema` or `schema error` declarations need it; their generated code keeps the runtime schema module available.
+![Schema decode and encode flow](/diagrams/schema-codec-flow.svg)
 
-Decorators are not admitted on a `schema` declaration (`TS1206`), as on its native TypeScript constant or type alias.
-
-## Declaring schemas
-
-A `schema` declaration creates a runtime Schema value. It is `EK1506` in an ambient context, including an explicit `declare` or an enclosing ambient namespace, module, or global declaration. Use native `declare const` and `type` declarations to describe an existing runtime API.
-
-The same ambient contexts reject `error` and `schema error` with `EK1307`. Use a native ambient class to describe an external error contract; an ambient declaration contains no runtime schema or matcher initializer.
+## Building a struct schema
 
 ```vibe
 // run: { const jsonValue = try receive({ tracking: "box-76", pieces: "2" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -28,15 +22,7 @@ effect function receive(input: unknown) {
 {"tracking":"box-76","pieces":2}
 ```
 
-Each field describes its own representation and checks; the struct combines them into one codec, so `pieces` arrives as text and becomes a number. Declaring `Shipment` builds a description and decodes nothing.
-
-A required `schema` field must reference a codec with required decoded key flags (`EK2109`). Use an unmodified value codec and write optionality on the field. To retain an existing optional-key codec, write the explicit `Schema.Struct` value.
-
-An empty type argument list on a schema reference, such as `Address<>`, reports `EK2109`.
-
-A `schema` body holds only typed fields, written `name: Type` or `name?: Type`. Methods, index signatures, call and construct signatures, accessors, and untyped members report `EK1505`, including inside a field’s nested object type. A schema alias with an unsupported object-type member keeps `EK2109`. In both, a modifier on such a member keeps its own error beside that code: `TS1070` for `async` or `static`, `TS1024` for `readonly` on a method, accessor or signature, and `EK0108` for `effect`.
-
-## Extracting decoded, encoded, and service types
+`pieces` arrives as `"2"` on the wire and decodes to `2: number`. Extract the types directly from the schema value:
 
 ```vibe
 // expect-warning: EK4841
@@ -51,31 +37,48 @@ type SameReadServices = Schema.Codec.DecodingServices<typeof Shipment>
 type SameWriteServices = Schema.Codec.EncodingServices<typeof Shipment>
 ```
 
-The decoded `pieces` is a number, the encoded one a string, and both service types are `never`. Generic helpers should keep the directional service types so a future effectful conversion keeps its requirements.
+## Declaring schemas with `schema`
 
-## Understanding default immutability
+In `.vibe` files, a `schema` declaration defines both the runtime codec and its decoded TypeScript type in one statement:
 
 ```vibe
 // run: { const jsonValue = try Schema.decodeUnknownEffect(Batch)({ shipments: [{ tracking: "box-76", pieces: "2" }] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 schema Batch {
   shipments: ReadonlyArray<Shipment>
 }
-// Batch: { shipments: ReadonlyArray<Shipment> }
+// Value: Schema.Struct({ shipments: Schema.mutableKey(Schema.Array(Shipment)) })
+// Type:  { shipments: ReadonlyArray<Shipment> }
 ```
 
 ```output
 {"shipments":[{"tracking":"box-76","pieces":2}]}
 ```
 
-`schema Batch { ... }` declares both the struct `Batch` and its decoded type, the type `Batch`. A field names its type; a schema such as `Shipment` stands for its own decoded type. A field's type maps to a schema when it is a primitive (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined` or `null`), a literal, a union, an array, a tuple, a `Record`, an object type, or another schema's name. Any other type is `EK2109`. `unknown`, `any`, `never`, `object` and `void` are not primitives: name their schema, as in `payload: Schema.Unknown`. A field is writable unless written `readonly`. Array, tuple, and `Record` mappings preserve collection mutability: `T[]`, `Array<T>`, and `[A, B]` use `Schema.mutable`; `Record<K, V>` uses `Schema.mutableKey` on its value schema. The `readonly T[]`, `ReadonlyArray<T>`, `readonly [A, B]`, and `Readonly<Record<K, V>>` forms remain readonly. JavaScript objects are not frozen.
+And use `schema Name = Type` for literal unions, aliases, or struct expressions:
 
-`Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` use their resolved TypeScript-library type bindings. A local or imported type with the same spelling does not receive that mapping; without a suitable Schema value it reports `EK2109`. A value-only name does not replace the separate library type. For example, a local `type Record<K, V> = { k: K; v: V }` supplies no decoder for `schema S { a: Record<string, number> }`. Write `schema Entry { k: string; v: number }` and use `a: Entry` instead.
+```vibe
+// run: { const jsonValue = try Schema.decodeUnknownEffect(Delivery)({ status: "delivered", shipments: [] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Status)("lost"))
+schema Status = "pending" | "delivered" | "returned"
+schema Delivery = { status: Status; shipments: ReadonlyArray<Shipment> }
+```
 
-An explicitly `readonly` field requires a referenced codec whose decoded key is readonly. Aliased, mutable or uncertain key flags report `EK2109`; to preserve the existing codec, write explicit `Schema.Struct` values. The required-key and readonly-key checks are independent. A reference widened to `Schema.Top` can report both `EK2109` messages at the same field because neither decoded flag is proven. This promise is shallow: a readonly field can still contain a mutable array.
+```output
+{"status":"delivered","shipments":[]}
+false
+```
 
-Write `readonly` once per field. Repeating it reports TypeScript’s `TS1030`.
+### Type-to-schema mapping rules
 
-An optional field `name?: T` accepts a missing key. Whether it also accepts a present `undefined` depends on `exactOptionalPropertyTypes`, which the [introduction](085-introduction.md#configuring-compiler-prerequisites) recommends. With it on, `name?: T` maps to `Schema.optionalKey` and rejects `{ name: undefined }`; write `name?: T | undefined` to accept it. With it off, `name?: T` maps to `Schema.optional` and accepts both. [Basic Usage](087-basic-usage.md) explains the mapping.
+- **Supported types:** primitives (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined`, `null`), literals, unions, arrays, tuples, `Record<K, V>`, nested object types, and other schemas (like `Shipment`, `Schema.FiniteFromString`, `Schema.Unknown`).
+- **Unsupported types** (functions, bare `unknown`/`any`/`never`/`object`, or shadowed library types) report `EK2109` — name an explicit schema such as `Schema.Unknown`.
+- **Mutability:** fields are writable unless marked `readonly`; `T[]` / `Array<T>` / `[A, B]` map to mutable schemas, while `readonly T[]` / `ReadonlyArray<T>` / `readonly [A, B]` stay readonly.
+- **Optional fields (`name?: T`):** follow `exactOptionalPropertyTypes`:
+
+| `exactOptionalPropertyTypes` | Field | Accepts `{}` | Accepts `{ name: undefined }` |
+| --- | --- | --- | --- |
+| `true` | `name?: string` | Yes (`Schema.optionalKey`) | No |
+| `false` | `name?: string` | Yes (`Schema.optional`) | Yes |
+| `true` | `name?: string \| undefined` | Yes (`Schema.optional`) | Yes |
 
 ```vibe
 // run: try Console.log(Schema.is(Nickname)({}), Schema.is(Nickname)({ name: undefined }))
@@ -86,46 +89,9 @@ schema Nickname { name?: string | undefined }
 true true
 ```
 
-The same program, with each field spelling and setting, prints:
+`schema` bodies accept only typed fields (methods and index signatures are `EK1505`; missing separator on one line is `EK1504`; ambient `declare schema` is `EK1506`; `export default schema` is `EK1501`; type parameters are `EK1502`).
 
-| `exactOptionalPropertyTypes` | Field | Output |
-| --- | --- | --- |
-| `true` | `name?: string` | `true false` |
-| `false` | `name?: string` | `true true` |
-| `true` | `name?: string \| undefined` | `true true` |
-
-These grammar errors do not depend on the field’s type: a field whose type is not a schema reports `EK2109` for the type and keeps the `TS1070`, `TS1030` or `TS1247` of its spelling, as does a sibling field of the same declaration, a member of an object type under a type operator or an Effect type, and an untyped member with an initializer. A JSDoc type such as `?string`, `string?`, `!string` or `*` is not a TypeScript type: the field reports `EK2109` and TypeScript’s `TS17020`, `TS17019` or `TS8020`; write `string | null | undefined`, `string | undefined` or `string`.
-
-Methods and call signatures outside the schema field mapping keep their parameter errors beside `EK2109` or `EK1505`. A `static` or `async` parameter modifier reports `TS1090`; a parameter property reports `TS2369`, and a repeated modifier keeps `TS1030`. A reserved parameter binding keeps TypeScript’s `TS1214` for a module or `TS1213` inside a class. Remove the parameter modifier or choose an ordinary parameter name.
-
-Schema fields use TypeScript type-member modifiers. Class-only modifiers such as `public`, `private`, `static` or `override` report `TS1070`. An `effect` modifier, as in `schema S { effect id: string }`, reports `EK0108`, in a schema body and in an object type of a schema alias; remove the modifier. Keywords used as field names remain valid, `effect` included.
-
-Schema fields describe codecs and do not have JavaScript initializers. An initializer such as `value: number = 42` reports `TS1247`. Use an explicit Effect schema default combinator when a default is intended.
-Schema references keep TypeScript’s declaration order and temporal dead zone. Forward and cyclic schema initializers receive TypeScript’s own initialization diagnostics; the compiler does not reorder them or insert `Schema.suspend`.
-
-A member of a `schema` body that is not a field, such as a method `m(): string`, an index signature `[k: string]: number` or a name without a type, reports `EK1505`. Write `name: Type` or `name?: Type`; a method belongs on a `schema error`, and a set of keys is a `Record<K, V>` field.
-
-Separate `schema` declaration fields with `;`, `,` or a new line. Two fields on one line with no separator, such as `schema S { a: string b: number }`, report `EK1504`; insert `;`. Nested object types and alias types retain TypeScript’s comma separators and TypeScript's diagnostic for a missing one.
-
-A JSDoc comment on a `schema` declaration documents the emitted constant only; its generated type alias has no comment. Tags such as `@deprecated` and `@internal` follow the constant, as on the ordinary Effect TypeScript pair. When the constant and its type need different comments, write one nongeneric `type Name = typeof Name.Type` in the same scope as the `schema Name`, before or after it. The written type replaces the generated alias, keeping its own JSDoc and `export` modifier. Comments after a schema’s optional semicolon are retained in declarations as TypeScript retains comments after the equivalent constant.
-
-## Declaring a schema for any type
-
-```vibe
-// run: { const jsonValue = try Schema.decodeUnknownEffect(Delivery)({ status: "delivered", shipments: [] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Status)("lost"))
-schema Status = "pending" | "delivered" | "returned"
-schema Delivery = { status: Status; shipments: ReadonlyArray<Shipment> }
-// Status: "pending" | "delivered" | "returned"
-```
-
-```output
-{"status":"delivered","shipments":[]}
-false
-```
-
-`schema Status = ...` declares the schema `Status`, here `Schema.Literals(["pending", "delivered", "returned"])`, and the type `Status`, `typeof Status.Type`, in one declaration. The type after `=` maps to a schema as a struct field's type does: a union of literals is `Schema.Literals`, another union is `Schema.Union`, and arrays, tuples, records, object types, and the names of other schemas map as they do in a field. Refinements and transformations such as `Schema.NonEmptyString` and `Schema.FiniteFromString` stay `Schema` constants, as `Shipment` shows. A type outside the mapping, such as a function type, is EK2109.
-
-## Choosing synchronous, result, or effect decoding
+## Choosing a decoder
 
 ```vibe
 // run: try Console.log((try decodeWithEffects({ tracking: "box-76", pieces: "2" })).pieces); try Console.log(decodeAsData({ tracking: "box-76", pieces: "2" })); try Console.log((try decodeWithDomainError({ tracking: "box-76", pieces: "2" })).pieces); try Effect.catch(decodeWithDomainError({}), (error) => Console.log(error._tag)); try Console.log(decodeAsData({}))
@@ -157,18 +123,21 @@ Missing key
   at ["tracking"]
 ```
 
-Prefer `decodeUnknownEffect`: it can pause, requires the codec's decoding services, and fails with `Schema.SchemaError`. `decodeUnknownResult` returns success or failure as data and needs a synchronous, service-free decoding path. An unexpected exception from a synchronous callback is a defect, which `catch` does not handle.
+| Decoder | Returns | Use when |
+| --- | --- | --- |
+| `Schema.decodeUnknownEffect(S)(x)` | `T!SchemaError!RD` | **Default in effect code** — supports async & services, typed error |
+| `Schema.decodeUnknownResult(S)(x)` | `Result<T, SchemaError>` | Pure synchronous code with no services |
+| `Schema.decodeUnknownOption(S)(x)` | `Option<T>` | Synchronous code when you only care whether input is valid |
+| `Schema.decodeUnknownSync(S)(x)` | `T` (throws!) | Plain TypeScript only; wrap in `Effect.try` if called from effect code |
 
-`decodeUnknownSync` throws on invalid input. Wrap that call with `Effect.try` before calling it from effect code; the example instead maps `decodeUnknownEffect`’s expected failure to `InvalidShipment` with `catch effect`. The `Exit` and `Option` variants give other synchronous result shapes; an `Exit` stays data until run with `try`. The `Promise` variant decodes asynchronously without services and is wrapped with `tryPromise` in effect code. The synchronous variants cannot complete asynchronous conversions, even with no services.
-
-## Encoding values
+## Encoding values back to wire format
 
 ```vibe
 // run: { const jsonValue = try send({ tracking: "box-76", pieces: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(sendUntrusted({ tracking: "box-76", pieces: "2" }), (error) => Console.log(error._tag))
 effect function send(shipment: Shipment) {
   return try Schema.encodeEffect(Shipment)(shipment)
 }
-// ShipmentWire!Schema.SchemaError
+// Inferred: ShipmentWire!Schema.SchemaError
 
 effect function sendUntrusted(input: unknown) {
   return try Schema.encodeUnknownEffect(Shipment)(input)
@@ -180,87 +149,27 @@ effect function sendUntrusted(input: unknown) {
 SchemaError
 ```
 
-Encoding reverses the conversion, numeric `pieces` included. `encodeEffect` accepts the decoded type; `encodeUnknownEffect` accepts unknown input and validates it. Encoding also has `Sync`, `Result`, `Option`, `Exit`, and `Promise` variants, with decoding's execution limits.
-
-## Handling schema failures
+## Type guards and assertions
 
 ```vibe
-// run: try Console.log(try receiveOrExplain({ tracking: "box-76", pieces: "2" })); try Console.log(try receiveOrExplain({}))
-effect function receiveOrExplain(input: unknown) {
-  return effect {
-    const shipment = try receive(input)
-    return `accepted ${shipment.tracking}`
-  } catch (error) => error.message
-}
-// string!!
-```
+// run: try Console.log(isValid({ tracking: "box-76", pieces: 2 }), isValid({ tracking: "", pieces: 2 })); try Console.log(requireShipment({ tracking: "box-76", pieces: 2 }).tracking)
+const isValid = Schema.is(Shipment)
 
-```output
-accepted box-76
-Missing key
-  at ["tracking"]
-```
-
-The parser's expected failure is a `SchemaError` with `_tag: "SchemaError"`: its `issue` holds the structured failure and its `message` readable text. `catch` handles it; defects and interruption still propagate.
-
-## Configuring excess properties and error collection
-
-```vibe
-// run: try Effect.catch(receiveStrict({ tracking: "box-76", pieces: "2", extra: true }), (error) => Console.log(error._tag)); { const jsonValue = try Schema.decodeUnknownEffect(ShipmentWithExtras)({ tracking: "box-76", pieces: "2", extra: true }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-effect function receiveStrict(input: unknown) {
-  return try Schema.decodeUnknownEffect(Shipment)(input, {
-    onExcessProperty: "error",
-    errors: "all"
-  })
-}
-
-const ShipmentWithExtras = Schema.StructWithRest(Shipment, [
-  Schema.Record(Schema.String, Schema.Unknown)
-])
-```
-
-```output
-SchemaError
-{"tracking":"box-76","pieces":2,"extra":true}
-```
-
-By default, parsing removes unmodeled keys and stops at the first issue. `onExcessProperty: "error"` rejects extra keys; `errors: "all"` collects independent issues. To keep extra values, describe an index signature with `StructWithRest`.
-
-Pass options when creating the parser or when calling it; call options take precedence. Schema annotations do not override them for nested nodes.
-
-## Deriving guards and assertions
-
-```vibe
-// run: try Console.log(shipmentTracking({ tracking: "box-76", pieces: 2 })); try Console.log(shipmentTracking({ tracking: "box-76", pieces: "2" })); try Console.log(try Effect.try(() => assertShipment({ tracking: "box-76", pieces: 2 })))
-const isShipment = Schema.is(Shipment)
-
-function shipmentTracking(input: unknown) {
-  if (isShipment(input)) return input.tracking
-  return undefined
-}
-
-function assertShipment(input: unknown) {
-  Schema.asserts(Shipment, input)
-  return input.tracking
+function requireShipment(input: unknown): Shipment {
+  try {
+    Schema.asserts(Shipment, input)
+    return input
+  } catch {
+    return { tracking: "fallback", pieces: 0 }
+  }
 }
 ```
 
 ```output
-box-76
-undefined
+true false
 box-76
 ```
 
-Guards and assertions check the decoded type: a numeric `pieces` is valid, a string `pieces` is not. `Schema.is` returns a type predicate; `Schema.asserts(schema, input)` throws a generic validation error whose `cause` holds the issue. Both calls keep TypeScript's narrowing in the current plain function. Wrap a throwing assertion with `Effect.try` before calling it from effect code. For typed validation failures, use `decodeUnknownEffect`.
-
-## Coming from Effect
-
-`Schema.decodeUnknownEffect(Shipment)(input)` returns an Effect. Inside an `effect` function, `try` runs it and gives the shipment. Use `catch` on the Effect value to recover from schema failures. A `const` that holds a `Schema.Struct` draws EK4832 when a `schema` declaration writes the same struct, and an explicit edit can use the declaration ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
-
-A value named `string`, `number` or another type keyword keeps its library form when its bare name would select a different schema. A qualified reference such as `holder.string` keeps naming that value inside a `schema` declaration, so a struct that uses one can still be rewritten as a declaration by hand.
+`Schema.is` returns a plain boolean type guard (never throws). `Schema.asserts` throws on invalid input, so call it inside a plain `try`/`catch` or wrap with `Effect.try` in effect code.
 
 [Upstream page](https://effect.website/docs/v4/schema/getting-started)
-
-For older programs that relied on an implicit readonly schema key, write the old readonly keys explicitly. A referenced codec whose decoded-key flags cannot be represented by that modifier stays an explicit Effect codec, preserving its public type and identity.
-
-An eligible `Schema.Struct` constant immediately followed by its matching `typeof Name.Type` alias also receives the configurable `EK4841` warning. When combining the pair as a `schema Name = …` declaration, preserve its fields, exports and written imports.

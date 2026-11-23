@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" role="img" aria-labelledby="t d">
+  <title id="t">Schema declarations validate untrusted input and encode typed domain values</title>
+  <desc id="d">One schema User declaration generates both the TypeScript type and runtime decoder/encoder between untrusted wire data and typed domain objects.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="300" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">One schema declaration = runtime codec + TypeScript type</text>
+      <text x="36" y="64" class="sub">Validate untrusted JSON once at the edge; inside your app, work with plain typed values.</text>
+
+      <!-- Wire input -->
+      <rect x="36" y="98" width="200" height="144" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="54" y="124" class="k" fill="#6b7280">EXTERNAL / WIRE</text>
+      <text x="54" y="150" class="code" fill="#16202e">unknown</text>
+      <text x="54" y="176" class="code-sm" fill="#4b5563">{ "id": "42",</text>
+      <text x="54" y="194" class="code-sm" fill="#4b5563">  "role": "admin" }</text>
+      <text x="54" y="224" class="p">HTTP body, env, DB row</text>
+
+      <!-- Decode / Encode arrows -->
+      <line x1="236" y1="142" x2="314" y2="142" stroke="#0f766e" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <text x="275" y="132" text-anchor="middle" class="k" fill="#0f766e">DECODE</text>
+
+      <line x1="314" y1="196" x2="236" y2="196" stroke="#4338ca" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      <text x="275" y="216" text-anchor="middle" class="k" fill="#4338ca">ENCODE</text>
+
+      <!-- Schema declaration -->
+      <rect x="322" y="98" width="236" height="144" rx="10" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="340" y="124" class="k" fill="#4338ca">SCHEMA DECLARATION</text>
+      <text x="340" y="150" class="code-sm" fill="#16202e">schema User {</text>
+      <text x="340" y="170" class="code-sm" fill="#16202e">  readonly id: string</text>
+      <text x="340" y="190" class="code-sm" fill="#16202e">  role: "admin" | "member"</text>
+      <text x="340" y="210" class="code-sm" fill="#16202e">}</text>
+      <text x="340" y="232" class="p">Value + Type, zero duplication</text>
+
+      <!-- Success & Failure arrows -->
+      <line x1="558" y1="138" x2="626" y2="138" stroke="#0f766e" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <line x1="558" y1="204" x2="626" y2="204" stroke="#b91c1c" stroke-width="2" marker-end="url(#arrow-red)"/>
+
+      <!-- Valid domain value -->
+      <rect x="634" y="98" width="210" height="64" rx="10" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="652" y="122" class="k" fill="#0f766e">VALID (A)</text>
+      <text x="652" y="144" class="code" fill="#16202e">User</text>
+
+      <!-- SchemaError -->
+      <rect x="634" y="178" width="210" height="64" rx="10" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
+      <text x="652" y="202" class="k" fill="#b91c1c">INVALID (E)</text>
+      <text x="652" y="224" class="code" fill="#b91c1c">Schema.SchemaError</text>
+
+      <text x="440" y="276" text-anchor="middle" class="p">Need a serializable failure? Write <tspan class="code-sm" fill="#b91c1c">schema error NotFound { id: string }</tspan>.</text>
+    
+</svg>

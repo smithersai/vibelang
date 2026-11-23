@@ -1,10 +1,10 @@
 # Unexpected Errors
 
-Defects report bugs and broken invariants, outside the typed error contract. Domain recovery handles expected errors; inspect defects at a boundary that can report or isolate the failed operation.
+Defects represent bugs and broken invariants, not domain failures. They live outside channel `E` so ordinary `catch` handlers never accidentally swallow them. Inspect or isolate defects only at supervision boundaries (request handlers, background workers, plugin hosts).
 
-[Upstream page](https://effect.website/docs/v4/error-management/unexpected-errors)
+![Expected failures travel in E; defects and interruption live in Cause and bypass catch](/diagrams/two-error-rails.svg)
 
-## Creating defects
+## Creating defects (`die`)
 
 ```vibe
 // run: try Console.log(try decodeOpcode(1)); try Console.log(try matchCause(decodeOpcode(2), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
@@ -12,7 +12,7 @@ effect function decodeOpcode(opcode: number) {
   if (opcode !== 1) try die(new Error("unknown internal opcode"))
   return "start"
 }
-// string!!
+// Inferred: string!!
 ```
 
 ```output
@@ -20,15 +20,9 @@ start
 true
 ```
 
-`die` terminates the computation with a defect, preferably an `Error` with a useful message so diagnostics include its stack. An implicit JavaScript exception, such as an invalid property access, is also a defect.
+`die` terminates the fiber with a defect. Pass an `Error` instance so failure reports keep a stack trace. Implicit JavaScript runtime errors (such as dereferencing `undefined`) also become defects.
 
-An explicit `throw` in an effect function, even `throw new Error(...)`, is a typed failure. A `throw` in a plain function is `EK0401`; make the function `effect` for a typed failure. In an `async` function, `throw` rejects the Promise. Wrap a synchronous call that may throw with `Effect.try` to expose its exception as a typed failure. The thunk keeps this contract through parentheses, computed access, constant aliases and bound references to `Effect.try` or `Effect.tryPromise`. Native `call` and `apply` also keep the genuine wrapper’s thunk contract, including the options `try` callback. Their `catch` mappers and functions nested inside a thunk keep their own plain-code checks. A local `Effect.try` or `Effect.tryPromise` property that refers to `sync` or `promise` keeps that API's non-throwing thunk contract. A tracked throwing callback is not assignable to `sync`'s non-throwing thunk; use `orDie(Effect.try(() => call()))` when that exception should be a defect. A non-null assertion preserves the callable alternatives: a choice between `sync` and `Effect.try`, or between `promise` and `tryPromise`, still requires a thunk valid for either API.
-
-In the options overload, a computed key that resolves to `"try"`, such as `["try"]` or `[key]` with `const key = "try" as const`, keeps the same thunk contract. Evaluating the key stays in the surrounding code. Native `call` and `apply` forward that computed-key callback contract too.
-
-An inline options method such as `try() { return parse(text) }` keeps that thunk contract too, including quoted and computed method names and native `call` or `apply`. Its `catch` method and any function nested inside it keep their own plain-code checks. A getter or a method stored in a separate options object keeps its own source scope.
-
-A TypeScript `as` or angle-bracket assertion, `satisfies`, or non-null assertion around an inline thunk or options object keeps the enclosing wrapper’s contract. The same applies to an inline single-element argument array for native `apply`. A function stored separately keeps its own source scope.
+An explicit `throw` in an `effect` function is always a typed failure in `E`, never a defect. When calling a throwing JS/Effect helper like `Option.getOrThrow` or `Schema.decodeUnknownSync`, wrap it in `Effect.try` (and `orDie` if failure is a bug) — or prefer the typed Effect equivalents (`fromOption`, `Schema.decodeUnknownEffect`):
 
 ```vibe
 // run: try Console.log(try firstLabel(["one"])); try Console.log(try firstLabel([]))
@@ -42,9 +36,9 @@ one
 No label
 ```
 
-`Option.getOrThrow`, and the decoders that `Schema.decodeUnknownSync(schema)` and `Schema.decodeSync(schema)` return, may throw; building either decoder doesn't. An effect function wraps those calls with `Effect.try`; `orDie` then promotes the failure to a defect, which a catch expression doesn't see. When callers need recovery, use a typed form: `fromOption`, as above, or `Schema.decodeUnknownEffect`. A JavaScript catch inside `Effect.gen` sees synchronous exceptions; a catch expression in Effect code follows the expected-failure contract. A plain function's catch handles JavaScript exceptions.
+## Promoting typed failures to defects (`orDie`)
 
-## Promoting typed failures to defects
+When a failure violates a startup invariant and callers cannot recover, move it out of `E` with `orDie`:
 
 ```vibe
 // run: try Console.log(try matchCause(startup(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false })); try Console.log(try matchCause(startupWithMessage(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
@@ -59,7 +53,7 @@ effect function requireSetting(name: string) {
 effect function startup() {
   return try orDie(requireSetting("region"))
 }
-// never!!
+// Inferred: never!!
 
 effect function startupWithMessage() {
   return try orDie(
@@ -73,9 +67,9 @@ true
 true
 ```
 
-`orDie` removes `E` by moving typed failures into defect reasons, which callers can't recover from; use it where a failure violates a required invariant. For a clearer defect message, map the error first.
+## Inspecting full execution results (`exit`)
 
-## Examining complete execution results
+`exit` turns any execution into an `Exit<A, E>` value without catching or erasing defects or interruption:
 
 ```vibe
 // run: try Console.log(try inspectStartup())
@@ -92,11 +86,9 @@ effect function inspectStartup() {
 startup defect
 ```
 
-`exit` succeeds with an `Exit<A, E>`. A failure exit keeps the full cause: defects, interruption reasons, and combinations of reasons. `result` exposes domain failures only. Capturing an exit doesn't make an externally cancelled fiber immune to cancellation.
+## Isolating defects at a boundary (`catchDefect` and `exit`)
 
-An `Exit` returned by a call stays data, and `Exit.succeed(value)` constructs one without running it; `try outcome` runs a held exit.
-
-## Recovering defects at a boundary
+Use `catchDefect` when a boundary isolates a subsystem and re-raises defects it does not recognize:
 
 ```vibe
 // run: try Console.log(try isolateDecoder(1)); try Console.log(try isolateDecoder(2))
@@ -117,9 +109,7 @@ Decoder disabled after an invariant failure
 disabled
 ```
 
-`catchDefect` selects the first defect and runs recovery; a cause with no defect propagates. A typed failure beside a defect is a defect by then, so the handler receives that failure's error, and recovery consumes the other reasons too; use `catchCause` when every reason must inform the decision. Reraise defects you don't recognize. A catch expression never intercepts a defect, even one that is an instance of a domain error class.
-
-## Recovering a complete cause
+To inspect every reason in a `Cause` while always preserving cancellation, match on `try exit(...)` and re-fail unhandled causes with `try failCause(cause)`:
 
 ```vibe
 // run: try Console.log(try decoderBoundary(1)); try Console.log(try decoderBoundary(2))
@@ -142,6 +132,6 @@ Decoder failed ["Die"]
 disabled
 ```
 
-`try exit(program)` returns the whole outcome, as Effect's `exit` does: a `Failure` exit's cause holds every reason, including the defects and interruption that ordinary catch leaves alone or drops. Test it with `is` or `match` on `Exit.Success` and `Exit.Failure`. `failCause(cause)` restores the original failure with every reason. `throw` fails with the value it is given, so `throw cause` makes the cause object a typed error, as `fail(cause)` does. Inspect every reason before recovering from a mixed cause, and preserve cancellation unless the boundary has a reason to consume it.
+Never write `throw cause` to re-raise a `Cause`: `throw` puts the `Cause` object into `E` as a typed error. Always use `try failCause(cause)` to restore the original defect or interruption intact.
 
-For a retired `catch (cause: Cause)` (`EK2113`) around one returned expression, put that expression inside an `effect` block and match `try exit(...)`. The protected work runs inside `exit`, so its failures remain available to the fallback.
+[Upstream Effect page](https://effect.website/docs/v4/error-management/unexpected-errors)

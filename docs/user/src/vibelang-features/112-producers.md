@@ -1,8 +1,10 @@
 # Producers
 
-A producer emits values and can run Effects between yields. Declare one with `effect function*` and consume its Stream with `for try`.
+A producer is an `effect function*` that emits values with `yield`, runs Effects with `try` between yields, and compiles directly to an Effect `Stream`. Consume any `Stream` — from a producer or from Effect's `Stream` constructors — with `for try`.
 
-## Yield values on demand
+![Producers emit values lazily under backpressure into Stream operators and for try loops](/diagrams/stream-producer-flow.svg)
+
+## Yielding values on demand (`effect function*` + `for try`)
 
 ```vibe
 // run: try Console.log(try firstAlert())
@@ -23,39 +25,17 @@ effect function firstAlert() {
   }
   return alert
 }
-// (number | undefined)!!
+// Inferred: (number | undefined)!!
 // Output: sensor closed
 // Output: 25
 ```
 
-`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses the project's `Stream.callback` and Effect instance with a one-element buffer and can run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. This bound is for one sequential emitter. In a `for concurrent` body, each active item can compute its value before waiting to offer it; the one-element buffer does not bound all pending offers or upstream work.
+- Calling `readings()` constructs a lazy `Stream.Stream<number>` without running its body.
+- Each `yield x` offers one element and pauses under backpressure. A sequential producer runs at most two elements ahead of its consumer (one in its one-element buffer and one waiting to offer); yields from inside a `for concurrent` body have no such bound.
+- The producer supplies its own `Scope` (so `addFinalizer`, `acquireRelease`, and `fork.scoped` inside it do not add `Scope.Scope` to the Stream's `R` channel).
+- `break` or a failure in `for try` closes the Stream and runs all producer finalizers (`sensor closed`) before returning.
 
-A binding default in a producer body can emit with `do { yield value; fallback }`. It runs only when the bound value is `undefined`, retains the pattern’s evaluation order and iterator closing, and then supplies `fallback` to the binding. A `do` expression in a computed name, decorator or `extends` expression also uses the enclosing producer. Field initializers and written nested functions keep their own activation.
-
-A `yield` inside a `for concurrent` item body emits on the enclosing producer's queue. Nested concurrent loops keep that same producer; a nested source function or arrow owns its own `yield` rules. The inferred `Stream` element type includes the item body's yields.
-
-The consumer stops at 25; before `firstAlert` returns, the producer's finalizer logs `sensor closed`. `break` or a failure in the loop body closes the Stream and runs its cleanup. Iterating the Stream again starts a new run.
-
-In `.vibe`, `effect function*` declares a producer; use a plain `function*` for `Effect.gen` or other generator-based APIs. A plain `function*`, with or without a JavaScript iterator return type, is a JavaScript generator ([below](#javascript-generators)). Generator methods on objects remain JavaScript generators unless marked `effect`. The value of `yield x` is `undefined` after the offer completes, including when it waits for room in the buffer. A bare `yield` offers `undefined`. The `yield` expression has type `undefined`. A JavaScript generator keeps its declared type for the value received by `yield`. A producer cannot delegate with `yield*` (`EK2103`); use `for try` and `yield` to forward another stream's elements. Independent TypeScript errors inside the rejected operand keep their own diagnostics.
-
-A producer expression such as `const values = effect function* () { yield 1 }` also constructs a lazy `Stream` when called. Naming or parenthesizing the expression keeps that meaning.
-
-A class or object method written `effect *values() { yield this.value }` is also a producer. Calling it constructs a `Stream` without running its body. Each collection runs the body again with the original receiver and observes its current fields; `super` keeps the enclosing method’s meaning. TypeScript member modifiers, private names and generic parameters keep their usual meaning. Computed names and decorators evaluate where the class or object is defined, including pipes, `match`, `is` and `do` expressions; they do not wait for the stream to run. A producer method can follow a class field on a new line without a written semicolon, just as an `async *` method can.
-
-A producer expression cannot use `fork` or `join` as its own name (`EK1702`), just like a non-generator `effect function` expression. Top-level declarations and method names are allowed. Preserve the expression's name and self-references through a local constant in a plain arrow; see [Fibers](../concurrency/047-fibers.md).
-
-A plain synchronous generator follows the no-throw rule: a written `throw` in its body is `EK0401`. Keep JavaScript code that throws in a `module` block, with `@throws {T}` on each function that throws.
-
-A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value. This also applies when the producer is passed to `Effect.gen` or another JavaScript generator API. These APIs take a plain `function*`, which keeps its JavaScript return value. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
-A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value. An unknown function or method receiving that producer does not hide this error; the unresolved name or property is reported too. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
-
-A `yield` belongs to its own source activation. In a nonproducer `effect` function, arrow or `effect { }` block, it reports `EK2104`, even inside an outer producer. Directly evaluated parameter defaults and destructuring of Effect callables and producers also report `EK2104`: parameter initialization is outside the suspended body. Nested native generators keep TypeScript's own `yield` rules. An enum member initializer also keeps TypeScript's own `yield` rules and diagnostics; enclosing it in a producer does not make it emit.
-
-Class field initializers and static blocks keep TypeScript's own placement diagnostics and inferred `yield` types. Written return contracts keep their ordinary assignment checks.
-
-For legacy Effect delegation in a nonproducer body, which reports `EK2104`, write `try e` for `yield* e` when `e` is an Effect. If the operand already runs and returns an ordinary value, write `try load()` for `yield* try load()`; if it returns another Effect, keep both runs as `try (try load())`. Bare yields, producer delegation and parameter initializers need an explicit source change.
-
-## Call services between yields
+## Calling services between yields
 
 ```vibe
 // run: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, "x".repeat(1001)); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
@@ -87,20 +67,19 @@ effect function firstLargeFile(directory: string) {
 // Output: true
 ```
 
-Look up each service with `try`, then call its members. Run each returned Effect with `try`, and the producer's failures and requirements join the consuming function's contract. At the application boundary, provide `FileSystem` and `Path` from `NodeServices.layer`, as in `examples/file-tree`.
+Any service read with `try` (`FileSystem`, `Path`) and any error thrown inside the producer flow straight into the returned `Stream`'s `E` and `R` channels.
 
-Resources a producer acquires in its Effect Scope stay open between yields and close when consumption finishes or stops early. Use `scoped(effect { ... })` to own Effect resources. This example reads one whole file at a time; with the one-element buffer, a read after the selected file may already have started when consumption stops.
+## Composing producers with `Stream` operators
 
-## Use a producer as a Stream
+Because a producer **is** a `Stream.Stream<A, E, R>`, every Effect `Stream` operator works on it directly:
 
 ```vibe
 // run: { const jsonValue = try alerts(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function alerts() {
-  const selected = readings().pipe(
-    Stream.filter((value) => value >= 25),
-    Stream.map((value) => `${value} C`),
-    Stream.take(2)
-  )
+  const selected = readings()
+    |> Stream.filter(%, (value) => value >= 25)
+    |> Stream.map(%, (value) => `${value} C`)
+    |> Stream.take(%, 2)
   const result: string[] = []
   for try (const alert of selected) result.push(alert)
   return result
@@ -109,13 +88,7 @@ effect function alerts() {
 // Output: ["25 C","28 C"]
 ```
 
-A producer has type `Stream.Stream<Value, Error, Requirements>`: Stream operators accept it directly, and TypeScript consumers see a Stream in its declaration file. For inferred body requirements `RBody`, the `Stream` requires `Exclude<RBody, Scope.Scope>`: `Stream.callback` supplies `Scope`, so a scoped child fork alone needs no external `Scope`. This exclusion also applies inside unions and aliases: `Scope.Scope | Users` becomes `Users`, while a requirement that extends `Scope.Scope`, such as `Scope.Scope & Users`, becomes `never`. Generic requirements retain `Exclude<RBody, Scope.Scope>`. Other service requirements remain, and this does not change explicit annotation checks or values of type `Scope.Scope`. `examples/pipeline` uses this filter, map, and take pattern.
-
-A written producer return annotation follows TypeScript's ordinary return checking on the `Stream.callback` counterpart, including when the file has no explicit `Stream` import. With `Stream.Stream<A, E, R>`, each yielded value must fit `A`; failures and requirements must fit `E` and `R`. Aliases, `any`, `unknown` and compatible unions, including an optional `Stream`, are valid. When the annotation supplies no single `Stream` channel contract, the compiler infers the body channels and checks the resulting `Stream` against the annotation. An incompatible annotation, such as `number[]` or `never` for a returning producer, is `EK2102`. Omit the annotation to infer all three channels.
-
-When Stream operators consume a producer, `Stream.callback` runs it on its own fiber with a one-element buffer, and closing the Stream interrupts it and runs cleanup.
-
-## Iterate any Stream
+## Consuming any `Stream` with `for try`
 
 ```vibe
 // run: try Console.log(try sumStream())
@@ -129,27 +102,17 @@ effect function sumStream() {
 // Output: 6
 ```
 
-`for try` pulls an Effect Stream and closes it when the loop exits, including on `break`. `continue` skips an element, and a failure in the body fails the loop. `return` in the item's head binding initialization or body is a compile error. A labeled `break` or `continue` naming a statement that encloses the `for try` is `EK2003`. One naming the `for try` itself means its unlabeled `break` or `continue`, as in JavaScript: `scan: for try (const x of s) { continue scan }` skips an element. Labels targeting statements inside the body keep their TypeScript meaning.
+Rules for `for try` and producers:
 
-Decorators, computed member names and `extends` expressions evaluate where their class or object is defined. An outward `return` or labeled jump there keeps `EK2002` or `EK2003`, including inside a `do` expression in the item’s head binding initialization or body. Written method bodies and local jump targets keep their own scope; independent TypeScript errors retain their diagnostics.
+| Construct | Rules & diagnostics |
+| --- | --- |
+| `effect function*` / `effect *method()` | Bare `return` ends the stream; `return value` is `EK2128`. `yield*` is `EK2103` — forward another stream with `for try (const x of other) yield x`. Non-Stream return annotation is `EK2102`. `yield` inside a non-producer `effect` function is `EK2104`. |
+| `for try (const x of stream)` | Valid only in effect code (`EK2001`). Operand must be a `Stream` (`EK2004`). Head must use `const` or `let` (`EK2005`). `continue` skips an item; `break` closes the stream; `return` (`EK2002`) and labeled jumps outside the loop (`EK2003`) are errors — save into a variable and `break`. |
+| Fibers inside `for try` | Each item runs on the consuming fiber; a plain `fork` inside the body is owned by that consuming fiber, not implicitly joined per item. |
 
-The Stream expression runs with the head bindings in their temporal dead zone, as the right side of a native `for...of` does. Closures created there keep those uninitialized bindings even after the loop, including when the `Stream` is empty or emits several items. This also applies when no outer variable has the same name. Each item receives fresh initialized bindings. A closure return annotation may be needed to avoid TypeScript’s recursive `TS7022` inference error.
+## Plain JavaScript generators (`function*`)
 
-With `strictNullChecks`, a possibly `null` or `undefined` Stream reports `EK2004` once. Check the value before entering the loop. An `unknown` operand reports `EK2004` and keeps TypeScript’s error for the operand as written: `TS18046` names it, as in `'rows' is of type 'unknown'`, and a call, a parenthesized expression or a `do` expression is `TS2571`, `Object is of type 'unknown'`. A possibly undefined receiver in `holder.stream` or `holder["stream"]` still reports `TS18048`; that error concerns the property read, independently of whether the resulting Stream is nullable. Independent TypeScript errors in the operand or loop body keep their own diagnostics. This includes native iteration, spreads, destructuring and generator delegation inside an operand callback, even when the `for try` itself is rejected.
-
-The head declares `const` or `let`, with destructuring allowed; defaults and computed keys run inside each element’s generator. A `var` or assignment head is `EK2005`: write `for try (const v of s) { x = v }` to assign an existing variable. A `using` head is also `EK2005`. Outside effect code, `for try` is `EK2001`; a `return` in its body is `EK2002`, and a jump to an enclosing statement is `EK2003`. A non-Stream operand is `EK2004`; convert an `AsyncIterable` with `Stream.fromAsyncIterable` first. The operand must be assignable to `Stream.Stream<any, any, any>`, so `any`, `never`, Stream aliases and constrained type parameters pass. An optional Stream or an object with only the Stream type marker does not pass. This is a static check; it adds no runtime guard for `any`.
-
-Ordinary `for...of` and native `for await` keep JavaScript iteration, even when the operand also implements `Stream`. A noniterable `Stream` retains TypeScript’s `TS2488` or `TS2504` diagnostic. A `for await` in effect code is `EK0102` and keeps independent operand errors. Choose `for try` explicitly to consume a `Stream` in effect code.
-
-A `for try` item runs on the current consuming fiber. A plain `fork` inside it may keep running after that item and after successful loop completion, while its owning fiber continues; the loop does not implicitly join it. The child is interrupted when that owner terminates. The owner may itself be a concurrent item's fiber, rather than the outermost caller. Explicit `fork.in`, `fork.scoped` and `fork.detached` keep their own owners; this adds no per-item scope or child-start ordering.
-
-Arrays, maps, sets, and strings iterate as in JavaScript with ordinary `for...of`. Every label in a consecutive chain, such as `outer: inner: for (const x of values)`, names that same loop: `continue outer` advances it and `break inner` leaves it. Native iteration, including an array's own iterator, follows ECMA-262's [`ForIn/OfBodyEvaluation`](https://tc39.es/ecma262/2025/multipage/ecmascript-language-statements-and-declarations.html#sec-runtime-semantics-forin-div-ofbodyevaluation-lhs-stmt-iterator-lhskind-labelset) and [`IteratorClose`](https://tc39.es/ecma262/2025/multipage/abstract-operations.html#sec-iteratorclose); the native algorithm determines which completions close an iterator. An `Effect` run by `try` that fails, dies or is interrupted abandons the generator, so neither its JavaScript iterator closing nor `using` disposal runs. Type annotations do not change cleanup; use `scoped` with `acquireRelease` for cleanup on every exit.
-
-Array destructuring follows ECMA-262's [`BindingInitialization`](https://tc39.es/ecma262/2025/multipage/syntax-directed-operations.html#sec-runtime-semantics-bindinginitialization) and [`DestructuringAssignmentEvaluation`](https://tc39.es/ecma262/2025/multipage/ecmascript-language-expressions.html#sec-runtime-semantics-destructuringassignmentevaluation), with [`IteratorClose`](https://tc39.es/ecma262/2025/multipage/abstract-operations.html#sec-iteratorclose) only where those algorithms require it. An exhausted iterator is not closed again. An error from `return()` replaces a jump, as ECMA-262's IteratorClose specifies. A JavaScript throw, such as a getter's, wins over an error from closing and becomes a defect. A failed `try` abandons the generator, so nothing closes.
-
-For JavaScript iterables, use `for (using value of source)` when each element needs disposal at the end of its iteration. When native unwinding both disposes an element and closes the iterator, disposal comes first; an `Effect` failure, defect or interruption skips `using` disposal, so use `scoped` and `acquireDisposable` for Effect exits. `using` keeps TypeScript's meaning, so an element of a Stream that needs an Effect resource opens it in its own scope: `for try (const path of paths) { try scoped(effect { const file = try acquireRelease(open(path), close); try process(file) }) }` releases each file before the next element. `Array.from(source)` is not a Stream consumer; `try Stream.runCollect(source)` collects all the elements into an array.
-
-## JavaScript generators
+A plain `function*` (without `effect`) stays an ordinary JavaScript generator for `Iterator` APIs and `Effect.gen`. Passing a producer where a JS generator is expected reports `EK1002`:
 
 ```vibe
 // run: try Console.log([...countdown(3)].join(","))
@@ -159,26 +122,6 @@ function* countdown(from: number): Generator<number> {
 // Output: 3,2,1
 ```
 
-A plain `function*` is a JavaScript generator, with or without a return annotation such as `Generator`, `Iterator`, `Iterable`, or their async forms, for APIs that call `.next()`. Its `try`/`catch` and iterator protocol keep their JavaScript meaning. A plain generator body still follows the plain-code throw restriction: written `throw` statements and throw expressions receive `EK0401`, even when caught. Put a throwing native generator in a `module` block, with `@throws {T}` on it. In an `async function*` body, a throw rejects the `Promise` for that iteration; in an `effect function*` producer, it becomes a typed `Stream` failure. A generator method, `*[Symbol.iterator]() { … }` in a class or an object literal, is a JavaScript generator too. Yield an Effect value, `load()`, to hand one out without running it. An `async function*` is an AsyncIterable. Calling a synchronous or `async` generator runs its parameter defaults and destructuring, but its body waits until the iterator is resumed. Throw tracking at that call includes parameter initialization, not the suspended body; an iterator's `next`, `throw` and `return` calls have their own signature contracts. Use `effect function*` for a Stream, or `effect *name()` for a producer method.
-
-Passing a producer to an API that expects a JavaScript generator reports `EK1002`. Independent errors in the producer's parameters and body keep their TypeScript diagnostics.
-
-Nearby Effect code does not change a plain generator’s native calls, `yield` values or `yield*` delegation. This also applies in a file that consumes a Stream with `for try`.
-
 ## Coming from Effect
 
-Declare a generator-based Stream source with `effect function*`. Write `try` for Effects between `yield` statements, and reserve `yield` for emitted values. Use Stream's existing operators when they express the transformation you need.
-
-A `for try` head must declare its element with `const` or `let`. A `var`, `using`, `await using`, or assignment head reports `EK2005`, including with `--noCheck`. To assign an existing variable, write `for try (const item of stream) { current = item }`.
-
-A producer binds parameters and evaluates defaults once at the call. Each consumption reruns the body with those same bindings. A `do` containing an outward `return` in a default still runs outside the producer body: plain `throw` and unwrapped potentially throwing calls report `EK0401` there, while an ordinary `try`/`catch` may catch a throwing call. Direct `await` in a default remains `EK0102`. Forwarding arguments adds no array iterator observations; a source array destructuring pattern still uses its input's iterator.
-
-A producer method retains its receiver without reading a user-modified `Function.prototype.bind`. Its body reads receiver properties when the stream is consumed, including on later consumptions.
-
-A plain `function*` retains JavaScript iterator behavior and may return a value. Pass a plain generator to `Effect.gen` or other native generator APIs; only `effect function*` creates a producer Stream.
-
-A producer function is also an ordinary value. An overload accepting `unknown`, `object` or another compatible value type accepts that function when TypeScript accepts the complete call, including optional parameters, variadic tuples and spread arguments. Another overload that expects a generator does not change the producer's type. Receiver and callback forms of an API stay separate: `Option.gen(producer, function* () { return yield* Option.some(1) })` uses the producer as its receiver value, while `Option.gen(producer)` requires a native generator callback.
-
-Overloads and callback unions follow TypeScript's assignability rules. A parameter that accepts a function returning a `Stream` also accepts an `effect function*` producer, even when another branch expects a JavaScript generator. A generator-only parameter still requires a plain `function*`.
-
-A labeled jump out of a `for try` loop reports `EK2003`, including when the loop is inside `for concurrent`. Stop consuming with `break`, then make the item's decision after the stream loop.
+`effect function*` replaces manual `Stream.callback` plumbing, and `for try` replaces `Stream.runForEachWhile`. Use `try` for Effects and `yield` exclusively for emitted Stream elements.

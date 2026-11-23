@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 320" role="img" aria-labelledby="t d">
+  <title id="t">Fiber lifetimes: fork, fork.scoped, and fork.detached</title>
+  <desc id="d">Shows how fork ties a child fiber lifetime to its parent, fork.scoped ties it to a Scope, and fork.detached runs independently.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="320" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">Structured concurrency: every fiber has an owner</text>
+      <text x="36" y="64" class="sub">Choose the fork form that matches how long background work should live.</text>
+
+      <!-- Parent fiber -->
+      <rect x="316" y="86" width="248" height="52" rx="10" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="440" y="110" text-anchor="middle" class="b">Parent Fiber</text>
+      <text x="440" y="128" text-anchor="middle" class="p">ends or is interrupted</text>
+
+      <!-- Connectors -->
+      <line x1="360" y1="138" x2="164" y2="182" stroke="#4338ca" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+      <line x1="440" y1="138" x2="440" y2="182" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="520" y1="138" x2="716" y2="182" stroke="#92400e" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arrow-amber)"/>
+
+      <!-- Child 1: fork -->
+      <rect x="36" y="188" width="256" height="108" rx="10" fill="#ffffff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="54" y="214" class="code" fill="#4338ca">fork work()</text>
+      <text x="54" y="238" class="b">Child of parent</text>
+      <text x="54" y="258" class="p">Automatically interrupted when</text>
+      <text x="54" y="276" class="p">the parent fiber exits. Use <tspan class="code-sm" fill="#16202e">join f</tspan>.</text>
+
+      <!-- Child 2: fork.scoped -->
+      <rect x="312" y="188" width="256" height="108" rx="10" fill="#ffffff" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="330" y="214" class="code" fill="#0f766e">fork.scoped work()</text>
+      <text x="330" y="238" class="b">Bound to enclosing Scope</text>
+      <text x="330" y="258" class="p">Lives until <tspan class="code-sm" fill="#16202e">scoped(…)</tspan> closes.</text>
+      <text x="330" y="276" class="p">Adds <tspan class="code-sm" fill="#0f766e">Scope</tspan> to channel R.</text>
+
+      <!-- Child 3: fork.detached -->
+      <rect x="588" y="188" width="256" height="108" rx="10" fill="#ffffff" stroke="#fcd34d" stroke-width="1.5"/>
+      <text x="606" y="214" class="code" fill="#92400e">fork.detached work()</text>
+      <text x="606" y="238" class="b">Independent daemon</text>
+      <text x="606" y="258" class="p">Outlives parent exit. You own</text>
+      <text x="606" y="276" class="p">its shutdown via <tspan class="code-sm" fill="#16202e">Fiber.interrupt</tspan>.</text>
+    
+</svg>

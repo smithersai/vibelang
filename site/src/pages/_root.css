@@ -506,6 +506,48 @@
   margin-top: 0.5rem;
 }
 
+.vibe-diagram {
+  margin: 1.75rem 0;
+}
+
+.vibe-diagram img {
+  border: 1px solid var(--vocs-border-color-primary);
+  border-radius: 10px;
+  display: block;
+  height: auto;
+  max-width: 100%;
+  width: 100%;
+}
+
+.vibe-diagram__dark {
+  display: none;
+}
+
+:root[style*='color-scheme:dark'] .vibe-diagram__light,
+:root[style*='color-scheme: dark'] .vibe-diagram__light {
+  display: none;
+}
+
+:root[style*='color-scheme:dark'] .vibe-diagram__dark,
+:root[style*='color-scheme: dark'] .vibe-diagram__dark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([style*='color-scheme:light']):not([style*='color-scheme: light']) .vibe-diagram__light {
+    display: none;
+  }
+  :root:not([style*='color-scheme:light']):not([style*='color-scheme: light']) .vibe-diagram__dark {
+    display: block;
+  }
+}
+
+.vibe-diagram figcaption {
+  color: var(--vocs-text-color-secondary);
+  font-size: 0.875rem;
+  margin-top: 0.55rem;
+}
+
 /* A long path, URL or code span has no break opportunity. On a phone it ran past
    the article's clipped right edge; let it wrap instead. Vocs sets external links
    inline-block, which only anywhere can shrink, and code in a link inherits it.
