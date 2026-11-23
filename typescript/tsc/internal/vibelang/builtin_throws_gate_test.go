@@ -13,6 +13,18 @@ func TestBuiltinThrowsGate(t *testing.T) {
 		name, host, body string
 		code             int32
 	}{
+		{"decoder", "effect ", "const dec=Schema.decodeUnknownSync(Schema.String); return ⟦dec(s)⟧", 403},
+		{"curried-unsafe", "effect ", "const divide=Effect.Number.divideUnsafe(2); return ⟦divide(4)⟧", 403},
+		{"direct-unsafe", "effect ", "return ⟦Effect.Number.divideUnsafe(4, 2)⟧", 403},
+		{"unsafe-date", "", "return ⟦DateTime.makeUnsafe(s)⟧", 401},
+		{"safe-effect", "effect ", "return Option.some(s)", 0},
+		{"stringify", "effect ", "return ⟦JSON.stringify(s)⟧", 403},
+		{"repeat", "effect ", "return ⟦s.repeat(2)⟧", 403},
+		{"fixed", "", "return ⟦(1.5).toFixed(2)⟧", 401},
+		{"encode-uri", "", "return ⟦encodeURI(s)⟧", 401},
+		{"encode-component", "", "return ⟦encodeURIComponent(s)⟧", 401},
+		{"date-iso-never", "", "return new Date(s).toISOString()", 0},
+		{"intl-ctor-never", "", "return new Intl.DateTimeFormat(s)", 0},
 		{"parse", "effect ", "return ⟦JSON.parse(s)⟧", 403},
 		{"alias", "effect ", "const parse=JSON.parse; return ⟦parse(s)⟧", 403},
 		{"decode-uri", "effect ", "return ⟦decodeURI(s)⟧", 403},

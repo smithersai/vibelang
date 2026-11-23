@@ -210,6 +210,20 @@ func knownCallbackSignatureThrows(c *checker.Checker, signature *checker.Signatu
 		}
 		return thrown
 	}
+	if module, ok := pinnedEffectModule(c, file); ok {
+		failures, unknown, listed := effectSignatureThrows(c, decl, module)
+		if !listed {
+			return nil
+		}
+		if unknown {
+			return []*checker.Type{c.GetUnknownType()}
+		}
+		var thrown []*checker.Type
+		for _, f := range failures {
+			thrown = append(thrown, f.t)
+		}
+		return thrown
+	}
 	var thrown []*checker.Type
 	for _, host := range sourceSignatureHosts(decl) {
 		if ast.IsTypeAliasDeclaration(host) {

@@ -1,0 +1,9 @@
+// expect: EK0403 EK0403
+// Issue #433: chapter 3 (003-failures.md:152) tracks JSON.stringify and String.prototype.repeat.
+export effect function f(xs: number[], s: string, v: object) {
+  xs.push(1)
+  const n = s.length
+  const t = JSON.stringify(v)
+  const u = try Effect.try(() => JSON.stringify(v))
+  return [t, u, "ab".repeat(n)]
+}

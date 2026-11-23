@@ -14,6 +14,13 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
 )
 
 // globalThrowsFile is the generated table, relative to this package.
@@ -83,8 +90,25 @@ func TestGlobalThrows(t *testing.T) {
 		known   bool
 	}{
 		{"JSON.parse", []string{"SyntaxError"}, true},
+		{"JSON.stringify", []string{"TypeError"}, true},
+		{"String.repeat", []string{"RangeError"}, true},
+		{"Number.toFixed", []string{"RangeError"}, true},
+		{"encodeURI", []string{"URIError"}, true},
+		{"encodeURIComponent", []string{"URIError"}, true},
+		{"Uint8ArrayConstructor.fromBase64", []string{"SyntaxError"}, true},
+		{"Uint8ArrayConstructor.fromHex", []string{"SyntaxError"}, true},
+		{"Uint8Array.setFromBase64", []string{"SyntaxError"}, true},
+		{"Uint8Array.setFromHex", []string{"SyntaxError"}, true},
+		{"Temporal.DurationConstructor.from", []string{"RangeError"}, true},
+		{"Temporal.InstantConstructor.from", []string{"RangeError"}, true},
+		{"Temporal.PlainDateConstructor.from", []string{"RangeError"}, true},
+		{"Temporal.PlainDateTimeConstructor.from", []string{"RangeError"}, true},
+		{"Temporal.PlainMonthDayConstructor.from", []string{"RangeError"}, true},
+		{"Temporal.PlainTimeConstructor.from", []string{"RangeError"}, true},
+		{"Temporal.PlainYearMonthConstructor.from", []string{"RangeError"}, true},
+		{"Temporal.ZonedDateTimeConstructor.from", []string{"RangeError"}, true},
+		{"Date.toISOString", nil, true},
 		{"Math.max", nil, true},
-		{"JSON.stringify", nil, true},
 		{"String.toUpperCase", nil, true},
 		{"BigIntConstructor()", []string{"SyntaxError", "RangeError"}, true},
 		{"Intl.getCanonicalLocales", []string{"RangeError"}, true},
@@ -149,4 +173,74 @@ func libGlobalKeys(t *testing.T) ([]string, map[string]bool) {
 	}
 	slices.Sort(keys)
 	return keys, vars
+}
+
+// TestGlobalThrowsIssue433Gate checks the built-in throwing members required by
+// chapter 3 and the outside-data rule (#433): EK0403 in effect code and EK0401
+// in plain code, while Date.toISOString and Intl constructors stay non-throwing.
+func TestGlobalThrowsIssue433Gate(t *testing.T) {
+	t.Run("chapter3-effect-example", func(t *testing.T) {
+		source := `export effect function f(xs: number[], s: string, v: object) {
+  xs.push(1)
+  const n = s.length
+  const t = JSON.stringify(v)
+  const u = try Effect.try(() => JSON.stringify(v))
+  const fixed = (1.5).toFixed(2)
+  return [t, u, fixed, "ab".repeat(n)]
+}`
+		program, file, _, _ := editorProgram(t, source)
+		var codes []int32
+		for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+			if d.Category() == diagnostics.CategoryError {
+				codes = append(codes, d.Code())
+			}
+		}
+		if !slices.Equal(codes, []int32{EK0403.Code, EK0403.Code, EK0403.Code}) {
+			t.Fatalf("got error codes %v; want three EK0403 (JSON.stringify, toFixed, repeat)", codes)
+		}
+	})
+
+	t.Run("outside-data-plain-EK0401", func(t *testing.T) {
+		source := `export function check(s: string, buf: Uint8Array, v: object) {
+  const a = Uint8Array.fromBase64(s)
+  const b = Uint8Array.fromHex(s)
+  const c = buf.setFromBase64(s)
+  const d = buf.setFromHex(s)
+  const e = Temporal.PlainDate.from(s)
+  const f = Temporal.Instant.from(s)
+  const g = encodeURI(s)
+  const h = encodeURIComponent(s)
+  const i = JSON.stringify(v)
+  const j = "ab".repeat(2)
+  const k = (1.5).toFixed(2)
+  const okDate = new Date(s).toISOString()
+  const okIntl = new Intl.DateTimeFormat("en-US")
+  return [a, b, c, d, e, f, g, h, i, j, k, okDate, okIntl]
+}`
+		files := map[string]string{
+			"/main.vibe":     source,
+			"/tsconfig.json": `{"compilerOptions":{"strict":true,"lib":["esnext","dom"],"types":[]},"files":["main.vibe"]}`,
+		}
+		fsys := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseSensitive))
+		parsed, errs := tsoptions.GetParsedCommandLineOfConfigFile("/tsconfig.json", &core.CompilerOptions{}, nil, fsys, nil)
+		if len(errs) != 0 || len(parsed.Errors) != 0 {
+			t.Fatalf("config: %v / %v", errs, parsed.Errors)
+		}
+		program := compiler.NewProgram(compiler.ProgramOptions{Config: parsed, Host: compiler.NewCompilerHost(fsys, bundled.LibPath(), nil, nil, nil)})
+		file := program.GetSourceFile("/main.vibe")
+		var codes []int32
+		for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+			if d.Category() == diagnostics.CategoryError {
+				codes = append(codes, d.Code())
+			}
+		}
+		if len(codes) != 11 {
+			t.Fatalf("got %d errors (%v); want 11 EK0401 errors and 0 for Date.toISOString / Intl.DateTimeFormat", len(codes), codes)
+		}
+		for _, code := range codes {
+			if code != EK0401.Code {
+				t.Errorf("got diagnostic code %d; want EK0401", code)
+			}
+		}
+	})
 }
