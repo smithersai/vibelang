@@ -1,0 +1,10 @@
+// expect-result: [1,3]
+export effect function main() {
+  const xs: unknown = [1, 2, 3]
+  const out: number[] = []
+  outer: for concurrent (const x of (xs is Array(...let ys) ? ys : [])) {
+    for (const y of [1]) { if (x === 2) continue outer }
+    out.push(x as number)
+  }
+  return out.sort((a, b) => a - b)
+}

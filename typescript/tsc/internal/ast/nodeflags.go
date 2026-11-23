@@ -60,11 +60,11 @@ const (
 	NodeFlagsVibeLangShorthandBinding NodeFlags = 1 << 40 // A source object-pattern binder also supplies an implicit fixed property key; rename must expose that key.
 	NodeFlagsVibeLangTemporary        NodeFlags = 1 << 41 // Identifier introduced by mTemp, rather than a source binding synthesized with mIdent
 
-	NodeFlagsVibeLangDoMethodBind NodeFlags = 1 << 40 // If node is the parser-written intrinsic bind access for a captured do operand method; its type comes from CallableFunction, never the method's own bind property.
+	NodeFlagsVibeLangDoMethodBind NodeFlags = 1 << 46 // If node is the parser-written intrinsic bind access for a captured do operand method; its type comes from CallableFunction, never the method's own bind property.
 
 	NodeFlagsVibeLangBindingCleanup NodeFlags = 1 << 42 // Compiler-owned iterator cleanup try/catch/rethrow: native JavaScript completions, including inside Effect code
 
-	NodeFlagsVibeLangUncountedPattern NodeFlags = 1 << 40 // A match and/not test: ordinary flow narrowing applies, but not finite coverage.
+	NodeFlagsVibeLangUncountedPattern NodeFlags = 1 << 47 // A match and/not test: ordinary flow narrowing applies, but not finite coverage.
 
 	NodeFlagsVibeLangPatternBinding NodeFlags = 1 << 43 // A conjunction binding retains refinements of its captured value without changing lexical-cell lowering.
 

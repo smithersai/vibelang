@@ -243,7 +243,19 @@ func (p *Parser) nextTokenStartsLegacyJoinOperand() bool {
 	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindOpenBraceToken:
 		return true
 	case ast.KindOpenBracketToken:
-		return p.scanner.TokenStart() > keywordEnd
+		// `join [0]` is a valid element access whatever the spacing, so it
+		// keeps its TypeScript meaning (Appendix A). Only a bracket that no
+		// element access can start, `join [ ]` or `join [ , x]`, recovers.
+		// The projection reads a plain function holding join as effect code,
+		// so there a spaced bracket still starts an array operand.
+		if p.scanner.TokenStart() == keywordEnd {
+			return false
+		}
+		if p.opts.VibeLangDoAsFunction {
+			return true
+		}
+		p.nextToken()
+		return p.token == ast.KindCloseBracketToken || p.token == ast.KindCommaToken
 	}
 	return false
 }
@@ -1007,6 +1019,27 @@ func (p *Parser) rewriteConcurrentLabelContinues(node *ast.Node) {
 	}
 }
 
+// concurrentHeadCallIndex finds the $forConcurrent statement of a RHS head
+// environment, followed by its generated break. Hoisted is bindings, the
+// items constant and its readers precede it (concurrentHeadEnvironment).
+func concurrentHeadCallIndex(statements []*ast.Node) int {
+	for i := 0; i+1 < len(statements); i++ {
+		statement := statements[i]
+		if ast.IsExpressionStatement(statement) && ast.IsCallExpression(statement.Expression()) &&
+			isIntrinsicCall(statement.Expression()) == "$forConcurrent" {
+			next := statements[i+1]
+			if next.Kind == ast.KindBreakStatement && next.Label() != nil && next.Label().Flags&ast.NodeFlagsReparsed != 0 {
+				return i
+			}
+			return -1
+		}
+		if !ast.IsVariableStatement(statement) {
+			return -1
+		}
+	}
+	return -1
+}
+
 // VibeLangConcurrentCall finds a source concurrent loop through the generated
 // limit and RHS head environment. Ordinary source blocks are not transparent.
 func VibeLangConcurrentCall(statement *ast.Node) *ast.Node {
@@ -1033,11 +1066,8 @@ func VibeLangConcurrentCall(statement *ast.Node) *ast.Node {
 					return call
 				}
 				return nil
-			} else if len(statements) >= 2 && ast.IsExpressionStatement(statements[0]) &&
-				ast.IsCallExpression(statements[0].Expression()) && isIntrinsicCall(statements[0].Expression()) == "$forConcurrent" &&
-				statements[1].Kind == ast.KindBreakStatement && statements[1].Label() != nil &&
-				statements[1].Label().Flags&ast.NodeFlagsReparsed != 0 {
-				statement = statements[0]
+			} else if i := concurrentHeadCallIndex(statements); i >= 0 {
+				statement = statements[i]
 			} else {
 				return nil
 			}

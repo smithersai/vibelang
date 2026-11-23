@@ -1,0 +1,7 @@
+// expect-result: [5,5,6]
+function first(join: number[]) { return join [0] }
+function tight(join: number[]) { return join[0] }
+function second(join: number[][]) { return join [0] [1] }
+export effect function main() {
+  return [first([5, 6]), tight([5, 6]), second([[5, 6]])]
+}
