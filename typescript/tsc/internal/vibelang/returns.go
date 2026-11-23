@@ -15,7 +15,7 @@ func returnOwner(node *ast.Node) *ast.Node {
 	}
 	// A conditional's arms are returned when the conditional is, so each arm
 	// delegates on its own: cond ? Exit.fail(e) : Exit.void under a union of
-	// Effects contract (D270, the twins' D-9 recipe) runs the chosen Exit.
+	// Effects contract (D270) runs the chosen Exit.
 	value := node
 	for value.Parent != nil {
 		parent := value.Parent

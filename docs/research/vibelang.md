@@ -928,7 +928,7 @@ Measured costs of keeping this convention private behind eager calls:
 | L | Status | Decision | Rationale |
 | --- | --- | --- | --- |
 | 278 | Locked | Durable execution is a language feature | Not stated |
-| 280 | Locked | Supersedes the separate `~/flows` library | That library is prior art |
+| 280 | Locked | Supersedes the earlier standalone flows library | That library is prior art |
 | 283 | Locked | Action = abstract op with a replaceable provider and a closed signature | Not stated |
 | 285 | Locked | Action implementation is an ordinary function; no Effect wrapper | Not stated |
 | 288 | Locked | Action I/O, failures, and requirements come from its signature; codecs derived | Source never repeats types as schema arguments |

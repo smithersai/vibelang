@@ -2,7 +2,7 @@
 
 > Status: The `EK9206` regression below was resolved in `a67560eee` (VIP-1 explicit effects); the reduced witness now compiles without `EK9206` (reporting only the advisory `EK4834` warning on `fail`).
 
-Verdict: **EK9206 is a regression at these sites. EK4402 is intended, but the existing-code rejection must remain a warning until the preserving `--fix-migration-only` repair ships.** This is a specification ruling, with no compiler, codemod, or live migration-tree fix. migfix-smithers owns `fix:smithers-command-reentered-EK9206` and `fix:smithers-incur-platform-migration-EK4402`.
+Verdict: **EK9206 is a regression at these sites. EK4402 is intended, but the existing-code rejection must remain a warning until the preserving `--fix-migration-only` repair ships.** This is a specification ruling, with no compiler, codemod, or live migration-tree fix.
 
 ## EK9206: regression
 
@@ -150,11 +150,11 @@ Each factory builds the same cold runtime `sync` program where the original wrap
 
 The already extractable environment read and assignments may share this stable absent companion too, without moving a host read to module initialization or changing the order of assignment and restore. Existing foreign files remain protected. A varying offset-derived filename is not a stable migration result.
 
-Under Will's 2026-11-03 retire-needs-fix rule, a partial extraction that leaves these four existing-code sites as errors does not satisfy the release gate. Until the repair is available in `--fix --fix-migration-only`, EK4402 at these sites must remain a warning. The platform prohibition is not rescinded.
+Under the preserving migration rule recorded on 2026-11-03 in [VIP-34](../design/vips/0034-compiler-and-tooling.md#decision), a partial extraction that leaves these four existing-code sites as errors does not satisfy the release gate. Until the repair is available in `--fix --fix-migration-only`, EK4402 at these sites must remain a warning. The platform prohibition is not rescinded.
 
 ## Reproduction receipts
 
-The original source is Smithers main `3f8204b3b386`, copied read-only from a maintainer's repository without `.jj` or `.git`. A second private copy contains the migration of that same main used for the reported post-upgrade sites. Its lockfile pins Effect 4.1.1; untouched main pins Effect 4.0.5. Neither live tree was changed. All installs, compilations and migration replays ran on a remote build machine.
+The original source is Smithers main `3f8204b3b386`, used as a read-only snapshot. A second snapshot contains the migration of that same main used for the reported post-upgrade sites. Its lockfile pins Effect 4.1.1; untouched main pins Effect 4.0.5. Neither live tree was changed. All installs, compilations and migration replays ran on a remote build machine.
 
 The shipped control uses the compiler in main's frozen installation, **VibeLang 0.0.8 (TypeScript 7.1.0-dev)**. The `c3292f2c8df3` tarball in the migration environment is a different 0.0.11 artifact, not a Vibe commit and not the shipped 0.0.8 control.
 
@@ -173,8 +173,6 @@ Every check selects `packages/smithers/agent/fs/tsconfig.test.json`:
 
 The migrated program has other diagnostics: 77 errors before the passes and 60 afterward, including the nine sites above. This ruling does not label that program green. The evidence is the unchanged nine target diagnostics, the shipped zero-error control, and the reduced checker-boundary tests.
 
-Canonical private receipts are `smithers-ek9206-ek4402-replay/results/original-check.log`, `migrated-before.log`, `migrated-migration.log`, `migrated-ordinary.log`, `migrated-after.log`, `current-build.log` and `current-check.log`, beside that replay's `run.log`. They are retained outside the repository and contain no credentials.
-
 ## Checker-history boundary
 
 The history search was narrowed to the checker files, then the complete compiler source at each adjacent parent/child pair was built independently on a remote build machine. These are actual revision snapshots, not a current compiler with an individual file transplanted. The reduced harness uses Effect 4.1.1, `@types/node` 26.4.1 and the local 0.0.11 runtime tarball; the parent and child see the same dependencies and source. All four compiler builds exit 0.
@@ -190,6 +188,6 @@ The EK9206 guard itself predates the regression: `93f1b17369d9` introduced the b
 
 The platform change explicitly removes the traversal exemptions for hatches and wrapped callbacks. That is why the previously accepted `process.stdout` reference is newly visited; the rule is intended, while its missing preserving repair is a release-staging defect.
 
-Private parent/child receipts are in `smithers-ek9206-ek4402-history/results/focused-build-*.log` and `focused-*-is-inferred-call.log` / `focused-*-host-new.log`, with the revision map in `revisions.tsv` and all diagnostics in `focused.log`. The smaller five-line witness printed above is separately verified against the actual integration binary in `smithers-ek9206-ek4402-minimal/minimal.log`: only EK9206 is an error; EK4834 is advisory.
+The smaller five-line witness printed above is separately verified against the actual integration binary in `smithers-ek9206-ek4402-minimal/minimal.log`: only EK9206 is an error; EK4834 is advisory.
 
-A broader history run was stopped after its first two successful builds to avoid rebuilding every dependency at different source paths. The focused four-build replay above supersedes it. No compiler or codemod tests were added to the repository because this lane changes only this ruling document. The live migration trees remain untouched.
+A broader history run was stopped after its first two successful builds to avoid rebuilding every dependency at different source paths. The focused four-build replay above supersedes it. This report records the ruling and the reproduction. The live migration trees remain untouched.

@@ -74,7 +74,7 @@ A decision log written while this audit ran (`docs/design/history/DECISIONS.md`,
 | 1 | Official docs, [effect.website/docs/v4](https://effect.website/docs/v4/onboarding): sidebar, [`llms.txt`](https://effect.website/docs/v4/llms.txt) index (110 pages), [`llms-full.txt`](https://effect.website/docs/v4/llms-full.txt) (36,843 lines, every page's markdown) | Effect 4. The site defaults to v4 ("Effect 4.0 is here" banner, all sidebar links under `/docs/v4/`) and offers a v3/v4 switch | Fetched 2026-10-16 06:09 UTC | The section and feature list; Effect 4 examples |
 | 1b | Official docs, [effect.website/docs/v3](https://effect.website/docs/v3/getting-started) sidebar (117 pages) and the v3 pages whose paths v4 dropped (Micro, AI, Supervisor, Command, KeyValueStore, Either, Effect vs Promise) | Effect 3 | Fetched 2026-10-16 06:10 to 06:13 UTC | Features Effect 3 documented that the v4 site dropped |
 | 2 | Pinned package `experiments/node_modules/effect`: `CLAUDE.md`, `AGENTS.md`, `ai-docs/`, `src/` module list and JSDoc | 4.0.5 | Read 2026-10-15 | Exact signatures; which values are Effects; modules the site omits (HTTP, SQL, CLI, AI, cluster, workflow, RPC) |
-| 3 | Local Effect repo `~/effect-repo`: `ai-docs/src`, `LLMS.md`, `MIGRATION.md`, `migration/*.md`, `packages/` | 4.0.0-rc.108 | Read 2026-10-15 | Effect 3 to 4 renames; areas the site omits |
+| 3 | [Effect source](https://github.com/Effect-TS/effect): `ai-docs/src`, `LLMS.md`, `MIGRATION.md`, `migration/*.md`, `packages/` | 4.0.0-rc.108 | Read 2026-10-15 | Effect 3 to 4 renames; areas the site omits |
 | 4 | Usage census of two Effect 4 codebases: Smithers (`effect` 4.0.4, 3,604 files import `effect`) and opencode (4.0.0-beta.83, 1,070 files), counted with `rg` over files that import `effect` | Effect 4 | Measured 2026-10-15 | Ranking how often an Effect user would hit each gap (appendix A) |
 | 5 | `docs/design/history/DECISIONS.md`, decision log D1 to D36, dated 2026-10-16 | EffectScript | Appeared during this audit; read 2026-10-15 23:50 PT | The status column of the gap ranking and the notes marked "After the decision log". The spec rewrite in `docs/design/src/` that follows the log was in progress and was not audited |
 
@@ -1088,7 +1088,7 @@ Relies on Ch. 10 (Effect 3) and P15.
 
 ## Appendix A. Usage census
 
-How often real Effect 4 code uses each feature, to rank the gaps. Measured 2026-10-15 with `rg -l` over the `.ts` and `.tsx` files that contain `from "effect` in Smithers (`~/smithers/packages`, `apps`, `flows`; `effect` 4.0.4; 3,604 files, 2,084 of them tests) and opencode (`~/opencode/packages`; `effect` 4.0.0-beta.83; 1,070 files, 377 tests), skipping `node_modules`, `dist`, and `vendor`. Counts are files that match a regular expression, not call sites, so a module name shared with another library (`Command`, `Prompt`, `Logger`) can inflate a count.
+How often real Effect 4 code uses each feature, to rank the gaps. Measured 2026-10-15 with `rg -l` over the `.ts` and `.tsx` files that contain `from "effect` in Smithers (`packages`, `apps`, `flows`; `effect` 4.0.4; 3,604 files, 2,084 of them tests) and [opencode](https://github.com/anomalyco/opencode) (`packages`; `effect` 4.0.0-beta.83; 1,070 files, 377 tests), skipping `node_modules`, `dist`, and `vendor`. Counts are files that match a regular expression, not call sites, so a module name shared with another library (`Command`, `Prompt`, `Logger`) can inflate a count.
 
 | Feature | Smithers | opencode |
 | --- | --- | --- |

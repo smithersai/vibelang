@@ -2,13 +2,15 @@
 
 Measured 2026-10-16 with `experiments/scripts/pipe-census.ts`, which parses every `.ts`/`.tsx` file that imports `effect` with the TypeScript 5.9.3 parser (no type information) and inspects every `x.pipe(...)` and `pipe(x, ...)` call.
 
+Set `SMITHERS_CHECKOUT` and `OPENCODE_CHECKOUT` to the roots of the Smithers and [opencode](https://github.com/anomalyco/opencode) source snapshots. The original measurement did not record the checkout revisions. Run from the VibeLang repository root.
+
 ```sh
 cd experiments
-bun scripts/pipe-census.ts ~/smithers/packages ~/smithers/apps ~/smithers/flows
-bun scripts/pipe-census.ts ~/opencode/packages
+bun scripts/pipe-census.ts "$SMITHERS_CHECKOUT/packages" "$SMITHERS_CHECKOUT/apps" "$SMITHERS_CHECKOUT/flows"
+bun scripts/pipe-census.ts "$OPENCODE_CHECKOUT/packages"
 ```
 
-`~/tevm-monorepo` was excluded: all of its Effect files are a vendored copy of Smithers code (`vendor/flows`), so its numbers duplicate the Smithers sample.
+The Tevm monorepo was excluded: all of its Effect files are a vendored copy of Smithers code (`vendor/flows`), so its numbers duplicate the Smithers sample.
 
 ## Results
 

@@ -12,11 +12,11 @@ description: "VIP-59: Eval declarations: a file kind and a function, no syntax. 
 
 ## Summary
 
-THESIS 8 also applies: "Agentic behavior is probabilistic, so evals become as basic as tests."
+Agentic behavior is probabilistic, so evals are as fundamental as tests.
 
 **One sentence.** An eval is declared with one function call, `Experimental.Eval.suite`, in a file named `*.eval.vibe`, and it gets exactly the standing a test has: a file kind, a runner command and an exit code, with no new syntax.
 
-**One paragraph.** This proposal gives evals no syntax, and the reason is the thesis itself: evals are as basic as tests, and a Vibe test has no syntax. A test is `it.effect(…)` in a `*.test.vibe` file. An eval is `Experimental.Eval.suite(…)` in a `*.eval.vibe` file. The compiler understands nothing about either, and TypeScript's inference already types an eval's cases against its target. What evals need from the toolchain is what tests have: discovery by file name, a command that runs them, and exclusion from production bundles. One thing differs: an eval can spend money, so the command calls no model unless it is told to. The runtime, with scorers, judges, baselines and gates, is [std-eval](/vips/0069-std-eval).
+**One paragraph.** This proposal gives evals no syntax, following the same convention as Vibe tests. A test is `it.effect(…)` in a `*.test.vibe` file. An eval is `Experimental.Eval.suite(…)` in a `*.eval.vibe` file. The compiler understands nothing about either, and TypeScript's inference already types an eval's cases against its target. What evals need from the toolchain is what tests have: discovery by file name, a command that runs them, and exclusion from production bundles. One thing differs: an eval can spend money, so the command calls no model unless it is told to. The runtime, with scorers, judges, baselines and gates, is [std-eval](/vips/0069-std-eval).
 
 ```text
               a test                               an eval
@@ -163,7 +163,7 @@ In the reference engine a case's `input` is `unknown`, so the executor casts it.
 
 - **TypeScript-first.** A call and a file name, the pattern Vitest and Evalite set.
 - **Effect-second.** A target is an Effect. A suite run is an Effect. Nothing new.
-- **Optimized for agentic programs.** GOAL asks that a program with evals be shorter in Vibe than in TypeScript: 69 tokens against 320.
+- **Optimized for agentic programs.** The eval example uses 69 tokens in Vibe and 320 in TypeScript.
 - **Highly forkable.** A fork replaces the runner or the baseline format in the library.
 - **Factory-first.** The factory's own evals, which measure how well agents write Vibe, are `*.eval.vibe` files anyone can run for nothing.
 

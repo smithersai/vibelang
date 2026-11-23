@@ -158,4 +158,4 @@ VIP-43 (proofs), VIP-44 (durable values) and VIP-54 (platform model) are not red
 - The reference engine 1.x at `main@origin` `bcf8076a4ff4c1d667ddd09c5015474123a8b744`: each package's `README.md`, its `docs/`, and the source files named in each VIP. Both drafts read `2da147d2d610`. The 34 commits since include VIP-44's three identity changes and one engine-store fix; the rest are the reference engine's product apps.
 - Vibe: `docs/design/vips/README.md`, VIP-9, VIP-14, VIP-33 and VIP-44 at `vibe@origin` `f2c643b42dcd`; `site/src/pages/proposals.mdx`; `skills/vibelang/SKILL.md` and `vibelang-runtime`'s export map in the 0.0.13 tarballs.
 - Effect 4.1.1: `effect/ai`, `effect/rpc`, `effect/workers`, `effect/workflow`, `effect/observability`, read from the installed package; `@effect/ai-anthropic` and `@effect/ai-openai-compat` 4.1.1, read from their npm tarballs.
-- The project's planning notes: its principles, thesis, goal, problem statement and overview, its VIP and decision logs, its problem examples, and the open VIP-54 draft.
+- The [VIP index](../README.md), the [historical decision log](../../history/DECISIONS.md), and the open VIP-54 draft.

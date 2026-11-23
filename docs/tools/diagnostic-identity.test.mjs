@@ -8,7 +8,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK4408` is retired and will never be reassigned: VIP-40 owns `EK4001`–`EK4009`; and a duplicate module or a module/value collision is the error `EK4005`.
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK4843` is retired and will never be reassigned: it was the entry-point warning.
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
@@ -537,6 +537,50 @@ test("retirement authorization keys are unique across approval records", () => {
     seen.add(key);
   }
 });
+
+test("retirement authority identifies the public decision or diagnostic review", () => {
+ const entries=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"))
+ const authorities=new Set(["Maintainer decision","Agent under standing approval","Published VIP","Diagnostic identity review"])
+ for(const {approval,code} of entries) {
+  assert.ok(authorities.has(approval.by),code+" has an unrecognized authority")
+  assert.match(approval.reference,/docs\/design\/(?:vips|src)\//,code)
+ }
+ const malformed=entries.find(({vip,code})=>vip==="VIP-16"&&code==="EK1606")
+ assert.equal(malformed?.approval.by,"Agent under standing approval")
+ const renumbering=entries.find(({identityRenumbering})=>identityRenumbering)
+ assert.equal(renumbering?.approval.by,"Diagnostic identity review")
+})
+
+test("case retirement authorizations still have an expected diagnostic", () => {
+ const entries=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"))
+ const caseCodes=new Map()
+ const stale=[]
+ for(const {code,case: casePath} of entries) {
+  if(!casePath) continue
+  if(!caseCodes.has(casePath)) {
+   const dir=join(repository,casePath)
+   const files=readdirSync(dir,{recursive:true,withFileTypes:true})
+   const codes=new Set()
+   for(const file of files) {
+    if(!file.isFile()) continue
+    const path=join(file.parentPath,file.name)
+    if(file.parentPath===join(dir,"expected") && /^(?:diagnostics|messages)\.txt$/.test(file.name)) {
+     const snapshot=readFileSync(path,"utf8")
+     for(const match of snapshot.matchAll(/(?:^|: +)(?:error|warning|suggestion|message) +((?:EK|TS)\d+)\b/gm)) {
+      codes.add(match[1])
+     }
+    } else if(/\.(?:vibex?|tsx?|jsx?)$/.test(file.name)) {
+     // Some cases declare their whole diagnostic contract in a source header.
+     const header=/^\/\/ expect:[ \t]*(.*)/.exec(readFileSync(path,"utf8"))?.[1]
+     for(const code of header?.match(/\b(?:EK|TS)\d+\b/g)??[]) codes.add(code)
+    }
+   }
+   caseCodes.set(casePath,codes)
+  }
+  if(!caseCodes.get(casePath).has(code)) stale.push(code+" "+casePath)
+ }
+ assert.deepEqual(stale,[])
+})
 
 test("service-key argument witness adds only the required whole-shape body",()=>{
  const entries=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"))

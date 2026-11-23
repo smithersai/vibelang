@@ -5,7 +5,7 @@ date: 2026-10-26
 
 # Native compilation and a Zig effect runtime for VibeLang servers
 
-Research for VibeLang, observed 2026-10-26. Machine: Apple M3 Max, 16 cores, shared with other agents (load average 6 to 11). Software: Bun 1.4.1, Node 26.10.0, Go 1.26, `effect@4.0.5`, `@effect/platform-bun@4.0.5`, scriptc 0.4.5, Perry 0.5.1520, and Bun's CI build of PR #45631 at `d0b27e98`. Numbers without a citation come from the scripts in [Reproduce](#reproduce). MB means 10^6 bytes.
+Research for VibeLang, observed 2026-10-26. Machine: Apple M3 Max, 16 cores, load average 6 to 11. Software: Bun 1.4.1, Node 26.10.0, Go 1.26, `effect@4.0.5`, `@effect/platform-bun@4.0.5`, scriptc 0.4.5, Perry 0.5.1520, and Bun's CI build of PR #45631 at `d0b27e98`. Numbers without a citation come from the scripts in [Reproduce](#reproduce). MB means 10^6 bytes.
 
 ## Summary
 
@@ -39,7 +39,7 @@ Effect BunHttpServer  10.85  █████████████████
 - If a native runtime made Effect free, this endpoint would get at most 1.40x faster. A real endpoint spends more time outside Effect (a database driver, larger JSON), so its ceiling is lower.
 - The 7.75 µs floor already runs on native code. Bun's HTTP parser and socket loop are not JavaScript.
 - In process, without HTTP, one handler run (three compiled frames, one service call and `runPromise`) costs 0.73 to 0.85 µs in Effect and 0.15 to 0.16 µs as plain async TypeScript (three paired runs).
-- Runs varied by up to 15% (the Effect handler measured 8.80 to 10.38 µs) because other agents were loading the machine. `ps` showed the servers at 78% to 104% CPU, so the raw baseline may not have saturated its core. If it did not, Effect's real share is above 29%.
+- Runs varied by up to 15% (the Effect handler measured 8.80 to 10.38 µs) under concurrent system load. `ps` showed the servers at 78% to 104% CPU, so the raw baseline may not have saturated its core. If it did not, Effect's real share is above 29%.
 
 The steelman for native code is per-operation cost. On Multicore OCaml 4.10, perform and handle cost 5 ns and a fiber switch 23 ns ([continuation-prior-art.md](continuation-prior-art.md), §6.3 of the OCaml paper). Effect on JavaScriptCore costs 105 ns per service call and 247 ns per capture and resume (Chapter 25). Native effect operations can be 10x to 20x cheaper. But Amdahl's law caps the request-level gain: cutting the 3.1 µs Effect cost tenfold saves 2.8 µs, a 1.35x speedup on this endpoint.
 
@@ -115,7 +115,7 @@ Memory is the only row tied to money VibeLang could see: the hosting cost of an 
 
 ## What a native runtime would change in VibeLang
 
-- Chapter 24 promises that "a plain JavaScript region is atomic". A multithreaded native runtime breaks that promise unless each core runs its own scheduler and heap, which one process per core with `reusePort` already gives. Changing it changes how existing VibeLang code behaves, so it needs Will's approval.
+- Chapter 24 promises that "a plain JavaScript region is atomic". A multithreaded native runtime breaks that promise unless each core runs its own scheduler and heap, which one process per core with `reusePort` already gives. Changing it changes how existing VibeLang code behaves, so it requires a language design decision.
 - The runtime is Effect 4 by decision (Chapter 25, strategy A), and the kernel reaches into Effect internals (`fiber._stack`, `_interruptedCause`). A native runtime must reimplement the kernel's 923 lines and the Effect behavior they pin, including finalizer order, masks and the 2,048-operation fairness budget.
 - A native runtime replaces `effect@4.0.5` `src`, which is 519 files and 483,531 lines. That count excludes `@effect/platform-*`, the SQL clients and every npm package a hatch calls.
 

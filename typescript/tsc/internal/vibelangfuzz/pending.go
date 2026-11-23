@@ -18,14 +18,14 @@ import (
 // holds the lines of one area, one gap per line:
 //
 //	# target          key                   owner  what is missing
-//	FuzzSpecPrograms  feature:await.race    F5     D123: await.race is not lowered
-//	FuzzCompile       corpus:3f2a9c1e0b7d   S3     D267: emitted JS imports node:util
+//	FuzzSpecPrograms  feature:await.race    compiler     D123: await.race is not lowered
+//	FuzzCompile       corpus:3f2a9c1e0b7d   emitter     D267: emitted JS imports node:util
 //
 // The key is "feature:<name>" for a generator feature, "ek:<EK code>" for a
 // rule, or "corpus:<file>" for one input in testdata/fuzz/<target>/. The
-// owner is the lane or person who owns the missing part. A pending gap skips;
-// a pending corpus input that passes fails as XPASS, so its owner deletes the
-// line in the commit that fixes it. A generator leaves pending features out
+// owner field identifies the responsible component. A pending gap skips;
+// a pending corpus input that passes fails as XPASS. Remove its entry when
+// the gap is fixed. A generator leaves pending features out
 // unless VIBELANG_FUZZ_PENDING=1, so a campaign finds new bugs instead of the
 // known ones.
 //

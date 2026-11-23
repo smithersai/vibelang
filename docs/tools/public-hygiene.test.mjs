@@ -13,7 +13,7 @@ const files = process.env.VIBELANG_HYGIENE_ROOT
   : execFileSync("jj", ["file", "list"], { cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }).trimEnd().split("\n")
 const findings = files.flatMap(file => {
   const path = resolve(root, file)
-  if (!lstatSync(path).isFile()) return []
+  if (!lstatSync(path, { throwIfNoEntry: false })?.isFile()) return []
   const bytes = readFileSync(path)
   if (bytes.includes(0)) return []
   return publicHygiene(file, bytes.toString("utf8")).map(problem => file + ": " + problem)
@@ -34,7 +34,7 @@ test("the public tree contains no review artifacts or scratch paths", () => {
   assert.deepEqual(findings.filter(p => p.endsWith("a removed review artifact or scratch path")), [])
 })
 
-test("the public spec keeps rationale without internal author or review provenance", () => {
+test("public records and compiler comments contain no internal decision or review provenance", () => {
   assert.deepEqual(findings.filter(p => p.endsWith("internal decision or review provenance")), [])
 })
 
@@ -174,4 +174,48 @@ test("the published-page rule keeps public names, portable homes and unpublished
     ["docs/design/vips/0055-durable-tasks-workflows.md", "`lang/examples/problem/smithers-1/triage.ts`"],
     ["typescript/tsc/internal/vibelangfuzz/nightly.sh", "# It runs on nyc-02"],
   ]) assert.deepEqual(privateInfrastructureProblems(file, text), [], text)
+})
+
+
+test("public records reject private decision references in their original locations", () => {
+  for (const [file, text, problem] of [
+    ["docs/maintainers/example.md", "This implements Riley’s 2026-11-04 answer.", "internal decision or review provenance"],
+    ["docs/research/example.md", "Pending corpus (owner migration-project).", "internal decision or review provenance"],
+    ["docs/research/example.md", "Measured on a machine shared with other agents.", "internal decision or review provenance"],
+    ["docs/research/example.md", "Run the census over " + "~/project/packages.", "a private home path"],
+    ["docs/design/vips/0038-effect-lint-built-in.md", "Evidence is in " + "~/project/report.md.", "a private home path"],
+    ["site/src/pages/vips/0038-effect-lint-built-in.mdx", "Built on " + "NYC-" + "02.", "a build host name"],
+    ["docs/design/vips/0041-throw-expressions.md", "Recorded in " + "WILL-ANSWERS" + ".md.", "internal decision or review provenance"],
+    ["docs/design/vips/0034-compiler-and-tooling.md", "Evidence: " + "decide-live" + "-r3-warning-scope.md.", "internal decision or review provenance"],
+    ["docs/design/vips/0059-eval-declarations.md", "THESIS " + "8 also applies.", "internal decision or review provenance"],
+    ["docs/design/vips/reviews/index.md", "See " + "factory/" + "rulings.md.", "internal decision or review provenance"],
+    ["docs/design/history/DECISIONS.md", "One private repository, github.com/example/project.", "internal decision or review provenance"],
+    ["docs/design/history/DECISIONS.md", "The repository is github.com/example/project, private.", "internal decision or review provenance"],
+    ["docs/design/retirement-allowlist.json", '{"by":"Will"}', "internal decision or review provenance"],
+    ["docs/design/retirement-allowlist.json", "A work stream brief explicitly authorizes this.", "internal decision or review provenance"],
+    ["docs/design/retirement-allowlist.json", "Current user task “diagnostic-review”, item 2.", "internal decision or review provenance"],
+    ["typescript/tsc/internal/vibelang/returns.go", "// The twins' D-9 recipe.", "internal decision or review provenance"],
+    ["typescript/tsc/internal/vibelangfuzz/pending.go", "// The owner is the work stream or person who owns the missing part.", "internal decision or review provenance"],
+  ]) assert.ok(publicHygiene(file, text).some(p => p.startsWith(problem)), file + ": " + text)
+  for (const apostrophe of ["'", "’"]) {
+    for (const noun of ["decisions", "ruling", "rulings", "rules", "words"]) {
+      const text = "The owner" + apostrophe + "s " + noun + " follow."
+      assert.ok(publicHygiene("docs/design/history/src/example.md", text).includes("internal decision or review provenance"), text)
+    }
+  }
+})
+
+test("public citations, install paths and language terminology remain allowed", () => {
+  for (const [file, text] of [
+    ["docs/design/history/DECISIONS.md", "An unrelated language is at github.com/example/project."],
+    ["docs/design/vips/0038-effect-lint-built-in.md", "Read the tool-risk report of 2026-10-29."],
+    ["docs/design/history/src/tooling.md", "Install under ~/.bun-create/vibelang or ~/.local/bin/vibelang."],
+    ["docs/research/example.md", "Compare a public Effect release with the fork owner’s type."],
+    ["docs/research/fuzzing.md", "Set the key path to ~/.ssh/<key>."],
+    ["docs/maintainers/build.md", "Go uses the cache at $HOME/.cache/go-build-smthrs."],
+  ]) assert.deepEqual(publicHygiene(file, text), [], text)
+})
+
+test("published records keep private infrastructure out of the tracked tree", () => {
+  assert.deepEqual(findings.filter(p => /: (?:a build host name|a private home path|an agent session name)/.test(p)), [])
 })

@@ -7,7 +7,7 @@
 
 ## Summary
 
-THESIS 3 also applies: TypeScript lacks "first-class multithreading, which agentic programs need built in" and "a first-class way to run code on other machines, as Elixir has". So does Will's ruling in [VIP-44](0044-durable-values.md): "we shouldn't reinvent the wheel here we just use rpc".
+Agentic programs need first-class multithreading and execution on other machines. This proposal follows the decision in [VIP-44](0044-durable-values.md) to reuse RPC.
 
 **One sentence.** `schema service` declares a service whose calls can cross a boundary, and a layer decides where its implementation runs: this thread, a pool of worker threads, or another machine.
 

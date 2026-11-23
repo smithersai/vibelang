@@ -2184,8 +2184,7 @@ kinds. Keep browser-dependent API fixtures on the libraries they require.
 ## Retirement admission
 
 A retirement needs no codemod and passes no retirement gate: VibeLang ships
-no quick fixes or codemods of its own before release (ruling PROC-29, in
-`docs/design/vips/README.md`). `docs/design/retirement-allowlist.json` keeps
+no quick fixes or codemods of its own before release, as specified in [VIP-34](../design/vips/0034-compiler-and-tooling.md#decision). `docs/design/retirement-allowlist.json` keeps
 the record of approved retirements, and the diagnostic identity tests read it.
 
 ## Additional regression checks
