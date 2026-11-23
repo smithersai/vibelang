@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { spawnSync } from "node:child_process"
 import { runInNewContext } from "node:vm"
 import { test } from "node:test"
+import { fileURLToPath } from "node:url"
 import { addVitePlusIgnores } from "../lib/wire.mjs"
 import { wireDeveloperTools } from "../lib/tooling.mjs"
 const require=createRequire(new URL("../../../../packages/runtime/package.json",import.meta.url)),ts=require("typescript"),fc=require("fast-check")
@@ -31,8 +32,8 @@ test("setup wires embedded Vite+ formatter and linter declaration ignores",async
  }
  assert.equal(JSON.stringify(value.test),JSON.stringify(config(corpus.config).test))
  assert.equal(addVitePlusIgnores(output,ts),output)
- const bin=process.env.VIBELANG_OXLINT_BINARY
- await t.test("real embedded Oxlint options retain authored diagnostics",{skip:!bin},()=>{
+ const bin=process.env.VIBELANG_OXLINT_BINARY||fileURLToPath(new URL("../../../../packages/compiler/node_modules/.bin/oxlint",import.meta.url))
+ await t.test("real embedded Oxlint options retain authored diagnostics",()=>{
   put(root,corpus.generated,corpus.declaration);put(root,corpus.authored,"export const value = 1;\n")
   put(root,".oxlintrc.json",JSON.stringify(value.lint))
   const lint=()=>spawnSync(bin,["--config",".oxlintrc.json","--disable-nested-config","src"],{cwd:root,encoding:"utf8"})

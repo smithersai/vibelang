@@ -8,11 +8,12 @@ import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { codemod, makeConfig, paths } from "../lib/steps.mjs"
 import { writeJson } from "../lib/util.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-ts6059-partial-emits.json", import.meta.url), "utf8"))
-const native = process.env.VIBELANG_BINARY
+const native = nativeCompiler()
 
 test("partial emit routing follows the documented output contract", () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes('Native runtime entries route only to package-owned JavaScript files the emit actually wrote, even when the compiler reports errors.'))
@@ -69,4 +70,4 @@ test("opencode-55: codemod routes written JavaScript despite TS6059 and records 
 test("partial emit routing follows actual outputs across successful and unsuccessful exit codes", async () => {
   await fc.assert(fc.asyncProperty(fc.constantFrom(0, 1, 2), fc.boolean(), async (code, emitted) => fixture({ code, emitted })), { seed: 550055, numRuns: 100 })
 })
-test("opencode's minimized cross-package fixture emits TS6059 and still routes native entries", { skip: !native && "set VIBELANG_BINARY" }, async () => fixture({ compiler: native }))
+test("opencode's minimized cross-package fixture emits TS6059 and still routes native entries", async () => fixture({ compiler: native }))

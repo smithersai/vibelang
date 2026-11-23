@@ -10,10 +10,11 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { pathAliases, renameBatch, restoreSpecifiers, rewriteImports } from "../lib/codemod.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-alias-rewrite-options.json", import.meta.url), "utf8"))
 const write = (root, files) => {
   for (const [file, text] of Object.entries(files)) {
@@ -58,7 +59,7 @@ test("opencode-54: rewrite options select a relative migrated alias and revert r
 test("alias spelling preserves configured options and module identity over forward/revert cycles", () => {
   fc.assert(fc.property(fc.constantFrom(true, false, undefined), fc.boolean(), fc.constantFrom("a", "composer/schema"), fc.constantFrom("@/", "~/", "#app/"), fc.constantFrom(".ts", ".mts", ".tsx", ".vibe"), fc.boolean(), (flag, inherited, name, prefix, kind, index) => exercise({ flag, inherited, name, prefix, kind, index })), { seed: 540054, numRuns: 200 })
 })
-test("opencode's TS2877 witness compiles and its emitted runtime keeps the same module", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("opencode's TS2877 witness compiles and its emitted runtime keeps the same module", () => {
   const root = mkdtempSync(join(tmpdir(), "opencode-ts2877-"))
   try {
     write(root, corpus.files)
@@ -81,7 +82,7 @@ test("opencode's TS2877 witness compiles and its emitted runtime keeps the same 
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
-test("authored false and absent rewrite options retain accepted alias source names", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("authored false and absent rewrite options retain accepted alias source names", () => {
   for (const flag of [false, undefined]) for (const inherited of [false, true]) {
     const f = fixture({ flag, inherited })
     try {

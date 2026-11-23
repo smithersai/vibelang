@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { test } from "node:test"
-import { canonicalize } from "../lib/declarations.mjs"
+import { canonicalize } from "./helpers/canonical-declarations.mjs"
 
 // The migration tests already use packages/runtime's installed TypeScript API.
 // Its declared fast-check development dependency supplies this property runner.

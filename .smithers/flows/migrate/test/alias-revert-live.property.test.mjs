@@ -5,17 +5,17 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { spawnSync } from "node:child_process"
 import { test } from "node:test"
-import { fileURLToPath } from "node:url"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
 import { pathAliases, renameBatch, rewriteImports } from "../lib/codemod.mjs"
 import { makeConfig, paths, revert, revertMany } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
 import {prepareState,applyState,saveState} from "../lib/codemod-state.mjs"
 import { must, writeJson } from "../lib/util.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
-const compiler = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url))
+const compiler = nativeCompiler()
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-live-alias-revert.json", import.meta.url), "utf8"))
 async function fixture({ kind = ".vibe", prefix = "@/", name = "a", flag = true, compile = false, bulk = false, journal = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "opencode-revert-alias-")), target = join(root, "repo"), run = join(root, "run")
@@ -68,7 +68,7 @@ test("opencode alias revert restores a live VibeLang importer's original accepte
 test("recorded alias restoration preserves original names over native and migrated consumers", async () => {
   await fc.assert(fc.asyncProperty(fc.constantFrom(".ts", ".vibe", ".js", ".mjs", ".cjs", ".jsx"), fc.constantFrom("@/", "~/", "#app/"), fc.constantFrom("a", "nested/helper"), fc.boolean(), fc.boolean(), async (kind, prefix, name, flag, journal) => fixture({ kind, prefix, name, flag, journal })), { seed: 580058, numRuns: 100 })
 })
-test("native compiler accepts the VibeLang alias both before migration and after revert", { skip: !compiler && "set VIBELANG_BINARY" }, async () => fixture({ compile: true }))
+test("native compiler accepts the VibeLang alias both before migration and after revert", async () => fixture({ compile: true }))
 
 test("alias revert follows the documented original-name contract", () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes('Revert restores recorded imports of native and previously existing VibeLang consumers, preserving the original alias and suffix.'))

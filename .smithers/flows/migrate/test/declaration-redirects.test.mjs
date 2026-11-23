@@ -126,13 +126,11 @@ test("Alchemy namespace corpus cites the source-sidecar contract", () => {
     `${namespaceCorpus.key}: ${namespaceCorpus.spec} no longer contains the corpus quote: ${namespaceCorpus.quote}`)
 })
 
-test("real Oxlint: referenced namespace remains typed after setup source redirects", {
-  skip: process.env.VIBELANG_DECLARATION_REDIRECT_ORACLE !== "1"
-}, async () => {
+test("real Oxlint: referenced namespace remains typed after setup source redirects", async () => {
   const { inspectNamespaceRedirect } = await import("./declaration-redirects-oracle.mjs")
-  const { resolve } = await import("node:path")
-  const compiler = process.env.VIBELANG_BINARY || resolve("packages/compiler/native/vibelang")
-  const lintModules = process.env.VIBELANG_OXLINT_MODULES || resolve("packages/compiler/node_modules")
+  const repo = new URL("../../../../", import.meta.url).pathname
+  const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
+  const lintModules = process.env.VIBELANG_OXLINT_MODULES || join(repo, "packages/compiler/node_modules")
   const lint = join(lintModules, ".bin/oxlint")
   const inspect = input => {
     const root = mkdtempSync(join(tmpdir(), "alchemy-native-namespace-"))

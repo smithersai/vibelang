@@ -7,8 +7,9 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { compareApiIdentity } from "../../../../scripts/api-identity.mjs"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
-import { canonicalize } from "../lib/declarations.mjs"
+import { canonicalize } from "./helpers/canonical-declarations.mjs"
 import { splitBatchPlatform, splitPlatformToModule } from "../lib/platform.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // codemod-gap:throwing-plain-helper-boundaries (drive-t3code 2026-11-03T05:50Z):
 // t3code packages/contracts baseSchemas.ts and orchestrationV2.ts went back to
@@ -22,7 +23,7 @@ import { splitBatchPlatform, splitPlatformToModule } from "../lib/platform.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const ts = require("typescript")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 
 const split = (text) => splitPlatformToModule(text, "src/x.ts", ts, { throws: true })
 
@@ -174,7 +175,7 @@ const exportsOf = (dir, file) => {
 }
 
 const rule = "A body is a TypeScript file stored inside a `.vibe` file."
-test("a module whose throwing helpers moved compiles, runs and declares what the TypeScript module does", { skip: !compiler && "set VIBELANG_BINARY" }, () => checkProperty(fc, {
+test("a module whose throwing helpers moved compiles, runs and declares what the TypeScript module does", () => checkProperty(fc, {
   name: "throwing-module-body", rule, command: "node --test .smithers/flows/migrate/test/throwing-module.property.test.mjs", regressions: new URL("./corpus/", import.meta.url), numRuns: 16,
   arbitrary: shapes,
   check: (shape) => {

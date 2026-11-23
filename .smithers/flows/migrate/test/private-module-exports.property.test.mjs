@@ -9,6 +9,7 @@ import { routeEmittedExports } from "../lib/emitted-exports.mjs"
 import { excludePrivateModules } from "../lib/private-module-exports.mjs"
 import { emitPackageJs } from "../lib/declarations.mjs"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-private-module-wildcard.json", import.meta.url)))
 const rule = "It adopts only the named, top-level, unexported declaration."
@@ -58,13 +59,13 @@ test("property: private output ownership survives conditions, authored entries a
   await checkProperty(fc, { name: "private-module-wildcards", rule, command: "node --test test/private-module-exports.property.test.mjs", arbitrary: fc.record({ name: fc.constantFrom("Route", "CommandTree", "A_B", "ü", "mixed-name"), nested: fc.boolean(), authored: fc.boolean(), condition: fc.boolean(), extension: fc.constantFrom("vibe", "vibex"), outputExtension: fc.constantFrom("js", "jsx") }), check: property, numRuns: 100, regressions: new URL("./corpus/", import.meta.url) })
 })
 
-test("native emitted companions run through their owner but reject package subpath imports", { skip: !process.env.VIBELANG_BINARY && "set VIBELANG_BINARY" }, async () => {
+test("native emitted companions run through their owner but reject package subpath imports", async () => {
   const root = mkdtempSync(join(tmpdir(), "native-private-module-"))
   try {
     write(root, "package.json", JSON.stringify({ name: "private-body-fixture", type: "module", exports: { "./entry": "./.vibelang/js/src/Route.js", "./*": "./.vibelang/js/src/*.js" }, publishConfig: { exports: { "./*": "./dist/*.js" } } }))
     write(root, "tsconfig.json", JSON.stringify({ compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true }, vibe: { effectGlobals: false, effectModules: false }, files: ["src/Route.vibe"] }))
     write(root, "src/Route.vibe", corpus.source)
-    const result = await emitPackageJs({ compiler: process.env.VIBELANG_BINARY, tsconfigs: ["tsconfig.json"], packageDir: root, root })
+    const result = await emitPackageJs({ compiler: nativeCompiler(), tsconfigs: ["tsconfig.json"], packageDir: root, root })
     assert.equal(result.code, 0, JSON.stringify(result.diagnostics))
     routeEmittedExports(root, result.outputs, { moduleOutputs: result.moduleOutputs })
     const program = 'import { value } from "private-body-fixture/entry"; if(value!==42)throw Error("owner changed"); try { await import("private-body-fixture/Route.vibe.-24-throw-24-ts"); throw Error("private companion became public"); } catch(error) { if(error.code!=="ERR_PACKAGE_PATH_NOT_EXPORTED")throw error; }'
@@ -94,13 +95,13 @@ test("more specific redirects, authored lookalikes and absent ownership remain p
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
-test("native JSX-preserving companions are private while their emitted bodies stay intact", { skip: !process.env.VIBELANG_BINARY && "set VIBELANG_BINARY" }, async () => {
+test("native JSX-preserving companions are private while their emitted bodies stay intact", async () => {
   const root = mkdtempSync(join(tmpdir(), "private-jsx-module-"))
   try {
     write(root, "package.json", JSON.stringify({ type: "module", exports: { "./*": "./.vibelang/js/src/*.jsx" } }))
     write(root, "tsconfig.json", JSON.stringify({ compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, jsx: "preserve" }, vibe: { effectGlobals: false, effectModules: false }, files: ["src/Route.vibex"] }))
     write(root, "src/Route.vibex", corpus.source)
-    const result = await emitPackageJs({ compiler: process.env.VIBELANG_BINARY, tsconfigs: ["tsconfig.json"], packageDir: root, root })
+    const result = await emitPackageJs({ compiler: nativeCompiler(), tsconfigs: ["tsconfig.json"], packageDir: root, root })
     assert.equal(result.code, 0, JSON.stringify(result.diagnostics))
     const body = result.moduleOutputs[0]
     assert.equal(result.moduleOutputs.length, 1)

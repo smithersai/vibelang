@@ -5,7 +5,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
-import { canonicalize, loadTypeScript } from "../lib/declarations.mjs"
+import { loadTypeScript } from "../lib/declarations.mjs"
+import { canonicalize } from "./helpers/canonical-declarations.mjs"
 
 const repo=fileURLToPath(new URL("../../../../",import.meta.url))
 const require=createRequire(new URL("../../../../packages/runtime/package.json",import.meta.url))

@@ -13,11 +13,11 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { emitMigratedJs } from "../lib/steps.mjs"
 import { loaderRecord, loaderRecordFile } from "../../../../packages/compiler/cache.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
-const compiler = process.env.VIBELANG_BINARY
-const skip = !compiler && "set VIBELANG_BINARY"
+const compiler = nativeCompiler()
 const repo = fileURLToPath(new URL("../../../../", import.meta.url))
 const typescript = dirname(require.resolve("typescript/package.json"))
 const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
@@ -73,7 +73,7 @@ async function emitAndLookUp(t, files, order) {
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-loader-record-routing-order.json", import.meta.url), "utf8"))
 
 for (const order of [corpus.packages, [...corpus.packages].reverse()]) {
-  test(`opencode-loader-record-routing-order: every record holds in the final tree, packages in order ${order.join(", ")}`, { skip }, async (t) => {
+  test(`opencode-loader-record-routing-order: every record holds in the final tree, packages in order ${order.join(", ")}`, async (t) => {
     const results = await emitAndLookUp(t, corpus.files, order)
     for (const result of results) {
       assert.equal(result.exports["."].default, "./.vibelang/js/src/index.js", JSON.stringify(result))
@@ -103,7 +103,7 @@ function generated(edges) {
   return files
 }
 
-test("loader-record-order: records hold for any package order and import graph among three packages", { skip }, async (t) => {
+test("loader-record-order: records hold for any package order and import graph among three packages", async (t) => {
   const edges = fc.tuple(...[0, 1, 2].map(() => fc.subarray([0, 1, 2])))
   const order = fc.shuffledSubarray([0, 1, 2], { minLength: 3, maxLength: 3 })
   await fc.assert(fc.asyncProperty(edges, order, async (graph, sequence) => {
@@ -115,7 +115,7 @@ test("loader-record-order: records hold for any package order and import graph a
   }), { seed: 2026110221, numRuns: 5 })
 })
 
-test("Smithers cold CLI records hold after transitive package routing and manifest formatting", { skip }, async t => {
+test("Smithers cold CLI records hold after transitive package routing and manifest formatting", async t => {
   const witness = JSON.parse(readFileSync(new URL("./corpus/smithers-cold-loader-records.json", import.meta.url)))
   const files = generated(witness.edges)
   for (const file of Object.keys(files).filter(file => file.endsWith("package.json"))) {

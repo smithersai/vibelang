@@ -6,8 +6,9 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
-import { canonicalize } from "../lib/declarations.mjs"
+import { canonicalize } from "./helpers/canonical-declarations.mjs"
 import { splitPlatformToModule } from "../lib/platform.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // platform-body:internal-export-TS2883 (drive-t3code-apps 2026-11-04T02:23:57Z):
 // the throw route exported every private declaration it moved into a body.
@@ -19,7 +20,7 @@ import { splitPlatformToModule } from "../lib/platform.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const ts = require("typescript")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-throwing-module-private-seam.json", import.meta.url), "utf8"))
 const split = (text) => splitPlatformToModule(text, corpus.file, ts, { throws: true })
 const bodyOf = (module) => module.slice(module.indexOf("module throwing {"), module.indexOf("\n}\n") + 2)
@@ -64,7 +65,7 @@ const exportsOf = (file) => {
   return r.stdout
 }
 
-test("the themePalette shape compiles with the original's declarations and exports", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("the themePalette shape compiles with the original's declarations and exports", () => {
   const dir = mkdtempSync(join(tmpdir(), "private-seam-"))
   try {
     const { module } = split(corpus.text)

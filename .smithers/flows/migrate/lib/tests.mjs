@@ -49,7 +49,7 @@ export function parseVitestJson(report, root) {
  * Reads the per-test lines a runner prints into one status per test name:
  * pattern, a regular expression, matches one test's line (color codes
  * removed) with the named groups name and status. A status ✓, ✔, pass,
- * passed or ok is passed; ✗, ✘, ×, fail, failed or not ok is failed; any
+ * passed or ok is passed; ✗, ✘, ✖, ×, fail, failed or not ok is failed; any
  * other is skipped. alchemy's runner prints
  * `[ 3/9 ✓ 2 ✗ 1] ✓ Domain > commits (12ms)`, which
  * `^\[[^\]]*\] (?<status>[✓✗↓]) (?<name>.+?)(?: \(\d[\d.]*m?s\))?$` reads.
@@ -62,7 +62,7 @@ export function parseReport(output, pattern) {
     const name = m?.groups?.name?.trim()
     if (!name) continue
     const status = (m.groups.status ?? "").trim()
-    tests[name] = /^(?:✓|✔|pass|passed|ok)$/i.test(status) ? "passed" : /^(?:✗|✘|×|fail|failed|not ok)$/i.test(status) ? "failed" : "skipped"
+    tests[name] = /^(?:✓|✔|pass|passed|ok)$/i.test(status) ? "passed" : /^(?:✗|✘|✖|×|fail|failed|not ok)$/i.test(status) ? "failed" : "skipped"
   }
   return tests
 }

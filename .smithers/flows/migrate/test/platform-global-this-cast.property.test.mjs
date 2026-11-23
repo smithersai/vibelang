@@ -6,12 +6,13 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { platformGlobalsFromCauses, platformGlobalsOf, splitPlatformToModule } from "../lib/platform.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-global-this-cast-platform-handoff.json", import.meta.url), "utf8"))
-const native = process.env.VIBELANG_BINARY
+const native = nativeCompiler()
 const platformQuote = "Move the code to a TypeScript boundary"
 const moduleQuote = "A named top-level `module` body is TypeScript"
 
@@ -112,7 +113,7 @@ test("platform receipt variants preserve casted member and element reads without
   }), { seed: 561105, numRuns: 160 })
 })
 
-test("the stock TypeScript cast twin compiles and the native platform body removes only the escape diagnostic", { skip: !native }, t => {
+test("the stock TypeScript cast twin compiles, natively as written and after the platform split", t => {
   const root = mkdtempSync(join(tmpdir(), "platform-cast-member-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const original = join(root, "main.ts")
@@ -129,9 +130,10 @@ test("the stock TypeScript cast twin compiles and the native platform body remov
   }))
   const path = join(root, "main.vibe")
   writeFileSync(path, corpus.source)
+  // VIP-33 reads a member through grouping and a type assertion as a
+  // statically named member of the global, so the cast is no escape.
   const before = spawnSync(native, ["-p", config, "--pretty", "false", "--singleThreaded"], { encoding: "utf8" })
-  assert.notEqual(before.status, 0)
-  assert.match(before.stdout + before.stderr, /EK0107.*Use globalThis only/)
+  assert.equal(before.status, 0, before.stdout + before.stderr)
   const globals = platformGlobalsFromCauses([receipts("src/HttpServer.vibe", "settle")])(corpus.file)
   const result = splitPlatformToModule(corpus.source, corpus.file, ts, { globals })
   assert.ok(result && !result.refused)

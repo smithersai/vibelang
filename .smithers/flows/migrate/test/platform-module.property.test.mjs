@@ -7,6 +7,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
 import { splitBatchPlatform, splitPlatform, splitPlatformToModule } from "../lib/platform.mjs"
+import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // migrate:opencode:vip40-platform-conversion: the sibling split refuses a module
 // whose moved export is no function with written types, and a value and a type of
@@ -17,7 +18,7 @@ import { splitBatchPlatform, splitPlatform, splitPlatformToModule } from "../lib
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const ts = require("typescript")
-const compiler = process.env.VIBELANG_BINARY
+const compiler = nativeCompiler()
 
 const split = (text, options) => splitPlatformToModule(text, "src/x.ts", ts, options)
 
@@ -280,7 +281,7 @@ const exportsOf = (dir, file) => {
 }
 
 const rule = "A body is a TypeScript file stored inside a `.vibe` file."
-test("a split module compiles, and exports what the TypeScript module exports", { skip: !compiler && "set VIBELANG_BINARY" }, () => checkProperty(fc, {
+test("a split module compiles, and exports what the TypeScript module exports", () => checkProperty(fc, {
   name: "platform-module-body", rule, command: "node --test .smithers/flows/migrate/test/platform-module.property.test.mjs", regressions: new URL("./corpus/", import.meta.url), numRuns: 12,
   arbitrary: shapes,
   check: (shape) => {
@@ -314,7 +315,7 @@ test("a split module compiles, and exports what the TypeScript module exports", 
 // The all-platform wrapper route, compiled by the real compiler against the
 // original: same exports at run time, the wrapper's written signature, and the
 // body's declaration beside the source (t3code Web waitForAtomValue.ts).
-test("an all-platform module's body and wrappers compile and keep the module's exports", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("an all-platform module's body and wrappers compile and keep the module's exports", () => {
   const text = `import { sep } from "node:path"\n/** Doc of join. */\nexport async function join<T>(a: string, t: T): Promise<string> { return a + sep + String(t) }\nexport const line = (n: number): string => sep.repeat(n)\nexport type K = string\n`
   const dir = mkdtempSync(join(tmpdir(), "platform-module-wrap-"))
   try {
@@ -358,7 +359,7 @@ test("a moved const the module reads stays a local const of its name, so closure
   assert.doesNotMatch(exported, /\$platform/)
 })
 
-test("a moved const's narrowing compiles in a closure", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
+test("a moved const's narrowing compiles in a closure", () => {
   const dir = mkdtempSync(join(tmpdir(), "platform-module-narrow-"))
   try {
     mkdirSync(join(dir, "src"), { recursive: true })

@@ -228,8 +228,11 @@ const migrateLoaderValidation = S.Shell.Test({
 })
 
 // Each file is a separate scheduler node. Keep the complete old input closure:
-// migration tests import shared helpers, fixtures and package adapters.
+// migration tests import shared helpers, fixtures and package adapters. The
+// shards set no environment: tests find the native compiler, and the esbuild,
+// Oxlint, Vite and Rolldown that scripts/ci.sh installs, in the tree.
 const migrateTestData = [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
+  S.file("vite/package.json"), S.file("vite/bun.lock"), S.file("unplugin/package.json"), S.file("unplugin/bun.lock"),
   S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
   S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"),
   S.file("//scripts/testing/migrate-progress.mjs"), S.file("//scripts/testing/migrate-shards.mjs"),
