@@ -6,7 +6,9 @@ import { vibeVisitorKeys } from "../../eslint.mjs"
 export const formWords = new Set([
   "error", "service", "control", "schema", "data", "task", "workflow", "layer", "mutable", "match", "when", "and", "or", "not",
   "provide", "fork", "join", "is", "handle", "uninterruptible", "restore", "interruptible",
-  "concurrent", "all", "allSettled", "any", "race", "select"
+  "concurrent", "all", "allSettled", "any", "race", "select",
+  // VIP-43: spec marks a function that emits nothing, proof starts a block.
+  "spec", "proof"
 ])
 
 /** Calls visit on every node of tree, with its parent. */
@@ -59,11 +61,12 @@ export function problems(code, ast, visitorKeys) {
     const [start, end] = node.range
     if (!(start >= 0 && start <= end && end <= code.length)) found.push(`${node.type} has range [${start}, ${end}]`)
     // The contextual effect modifier (including an effect block) belongs to
-    // its function or method, like async. Exempt only the prefix before its
+    // its function or method, like async; a service contract's effect method
+    // is a TSAbstractMethodDefinition. Exempt only the prefix before its
     // first written child: a parameter, function name or method key named
     // effect must still have an Identifier node.
     if (["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "TSDeclareFunction"].includes(node.type) ||
-        node.type === "MethodDefinition" || node.type === "Property" && node.method) {
+        node.type === "MethodDefinition" || node.type === "TSAbstractMethodDefinition" || node.type === "Property" && node.method) {
       const children = [node.id, node.key, ...(node.params ?? []), node.returnType, node.body].filter(Boolean)
       effectPrefixes.push([start, Math.min(end, ...children.map((child) => child.range[0]))])
     }

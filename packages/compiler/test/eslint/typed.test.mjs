@@ -4,7 +4,7 @@
 // code that vibelang -p accepts. typedProgram's program reads each .vibe
 // module's declaration instead: the .ts file sees the types the compiler sees.
 import { strict as assert } from "node:assert"
-import { mkdirSync, rmSync, symlinkSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs"
 import { test } from "node:test"
 import { ESLint } from "eslint"
 import tseslint from "typescript-eslint"
@@ -57,8 +57,19 @@ test("typedProgram's program type-checks the project as vibelang -p does", () =>
   const program = typedProgram({ project: "tsconfig.json", tsconfigRootDir: cwd })
   const subject = program.getSourceFile(`${cwd}src/subject.ts`)
   assert.deepEqual(program.getSemanticDiagnostics(subject).map((diagnostic) => diagnostic.messageText), [])
-  const read = program.getSourceFiles().map((file) => file.fileName.slice(cwd.length)).filter((name) => name.startsWith("src/"))
+  // The compile also writes x.d.ts beside x.vibe, forwarding to the module
+  // for tools that read no arbitrary extension. The project's include lists
+  // one once it is on disk, so only a second run reads it: it adds no types.
+  const forwarder = (name) => name.endsWith(".d.ts") && existsSync(`${cwd}${name.slice(0, -".d.ts".length)}.vibe`)
+  const read = program.getSourceFiles().map((file) => file.fileName.slice(cwd.length)).filter((name) => name.startsWith("src/") && !forwarder(name))
   assert.deepEqual(read.sort(), ["src/chain.d.vibe.ts", "src/control.ts", "src/plain.ts", "src/plainBarrel.ts", "src/subject.ts", "src/vibe.d.vibe.ts", "src/vibeBarrel.ts"])
+})
+
+test("a .vibe module's .d.ts forwarder names the module and nothing else", () => {
+  typedProgram({ project: "tsconfig.json", tsconfigRootDir: cwd }).getSourceFile(`${cwd}src/subject.ts`)
+  for (const name of ["chain", "vibe"]) {
+    assert.equal(readFileSync(`${cwd}src/${name}.d.ts`, "utf8"), `export * from "./${name}.vibe";\n`)
+  }
 })
 
 test("another workspace package's .vibe modules compile with that package's project", async () => {

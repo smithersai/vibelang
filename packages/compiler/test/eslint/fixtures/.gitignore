@@ -1,0 +1,5 @@
+# typedProgram's compile writes each .vibe module's x.d.ts forwarder beside it.
+/typed/src/chain.d.ts
+/typed/src/vibe.d.ts
+/typed-workspace/lib/src/Shelf.d.ts
+/typed-workspace/lib/src/Title.d.ts

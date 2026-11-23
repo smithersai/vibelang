@@ -987,6 +987,7 @@ expanded test globs. Runtime discovery includes nested tests and Bun's
   :runtime-test                 Suite of runtime-test-<file> leaves (bun test)
   :compiler-native              the binary and dprint plugin in packages/compiler
   :compiler-test-1 .. -4         Suites over compiler-test-<file> leaves (node --test)
+  :compiler-eslint-test          test/eslint/run.sh: vibelang/eslint against ESLint and its plugins, over every .vibe file
   :migrate-test                 Suite of :migrate-test-<file> and the three existing file checks
   :migrate-test-<file>          node --test (one migrate or convert file)
   :vite-test :unplugin-test      Suites over vite-test-<file> and unplugin-test-<file> leaves
