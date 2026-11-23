@@ -39,14 +39,5 @@ func TestProofFormDiagnostics(t *testing.T) {
 				}
 			}
 		}
-		for _, proof := range []string{"", "  proof { ensures((r) => r === n) }\n"} {
-			t.Run(extension+"/ordinary-callback/"+fmt.Sprint(proof != ""), func(t *testing.T) {
-				source := "import { ensures } from \"./other\"\nfunction f(n: number): number {\n" + proof + "  ensures((r) => r === n)\n  return n\n}\n"
-				got := FormDiagnostics(parse(source))
-				if len(got) != 1 || got[0].Code != CodeFormChoice || got[0].Start < strings.LastIndex(source, "ensures(") {
-					t.Fatalf("ordinary callback must retain its choice: %+v\n%s", got, source)
-				}
-			})
-		}
 	}
 }

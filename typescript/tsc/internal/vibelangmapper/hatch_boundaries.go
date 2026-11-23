@@ -24,13 +24,6 @@ func (p *projector) hatchSpelling(start, end int, checking, executable string) {
 // after bound inputs; value expressions are deferred until the hatch runs.
 func (p *projector) hatchCall(call *ast.Node, e env) {
 	start := p.tokenStart(call)
-	if e.effect {
-		if p.statementStarts[start] {
-			p.plan.insert(start, ";")
-			delete(p.statementStarts, start)
-		}
-		p.plan.mark(editRun, partOpen, start, start, "")
-	}
 	name := call.Expression().Text()
 	args := call.Arguments()
 	if len(args) > 0 && name != "callback" {
@@ -58,9 +51,6 @@ func (p *projector) hatchCall(call *ast.Node, e env) {
 	p.visitList(call.TypeArguments(), env{})
 	for _, arg := range args[min(1, len(args)):] {
 		p.visit(arg, e)
-	}
-	if e.effect {
-		p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 	}
 }
 

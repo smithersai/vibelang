@@ -33,18 +33,18 @@ func purityOf(t *testing.T, source string) map[string]string {
 	return got
 }
 
-// TestPurityPlainFunctions checks the shapes of the plain-functions case:
-// a pure helper, one that calls a method of a value, one that calls a
-// plain-annotated function, and functions that run Effects; annotated plain
-// functions are plain already and not listed.
+// TestPurityPlainFunctions checks the shapes of the plain-functions case,
+// written as effect functions: a pure helper, one that calls a method of a
+// value, one that calls an unmarked function, and functions that run
+// Effects. Unmarked functions are plain JavaScript and are not listed.
 func TestPurityPlainFunctions(t *testing.T) {
 	t.Parallel()
 	source := `import { Effect } from "effect"
 const order: string[] = []
-function double(n: number) {
+effect function double(n: number) {
   return n * 2
 }
-function traced(label: string, n: number) {
+effect function traced(label: string, n: number) {
   order.push(label)
   return n
 }
@@ -57,21 +57,21 @@ function isEven(n: number): boolean {
 function isOdd(n: number): boolean {
   return n === 0 ? false : isEven(n - 1)
 }
-function parity(n: number) {
+effect function parity(n: number) {
   return isEven(n) ? "even" : "odd"
 }
-function area(w: number, h: number) {
-  const scaled = traced("w", double(w)) * traced("h", double(h))
-  Effect.sleep("1 millis")
+effect function area(w: number, h: number) {
+  const scaled = (try traced("w", try double(w))) * (try traced("h", try double(h)))
+  try Effect.sleep("1 millis")
   return scaled
 }
-function maps(xs: ReadonlyArray<number>) {
-  const doubled = xs.map(double)
-  const viaEffect = Effect.forEach(xs, double)
+effect function maps(xs: ReadonlyArray<number>) {
+  const doubled = xs.map((x) => x * 2)
+  const viaEffect = try Effect.forEach(xs, double)
   return { doubled, viaEffect }
 }
-export function main() {
-  return { sum: sumTo(1000), parity: parity(10), area: area(2, 3), order, maps: maps([1, 2]) }
+export effect function main() {
+  return { sum: sumTo(1000), parity: try parity(10), area: try area(2, 3), order, maps: try maps([1, 2]) }
 }
 `
 	assert.DeepEqual(t, purityOf(t, source), map[string]string{
@@ -84,39 +84,39 @@ export function main() {
 	})
 }
 
-// TestPurityCh13Plain checks the shapes of ch13-plain: pure recursion under
-// an Effect contract, a member of a service the file declares, a method of
-// a value, and a function in value position.
+// TestPurityCh13Plain checks the shapes of ch13-plain: a pure effect
+// helper, recursion that runs its own call under try, a method of a value,
+// a service member, and an unmarked function, which is not listed.
 func TestPurityCh13Plain(t *testing.T) {
 	t.Parallel()
 	source := `service Settings {
   scale(): Effect<number, never, never>
 }
 const order: string[] = []
-function double(n: number) {
+effect function double(n: number) {
   return n * 2
 }
-function area(w: number, h: number) {
-  return double(w) * double(h) * Settings.scale()
+effect function area(w: number, h: number) {
+  return (try double(w)) * (try double(h)) * try (try Settings).scale()
 }
-function tracedDouble(n: number) {
+effect function tracedDouble(n: number) {
   order.push(` + "`double ${n}`" + `)
   return n * 2
 }
-function tracedArea(w: number, h: number) {
-  return tracedDouble(w) * tracedDouble(h) * Settings.scale()
+effect function tracedArea(w: number, h: number) {
+  return (try tracedDouble(w)) * (try tracedDouble(h)) * try (try Settings).scale()
 }
-function sumTo(n: number): Effect<number, never, never> {
-  return n === 0 ? 0 : n + sumTo(n - 1)
-}
-function gcd(a: number, b: number): Effect<number, never, never> {
-  return b === 0 ? a : gcd(b, a % b)
+effect function sumTo(n: number): Effect<number, never, never> {
+  return n === 0 ? 0 : n + try sumTo(n - 1)
 }
 function doubleAll(xs: ReadonlyArray<number>) {
-  return xs.map(double)
+  return xs.map((x) => x * 2)
 }
-export function main() {
-  return Effect.provide(() => doubleAll([1, 2]), Layer.empty)
+effect function scale(xs: ReadonlyArray<number>) {
+  return doubleAll(xs)
+}
+export effect function main() {
+  return try Effect.provide(effect { return try scale([1, 2]) }, Layer.empty)
 }
 `
 	assert.DeepEqual(t, purityOf(t, source), map[string]string{
@@ -124,53 +124,44 @@ export function main() {
 		"area":         "effect",
 		"tracedDouble": "plain",
 		"tracedArea":   "effect",
-		"sumTo":        "pure",
-		"gcd":          "pure",
-		"doubleAll":    "plain",
+		"sumTo":        "effect",
+		"scale":        "plain",
 		"main":         "effect",
 	})
 }
 
-// TestPurityNeverOnEffects checks that code that names an Effect never
-// looks plain: a throw, a try, a using, a yield-free fork imported from the
-// runtime, a value call of a key from another file, a member of another
-// file's key, and a call of a function that is not plain itself. A for...of
+// TestPurityNeverOnEffects checks that effect code that names an Effect
+// never looks plain: a throw, a try, a using, a fork imported from the
+// runtime, and a call of a function that is not plain itself. A for...of
 // and a call of another file's function are of unknown purity.
 func TestPurityNeverOnEffects(t *testing.T) {
 	t.Parallel()
 	source := `import { fork } from "vibelang-runtime"
-import { Users } from "./users.vibe"
 import { helper } from "./helper.vibe"
-function thrower(n: number) {
+effect function thrower(n: number) {
   if (n < 0) throw new Error("negative")
   return n
 }
-function tries(n: number) {
-  try { return helper(n) } catch { return 0 }
+effect function tries(n: number) {
+  return try helper(n)
 }
-function leases() {
+effect function leases() {
   using r = lease(1)
   return r.id
 }
-function forks() {
-  fork(() => helper(1))
+effect function forks() {
+  const fiber = fork(helper(1))
   return 1
 }
-function reads() {
-  return Users()
+effect function callsThrower(n: number) {
+  return thrower(n)
 }
-function finds(id: string) {
-  return Users.find(id)
-}
-function callsThrower(n: number) {
-  return thrower(n) + 1
-}
-function loops(xs: ReadonlyArray<number>) {
+effect function loops(xs: ReadonlyArray<number>) {
   let s = 0
   for (const x of xs) s += x
   return s
 }
-function delegates(n: number) {
+effect function delegates(n: number) {
   return helper(n) * 2
 }
 `
@@ -179,8 +170,6 @@ function delegates(n: number) {
 		"tries":        "effect",
 		"leases":       "effect",
 		"forks":        "effect",
-		"reads":        "effect",
-		"finds":        "effect",
 		"callsThrower": "effect",
 		"loops":        "plain",
 		"delegates":    "plain",
@@ -188,10 +177,11 @@ function delegates(n: number) {
 }
 
 // TestEmitPuritySplits checks the D10 output on the corpus's plain-function
-// shapes: pure functions get a direct body and property; plain-looking
-// calls of methods and plain-annotated functions still use Effect wrappers.
-// The sources are frozen copies in testdata/purity, taken before the L2 case
-// migrations annotated some of these functions plain.
+// cases: a provably pure effect function gets a direct body and property;
+// an unmarked function is plain JavaScript and gets none, and effect
+// functions that run Effects keep their Effect wrappers. Both cases write
+// their pure helpers unmarked and run every Effect call under try, so
+// neither has a direct entry.
 func TestEmitPuritySplits(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
@@ -201,19 +191,17 @@ func TestEmitPuritySplits(t *testing.T) {
 		others []string
 	}{
 		{
-			name: "plain-functions", file: "plain-functions.vibe",
-			pure:   []string{"double"},
-			others: []string{"traced", "parity", "area", "maps", "main", "sumTo", "isEven", "isOdd"},
+			name: "plain-functions", file: "plain-functions/main.vibe",
+			others: []string{"double", "traced", "parity", "area", "maps", "main", "sumTo", "isEven", "isOdd"},
 		},
 		{
-			name: "ch13-plain", file: "ch13-plain.vibe",
-			pure:   []string{"double", "sumTo", "gcd"},
-			others: []string{"area", "tracedDouble", "tracedArea", "doubleAll", "scenario", "main"},
+			name: "ch13-plain", file: "ch13-plain/ch13-plain.vibe",
+			others: []string{"double", "sumTo", "gcd", "area", "tracedDouble", "tracedArea", "doubleAll", "scenario", "main"},
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			data, err := os.ReadFile(filepath.Join("testdata/purity", c.file))
+			data, err := os.ReadFile(filepath.Join("../../../vibelang/cases", c.file))
 			assert.NilError(t, err)
 			js, _, diagnostics := Emit(string(data), testContext)
 			assert.Equal(t, len(diagnostics), 0, "diagnostics: %v", diagnostics)
@@ -231,30 +219,31 @@ func TestEmitPuritySplits(t *testing.T) {
 	}
 }
 
-// TestPurityRegressions keeps Effect operations out of the plain-return
-// warning and keeps export references from hiding direct-call candidates.
+// TestPurityRegressions keeps Effect operations in effect functions out of
+// the plain-return warning and keeps export references from hiding direct-call candidates.
 func TestPurityRegressions(t *testing.T) {
 	for _, c := range []struct{ name, source, want string }{
-		{"stream", `function f(s) { return Stream.runCollect(s) }`, "effect"},
-		{"shadowedService", `function f(Stream: any) { return Stream.runCollect() }`, "effect"},
-		{"pureModule", `function f() { return Option.some(1) }`, "plain"},
-		{"layer", `function f(l) { return Layer.launch(l) }`, "effect"},
-		{"service", `import { FileSystem } from "effect/FileSystem"; function f(p) { return FileSystem.realPath(p) }`, "effect"},
-		{"rootAlias", `import { FileSystem as fs } from "effect"; function f(p) { return fs.realPath(p) }`, "effect"},
-		{"platformAlias", `import { NodeFileSystem as fs } from "@effect/platform-node"; function f() { return fs.layer() }`, "effect"},
-		{"try", `function f() { return try(() => g(), (e) => e) }`, "effect"},
-		{"tryParameterDefault", `const k = Effect.succeed("m"); function f(s: string = try k) { return s }`, "effect"},
-		{"suspend", `import { suspend } from "vibelang-runtime"; function f() { return suspend(() => {}) }`, "effect"},
-		{"handoff", `import { handoff } from "vibelang-runtime"; function f() { return handoff(() => g(), () => g()) }`, "effect"},
-		{"attempt", `import { attempt } from "vibelang-runtime"; function f() { return attempt(() => g()) }`, "effect"},
-		{"throwExpression", `function f(x) { return x ?? throw new Error() }`, "effect"},
-		{"doExpression", `function f() { return do { Effect.log("hi") } }`, "effect"},
-		{"arrow", `function f() { return (() => { Effect.log("hi") })() }`, "effect"},
-		{"expression", `function f() { return (function () { throw new Error() })() }`, "effect"},
-		{"export", `function f(xs: number[]) { return xs.at(0) } export { f }`, "plain"},
-		{"exportPure", `function f(x: number) { return x * 2 } export { f }`, "pure"},
-		{"exportAlias", `function f(x: number) { return x * 2 } export { f as twice }`, "pure"},
-		{"nested", `function f() { const g = () => { throw new Error() }; return 1 }`, "plain"},
+		{"stream", `effect function f(s) { return Stream.runCollect(s) }`, "effect"},
+		{"shadowedService", `effect function f(Stream: any) { return Stream.runCollect() }`, "effect"},
+		{"pureModule", `effect function f() { return Option.some(1) }`, "plain"},
+		{"layer", `effect function f(l) { return Layer.launch(l) }`, "effect"},
+		{"service", `import { FileSystem } from "effect/FileSystem"; effect function f(p) { return FileSystem.realPath(p) }`, "effect"},
+		{"rootAlias", `import { FileSystem as fs } from "effect"; effect function f(p) { return fs.realPath(p) }`, "effect"},
+		{"platformAlias", `import { NodeFileSystem as fs } from "@effect/platform-node"; effect function f() { return fs.layer() }`, "effect"},
+		{"try", `effect function f() { return try g() }`, "effect"},
+		{"tryParameterDefault", `const k = Effect.succeed("m"); effect function f(s: string = try k) { return s }`, "effect"},
+		{"suspend", `import { suspend } from "vibelang-runtime"; effect function f() { return suspend(() => {}) }`, "effect"},
+		{"handoff", `import { handoff } from "vibelang-runtime"; effect function f() { return handoff(() => g(), () => g()) }`, "effect"},
+		{"attempt", `import { attempt } from "vibelang-runtime"; effect function f() { return attempt(() => g()) }`, "effect"},
+		{"throwExpression", `effect function f(x) { return x ?? throw new Error() }`, "effect"},
+		{"doExpression", `effect function f() { return do { try Effect.log("hi") } }`, "effect"},
+		{"arrow", `effect function f() { return (() => { Effect.log("hi") })() }`, "effect"},
+		{"expression", `effect function f() { return (function () { throw new Error() })() }`, "effect"},
+		{"export", `effect function f(xs: number[]) { return xs.at(0) } export { f }`, "plain"},
+		{"exportPure", `effect function f(x: number) { return x * 2 } export { f }`, "pure"},
+		{"exportAlias", `effect function f(x: number) { return x * 2 } export { f as twice }`, "pure"},
+		{"nested", `effect function f() { const g = effect () => { throw new Error() }; return 1 }`, "plain"},
+		{"nestedPlain", `effect function f() { const g = () => { throw new Error() }; return 1 }`, "pure"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			assert.DeepEqual(t, purityOf(t, c.source), map[string]string{"f": c.want})

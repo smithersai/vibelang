@@ -19,18 +19,24 @@
 //  2. Declarations and contracts (declarations.go): errors, services,
 //     controls, D1 abstract classes, layers, readonly members (D134), and
 //     A!E!R contracts, D57's infer included.
-//  3. Function bodies (this file): a function with a body is an Effect
-//     function unless its return annotation is a plain type (L2).
-//  4. Calls in an Effect body run (L3), service member calls read the
-//     service (D41), and an Effect value called with no arguments runs (D90).
+//  3. Function bodies (this file): a function, method or lambda is an
+//     Effect function only when written effect (VIP-1), and effect { … } is
+//     a program (VIP-2). One with no modifier is plain: its text passes
+//     through, whatever it returns and wherever it stands.
+//  4. A call is a value. Only try runs one (VIP-5), with the forms that run
+//     by their own syntax: catch, fork, join, the try operations and the
+//     loops over Effects. A try statement in effect code is EK0503, and
+//     using is TypeScript's (VIP-8).
 //
 // Some of the forms, as written and as projected:
 //
 //	error NotFound { id: string }   class NotFound extends TaggedError("NotFound")<{ readonly id: string }> {}
 //	service Users { find(...) }     interface Users { find(...); brand } abstract class Users extends $service<Users>(key) {}
 //	User!NotFound!Db                Effect.Effect<User, NotFound, Db>
-//	function f(p) { body }          function f(p) { return $gen(function* () { body }) }
-//	c(...)  in an Effect body       (yield* $run(c(...)))
+//	function f(p) { body }          function f(p) { body }
+//	effect function f(p) { body }   function f(p) { return $gen(function* () { body }) }
+//	c(...)  in an Effect body       c(...)
+//	try c(...) in an Effect body    (yield* $run($try(c(...))))
 //	throw x in an Effect body       return yield* $fail(x)
 //
 // Everything else passes through as verbatim text, and VibeLang syntax with no
@@ -65,6 +71,9 @@ const (
 	// differ from the versions the forms table pins (module.go). (9002 is
 	// CodeExecSyntax, emit.go.)
 	CodeVersionMismatch = 9004
+	// CodeTryPlacement marks a try written outside effect code, where nothing
+	// can run its operand. It is a placement rule, not a form choice (9005).
+	CodeTryPlacement = 9007
 	// CodeInvalidOption marks an invalid option of the mapper's tsconfig
 	// entry (server.go, Options).
 	CodeInvalidOption = 9003
@@ -125,12 +134,13 @@ type Diagnostic struct {
 
 // env is what the walk knows about the code around a node.
 type env struct {
-	// holdCalls keeps untried calls as values in an operand. Explicit try
-	// still runs in the enclosing Effect body.
-	holdCalls bool
-	rawTry    *ast.Node
+	// rawTry is the expression whose written try is being lowered.
+	rawTry *ast.Node
+	// trailingBlock reports that the node is in a retired trailing block
+	// (VIP-11), which the parser rejects: its try draws no second diagnostic.
+	trailingBlock bool
 	// effect reports whether the node is in an Effect body, a projected
-	// function's generator, where calls run and throw fails.
+	// function's generator, where try runs and throw fails.
 	effect bool
 	// frame is the generator an Effect body's code is in.
 	frame *frame
@@ -157,9 +167,6 @@ type projector struct {
 	ctx      FileContext
 	names    *names
 	plan     plan
-	// plainBuiltinBodies carries proven synchronous D54 bodies for execution.
-	plainBuiltinBodies map[*ast.Node][]edit
-	plainBuiltin       bool
 	// forms answers the L1 form decisions (forms_resolve.go).
 	forms formResolver
 	// sources memoizes isSource (synth.go).
@@ -201,7 +208,6 @@ func Project(text string, ctx FileContext) Projection {
 	}
 	p := lower(text, ctx)
 	text = p.text // without the try keywords lower blanks
-	p.brandPureExports()
 	importLine := func() string { return p.names.importLine(ctx.PreludeModule) }
 	prefix := importLine
 	if ctx.Lint {
@@ -248,7 +254,7 @@ func lower(text string, ctx FileContext) *projector {
 	}
 	fiberOperations := fiberOperationPositions(file, text)
 	effectDeclarations := writtenEffectDeclarationMarks(file)
-	operandTries := tryOperandMarks(file, text)
+	operandTries := writtenTryMarks(file, text)
 	effectLambdas := writtenEffectLambdaMarks(file)
 	effectBlocks := writtenEffectBlockMarks(file)
 	keywords := vipKeywords(file, text, ctx.Lint)
@@ -319,7 +325,8 @@ func (p *projector) visit(node *ast.Node, e env) {
 	if p.ctx.Lint && p.lintForm(node, e) {
 		return
 	}
-	if (e.holdCalls || ast.IsArrowFunction(node)) && node != e.rawTry && node.Flags&ast.NodeFlagsVibeLangTry != 0 {
+	if node != e.rawTry && node.Flags&ast.NodeFlagsVibeLangTry != 0 {
+		// try is the only form that runs a call (VIP-5).
 		p.tryOperandExpression(node, e)
 		return
 	}
@@ -327,10 +334,6 @@ func (p *projector) visit(node *ast.Node, e env) {
 		p.syntaxDiagnostic(node, 2001, "for try consumes a Stream inside effect code; move this loop into an effect function or block.")
 		p.plan.replace(p.tokenStart(node)+len("for"), p.tokenStart(node.AsForInOrOfStatement().Initializer), " (")
 		p.visitChildren(node, e)
-		return
-	}
-	if e.effect && p.programReturnBoundary(node) {
-		p.returnProgram(node, e)
 		return
 	}
 	switch {
@@ -348,10 +351,6 @@ func (p *projector) visit(node *ast.Node, e env) {
 		// D364/D366: a text-only projection cannot preserve separate-module
 		// evaluation and live bindings. Refuse rather than guess a lowering.
 		p.formChoice(node, inlineModuleProjectionMessage)
-		return
-	case node.Kind == ast.KindImportDeclaration || node.Kind == ast.KindExportDeclaration:
-		p.relativeTypeScriptImport(node)
-		p.visitChildren(node, e)
 		return
 	case isSchemaDeclaration(node) || isSchemaInterface(node) || isSchemaAliasType(node):
 		p.schemaDeclaration(node)
@@ -412,22 +411,15 @@ func (p *projector) visit(node *ast.Node, e env) {
 	case p.isPlainHatchFunction(node):
 		p.visitChildren(node, env{})
 		return
-	case ast.IsPropertyAssignment(node) && p.forms.Argument(node.Initializer()).Class == ClassProgram:
-		p.visit(node.Name(), e)
-		p.callArgument(node.Initializer(), e)
-		return
-	case ast.IsShorthandPropertyAssignment(node) && p.forms.Argument(node.Name()).Class == ClassProgram:
-		p.plan.insert(p.tokenStart(node), node.Name().Text()+": ")
-		p.callArgument(node.Name(), e)
-		return
 	case isLambda(node):
 		p.lambda(node, e)
 		return
-	case node.Kind == ast.KindTaggedTemplateExpression && e.holdCalls:
-		p.visitChildren(node, e)
+	case node.Kind == ast.KindCallExpression && e.effect && isKeywordFork(node):
+		// fork x starts its operand as a fiber where it stands.
+		p.forkCall(node, e)
 		return
-	case node.Kind == ast.KindCallExpression && (!e.effect || e.holdCalls || p.forms.(*Resolver).holdsProgram(node)):
-		// moduleCall applies D152 outside the hatch's TypeScript island.
+	case node.Kind == ast.KindCallExpression:
+		// A call is a value wherever it stands: only try runs it (VIP-5).
 		p.moduleCall(node, e)
 		return
 	case isProducer(node):
@@ -436,7 +428,7 @@ func (p *projector) visit(node *ast.Node, e env) {
 	case isProjectedFunction(node):
 		p.functionDeclaration(node)
 		return
-	case node.Kind == ast.KindMethodDeclaration && ast.IsClassLike(node.Parent) && node.Body() != nil && contractOf(node.Type()) == contractPlain:
+	case node.Kind == ast.KindMethodDeclaration && ast.IsClassLike(node.Parent) && node.Body() != nil && node.Flags&ast.NodeFlagsVibeLangEffect == 0 && contractOf(node.Type()) == contractPlain:
 		p.functionLike(node, node.Body())
 		return
 	case node.Kind == ast.KindMethodDeclaration && ast.IsClassLike(node.Parent) && p.isEffectMethod(node):
@@ -480,17 +472,11 @@ func (p *projector) visit(node *ast.Node, e env) {
 		case node.Kind == ast.KindTryStatement && node.Flags&ast.NodeFlagsVibeLang != 0 && !e.producer:
 			p.handleStatement(node, e)
 			return
-		case node.Kind == ast.KindTryStatement && !e.producer:
-			p.tryStatement(node, e)
-			return
 		case isProvideBlock(node) && !e.producer:
 			p.provideBlock(node, e)
 			return
 		case maskWord(node) != "" && !e.producer:
 			p.maskBlock(node, maskWord(node), e)
-			return
-		case isUsingDeclaration(node):
-			p.usingDeclaration(node, e)
 			return
 		case !e.producer && node != p.loopRegion && p.isLoopStatementRegion(node):
 			p.scopeLoopStatement(node, e)
@@ -504,14 +490,6 @@ func (p *projector) visit(node *ast.Node, e env) {
 		case ast.KindExpressionStatement:
 			if isStatementListItem(node) {
 				p.statementStarts[p.tokenStart(node)] = true
-			}
-		case ast.KindTaggedTemplateExpression:
-			p.runTemplate(node, e)
-			return
-		case ast.KindCallExpression:
-			if isRunnableCall(node) {
-				p.runCall(node, e)
-				return
 			}
 		case ast.KindThrowStatement:
 			if node.Expression() != nil {
@@ -539,9 +517,7 @@ func (p *projector) rememberComputedNames(node *ast.Node, e env) {
 				p.computedNameEnvs = make(map[*ast.Node]env)
 			}
 			if _, found := p.computedNameEnvs[name]; !found {
-				defining := e
-				defining.holdCalls = true
-				p.computedNameEnvs[name] = defining
+				p.computedNameEnvs[name] = e
 			}
 		}
 		return false
@@ -659,41 +635,14 @@ func newFormResolver(file *ast.SourceFile) formResolver {
 }
 
 // isEffectMethod reports whether method, a method of a class with a body,
-// projects to an Effect function. A written effect modifier settles the kind
-// first (VIP-1). A class that implements a service, one
-// the file declares or one imported from another module, implements Effect
-// contracts (D92, D128), so its instance methods are Effect functions; any
-// other unmarked method takes the form its body decides (L1's defaults), or its
-// return annotation's.
+// is an Effect function: one written effect (VIP-1). A method with no
+// modifier is plain, whatever its class implements and whatever it returns.
 func (p *projector) isEffectMethod(method *ast.Node) bool {
 	m := method.AsMethodDeclaration()
 	if method.Body() == nil || m.AsteriskToken != nil || ast.HasSyntacticModifier(method, ast.ModifierFlagsAsync) {
 		return false
 	}
-	if method.Flags&ast.NodeFlagsVibeLangEffect != 0 {
-		return true
-	}
-	if !ast.IsStatic(method) {
-		for _, heritage := range ast.GetImplementsHeritageClauseElements(method.Parent) {
-			name := heritage
-			switch heritage.Kind {
-			case ast.KindExpressionWithTypeArguments:
-				name = heritage.Expression()
-			case ast.KindTypeReference:
-				name = heritage.AsTypeReferenceNode().TypeName
-			}
-			if ast.IsIdentifier(name) {
-				if p.services[name.Text()] != nil || strings.HasPrefix(p.names.importedFrom[name.Text()], ".") {
-					return contractOf(method.Type()) != contractPlain
-				}
-			}
-		}
-	}
-	switch p.forms.Lambda(method).Form {
-	case FormEffectFn, FormProgram, FormDual:
-		return true
-	}
-	return false
+	return method.Flags&ast.NodeFlagsVibeLangEffect != 0
 }
 
 // isStatementListItem reports whether statement sits in a list of
@@ -709,9 +658,10 @@ func isStatementListItem(statement *ast.Node) bool {
 	return false
 }
 
-// isProjectedFunction reports whether node is a function declaration that
-// projects to an Effect function, or to a plain one under a plain return
-// annotation: one with a braced body that is neither async nor a generator.
+// isProjectedFunction reports whether node is a function declaration the
+// projector lowers itself, as an Effect function when written effect and as
+// a plain one otherwise: one with a braced body that is neither async nor a
+// generator.
 func isProjectedFunction(node *ast.Node) bool {
 	if node.Kind != ast.KindFunctionDeclaration || node.Flags&ast.NodeFlagsReparsed != 0 {
 		return false
@@ -720,30 +670,23 @@ func isProjectedFunction(node *ast.Node) bool {
 	return fn.Body != nil && fn.AsteriskToken == nil && !ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync)
 }
 
-// functionDeclaration lowers a function declaration with a body. Without a
-// return annotation, or with an Effect contract, the body is an Effect:
-// `function f(p) { return $gen(function* () { body }) }`, and stock
-// TypeScript infers or checks f's Effect<A, E, R> from the generator. A
-// contract with an infer channel (D57) wraps the generator in $contract
-// instead of annotating. A plain return annotation keeps a plain function
-// (L2), whose calls do not run. Keep the declaration itself: nested and
-// block-local Effect functions must hoist even when called before their line
-// or declared after a return (S21-70), just as in the fork lowering.
+// functionDeclaration lowers a function declaration with a body. Written
+// effect, the body is an Effect: `function f(p) { return $gen(function* () {
+// body }) }`, and stock TypeScript infers or checks f's Effect<A, E, R> from
+// the generator. A contract with an infer channel (D57) wraps the generator
+// in $contract instead of annotating. With no modifier the function is plain
+// (VIP-1) and its body is the TypeScript written. Keep the declaration
+// itself: nested and block-local Effect functions must hoist even when called
+// before their line or declared after a return (S21-70), just as in the fork
+// lowering.
 func (p *projector) functionDeclaration(node *ast.Node) {
 	p.functionLike(node, node.Body())
-	if node.Flags&ast.NodeFlagsVibeLangEffect == 0 {
-		p.preparePlainBuiltinBody(node)
-	}
 }
 
 // functionLike lowers fn, a function declaration or a method with body, as
 // functionDeclaration says.
 func (p *projector) functionLike(fn *ast.Node, body *ast.Node) {
 	writtenEffect := fn.Flags&ast.NodeFlagsVibeLangEffect != 0
-	if !writtenEffect && p.forms.(*Resolver).isFactory(fn) {
-		p.factory(fn)
-		return
-	}
 	open := p.tokenStart(body)
 	closing := body.End() - 1
 	if open >= len(p.text) || p.text[open] != '{' || closing <= open || p.text[closing] != '}' {
@@ -756,8 +699,21 @@ func (p *projector) functionLike(fn *ast.Node, body *ast.Node) {
 	if writtenEffect && kind == contractPlain {
 		kind = contractEffect
 	}
-	if kind != contractPlain {
-		p.callbackParameters(fn)
+	if !writtenEffect {
+		// A function with no modifier is plain (VIP-1): its body is
+		// TypeScript's, and an Effect return annotation is only its type.
+		plain := kind == contractPlain
+		kind = contractPlain
+		if !plain {
+			fn.ForEachChild(func(child *ast.Node) bool {
+				if child != body {
+					p.visit(child, env{})
+				}
+				return false
+			})
+			p.visitList(body.Statements(), env{})
+			return
+		}
 	}
 	fn.ForEachChild(func(child *ast.Node) bool {
 		if child != body && child != returnType {
@@ -780,7 +736,8 @@ func (p *projector) functionLike(fn *ast.Node, body *ast.Node) {
 			return
 		}
 		self := selfArg(body)
-		if p.ctx.Lint && fn.Kind == ast.KindArrowFunction {
+		if fn.Kind == ast.KindArrowFunction {
+			// The contract's edit runs up to the body, over the arrow's =>.
 			self = lintArrowContract(self)
 		}
 		p.plan.mark(editContract, partOpen, colon, p.tokenStart(returnType), self)
@@ -857,13 +814,13 @@ func usesThis(body *ast.Node) bool {
 type contractKind uint8
 
 const (
-	// contractNone: no annotation; the body is an Effect and A, E, R are inferred.
+	// contractNone: no annotation; an effect function's A, E, R are inferred.
 	contractNone contractKind = iota
 	// contractEffect: an Effect contract that the body is checked against.
 	contractEffect
 	// contractInfer: an A!E!R contract with an infer channel (D57).
 	contractInfer
-	// contractPlain: a plain type; an unmarked function stays plain (L2).
+	// contractPlain: a plain type.
 	contractPlain
 )
 
@@ -954,67 +911,49 @@ func isRunnableCall(call *ast.Node) bool {
 	return callee != ast.KindImportKeyword && callee != ast.KindSuperKeyword
 }
 
-// runCall lowers a call c in an Effect body to `(yield* $run(c))`: $run runs
-// an Effect, and lifts any other value to one, so every call has its success
-// type (L3). A run that begins an expression statement in a statement list
-// starts with a semicolon, because VibeLang code omits semicolons and a line
-// that starts with ( would otherwise continue the previous one.
-func (p *projector) runCall(call *ast.Node, e env) {
-	if p.structuredCall(call) {
-		p.discardedStructuredCall(call)
-		p.moduleCall(call, e)
-		return
-	}
-	if p.dataMethod(call, e) || p.predicateCall(call, e) {
-		return
-	}
+// forkCall lowers the keyword fork x in an Effect body to
+// `(yield* $run($scoped(fork)(x)))`: the fiber starts where the keyword
+// stands, and the region around it owns the fiber. The operand is the value
+// written, so a call in it is the program the fiber runs. A fork that begins
+// an expression statement in a statement list starts with a semicolon,
+// because VibeLang code omits semicolons and a line that starts with ( would
+// otherwise continue the previous one.
+func (p *projector) forkCall(call *ast.Node, e env) {
 	start := p.tokenStart(call)
 	if p.statementStarts[start] {
 		p.plan.insert(start, ";")
 		delete(p.statementStarts, start)
 	}
-	runArg := p.programCallChannels(call)
-	// Effect.service returns its key at runtime; this explicit lookup must
-	// run it even though D24 keeps a key returned as data by other calls.
-	if p.forms.(*Resolver).Callee(call).Canonical == "effect/Effect#service" {
-		runArg = "service"
-	}
-	p.plan.mark(editRun, partOpen, start, start, runArg)
+	p.plan.mark(editRun, partOpen, start, start, "")
 	scoped := p.isBlockFork(call, e)
 	if scoped {
 		p.plan.mark(editScoped, partOpen, start, start, "")
 		p.plan.witness(p.tokenStart(call.Expression()), helperRef("$scoped")+"(")
 		p.plan.witness(call.Expression().End(), ")")
 	}
-	if isKeywordFork(call) && (p.names.declared["fork"] || p.names.topLevel["fork"]) {
+	if p.names.declared["fork"] || p.names.topLevel["fork"] {
 		// The keyword's callee is the prelude's fork whatever the file
 		// declares (rule H5): reach it through the prelude's own import.
 		callee := call.Expression()
 		p.plan.replace(p.tokenStart(callee), callee.End(), p.names.prelude("fork"))
 	} else {
-		p.callee(call, e)
+		p.visit(call.Expression(), e)
 	}
 	// The parser represents `fork program` as a call without source
-	// parentheses. Supply them before lowering its by-name operand, so a
-	// fiber held by an await operation is started once at its declaration.
-	keywordFork := ast.IsIdentifier(call.Expression()) && call.Expression().Text() == "fork" &&
-		len(call.Arguments()) == 1 && blockArgument(call) == nil &&
+	// parentheses. Supply them around its operand.
+	bare := len(call.Arguments()) == 1 && blockArgument(call) == nil &&
 		scanner.SkipTrivia(p.text, call.Expression().End()) == p.tokenStart(call.Arguments()[0])
-	if keywordFork {
+	if bare {
 		p.plan.replace(call.Expression().End(), p.tokenStart(call.Arguments()[0]), "(")
 	}
-	if arguments := call.Arguments(); e.continuation != "" && len(arguments) > 0 && isContinuationArgument(arguments[0]) {
-		p.continuationArguments(call, e)
-	} else {
-		p.callArguments(call, e)
-	}
-	if keywordFork {
+	p.callArguments(call, e)
+	if bare {
 		p.plan.insert(call.End(), ")")
 	}
 	if scoped {
 		p.plan.mark(editScoped, partClose, call.End(), call.End(), "")
 	}
-	p.plan.mark(editRun, partClose, call.End(), call.End(), runArg)
+	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }
 
 // isBlockFork reports whether call, in an Effect body, is the prelude's fork:
@@ -1046,36 +985,6 @@ func (p *projector) isPreludeFork() bool {
 		return from == "vibelang-runtime" && p.names.declarations["fork"] == 1
 	}
 	return !p.names.declared["fork"]
-}
-
-// callee walks call's callee and type arguments. A member call S.m(...) on
-// a name that may be a service key reads the member through $use, which adds
-// the service to R (D41); a call of a name with no arguments goes through
-// $value, so an Effect value, a key or a Config, runs (D90). Returned
-// callees use the same adapter; member calls retain their receiver.
-func (p *projector) callee(call *ast.Node, e env) {
-	callee := call.Expression()
-	if p.builtinCallee(call) || p.memberValueCall(call, e) {
-		return
-	}
-	switch {
-	case ast.IsPropertyAccessExpression(callee) && call.QuestionDotToken() == nil && p.mayBeServiceKey(callee.Expression()) && !p.keyOwnedMember(callee):
-		receiver := callee.Expression()
-		p.plan.mark(editServiceCall, partOpen, p.tokenStart(receiver), p.tokenStart(receiver), "")
-		p.visit(receiver, e)
-		p.plan.mark(editServiceCall, partClose, receiver.End(), receiver.End(), "")
-		p.visit(callee.Name(), e)
-	case len(call.Arguments()) == 0 && call.TypeArguments() == nil && call.QuestionDotToken() == nil &&
-		(callee.Kind == ast.KindIdentifier && !p.functions[callee.Text()] || p.isModuleMember(callee) || ast.IsCallExpression(ast.SkipParentheses(callee))):
-		p.plan.mark(editValueCall, partOpen, p.tokenStart(callee), p.tokenStart(callee), "")
-		p.visit(callee, e)
-		p.plan.mark(editValueCall, partClose, callee.End(), callee.End(), "")
-	default:
-		p.visit(callee, e)
-	}
-	if arguments := call.TypeArgumentList(); arguments != nil {
-		p.visitList(arguments.Nodes, e)
-	}
 }
 
 // isCompletionReturn reports whether node is a return the parser wrote for
@@ -1185,36 +1094,18 @@ func (p *projector) tokenStart(node *ast.Node) int {
 	return scanner.GetTokenPosOfNode(node, p.file, false /*includeJSDoc*/)
 }
 
-// relativeTypeScriptImport implements D31 for stock checking as well as
-// JavaScript: a relative .js specifier resolves its TypeScript source
-// without requiring allowImportingTsExtensions in the user's project.
-func (p *projector) relativeTypeScriptImport(node *ast.Node) {
-	var specifier *ast.Node
-	if node.Kind == ast.KindImportDeclaration {
-		specifier = node.AsImportDeclaration().ModuleSpecifier
-	} else {
-		specifier = node.AsExportDeclaration().ModuleSpecifier
+// writtenTryMarks records every expression written under try, so the mark
+// survives the reparse that follows blanking the keyword: a call runs only
+// where try was written (VIP-5).
+func writtenTryMarks(file *ast.SourceFile, text string) []tryOperandMark {
+	var marks []tryOperandMark
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Flags&ast.NodeFlagsVibeLangTry != 0 {
+			marks = append(marks, tryOperandMark{node.Kind, scanner.SkipTrivia(text, node.Pos()), node.End()})
+		}
+		return node.ForEachChild(visit)
 	}
-	if specifier == nil || !ast.IsStringLiteral(specifier) {
-		return
-	}
-	module := specifier.Text()
-	if !strings.HasPrefix(module, ".") || !strings.HasSuffix(module, ".ts") {
-		return
-	}
-	start := p.tokenStart(specifier)
-	quote := p.text[start : start+1]
-	p.plan.replace(start, specifier.End(), quote+strings.TrimSuffix(module, ".ts")+".js"+quote)
-}
-
-// runTemplate preserves native tag evaluation while applying the call run rule.
-func (p *projector) runTemplate(node *ast.Node, e env) {
-	start := p.tokenStart(node)
-	if p.statementStarts[start] {
-		p.plan.insert(start, ";")
-		delete(p.statementStarts, start)
-	}
-	p.plan.mark(editRun, partOpen, start, start, "")
-	p.visitChildren(node, e)
-	p.plan.mark(editRun, partClose, node.End(), node.End(), "")
+	file.AsNode().ForEachChild(visit)
+	return marks
 }

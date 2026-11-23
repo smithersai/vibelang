@@ -34,19 +34,19 @@ export function data(): Exit.Exit<number> { return Exit.succeed(42) }
 export function program(): Effect.Effect<number> { return Exit.succeed(42) }`
 	assert.NilError(t, os.WriteFile(filepath.Join(dir, "helper.ts"), []byte(helper), 0600))
 	source := `import { data, program, config, key, error, foreign } from "./helper.js";
-export function bad() { return data() }
-export function good() { return program() }
-export function kept() { return sync((): Exit.Exit<number> => data()) }
-export function resumed() { return Effect.callback<number>((resume): void => { resume(Exit.succeed(9)) }) }
-export function generic<T>(x: T) { return x }
-export function configData() { return config() }
-export function configRead() { return config("MISSING")() }
-export function keyData() { return key() }
-export function errorData() { return error() }
-export function foreignData() { return foreign() }`
+export effect function replayed() { return try data() }
+export effect function good() { return try program() }
+export effect function kept() { return try sync((): Exit.Exit<number> => data()) }
+export effect function resumed() { return try Effect.callback<number>((resume): void => { resume(Exit.succeed(9)) }) }
+export effect function generic<T>(x: T) { return x }
+export effect function configData() { return config() }
+export effect function configRead() { return try config("MISSING") }
+export effect function keyData() { return key() }
+export effect function errorData() { return error() }
+export effect function foreignData() { return foreign() }`
 	projection := Project(source, testContext)
 	assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
-	assert.Assert(t, strings.Contains(projection.Text, "$run($value(data)())"), "%s", projection.Text)
+	assert.Assert(t, strings.Contains(projection.Text, "$run($try(data()))"), "%s", projection.Text)
 	assert.Assert(t, strings.Contains(projection.Text, "resume(Exit.succeed(9))"), "%s", projection.Text)
 	assert.NilError(t, os.WriteFile(filepath.Join(dir, "main.ts"), []byte(projection.Text+`
 import { $run as runProbe, $gen as genProbe } from "./prelude.js"; export function genericRun<T>(x: T) { return runProbe(x) }
@@ -65,7 +65,8 @@ function mixedProbe() { return genProbe(function* () { return yield* runProbe(mi
 	out, err := cmd.CombinedOutput()
 	assert.Assert(t, err != nil, "%s", out)
 	assert.Assert(t, strings.Contains(string(out), "sync((): Exit.Exit<A, E>"), "%s", out)
-	assert.Equal(t, strings.Count(string(out), "error TS"), 2, "%s", out)
+	// try runs an Exit (VIP-5), so only the raw mixed union keeps the D251 annotation error.
+	assert.Equal(t, strings.Count(string(out), "error TS"), 1, "%s", out)
 	declarations, err := os.ReadFile(filepath.Join(dir, "main.d.ts"))
 	assert.NilError(t, err)
 	assert.Assert(t, strings.Contains(string(declarations), "generic<T>(x: T): Effect.Effect<T, never, never>"), "%s", declarations)
@@ -78,11 +79,11 @@ function mixedProbe() { return genProbe(function* () { return yield* runProbe(mi
 	} {
 		assert.Assert(t, strings.Contains(string(declarations), want), "%s", declarations)
 	}
-	js, _, ds := Emit(strings.Replace(source, "export function bad() { return data() }", "", 1), testContext)
+	js, _, ds := Emit(source, testContext)
 	assert.Equal(t, len(ds), 0, "%v", ds)
 	assert.NilError(t, os.WriteFile(filepath.Join(dir, "main.mjs"), []byte(js+`
 import { configValue, keyValue } from "./helper.js";
-console.log(JSON.stringify([await Effect.runPromise(good()), (await Effect.runPromise(kept())).value, await Effect.runPromise(resumed()), await Effect.runPromise(configRead()), (await Effect.runPromise(configData())) === configValue, (await Effect.runPromise(keyData())) === keyValue, (await Effect.runPromise(errorData())).message, (await Effect.runPromise(foreignData())).message]))`), 0600))
+console.log(JSON.stringify([await Effect.runPromise(replayed()), await Effect.runPromise(good()), (await Effect.runPromise(kept())).value, await Effect.runPromise(resumed()), await Effect.runPromise(configRead()), (await Effect.runPromise(configData())) === configValue, (await Effect.runPromise(keyData())) === keyValue, (await Effect.runPromise(errorData())).message, (await Effect.runPromise(foreignData())).message]))`), 0600))
 	// The helper's annotations erase to the same constructor at runtime.
 	assert.NilError(t, os.WriteFile(filepath.Join(dir, "helper.js"), []byte(`import { Exit, Config, Context, Data } from "effect";
 import vm from "node:vm";
@@ -100,16 +101,16 @@ export const foreign = () => foreignError;`), 0600))
 	cmd.Dir = dir
 	out, err = cmd.CombinedOutput()
 	assert.NilError(t, err, "%s", out)
-	assert.Equal(t, strings.TrimSpace(string(out)), `[42,42,9,"fallback",true,true,"data","foreign"]`)
+	assert.Equal(t, strings.TrimSpace(string(out)), `[42,42,42,9,"fallback",true,true,"data","foreign"]`)
 }
 
 // TestD251ProjectionGolden keeps the static boundary in checking output and
 // preserves the explicitly plain D43 registration body without run edits.
 func TestD251ProjectionGolden(t *testing.T) {
-	source := `import { data } from "./helper.js"; function f() { return data() } function g() { return Effect.callback<number>((resume): void => { resume(Exit.succeed(9)) }) }`
+	source := `import { data } from "./helper.js"; effect function f() { return try data() } effect function g() { return try Effect.callback<number>((resume): void => { resume(Exit.succeed(9)) }) }`
 	projection := Project(source, testContext)
 	assert.Equal(t, len(projection.Diagnostics), 0)
-	assert.Equal(t, virtualBody(t, projection), `import { data } from "./helper.js"; function f() { return $gen(function* () { return (yield* $run($value(data)())) })} function g() { return $gen(function* () { return (yield* $run(Effect.callback<number>((resume): void => { resume(Exit.succeed(9)) }))) })}`)
+	assert.Equal(t, virtualBody(t, projection), `import { data } from "./helper.js";        function f() { return $gen(function* () { return     (yield* $run($try(data()))) })}        function g() { return $gen(function* () { return     (yield* $run($try(Effect.callback<number>((resume): void => { resume(Exit.succeed(9)) })))) })}`)
 }
 
 // TestD254DataProjectionGolden keeps opaque D24 data calls in the same run
@@ -117,10 +118,10 @@ func TestD251ProjectionGolden(t *testing.T) {
 func TestD254DataProjectionGolden(t *testing.T) {
 	for _, name := range []string{"config", "key", "error", "foreign"} {
 		t.Run(name, func(t *testing.T) {
-			source := "import { " + name + " } from \"./helper.js\"; function f() { return " + name + "() }"
+			source := "import { " + name + " } from \"./helper.js\"; effect function f() { return try " + name + "() }"
 			projection := Project(source, testContext)
 			assert.Equal(t, len(projection.Diagnostics), 0)
-			assert.Equal(t, virtualBody(t, projection), "import { "+name+" } from \"./helper.js\"; function f() { return $gen(function* () { return (yield* $run($value("+name+")())) })}")
+			assert.Equal(t, virtualBody(t, projection), "import { "+name+" } from \"./helper.js\";        function f() { return $gen(function* () { return     (yield* $run($try("+name+"()))) })}")
 		})
 	}
 }

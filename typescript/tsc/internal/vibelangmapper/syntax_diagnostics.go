@@ -66,8 +66,9 @@ func (p *projector) checkSyntaxDiagnostics() {
 				p.syntaxToken(n, 1003, "await using is not part of VibeLang: a call already waits.")
 			}
 		case ast.KindTryStatement:
-			if block := n.AsTryStatement().FinallyBlock; block != nil && syntaxInLowerableBody(n) {
-				p.checkFinallyExits(block)
+			if p.nativeTryInEffectCode(n) {
+				start := p.tokenStart(n)
+				p.diagnostics = append(p.diagnostics, Diagnostic{Start: start, Length: n.End() - start, Code: CodeEffectTryStatement, Message: effectTryStatementMessage})
 			}
 		}
 		if isServiceClass(n) {
@@ -82,25 +83,40 @@ func (p *projector) checkSyntaxDiagnostics() {
 	p.file.AsNode().ForEachChild(visit)
 }
 
-// syntaxLowerable follows the native body/async/generator gate (EK9203).
-func syntaxLowerable(n *ast.Node) bool {
-	switch n.Kind {
-	case ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindArrowFunction, ast.KindMethodDeclaration:
-	default:
+// CodeEffectTryStatement is the native compiler's EK0503: effect code has no
+// try statements, try/finally included (VIP-5).
+const CodeEffectTryStatement = 503
+
+const effectTryStatementMessage = "A try statement cannot handle a failure in effect code: a failed try never resumes the body, so its catch and finally blocks would not run. Handle failures with catch or match, and clean up with ensuring or onExit, as in try ensuring(write(x), close())."
+
+// nativeTryInEffectCode reports whether n is a try statement written in the
+// body of an effect function, lambda, block or producer. A plain or async
+// function's try statement is JavaScript's, with JavaScript's completion
+// rules, wherever the function is nested. The arrows the parser writes for
+// forms that run where they stand belong to the function around them.
+func (p *projector) nativeTryInEffectCode(n *ast.Node) bool {
+	if n.Flags&(ast.NodeFlagsVibeLang|ast.NodeFlagsReparsed) != 0 {
 		return false
 	}
-	flags := ast.GetFunctionFlags(n)
-	return n.Body() != nil && flags&ast.FunctionFlagsAsync == 0 && (flags&ast.FunctionFlagsGenerator == 0 || isProducer(n))
-}
-
-// syntaxInLowerableBody keeps EK2006 inside the native function boundary.
-func syntaxInLowerableBody(n *ast.Node) bool {
-	for n.Parent != nil {
-		parent := n.Parent
-		if ast.IsFunctionLike(parent) || ast.IsClassLike(parent) || parent.Kind == ast.KindClassStaticBlockDeclaration {
-			return n == parent.Body() && syntaxLowerable(parent)
+	start := p.tokenStart(n)
+	block := n.AsTryStatement().TryBlock
+	if !startsWord(p.text[start:], "try") || block == nil || scanner.SkipTrivia(p.text, start+len("try")) != p.tokenStart(block) {
+		return false
+	}
+	for owner := n.Parent; owner != nil; owner = owner.Parent {
+		if ast.IsClassLike(owner) || owner.Kind == ast.KindClassStaticBlockDeclaration {
+			return false
 		}
-		n = parent
+		if !ast.IsFunctionLike(owner) {
+			continue
+		}
+		if ast.IsArrowFunction(owner) && owner.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0 {
+			continue
+		}
+		if p.isPlainHatchFunction(owner) {
+			return false
+		}
+		return owner.Flags&ast.NodeFlagsVibeLangEffect != 0
 	}
 	return false
 }
@@ -159,47 +175,6 @@ func (p *projector) checkLayerSetup(n *ast.Node) {
 			p.syntaxDiagnostic(setup, 9209, "This statement follows the layer's members, but a layer's setup statements come first.")
 		}
 	}
-}
-
-// checkFinallyExits mirrors the native region target stack (EK2006, D15).
-func (p *projector) checkFinallyExits(block *ast.Node) {
-	f := &frame{region: &region{}}
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if ast.IsFunctionLike(n) || ast.IsClassLike(n) || n.Kind == ast.KindClassStaticBlockDeclaration {
-			return false
-		}
-		if n.Kind == ast.KindReturnStatement || ast.IsBreakOrContinueStatement(n) {
-			j := jump{kind: n.Kind}
-			if n.Kind != ast.KindReturnStatement && n.Label() != nil {
-				j.label = n.Label().Text()
-			}
-			if !f.lands(j) {
-				keyword := "return"
-				if n.Kind == ast.KindBreakStatement {
-					keyword = "break"
-				}
-				if n.Kind == ast.KindContinueStatement {
-					keyword = "continue"
-				}
-				p.syntaxToken(n, 2006, keyword+" leaves a finally block, which would discard a failure in flight.")
-			}
-		}
-		if isJumpTarget(n) {
-			target := target{loop: ast.IsIterationStatement(n, false)}
-			if n.Kind == ast.KindLabeledStatement {
-				target.label = n.Label().Text()
-				target.loop = ast.IsIterationStatement(n.AsLabeledStatement().Statement, true)
-			}
-			f.targets = append(f.targets, target)
-			n.ForEachChild(visit)
-			f.targets = f.targets[:len(f.targets)-1]
-			return false
-		}
-		n.ForEachChild(visit)
-		return false
-	}
-	block.ForEachChild(visit)
 }
 
 // syntaxTaggedErrorClass recognizes the legacy TaggedError class shape.

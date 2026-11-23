@@ -21,8 +21,6 @@ func (p *projector) forkOwner(call *ast.Node, e env) {
 	}
 	arguments := call.Arguments()
 	operand := arguments[len(arguments)-1]
-	operandEnv := e
-	operandEnv.holdCalls = true
 	start := p.tokenStart(call)
 	if p.statementStarts[start] {
 		p.plan.insert(start, ";")
@@ -41,7 +39,7 @@ func (p *projector) forkOwner(call *ast.Node, e env) {
 	default:
 		p.plan.replace(start, p.tokenStart(operand), effect+".forkDetach(")
 	}
-	p.visit(operand, operandEnv)
+	p.visit(operand, e)
 	p.plan.insert(call.End(), ")")
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }

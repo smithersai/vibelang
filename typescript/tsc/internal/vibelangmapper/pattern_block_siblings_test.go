@@ -31,13 +31,10 @@ func TestPatternBlockKeepsSiblingLowerings(t *testing.T) {
 		{"restore", `uninterruptible { restore { try log("x") } }`, []string{"yield* uninterruptible($gen(function* () { yield* restore($gen(function* () {"}},
 		{"mask in if", `if (u) { uninterruptible { try log("x") } }`, []string{"yield* uninterruptible($gen(function* () {"}},
 		{"provide", `provide Live { try log("x") }`, []string{"yield* Effect.provide(Live)($gen(function* () {"}},
-		{"Effect lambda", "const h = (n: number): number!! => try.race [load(n)]", []string{"=> $gen(function* () { return (yield* $run(Effect.raceAllFirst([load(n)]))) })"}},
-		{"using block", "{ using r = acquire(); try.all [load(1)] }", []string{"yield* $scopedBody($gen(function* () { const r = (yield* $acquire("}},
-		{"using in if", "if (u) { using r = acquire(); try.all [load(1)] }", []string{"if (u) { yield* $scopedBody($gen(function* () { const r = (yield* $acquire("}},
-		{"using in while", "while (u) { using r = acquire(); try.all [load(1)]; break }", []string{"const $c = yield* $scopedBody($gen(function* () { const r = (yield* $acquire(", `return $jump("break:")`}},
+		{"Effect lambda", "const h = effect (n: number): number!! => try.race [load(n)]", []string{"=> $gen(function* () { return (yield* $run(Effect.raceAllFirst([load(n)]))) })"}},
 		{"fork in for", "for (let i = 0; i < 2; i++) { const f = fork load(i); try.all [load(1)] }", []string{"{ yield* $scopedBody($gen(function* () { const f = (yield* $run($scoped(fork)("}},
 		{"fork as loop body", "for (let i = 0; i < 2; i++) fork load(try.race [load(i)])", []string{"{ yield* $scopedBody($gen(function* () { (yield* $run($scoped(fork)("}},
-		{"labeled break from a scope", "out: while (u) { for (;;) { using r = acquire(); try.all [load(1)]; break out } }", []string{`return $jump("break:out")`, "break out"}},
+		{"labeled break from a scope", "out: while (u) { for (;;) { const r = fork load(0); try.all [load(1)]; break out } }", []string{`return $jump("break:out")`, "break out"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			plain := projectBesideTest(t, test.sibling, "if (u) { try log(u.id) }")
@@ -54,8 +51,8 @@ func TestPatternBlockKeepsSiblingLowerings(t *testing.T) {
 	}
 }
 
-// A lambda with no form reports CodeFormChoice beside a binding test as it
-// does alone, and a retired await operation keeps its diagnostic.
+// A plain lambda that runs a try operation reports EK9005 beside a binding
+// test as it does alone, and a retired await operation keeps its diagnostic.
 func TestPatternBlockKeepsSiblingDiagnostics(t *testing.T) {
 	for _, sibling := range []string{
 		"const g = (n: number) => try.all [load(n)]",

@@ -81,7 +81,7 @@ func TestSchemaDeclarationText(t *testing.T) {
 		},
 		{
 			"function f() { schema Local { x: Xx } }\nnamespace N { export schema Inner = Yy }\n",
-			"function f() { return $gen(function* () { interface Local extends Schema.Schema.Type<typeof Local> {}\nconst Local = Schema.Struct({ x: Schema.mutableKey(Xx) }); })}\nnamespace N { export type Inner = typeof Inner.Type;\nexport const Inner = Yy; }\n",
+			"function f() { interface Local extends Schema.Schema.Type<typeof Local> {}\nconst Local = Schema.Struct({ x: Schema.mutableKey(Xx) }); }\nnamespace N { export type Inner = typeof Inner.Type;\nexport const Inner = Yy; }\n",
 		},
 	} {
 		projection := Project(c.source, testContext)

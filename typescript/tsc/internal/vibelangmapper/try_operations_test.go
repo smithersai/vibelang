@@ -10,7 +10,7 @@ func TestTryOperations(t *testing.T) {
 	for _, operation := range []struct{ word, want string }{
 		{"all", `Effect.all(xs, { concurrency: "unbounded" })`}, {"race", "Effect.raceAllFirst(xs)"}, {"any", "Effect.raceAll(xs)"},
 	} {
-		source := "function f(xs: ReadonlyArray<Effect.Effect<number>>) { return try." + operation.word + " xs }"
+		source := "effect function f(xs: ReadonlyArray<Effect.Effect<number>>) { return try." + operation.word + " xs }"
 		projection := Project(source, testContext)
 		assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
 		assert.Assert(t, strings.Contains(virtualBody(t, projection), operation.want), "%s", projection.Text)

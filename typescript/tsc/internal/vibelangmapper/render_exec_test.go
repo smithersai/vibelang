@@ -67,37 +67,11 @@ var emitCases = []struct {
 		contains: []string{`$method(maybe, "getOrElse", [() => 0], $methodCandidates_getOrElse)`},
 		absent:   []string{`maybe.getOrElse(`}},
 
-	{name: "service value calls bind ordinary methods and evaluate the receiver once",
-		source:   `import { Users } from "./users.ts"; function f() { return Users.all() }`,
-		contains: []string{`$member((($s = Users), $isKey($s) && !("all" in $s) ? (yield* $s) : $s), "all")()`, `const v = self[key]`, `v.bind(self)`},
-		absent:   []string{`.all()`}},
-	{name: "chained Config value calls adapt the result before invoking it",
-		source:   `function f() { return config("HOST")() }`,
-		contains: []string{`$value((($t = config("HOST")), $isRun($t) ? (yield* $t) : $t))()`}},
-	{name: "pinned service tail lambda has an Effect boundary",
-		source:   `import { Path as Paths } from "effect/Path"; const f = (part: string) => Paths.join("root", part)`,
-		contains: []string{`(part) => $gen(function* ()`, `(($s = Paths), $isKey($s) && !("join" in $s) ? (yield* $s) : $s).join("root", part)`}},
-	{name: "a tagged error value call replays through a generator",
-		source:   `function f(error: Cause.YieldableError) { return error() }`,
-		contains: []string{`$value(error)()`, `function* () { return yield* v`}},
-
 	{
 		name:     "interleaved static service retains its key and erased instance shape",
 		source:   "export service Counter { increment(): void!!\n static readonly layer = Layer.succeed(Counter, { increment: () => {}, read: () => 2 })\n read(): number!!\n}",
 		contains: []string{`class Counter extends $service("app/src/main#Counter")`, `static layer = Layer.succeed(Counter`},
 		absent:   []string{"abstract read", "interface Counter", "number!!"},
-	},
-	{
-		name:     "region var storage escapes while its initializer runs at its source site",
-		source:   "function f() { try { var x = g(1); for (var i = 0; i < 2; i++) x += i } finally { h() }\n return x + i }",
-		contains: []string{"var x;", "var i;", "x = (($t = g(1))", "return x + i"},
-		absent:   []string{"$varType", "var x =", "var i ="},
-	},
-	{
-		name:     "using region in loop retains per iteration scope and jump dispatch",
-		source:   "function f() { for (let i = 0; i < 3; i++) { using r = lease(i)\n if (i) continue\n return r }\n return 0 }",
-		contains: []string{"for (let i = 0; i < 3; i++) {", "$region(($scope)", `$jump("continue:")`, "continue;"},
-		absent:   []string{"$scopedBody", "using r"},
 	},
 
 	{
@@ -106,12 +80,7 @@ var emitCases = []struct {
 		contains: []string{"Option.isSome(o)", "Option.getOrElse(o, () => 0)"},
 		absent:   []string{"o.isSome()", "o.getOrElse("},
 	},
-	{
-		name:     "async sync hatch binds inputs before the AbortSignal",
-		source:   "function f() { return sync(async (n, signal) => signal.aborted ? 0 : n, read()) }",
-		contains: []string{"$promise($evaluate.bind(undefined, ...$inputs))", "async (n, signal) => signal.aborted ? 0 : n", "$value(read)()"},
-		absent:   []string{"yield* signal", "sync(async"},
-	},
+
 	{
 		name:     "library data call stays lazy plain TypeScript",
 		source:   "function f() { return sync(BigDecimal.fromNumberUnsafe(0)) }",
@@ -120,30 +89,6 @@ var emitCases = []struct {
 	},
 
 	{
-		name:     "composed call channel witnesses never execute",
-		source:   "function f() { return 1 |> % + 1 } function g() { return f() }",
-		contains: []string{"f$fast()"},
-		absent:   []string{"$runAt", "$yieldSite"},
-	},
-
-	{
-		name:     "stored collections convert functions without running them early",
-		source:   "function f(xs: Array<() => Effect.Effect<number>>) { return Effect.all(xs) }",
-		contains: []string{"Effect.all($programs(xs))", "Array.from(xs, $asProgram)", "$suspend(() => { const result = v();"},
-		absent:   []string{"f$direct"},
-	},
-	{
-		name:     "pipe program inputs and generic stages share the checking boundary",
-		source:   "function f(job: () => Effect.Effect<number>) { return pipe(job, Effect.retry({ times: 2 })) }",
-		contains: []string{"pipe($asProgram(job), Effect.retry({ times: 2 }))"},
-	},
-	{
-		name:     "by name topic is a cold generator and module value pipes stay plain",
-		source:   "const n = 21 |> % * 2; function f() { return Effect.fail(1) |> Effect.retry(%, { times: 2 }) }",
-		contains: []string{"const $topic = 21", "const $topic_1 = $gen(function* ()", "Effect.retry($topic_1, { times: 2 })"},
-		absent:   []string{"|>", "(%)"},
-	},
-	{
 		name:     "known stream chains use module functions in both renderings",
 		source:   "function f(xs: Stream.Stream<number>) { return xs.filter((n) => n > 0).map((n) => n + 1) }",
 		contains: []string{"Stream.map(", "Stream.filter(xs, (n) => n > 0)"},
@@ -151,48 +96,37 @@ var emitCases = []struct {
 	},
 	{
 		name:     "acyclic entries forward defaults rest and destructuring once",
-		source:   "function f(a = seed(), { x } = object(), [y] = array(), ...rest: number[]) { return unknown(a, x, y, rest) }",
+		source:   "effect function f(a = seed(), { x } = object(), [y] = array(), ...rest: number[]) { return try unknown(a, x, y, rest) }",
 		contains: []string{"function f$fast(a, $arg1, $arg2, ...rest)", "f$body(a, $arg1, $arg2, ...rest)", "function* f$body(a = seed(), { x } = object(), [y] = array(), ...rest)"},
 		absent:   []string{"const f$fast", "$fast(f$body)"},
 	},
 	{
 		name:     "a body that reads arguments keeps the counted entry, which forwards every argument",
-		source:   "function f(a: number) { return unknown(arguments.length, () => arguments[1]) }",
+		source:   "effect function f(a: number) { return try unknown(arguments.length, () => arguments[1]) }",
 		contains: []string{"const f$fast = $fast(f$body);"},
 		absent:   []string{"function f$fast("},
 	},
 	{
 		name:     "arguments of a nested function don't count",
-		source:   "function f(a: number) { return unknown(function () { return arguments.length }) }",
+		source:   "effect function f(a: number) { return try unknown(function () { return arguments.length }) }",
 		contains: []string{"function f$fast(a)"},
 		absent:   []string{"const f$fast"},
 	},
 	{
 		name:     "direct recursion counts eager depth",
-		source:   "function f(n: number) { unknown(); return n ? f(n - 1) : 0 }",
+		source:   "effect function f(n: number) { try unknown(); return n ? try f(n - 1) : 0 }",
 		contains: []string{"const f$fast = $fast(f$body);", "f$fast(n - 1)"},
 	},
 	{
 		name:     "mutual recursion counts only cycle members",
-		source:   "function f(n: number) { return n ? g(n - 1) : unknown() } function g(n: number) { return f(n) } function outer(n: number) { return f(n) }",
+		source:   "effect function f(n: number) { return n ? try g(n - 1) : try unknown() } effect function g(n: number) { return try f(n) } effect function outer(n: number) { return try f(n) }",
 		contains: []string{"const f$fast = $fast(f$body);", "const g$fast = $fast(g$body);", "function outer$fast(n)"},
 		absent:   []string{"const outer$fast"},
 	},
-	{
-		name:     "recursion through a lambda starts on the fiber",
-		source:   "function f(n: number) { return unknown(() => f(n - 1)) }",
-		contains: []string{"function f$fast(n)", "f$fast(n - 1)"},
-		absent:   []string{"const f$fast"},
-	},
-	{
-		name:     "export specifiers do not shadow a pure declaration",
-		source:   "function f(n: number) { return n * 3 } export { f }; function g() { return f(2) }",
-		contains: []string{"function f$direct(n)", "f[$direct] = f$direct;", "return f$direct(2);", "export { f };"},
-		absent:   []string{"f$fast"},
-	},
+
 	{
 		name:     "fiber forms in do bodies retain executable run boundaries",
-		source:   "function f(a: Fiber.Fiber<number>) { return do { join a } } function g() { return do { for concurrent (const x of [1]) { log(x) } 1 } }",
+		source:   "effect function f(a: Fiber.Fiber<number>) { return do { join a } } effect function g() { return do { for concurrent (const x of [1]) { try log(x) } 1 } }",
 		contains: []string{"$join(a)", "Effect.forEach([1], ($concurrentItem) => $gen(function* () { const x = $concurrentItem; {", "$isRun($t) ? (yield* $t) : $t"},
 		absent:   []string{"for concurrent", "return join ", "f$direct", "g$direct"},
 	},
@@ -204,16 +138,11 @@ var emitCases = []struct {
 	},
 	{
 		name:     "concurrent loops defer bodies and continue returns from one item",
-		source:   "function f(xs: number[]) { for concurrent(2) (const x of xs) { if (!x) continue; log(x) } for concurrent (const x of xs) log(x) }",
-		contains: []string{"Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; {", "concurrency: $concurrency", "concurrency: \"unbounded\"", "return;", "log(x)"},
+		source:   "effect function f(xs: number[]) { for concurrent(2) (const x of xs) { if (!x) continue; try log(x) } for concurrent (const x of xs) try log(x) }",
+		contains: []string{"Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; {", "concurrency: $concurrency", `concurrency: "unbounded"`, "return;", "log(x)"},
 		absent:   []string{"for concurrent", "continue", "f$direct"},
 	},
-	{
-		name:     "all receives programs instead of completed strings",
-		source:   "function f() { return all([Effect.succeed(1), Effect.succeed(2)]) }",
-		contains: []string{"all([$gen(function* ()", "Effect.succeed(1)", "Effect.succeed(2)"},
-		absent:   []string{"f$direct"},
-	},
+
 	{
 		name:   "catch expressions run their evaluated operands",
 		source: "effect function f() { return a() catch e => recover(e) }",
@@ -224,47 +153,17 @@ var emitCases = []struct {
 		absent: []string{"$catchExpression", "f$direct"},
 	},
 	{
-		name:   "a catch fallback in a pipe keeps the evaluated topic",
-		source: "declare function input(): string!!; declare function find(id: string): string!!; declare function backup(id: string): string!!; effect function f() { return input() |> find(%) catch backup(%) }",
-		contains: []string{
-			"const $topic = (($t = input()), $isRun($t) ? (yield* $t) : $t);",
-			"$catch(find($topic), () => $gen(function* () { return (($t = backup($topic)), $isRun($t) ? (yield* $t) : $t); }))",
-		},
-		absent: []string{"|>", "(%)", "f$direct"},
+		name:     "a catch fallback in a pipe keeps the evaluated topic",
+		source:   `declare function input(): string!!; declare function find(id: string): string!!; declare function backup(id: string): string!!; effect function f() { return (try input()) |> find(%) catch () => "none" }`,
+		contains: []string{"const $topic = ((yield* $try(input())));", "$catch(find($topic), "},
+		absent:   []string{"|>", "(%)", "f$direct"},
 	},
+
 	{
-		name:   "a pure function splits into f$direct and its Effect wrapper (D10)",
-		source: "export function double(n: number) {\n  return n * 2\n}\n",
-		contains: []string{
-			"export function double(...$args) { return $plainSync(double$direct, this, $args); }",
-			"double[$direct] = double$direct;",
-			"function double$direct(n) {\n    return n * 2;\n}",
-			`import { $direct, $plainSync } from "vibelang-runtime/internal";`,
-		},
-		absent: []string{"export function double$direct", "$isRun", "sync as $sync"},
-	},
-	{
-		name:   "a same-file pure call is direct, and pure groups recurse on the JavaScript stack",
-		source: "function even(n: number) {\n  return n === 0 ? true : odd(n - 1)\n}\nfunction odd(n: number) {\n  return n === 0 ? false : even(n - 1)\n}\nfunction f(n: number) {\n  return even(n) && Math.max(n, 2) > 1\n}\n",
-		contains: []string{
-			"return n === 0 ? true : odd$direct(n - 1);",
-			"return n === 0 ? false : even$direct(n - 1);",
-			"return even$direct(n) && Math.max(n, 2) > 1;",
-		},
-		absent: []string{"$isRun", "$fast"},
-	},
-	{
-		name:   "a function that runs an Effect gets a generator, a wrapper, and a fast entry",
-		source: "function greet(id: string) {\n  const user = find(id)\n  return user.name\n}\nfunction twice(id: string) {\n  return greet(id) + greet(id)\n}\n",
-		contains: []string{
-			"function greet(...$args) { return (greet$effect ??= $fnUntraced(greet$body)).apply(this, $args); }",
-			"function greet$fast(id) { const it = greet$body(id), s = it.next(); return s.done ? $done(s.value) : $settle(it, s); }",
-			"function* greet$body(id) {",
-			"const user = (($t = find(id)), $isRun($t) ? (yield* $t) : $t);",
-			"return (($t = greet$fast(id)), $isRun($t) ? (yield* $t) : $t) + (($t = greet$fast(id)), $isRun($t) ? (yield* $t) : $t);",
-			"var $t;",
-		},
-		absent: []string{"greet$direct"},
+		name:     "a function that runs an Effect gets a generator, a wrapper, and a fast entry",
+		source:   "effect function greet(id: string) {\n  const user = try find(id)\n  return user.name\n}\neffect function twice(id: string) {\n  return (try greet(id)) + (try greet(id))\n}\n",
+		contains: []string{"function greet(...$args) { return (greet$effect ??= $fnUntraced(greet$body)).apply(this, $args); }", "function greet$fast(id) { const it = greet$body(id), s = it.next(); return s.done ? $done(s.value) : $settle(it, s); }", "function* greet$body(id) {", "var $t;"},
+		absent:   []string{"greet$direct"},
 	},
 	{
 		name:     "a function in value position is the Effect wrapper (L2)",
@@ -272,97 +171,40 @@ var emitCases = []struct {
 		contains: []string{"[1, 2].map(double)"},
 		absent:   []string{"map(double$direct)"},
 	},
-	{
-		name:   "a call of an imported function reads its $direct property",
-		source: "import { shout } from \"./b.vibe\"\nfunction f(x: string) {\n  return shout(x)\n}\n",
-		contains: []string{
-			`import { shout } from "./b.js";`,
-			"return (($t = (shout[$direct] ?? shout)(x)), shout[$direct] ? $t : ($isRun($t) ? (yield* $t) : $t));",
-		},
-	},
-	{
-		name:   "a plain return annotation keeps a plain function, whose calls do not run (L2)",
-		source: "function len(s: string): number {\n  return s.trim().length\n}\nfunction f(s: string) {\n  return len(s)\n}\n",
-		contains: []string{
-			"function len(s) {\n    return s.trim().length;\n}",
-			"return (($t = len(s)), $isRun($t) ? (yield* $t) : $t);",
-		},
-		absent: []string{"len$direct", "len$fast"},
-	},
-	{
-		name:   "a service member call reads the service unless the key owns the member (D41, L8)",
-		source: "service Users {\n  find(id: string): string!!\n}\nfunction f(id: string) {\n  return Users.find(id) + Users.pipe()\n}\n",
-		contains: []string{
-			`class Users extends $service("app/src/main#Users") {`,
-			"(($s = Users), $isKey($s) ? (yield* $s) : $s).find(id)",
-			"(($t = Users.pipe()), $isRun($t) ? (yield* $t) : $t)",
-		},
-	},
-	{
-		name:     "a member call on another key reads the service only when the key lacks the member",
-		source:   "import { Sessions } from \"./sessions.vibe\"\nfunction f() {\n  return Sessions.get(\"t\")\n}\n",
-		contains: []string{`$method((($s = Sessions), $isKey($s) && !("get" in $s) ? (yield* $s) : $s), "get", ["t"], $methodCandidates_get)`},
-	},
+
 	{
 		name:     "a service with a static default passes it to $reference (D40)",
 		source:   "service Flags {\n  readonly on: boolean\n  static readonly defaultValue = () => ({ on: false })\n}\n",
 		contains: []string{`class Flags extends $reference("app/src/main#Flags", () => Flags.defaultValue()) {`},
 	},
-	{
-		name:   "regions keep the checking rendering's completions, defined at run time",
-		source: "function f(xs: number[]) {\n  for (const x of xs) {\n    try {\n      if (x === 2) break\n      g(x)\n    } finally {\n      h()\n    }\n  }\n  return 1\n}\n",
-		contains: []string{
-			"const $end = {};",
-			"class $Jump {\n    constructor(k) { this.k = k; }\n}",
-			`const $c = yield* $finally($gen(function* () {`,
-			`return $jump("break:");`,
-			`if ($jumped($c, "break:"))`,
-		},
-	},
-	{
-		name:     "a value call runs a key or an Effect value, and calls a function (D90)",
-		source:   "import { Users } from \"./users.vibe\"\nfunction f() {\n  return Users()\n}\n",
-		contains: []string{"const $value = (v) => typeof v === \"function\" && !$isKey(v) ? v : () => $gen(function* () { return yield* v; });", "$value(Users)()"},
-	},
+
 	{
 		name:     "throw fails the Effect (D46)",
-		source:   "function f(n: number) {\n  if (n < 0) throw new Error(\"negative\")\n  return n\n}\n",
+		source:   "effect function f(n: number) {\n  if (n < 0) throw new Error(\"negative\")\n  return n\n}\n",
 		contains: []string{`return yield* $fail(new Error("negative"));`},
 		absent:   []string{"f$direct"},
 	},
+
 	{
-		name:     "a function that holds a using gets a Scope of its own, and no fast entry",
-		source:   "function f() {\n  using r = lease(1)\n  return r.id\n}\nfunction g() {\n  return f()\n}\n",
-		contains: []string{"return $region(($scope) => $gen(function* () {", "const r = (yield* $acquire($scope, lease(1)));", "(($t = f()), $isRun($t) ? (yield* $t) : $t)"},
-		absent:   []string{"f$fast", "f$body"},
-	},
-	{
-		name:   "a producer runs under the runtime's Yield operation, and for try takes a Stream's elements (D26)",
-		source: "effect function* numbers(n: number) {\n  for (let i = 0; i < n; i++) yield i\n  yield* more(1)\n  yield\n}\nfunction sum() {\n  let s = 0\n  for try (const x of numbers(3)) s += x\n  return s\n}\n",
-		contains: []string{
-			"return $produce(() => $producerGen(function* () {",
-			"yield* $yield(i);",
-			"yield* $yieldAll((($t = more(1)), $isRun($t) ? (yield* $t) : $t));",
-			"yield* $yield(undefined);",
-			"yield* $iterateStream((($t = numbers(3)), $isRun($t) ? (yield* $t) : $t),",
-			"const x = $item;",
-		},
+		name:     "a producer runs under the runtime's Yield operation, and for try takes a Stream's elements (D26)",
+		source:   "effect function* numbers(n: number) {\n  for (let i = 0; i < n; i++) yield i\n  yield* more(1)\n  yield\n}\neffect function sum() {\n  let s = 0\n  for try (const x of numbers(3)) s += x\n  return s\n}\n",
+		contains: []string{"return $produce(() => $producerGen(function* () {", "yield* $yield(i);", "yield* $yield(undefined);", "const x = $item;"},
 	},
 	{
 		name:     "an entry module runs main when the host starts it (D135)",
-		source:   "export function main() {\n  return 1\n}\n",
+		source:   "export effect function main() {\n  return try log(1)\n}\n",
 		contains: []string{"$entry(import.meta.main, import.meta.url, main, () => $runMain(main()));"},
 	},
 	{
 		name:     "a module that calls a runner itself gets no entry statement",
-		source:   "export function main() {\n  return 1\n}\nrunPromise(main())\n",
+		source:   "export effect function main() {\n  return 1\n}\nrunPromise(main())\n",
 		absent:   []string{"import.meta.main", "$entry"},
-		contains: []string{"runPromise($gen(function* () { return main$direct(); }))"},
+		contains: []string{"runPromise(main());"},
 	},
 
 	{
 		name:     "a written Effect contract infers channels without runtime helpers (D57)",
-		source:   "class Gone extends TaggedError(\"Gone\")<{}> {}\nexport function f(n: number): Effect<number, infer E, infer R> { if (n < 0) throw new Gone(); return n }",
+		source:   "class Gone extends TaggedError(\"Gone\")<{}> {}\nexport effect function f(n: number): Effect<number, infer E, infer R> { if (n < 0) throw new Gone(); return n }",
 		contains: []string{"function* f$body(n)", "return yield* $fail(new Gone());"},
 		absent:   []string{"$Contract", "$Infer", "$contract"},
 	},
@@ -375,7 +217,7 @@ var emitCases = []struct {
 
 	{
 		name:     "an Effect contract with an infer channel erases to the generator (D57)",
-		source:   "class Gone extends TaggedError(\"Gone\")<{}> {}\nexport function f(n: number): number!infer E {\n  if (n < 0) throw new Gone()\n  return n\n}\n",
+		source:   "class Gone extends TaggedError(\"Gone\")<{}> {}\nexport effect function f(n: number): number!infer E {\n  if (n < 0) throw new Gone()\n  return n\n}\n",
 		contains: []string{"function* f$body(n) {", "return yield* $fail(new Gone());"},
 		absent:   []string{"$Contract", "$Infer"},
 	},
@@ -434,19 +276,25 @@ func TestEmitCorpusDeclarations(t *testing.T) {
 // acquisitions, and keeps a lowered block valid as an if branch (D14).
 func TestEmitScopeOwnership(t *testing.T) {
 	t.Parallel()
-	source := `function f() {
-   const kept = acquire("kept")
-   using log = acquire("log")
-   if (kept) { using inner = acquire("inner") }
+	source := `effect function f() {
+   const kept = try acquire("kept")
+   const log = fork acquire("log")
+   if (kept) { fork acquire("inner") }
    return kept
  }`
 	js, _, diagnostics := Emit(source, testContext)
 	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
 	assert.Assert(t, strings.Contains(js, "$region(($scope) => $gen(function* () {"), js)
 	assert.Assert(t, !strings.Contains(js, "f$fast"), js)
-	assert.Assert(t, strings.Contains(js, "$acquire($scope, acquire(\"log\"))"), js)
-	assert.Equal(t, strings.Count(js, "$region("), 2, js)
+	assert.Assert(t, strings.Contains(js, "const kept = (yield* $try(acquire(\"kept\")))"), js)
+	// An if branch owns nothing, so the function body's region owns both fibers.
+	assert.Equal(t, strings.Count(js, "$region("), 1, js)
 	assert.Assert(t, !strings.Contains(js, "$scopedBody"), js)
+	// using is TypeScript's (VIP-8): the resource is disposed by the
+	// generated JavaScript, and no Effect Scope is opened for it.
+	js, _, diagnostics = Emit("effect function g() { using log = acquire(\"log\"); return 1 }", testContext)
+	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
+	assert.Assert(t, strings.Contains(js, "__addDisposableResource(env_1, acquire(\"log\"), false)") && !strings.Contains(js, "$region(") && !strings.Contains(js, "$acquire"), js)
 }
 
 // TestEmitForkRegions gives a fork to the region the source names (D408): an
@@ -459,13 +307,13 @@ func TestEmitForkRegions(t *testing.T) {
 		name, source string
 		regions      int
 	}{
-		{"arrow expression body", `const f = (): number!! => Fiber.join(fork(() => 1))`, 1},
-		{"if branch", "function f(b: boolean) {\n  if (b) { fork(() => 1) }\n  return 0\n}", 1},
-		{"do block", "function f() {\n  const x = do { fork(() => 1); 2 }\n  return x\n}", 1},
-		{"loop body", "function f() {\n  for (const n of [1, 2]) { fork(() => n) }\n  return 0\n}", 1},
-		{"loop body without braces", "function f() {\n  for (const n of [1, 2]) fork(() => n)\n  return 0\n}", 1},
-		{"loop body without braces that continues", "function f() {\n  for (const n of [1, 2]) if (n > 1) continue; else fork(() => n)\n  return 0\n}", 1},
-		{"loop body and function body", "function f() {\n  fork(() => 0)\n  for (const n of [1, 2]) { fork(() => n) }\n  return 0\n}", 2},
+		{"arrow expression body", `const f = effect (): number!! => join (fork Effect.succeed(1))`, 1},
+		{"if branch", "effect function f(b: boolean) {\n  if (b) { fork Effect.succeed(1) }\n  return 0\n}", 1},
+		{"do block", "effect function f() {\n  const x = do { fork Effect.succeed(1); 2 }\n  return x\n}", 1},
+		{"loop body", "effect function f() {\n  for (const n of [1, 2]) { fork Effect.succeed(n) }\n  return 0\n}", 1},
+		{"loop body without braces", "effect function f() {\n  for (const n of [1, 2]) fork Effect.succeed(n)\n  return 0\n}", 1},
+		{"loop body without braces that continues", "effect function f() {\n  for (const n of [1, 2]) if (n > 1) continue; else fork Effect.succeed(n)\n  return 0\n}", 1},
+		{"loop body and function body", "effect function f() {\n  fork Effect.succeed(0)\n  for (const n of [1, 2]) { fork Effect.succeed(n) }\n  return 0\n}", 2},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -476,7 +324,7 @@ func TestEmitForkRegions(t *testing.T) {
 			assert.Assert(t, !strings.Contains(js, "$scopedBody"), js)
 		})
 	}
-	virtual := Project(`export const f = (): number!! => Fiber.join(fork(() => 1))`, testContext).Text
+	virtual := Project(`export const f = effect (): number!! => join (fork Effect.succeed(1))`, testContext).Text
 	assert.Assert(t, strings.Contains(virtual, "$scoped(fork)"), virtual)
 }
 
@@ -567,7 +415,7 @@ func TestEmitReportsUnparsedText(t *testing.T) {
 func TestEmitScopedContract(t *testing.T) {
 	t.Parallel()
 	ctx := testContext
-	js, _, diagnostics := Emit("function f(): string!infer E { using r = lease(1); return r.name }", ctx)
+	js, _, diagnostics := Emit("effect function f(): string!infer E { const r = fork lease(1); return \"x\" }", ctx)
 	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
 	assert.Assert(t, strings.Contains(js, "$region(($scope) => $gen(function* () {"), js)
 	assert.Assert(t, !strings.Contains(js, "f$fast"), js)
@@ -577,7 +425,7 @@ func TestEmitScopedContract(t *testing.T) {
 // and that loop callbacks propagate returns and labeled exits (D26).
 func TestEmitLoopRegions(t *testing.T) {
 	t.Parallel()
-	source := `function f(xs: number[]) {
+	source := `effect function f(xs: number[]) {
  outer: for (const x of xs) {
    for (const y of xs) { if (y > x) continue outer; if (y === 3) return y }
    if (x === 4) break
@@ -592,49 +440,19 @@ func TestEmitLoopRegions(t *testing.T) {
 	assert.Assert(t, !strings.Contains(js, "$runCollect"), js)
 }
 
-// TestEmitProducerCleanup makes native generator finalizers part of the
-// producer Effect's exit, including interruption after an early pull.
+// TestEmitProducerCleanup makes native generator finalizers, here a using's
+// disposal, part of the producer Effect's exit, including interruption after
+// an early pull.
 func TestEmitProducerCleanup(t *testing.T) {
 	t.Parallel()
-	source := `effect function* values() { try { yield 1; yield 2 } finally { release() } }`
+	source := `effect function* values() { using r = lease(1); yield 1; yield 2 }`
 	js, _, diagnostics := Emit(source, testContext)
 	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
+	// using is TypeScript's (VIP-8): it opens no Effect Scope.
 	assert.Assert(t, strings.Contains(js, "$produce(() => $producerGen(function* () {"), js)
+	assert.Assert(t, strings.Contains(js, "__disposeResources(env_1)"), js)
 	assert.Assert(t, strings.Contains(js, "$onExit($gen(() => it)"), js)
 	assert.Assert(t, strings.Contains(js, "it.return(undefined)"), js)
-}
-
-// TestProgramValuesRuntime checks that both program conversions and pipe
-// boundaries remain cold and run exactly once per requested execution. A
-// non-entry export keeps the manual runner independent of import.meta.main.
-func TestProgramValuesRuntime(t *testing.T) {
-	t.Parallel()
-	root, err := filepath.Abs("../../../..")
-	assert.NilError(t, err)
-	scope := mapperTestScope(t, root)
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node is unavailable")
-	}
-	source := `let runs = 0
-function job() { runs++; return runs }
-const top = Effect.runSync(Effect.succeed(8))
-export function scenario() {
- const jobs = new Set([() => job(), () => job()])
- const values = Effect.all(jobs)
- const piped = pipe(() => job(), Effect.retry({ times: 2 }))
- const topic = job() |> Effect.retry(%, { times: 2 })
- const block = Effect.retry(do { job(); job() }, { times: 2 })
- return { values, piped, topic, block, top, runs }
-}`
-	js, _, diagnostics := Emit(source, testContext)
-	assert.Equal(t, len(diagnostics), 0, "%v", diagnostics)
-	cmd := exec.Command(node, "--no-warnings", "--input-type=module")
-	cmd.Dir = scope
-	cmd.Stdin = strings.NewReader(js + "\nconsole.log(JSON.stringify(await Effect.runPromise(scenario())))")
-	out, err := cmd.CombinedOutput()
-	assert.NilError(t, err, "%s\n%s", out, js)
-	assert.Equal(t, strings.TrimSpace(string(out)), `{"values":[1,2],"piped":3,"topic":4,"block":6,"top":8,"runs":6}`)
 }
 
 // TestThrowCauseRuntime checks D406 through the ordinary catch and exit
@@ -655,36 +473,30 @@ func TestThrowCauseRuntime(t *testing.T) {
 	source := `import { map as mapReasons } from "effect/Array"
 error Expected
 
-function fail() {
-  Effect.failCause(Cause.fail(new Expected()))
+effect function fail() {
+  try Effect.failCause(Cause.fail(new Expected()))
 }
 
-function defect() {
-  Effect.failCause(Cause.die("defect"))
+effect function defect() {
+  try Effect.failCause(Cause.die("defect"))
 }
 
-function combined() {
-  Effect.failCause(Cause.combine(Cause.fail(new Expected()), Cause.die("combined defect")))
+effect function combined() {
+  try Effect.failCause(Cause.combine(Cause.fail(new Expected()), Cause.die("combined defect")))
 }
 
-function value() {
+effect function value() {
   const cause: unknown = Cause.die("not rethrown")
-  try {
-    throw cause
-  } catch (e) {
-    return e === cause ? "cause object" : "other"
-  }
+  return effect { throw cause } catch (e) => e === cause ? "cause object" : "other"
 }
 
-function caught() {
-  try {
-    fail()
+effect function caught() {
+  return effect {
+    try fail()
     return "missing"
-  } catch (e) {
-    return match (e) {
-      when Expected: "expected";
-      default: throw e;
-    }
+  } catch effect (e) => match (e) {
+    when Expected: "expected";
+    default: throw e;
   }
 }
 
@@ -695,13 +507,13 @@ function reasons(outcome: Exit.Exit<unknown, Expected>) {
   }
 }
 
-export function main() {
+export effect function main() {
   return {
-    caught: caught(),
-    defect: reasons(exit(defect())),
-    combined: reasons(exit(combined())),
-    escaped: reasons(exit(fail())),
-    value: value()
+    caught: try caught(),
+    defect: reasons(try exit(defect())),
+    combined: reasons(try exit(combined())),
+    escaped: reasons(try exit(fail())),
+    value: try value()
   }
 }
 `
@@ -764,7 +576,7 @@ func TestProducerDepthRuntime(t *testing.T) {
 	}
 	source := `import { hooks } from "vibelang-runtime/kernel"
 effect function* count() { for (let i = 0; i < 100000; i++) yield i }
-export function scenario() {
+export effect function scenario() {
  let depth = 0
  hooks.onResume = (fiber): void => { depth = Math.max(depth, fiber._stack.length) }
  let sum = 0
@@ -793,9 +605,9 @@ func TestHatchMappingRuntime(t *testing.T) {
 		t.Skip("node is unavailable")
 	}
 	source := `const cold = BigDecimal.make(2n, 0).multiply(BigDecimal.make(3n, 0))
-export function scenario() {
- const zero = sync(BigDecimal.fromNumberUnsafe(0))
- const codec = sync(Schema.toCodecJson(Schema.String))
+export effect function scenario() {
+ const zero = try sync(BigDecimal.fromNumberUnsafe(0))
+ const codec = try sync(Schema.toCodecJson(Schema.String))
  return { cold: BigDecimal.format(cold), zero: BigDecimal.format(zero), codec: codec.ast._tag }
 }`
 	js, _, diagnostics := Emit(source, testContext)
@@ -819,7 +631,7 @@ func TestErrorExtractorSubjectReads(t *testing.T) {
 	source := `error B { code: string }
 let reads = 0
 const holder = { get error(): B { reads++; return new B({ code: "b" }) } }
-export function scenario() {
+export effect function scenario() {
  const value = match (holder.error) { when B(let b): b.code; default: "missing"; }
  return { value, reads }
 }`
@@ -848,24 +660,24 @@ function box(): Box {
  let reads = 0
  return { get state(): "a" | "b" | "c" { reads++; return reads === 1 ? "c" : "b" }, get reads(): number { return reads } }
 }
-function returned(b: Box): number {
+effect function returned(b: Box): number!! {
  return match (b.state) { when "a": 1; when "b": 2; when "c": 3; }
 }
-function expression(b: Box): number {
+effect function expression(b: Box): number!! {
  const n = match (b.state) { when "a": 1; when "b": 2; when "c": 3; }
  return n
 }
-function statement(b: Box): number {
+effect function statement(b: Box): number!! {
  let n = 0
  match (b.state) { when "a": n = 1; when "b": n = 2; when "c": n = 3; }
  return n
 }
-function either(b: Box): boolean {
+effect function either(b: Box): boolean!! {
  return b.state is "a" or "b"
 }
-export function scenario() {
+export effect function scenario() {
  const r = box(), e = box(), s = box(), i = box()
- return [returned(r), r.reads, expression(e), e.reads, statement(s), s.reads, either(i), i.reads]
+ return [try returned(r), r.reads, try expression(e), e.reads, try statement(s), s.reads, try either(i), i.reads]
 }`
 	js, _, diagnostics := Emit(source, testContext)
 	assert.Equal(t, len(diagnostics), 0, "%v", diagnostics)

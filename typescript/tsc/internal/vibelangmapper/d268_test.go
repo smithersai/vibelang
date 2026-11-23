@@ -8,31 +8,9 @@ import (
 	"testing"
 )
 
-// D268 carries purity through export lists and adapts imported callback values.
-func TestD268ExportLists(t *testing.T) {
-	source := `function double(n: number) { return n * 2 }; export { double, double as twice }`
-	checked := Project(source, testContext)
-	if !strings.Contains(checked.Text, "declare namespace double") || !strings.Contains(checked.Text, "$plain") {
-		t.Fatal(checked.Text)
-	}
-	emitted := Executable(source, testContext)
-	if !strings.Contains(emitted.Text, "double$direct") || !strings.Contains(emitted.Text, "] = double$direct") {
-		t.Fatal(emitted.Text)
-	}
-}
-
-func TestD268ImportedCallback(t *testing.T) {
-	source := `import { double } from "./math.vibe"; export function main() { return [1, 2].map(double) }`
-	for _, text := range []string{Project(source, testContext).Text, Executable(source, testContext).Text} {
-		if !strings.Contains(text, "$adapt(double)") {
-			t.Fatal(text)
-		}
-	}
-}
-
-// An impure import keeps its Effect signature and has no direct marker.
+// An impure effect function keeps its Effect signature and has no direct marker.
 func TestD268ImpureCallback(t *testing.T) {
-	source := `export function noisy(n: number) { Effect.log(n); return n }`
+	source := `export effect function noisy(n: number) { try Effect.log(n); return n }`
 	for _, text := range []string{Project(source, testContext).Text, Executable(source, testContext).Text} {
 		if strings.Contains(text, "noisy$direct") || strings.Contains(text, "namespace noisy") {
 			t.Fatal(text)
@@ -72,8 +50,8 @@ func TestRetryBoundCallbackForm(t *testing.T) {
 	}
 }
 
-// D268 must not unwrap an unmarked import: mapping it creates cold Effects,
-// and running those Effects still executes Effect.log and returns their values.
+// Mapping an imported effect function creates cold Effects, and running
+// those Effects still executes Effect.log and returns their values.
 func TestD268ImpureImportRuntime(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
@@ -86,8 +64,8 @@ func TestD268ImpureImportRuntime(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 	sources := map[string]string{
-		"noisy.mjs":    `export function noisy(n: number) { Effect.log("noisy"); return n * 2 }`,
-		"consumer.mjs": `import { noisy } from "./noisy.mjs"; export function scenario() { const pending = [1, 2].map(noisy); const effects = pending.map((x) => Effect.isEffect(x)); const values = Effect.all(pending); return { effects, values } }`,
+		"noisy.mjs":    `export effect function noisy(n: number) { try Effect.log("noisy"); return n * 2 }`,
+		"consumer.mjs": `import { noisy } from "./noisy.mjs"; export effect function scenario() { const pending = [1, 2].map(noisy); const effects = pending.map((x) => Effect.isEffect(x)); const values = try Effect.all(pending); return { effects, values } }`,
 	}
 	for name, source := range sources {
 		js, _, diagnostics := Emit(source, testContext)
@@ -111,7 +89,8 @@ func TestD268ImpureImportRuntime(t *testing.T) {
 	}
 }
 
-// D268's brand crosses named aliases, a re-export, and import-then-export.
+// Plain and effect function types cross named aliases, a re-export, and
+// import-then-export.
 func TestD268CrossFileTypes(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
@@ -130,7 +109,7 @@ func TestD268CrossFileTypes(t *testing.T) {
 		"prelude.d.ts": string(prelude),
 	}
 	sources := map[string]string{
-		"math.ts":   `function double(n: number) { return n * 2 }; export { double, double as twice }; export function noisy(n: number) { Effect.log(n); return n }`,
+		"math.ts":   `function double(n: number) { return n * 2 }; export { double, double as twice }; export effect function noisy(n: number) { try Effect.log(n); return n }`,
 		"barrel.ts": `export { twice as renamed } from "./math.js"; import { double as imported } from "./math.js"; export { imported as forwarded }`,
 		"main.ts":   `import { renamed, forwarded } from "./barrel.js"; import { noisy } from "./math.js"; export function result() { return [...[1, 2].map(renamed), ...[1, 2].map(forwarded)] }; export function negative() { return [1, 2].map(noisy) }`,
 	}
@@ -143,8 +122,8 @@ func TestD268CrossFileTypes(t *testing.T) {
 	}
 	files["main.ts"] += `
 import type { Effect as Program } from "effect/Effect";
-const positive: Program<number[]> = result();
-const negativeCheck: Program<Program<number>[]> = negative();
+const positive: number[] = result();
+const negativeCheck: Program<number>[] = negative();
 `
 	for name, text := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0600); err != nil {
@@ -158,29 +137,6 @@ const negativeCheck: Program<Program<number>[]> = negative();
 	}
 }
 
-func TestD268NamespaceCallback(t *testing.T) {
-	source := `import * as MathFns from "./math.vibe"; export function main() { return [1, 2].map(MathFns.double) }`
-	for _, text := range []string{Project(source, testContext).Text, Executable(source, testContext).Text} {
-		if !strings.Contains(text, "$adapt(MathFns.double)") {
-			t.Fatal(text)
-		}
-	}
-}
-
-// preVIP1 returns the file the projector reads for file, a file of the
-// compiler case name: its copy in testdata/pre-vip1 when the VIP-1 flip
-// migrated it, or file itself. The projector still infers pre-VIP-1 forms
-// (D500, D147) until the flip's slice 2b deletes its form resolver, so it
-// runs the case as it was written for those rules. The frozen copies are
-// lines of testdata/legacy-language.txt: none may be added.
-func preVIP1(name, file string) string {
-	frozen := filepath.Join("testdata", "pre-vip1", name, filepath.Base(file))
-	if _, err := os.Stat(frozen); err == nil {
-		return frozen
-	}
-	return file
-}
-
 // Exercise each reported acceptance case through the executable rendering.
 func TestMapperFollowupRuntimeCases(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
@@ -188,7 +144,7 @@ func TestMapperFollowupRuntimeCases(t *testing.T) {
 		t.Fatal(err)
 	}
 	scope := mapperTestScope(t, root)
-	for _, name := range []string{"plain-export-lists", "plain-imports", "retry-effectful-predicate", "stream-pull-using", "pipe-generic-stages", "contextual-effect-fields", "program-values", "effect-subtype-returns", "pipe-asserted-program", "discarded-effect-call", "module-cycle-callback"} {
+	for _, name := range []string{"plain-export-lists", "plain-imports", "retry-effectful-predicate", "pipe-generic-stages", "contextual-effect-fields", "program-values", "pipe-asserted-program", "discarded-effect-call", "module-cycle-callback"} {
 		t.Run(name, func(t *testing.T) {
 			dir, err := os.MkdirTemp(scope, "mapper-followup-")
 			if err != nil {
@@ -202,7 +158,7 @@ func TestMapperFollowupRuntimeCases(t *testing.T) {
 			}
 			expected := ""
 			for _, file := range files {
-				source, err := os.ReadFile(preVIP1(name, file))
+				source, err := os.ReadFile(file)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -212,10 +168,6 @@ func TestMapperFollowupRuntimeCases(t *testing.T) {
 							expected = strings.TrimSpace(value)
 						}
 					}
-				}
-				if name == "effect-subtype-returns" && filepath.Base(file) == "main.vibe" {
-					assertSubtypeHostForms(t, string(source))
-					t.Skip("native-only runtime: imported trusted Effect-subtype values need checker signatures")
 				}
 				checked := Project(string(source), testContext)
 				if len(checked.Diagnostics) != 0 {

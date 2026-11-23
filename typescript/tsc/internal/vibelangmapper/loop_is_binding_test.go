@@ -48,12 +48,8 @@ func TestLoopIsBindingProjection(t *testing.T) {
 				assertValidMap(t, projection, source)
 				assertParses(t, projection.Text)
 			}
-			js, _, diagnostics := Emit(source, testContext)
-			if js == "" {
+			if js, _, diagnostics := Emit(source, testContext); js == "" {
 				t.Fatalf("no executable output: %+v", diagnostics)
-			}
-			if !strings.Contains(js, "function use$direct(") {
-				t.Fatalf("pure entry lost:\n%s", js)
 			}
 		})
 	}

@@ -39,7 +39,7 @@ func TestHostTransform(t *testing.T) {
 	defer project.Close()
 
 	fileName := tspath.RootedFilePathFromAbsolute("/p/greet.vibe")
-	content := "error EmptyName { name: string }\nexport function greet(name: string) {\n  if (name === \"\") throw new EmptyName({ name })\n  return join name\n}\n"
+	content := "error EmptyName { name: string }\nexport effect function greet(name: string) {\n  if (name === \"\") throw new EmptyName({ name })\n  return join name\n}\n"
 	files, err := contentmapper.TransformAndParse(ast.SourceFileParseOptions{FileName: fileName}, content, mapper, project)
 	assert.NilError(t, err)
 

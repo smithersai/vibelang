@@ -12,14 +12,13 @@ func TestPlainContractEffectGreet(t *testing.T) {
 }
 
 // D282: a plain contract never fails, so a throw that can escape it is
-// EK9203, in a statement, a throw expression, or a match arm, and also under a
-// contextual plain type. A throw its own try catches stays inside it.
+// EK9203, in a statement, a throw expression, or a match arm. A throw its own
+// try catches stays inside it.
 func TestPlainContractThrowHalf(t *testing.T) {
 	for _, source := range []string{
 		`export const half = (n: number): number => { if (n < 0) throw "negative"; return n / 2 }`,
 		`export function orThrow(v: string | undefined): string { return v ?? throw "missing" }`,
 		"export function pick(tag: string): number { return match (tag) { when \"a\": 1; default: throw tag; } }",
-		`export const valid: () => number = () => { throw "negative" }`,
 		`export function rethrows(n: number): number { try { if (n < 0) throw "negative"; return n } catch (e) { throw e } }`,
 	} {
 		assertPlainContractDiagnostic(t, source, true)
@@ -34,15 +33,6 @@ func TestPlainContractThrowHalf(t *testing.T) {
 
 func TestPlainContractEffectArrow(t *testing.T) {
 	assertPlainContractDiagnostic(t, `export const invalid = (): number => { Effect.succeed(1); return 1 }`, true)
-}
-
-func TestPlainContractEffectInferred(t *testing.T) {
-	for _, source := range []string{
-		`export const invalid: () => number = () => { Effect.succeed(1); return 1 }`,
-		`export const invalid: { value(): number } = { value() { Effect.succeed(1); return 1 } }`,
-	} {
-		assertPlainContractDiagnostic(t, source, true)
-	}
 }
 
 func TestPlainContractEffectOperations(t *testing.T) {

@@ -35,12 +35,21 @@ func TestCatchTagExhaustiveStock(t *testing.T) {
 	}
 }
 
+// A catch whose handler matches only First keeps Second in E, so stock
+// TypeScript rejects the empty written error contract.
 func TestCatchTagPartialStock(t *testing.T) {
-	source, err := os.ReadFile("../../../vibelang/cases/catch-tag-partial.fail/main.vibe")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, output, err := catchTagStock(t, string(source))
+	source := `import { Effect, Data } from "effect"
+class First extends Data.TaggedError("First")<{}> {}
+class Second extends Data.TaggedError("Second")<{}> {}
+effect function fail(second: boolean): never!(First | Second)! {
+  if (second) throw new Second()
+  throw new First()
+}
+export effect function incomplete(): number!! {
+  return fail(true) catch effect (e) => match (e) { when { _tag: "First" }: 1; default: throw e; }
+}
+`
+	_, output, err := catchTagStock(t, source)
 	if err == nil || !strings.Contains(output, "Second") {
 		t.Fatalf("partial catch must retain Second: %v\n%s", err, output)
 	}

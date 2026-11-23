@@ -34,10 +34,10 @@ func TestRemainingMismatchContracts(t *testing.T) {
 	source := `
 import { Match } from "effect"
 service Pool { acquire(): number!!Scope }
-export function lease() { return Pool.acquire() }
-export function forkedLease() { fork(() => lease()); return "forked" }
+export effect function lease() { return try (try Pool).acquire() }
+export effect function forkedLease() { fork lease(); return "forked" }
 export function phase(x: "a" | "b") { return pipe(Match.value(x), Match.when("a", () => "A"), Match.orElse((s) => "other " + s)) }
-export function main() { return { phases: [phase("a"), phase("b")] } }
+export effect function main() { return { phases: [phase("a"), phase("b")] } }
 `
 	projection := Project(source, testContext)
 	if len(projection.Diagnostics) > 0 {
@@ -55,7 +55,7 @@ export function main() { return { phases: [phase("a"), phase("b")] } }
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`phase(x: "a" | "b"): Effect.Effect<string, never, never>`, `forkedLease(): Effect.Effect<string, never, Pool | Scope.Scope>`} {
+	for _, want := range []string{`phase(x: "a" | "b"): string`, `forkedLease(): Effect.Effect<string, never, Pool | Scope.Scope>`} {
 		if !strings.Contains(string(declarations), want) {
 			t.Errorf("missing %s:\n%s", want, declarations)
 		}

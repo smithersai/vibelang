@@ -44,7 +44,7 @@ outcome.flatMap((n: number) => EffectModule.succeed(n));`), 0600))
 	assert.Equal(t, len(ds), 0)
 	assert.Assert(t, strings.Contains(js, `$method(maybe, "isSome", [], $methodCandidates_isSome)`), "%s", js)
 	assert.NilError(t, os.WriteFile(filepath.Join(dir, "opaque.js"), []byte(`import { Option, Effect, Exit } from "effect"; export const outcome = Exit.succeed(2); export const maybe = Option.some(42); export const program = Effect.succeed(7); export let ownCalls = 0; export const own = { isSome() { ownCalls++; return Effect.succeed(false) } };`), 0600))
-	assert.NilError(t, os.WriteFile(filepath.Join(dir, "main.mjs"), []byte(js+"\n"+`import * as RunEffect from "effect/Effect"; import { ownCalls } from "./opaque.js"; console.log(JSON.stringify([await RunEffect.runPromise(f()), await RunEffect.runPromise(effectGuard()), await RunEffect.runPromise(ownGuard()), ownCalls, (await RunEffect.runPromise(keepExit())).value]))`), 0600))
+	assert.NilError(t, os.WriteFile(filepath.Join(dir, "main.mjs"), []byte(js+"\n"+`import * as RunEffect from "effect/Effect"; import { ownCalls } from "./opaque.js"; console.log(JSON.stringify([f(), await RunEffect.runPromise(effectGuard()), await RunEffect.runPromise(ownGuard()), ownCalls, (await RunEffect.runPromise(keepExit())).value]))`), 0600))
 	cmd = exec.Command("node", "--no-warnings", "main.mjs")
 	cmd.Dir = dir
 	out, err = cmd.CombinedOutput()

@@ -58,19 +58,17 @@ func TestLintProjectionParsesVibexAsTSX(t *testing.T) {
 	}
 }
 
-// The checking projection is what stock TypeScript reads: Lint must not change it.
+// The checking projection is what stock TypeScript reads: Lint must not change
+// it. A pipe topic is the input's value, so the checking projection lowers the
+// pipe as an expression and asks for no form choice (VIP-1).
 func TestCheckingProjectionIgnoresLintForms(t *testing.T) {
 	source := "export const a = (s: S) => f(s) |> g(%)"
 	checking := Project(source, testContext)
-	if !strings.Contains(checking.Text, "|>") || !strings.HasPrefix(checking.Text, "import {") {
+	if strings.Contains(checking.Text, "|>") || !strings.HasPrefix(checking.Text, "import {") || !strings.Contains(checking.Text, "(s: S) => (() => { const $topic = f(s); return g($topic) })()") {
 		t.Fatalf("checking projection changed: %s", checking.Text)
 	}
-	found := false
-	for _, d := range checking.Diagnostics {
-		found = found || d.Code == CodeFormChoice
-	}
-	if !found {
-		t.Fatalf("checking projection lost its form choice: %+v", checking.Diagnostics)
+	if len(checking.Diagnostics) != 0 {
+		t.Fatalf("a pipe in a plain lambda needs no form choice: %+v", checking.Diagnostics)
 	}
 }
 
@@ -139,7 +137,7 @@ func TestLintProjectionOfModuleBodyReexports(t *testing.T) {
 		if strings.Contains(lint.Text, "from platform") {
 			t.Errorf("native linter cannot parse the unquoted body re-export: %s", lint.Text)
 		}
-		if !strings.Contains(lint.Text, "export const value = 1") || !strings.Contains(lint.Text, "from \"./other.js\"") {
+		if !strings.Contains(lint.Text, "export const value = 1") || !strings.Contains(lint.Text, "from \"./other.ts\"") {
 			t.Errorf("projection lost body code or an ordinary re-export: %s", lint.Text)
 		}
 	}
@@ -158,8 +156,7 @@ func TestProjectionPreludeModule(t *testing.T) {
 			if expected == "" {
 				expected = PreludeModule
 			}
-			if !strings.Contains(projection.Text, "from \""+expected+"\"") ||
-				!strings.Contains(projection.Text, "import(\""+expected+"\").$Plain") {
+			if !strings.Contains(projection.Text, "from \""+expected+"\"") {
 				t.Fatalf("prelude references disagree: %s", projection.Text)
 			}
 			if module != "" && strings.Contains(projection.Text, PreludeModule) {

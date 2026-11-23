@@ -7,31 +7,6 @@ import (
 	"testing"
 )
 
-// S5-1 delegates known subtype data only at an explicit or resolved boundary.
-func TestSubtypeReturnBoundaries(t *testing.T) {
-	for _, body := range []string{
-		`function annotated(): Effect.Effect<number> { return Exit.succeed(5) }`,
-		`const named: (n: number) => Effect.Effect<number> = (n) => Exit.succeed(n + 5)`,
-		`function region(): Effect.Effect<number> { try { return Exit.succeed(7) } finally {} }`,
-		`const callback: (n: number) => Effect.Effect<number> = function(n) { return (Exit.succeed(n)) }`,
-		`function stored(): Effect.Effect<number> { const program = Exit.succeed(4); return program }`,
-		`function accept(f: (n: number) => Effect.Effect<number>) { return f(1) }; const callback = accept((n) => Exit.succeed(n))`,
-	} {
-		source := `import * as Effect from "effect/Effect"; import * as Exit from "effect/Exit"; ` + body
-		for _, projection := range []Projection{Project(source, testContext), Executable(source, testContext)} {
-			if len(projection.Diagnostics) != 0 {
-				t.Fatalf("%v\n%s", projection.Diagnostics, projection.Text)
-			}
-			if strings.Count(projection.Text, "$returnRun(") != 1 {
-				t.Fatalf("want one return delegation: %s", projection.Text)
-			}
-			if strings.Contains(projection.Text, "$run(Exit.succeed(") {
-				t.Fatalf("D24 data ran: %s", projection.Text)
-			}
-		}
-	}
-}
-
 func TestSubtypeReturnPlainData(t *testing.T) {
 	for _, body := range []string{
 		`const plain = (): Exit.Exit<number> => Exit.succeed(1)`,
@@ -57,8 +32,8 @@ func TestSubtypeReturnPlainData(t *testing.T) {
 	}
 }
 
-// Written effect callbacks decide their form even across a host boundary.
-// Keep the old unresolved-signature check as an unmarked-source control.
+// Written effect callbacks decide their form even across a host boundary:
+// the case's effect functions and lambdas project with no form choice.
 func assertSubtypeHostForms(t *testing.T, source string) {
 	t.Helper()
 	checked := Project(source, testContext)
@@ -66,25 +41,6 @@ func assertSubtypeHostForms(t *testing.T, source string) {
 	for _, diagnostics := range [][]Diagnostic{checked.Diagnostics, emitted} {
 		if len(diagnostics) != 0 {
 			t.Fatalf("written effect callbacks need no form choice: %v", diagnostics)
-		}
-	}
-	// Remove the callable spellings used by this fixture, retaining effect
-	// blocks: erasing a block keyword makes the control unparsable.
-	legacy := strings.ReplaceAll(source, "effect function", "function")
-	legacy = strings.ReplaceAll(legacy, "effect (", "(")
-	if strings.Count(legacy, "effect {") != strings.Count(source, "effect {") {
-		t.Fatal("unmarked callable control lost an effect block")
-	}
-	checked = Project(legacy, testContext)
-	_, _, emitted = Emit(legacy, testContext)
-	for _, diagnostics := range [][]Diagnostic{checked.Diagnostics, emitted} {
-		if len(diagnostics) != 5 {
-			t.Fatalf("want five unresolved host callbacks: %v", diagnostics)
-		}
-		for _, d := range diagnostics {
-			if d.Code != CodeFormChoice || !strings.Contains(d.Message, "another file") {
-				t.Fatalf("unexpected diagnostic: %v", d)
-			}
 		}
 	}
 }
@@ -95,21 +51,6 @@ func TestSubtypeReturnHostBoundaryWrittenKind(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertSubtypeHostForms(t, string(source))
-}
-
-func TestSubtypeReturnFailureDiagnostic(t *testing.T) {
-	source := `import * as Effect from "effect/Effect"; import * as Exit from "effect/Exit"; function wrongError(): Effect.Effect<number, never, never> { return Exit.fail("bad") }`
-	for _, projection := range []Projection{Project(source, testContext), Executable(source, testContext)} {
-		found := false
-		for _, diagnostic := range projection.Diagnostics {
-			if diagnostic.Code == 2001 {
-				found = true
-			}
-		}
-		if !found {
-			t.Fatalf("missing EK9201: %v", projection.Diagnostics)
-		}
-	}
 }
 
 func TestSubtypeReturnArgumentsUntouched(t *testing.T) {

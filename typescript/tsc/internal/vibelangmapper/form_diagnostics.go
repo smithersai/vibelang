@@ -12,25 +12,6 @@ func FormDiagnostics(file *ast.SourceFile) []Diagnostic {
 			p.services[statement.Name().Text()] = statement
 		}
 	}
-	// callArgument tries pipe routing before the ordinary lambda resolver,
-	// including through transparent expression wrappers.
-	pipeLambdas := map[*ast.Node]bool{}
-	var pipeArgument func(*ast.Node)
-	pipeArgument = func(n *ast.Node) {
-		if p.programPipeInput(n) {
-			if isLambda(n) && len(n.Parameters()) == 0 {
-				pipeLambdas[n] = true
-				return
-			}
-			if formsHoldsCall(n) || ast.IsIdentifier(n) || ast.IsPropertyAccessExpression(n) {
-				return
-			}
-		}
-		switch n.Kind {
-		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindNonNullExpression:
-			pipeArgument(n.Expression())
-		}
-	}
 	var visit func(*ast.Node, bool)
 	visit = func(n *ast.Node, effect bool) {
 		if isErasedProofSyntax(n) {
@@ -49,37 +30,17 @@ func FormDiagnostics(file *ast.SourceFile) []Diagnostic {
 		if ast.IsCallExpression(n) {
 			if block := blockArgument(n); block != nil {
 				p.choice(p.forms.Block(n), block)
-			} else if arguments := n.Arguments(); len(arguments) > 1 {
-				pipeArgument(arguments[0])
 			}
 		}
 		if p.isPlainHatchFunction(n) {
 			bodyEffect = false
-		} else if isLambda(n) {
-			if pipeLambdas[n] {
-				bodyEffect = true
-			} else {
-				decision := p.forms.Lambda(n)
-				p.choice(decision, n)
-				bodyEffect = decision.Form != FormPlain && decision.Form != FormFactory
-			}
+		} else if isLambda(n) || isProjectedFunction(n) || ast.IsMethodDeclaration(n) && ast.IsClassLike(n.Parent) {
+			// The written modifier alone decides the kind (VIP-1).
+			bodyEffect = n.Flags&ast.NodeFlagsVibeLangEffect != 0
 		} else if isProducer(n) {
 			bodyEffect = true
-		} else if isProjectedFunction(n) {
-			bodyEffect = contractOf(n.Type()) != contractPlain && !p.forms.(*Resolver).isFactory(n)
 		} else if ast.IsArrowFunction(n) && n.Parent != nil && ast.IsCallExpression(n.Parent) && blockArgument(n.Parent) == n {
 			bodyEffect = p.forms.Block(n.Parent).Form != FormPlain
-		} else if ast.IsMethodDeclaration(n) && ast.IsClassLike(n.Parent) {
-			if p.names == nil {
-				p.names = newNames(file, file.Text())
-				p.services = map[string]*ast.Node{}
-				for _, statement := range file.Statements.Nodes {
-					if isServiceClass(statement) {
-						p.services[statement.Name().Text()] = statement
-					}
-				}
-			}
-			bodyEffect = p.isEffectMethod(n)
 		} else if ast.IsFunctionLike(n) && n.Body() != nil {
 			bodyEffect = false
 		}
