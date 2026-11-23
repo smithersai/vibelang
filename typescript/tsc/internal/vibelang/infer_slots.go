@@ -11,7 +11,7 @@ import (
 var EK4857 = message(4857, errorCategory, "An Effect slot written infer has no Effect TypeScript spelling; write the type the body gives it, or leave out the whole return annotation.")
 
 func init() {
-	registry[EK4857.Code] = EK4857
+	registerDiagnostic(EK4857)
 	fileChecks = append(fileChecks, func(c *checker.Checker, file *ast.SourceFile) {
 		checkFormRules(c, file, []*Message{EK4857})
 	})

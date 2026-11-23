@@ -15,7 +15,7 @@ import (
 var EK3201 = message(3201, errorCategory, "The resolved effect is {0}; VibeLang {1} pins {2}: upgrade both together.")
 var effectPinDiagnostic = EK3201
 
-func init() { registry[EK3201.Code] = EK3201 }
+func init() { registerDiagnostic(EK3201) }
 
 var platformPinDiagnostic = EK3201.With("The resolved {0} is {1}; VibeLang {2} pins {3}: upgrade both together.")
 

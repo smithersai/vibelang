@@ -36,8 +36,8 @@ var EK9101 = message(9101, diagnostics.CategorySuggestion, "{0}")
 var EK9100 = message(9100, legacyFormChoiceCategory, "{0}")
 
 func init() {
-	registry[EK9100.Code] = EK9100
-	registry[EK9101.Code] = EK9101
+	registerDiagnostic(EK9100)
+	registerDiagnostic(EK9101)
 	ls.RegisterFileDiagnosticsHook(formChoiceDiagnostics)
 }
 

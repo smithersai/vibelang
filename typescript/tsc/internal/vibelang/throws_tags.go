@@ -21,7 +21,7 @@ import (
 var EK0406 = message(406, errorCategory, "{0} is not allowed in a VibeLang file: VibeLang functions never throw, so they have no thrown type to describe.")
 
 func init() {
-	registry[EK0406.Code] = EK0406
+	registerDiagnostic(EK0406)
 	fileChecks = append(fileChecks, checkVibeThrowsTags)
 }
 

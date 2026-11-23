@@ -22,8 +22,8 @@ var (
 )
 
 func init() {
-	registry[EK4819.Code] = EK4819
-	registry[EK4820.Code] = EK4820
+	registerDiagnostic(EK4819)
+	registerDiagnostic(EK4820)
 }
 
 // typeScriptFileChecks run once for each .ts or .tsx file outside

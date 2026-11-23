@@ -5,10 +5,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-var serviceConstructSignatureDiagnostic = message(902, errorCategory, "A construct signature cannot be a service member. Declare a named factory method such as create(), or a property whose value is a constructor.")
+var serviceConstructSignatureDiagnostic = EK0902.With("A construct signature cannot be a service member. Declare a named factory method such as create(), or a property whose value is a constructor.")
 
 func init() {
-	registry[serviceConstructSignatureDiagnostic.Code] = serviceConstructSignatureDiagnostic
 	fileChecks = append(fileChecks, checkServiceConstructSignatures)
 }
 

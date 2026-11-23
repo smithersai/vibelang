@@ -44,7 +44,7 @@ var (
 
 func init() {
 	for _, m := range []*Message{EK4302, EK4304, EK4305, EK4306, EK4307, EK4309, EK4310, EK4314} {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
 	fileChecks = append(fileChecks, checkProofForms)
 }

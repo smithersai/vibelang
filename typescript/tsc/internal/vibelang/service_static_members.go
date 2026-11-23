@@ -2,7 +2,7 @@ package vibelang
 
 import "github.com/microsoft/TypeScript/tsc/internal/ast"
 
-var serviceStaticMemberDiagnostic = message(902, errorCategory, "A service declares property and method signatures, static readonly key, and static readonly defaultValue. Move other static members outside the service.")
+var serviceStaticMemberDiagnostic = EK0902.With("A service declares property and method signatures, static readonly key, and static readonly defaultValue. Move other static members outside the service.")
 
 // serviceStaticMemberRejected leaves the reserved property forms to their
 // own key/default checks. Other class statics are not VIP-9 signatures.
@@ -25,5 +25,3 @@ func serviceStaticMemberRejected(class, member *ast.Node) bool {
 	}
 	return true
 }
-
-func init() { registry[serviceStaticMemberDiagnostic.Code] = serviceStaticMemberDiagnostic }

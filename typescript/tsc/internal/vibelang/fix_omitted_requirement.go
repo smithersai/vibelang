@@ -11,7 +11,7 @@ import (
 var EK4853 = message(4853, warningCategory, "An omitted requirement slot means never; write {0} to preserve the requirements previously inferred from this body.")
 
 func init() {
-	registry[EK4853.Code] = EK4853
+	registerDiagnostic(EK4853)
 	tsFormMessages = append(tsFormMessages, EK4853)
 	tsFormRules[EK4853.Code] = &tsFormRule{
 		message: EK4853,

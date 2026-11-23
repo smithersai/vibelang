@@ -40,7 +40,7 @@ import (
 var EK4841 = message(4841, warningCategory, "{0} holds a schema and its type alias names its type; a schema alias writes both: {1}.")
 
 func init() {
-	registry[EK4841.Code] = EK4841
+	registerDiagnostic(EK4841)
 	tsFormMessages = append(tsFormMessages, EK4841)
 	tsFormRules[EK4841.Code] = &tsFormRule{
 		message: EK4841,

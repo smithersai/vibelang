@@ -24,7 +24,7 @@ var (
 	// for…in or for…of head, or a computed member key.
 	EK4703 = message(4703, errorCategory, "Bindings in an is pattern have no home here yet: they work in a statement of a block, in an if, while or do…while condition, in a for (init; test; update) head unless init is var or using, in a match arm, in a concise arrow body and in a class field initializer.")
 	// EK0707: and, or, and not combined at one level without parentheses.
-	mixedPatternDiagnostic = message(707, errorCategory, "Patterns joined by and, or, or not cannot share a level; add parentheses.")
+	mixedPatternDiagnostic = EK0707.With("Patterns joined by and, or, or not cannot share a level; add parentheses.")
 	// EK0702: a class pattern whose expression names a VibeLang value that is not a class (D67b). {0} is the expression.
 	EK0702 = message(702, errorCategory, "{0} is not a class, so it cannot be a class pattern: under the draft it would be called with the subject and match almost anything.")
 
@@ -36,7 +36,7 @@ var (
 
 func init() {
 	for _, m := range []*Message{EK4701, EK4703, EK0702} {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
 	fileChecks = append(fileChecks, checkPatterns)
 }

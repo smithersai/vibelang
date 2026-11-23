@@ -9,7 +9,10 @@ import (
 // trusted and wrappers with listed failure classes retain their existing behavior.
 var EK0407 = message(407, errorCategory, "The empty legacy trust wrapper trusted(f, []) is retired. Write each direct call in effect code as Effect.orDie(Effect.try({ try: () => f(…), catch: (e) => e })), or call a reviewed .ts helper declared @throws {never}.")
 
-func init() { fileChecks = append(fileChecks, checkTrustedEmpty) }
+func init() {
+	registerDiagnostic(EK0407)
+	fileChecks = append(fileChecks, checkTrustedEmpty)
+}
 
 func checkTrustedEmpty(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool

@@ -8,5 +8,5 @@ import (
 var EK1604 = message(parser.VibeLangDataMissingBodyCode, errorCategory, parser.VibeLangDataMissingBodyMessage)
 
 func init() {
-	registry[EK1604.Code] = EK1604
+	registerDiagnostic(EK1604)
 }

@@ -14,8 +14,8 @@ var EK1705 = message(1705, errorCategory, parser.ForkOwnerMessage)
 var EK1706 = message(1706, errorCategory, "fork.in takes the Scope that owns the fiber, but {0} is {1}.")
 
 func init() {
-	registry[EK1705.Code] = EK1705
-	registry[EK1706.Code] = EK1706
+	registerDiagnostic(EK1705)
+	registerDiagnostic(EK1706)
 }
 
 // isForkOwner reports whether call is fork.in(scope) e, fork.scoped e or

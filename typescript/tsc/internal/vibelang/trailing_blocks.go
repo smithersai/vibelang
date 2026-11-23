@@ -20,7 +20,7 @@ import (
 var EK1101 = message(1101, errorCategory, "VibeLang has no trailing blocks (VIP-11): write the block as an argument, {0}.")
 
 func init() {
-	registry[EK1101.Code] = EK1101
+	registerDiagnostic(EK1101)
 	fileChecks = append(fileChecks, checkTrailingBlocks)
 	compiler.RegisterSyntacticDiagnosticsHook(deniedTrailingBlockDiagnostics)
 }

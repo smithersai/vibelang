@@ -25,7 +25,7 @@ const inferredEffectReturn = "no return annotation (infer the Effect)"
 var effectReturnTypeOmitted = EK0106.With("An effect function returns an Effect, so its return type can't be {0}: leave the return type out, and the function infers its Effect.")
 
 func init() {
-	registry[EK0106.Code] = EK0106
+	registerDiagnostic(EK0106)
 	fileChecks = append(fileChecks, checkEffectReturnTypes)
 	tsFormRules[EK0106.Code] = &tsFormRule{
 		message: EK0106,

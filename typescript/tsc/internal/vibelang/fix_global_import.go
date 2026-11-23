@@ -48,7 +48,7 @@ var globalModuleAliases = map[string][]string{
 }
 
 func init() {
-	registry[EK4842.Code] = EK4842
+	registerDiagnostic(EK4842)
 	tsFormMessages = append(tsFormMessages, EK4842)
 	tsFormRules[EK4842.Code] = &tsFormRule{
 		message: EK4842,

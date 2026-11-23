@@ -11,7 +11,7 @@ import (
 var EK0704 = message(704, errorCategory, "{0} has no own matcher, so its extractor cannot extract values. Test the class without parentheses, then destructure its properties with an object pattern.")
 
 func init() {
-	registry[EK0704.Code] = EK0704
+	registerDiagnostic(EK0704)
 	fileChecks = append(fileChecks, checkOrdinaryExtractors)
 	checker.RegisterCallExpressionTypeHook(ordinaryExtractorRecoveryType)
 }

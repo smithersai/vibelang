@@ -14,7 +14,7 @@ import (
 var reservedFiberName = message(parser.ReservedFiberNameDiagnosticCode, errorCategory, parser.ReservedFiberNameDiagnosticText)
 
 func init() {
-	registry[reservedFiberName.Code] = reservedFiberName
+	registerDiagnostic(reservedFiberName)
 }
 
 func isFiberWord(text string) bool { return text == "fork" || text == "join" }

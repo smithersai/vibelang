@@ -16,7 +16,7 @@ import (
 var EK9214 = message(9214, errorCategory, "{0} is a service key, which takes no arguments: try {0} gets its implementation.")
 
 func init() {
-	registry[EK9214.Code] = EK9214
+	registerDiagnostic(EK9214)
 	fileChecks = append(fileChecks, checkServiceKeyCalls)
 }
 

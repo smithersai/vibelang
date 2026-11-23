@@ -1,0 +1,8 @@
+// expect: EK0403 EK4409
+// @vibelang-diagnostics EK4409:error
+export const example = `
+${1}
+// @vibelang-diagnostics *:off
+`
+declare const run: any
+export effect function main() { return run() }

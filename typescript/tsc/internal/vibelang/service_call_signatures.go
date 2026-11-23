@@ -5,10 +5,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-var serviceCallSignatureDiagnostic = message(902, errorCategory, "A call signature cannot be a service member. Declare a named method such as call(x: number): string, or a property whose type is a function.")
+var serviceCallSignatureDiagnostic = EK0902.With("A call signature cannot be a service member. Declare a named method such as call(x: number): string, or a property whose type is a function.")
 
 func init() {
-	registry[serviceCallSignatureDiagnostic.Code] = serviceCallSignatureDiagnostic
 	fileChecks = append(fileChecks, checkServiceCallSignatures)
 }
 

@@ -5,7 +5,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-var serviceReservedMemberDiagnostic = message(902, errorCategory, "A service key or defaultValue uses only static readonly, without optional or definite markers. Remove other modifiers and ? or !.")
+var serviceReservedMemberDiagnostic = EK0902.With("A service key or defaultValue uses only static readonly, without optional or definite markers. Remove other modifiers and ? or !.")
 
 // Key literal/readonly failures belong to EK0901, the first applicable row.
 // This check supplies EK0902 for otherwise valid keys and DefaultMember syntax.
@@ -64,6 +64,5 @@ func checkReservedServiceMembers(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func init() {
-	registry[serviceReservedMemberDiagnostic.Code] = serviceReservedMemberDiagnostic
 	fileChecks = append(fileChecks, checkReservedServiceMembers)
 }

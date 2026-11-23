@@ -9,7 +9,7 @@ import (
 // They do not authorize moving an initializer into a function body.
 var EK0705 = message(705, errorCategory, "This `is` binding has no lexical home.")
 
-func init() { registry[EK0705.Code] = EK0705 }
+func init() { registerDiagnostic(EK0705) }
 
 // A source block, a match arm, a callable body, or a field initializer has
 // its own home. Compiler-written pattern functions do not create a source home.

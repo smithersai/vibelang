@@ -33,7 +33,7 @@ import (
 var EK4840 = message(4840, warningCategory, "{0} pipes a value through Option's functions; method syntax writes it: {1}.")
 
 func init() {
-	registry[EK4840.Code] = EK4840
+	registerDiagnostic(EK4840)
 	tsFormMessages = append(tsFormMessages, EK4840)
 	tsFormRules[EK4840.Code] = &tsFormRule{
 		message: EK4840,

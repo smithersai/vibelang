@@ -9,7 +9,7 @@ import (
 var EK1304 = message(1304, errorCategory, "An error declaration cannot have an implements clause.")
 
 func init() {
-	registry[EK1304.Code] = EK1304
+	registerDiagnostic(EK1304)
 	fileChecks = append(fileChecks, checkErrorImplements)
 }
 

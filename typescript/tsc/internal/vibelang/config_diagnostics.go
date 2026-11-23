@@ -7,9 +7,9 @@ import "github.com/microsoft/TypeScript/tsc/internal/core"
 var EK3009 = message(3009, warningCategory, core.VibeConfigDiagnostics[core.VibeLegacyConfigCode])
 
 func init() {
-	registry[EK3009.Code] = EK3009
+	registerDiagnostic(EK3009)
 }
 
 var EK3012 = message(3012, warningCategory, core.VibeLintPluginMessage)
 
-func init() { registry[EK3012.Code] = EK3012 }
+func init() { registerDiagnostic(EK3012) }

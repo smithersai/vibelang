@@ -12,7 +12,7 @@ import (
 var EK1307 = message(1307, errorCategory, "An error declaration needs a runtime constructor and cannot be ambient. Write a native TypeScript ambient class, or move the declaration to nonambient code.")
 
 func init() {
-	registry[EK1307.Code] = EK1307
+	registerDiagnostic(EK1307)
 	fileChecks = append(fileChecks, checkAmbientErrorDeclarations)
 	checker.RegisterDiagnosticsFilterHook(filterAmbientErrorDeclarationDiagnostics)
 }
@@ -54,7 +54,7 @@ func filterAmbientErrorDeclarationDiagnostics(c *checker.Checker, file *ast.Sour
 		owned := false
 		if d.Source() == diagnosticSource {
 			switch d.Code() {
-			case 1301, 1302, 1303, 1304, 1306, 2117, 2118:
+			case 1301, 1302, 1303, 1304, 1306, 1308, 2117:
 				owned = true
 			}
 		} else if d.Source() == "" {

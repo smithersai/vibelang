@@ -16,7 +16,7 @@ import (
 var EK4410 = message(4410, errorCategory, "{0} is used only as the callee of {0}(…), since its first operand is syntax; it cannot be renamed or stored.")
 
 func init() {
-	registry[EK4410.Code] = EK4410
+	registerDiagnostic(EK4410)
 	fileChecks = append(fileChecks, checkKeywordBindings)
 }
 

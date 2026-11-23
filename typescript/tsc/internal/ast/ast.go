@@ -2437,6 +2437,7 @@ type SourceFile struct {
 	ModuleAugmentations         []*ModuleName      // []ModuleName
 	AmbientModuleNames          []string
 	CommentDirectives           []CommentDirective
+	VibeDiagnosticComments      []core.TextRange
 	jsdocCache                  map[*Node][]*Node
 	jsdocMu                     sync.RWMutex
 	hasLazyJSDoc                bool
@@ -2775,6 +2776,7 @@ func (node *SourceFile) copyFrom(other *SourceFile) {
 	node.ModuleAugmentations = other.ModuleAugmentations
 	node.AmbientModuleNames = other.AmbientModuleNames
 	node.CommentDirectives = other.CommentDirectives
+	node.VibeDiagnosticComments = other.VibeDiagnosticComments
 	node.Pragmas = other.Pragmas
 	node.ReferencedFiles = other.ReferencedFiles
 	node.TypeReferenceDirectives = other.TypeReferenceDirectives

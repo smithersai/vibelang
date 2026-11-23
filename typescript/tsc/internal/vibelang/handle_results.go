@@ -41,8 +41,8 @@ var (
 )
 
 func init() {
-	registry[EK2110.Code] = EK2110
-	registry[EK2119.Code] = EK2119
+	registerDiagnostic(EK2110)
+	registerDiagnostic(EK2119)
 	fileChecks = append(fileChecks, checkHandleResults)
 }
 

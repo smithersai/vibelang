@@ -7,5 +7,5 @@ import (
 var EK0512 = message(parser.VibeLangCatchPrecedenceCode, errorCategory, parser.VibeLangCatchPrecedenceMessage)
 
 func init() {
-	registry[EK0512.Code] = EK0512
+	registerDiagnostic(EK0512)
 }

@@ -15,7 +15,7 @@ import (
 var EK5502 = message(5502, errorCategory, "{0} is a task, which runs only as a step of a workflow. Call it from a workflow's `effect call`, or write it as an `effect function`.")
 
 func init() {
-	registry[EK5502.Code] = EK5502
+	registerDiagnostic(EK5502)
 	fileChecks = append(fileChecks, checkTaskCalls)
 }
 

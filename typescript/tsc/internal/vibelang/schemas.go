@@ -14,7 +14,7 @@ import (
 var EK1505 = message(1505, errorCategory, "{0} is not a field: a schema body holds only fields, each written name: Type or name?: Type.")
 
 func init() {
-	registry[EK1505.Code] = EK1505
+	registerDiagnostic(EK1505)
 	fileChecks = append(fileChecks, checkSchemaDeclarations)
 }
 

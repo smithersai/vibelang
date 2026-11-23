@@ -10,7 +10,7 @@ import (
 var EK4856 = message(4856, warningCategory, "The bare Effect type alias is transitional; write an Effect shorthand type or Effect.Effect instead.")
 
 func init() {
-	registry[EK4856.Code] = EK4856
+	registerDiagnostic(EK4856)
 	tsFormMessages = append(tsFormMessages, EK4856)
 	tsFormRules[EK4856.Code] = &tsFormRule{
 		message: EK4856, find: findLegacyEffectAliases,

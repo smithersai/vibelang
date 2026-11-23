@@ -8,7 +8,7 @@ import (
 var EK1303 = message(1303, errorCategory, "An error declaration cannot have type parameters. Use concrete field types, or write the generic error in TypeScript.")
 
 func init() {
-	registry[EK1303.Code] = EK1303
+	registerDiagnostic(EK1303)
 	fileChecks = append(fileChecks, checkErrorTypeParameters)
 
 }

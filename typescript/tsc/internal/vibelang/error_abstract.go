@@ -10,7 +10,7 @@ import (
 var EK1308 = message(1308, warningCategory, "An abstract error root is a legacy declaration form. Write it as its Effect TypeScript class to retain it.")
 
 func init() {
-	registry[EK1308.Code] = EK1308
+	registerDiagnostic(EK1308)
 	fileChecks = append(fileChecks, checkAbstractErrorRoots)
 
 }

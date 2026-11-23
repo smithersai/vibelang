@@ -56,7 +56,7 @@ var tsFormMessages = []*Message{EK4830, EK4831, EK4832, EK4833, EK4834, EK4835, 
 
 func init() {
 	for _, m := range tsFormMessages {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
 	fileChecks = append(fileChecks, checkTypeScriptForms)
 }

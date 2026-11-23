@@ -31,7 +31,7 @@ import (
 var EK4839 = message(4839, warningCategory, "{0} chooses with {2}; a match expression writes the choice: match ({1}) { when …: …; }.")
 
 func init() {
-	registry[EK4839.Code] = EK4839
+	registerDiagnostic(EK4839)
 	tsFormMessages = append(tsFormMessages, EK4839)
 	tsFormRules[EK4839.Code] = &tsFormRule{
 		message: EK4839,

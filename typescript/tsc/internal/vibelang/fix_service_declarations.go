@@ -12,7 +12,7 @@ var EK4855 = message(4855, warningCategory, "Legacy static default: rewrite it t
 
 func init() {
 	for _, m := range []*Message{EK4854, EK4855} {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 		tsFormMessages = append(tsFormMessages, m)
 
 	}

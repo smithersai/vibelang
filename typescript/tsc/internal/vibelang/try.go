@@ -22,8 +22,8 @@ var (
 )
 
 func init() {
-	registry[EK0502.Code] = EK0502
-	registry[EK4616.Code] = EK4616
+	registerDiagnostic(EK0502)
+	registerDiagnostic(EK4616)
 	fileChecks = append(fileChecks, checkTries)
 	tsFormRules[EK4616.Code] = &tsFormRule{
 		message: EK4616,
@@ -212,7 +212,7 @@ func (tx *lowering) visitTry(node *ast.Node) *ast.Node {
 var EK1803 = message(1803, errorCategory, parser.TryOperationNameMessage)
 
 func init() {
-	registry[EK1803.Code] = EK1803
+	registerDiagnostic(EK1803)
 }
 
 // namespaceServiceKey returns the name of the export of t, a module namespace

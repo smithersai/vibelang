@@ -29,7 +29,7 @@ var (
 	// EK2127: Name.Variant names no variant of the data type Name. {0} is the data type, {1} the name, {2} its variants.
 	EK2127 = message(2127, errorCategory, "{0} has no variant {1}. Its variants are {2}.")
 	// EK0707 (or EK0702 for a data extractor): a field list after a matcher that is not a data variant. {0} is the matcher.
-	classFieldListDiagnostic = message(707, errorCategory, "A brace field list cannot follow {0}; write {0} and { … } to match a class and its properties.")
+	classFieldListDiagnostic = EK0707.With("A brace field list cannot follow {0}; write {0} and { … } to match a class and its properties.")
 
 	ek1606Mutable           = EK1606.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
 	ek1606Untyped           = EK1606.With("{0} has no type: write {0}: Type.")
@@ -39,7 +39,7 @@ var (
 
 func init() {
 	for _, m := range []*Message{EK1601, EK1602, EK1606, EK2126, EK2801, EK2127} {
-		registry[m.Code] = m
+		registerDiagnostic(m)
 	}
 	fileChecks = append(fileChecks, checkData)
 	checker.RegisterFlowNarrowingHook(narrowDataVariant)
@@ -224,7 +224,8 @@ func narrowByTag(c *checker.Checker, matcher *ast.Node, t *checker.Type, tag str
 	}
 	if work > maxTagNarrowingWork-used {
 		narrowings.work[scope] = maxTagNarrowingWork + 1
-		note(c.AddDiagnostic(ast.NewDiagnostic(ast.GetSourceFileOfNode(matcher), matcher.Loc, diagnostics.The_containing_function_or_module_body_is_too_large_for_control_flow_analysis)), "Data patterns in this body exceed the limit of {0} union members examined by uncached narrowings.", maxTagNarrowingWork)
+		file := ast.GetSourceFileOfNode(matcher)
+		note(c.AddDiagnostic(ast.NewDiagnostic(file, scanner.GetErrorRangeForNode(file, matcher), diagnostics.The_containing_function_or_module_body_is_too_large_for_control_flow_analysis)), "Data patterns in this body exceed the limit of {0} union members examined by uncached narrowings.", maxTagNarrowingWork)
 		return c.GetErrorType()
 	}
 	narrowings.work[scope] = used + work
@@ -330,7 +331,7 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 			report(c, constraint, EK2126, parameter.Name().Text())
 		}
 		if defaultType := parameter.AsTypeParameterDeclaration().DefaultType; defaultType != nil {
-			report(c, defaultType, dataDefault, parameter.Name().Text())
+			report(c, defaultType, EK2803, parameter.Name().Text())
 		}
 	}
 	if definition := dataDefinitionOf(alias); definition != nil {
