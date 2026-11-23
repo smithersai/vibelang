@@ -549,9 +549,7 @@ func (c *converter) schemaDeclaration(n *ast.Node) *obj {
 	name := declarations[0].Name()
 	id := c.convertChild(name, declarations[0])
 	if literal := c.schemaBody(fields); literal != nil {
-		annotation := c.convertChild(literal, literal.Parent)
-		schemaValues(annotation)
-		id.set("typeAnnotation", c.nodeAt(c.rangeOf(literal), "TSTypeAnnotation").set("typeAnnotation", annotation))
+		c.attachSchemaAnnotation(id, literal)
 	}
 	declarator := c.nodeAt(span{c.start(name), n.End()}, "VariableDeclarator").
 		set("definite", false).
@@ -562,6 +560,19 @@ func (c *converter) schemaDeclaration(n *ast.Node) *obj {
 		set("declare", hasModifier(ast.KindDeclareKeyword, n)).
 		set("kind", "const")
 	return c.fixExports(n, result)
+}
+
+// A schema reads as a typed const binding. As for a written annotation,
+// the identifier's range includes its type, while its name token stays narrow.
+func (c *converter) attachSchemaAnnotation(id *obj, typ *ast.Node) {
+	body := c.convertChild(typ, typ.Parent)
+	schemaValues(body)
+	// There is no written colon. A rename rule can replace everything before
+	// this annotation, so its range must include the intervening trivia and
+	// the equals sign of an alias. The child type keeps its own token range.
+	annotation := c.nodeAt(span{id.rng().end, typ.End()}, "TSTypeAnnotation").set("typeAnnotation", body)
+	id.set("typeAnnotation", annotation)
+	fixParentLocation(id, annotation.rng())
 }
 
 // schemaValues rewrites each type reference without type arguments in value,
