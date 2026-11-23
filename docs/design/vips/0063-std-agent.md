@@ -1,6 +1,6 @@
 # VIP-63: `Experimental.Agent`: the agent loop, model-written scripts and coding-agent CLIs
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](README.md#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. No implementation exists.
+**Status:** Accepted, 2026-11-23. The runtime provides `Agent.cli`, `Agent.layerCli`, `Agent.detect` and the internal QuickJS cell interpreter. The public agent loop, streaming API, judge, durable CLI sessions and worker integration remain design commitments.
 
 ## Will's words
 

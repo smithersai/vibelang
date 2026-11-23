@@ -231,6 +231,31 @@
       "types": "./dist/experimental/AudioContext.d.ts",
       "import": "./dist/experimental/AudioContext.js",
       "default": "./dist/experimental/AudioContext.js"
+    },
+    "./experimental/Agent": {
+      "types": "./dist/experimental/Agent.d.ts",
+      "import": "./dist/experimental/Agent.js",
+      "default": "./dist/experimental/Agent.js"
+    },
+    "./experimental/Capability": {
+      "types": "./dist/experimental/Capability.d.ts",
+      "import": "./dist/experimental/Capability.js",
+      "default": "./dist/experimental/Capability.js"
+    },
+    "./experimental/Model": {
+      "types": "./dist/experimental/Model.d.ts",
+      "import": "./dist/experimental/Model.js",
+      "default": "./dist/experimental/Model.js"
+    },
+    "./experimental/Trigger": {
+      "types": "./dist/experimental/Trigger.d.ts",
+      "import": "./dist/experimental/Trigger.js",
+      "default": "./dist/experimental/Trigger.js"
+    },
+    "./experimental/WorkQueue": {
+      "types": "./dist/experimental/WorkQueue.d.ts",
+      "import": "./dist/experimental/WorkQueue.js",
+      "default": "./dist/experimental/WorkQueue.js"
     }
   },
   "files": [
@@ -241,6 +266,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "bun run build && bun test --timeout 30000"
+  },
+  "dependencies": {
+    "@effect/ai-anthropic": "4.1.1",
+    "@effect/ai-openai": "4.1.1",
+    "@effect/ai-openai-compat": "4.1.1",
+    "@jitl/quickjs-singlefile-browser-release-sync": "0.32.0",
+    "quickjs-emscripten-core": "0.32.0"
   },
   "peerDependencies": {
     "@effect/platform-browser": "4.1.1",

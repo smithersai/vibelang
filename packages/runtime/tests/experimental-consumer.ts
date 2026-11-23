@@ -1,4 +1,5 @@
 // Compile a consumer of the experimental exports (D313) against the emitted .d.ts files.
+import "./trigger-consumer.js"
 import type * as Digest from "effect/crypto/Digest"
 import type * as SecureRandom from "effect/crypto/SecureRandom"
 import * as EffectNodeServices from "@effect/platform-node/NodeServices"

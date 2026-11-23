@@ -208,8 +208,35 @@ export function $workflow<P extends ReadonlyArray<unknown>, A, E, R, const Sc ex
     const handler = w.toLayer((payload: Record<string, unknown>) => rounds(argsOf(schemas, payload)))
     return layers.length === 0 ? handler : Layer.provide(handler, Layer.mergeAll(...(layers as [any, ...Array<any>])))
   }))
+  Object.defineProperty(workflow, "~engine", { value: durable })
   return define(workflow, key, options, schemas)
 }
+
+/**
+ * The Effect workflow a declared `workflow` runs as, and the payload its
+ * engine executes for these arguments: each argument under its parameter's
+ * name. For modules that start runs of a declaration, such as
+ * `Experimental.Trigger`.
+ * @throws {never}
+ */
+export const engineLaunch = (
+  declared: Workflow<ReadonlyArray<unknown>, unknown, unknown>,
+  args: ReadonlyArray<unknown>
+): Effect.Effect<{ readonly workflow: import("effect/workflow").Workflow.Any; readonly payload: Record<string, unknown> }> =>
+  Effect.map((declared as any)["~engine"] as Effect.Effect<import("effect/workflow").Workflow.Any>, (workflow) => ({
+    workflow,
+    payload: payloadOf(declared.schemas, args)
+  }))
+
+/** The Effect workflow a declared `workflow` runs as. */
+export const engineWorkflow = (
+  declared: Workflow<ReadonlyArray<unknown>, unknown, unknown>
+): Effect.Effect<import("effect/workflow").Workflow.Any> =>
+  (declared as any)["~engine"] as Effect.Effect<import("effect/workflow").Workflow.Any>
+
+/** Whether a value is a declared `workflow` (VIP-55). */
+export const isDeclaredWorkflow = (value: unknown): value is Workflow<ReadonlyArray<any>, unknown, unknown> =>
+  typeof value === "function" && (value as any)["~durable"] === true && (value as any)["~engine"] !== undefined
 
 /**
  * `return W.to(…)` in W's own body, which the parser writes with W's
