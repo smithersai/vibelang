@@ -122,6 +122,7 @@ interface Registered {
 export interface EngineInternals {
   readonly store: Store
   readonly owner: string
+  readonly executionCount: () => number
   /** True while this engine is driving the run. */
   readonly isLive: (run: string) => boolean
   /** Forgets a run that is not live, and its clocks, so the next execute reloads it from the store. */
@@ -234,7 +235,9 @@ export const make = (store: Store) =>
           if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") return Effect.void
           return Effect.andThen(
             Scope.close(state.scope, Exit.void),
-            Exit.isSuccess(exit) && exit.value._tag === "Complete" ? Deferred.succeed(state.done, void 0) : Effect.void
+            Exit.isSuccess(exit) && exit.value._tag === "Complete"
+              ? Effect.andThen(forget(executionId, state), Deferred.succeed(state.done, void 0))
+              : Effect.void
           )
         }),
         Effect.forkIn(entry.scope)
@@ -305,16 +308,15 @@ export const make = (store: Store) =>
         if (!known || isLive(known)) return known
         const row = yield* store.get(executionId)
         if (Option.isSome(row) && row.value.fence === known.fence) return known
-        yield* forget(executionId)
+        yield* forget(executionId, known)
         return undefined
       })
 
-    const forget = (executionId: string) =>
+    const forget = (executionId: string, state: Execution) =>
       Effect.gen(function*() {
-        const state = executions.get(executionId)
-        if (!state) return
-        executions.delete(executionId)
+        if (executions.get(executionId) !== state) return
         for (const name of state.clocks.keys()) yield* FiberMap.remove(clocks, `${executionId}/${name}`)
+        if (executions.get(executionId) === state) executions.delete(executionId)
       })
 
     /** This engine's state for a stored, unfinished run, loading it when needed. */
@@ -371,7 +373,9 @@ export const make = (store: Store) =>
       awaitComplete: (_workflow, executionId) =>
         Effect.suspend(() => {
           const state = executions.get(executionId)
-          return state ? Deferred.await(state.done) : Effect.never
+          return state ? Deferred.await(state.done) : Effect.flatMap(store.get(executionId), (row) =>
+            Option.isSome(row) && isTerminal(row.value.status) ? Effect.void : Effect.never
+          )
         }),
       interrupt: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = yield* ensure(executionId)
@@ -512,6 +516,7 @@ export const make = (store: Store) =>
     const internals: EngineInternals = {
       store,
       owner,
+      executionCount: () => executions.size,
       isLive: (run) => {
         const state = executions.get(run)
         return state !== undefined && state.fiber !== undefined && state.fiber.pollUnsafe() === undefined
@@ -519,7 +524,7 @@ export const make = (store: Store) =>
       evict: (run) =>
         Effect.suspend(() => {
           const state = executions.get(run)
-          return state && !isLive(state) ? forget(run) : Effect.void
+          return state && !isLive(state) ? forget(run, state) : Effect.void
         }),
       workflow: (tag) => workflows.get(tag)?.workflow
     }

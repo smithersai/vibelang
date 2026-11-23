@@ -81,13 +81,24 @@ var schemaKeywordTypes = func() map[string]string {
 // findSchemaConstants reports EK4832 at each constant of file whose
 // Schema.Struct a schema declaration writes.
 func findSchemaConstants(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
+	var namedValues map[*ast.Symbol]bool
+	namesInDeclaration := func(name *ast.Node) bool {
+		symbol := c.GetSymbolAtLocation(name)
+		if symbol == nil {
+			return true
+		}
+		if namedValues == nil {
+			namedValues = declarationNamedValues(c, file)
+		}
+		return namedValues[symbol]
+	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsVariableStatement(node) && !inHatch(node) {
 			declarations := node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
 			if len(declarations) == 1 && isSchemaConstantName(declarations[0].Name()) {
-				if rewrite := schemaConstantRewrite(c, file, declarations[0].Name()); rewrite.fixable() {
-					report(declarations[0].Name(), rewrite, declarations[0].Name().Text())
+				if isSchemaDeclarationForm(c, file, declarations[0].Name(), namesInDeclaration) {
+					report(declarations[0].Name(), nil, declarations[0].Name().Text())
 				}
 			}
 		}
@@ -96,78 +107,67 @@ func findSchemaConstants(c *checker.Checker, file *ast.SourceFile, report func(a
 	file.AsNode().ForEachChild(visit)
 }
 
-// schemaConstantRewrite plans EK4832's fix for the constant name names.
-func schemaConstantRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.Node) *formRewrite {
+// isSchemaDeclarationForm checks whether the schema declaration spelling fits.
+func isSchemaDeclarationForm(c *checker.Checker, file *ast.SourceFile, name *ast.Node, namesInDeclaration func(*ast.Node) bool) bool {
 	declaration := name.Parent
 	list := declaration.Parent
 	statement := list.Parent
 	if !ast.IsVariableStatement(statement) || list.Flags&ast.NodeFlagsConst == 0 || len(list.AsVariableDeclarationList().Declarations.Nodes) != 1 ||
 		declaration.Type() != nil || declaration.AsVariableDeclaration().ExclamationToken != nil || declaration.Initializer() == nil || statement.Flags&ast.NodeFlagsVibeLang != 0 {
-		return nil
+		return false
 	}
 	for _, modifier := range statement.ModifierNodes() {
 		if modifier.Kind != ast.KindExportKeyword {
-			return nil
+			return false
 		}
 	}
 	call := declaration.Initializer()
 	if !ast.IsCallExpression(call) || call.Flags&ast.NodeFlagsVibeLang != 0 || call.Expression().Flags&ast.NodeFlagsReparsed != 0 {
-		return nil // a schema declaration already
+		return false // a schema declaration already
 	}
 	text := file.Text()
 	if body := text[nodeStart(file, call):call.End()]; strings.Contains(body, "//") || strings.Contains(body, "/*") {
-		return nil
-	}
-	indent := lineIndent(text, nodeStart(file, statement))
-	fields, ok := structFieldsType(c, file, call, indent)
-	if !ok {
-		return nil
-	}
-	exported := ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport)
-	edits, kept, ok := schemaTypeEdits(c, file, statement, name, exported)
-	if !ok {
-		return nil
-	}
-	if len(edits) == 0 && !kept && (exported || declarationNamesConstant(c, file, statement, name)) {
-		return nil
-	}
-	start := nodeStart(file, statement)
-	if modifiers := statement.Modifiers(); modifiers != nil && len(modifiers.Nodes) > 0 {
-		start = scanner.SkipTrivia(text, modifiers.End())
-	}
-	end := statement.End()
-	declarationText := "schema " + name.Text() + " " + fields
-	edits = append([]sourceEdit{{start, end, declarationText}}, edits...)
-	return withImportRemovals(c, file, &formRewrite{edits: edits, description: shortText(declarationText, "schema "+name.Text()+" { … }")})
-}
-
-// declarationNamesConstant reports whether the declaration file can print the
-// constant name names, declared by statement at a module's or namespace's top
-// level: the file names it in a type query, or exports it through an export
-// list or export default. A constant in a function body is never printed.
-func declarationNamesConstant(c *checker.Checker, file *ast.SourceFile, statement *ast.Node, name *ast.Node) bool {
-	if !ast.IsSourceFile(statement.Parent) && !ast.IsModuleBlock(statement.Parent) {
 		return false
 	}
-	symbol := c.GetSymbolAtLocation(name)
-	if symbol == nil {
+	indent := lineIndent(text, nodeStart(file, statement))
+	_, ok := structFieldsType(c, file, call, indent)
+	if !ok {
+		return false
+	}
+	exported := ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport)
+	alias, ok := schemaCompanionType(c, file, statement, name, exported)
+	if !ok {
+		return false
+	}
+	if alias != nil {
 		return true
 	}
-	found := false
+	topLevel := ast.IsSourceFile(statement.Parent) || ast.IsModuleBlock(statement.Parent)
+	return !exported && (!topLevel || !namesInDeclaration(name))
+}
+
+// declarationNamedValues indexes type queries and export references that can
+// cause the declaration file to name a schema constant.
+func declarationNamedValues(c *checker.Checker, file *ast.SourceFile) map[*ast.Symbol]bool {
+	named := map[*ast.Symbol]bool{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		var symbol *ast.Symbol
 		switch {
 		case ast.IsTypeQueryNode(node):
-			found = c.GetSymbolAtLocation(ast.GetFirstIdentifier(node.AsTypeQueryNode().ExprName)) == symbol
+			symbol = c.GetSymbolAtLocation(ast.GetFirstIdentifier(node.AsTypeQueryNode().ExprName))
 		case ast.IsExportSpecifier(node) && node.Parent.Parent.AsExportDeclaration().ModuleSpecifier == nil:
-			found = c.GetExportSpecifierLocalTargetSymbol(node) == symbol
+			symbol = c.GetExportSpecifierLocalTargetSymbol(node)
 		case ast.IsExportAssignment(node) && ast.IsIdentifier(node.Expression()):
-			found = c.GetSymbolAtLocation(node.Expression()) == symbol
+			symbol = c.GetSymbolAtLocation(node.Expression())
 		}
-		return found || node.ForEachChild(visit)
+		if symbol != nil {
+			named[symbol] = true
+		}
+		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-	return found
+	return named
 }
 
 // schemaTypeEdits returns the edits that remove the struct's own type written
@@ -175,39 +175,14 @@ func declarationNamesConstant(c *checker.Checker, file *ast.SourceFile, statemen
 // the declaration instead (kept), and false when another type of name is in
 // scope.
 func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.Node, name *ast.Node, exported bool) (edits []sourceEdit, kept bool, ok bool) {
-	symbol := c.ResolveName(name.Text(), statement, ast.SymbolFlagsType, false)
-	if symbol == nil {
-		return nil, false, true
+	alias, ok := schemaCompanionType(c, file, statement, name, exported)
+	if !ok || alias == nil {
+		return nil, false, ok
 	}
-	var declarations []*ast.Node
-	for _, d := range symbol.Declarations() {
-		if !ast.IsVariableDeclaration(d) {
-			declarations = append(declarations, d)
-		}
-	}
-	if len(declarations) == 0 {
-		return nil, false, true
-	}
-	// A private alias can be printed through an exported signature too.
-	// Preserve its written spelling: every .vibe module's sidecar is a
-	// declaration file, whatever the project's emit options (Chapter 7).
-	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(c, file, declarations[0], name, true) ||
-		ast.HasSyntacticModifier(declarations[0], ast.ModifierFlagsExport) != exported {
-		return nil, false, false
+	if len(alias.JSDoc(file)) != 0 {
+		return nil, true, true
 	}
 	text := file.Text()
-	alias := declarations[0]
-	if len(alias.JSDoc(file)) != 0 {
-		// "One written, nongeneric type X = typeof X.Type in the same scope
-		// replaces the synthesized alias" and keeps its own JSDoc (VIP-15,
-		// detail 256): the documented alias stays, and the declaration file
-		// prints its comment as it did on the native pair. The other own
-		// forms print differently, so a documented one keeps the constant.
-		if isSchemaWrittenType(file, alias, name.Text()) {
-			return nil, true, true
-		}
-		return nil, false, false
-	}
 	start, end := nodeStart(file, alias), alias.End()
 	// Remove the line the type stands on when nothing else does.
 	lineStart := strings.LastIndexByte(text[:start], '\n') + 1
@@ -216,6 +191,35 @@ func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.No
 		start, end = lineStart, end+newline+1
 	}
 	return []sourceEdit{{start, end, ""}}, false, true
+}
+
+// schemaCompanionType checks whether this spelling can share the constant's
+// type name. A documented alias must retain its written declaration.
+func schemaCompanionType(c *checker.Checker, file *ast.SourceFile, statement, name *ast.Node, exported bool) (*ast.Node, bool) {
+	symbol := c.ResolveName(name.Text(), statement, ast.SymbolFlagsType, false)
+	if symbol == nil {
+		return nil, true
+	}
+	var alias *ast.Node
+	for _, declaration := range symbol.Declarations() {
+		if !ast.IsVariableDeclaration(declaration) {
+			if alias != nil {
+				return nil, false
+			}
+			alias = declaration
+		}
+	}
+	if alias == nil {
+		return nil, true
+	}
+	if alias.Parent != statement.Parent || !isStructOwnType(c, file, alias, name, true) ||
+		ast.HasSyntacticModifier(alias, ast.ModifierFlagsExport) != exported {
+		return nil, false
+	}
+	if len(alias.JSDoc(file)) != 0 && !isSchemaWrittenType(file, alias, name.Text()) {
+		return nil, false
+	}
+	return alias, true
 }
 
 // isSchemaWrittenType reports whether declaration is the written alias a

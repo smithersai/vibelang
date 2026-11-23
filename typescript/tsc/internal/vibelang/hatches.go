@@ -712,10 +712,10 @@ func (tx *lowering) visitHatchCall(node *ast.Node) *ast.Node {
 	form := tx.plan.hatches[node]
 	f := tx.Factory()
 	arguments := node.Arguments()
-	saved, savedPlain := tx.inEffect, tx.plain
-	tx.inEffect, tx.plain = false, false
+	saved := tx.inEffect
+	tx.inEffect = false
 	body := tx.Visitor().VisitNode(arguments[0])
-	tx.inEffect, tx.plain = saved, savedPlain
+	tx.inEffect = saved
 	inputs := []*ast.Node{f.NewIdentifier("undefined")}
 	for _, input := range arguments[1:] {
 		inputs = append(inputs, tx.Visitor().VisitNode(input))

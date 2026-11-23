@@ -951,9 +951,8 @@ func reachClass(c *checker.Checker, file *ast.SourceFile, f failure) (module str
 	return "", "", false
 }
 
-// legacyTrustUsesTag matches planTrustedCalls' function/body predicate so
-// EK4406 only offers a migration where lowering uses the failure contract.
-// A plain callback's uncaught call stays plain; a caught D54 call uses the tag.
+// legacyTrustUsesTag identifies the Effect calls and caught calls that draw
+// EK4406 for a legacy trust contract.
 func (a *analyzer) legacyTrustUsesTag(call *ast.Node) bool {
 	fn := enclosingFunction(call)
 	if fn == nil || !isLowerable(fn) {

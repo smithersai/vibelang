@@ -111,12 +111,13 @@ func TestSchemaErrorTeachingKeepsReservedMembers(t *testing.T) {
 	} {
 		source := "export class E extends Schema.TaggedError<E>()(\"E\", {}) { " + member + " }\n"
 		program, file, _, _ := editorProgram(t, source)
-		program.GetSemanticDiagnostics(t.Context(), file)
-		c, done := program.GetTypeCheckerForFile(t.Context(), file)
-		rewrite := errorClassRewrite(c, file, file.Statements.Nodes[0])
-		done()
-		if rewrite != nil && len(rewrite.edits) != 0 {
-			t.Fatalf("teaching must not introduce a rejected member: %s", source)
+		want := !strings.HasPrefix(member, "static get _tag")
+		found := false
+		for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+			found = found || d.Code() == EK4837.Code
+		}
+		if found != want {
+			t.Fatalf("schema error spelling warning = %v, want %v: %s", found, want, source)
 		}
 	}
 }

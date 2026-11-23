@@ -17,7 +17,7 @@ func init() {
 
 	}
 	tsFormRules[EK4854.Code] = &tsFormRule{message: EK4854, find: findLegacyServices}
-	tsFormRules[EK4855.Code] = &tsFormRule{message: EK4855, find: findLegacyDefaults, check: checkLegacyDefaults}
+	tsFormRules[EK4855.Code] = &tsFormRule{message: EK4855, find: findLegacyDefaults}
 }
 
 // This recognizes the retired spelling only for migration; it never affects
@@ -83,20 +83,7 @@ func legacyDefault(n *ast.Node) bool {
 	return n != nil && ast.IsPropertyDeclaration(n) && n.Initializer() != nil && ast.IsStatic(n) && ast.HasSyntacticModifier(n, ast.ModifierFlagsReadonly) && n.Name() != nil && !ast.IsComputedPropertyName(n.Name()) && n.Name().Text() == "default" && declarationWord(n.Parent) == "service"
 }
 
-// The declaration owns the complete preserving migration. Static reads keep
-// their names; they no longer become fresh Reference fallback calls.
 func findLegacyDefaults(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if r := legacyDefaultRewrite(c, file, n); r != nil {
-			report(n, r)
-		}
-		return n.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-}
-
-func checkLegacyDefaults(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if legacyDefault(n) {
@@ -107,8 +94,4 @@ func checkLegacyDefaults(c *checker.Checker, file *ast.SourceFile, report func(*
 		return n.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-}
-
-func legacyDefaultRewrite(c *checker.Checker, file *ast.SourceFile, n *ast.Node) *formRewrite {
-	return legacyDefaultNativeClass(c, file, n)
 }

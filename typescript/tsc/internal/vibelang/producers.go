@@ -308,13 +308,13 @@ func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	f := tx.Factory()
 	ec := tx.EmitContext()
 
-	saved, savedFrame, savedPlain := tx.inEffect, tx.frame, tx.plain
-	tx.inEffect, tx.plain = false, false // parameter initializers stay plain
+	saved, savedFrame := tx.inEffect, tx.frame
+	tx.inEffect = false // parameter initializers stay plain
 	parameters := ec.VisitParameters(node.ParameterList(), tx.Visitor())
 	tx.inEffect = true
 	tx.frame = &frame{name: sourceName(node)}
 	body := ec.VisitFunctionBody(node.Body(), tx.Visitor())
-	tx.inEffect, tx.frame, tx.plain = saved, savedFrame, savedPlain
+	tx.inEffect, tx.frame = saved, savedFrame
 
 	// Parameter defaults the parser moved into the body (VIP-2: a default whose
 	// do expression returns) stay at the call: the body is then `{ temps…; {

@@ -201,24 +201,6 @@ func freshName(file *ast.SourceFile, base string) string {
 	return name
 }
 
-// runsWhereItStands reports whether call, an invocation, runs where it
-// stands, as the lowering plans it (plan.go): the analyzer performs it, as an
-// Effect, through an Effect function's direct variant, or as a service
-// lookup, in the body of a function the lowering makes an Effect, outside
-// any expression passed by name, such as an await operation's element or
-// fork's operand.
-func runsWhereItStands(a *analyzer, call *ast.Node) bool {
-	if !a.runs(call) {
-		return false
-	}
-	signature := a.checker.GetResolvedSignature(call)
-	if signature == nil {
-		return true
-	}
-	t := a.checker.GetReturnTypeOfSignature(signature)
-	return t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 || callRunsResult(a.checker, call, t)
-}
-
 // visitTry lowers $try(e) where it does not run, as where it is passed by
 // name: e itself, the Effect it names.
 func (tx *lowering) visitTry(node *ast.Node) *ast.Node {

@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"testing"
 )
@@ -15,29 +14,15 @@ func TestServiceDefaultRefusesUnhandledTypeReads(t *testing.T) {
 	} {
 		source := "service Flags { static readonly key = \"app/Flags\"; static readonly default: Flags.Shape = { enabled: true, read: <T>(x: T) => x }; enabled: boolean; read: <T>(x: T) => T }\n" + read
 		p, file, _, _ := editorProgram(t, source)
+		warned := false
 		for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
 			if d.Category() == diagnostics.CategoryError {
 				t.Fatalf("invalid fixture: %s", d.String())
 			}
+			warned = warned || d.Code() == EK4855.Code
 		}
-		c, done := p.GetTypeCheckerForFile(t.Context(), file)
-		found := false
-		var visit func(*ast.Node) bool
-		visit = func(n *ast.Node) bool {
-			if legacyDefault(n) {
-				found = true
-				r := legacyDefaultRewrite(c, file, n)
-				if !r.fixable() {
-					t.Errorf("cached native migration unavailable for read %s: %+v", read, r)
-				}
-				return true
-			}
-			return n.ForEachChild(visit)
-		}
-		file.AsNode().ForEachChild(visit)
-		done()
-		if !found {
-			t.Fatal("service fixture not recognized")
+		if !warned {
+			t.Fatal("expected the legacy service default diagnostic")
 		}
 	}
 }

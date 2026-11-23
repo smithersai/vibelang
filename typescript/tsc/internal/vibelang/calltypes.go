@@ -20,11 +20,7 @@ func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *ch
 		return exitCallType(c, call, t) // finally (exit) (primitives.go)
 	}
 	if !callRunsResult(c, call, t) {
-		// D24 keeps subtype results as data in running positions. An Effect
-		// return boundary instead delegates to that subtype's program (S5-1).
-		// This hook also serves the checker's quick call-type path, which
-		// skips expression hooks, including parenthesized callback returns.
-		return returnedProgramType(c, call, t)
+		return t
 	}
 	t = triedResult(c, call, t)
 	if ast.IsOptionalChain(call) {

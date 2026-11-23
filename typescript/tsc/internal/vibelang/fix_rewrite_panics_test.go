@@ -2,8 +2,6 @@ package vibelang
 
 import (
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
 func TestOptionMatchNamedImportNoPanic(t *testing.T) {
@@ -23,16 +21,6 @@ export effect function main() {
 	if !sawEK4839 {
 		t.Fatalf("expected EK4839 warning on named-import Option.match, got %v", diags)
 	}
-	c, done := p.GetTypeChecker(t.Context())
-	defer done()
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if optionMatchOf(c, n) {
-			_ = optionMatchRewrite(c, file, n)
-		}
-		return n.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
 }
 
 func TestMatchChainMissingReturnExpressionNoPanic(t *testing.T) {
@@ -53,16 +41,6 @@ export effect function main() { return 1 }
 	if !sawEK4839 {
 		t.Fatalf("expected EK4839 warning on Match chain with incomplete return, got %v", diags)
 	}
-	c, done := p.GetTypeChecker(t.Context())
-	defer done()
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if matchChainOf(c, n) != nil {
-			_ = matchChainRewrite(c, file, n)
-		}
-		return n.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
 }
 
 func TestLegacyServiceDefaultWithComputedStaticMemberNoPanic(t *testing.T) {
@@ -85,14 +63,4 @@ export effect function main() { return 1 }
 	if !sawEK4855 {
 		t.Fatalf("expected EK4855 warning on legacy static default, got %v", diags)
 	}
-	c, done := p.GetTypeChecker(t.Context())
-	defer done()
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if legacyDefault(n) {
-			_ = legacyDefaultRewrite(c, file, n)
-		}
-		return n.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
 }
