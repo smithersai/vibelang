@@ -117,3 +117,22 @@ test("a type-only import, an emitted boundary or a served package reach nothing"
     assert.deepEqual(deferred.map(d => d.file), ["a/cli.ts"])
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+
+test("a package manager running a runner, env, and tsx watch each name their file", () => {
+  for (const [script, runner, file] of [
+    ["pnpm tsx scripts/build.ts", "tsx", "scripts/build.ts"],
+    ["yarn tsx scripts/build.ts", "tsx", "scripts/build.ts"],
+    ["tsx watch src/server.ts", "tsx", "src/server.ts"],
+    ["yarn node a.mjs", "node", "a.mjs"],
+    ["env FOO=1 node a.ts", "node", "a.ts"],
+    ["pnpm dlx tsx a.ts", "tsx", "a.ts"],
+    ["npx tsx scripts/build.ts", "tsx", "scripts/build.ts"]
+  ]) {
+    const found = scriptEntries(script)
+    assert.equal(found.length, 1, script + " -> " + JSON.stringify(found))
+    assert.equal(found[0].runner, runner, script)
+    assert.equal(found[0].file, file, script)
+  }
+  assert.deepEqual(scriptEntries("pnpm run build"), [])
+  assert.deepEqual(scriptEntries("yarn install"), [])
+})

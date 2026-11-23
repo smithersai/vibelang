@@ -44,20 +44,19 @@ const within = (root, path) => { const r = relative(root, path); return r !== ".
 const configPath = path => existsSync(path) && statSync(path).isDirectory() ? join(path, "tsconfig.json") : path
 const ignored = new Set(["node_modules", ".git", ".jj", ".cache", ".vibelang", ".vibelang-toolchain", ".turbo", ".next", ".output", ".repos", ".alchemy", "coverage"])
 
-export function vibeFiles(root, { sourceRoots = ["."], ignoredPaths = [] } = {}) {
+// Output directories are the projects' own outDir and declarationDir, not any
+// directory named lib, dist or build: a package's sources may live in lib/.
+export function vibeFiles(root, { sourceRoots = ["."], ignoredPaths = [], outputPaths = [] } = {}) {
   root = resolve(root)
-  const excluded = ignoredPaths.map(p => resolve(root, p))
+  const excluded = [...ignoredPaths.map(p => resolve(root, p)), ...outputPaths]
   const files = new Set()
   const walk = directory => {
     if (!within(root, directory) || excluded.some(p => directory === p || within(p, directory))) return
     for (const e of readdirSync(directory, { withFileTypes: true })) {
       if (ignored.has(e.name)) continue
       const path = join(directory, e.name)
-      if (e.isDirectory()) {
-        const parts = relative(root, path).split(sep)
-        if (["dist", "lib", "build"].includes(e.name) && !parts.includes("src")) continue
-        walk(path)
-      } else if (e.isFile() && e.name.endsWith(".vibe")) files.add(path)
+      if (e.isDirectory()) walk(path)
+      else if (e.isFile() && /\.vibex?$/.test(e.name)) files.add(path)
     }
   }
   for (const part of sourceRoots) {
@@ -91,7 +90,9 @@ export function planBuild(root, config, invoke, onProject = () => {}) {
     if (result.error || result.status !== 0) throw new Error("Cannot read project " + slash(relative(root, path)) + ": " + (result.error?.message || [result.stdout, result.stderr].filter(Boolean).join("\n") || "exit " + result.status + (result.signal ? " signal " + result.signal : "")))
     let parsed
     try { parsed = JSON.parse(result.stdout) } catch { throw new Error("Invalid --showConfig response for " + slash(relative(root, path))) }
-    const item = { path, files: new Set((parsed.files ?? []).map(f => resolve(dirname(path), f))), references: (parsed.references ?? []).map(r => configPath(resolve(dirname(path), r.path))) }
+    // An output directory that holds its own config is the source, not output.
+    const outputs = [parsed.compilerOptions?.outDir, parsed.compilerOptions?.declarationDir].filter(d => typeof d === "string").map(d => resolve(dirname(path), d)).filter(d => !within(d, dirname(path)))
+    const item = { path, outputs, files: new Set((parsed.files ?? []).map(f => resolve(dirname(path), f))), references: (parsed.references ?? []).map(r => configPath(resolve(dirname(path), r.path))) }
     cache.set(path, item)
     onProject({ path: slash(relative(root, path)), ms: Date.now() - started, queries: cache.size })
     return item
@@ -109,7 +110,7 @@ export function planBuild(root, config, invoke, onProject = () => {}) {
   const roots = new Set(original)
   for (const entry of entries) for (const p of graph(entry.path)) roots.add(p)
   const initial = new Set(roots)
-  const files = vibeFiles(root, config)
+  const files = vibeFiles(root, { ...config, outputPaths: [...cache.values()].flatMap(p => p.outputs) })
   const uncovered = []
   for (const file of files) {
     if ([...roots].some(p => cache.get(p).files.has(file))) continue
@@ -130,7 +131,7 @@ export function planBuild(root, config, invoke, onProject = () => {}) {
     if (!owners.length) { uncovered.push(slash(relative(root, file))); continue }
     for (const p of owners) for (const child of graph(p)) roots.add(child)
   }
-  if (uncovered.length) throw new Error("No prepared source project owns these .vibe modules: " + uncovered.join(", "))
+  if (uncovered.length) throw new Error("No prepared source project owns these .vibe and .vibex modules: " + uncovered.join(", "))
   const mapped = new Map()
   const artifacts = new Map()
   const noEmit = path => {

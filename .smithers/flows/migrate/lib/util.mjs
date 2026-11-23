@@ -20,6 +20,9 @@ export function run(command, { cwd, env, log, input, timeoutMs, onStderr } = {})
     }, timeoutMs)
     let stdout = ""
     let stderr = ""
+    // Decode each stream as a whole: a character split across two chunks stays one character.
+    child.stdout.setEncoding("utf8")
+    child.stderr.setEncoding("utf8")
     child.stdout.on("data", (chunk) => { stdout += chunk })
     child.stderr.on("data", (chunk) => {
       stderr += chunk

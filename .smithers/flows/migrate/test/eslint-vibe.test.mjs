@@ -48,12 +48,24 @@ test("withVibe gives every TypeScript block its .vibe glob, and leaves other blo
   assert.deepEqual(config[0], { ignores: ["**/*.d.vibe.ts", "**/*.d.vibex.ts", "**/*.vibe.*.d.ts", "**/*.vibex.*.d.ts", "**/.vibelang/js/**"] })
   assert.deepEqual(config[1].files, ["src/**/*.ts", "examples/**/*.ts", "src/**/*.vibe", "examples/**/*.vibe"])
   assert.deepEqual(config[1].ignores, ["src/**/*.test.ts", "**/*.d.ts", "src/**/*.test.vibe"])
-  assert.deepEqual(config[2].files, [["src/**/*.ts", "**/*.{ts,tsx}"], ["src/**/*.vibe", "**/*.vibe"]])
+  assert.deepEqual(config[2].files, [["src/**/*.ts", "**/*.{ts,tsx}"], ["src/**/*.vibe", "**/*.{vibe,vibex}"]])
   assert.deepEqual(config[3].files, ["**/*.mjs"])
   assert.deepEqual(config[4].files, ["**/*.{js,jsx}"])
   assert.deepEqual(config[5].ignores, ["src/generated.ts", "**/*.d.vibe.ts", "**/dist", "src/generated.vibe"])
-  assert.deepEqual(config.at(-1).files, ["**/*.vibe"])
+  assert.deepEqual(config.at(-1).files, ["**/*.{vibe,vibex}"])
   assert.equal(config.at(-1).languageOptions.parser.name, "stub parser")
+})
+
+test("withVibe maps a TSX glob to .vibex, a mixed brace list to both, and parses .vibex", async t => {
+  const { withVibe, vibeGlob } = await helper(t)
+  assert.equal(vibeGlob("src/**/*.tsx"), "src/**/*.vibex")
+  assert.equal(vibeGlob("src/**/*.ts"), "src/**/*.vibe")
+  assert.equal(vibeGlob("**/*.{ts,tsx}"), "**/*.{vibe,vibex}")
+  assert.equal(vibeGlob("**/*.{mts,cts}"), "**/*.vibe")
+  assert.equal(vibeGlob("**/*.{tsx,js}"), "**/*.vibex")
+  const config = withVibe([{ files: ["**/*.tsx"] }])
+  assert.deepEqual(config[1].files, ["**/*.tsx", "**/*.vibex"])
+  assert.deepEqual(config.at(-1).files, ["**/*.{vibe,vibex}"])
 })
 
 test("withVibe turns off rules that need types, tells eslint-plugin-import about .vibe, and awaits a promise", async t => {
@@ -67,8 +79,8 @@ test("withVibe turns off rules that need types, tells eslint-plugin-import about
   assert.deepEqual(config.at(-1).rules, { "@typescript-eslint/typed": "off" })
   const { settings } = config.at(-2)
   assert.equal(config.at(-2).files, undefined)
-  assert.deepEqual(settings["import/extensions"], [".ts", ".js", ".vibe"])
-  assert.deepEqual(settings["import/parsers"], { "vibelang/eslint": [".vibe"] })
+  assert.deepEqual(settings["import/extensions"], [".ts", ".js", ".vibe", ".vibex"])
+  assert.deepEqual(settings["import/parsers"], { "vibelang/eslint": [".vibe", ".vibex"] })
 })
 
 test("addEslintVibe wraps what a flat configuration exports", () => {
