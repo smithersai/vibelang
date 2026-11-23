@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" role="img" aria-labelledby="t d">
+  <title id="t">How catch and match shrink the error union E</title>
+  <desc id="d">findItem fails with InvalidCode | ItemMissing. Catching ItemMissing and rethrowing the rest narrows the caller return type to string!InvalidCode.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#64708a"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#a5b4fc"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fda4af"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#5eead4"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fcd34d"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #eef1f6; }
+    .sub { font-size: 13px; fill: #b3bac7; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #eef1f6; }
+    .p { font-size: 12.5px; fill: #b3bac7; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="300" rx="10" fill="#14151a"/>
+  
+      <text x="36" y="42" class="h">Handle one failure, and the compiler removes it from E</text>
+      <text x="36" y="64" class="sub">Each unhandled branch stays in the return type. Forget a case in an exhaustive match and the compiler stops you.</text>
+
+      <!-- Box 1: Source Effect -->
+      <rect x="36" y="96" width="214" height="152" rx="10" fill="#1c1d24" stroke="#323544" stroke-width="1.5"/>
+      <text x="54" y="122" class="k" fill="#8a93a6">CALLEE</text>
+      <text x="54" y="148" class="code" fill="#eef1f6">findItem(input)</text>
+      <text x="54" y="180" class="code-sm" fill="#a5b4fc">A: Item</text>
+      <text x="54" y="202" class="code-sm" fill="#fda4af">E: InvalidCode</text>
+      <text x="54" y="220" class="code-sm" fill="#fda4af"> | ItemMissing</text>
+
+      <line x1="250" y1="172" x2="296" y2="172" stroke="#64708a" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- Box 2: catch + match -->
+      <rect x="304" y="96" width="286" height="152" rx="10" fill="#232445" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="322" y="122" class="k" fill="#a5b4fc">CATCH EFFECT + MATCH</text>
+      <text x="322" y="148" class="code-sm" fill="#eef1f6">catch effect (err) =&gt; match (err) {</text>
+      <text x="322" y="172" class="code-sm" fill="#5eead4">  when ItemMissing: fallback;</text>
+      <text x="322" y="196" class="code-sm" fill="#fda4af">  default: throw err;</text>
+      <text x="322" y="218" class="code-sm" fill="#eef1f6">}</text>
+      <text x="322" y="238" class="p">ItemMissing is recovered; default rethrows</text>
+
+      <!-- Two outgoing arrows -->
+      <line x1="590" y1="146" x2="636" y2="146" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <line x1="590" y1="204" x2="636" y2="204" stroke="#fda4af" stroke-width="2" marker-end="url(#arrow-red)"/>
+
+      <!-- Box 3: Caller contract -->
+      <rect x="644" y="96" width="200" height="152" rx="10" fill="#1c1d24" stroke="#323544" stroke-width="1.5"/>
+      <text x="662" y="122" class="k" fill="#8a93a6">CALLER TYPE</text>
+      <text x="662" y="152" class="code" fill="#a5b4fc">string!InvalidCode</text>
+      <text x="662" y="182" class="p">✓ ItemMissing handled</text>
+      <text x="662" y="206" class="p">→ InvalidCode stays in E</text>
+      <text x="662" y="230" class="p">Zero runtime tag typos</text>
+
+      <text x="440" y="280" text-anchor="middle" class="p">Handle every case with <tspan class="code-sm" fill="#a5b4fc">catch () =&gt; defaultVal</tspan> and E collapses all the way to <tspan class="code-sm" fill="#5eead4">never</tspan>.</text>
+    
+</svg>

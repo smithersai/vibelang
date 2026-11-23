@@ -1,16 +1,10 @@
 # VibeLang for Effect users
 
-`await` in a `match` arm follows its written context. A class `static` block rejects it with `TS18037`; a nested `async` callback can await a Promise.
+VibeLang keeps Effect 4's runtime, type system, layers, and standard library — and replaces generator boilerplate, `yield*`, `pipe`, and verbose error/service classes with statements. Every VibeLang form compiles to the Effect TypeScript you would write by hand.
 
-An `async` function's parameter defaults keep TypeScript's `TS2524` error for `await`, including an Effect-valued operand. A nested `async` callback has its own body and can await a Promise; awaiting an Effect in that callback still requires `await runPromise(program)`.
+See the [cheat sheet](115-cheat-sheet.md) for every construct side by side, and the [specification](../../../design/src/000-intro.md) for formal language rules.
 
-`await` in a plain function or callback nested in a class `static` block keeps TypeScript's native diagnostic: `TS1308`, or `TS2311` for a parenthesized call. Make that callback `async` to await a Promise; the surrounding block does not give it permission to wait.
-
-An `effect` block keeps contextual return typing when the expected type also accepts a plain value, such as `Plugin | Effect.Effect<Plugin>`. Callback parameters inside the returned `Plugin` receive its declared types. Invalid property reads follow TypeScript even when `noImplicitAny` is `false`.
-
-Keep Effect's runtime, libraries, layers, and error channels; in `.vibe` files, write sequential work as effect functions and statements. The [cheat sheet](115-cheat-sheet.md) shows every change beside its Effect code, and the [specification](../../../design/src/000-intro.md) gives the rules behind each.
-
-An `effect` function or producer expression cannot name itself `fork` or `join` (`EK1702`). A declaration uses its enclosing context: `export effect function fork() { return 1 }` is allowed in plain code, while a declaration named `fork` or `join` inside effect code is rejected. Method and property names remain ordinary names, so `{ effect join() { return 1 } }` is allowed.
+![VibeLang compiles .vibe and .ts files in one program into ordinary Effect JavaScript and .d.vibe.ts declarations](/diagrams/vibe-ts-interop.svg)
 
 ```vibe
 // run: try Console.log(try main())
@@ -28,62 +22,17 @@ effect function main() {
 // Output: Hello, Ada
 ```
 
-Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns its string. Pass that Effect directly to `retry`, `timeout`, or another Effect function. Use `effect { ... }` to build an Effect from several statements. Plain and `async` functions keep their TypeScript meaning. `await` waits for Promises in `async` functions. Awaiting an Effect reports `EK0103`, including in an `async function*` with a written `AsyncGenerator`, `AsyncIterator`, `AsyncIterableIterator` or `AsyncIterable` return type. Write `await runPromise(program)` to execute it. Generic inference for an implementation built inside `Effect.gen` also preserves the requirements inferred by TypeScript 5.9.3: binding a function that pipes a union of Effects to a local `const` retains the same requirements as writing it directly in the returned object.
+## Mental model in five rules
 
-A class `static` block keeps TypeScript's `TS18037` error for `await`, including an Effect-valued operand. A nested `async` callback keeps its own `await` rules; run an Effect there with `await runPromise(program)`.
-
-A direct `try` call whose return type is `any` contributes `unknown` error and requirement channels, just like storing that result and trying the value. Parenthesized calls, method calls and calls selected by a conditional preserve the same channels. Give a dynamic call a precise `Effect.Effect<A, E, R>` return type when those channels are known.
-
-An ordinary call keeps its TypeScript meaning when its receiver has a capitalized name. A local object, class, function or parameter such as `Box` does not become a service key because of its spelling; a parameter also shadows an outer service with the same name. The TypeScript view used by editors follows the resolved lexical binding.
-
-A plain function's written return type checks the whole value it returns. For `function make(value: string): { type: "dataUrl"; value: string }!unknown { return Effect.succeed({ type: "dataUrl", value }) }`, the return expression is typed by the full `Effect`, preserving `"dataUrl"` as a literal, as in TypeScript. An `effect` function's body instead returns the `Effect`'s success value.
-
-`noImplicitReturns` checks that success value, including when the return type is inferred. An `effect` function whose branches only use bare `return` or fall through succeeds with `undefined`; it needs no value-returning statement. A branch that returns a value while another falls through still reports `TS7030`, as its `Effect.gen` counterpart does.
-
-Choose one function kind: `effect` returns an Effect and `async` returns a Promise. Combining them in either order, including on arrows, methods and blocks, reports `EK0105`. The editor can remove either modifier from a function; for a block it removes `async` and keeps `effect { ... }`. To preserve the native `Promise` API previously emitted for accepted mixed declarations and methods, remove `effect` from functions; for blocks, remove `async`.
-
-A generic plain function also keeps TypeScript's inference. In `expect(awaited(p))`, where `awaited` returns an Effect and `expect<T>(value: T)` accepts any value, `T` is the Effect type. The call receives the cold program. To assert on its success, first write `const value = try awaited(p)`, then `try Effect.try(() => expect(value).toBe(expected))`, since an assertion can throw. Passing the Effect directly remains useful when the assertion inspects the program itself. In effect code, an inferred Effect argument to a plain generic parameter reports the advisory `EK4802` warning. Ignoring that warning or configuring it off keeps the program cold; a project-wide error policy requires an explicit change that keeps the program's meaning.
-
-An optional call can return `undefined`, which is not an Effect (`EK0502`). Keep the optional call's normal TypeScript evaluation, then guard its result before `try`:
-
-```vibe
-effect function maybeLoad(load?: () => string!!) {
-  const program = load?.()
-  return program === undefined ? undefined : try program
-}
-```
-
-`try make()` explicitly delegates the call's result even when `make` has type `any`. The compiler no longer describes that result as an unrun Effect. Give the callable an Effect return type to check its success, error, and service channels. An unwrapped tail call through `any` can report both `EK0403` for its unknown synchronous throws and the compatibility warning `EK4409` for its unchecked result; changing the enclosing success type to `unknown` or `object` does not establish a callable contract.
-
-With `strictNullChecks` enabled, `try load?.()` and `try program` where `program` may be `undefined` report `EK0502`. Narrow the callable or operand first, or provide an Effect fallback. Optional syntax on a proven-present callable stays allowed, as does an Effect whose success value is `undefined`. The operand check follows the project's TypeScript nullability settings.
-
-For unchecked operands such as `any`, `try load?.()` delegates the optional call's actual result. If the call is absent, `undefined` produces a native `TypeError` defect. To make absence succeed, write `try (load?.() ?? Effect.succeed(undefined))`. Native optional chaining still skips its arguments and retains method receivers.
-
-Plain code may discard a runner's result: `function run(): void { Effect.runSyncExit(Effect.succeed(1)) }` runs the Effect and discards its `Exit`, just as in TypeScript. The same applies to plain callbacks, `async` functions and module statements. Discarding a constructed Effect value does not run it; use explicit execution when that is intended.
-
-A plain `for...of` also keeps TypeScript's lexical scopes. A closure made in its iterable expression captures an uninitialized `let` or `const` head binding, even with destructuring. Calling that closure during or after the loop throws `ReferenceError`; initializing the separate per-iteration bindings does not initialize the captured cell. An assignment head keeps its outer shared binding instead. In `.vibe`, write an explicit outer `let` and an assignment head when migrating a shared `var` cell; `var` itself belongs in a `.ts` or `.js` file (VIP-1).
-
-An `effect` function’s parameter defaults run at the call, outside Effect code, including a `do` that contains `return` and any earlier or later defaults. A plain `throw` or an unwrapped potentially throwing call there reports `EK0401`. An ordinary `try`/`catch` can catch a throwing call in a default. Forbidden `await` still reports `EK0102` in a moved default. The function body and nested source functions keep their own contexts.
-
-In a flat array declaration such as `const [x = do { return 9 }] = values`, the default runs only for `undefined`. Its `return`, `break`, or `continue` reaches the enclosing function or loop and skips the remaining bindings. An unfinished iterator closes before the jump; an error from closing replaces a jump, while an exception already in flight wins over a closing error. A `match` around the `do` keeps the same behavior. In Effect code, JavaScript exceptions remain defects with the same closing precedence. An Effect failure abandons a suspended pattern without calling its iterator's `return`; normal jumps close before enclosing `Scope` finalizers. Compiler-generated cleanup does not count as a source `try`/`catch`: a plain function still needs its own catching `try` around a call known to throw.
-
-A recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member is `EK0108`. Remove only the modifier from the erased signature, retaining its return type and comments, or put the implementation in an ordinary function or method. A class method written `declare effect read(): number!!` also reports `EK0108`; TypeScript’s separate `TS1031` for `declare` on a method remains. An `interface` or type literal method keeps its written return type when this modifier is rejected; it does not also report `EK0106`. Nonambient overload signatures may still use `effect`. A method named `effect`, such as `interface Ordinary { effect(): number }`, keeps its ordinary TypeScript meaning.
-
-`effect` follows a declaration's other modifiers, as `async` does: write `static effect load()` and `export effect function load()`. Written before one of them, as in `effect static load()`, it reports TypeScript's `TS1029`, which names the modifier that must come first. A repeated `effect` reports `TS1030`, and `effect` on a field, class, variable or other declaration that takes no such modifier, as in `effect size = 1`, reports `TS1042`. A method may still be named after a modifier: `effect static() { }` is an `effect` method named `static`. The same reading covers an object literal, where `{ effect size: 1 }` reports `TS1042`, and a parameter, where `function f(effect x: number)` reports `TS1090`.
-
-A service contract such as `service S { effect read(): number!! }` reports `EK0902`. Declare `read(): number!!` and put its `effect` implementation in a layer. The modifier-removal fix keeps the signature’s return type and comments.
-
-Migration setup preserves the authored `rewriteRelativeImportExtensions` option, including its default when absent and values inherited through `extends`. It adds no local override in referenced projects or newly wired packages.
-
-When migrating an exported Effect value, keep it as a value: `export const stocked = effect { return try available("TEA") }`. A function such as `export effect function stocked()` exports a callable API and requires consumers to add a call. Compare the emitted declarations to keep the original export type and lazy behavior.
-
-If migration cannot read a module's imports, its error includes the native parser diagnostic and compiler exit status. A failed compiler invocation never supplies import edges.
-
-A variable annotation does not change a written execution site. If `makeJob()` returns an `Effect` that succeeds with another `Effect`, `const job: Effect.Effect<number> = try makeJob()` runs the outer `Effect` at the binding site and stores the inner one. Without `try`, initialization stores the returned cold `Effect`.
+1. **`effect function` returns a cold Effect.** Calling `greet("Ada")` builds an Effect without running it. `try greet("Ada")` runs it on the current fiber. Pass `greet("Ada")` directly to `retry`, `timeout`, `fork`, or `try.all`.
+2. **Plain and `async` functions stay TypeScript.** `await` works only on Promises inside `async` functions (`EK0102` in effect code, `EK0103` when awaiting an Effect — use `await runPromise(program)` instead). Combining `effect` and `async` is `EK0105`.
+3. **Synchronous `.vibe` code never throws.** In `effect` code, `throw` is `Effect.fail`. In plain `.vibe` code, `throw` is `EK0401`. Wrap throwing `.ts` calls in `Effect.try` (`EK0403`) and Promises in `tryPromise` (`EK0404`).
+4. **Effect's modules and exports are global.** `Console`, `Clock`, `Option`, `Stream`, `Schedule`, `Layer`, `Schema`, `Scope`, `retry`, `timeout`, `sleep`, `all`, `forEach`, and `runPromise` need no import. Clashing names keep `Effect.` (`Effect.try`, `Effect.catch`, `Effect.provide`, `Effect.match`, `Effect.Array`, `Effect.String`). Disable implicit globals via `vibe.effectGlobals: false` / `vibe.effectModules: false`.
+5. **`A!E!R` means `Effect.Effect<A, E, R>`.** Empty or omitted slots are `never`, never inferred. Omit the return annotation to infer all three channels. Avoid the retired bare `Effect<A, E, R>` alias (`EK4856`).
 
 ## Call VibeLang from TypeScript
 
-Compile both files with `vibelang`, rather than ordinary `tsc`. In a `.ts` source, import the relative `.vibe` path **with its extension**:
+Compile `.vibe` and `.ts` together with `vibelang`. In `.ts`, import the relative `.vibe` module with its extension:
 
 ```vibe
 // t5.vibe
@@ -101,9 +50,7 @@ console.log(JSON.stringify(Effect.runSync(clampAll([-2, 4, 15]))))
 // Output: [0,4,10]
 ```
 
-To TypeScript, `clampAll(...)` returns an `Effect.Effect<number[], never, never>`. Run that program at the application boundary: `Effect.runSync` works when execution stays synchronous; `await Effect.runPromise(clampAll(...))` also supports asynchronous work. Import runners from `effect` as above, or `runSync` / `runPromise` from `vibelang-runtime`. Supply any required services with `Effect.provide` before running. A plain function, such as `function addOne(n: number): number`, returns its value directly and takes no runner. Inside an effect function, run `clampAll(...)` with `try`; call a plain function directly; see [Running Effects](../getting-started/009-running-effects.md).
-
-For `src/t5.vibe` and `src/use.ts`, keep these settings in `tsconfig.json`:
+TypeScript callers see `clampAll` as returning `Effect.Effect<number[], never, never>` via the generated `.d.vibe.ts` sidecar. Run it at your application boundary with `Effect.runSync` or `await Effect.runPromise(...)` after providing required services. Keep `rewriteRelativeImportExtensions: true` in `tsconfig.json`:
 
 ```json
 {
@@ -118,18 +65,17 @@ For `src/t5.vibe` and `src/use.ts`, keep these settings in `tsconfig.json`:
 }
 ```
 
-Keep the starter's other compiler options. `include` must cover a standalone `.ts` entry point: a `.ts` file imported by an included file is already part of the project, but an unreferenced `src/use.ts` is otherwise neither built nor typechecked. The current starter includes both `.vibe` and `.ts` files under `src/`. `rewriteRelativeImportExtensions` rewrites `"./t5.vibe"` to `"./t5.js"` in emitted JavaScript. Build, then run the emitted caller:
-
-```sh
-bun run build
-node dist/use.js
-```
-
-Node runs the JavaScript output; importing the `.vibe` source directly with Node does not compile it.
+> **Optional calls (`EK0502`):** With `strictNullChecks`, narrow an optional Effect before running it:
+> ```vibe
+> effect function maybeLoad(load?: () => string!!) {
+>   const program = load?.()
+>   return program === undefined ? undefined : try program
+> }
+> ```
 
 ### Services and errors from TypeScript
 
-A service is Effect's own `Context.Service` class, so TypeScript sees the same two types. `Users` is the service's identifier, which carries its key, so a structural object can't stand for it. `Users.Shape`, which TypeScript spells `Context.Service.Shape<typeof Users>`, is the members. Implement a service in TypeScript with `implements Context.Service.Shape<typeof Users>`, provide it with `Layer.succeed(Users, impl)`, and read it with `yield* Users`. An `error` class is the class `Data.TaggedError` declares, and `Effect.catchTag` catches it by its tag.
+A VibeLang `service` compiles to `Context.Service` and a VibeLang `error` compiles to `Data.TaggedError`. TypeScript callers implement the service shape via `Context.Service.Shape<typeof Users>`, provide it with `Layer.succeed`, and catch errors with `Effect.catchTag`:
 
 ```vibe
 // users.vibe
@@ -158,50 +104,7 @@ console.log(Effect.runSync(program.pipe(Effect.provide(Layer.succeed(Users, new 
 // Output: no user 2
 ```
 
-The emitted declarations are the ones the Effect TypeScript writes, so a library migrated to VibeLang keeps its `.d.ts`: a service declares `class Users extends Context.Service<Users, { … }>()(key)`, a schema `const User = Schema.Struct(…)` and `type User = typeof User.Type`, and an `error` the `Data.TaggedError` class. For an existing shape, `service Name: Type { … }` passes `Type` directly to Effect, preserving its name and modifiers without a shape helper; its body admits only `key` and `defaultValue`. A migrated service keeps its key with `static readonly key = "app/Users"` in its body. Ordinary interface and object-type properties keep their written `readonly` modifiers in declarations: `value: number` stays writable, and `readonly value: number` stays readonly. This also applies to optional properties, index signatures and nested object types; class fields keep their written modifiers too. An inferred library type keeps its library qualifier even beside a local declaration with the same name: a decoder from `Schema.decodeUnknownSync` uses `import("effect/SchemaAST").ParseOptions` when the module exports its own `SchemaAST`. Declarations are written beside the source as `x.d.vibe.ts`, and package builds also write ordinary `.d.ts` files. The migration flow keeps generated `module` companions private under package wildcard exports, including `publishConfig.exports`; reverting the migration removes only the export exclusions it generated. A TypeScript `module parse { … }` body also writes `x.vibe.parse.d.ts` beside `x.vibe`, preserving its exported types and JSDoc, including `@throws`, for stock TypeScript consumers of the sidecar (VIP-40). A native `module` body inside `.vibex` follows TSX, including JSX parsing, checking and formatting. With `jsx: preserve` it emits `x.vibex.parse.jsx`; other JSX modes emit `x.vibex.parse.js`. Its public and compatibility declarations use `x.vibex.parse.d.ts`. Re-exported arrow functions retain their parameter and return types too: a call returning `string` cannot initialize a `number` in a TypeScript consumer.
-
-A library’s composite consumers also read its TypeScript `module` body declarations from the configured declaration output. A type re-exported from a body retains its inherited members across that project reference.
-
-
-For non-effectful foreign calls, `@throws {never}` permits a direct call. Other written bounds require `try Effect.try(() => call())` (`EK0403`), including through aliases and the selected overload. A callable returning an `Effect`, `Stream` or `Layer` is effectful: call it directly, regardless of `@throws`. Run an Effect result with `try`; bridging its factory with `Effect.try` returns the cold program instead of its success value. For calls that previously converted listed exception classes into typed failures, write an explicit bridge that preserves those failures and leaves other exceptions as defects.
-
-A `.ts` type predicate declared `@throws {never}` keeps TypeScript’s narrowing when called directly from an `effect` function or block:
-
-```ts
-// predicates.ts
-/** @throws {never} */
-export function isNumber(value: unknown): value is number {
-  return typeof value === "number"
-}
-```
-
-```vibe
-// increment.vibe
-import { isNumber } from "./predicates.ts"
-
-export effect function incrementIfNumber(value: unknown): number!! {
-  if (isNumber(value)) return value + 1
-  return 0
-}
-```
-
-Inside the `if` branch, `value` is a `number`, so `value + 1` is checked with that narrowed type.
-
-When upgrading existing `.vibe` modules from the former readonly defaults, make unmarked schema fields and service shape properties explicitly `readonly` and preserve legacy nested service types. Error and data fields remain shallow readonly properties; write the old nested payload modifiers explicitly to retain published declarations. Ordinary classes, interfaces and object types retain their written modifiers.
-
-### Keep a throwing helper in a TypeScript body
-
-A named `module` body at file scope uses ordinary TypeScript, including native `throw`. Import its members with the module name:
-
-```vibe
-module pem {
-  export function b(message: string): string { throw new Error(message) }
-}
-import { b } from pem
-export { b }
-```
-
-The name is an identifier specifier in the containing VibeLang file. When moving the body to a sibling TypeScript file, import that file with a string specifier. Ordinary TypeScript namespaces remain available inside the body.
+Emitted `.d.vibe.ts` and `.d.ts` declarations match the Effect TypeScript you would write by hand, preserving `readonly` modifiers, `static readonly key`, and `@throws` JSDoc across package and project-reference boundaries.
 
 ## Translate the idioms
 
@@ -248,29 +151,9 @@ The name is an identifier specifier in the containing VibeLang file. When moving
 | `Effect.forkDetach(program)` | `fork.detached program` |
 | `Stream.runForEachWhile` | `for try (const value of stream) { ... }` |
 
-A direct `Option.match` call can be rewritten as `match` even when a handler is a constructor such as `Effect.succeed`. Capture the subject and handlers in their original order, keep the callback type the original call instantiated, and return the selected Effect without running it unless the source used `try`.
+`try result(program)` captures typed failures only; Defects and interruption propagate. `try exit(program)` captures the full cause in `Exit.Failure`, including defects and interruption.
 
-`sync`, `callback` and `never` can be stored and passed as values: `const evaluate = sync`, `const register = callback`, `const waiting = never`. These bindings are `Effect.sync`, `Effect.callback` and `Effect.never`, with their native types. Older annotations, including factory return types, that require the compatibility helper's signature migrate to a qualified runtime import type; the underlying value and calls stay unchanged. Their arrows capture surrounding locals; an aliased `callback` resumes with an Effect, as in `register<number>((resume) => resume(Effect.succeed(value)))`.
-
-`try.allSettled` captures every element's full outcome as an `Exit`, including defects and interruption, and the whole never fails.
-
-`try result(program)` captures typed failures only. Defects and interruption propagate. `try exit(program)` instead captures the full cause in `Exit.Failure`, including defects and interruption.
-
-Use Effect's operators for retries, timeouts, concurrency, and Stream transformations. Statements replace operators that only sequence ordinary work.
-
-An `effect` function or producer expression reserves `fork` and `join` in its own name (`EK1702`), like an `async` expression reserves `await`. Top-level declarations and method names keep their ordinary names. Preserve a reserved expression name and its self-references through a local constant in a plain arrow; see [Fibers](../concurrency/047-fibers.md).
-
-For a legacy `fork(program, options)` call inside `effect` code, write `try Effect.forkChild(program, options)`. This preserves the options and evaluates both arguments on the caller before starting the child.
-
-Effect declarations and combinator calls ported from TypeScript compile in a `.vibe` file, with warnings `EK4830`–`EK4837` where VibeLang has its own form. A plain `function*` keeps JavaScript generator semantics, including when passed to `Effect.gen`. See [TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code).
-
-Legacy `: infer _` annotations in plain callbacks checked as TypeScript by `Effect.try`, `Effect.tryPromise`, `sync` or `callback` can report `TS1338`.
-Generator parameter defaults need separate treatment: `Effect.fn` evaluates them on every program execution, whereas native `effect` parameters bind at the call. The migration flow refuses these legacy generator defaults before an older compiler can move them. Keep execution-time bindings inside an `effect { … }` block, in their original order; see [Generator parameter bindings](../setup/migrating-retired-forms.md#generator-parameter-defaults).
-
-
-When migrating a generator, `const inner = yield* make()` becomes `const inner = try make()` even when the result is another Effect. That inner program stays cold until a separate `try inner` runs it. To run both layers in one expression, write `try try make()` or `try (try (make()))`, corresponding to `yield* yield* make()`: each `try` runs its operand once, with or without parentheses. A `do` or `match` expression, `try.race` and `try.any` are operands as well: `try (do { … })`, `try match (x) { … }` and `try try.race [a, b]` run the Effect the form gives, and report `EK0502` when it gives another kind of value. A discarded program result becomes `void try make()`.
-
-Async conversion withholds a `Promise` bridge when an awaited `do` expression would move a `return`, `break` or `continue` away from its source target. Move the outward control flow before the `await` first. Local jumps inside the operand and nested callable returns remain eligible. The same conversion is withheld for an explicit `throw` that would move from the `async` body into a plain `Effect.tryPromise` callback. Throws in a nested `async` or `effect` callable keep their own context.
+Hand-written Effect TypeScript still compiles in `.vibe` files, with advisory warnings `EK4830`–`EK4837` where a VibeLang form exists ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
 
 ## Calls return Effects; programs stay cold
 
@@ -292,26 +175,11 @@ effect function concurrent() {
 // Output: [["Hello, Ada","Hello, Grace"],["Hello, Ada","Hello, Grace"]]
 ```
 
-An effect function call constructs an Effect. `try` runs it at that point. `try.all` runs the supplied Effects concurrently. An `effect { ... }` block constructs an Effect and reruns its statements each time that Effect runs. A producer call constructs a Stream. See [Producers](112-producers.md).
-
-Calls and template tags on `super` keep their receiver, including through
-parentheses, `!`, `as`, `satisfies` and type assertions. For example,
-`super.method!()` and `(super.method as F)()` use the same `this` as
-`super.method()`.
-
-An effect arrow or block keeps its enclosing `this`, `super` and `new.target`.
-Building the Effect does not read these bindings. You can build a block in a
-derived constructor before `super()` and run it afterward. Running it before
-`super()` dies with a `ReferenceError` only if execution reaches a `this` or
-`super` read; a skipped read checks nothing.
-Field and default-parameter arrows also keep TypeScript's inferred `name`,
-including private and computed fields; lazy captures preserve that naming context.
-
-`try` in an object literal's computed method or accessor name uses the surrounding `effect` activation. The member's body keeps its own context, and a parameter default remains plain JavaScript. Computed keys evaluate in source order, including conversion to a property key.
+An `effect` function binds parameters and defaults at call time and reruns its body on each execution. When you pass an unrun Effect to a generic helper like `expect(awaited(p))`, advisory `EK4802` reminds you to run `try awaited(p)` unless you intentionally want to assert on the Effect object itself.
 
 ## Preserve a factory's call-time work
 
-When TypeScript captures configuration before returning an Effect, keep that phase in a plain function with a declared Effect return and return an Effect value:
+When a TypeScript factory snapshots synchronous input before returning an Effect, keep it as a plain function returning `effect { ... }`:
 
 ```vibe
 export const capture = (input: { value: number }): number!! => {
@@ -320,17 +188,11 @@ export const capture = (input: { value: number }): number!! => {
 }
 ```
 
-A TypeScript caller can build `capture(input)`, mutate `input`, then run the program, and still get the snapshot. The outer body runs synchronously at the call and can compute or copy plain data; every path returns a program. **Where TypeScript returned Effect.fail(e), write return effect { throw e }**; a plain `throw` in the outer function is a compile error (EK0401), because a function that returns an Effect can't throw. Put Effects and service lookups inside the returned program.
-
-A forwarding member keeps its delegate's call phase with `const program: Effect.Effect<number, never, never> = base.read(path); return program`. A const with a declared Effect type holds its initializer in any scope: `const built: Made = make(config)` calls the factory now and runs none of the result. Capture values at the same phase as the TypeScript implementation; keep reads intended for execution inside the returned program.
-
-A synchronous visitor that must return a program keeps its callback type unchanged: return `effect { ... }` from the callback, then run the returned program from effectful code. A discarded `items.map(item => save(item))` still needs `Effect.forEach` or a loop.
-
-An Effect-returning function passed or stored as data follows TypeScript's assignability rules, including generic constraints, arrays, unions and `Function` destinations. A `() => void` callback type can ignore the returned program; it does not run it. A destination requiring a number still reports TypeScript's return-type incompatibility. The function's written modifier determines its kind; the destination does not convert it.
-
-`retry(make(config), policy)` calls the factory once and retries its returned Effect. Use `retry(suspend(() => make(config)), policy)` to call the factory on each attempt; `const p: Made = make(config); try retry(p, policy)` calls it once and retries that program.
+Use `return effect { throw e }` where TypeScript returned `Effect.fail(e)` (plain `throw` in the outer function is `EK0401`). To re-run the factory on each retry attempt rather than retrying the same returned Effect, wrap with `suspend(() => make(config))`.
 
 ## Declare at the module top level
+
+Module top level is ordinary JavaScript: top-level `await` awaits Promises, and `try` belongs inside an `effect` function or block. Start `main` explicitly with a runner:
 
 ```vibe
 // start.vibe
@@ -341,15 +203,11 @@ await runPromise(main())
 // Output: started
 ```
 
-An exported `const main` or `let main` is an ordinary lexical binding. It keeps its temporal dead zone: a read before initialization throws `ReferenceError`. The compiler reports no entry warning for it. Call a runner explicitly to run an Effect.
-
-The module top level is ordinary JavaScript. Construct Effects there and run them with an explicit runner. Top-level `await` accepts a Promise. A TypeScript `namespace` body is synchronous, so `await` there reports `TS1308`; use an `async` function inside the namespace and await its Promise at the module top level. `try` execution belongs inside an effect function or block.
-
-Every export of Effect's `Effect` module is global unless its name clashes with a keyword or JavaScript global. These are the native functions and values: `forkIn(program, scope)` keeps Effect's argument order. Setting `vibe.effectGlobals` to `false` removes every implicit Effect function, including `sync` and `callback`; explicit imports and local declarations keep their ordinary meanings. Clashing names keep the `Effect.` prefix, such as `Effect.try` and `Effect.provide`. Root modules such as `Console`, `Clock`, `Option`, `Schedule`, and `Stream` are in scope. JavaScript globals such as `Array` keep their meaning, and `Effect.Array` names Effect's module only through the unshadowed implicit `Effect`. Platform subpath namespaces such as `HttpClient` are also in scope. Precedence applies separately to TypeScript's type and value meanings: `Console` in a type position remains the DOM interface, while `Console.log` uses Effect's namespace. Local type aliases and interfaces likewise keep their type meaning without hiding Effect's value namespace; a local value binding keeps its own members. Generated imports use fresh names.
-
-`globalThis.eval` and `globalThis.Function`, including static string or template keys and optional access, report `EK0107`. Keep code that evaluates source text in a `.ts` file or a `module` body. `x instanceof globalThis.Function` and `globalThis.Function.prototype` remain valid, as do type queries and a local binding named `globalThis`.
+`var`, `eval`, `Function`, and `with` are disallowed in `.vibe` files (`EK0107`); keep code requiring them in a `.ts` module.
 
 ## Keep platform work in Effect
+
+Host globals (`console.log`, `fetch`, `setTimeout`, `process`, `crypto.randomUUID()`) and `node:*` value imports are compile errors in `.vibe` (`EK4402`). Use Effect's services instead, and supply the platform layer once at `main`:
 
 ```vibe
 // run: const clock = try Clock.Clock; provide Clock.Clock = { ...clock, currentTimeMillis: succeed(123), currentTimeMillisUnsafe: () => 123 } { try Console.log(try reportTime()) }
@@ -361,8 +219,6 @@ effect function reportTime() {
 // Output: 123
 // Output: 123
 ```
-
-`console.log`, `fetch`, timers, `process`, and `node:*` imports are errors in `.vibe` (EK4402), and so are the web's clock and randomness reads, such as `crypto.randomUUID()` (EK4402). Effect has a service for each, and the error names it and the layer that provides it. ECMAScript's `Date.now()` and `Math.random()` are allowed; read `try Clock.currentTimeMillis` and `try Random.next` where a test must control them. Use the prelude's `Console`, `Clock`, `sleep`, and `Config`. Look up a platform service with `try`, with no import, then call its members and run their Effects with `try`. Choose the platform layer at the application boundary:
 
 ```vibe
 // notes.vibe
@@ -383,85 +239,9 @@ NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))
 // Output: saved
 ```
 
-`NodeServices.layer` holds `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; Bun uses `BunServices.layer`. The crypto services of `effect/crypto`, such as `SecureRandom` and `Digest`, come from `NodeCrypto.layer`. `HttpClient`, from `effect/http`, needs `FetchHttpClient.layer` provided inside `main`. [The platform introduction](../platform/105-introduction.md) lists the service for each common Node.js and web call. Don't wrap a platform API that Effect covers in a `.ts` adapter. Node's globals and the web's I/O globals are not in scope in `.vibe`, and a `.vibe` file does not import a Node.js module as a value (D310); [Platform globals](../platform/platform-globals.md) answers each one. For a Node HTTP server, [Building an HTTP API](113-building-an-http-api.md) uses `ExperimentalNodeHttpServer.layer({ port })`, Effect's existing server layer with its default constructor supplied.
+`NodeServices.layer` supplies `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner` (Bun uses `BunServices.layer`; `effect/crypto` uses `NodeCrypto.layer`; `HttpClient` uses `FetchHttpClient.layer`). See [Platform globals](../platform/platform-globals.md) and [Experimental platform APIs](118-experimental-platform-apis.md).
 
-A platform API that Effect lacks, such as `os.hostname()`, is often one of VibeLang's [experimental platform APIs](118-experimental-platform-apis.md): `try (try Experimental.Process.Process).hostname`. Code that needs Node.js globals or `node:*` value imports belongs in a `.ts` file. Prefixing a banned global with `globalThis` does not bypass the restriction: `globalThis.fetch` and `globalThis["setTimeout"]` are also `EK4402`.
-
-A plain function's `for…of` keeps TypeScript's iterator closing behavior. If its body throws and the iterator's `return` also throws, the body error is rethrown unchanged; if a normal `break` or `return` closes the iterator and closing throws, the close error wins. The same precedence applies when nested loops close. An effect function's `for…of` closes its iterator the same way, as a generator in `Effect.gen` does. A `try` that fails or is interrupted, or a `throw`, abandons the generator, so nothing closes the iterator; use `ensuring` or `acquireRelease` for cleanup on every exit.
-
-A plain VibeLang function never throws (a `throw` there is `EK0401`), so an effect function calls it directly, as it does a `.ts` function known not to throw. Wrap a potentially throwing `.ts` call with `Effect.try`, then run it with `try`. The thunk keeps this contract through parentheses, computed access, constant aliases and bound references to `Effect.try` or `Effect.tryPromise`. Their `catch` mappers and functions nested inside a thunk keep their own plain-code checks. Renaming `sync` or `promise` to a local `Effect.try` or `Effect.tryPromise` member does not allow known throwing calls in its thunk. To wait for a Promise, use `Effect.tryPromise` or `Effect.promise`. Callbacks capture local variables normally. Exported VibeLang declarations carry `@throws {never}` on non-effectful functions, methods, constructors and the call, construct and method signatures of interfaces and object types. Callable constants retain their `const` declaration and use a tagged call signature in their type; bare function types retain their written form. The tag joins the signature’s existing JSDoc, preserving its documentation. API identity checks allow the generated `@throws {never}` addition when the TypeScript declaration has no authored throw contract, including in files that contain module augmentations. Authored throw contracts, other documentation and augmentation types must still match. Signatures that return only `Effect`, `Stream` or `Layer`, getters and setters carry no tag. A foreign callable without a signature contract may throw `unknown`, whether imported from source or an emitted `.d.ts` and whether its type is written or inferred. Shipped contracts precede defaults; for synchronous callables, `@rethrows f` adds the actual callback's thrown type to own throws. An `async` function's `throw` rejects its Promise. Effectful callables never add synchronous throws. The genuine wrapper’s thunk contract also survives native `call` and `apply`; its `catch` mapper and nested source functions keep their own checks. A non-null assertion preserves the callable alternatives: a choice between `sync` and `Effect.try`, or between `promise` and `tryPromise`, still requires a thunk valid for either API.
-
-In the options overload, a computed key that resolves to `"try"`, such as `["try"]` or `[key]` with `const key = "try" as const`, keeps the same thunk contract. Evaluating the key stays in the surrounding code. Native `call` and `apply` forward that computed-key callback contract too.
-
-An inline options method such as `try() { return parse(text) }` keeps that thunk contract too, including quoted and computed method names and native `call` or `apply`. Its `catch` method and any function nested inside it keep their own plain-code checks. A getter or a method stored in a separate options object keeps its own source scope.
-
-An object spread that copies `Effect.try` or `Effect.tryPromise` retains its throwing-thunk contract, including `const api = { ...Effect }`. Later unrelated properties do not remove that contract. A later property that replaces the wrapper keeps the replacement callback contract; copying `sync` or `promise` never grants permission to throw.
-
-Native `bind` accessed as `["bind"]`, a constant key or an escaped string key preserves the `Effect.try` and `Effect.tryPromise` callback contract, as `.bind` does. A local method named `bind` keeps its own callback contract.
-
-`const { api: { try: wrap } } = { api: Effect }` and `const [wrap] = [Effect.try]` retain the wrapper's callback contract. Nested object and array bindings and written root types preserve the selected signature; an extracted local API keeps its own callback contract.
-
-A TypeScript `as` or angle-bracket assertion, `satisfies`, or non-null assertion around an inline thunk or options object keeps the enclosing wrapper’s contract. The same applies to an inline single-element argument array for native `apply`. A function stored separately keeps its own source scope.
-
-The historical empty wrapper `trusted(predicate, [])` is retired with `EK0407`; passing a foreign predicate as its input does not also produce `EK0402`. Its callable type follows TypeScript, including generic predicates and explicitly annotated assertion targets. To keep predicate or assertion narrowing at a native boundary, put the guarded operation in a TypeScript function that returns an Effect, then call it with `try` from effect code. TypeScript requires an explicitly annotated assertion-call target (`TS2775`); an unannotated `const` wrapper cannot narrow in either language.
-
-The plain-code `throw` restriction includes ordinary generator functions and methods (`EK0401`), including one nested in Effect code. An `async function*` body rejects its iteration `Promise` when it throws; an `effect function*` producer uses its typed failure channel.
-
-A synchronous generator body also keeps this check when the generator is passed to `Effect.try`, a callback whose type admits throws, or a Promise executor: creating its iterator does not run its body. Calls known to throw there report `EK0401`; a native `try/catch` inside the generator can handle them. Parameter defaults still run at the original call.
-
-A generator callback's parameter defaults run at the invoking `@rethrows` call, for both `function*` and `async function*`. Calls known to throw in those defaults contribute to that invocation, so a surrounding native `try/catch` or `Effect.try` can handle them. The generator's body keeps its separate iteration-time check. An ordinary `async function` instead rejects its Promise when a default throws.
-
-The parameter name in a `@rethrows` tag is matched as a complete identifier, including Unicode letters and continuation characters. The complete name distinguishes parameters that share an ASCII prefix. Unicode escapes in the tag resolve to the same name as in a parameter declaration: `@rethrows \u0063b` names `cb`, while `@rethrows cb\u03a9` names `cbΩ`.
-
-A tagged template checks each substitution against its callback parameter’s throw contract, just as an ordinary call checks an argument. A parameter without `@throws` admits only `never`; a written bound and a parameter named by `@rethrows` keep their usual admission rules.
-
-A TypeScript `this` parameter describes the receiver and does not occupy a runtime argument position. A `@rethrows` callback is matched after that erased parameter, including in methods, tagged templates, rest arguments and fixed tuple spreads. Other callback parameters keep their own throw contracts.
-
-An array spread into a `@rethrows` rest parameter keeps each element’s written `@throws` contract. With `const callbacks: (typeof risky)[]`, the call `many(...callbacks)` can throw whatever `risky` declares: plain code reports `EK0401` and effect code reports `EK0403`. A readonly array, arguments written before or after the spread, and the rest element of a tuple follow the same rule.
-
-Promise-producing native invocations in effect code require an explicit boundary, even when their result is assigned to a variable and never awaited (`EK0404`). This includes constructors, tagged templates and calls whose result is a union containing a Promise or thenable. Use `try Effect.tryPromise(() => load())` to wait for a Promise. To retain the native Promise as unawaited data, write a synchronous `Effect.try` boundary with `Effect.orDie`, preserving the original invocation, evaluation order and synchronous defects. Plain and `async` function bodies retain TypeScript behavior.
-
-A foreign function value keeps its written `@throws` contract when passed as a callback, including imports from `.d.ts` files. An untagged callback type such as `() => void` admits only `never`: passing a foreign function declared `@throws {Error}` reports `EK0402` as an argument, object member, spread member or initializer. Handle the throw in a wrapper or use a callback type whose `@throws` admits it. A foreign function declared `@throws {never}` fits the untagged type. An explicit `@throws {any}` follows TypeScript assignability to a typed thrown contract, while `@throws {unknown}` still requires a contract admitting `unknown`. Neither fits the untagged type.
-
-A foreign interface named `Effect` does not become Effect’s own interface by copying its marker and type parameters. Its return type must satisfy the full Effect shape to be effectful; otherwise the foreign function keeps its written throw contract.
-
-A `satisfies` constraint checks the same thrown contract, including a callable read from a getter. It preserves the callback's own type, so an incompatible outer argument, initializer or return still reports `EK0402` even when the `satisfies` constraint admits the throw. Use an explicit compatible callback type or a wrapper that handles the exception.
-
-Generic instantiation substitutes within the declaration's existing thrown contract; it does not erase it when the result becomes an Effect. A rethrowing synchronous callable's default callback contributes to its conservative own bound even when a safe callback is supplied, so declaration output cannot lose that default's throws.
-
-A final tuple spread retains each optional callback's written thrown contract when that callback can be present. This includes readonly tuples and optional callback slots after fixed prefixes. An empty tuple supplies no callback, and a supplied nonthrowing callback remains valid. A known throwing callback still needs its exception bridge in Effect code (`EK0403`), or a native `try/catch` in plain code (`EK0401`).
-
-A fixed tuple spread checks each callable’s written `@throws` contract against its receiving callback parameter. Saving the tuple or giving it a readonly type keeps that check. Optional entries and callback rest parameters use their runtime argument positions, and a parameter named by `@rethrows` keeps its usual admission.
-
-A final array spread into a callback rest parameter keeps each element’s written `@throws` contract. Saving the array, using a `readonly` array type or supplying fixed arguments before it keeps the same callback check. A rest parameter named by `@rethrows` admits its callbacks as usual.
-
-Passing several arrays to the same callback rest parameter applies the written throw check to each array. An earlier array can have an unknown length; it does not remove the checks from later spreads or arguments.
-
-Named tuple labels inside an `effect` function, arrow or method are type-only names, as in TypeScript. They do not count as writes to an enclosing parameter; actual writes retain the parameter binding created when the function was called.
-
-## Trace and debug calls
-
-Run emitted JavaScript with `node --enable-source-maps dist/main.js` and enable `"sourceMap": true` in `compilerOptions`. Source maps preserve `.vibe` locations. VibeLang adds no spans of its own, so defects can show only one stack frame.
-
-Use `try withSpan(effect { ... }, "checkout")` for a named operation, as you would use `Effect.withSpan` in TypeScript. Named spans supply the logical caller context that source maps alone cannot add, and add runtime work. If the default Node runner prints only an error message, use the [TypeScript debugging entry](../getting-started/012-devtools.md#debug-stack-traces) to print the rejected error's `stack`.
-
-## Runtime cost
-
-VibeLang forms compile to their Effect equivalents. They preserve the same `Exit` and finalizer order.
-
-The [runtime cost benchmark](https://github.com/smithersai/vibelang/tree/main/docs/user/benchmarks/runtime-cost) produced this table with the 0.0.13 compiler built from commit `d8981f70`, Node 26.5.0 and Effect 4.1.1 on Linux x64. It ran on one shared server with an AMD EPYC 7443P 24-Core Processor and 48 logical CPUs while other jobs ran: the 1-minute load average was 39 at the start and 41 at the end. These are single-machine observations, not a performance guarantee.
-
-Each loop ran in its own Node process: 2 untimed warm-up runs, then 10 timed runs, each one `Effect.runSync` call timed with `performance.now()`. The step increments a number and fails when the next value is a multiple of 250,000; recovery resets it to zero. The 200,000-call loops end before that failure. Run `node run.mjs` in the benchmark directory to measure your own machine.
-
-| Loop | Min | Median | Max | Median per call |
-| --- | ---: | ---: | ---: | ---: |
-| 200,000 Effect-contracted VibeLang calls without `catch` | 228 ms | 246 ms | 376 ms | 1,229 ns |
-| 200,000 `Effect.fn` generator calls | 524 ms | 527 ms | 532 ms | 2,634 ns |
-| 1,000,000 `step(n) catch () => 0` expressions | 1,302 ms | 1,397 ms | 1,482 ms | 1,397 ns |
-| 1,000,000 `Effect.succeed`/`Effect.fail` steps with `Effect.orElseSucceed` | 186 ms | 188 ms | 192 ms | 188 ns |
-| 1,000,000 `plainStep(n)` plain-function calls from effect code | 0.8 ms | 0.9 ms | 0.9 ms | 0.9 ns |
-
-`Effect.fn` generator calls took about 2 times as long as Effect-contracted VibeLang calls; each `Effect.fn` call also captures a call-site stack frame. The `catch` loop took about 7 times as long as the hand-written `Effect.orElseSucceed` loop. Its step is a generator-based effect function, the same step as in the first row, and the compiled `catch` evaluates the operand and the handler inside `Effect.sync`; the `orElseSucceed` step returns `Effect.succeed` or `Effect.fail` directly. A plain function, `plainStep(n: number): number`, adds no Effect wrapper, and effect code calls it directly. Measure your own workload, including tracing, before choosing a boundary for a hot loop.
+Foreign `.ts` functions declare throws with `@throws {ErrorType}` (unannotated defaults to `@throws {unknown}`); wrap throwing calls in `Effect.try` (`EK0403`) and Promises in `tryPromise` (`EK0404`). Exported non-effectful VibeLang declarations automatically carry `@throws {never}`. The retired `trusted(predicate, [])` wrapper reports `EK0407`.
 
 ## Catch expected failures only
 
@@ -484,45 +264,28 @@ effect function displayName(id: string) {
 // Output: ["Ada","Unknown user: missing"]
 ```
 
-Inside an Effect function, `throw` adds an expected failure to the function's error channel, and `catch` receives it. Defects and interruption bypass `catch`; `ensuring` and `onExit` still run cleanup. `try orDie(work())` promotes an expected failure to a defect; to inspect defects, use Effect's cause APIs at a boundary.
+`catch` recovers expected failures only. Defects and interruption bypass `catch` while still running `ensuring`, `onExit`, and `scoped` finalizers.
 
-`A!E!R` means exactly `Effect.Effect<A, E, R>`. Every omitted slot is `never`, including on a function with a body. Leave out the whole annotation to infer success, errors, and requirements. A line break ends the type: each `!` and its slot stay on one line, `A!!` may end a line, and a slot in parentheses may span lines; a `!` with no slot on its line is `TS17019`.
+## Trace and debug calls
 
-The transitional bare `Effect<A, E, R>` alias reports `EK4856`. Its migration fix uses `A!E!R` only when the existing position and channels need no new parentheses; otherwise it retains the position and writes `Effect.Effect<A, E, R>`. Existing parentheses, explicit default slots and comments are preserved. It retains the qualified spelling when shorthand would change declaration bytes, including existing grouping that declaration output would otherwise remove. Local and imported types named `Effect` keep their meaning. The TypeScript view used by linters and editors preserves local aliases, interfaces and namespaces, including generic and nested declarations and shared `switch` scopes, and accepts computed member names in object types. `EK4833` then writes the grouped shorthand, such as `(number | string)!!`, because the added parentheses leave declaration bytes unchanged. Where `EK4833` cannot keep source-written parentheses or comments, its note says which, and the qualified spelling stays.
+Run emitted JavaScript with `node --enable-source-maps dist/main.js` and `"sourceMap": true`. VibeLang adds no hidden spans; attach spans where needed with `try withSpan(effect { ... }, "checkout")`. See [Debug stack traces](../getting-started/012-devtools.md#debug-stack-traces).
 
-See [Handlers (open proposal, not in the alpha)](111-control-operations-and-handlers.md) for the proposal's status.
+## Runtime cost
 
-An inferred return declaration preserves a written assertion such as `value as ReturnType<typeof create>` and the import that names `create`. This also applies to a migrated helper that still writes `: infer _`. It needs no public return annotation to retain that spelling.
+VibeLang forms compile to their Effect equivalents. They preserve the same `Exit` and finalizer order.
 
-Inferred parameter types of retained SDK error constructors keep their Effect namespace spelling in declarations. For example, exporting `AsyncFiberError` writes its inferred fiber parameter as `Fiber.Fiber<unknown, unknown>` with an import from `effect`, independently of nearby matching code. Explicit import types and local or generic `Fiber` bindings retain their written scope.
+The [runtime cost benchmark](https://github.com/smithersai/vibelang/tree/main/docs/user/benchmarks/runtime-cost) produced this table with the 0.0.13 compiler built from commit `d8981f70`, Node 26.5.0 and Effect 4.1.1 on Linux x64. It ran on one shared server with an AMD EPYC 7443P 24-Core Processor and 48 logical CPUs while other jobs ran: the 1-minute load average was 39 at the start and 41 at the end. These are single-machine observations, not a performance guarantee.
 
-Returning an Effect, an Effect subtype, a union or a program function keeps it as data and does not itself report `EK4802`. To execute a returned Effect, write `return try program`. Native `Effect.gen` return advice belongs to the imported `effecttsgo/returnEffectInGen` rule (`EK38103`).
+Each loop ran in its own Node process: 2 untimed warm-up runs, then 10 timed runs, each one `Effect.runSync` call timed with `performance.now()`. The step increments a number and fails when the next value is a multiple of 250,000; recovery resets it to zero. The 200,000-call loops end before that failure. Run `node run.mjs` in the benchmark directory to measure your own machine.
 
-A generic assertion such as `expect(awaited(p))` in effect code reports `EK4802` when `awaited(p)` returns an Effect: the assertion would receive the unrun program. Write `expect(try awaited(p))` to inspect its result. To inspect the program object intentionally, write `expect<Effect.Effect<number>>(e)`. Generic arrays, Promises and callback contracts also report the warning; run their Effects where those values are constructed.
+| Loop | Min | Median | Max | Median per call |
+| --- | ---: | ---: | ---: | ---: |
+| 200,000 Effect-contracted VibeLang calls without `catch` | 228 ms | 246 ms | 376 ms | 1,229 ns |
+| 200,000 `Effect.fn` generator calls | 524 ms | 527 ms | 532 ms | 2,634 ns |
+| 1,000,000 `step(n) catch () => 0` expressions | 1,302 ms | 1,397 ms | 1,482 ms | 1,397 ns |
+| 1,000,000 `Effect.succeed`/`Effect.fail` steps with `Effect.orElseSucceed` | 186 ms | 188 ms | 192 ms | 188 ns |
+| 1,000,000 `plainStep(n)` plain-function calls from effect code | 0.8 ms | 0.9 ms | 0.9 ms | 0.9 ns |
 
-A plain callback keeps its TypeScript body even when an `effect` function passes it as an argument. A captured `Effect.runSyncWith(context)` runner can be called from that callback, as from an assigned or returned plain function; passing the callback does not add an Effect activation. An explicitly `effect` callback remains Effect code.
+`Effect.fn` generator calls took about 2 times as long as Effect-contracted VibeLang calls; each `Effect.fn` call also captures a call-site stack frame. The `catch` loop took about 7 times as long as the hand-written `Effect.orElseSucceed` loop. Its step is a generator-based effect function, the same step as in the first row, and the compiled `catch` evaluates the operand and the handler inside `Effect.sync`; the `orElseSucceed` step returns `Effect.succeed` or `Effect.fail` directly. A plain function, `plainStep(n: number): number`, adds no Effect wrapper, and effect code calls it directly. Measure your own workload, including tracing, before choosing a boundary for a hot loop.
 
-A package import or `paths` alias that selects a compatibility sidecar outside `node_modules` uses its available source, including `.vibex` and mirrored `vibe.sidecarDir` declarations. It therefore has the same class and private-member identity as a direct source import. TypeScript's `preserveSymlinks` policy still decides whether the resolved path stays inside `node_modules`.
-
-A value or call result typed `unknown` must be narrowed to an Effect before `try`; it reports `EK0502` otherwise. An Effect may still succeed with an `unknown` value. The explicit escape hatch `any` remains unchecked.
-
-The function `constructor` restriction applies to reading its value. It follows the `Function` type through aliases, intersections, interfaces that extend it and generic constraints. Assigning or deleting the property does not read it, including through parentheses and TypeScript assertions; ordinary TypeScript assignment and `delete` checks still apply.
-
-`var` is rejected everywhere in `.vibe` files, including plain and `async` functions (`EK0107`). An ambient `var` directly in `declare global { }` is allowed, because it emits no code and is the only way to type a property of `globalThis`. Omitting a plain function's return annotation does not exempt its body from this check. Use `let` or `const` with explicit scope and initialization. A function-scoped binding used after a region needs an explicit outer declaration. Check hoisting and module cycles before changing legacy code; keep code that needs JavaScript `var` semantics in a `.ts` file. Where block scoping cannot change what runs, write `let` to preserve inferred binding types, or `const` when every binding has a written type and is never assigned: the declaration sits directly in a block or at module scope outside any loop, it is not exported or redeclared, and every read follows it in the same block, outside nested callables. Captured bindings keep the native-module repair because changing `var` to a lexical binding can strengthen closure narrowing. For a closed file containing only native TypeScript syntax, keep the complete scope in a `module` body and re-export its exports. This preserves `var` hoisting and direct `eval` scope. Files with imports, module metadata, dependencies on VibeLang globals or VibeLang syntax require a manual migration. An empty `with ({}) {}` scope can be removed; other `with` statements require an explicit property rewrite.
-
-An inferred `effect` arrow or function expression may refer to its own callable value, as in `const same = effect () => same === same`. Such value-only references infer as the corresponding `Effect.gen` wrapper does. A recursive return whose type cannot be inferred still requires a return annotation and reports TypeScript's native inference error.
-
-Optional schema fields, schema-error payload fields and optional tuple elements follow the project's `exactOptionalPropertyTypes`: `?: T` uses `Schema.optionalKey` when enabled and `Schema.optional` by default; `?: T | undefined` keeps `Schema.optional` under both settings. Native `data` payloads retain TypeScript's own optional properties.
-
-`await` directly evaluated in an Effect function, arrow, method or producer parameter default reports `EK0102`, including destructuring defaults and computed binding keys. This includes a class's `extends` expression in the default, even when an earlier default contains an outward `return`. Class and member decorator expressions in a parameter default also keep that parameter context. Computed class element names and object method or getter names in the default also keep that parameter context. Parameter initialization runs when the callable is called and is outside effect code, so `try` there remains `EK0501`. Move Promise work into an appropriate callable body; a nested `async` callable keeps its native `await` rules. A producer parameter default keeps its `EK2104` restriction on `yield` in class heritage, computed names and decorators after an earlier returning default. A nested native generator still owns its own `yield`.
-
-Enum member initializers retain native TypeScript `await` placement errors, even inside `async`, `effect` or producer functions. A nested callable keeps its own function kind; a `const enum` also retains its constant-expression check. Class field initializers report TypeScript’s native errors for an invalid `await`, including in a parameter default. A nested `async` or `effect` callable keeps its own context.
-
-A native `Effect.gen(function* () { ... })` with JavaScript `try/catch` keeps that boundary when no equivalent teaching rewrite exists. It remains valid native code and does not create a refused repair site.
-
-Option migration preserves comments and writes the qualified `Option.Option` type.
-
-The error-per-await editor conversion keeps generated error types at module scope. An exported factory can then expose a converted class, object or function without an unnameable local error type (`TS4058`). The insertion preserves the file header, directive prologue and declaration comments, including attached documentation across blank lines.
-
-Async-to-Effect editor conversions retain containing property contracts. A computed method key, including a numeric, template-literal or union key, still selects its applicable index signatures; the editor withholds conversion when those signatures require a `Promise` result. Indexes inferred from computed members also retain their compatibility checks. A generic computed key keeps these checks through its resolved constraint, including a union constraint. Migrate the method and its contracts together.
-
+See [Handlers (open proposal, not in the alpha)](111-control-operations-and-handlers.md) for the status of algebraic handlers.

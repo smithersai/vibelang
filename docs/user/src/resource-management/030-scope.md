@@ -1,6 +1,8 @@
 # Scope
 
-A scope owns registered finalizers and runs them when its lifetime ends. Use `scoped` for local resource ownership, or an explicit scope when several operations must share a lifetime independent of one function call.
+A scope owns registered finalizers and runs them in reverse order (LIFO) when its lifetime ends. Use `scoped` for local resource ownership, or an explicit `Scope.make()` when several operations share a lifetime across calls.
+
+![Scope lifecycle: resources acquire in order and release in reverse order even on failure or interruption](/diagrams/scope-lifecycle.svg)
 
 [Upstream page](https://effect.website/docs/v4/resource-management/scope)
 

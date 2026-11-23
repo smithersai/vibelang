@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 360" role="img" aria-labelledby="t d">
+  <title id="t">Anatomy of an Effect type: A!E!R</title>
+  <desc id="d">Shows how User!UserNotFound!Users maps to Success (A), Expected Error (E), and Required Services (R), and how try, catch, and provide transform those channels.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="360" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">Every Effect carries three compile-time channels</text>
+      <text x="36" y="64" class="sub">Write A!E!R (short for Effect.Effect&lt;A, E, R&gt;). Omit the annotation and the compiler infers all three.</text>
+
+      <!-- Big signature bar -->
+      <rect x="36" y="86" width="808" height="66" rx="10" fill="#ffffff" stroke="#d6dde8" stroke-width="1.5"/>
+      <text x="440" y="128" text-anchor="middle" class="mono" font-size="26" font-weight="700">
+        <tspan fill="#4338ca">User</tspan><tspan fill="#6b7280"> ! </tspan><tspan fill="#b91c1c">UserNotFound</tspan><tspan fill="#6b7280"> ! </tspan><tspan fill="#0f766e">Users</tspan>
+      </text>
+
+      <!-- Connector arrows down -->
+      <line x1="255" y1="152" x2="164" y2="188" stroke="#4338ca" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+      <line x1="440" y1="152" x2="440" y2="188" stroke="#b91c1c" stroke-width="1.8" marker-end="url(#arrow-red)"/>
+      <line x1="625" y1="152" x2="716" y2="188" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+
+      <!-- Card A -->
+      <rect x="36" y="194" width="256" height="138" rx="10" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="54" y="220" class="k" fill="#4338ca">A · SUCCESS VALUE</text>
+      <text x="54" y="244" class="b">What it returns</text>
+      <text x="54" y="266" class="p">Unwrapped by <tspan class="code-sm" fill="#4338ca">try expr</tspan></text>
+      <text x="54" y="288" class="p"><tspan class="code-sm" fill="#16202e">void</tspan> = side effect only</text>
+      <text x="54" y="310" class="p"><tspan class="code-sm" fill="#16202e">never</tspan> = never succeeds</text>
+
+      <!-- Card E -->
+      <rect x="312" y="194" width="256" height="138" rx="10" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
+      <text x="330" y="220" class="k" fill="#b91c1c">E · EXPECTED ERRORS</text>
+      <text x="330" y="244" class="b">How it can fail</text>
+      <text x="330" y="266" class="p">Added by <tspan class="code-sm" fill="#b91c1c">throw new Err()</tspan></text>
+      <text x="330" y="288" class="p">Removed by <tspan class="code-sm" fill="#b91c1c">catch</tspan></text>
+      <text x="330" y="310" class="p"><tspan class="code-sm" fill="#16202e">never</tspan> (empty slot) = cannot fail</text>
+
+      <!-- Card R -->
+      <rect x="588" y="194" width="256" height="138" rx="10" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="606" y="220" class="k" fill="#0f766e">R · REQUIREMENTS</text>
+      <text x="606" y="244" class="b">Services it needs</text>
+      <text x="606" y="266" class="p">Added by <tspan class="code-sm" fill="#0f766e">try Users</tspan></text>
+      <text x="606" y="288" class="p">Removed by <tspan class="code-sm" fill="#0f766e">provide</tspan></text>
+      <text x="606" y="310" class="p"><tspan class="code-sm" fill="#16202e">never</tspan> (omitted) = ready to run</text>
+    
+</svg>

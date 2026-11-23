@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 310" role="img" aria-labelledby="t d">
+  <title id="t">Description vs. execution: calling an effect function does not run it</title>
+  <desc id="d">Calling loadUser(id) creates an inert Effect blueprint. Combinators like retry and timeout wrap that blueprint. Only try inside an effect function or a runner at the app edge executes it.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#64708a"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#a5b4fc"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fda4af"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#5eead4"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fcd34d"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #eef1f6; }
+    .sub { font-size: 13px; fill: #b3bac7; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #eef1f6; }
+    .p { font-size: 12.5px; fill: #b3bac7; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="310" rx="10" fill="#14151a"/>
+  
+      <text x="36" y="42" class="h">Calling an effect function builds a blueprint — it runs zero work</text>
+      <text x="36" y="64" class="sub">Because Effects are plain values until executed, you can store, retry, timeout, or race them before a single line runs.</text>
+
+      <!-- Stage 1: Construct -->
+      <rect x="36" y="94" width="232" height="166" rx="10" fill="#1c1d24" stroke="#323544" stroke-width="1.5"/>
+      <rect x="52" y="110" width="110" height="22" rx="11" fill="#242630" stroke="#43485c" stroke-width="1.2"/>
+   <text x="107" y="125" text-anchor="middle" class="k" fill="#b3bac7">1. DESCRIBE</text>
+      <text x="52" y="158" class="code" fill="#a5b4fc">const job = load("42")</text>
+      <text x="52" y="186" class="p">Builds an Effect value.</text>
+      <text x="52" y="206" class="p">No I/O, no logs, no fiber.</text>
+      <text x="52" y="236" class="code-sm" fill="#8a93a6">type: User!NotFound!Users</text>
+
+      <line x1="268" y1="177" x2="314" y2="177" stroke="#64708a" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- Stage 2: Compose -->
+      <rect x="322" y="94" width="236" height="166" rx="10" fill="#232445" stroke="#6366f1" stroke-width="1.5"/>
+      <rect x="338" y="110" width="110" height="22" rx="11" fill="#1c1d24" stroke="#6366f1" stroke-width="1.2"/>
+   <text x="393" y="125" text-anchor="middle" class="k" fill="#a5b4fc">2. COMPOSE</text>
+      <text x="338" y="154" class="code" fill="#eef1f6">job</text>
+      <text x="338" y="174" class="code" fill="#a5b4fc">  |&gt; retry(%, policy)</text>
+      <text x="338" y="194" class="code" fill="#a5b4fc">  |&gt; timeout(%, "2s")</text>
+      <text x="338" y="226" class="p">Still a cold blueprint.</text>
+      <text x="338" y="244" class="p">Reusable as many times as needed.</text>
+
+      <line x1="558" y1="177" x2="604" y2="177" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
+
+      <!-- Stage 3: Execute -->
+      <rect x="612" y="94" width="232" height="166" rx="10" fill="#133230" stroke="#14b8a6" stroke-width="1.5"/>
+      <rect x="628" y="110" width="108" height="22" rx="11" fill="#1c1d24" stroke="#14b8a6" stroke-width="1.2"/>
+   <text x="682" y="125" text-anchor="middle" class="k" fill="#5eead4">3. EXECUTE</text>
+      <text x="628" y="156" class="code" fill="#5eead4">try resilientJob</text>
+      <text x="628" y="176" class="p">Inside an effect function</text>
+      <line x1="628" y1="194" x2="824" y2="194" stroke="#14b8a6" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="628" y="218" class="code" fill="#5eead4">NodeRuntime.runMain(…)</text>
+      <text x="628" y="238" class="p">Once, at the program edge</text>
+
+      <text x="440" y="290" text-anchor="middle" class="p">Rule of thumb: pass <tspan class="code-sm" fill="#a5b4fc">load("42")</tspan> to combinators; run it with <tspan class="code-sm" fill="#5eead4">try</tspan> when you want its value.</text>
+    
+</svg>

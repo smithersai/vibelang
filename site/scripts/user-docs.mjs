@@ -21,8 +21,16 @@ function mapLines(markdown, transform) {
 // a player; the Markdown copies for agents drop the line.
 export const VIDEO_LINE = /^!\[([^\]]*)\]\(\/videos\/([a-z0-9-]+)\.mp4\)\s*$/
 
+// A theme-aware diagram sits on its own line as `![caption](/diagrams/name.svg)`.
+// The site renders light and dark SVG variants with a caption; Markdown copies drop it.
+export const DIAGRAM_LINE = /^!\[([^\]]*)\]\(\/diagrams\/([a-z0-9-]+)\.svg\)\s*$/
+
 export function stripVideos(markdown) {
   return mapLines(markdown, (line, code) => !code && VIDEO_LINE.test(line) ? undefined : line)
+}
+
+export function stripDiagrams(markdown) {
+  return mapLines(markdown, (line, code) => !code && DIAGRAM_LINE.test(line) ? undefined : line)
 }
 
 // Every output a published sample shows comes from code the reader can see.

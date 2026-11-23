@@ -1,10 +1,16 @@
 # Two Types of Errors
 
-A missing record and a broken invariant need different responses: VibeLang tracks recoverable domain failures in `Effect<A, E, R>`, and defects in the runtime's failure cause.
+Not all failures are created equal.
 
-[Upstream page](https://effect.website/docs/v4/error-management/two-error-types)
+A user typing an unknown SKU is **expected** — your UI should show `"No price for pen"`. A broken invariant like dividing by a pre-validated zero is a **bug** — no caller can meaningfully recover from it, and polluting every function signature in your codebase with `| DivisionByZeroBug` would bury real domain errors under noise.
 
-## Separating failures from defects
+VibeLang separates these into two distinct tracks, plus a third for cancellation:
+
+![Expected failures travel in E and reach catch; defects and interruption bypass catch while still running cleanup](/diagrams/two-error-rails.svg)
+
+## Expected failures (`E`) vs. defects (`die`)
+
+In an `effect` function, `throw` puts a failure onto the **Expected (`E`)** track. Callers see it in the type signature and recover it with `catch`:
 
 ```vibe
 // run: try Console.log(try displayPrice("notebook")); try Console.log(try displayPrice("pen"))
@@ -16,7 +22,7 @@ effect function price(sku: string) {
   if (sku !== "notebook") throw new UnknownProduct({ sku })
   return 12
 }
-// number!UnknownProduct
+// Inferred: number!UnknownProduct
 
 effect function displayPrice(sku: string) {
   return effect {
@@ -30,13 +36,7 @@ $12
 No price for pen
 ```
 
-`throw` in an effect function declares an expected failure. A catch expression recovers it, and the caught value's type is inferred from the Effect it runs. A defect, such as an invalid property access or `die(new Error("broken invariant"))`, bypasses `catch`.
-
-Expected failures also come from a callee's `E` and from synchronous exceptions wrapped with `Effect.try`. When a cause holds several expected failures and nothing else, `catch` receives the first and handles the whole cause; `catchCause` inspects every reason.
-
-Interruption, a third kind of termination, bypasses `catch` when the cause has no expected failure. Defects and interruption still run `ensuring` cleanup and release scoped resources. A cause that mixes a failure with a defect passes through ordinary `catch` whole.
-
-## Choosing the error type
+Now contrast that with a **defect** — an unexpected crash created with `try die(...)` (or caused by a JavaScript runtime error like reading a property of `undefined`):
 
 ```vibe
 // run: try Console.log(try percentage(1, 4)); try Console.log(try matchCause(percentage(1, 0), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
@@ -46,7 +46,7 @@ effect function percentage(part: number, total: number) {
   }
   return part / total * 100
 }
-// number!!
+// Inferred: number!!   (E is never — defects do not enter E)
 ```
 
 ```output
@@ -54,13 +54,29 @@ effect function percentage(part: number, total: number) {
 true
 ```
 
-Use this contract only when validation already established the invariant; if users can submit an invalid total, throw a typed error. Put a failure in `E` when callers have a useful response, such as asking for corrected input or choosing another source.
+Notice `percentage`'s inferred type is `number!!` (`E = never`):
 
-`E = never` promises that no expected failure escapes, not that bugs or cancellation can't occur. A boundary that must examine those uses `exit`, `catchDefect`, or `catchCause`.
+- **`catch` never catches a defect.** Ordinary error handlers stay focused on business failures instead of accidentally swallowing `TypeError`s or broken invariants.
+- **Cleanup still runs.** Both defects and interruption always execute `ensuring`, `onExit`, and `scoped` resource finalizers before terminating the fiber.
+- **Boundaries can still inspect everything.** A top-level supervisor or HTTP error middleware uses `exit`, `catchDefect`, or `catchCause` to log defects and return HTTP 500.
 
-Precisely, `E` describes every expected failure a cause holds: a defect turns the expected failures beside it into defects, and catch recovers a failure beside an interruption.
+## How to choose
+
+Ask one question: **can the caller do something useful if this fails?**
+
+| Situation | Track | How to signal it |
+| --- | --- | --- |
+| Missing user, invalid form input, rate limit, network timeout | **Expected (`E`)** | `throw new MyError({ ... })` |
+| Violated precondition, impossible `default` branch, corrupt internal state | **Defect** | `try die(new Error("..."))` or `try orDie(program)` |
+| Parent fiber timed out, race lost, user cancelled request | **Interruption** | `Fiber.interrupt(fiber)` or `try interrupt` |
+
+> **Wait — what if a cause has *both* an expected failure and a defect (for example in parallel work)?**
+> Defects win: a cause containing a defect bypasses ordinary `catch`, with its sibling expected failures preserved inside the `Cause`. A cause with an expected failure beside an interruption is still recovered by `catch`, and when several expected failures occur together with no defect, `catch` receives the first and handles the whole cause. Use `catchCause` when you need to inspect every reason in a composite `Cause`.
 
 ## Coming from Effect
 
-- Write `throw error` in an effect function where a generator would yield a failure.
-- Use a catch expression for domain recovery and `ensuring` or `onExit` for cleanup.
+- `throw new UnknownProduct({ sku })` inside an `effect` function compiles to `Effect.fail(...)`.
+- `x catch (err) => ...` recovers expected failures only, just like `Effect.catch`.
+- Use `ensuring` or `onExit` for guaranteed cleanup across all three outcomes.
+
+**Next:** [Basic Concurrency](../concurrency/007-basic-concurrency.md) — run work in parallel, bound concurrency, and cancel losers cleanly.

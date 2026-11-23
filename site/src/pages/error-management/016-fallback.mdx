@@ -1,14 +1,13 @@
 ---
 title: "Fallback"
-description: "A fallback runs another computation after an expected failure; a catch expression or callback keeps it lazy. An arrow handler can be generic, as in program catch <E,>(error: E) => \"fallback\"; its..."
+description: "A fallback runs a backup value or Effect only when the primary Effect fails with an expected error. Defects and pure interruptions pass straight through."
 ---
 
 # Fallback
 
-A fallback runs another computation after an expected failure; a catch expression or callback keeps it lazy. An arrow handler can be generic, as in `program catch <E,>(error: E) => "fallback"`; its head follows TypeScript's ordinary arrow-function syntax.
+A fallback runs a backup value or Effect only when the primary Effect fails with an expected error. Defects and pure interruptions pass straight through.
 
-
-## Recovering with another computation
+## Falling back to another Effect (`catch effect`)
 
 ```vibe
 error SourceOffline
@@ -25,7 +24,7 @@ effect function cachedTitle() {
 effect function title() {
   return latestTitle() catch effect () => try cachedTitle()
 }
-// string!!
+// Inferred: string!!
 // Run in an effect function: try Console.log(try title())
 ```
 
@@ -34,44 +33,25 @@ Reading saved title
 Saved issue
 ```
 
-The left operand can be a stored Effect, a property or an expression that constructs one. It is evaluated once, then its Effect runs. A written `try` inside that operand runs first in the enclosing function; only failures of the resulting Effect reach this handler.
+`cachedTitle()` runs only if `latestTitle()` fails. Any errors or service requirements from the fallback become `title()`'s own channels.
 
-The cache is read only if the primary computation fails. The fallback's errors become `title`'s; handling the primary doesn't handle them. A catch expression propagates defects and causes with only interruption. A typed failure beside a defect propagates as a defect, and one beside an interruption is handled.
+The handler after `catch` is always a function literal — its modifier determines what it can do:
 
-```vibe
-effect function titleInline() {
-  return latestTitle() catch effect () => {
-    return try cachedTitle()
-  }
-}
-// string!!
-// Run in an effect function: try Console.log(try titleInline())
-```
+| Form | Body | Use when |
+| --- | --- | --- |
+| `e catch () => value` | Plain function | Computing a pure fallback value (`throw` is `EK0401`) |
+| `e catch (err) => value` | Plain function | Formatting or deriving a fallback value from `err` |
+| `e catch effect (err) => { ... }` | Effect function | Running backup Effects, logging, or rethrowing unhandled cases |
 
-```text
-Reading saved title
-Saved issue
-```
+Always write `=>` (`program catch (e) { ... }` is `EK0509`) and never put `try` right before `catch` — write `expr catch h`, not `try expr catch h` (`EK0505`).
 
-`x catch effect () => …` runs the left-hand Effect and calls its handler only after an expected failure. The handler is always a function literal: an effect handler can name the error and run Effects before returning its value, and a plain arrow returns a success value. A `throw` in a plain handler is `EK0401`; write `catch effect` for a typed failure, or `catch effect (error) => try die(error)` for a defect. A value, a name or an `effect { … }` block after `catch` is a syntax error. An omitted `=>`, as in `program catch (error) { return 0 }`, reports `EK0509`; write `program catch (error) => { return 0 }`. Independent TypeScript errors in the recovered handler's parameters or body keep their own diagnostics.
-
-Plain function expressions are handlers too: `latestTitle() catch function (error) { return error._tag }`. Their immediate result stays a success value, including a `Promise`, thenable or Effect; it is not awaited or run. A factory called by a plain handler runs while handling the failure, and the Effect it returns stays cold. Parentheses keep the same handler kind. A parameter annotation is an ordinary TypeScript type; it does not filter failures. A statically known `Promise` or thenable result still receives `EK0507`; run it through `promise` or `tryPromise` in an effect handler.
-
-A native `try { … } catch { … }` inside a plain handler can catch a foreign call’s declared exceptions. Calls in a nested function or a `finally` block keep their own throwing checks. Use an `effect` handler and `try Effect.try(…)` when the call should enter the Effect error channel.
-
-Parentheses keep an arrow as the handler: `latestTitle() catch ((error) => error._tag)` receives the failure, just as an unparenthesized arrow does. Its parameter keeps the failure type, and its body still runs only after a failure.
-
-An `async` or generator function is not a catch handler. It receives `EK0509` without extra type errors from the generated callback's call or return type, and its parameters still take the failure's type, so an untyped parameter reports no implicit `any` error. Written return annotations and independent TypeScript errors inside the expression retain their `TS` codes. Remove `async` or `*` only when the result is a valid plain handler. Native `await`, `for await`, `await using` and `yield`, returned `Promise` values, and incompatible written return types need an explicit rewrite.
-
-`try Effect.catch(latestTitle(), () => cachedTitle())` also works, with the same rule as source catch: it leaves a cause with a defect alone and recovers an expected failure beside an interruption, dropping the interruption. When interruption must propagate intact, match on `exit(...)`. `Effect.catchTag`, `Effect.catchIf`, and `Effect.catchFilter` also select domain failures, under Effect's own recovery policy.
-
-## Supplying a default success
+## Falling back to a default value
 
 ```vibe
 effect function titleOrPlaceholder() {
   return latestTitle() catch () => "No title available"
 }
-// string!!
+// Inferred: string!!
 // Run in an effect function: try Console.log(try titleOrPlaceholder())
 ```
 
@@ -79,11 +59,9 @@ effect function titleOrPlaceholder() {
 No title available
 ```
 
-`x catch () => value` is `yield* Effect.catch(x, () => Effect.succeed(value))`: the value is computed only after an expected failure, and every expected error of `x` is discarded. If that value may be an Effect, `EK0508` warns that it remains unrun data. To execute it, write `catch effect () => try fallback()`. A straightforward arrow has a manual change; mixed Effect/data results need an explicit branch. `any`, `unknown` and `never` do not trigger this warning.
+`x catch () => value` compiles to `yield* Effect.catch(x, () => Effect.succeed(value))`. Returning an unrun Effect from a plain handler draws warning `EK0508` — write `catch effect () => try fallback()` to execute it instead.
 
-To keep some visible, take the failure and rethrow the rest: `latestTitle() catch effect (error) => match (error) { when SourceOffline: "No title available"; default: throw error; }`. An effect handler can run Effects that fail or need services; their errors become the expression's. `try orElseSucceed(latestTitle(), () => "No title available")` still works, with a synchronous callback.
-
-## Typing both sides
+### Typing both outcomes explicitly
 
 ```vibe
 type Lookup = { _tag: "Found"; title: string } | { _tag: "Offline" }
@@ -104,9 +82,7 @@ effect function lookup(): Lookup!! {
 {"_tag":"Offline"}
 ```
 
-The return annotation checks that the successful object and the fallback both produce a `Lookup`. Each `_tag` is kept literal with `as const`. Without a return annotation, the success type is inferred from the two alternatives.
-
-## Trying alternatives until one succeeds
+## Trying alternatives in priority order (`firstSuccessOf`)
 
 ```vibe
 effect function bestTitle() {
@@ -124,37 +100,13 @@ Reading saved title
 Saved issue
 ```
 
-`firstSuccessOf` tries Effects one at a time in priority order and stops on success; if all fail with expected errors, it reports the last error. A cause without an expected failure stops the search, and so does one with a defect; an expected failure beside an interruption activates the next alternative. An empty iterable is a defect: pass at least one.
+`firstSuccessOf` runs Effects one by one until one succeeds. If every alternative fails with an expected error, the last error is returned. Passing an empty iterable is a defect.
 
-`catch` has the precedence of `??` and associates to the left. As with `??`, mixing it with `??`, `||` or `&&` needs parentheses. A handler's concise body extends as far as an arrow body does, so in `loadTitle() catch () => savedTitle || "Untitled issue"` the `||` is inside the handler. To try one more alternative after a fallback fails, nest it in an effect handler, which recovers it in turn: `latestTitle() catch effect () => cachedTitle() catch () => "Untitled issue"`.
+## Precedence and scope
 
-Mixing `catch` with `??`, `||` or `&&` without parentheses reports `EK0512`. Write `(saved ?? loadTitle()) catch () => "Untitled issue"` to catch the selected operand, or `saved ?? (loadTitle() catch () => "Untitled issue")` to catch only the load. A call, member access or index cannot attach to a closed handler: parenthesize the complete catch expression before using its result.
-
-A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect () => try cachedTitle() } catch () => "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
-
-For `EK0509` on a callable value such as `x catch onErr`, write a function literal, `x catch (e) => onErr(e)`, with a parameter name that does not shadow a name visible to the handler.
-
-A handler written as a parameter list followed directly by a block, `x catch (e) { … }`, is missing its `=>`. It reports the `EK0509` syntax diagnostic while retaining the file's independent errors. Write `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own, or `x catch (e) => { … }` for a plain fallback. Keep comments and line breaks before the body after the arrow you add.
-
-For an `async` or generator handler, remove `async` or `*` yourself when the handler uses no `await` or `yield` at its own function level; nested functions keep their own modifiers. Otherwise, the diagnostic asks you to convert the body explicitly. When you remove a modifier, keep the comments after `async` and around `*`, including JSDoc comments.
-
-## Coming from Effect
-
-Pass Effect values directly: `try firstSuccessOf([latestTitle(), cachedTitle()])`. Calling an effect function constructs its Effect. Each run executes its body again. Use `effect { … }` to make an alternative from several statements.
-
-A plain handler's default parameters, destructuring and computed binding keys follow the same known-throwing-call check as its body (`EK0401`). Use an effect handler with nonthrowing parameters, then perform throwing initialization inside its body through `Effect.try`; `try` cannot run in a parameter default. Merely creating a nested function does not execute it.
-
-Write `try x` or `x catch h`. An unparenthesized `try`, `fork` or `join` reached through unary or binary operators reports `EK0505`, even through erased TypeScript wrappers such as `as`, `satisfies`, `!` or an angle-bracket assertion. This syntax check runs before operand typing: a scalar result or a `Fiber` still receives `EK0505`. Generated catch-call type errors are suppressed, including those anchored on `satisfies`; independent type errors in the wrapper remain. Source parentheses stop the search: `(try nested) catch () => fallback` catches the Effect returned by `nested`. Calls, literals and function bodies also stop it.
-
-A `catch` protects the Effect its head produces. In `decode(try parse(input)) catch (e) => fallback(e)`, a failure from `parse` escapes before the catch is installed; only a failure from the returned `decode` Effect reaches the handler. To protect both executions, write `(effect { return try decode(try parse(input)) }) catch (e) => fallback(e)`. If an older catch head executes code and returns a plain value, wrap the head in an `effect` block to preserve its previous recovery boundary.
-
-For `(try x) catch (e) => fallback(e)`, `x` must succeed with an Effect. The handler receives that returned Effect's error type; an error from executing `x` still escapes before recovery. For example, `(try Effect.succeed(Effect.fail("inner"))) catch (e) => e.length` returns `5`.
-
-## Replacing a legacy `try` statement
-
-Effect code rejects JavaScript `try`/`catch` and `try`/`finally`
-statements with `EK0503`. Use an `effect { … }` block with a catch
-expression for typed failures, and `onExit` for cleanup on every exit:
+- `catch` has the precedence of `??` and associates left to right. Mixing `catch` with `??`, `||`, or `&&` requires parentheses (`EK0512`): `(saved ?? loadTitle()) catch () => "Untitled"`.
+- `catch` protects only the Effect produced by its left operand. In `decode(try parse(s)) catch () => fallback`, a failure from `parse(s)` escapes before `catch` installs; wrap both in `effect { return try decode(try parse(s)) } catch () => fallback` to protect both.
+- Effect code rejects JavaScript `try`/`catch` and `try`/`finally` statements (`EK0503`). Use `effect { ... } catch ...` for recovery and `ensuring` / `onExit` for cleanup:
 
 ```vibe
 error MissingValue
@@ -171,10 +123,11 @@ effect function clean() {
 }
 ```
 
-Plain and `async` functions, including those nested in effect code, keep
-JavaScript's native `try` statements.
+## Coming from Effect
 
-A catch expression needs an explicit effect scope. An ordinary callback keeps its own plain scope even when an enclosing function is `effect` or the callback is expected to return an Effect; mark that callback `effect` too.
+- `e catch () => value` replaces `Effect.orElseSucceed(e, () => value)`.
+- `e catch effect () => try alt()` replaces `Effect.catch(e, () => alt())`.
+- Pass cold Effect arrays straight to `try firstSuccessOf([a(), b()])`.
 
 ---
 

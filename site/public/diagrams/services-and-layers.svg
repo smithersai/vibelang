@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 330" role="img" aria-labelledby="t d">
+  <title id="t">Services declare contracts, Layers build implementations, provide wires them once</title>
+  <desc id="d">Shows Config feeding DatabaseLive, DatabaseLive feeding UsersLive, and provide supplying the whole layer graph to main() so R becomes never.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="330" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">Services, Layers, and provide: wire dependencies once at the edge</text>
+      <text x="36" y="64" class="sub">Business logic asks for capabilities by service key. Layers capture their own dependencies when constructed.</text>
+
+      <!-- Left column: Layers -->
+      <rect x="36" y="94" width="200" height="68" rx="10" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="54" y="120" class="k" fill="#0f766e">LAYER</text>
+      <text x="54" y="140" class="code" fill="#16202e">DbLive</text>
+      <text x="54" y="154" class="code-sm" fill="#4b5563">provides Database</text>
+
+      <line x1="236" y1="128" x2="288" y2="128" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+
+      <rect x="296" y="94" width="240" height="68" rx="10" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="314" y="120" class="k" fill="#0f766e">LAYER.EFFECT</text>
+      <text x="314" y="140" class="code" fill="#16202e">UsersLive</text>
+      <text x="314" y="154" class="code-sm" fill="#4b5563">uses Database → provides Users</text>
+
+      <!-- Bottom left: business logic -->
+      <rect x="36" y="204" width="500" height="92" rx="10" fill="#ffffff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="54" y="228" class="k" fill="#4338ca">APPLICATION CODE</text>
+      <text x="54" y="252" class="code" fill="#16202e">effect function greet(id: string)</text>
+      <text x="54" y="274" class="p">Reads <tspan class="code-sm" fill="#0f766e">const users = try Users</tspan> — never mentions Database!</text>
+      <text x="54" y="290" class="code-sm" fill="#4338ca">inferred type: string!NotFound!Users</text>
+
+      <!-- Merge arrow into provide -->
+      <line x1="536" y1="128" x2="584" y2="178" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="536" y1="250" x2="584" y2="206" stroke="#4338ca" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Right: provide boundary -->
+      <rect x="592" y="124" width="252" height="144" rx="10" fill="#ffffff" stroke="#d6dde8" stroke-width="1.5"/>
+      <text x="610" y="150" class="k" fill="#6b7280">AT MAIN()</text>
+      <text x="610" y="176" class="code" fill="#0f766e">provide AppLive {</text>
+      <text x="610" y="198" class="code" fill="#4338ca">  try greet("ada")</text>
+      <text x="610" y="220" class="code" fill="#0f766e">}</text>
+      <text x="610" y="250" class="p">Requirements satisfied: <tspan class="code-sm" fill="#0f766e">R = never</tspan></text>
+    
+</svg>

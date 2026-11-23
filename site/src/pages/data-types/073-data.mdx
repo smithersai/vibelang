@@ -1,21 +1,13 @@
 ---
 title: "Data"
-description: "A data declaration declares a tagged union: Effect's own Data.TaggedEnum type and the Data.taggedEnum constructors, under one name, which match takes apart. The rest of Data works in VibeLang..."
+description: "A data declaration defines a tagged union — Effect's Data.TaggedEnum type and Data.taggedEnum constructors under a single name — ready to destructure with match. The rest of Effect's Data module..."
 ---
 
 # Data
 
-A `data` declaration declares a tagged union: Effect's own `Data.TaggedEnum` type and the `Data.taggedEnum` constructors, under one name, which `match` takes apart. The rest of `Data` works in VibeLang exactly as in Effect: use it for classes and errors with Effect's equality and hashing. Generated `data` builders and type references always use Effect's `Data`; a local value or type parameter named `Data` keeps its ordinary source meaning without capturing them.
+A `data` declaration defines a tagged union — Effect's `Data.TaggedEnum` type and `Data.taggedEnum` constructors under a single name — ready to destructure with `match`. The rest of Effect's `Data` module (`Data.Class`, `Data.TaggedClass`, `Data.Error`) works in VibeLang exactly as in Effect.
 
-Decorators are not admitted on a `data` declaration (`TS1206`), as on its native TypeScript constant or type alias.
-
-Write the `data` keyword without Unicode escapes (`TS1260`). Escaped data names and ordinary identifiers keep working.
-
-## Declaring tagged unions with data
-
-A `data` declaration always needs a variant body. A same-line name starts the declaration, including `as`, `satisfies`, and `is`, so a bare `data as T;`, `data satisfies T;`, or `data is Number;` reports `EK1604`. Write `(data as T);`, `(data satisfies T);`, or `(data is Number);` for an expression statement. Assertions and pattern tests in initializers and after `return` work as usual. Type parameters and the body may follow the name on later lines. A line break after `as` or `satisfies` does not change this declaration precedence; parenthesize the complete assertion, including its continued type.
-
-A `data` declaration creates runtime constructors. It is `EK1607` in an ambient context, including an explicit `declare` or an enclosing ambient namespace, module, or global declaration. Use native TypeScript ambient declarations to describe existing constructors and types.
+## Declaring tagged unions with `data`
 
 ```vibe
 data Delivery {
@@ -47,26 +39,14 @@ Rejected: address missing
 true
 ```
 
-A variant without fields is a bare name. A variant with fields lists them in braces as an `error` does, `name: Type` or `name?: Type`, and they are readonly. A new line, `;` or `,` separates variants and fields. `Delivery.Sent({ tracking })` and `Delivery.Waiting()` build values: plain records with a `_tag`, which compare and hash by their fields.
+- A fieldless variant is a bare name (`Waiting`), constructed with `Delivery.Waiting()`.
+- A payload variant lists fields in braces (`Sent { tracking: string }`), all shallowly `readonly` in the resulting type.
+- Values compare and hash structurally (`Equal.equals`).
+- Match variants with object tag patterns (`when { _tag: "Sent", let tracking }:`), not class patterns (`when Delivery.Sent:` is `EK0702`). Missing a variant without `default` is a compile error (`EK4701`).
 
-A leading separator or two separators in a row reports `EK1606`: a variant name must appear between them. One trailing separator is allowed.
+## Generic `data` types
 
-Variant names are identifier names, including reserved words such as `default`. Quoted strings, numeric and `bigint` literals, and template literals report `EK1606`; write a name such as `Ready`. Following variants continue to be checked after a malformed name.
-
-A parenthesized payload such as `data D { A(x: number) }` reports `EK1606`; write `A { x: number }`. Payload methods and signatures, such as `A { m(): void }`, also report `EK1606`. A function-valued field such as `A { m: () => void }` is allowed.
-
-Two variants or two fields on one line need a separator. `data D { A B }` and `data D { A { x: number y: string } }` report `EK1605`; insert `;` or a line break. Insert `;` after the first member and keeps comments in place. Missing separators inside an ordinary nested TypeScript type keep the native TypeScript diagnostic.
-
-A variant cannot be named `$is` or `$match` (`EK1602`), including in generic data: Effect reserves those properties for helpers. Rename it and its references, for example to a fresh `Is` or `Match`.
-
-`when { _tag: "Sent", let tracking }` tests the variant and binds `tracking`, and `delivery is { _tag: "Sent" }` tests it in a condition. `match` is exhaustive: without a `default` arm, a match that leaves out a variant is a compile error (`EK4701`). A finite generic constraint on these variants is checked over its possible cases. An open type such as `unknown` turns off `EK4701`; unmatched values retain the runtime `TypeError`. See [Pattern matching with match and is](/vibelang-features/116-match-and-is#data-variants). A variant constructor used as a class pattern, such as `when Delivery.Sent:` or `delivery is Delivery.Sent`, reports `EK0702`; use the tag object pattern, or apply its manual change.
-
-`export default data D { … }` reports `EK1603`, including for generic data declarations. Declare the name, then write `export { D as default }`. This keeps the type and constructors under that name.
-
-
-A declaration may have no variants: `data Empty {}` has the type `never` and no constructible variants, as `Data.TaggedEnum<{}>` does in Effect. Generic empty declarations are allowed too.
-
-## Generic data types
+A `data` declaration accepts up to four unconstrained type parameters (`EK2801` for >4, `EK2126` for constraints, `EK2803` for defaults), including recursive definitions like trees:
 
 ```vibe
 data LoadState<A, E> {
@@ -95,15 +75,9 @@ function count(state: LoadState<ReadonlyArray<string>, string>) {
 2 0
 ```
 
-Keep `data` and its name on the same line. The type parameters and opening brace may start on later lines.
+## What `data` compiles to
 
-At a statement's start, an assertion on a binding named `data` needs parentheses when `as` or `satisfies` is followed by a generic function type on a later line. Parenthesize the original expression to preserve its behavior.
-
-A data type takes up to four unconstrained type parameters without defaults, which the constructors infer from their arguments. A default such as `data Box<A = string>` reports `EK2803`; put defaults on a separate type alias. A recursive data type, such as `data Tree<A> { Leaf { value: A }; Node { left: Tree<A>; right: Tree<A> } }`, works too. An empty type parameter list, `data D<> { … }`, reports `TS1098`, as a class does; write a type parameter or remove the angle brackets.
-
-## What data declares
-
-`data Delivery { ... }` declares what Effect's documentation writes for a tagged union, so TypeScript code that imports `Delivery` gets Effect's types, `Delivery.$is` and `Delivery.$match`:
+`data Delivery { ... }` compiles to standard Effect `Data.TaggedEnum` + `Data.taggedEnum`, so TypeScript callers get `Delivery`, `Delivery.$is`, and `Delivery.$match`:
 
 ```ts [Effect]
 import { Data } from "effect"
@@ -116,7 +90,7 @@ type Delivery = Data.TaggedEnum<{
 const Delivery = Data.taggedEnum<Delivery>()
 ```
 
-A declaration file declares what TypeScript declares for that counterpart: the type first, each variant's fields as written (`Data.TaggedEnum` makes every field `readonly` in the type either way), then the constant with the type TypeScript infers for it, `Data.TaggedEnum.Constructor<{ readonly _tag: "Waiting" } | …>`. Write `readonly` on a field where your TypeScript wrote it, or wrapped the payload in `Readonly<{ … }>`. Generic declarations use `Data.TaggedEnum.GenericConstructor`, keeping the same callable contract when imported from their declaration files: generic variants, including aliases and destructured constructors, can be called directly in effect code. A generic data type passes its type parameters through the interface `Data.TaggedEnum.WithGenerics` describes, named `$LoadState$Definition`, or `$LoadState$Definition$2` and so on when the module already declares that name, which `export data` exports with the type and the constructors. Object and class member names, such as a field named `$LoadState$Definition`, do not force a helper suffix. A user declaration such as `LoadStateDefinition` remains independent; the generated helper chooses another name. If you imported an older generated helper such as `LoadStateDefinition`, update the imported type to `$LoadState$Definition` while keeping your local alias and re-exported name, including in qualified namespace references and `import(...)` type references.
+Generic declarations emit the corresponding `Data.TaggedEnum.WithGenerics` helper interface (`$LoadState$Definition`) alongside the type and constructor object:
 
 ```ts [Effect]
 import { Data } from "effect"
@@ -132,7 +106,9 @@ interface $LoadState$Definition extends Data.TaggedEnum.WithGenerics<2> {
 const LoadState = Data.taggedEnum<$LoadState$Definition>()
 ```
 
-## Creating values with structural equality
+## Structural equality and `Data.Class`
+
+In Effect 4, plain objects, arrays, tuples, maps, and sets already support structural `Equal.equals` without wrappers (treat compared data as immutable):
 
 ```vibe
 const first = { route: "inbox", filters: { unread: true } }
@@ -152,9 +128,7 @@ Equal.equals(makeRoute("inbox"), makeRoute("inbox")) // true
 true true true true
 ```
 
-In Effect 4, plain records, tuples, arrays, maps, and sets already compare structurally, nested values included, without a `Data` wrapper. Treat compared data as immutable: equality and hashing cache information about objects.
-
-## Building ordinary and tagged classes
+Use `Data.Class` or `Data.TaggedClass` when you want methods or getters on a structurally equal value class:
 
 ```vibe
 class Label extends Data.Class<{ text: string }> {
@@ -176,129 +150,9 @@ new Archived({ documentId: "doc-3" })._tag // "Archived"
 PENDING true Archived
 ```
 
-`Class` supplies a constructor taking a field object, plus equality and hashing; `TaggedClass` adds a fixed `_tag` for narrowing union members. These concrete data classes are separate from services declared with `service`.
+## Errors and wrapping native causes
 
-## Writing a tagged union out with Data.TaggedEnum
-
-Effect's long form works in a `.vibe` file too, with the same `$is` and `$match`:
-
-```vibe
-type Delivery = Data.TaggedEnum<{
-  Waiting: {}
-  Sent: { tracking: string }
-  Rejected: { reason: string }
-}>
-
-const Delivery = Data.taggedEnum<Delivery>()
-const sent = Delivery.Sent({ tracking: "parcel-8" })
-const waiting = Delivery.Waiting()
-const rejected = Delivery.Rejected({ reason: "address missing" })
-const isSent = Delivery.$is("Sent")
-isSent(sent) // true
-
-const describe = Delivery.$match({
-  Waiting: () => "Waiting for dispatch",
-  Sent: ({ tracking }) => `Tracking: ${tracking}`,
-  Rejected: ({ reason }) => `Rejected: ${reason}`
-})
-describe(sent) // "Tracking: parcel-8"
-// Run in an effect function:
-//   try Console.log(isSent(sent))
-//   try Console.log(describe(waiting))
-//   try Console.log(describe(sent))
-//   try Console.log(describe(rejected))
-```
-
-```text
-true
-Waiting for dispatch
-Tracking: parcel-8
-Rejected: address missing
-```
-
-`TaggedEnum` describes the union as a map from tags to payloads. `taggedEnum` creates constructors that insert `_tag`, a `$is` guard factory, and a `$match` helper requiring a case per variant. Match callbacks compute values synchronously; for service work, use `match` inside an effect function, whose arms can run Effects with `try`.
-
-## Writing generic union cases out
-
-```vibe
-type LoadState<A, E> = Data.TaggedEnum<{
-  Idle: {}
-  Ready: { value: A }
-  Failed: { error: E }
-}>
-
-interface LoadStateDefinition extends Data.TaggedEnum.WithGenerics<2> {
-  taggedEnum: LoadState<this["A"], this["B"]>
-}
-
-const LoadState = Data.taggedEnum<LoadStateDefinition>()
-const loaded = LoadState.Ready({ value: ["one", "two"] })
-const failed = LoadState.Failed({ error: "offline" })
-const idle = LoadState.Idle()
-// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([loaded, failed, idle])))
-```
-
-```text
-[{"value":["one","two"],"_tag":"Ready"},{"error":"offline","_tag":"Failed"},{"_tag":"Idle"}]
-```
-
-`WithGenerics<2>` gives the definition two type parameters, `A` and `B`; the constructors infer payload types per call. Keep the generic definition in a type or interface; it is not a generic service class.
-
-## Errors
-
-| Code | Cause | Fix |
-| --- | --- | --- |
-| `TS2300` | A variant or field declared twice | Rename one, or remove the duplicate |
-| `EK1606` | A malformed variant, such as `A(x: number)`, or a variant member that is not a field: a method, a signature, a field without a type, or a `mutable` field | Write the payload as a field list in braces, `A { x: number }`, each field `name: Type` or `name?: Type` |
-| `EK1601` | A field, including a computed string-literal key, named `_tag` | Rename the field: the constructor sets `_tag` to the variant's name |
-| `EK1602` | A variant named `$is` or `$match` | Rename the variant and its references: the constructors object has its own `$is` and `$match` |
-| `EK2801` | More than four type parameters | Use at most four type parameters |
-| `EK2126` | A constrained type parameter | Remove the constraint |
-| `EK2803` | A default on a generic `data` parameter | Put the default on a type alias |
-| `EK2127` | `Delivery.Snet`, a name that is not one of the data type's variants | Use one of the variants the message lists |
-
-## Defining ordinary and tagged errors
-
-```vibe
-// expect-warning: EK4830
-class InvalidDocument extends Data.Error<{
-  message: string
-  line: number
-}> {}
-
-error DocumentMissing {
-  id: string
-}
-
-effect function requireDocument(id: string) {
-  if (id === "") throw new DocumentMissing({ id })
-  return { id }
-}
-// { id: string }!DocumentMissing
-
-effect function documentOrDraft(id: string) {
-  return requireDocument(id) catch (error) => match (error) {
-    when DocumentMissing: ({ id: "draft" });
-  }
-}
-// Run in an effect function:
-//   try Console.log(new InvalidDocument({ message: "invalid", line: 3 }).line)
-//   {
-//     const jsonValue = [try documentOrDraft("doc-3"), try documentOrDraft("")]
-//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
-//   }
-//   try Console.log(requireDocument("") catch (error) => error._tag)
-```
-
-```text
-3
-[{"id":"doc-3"},{"id":"draft"}]
-DocumentMissing
-```
-
-`Data.Error` creates a native error with extra fields. An `error` declaration creates Effect's `Data.TaggedError` class, which fills in `_tag`; `throw` inside an effect function raises it as an expected failure. Use `Schema.TaggedError` when the error needs a schema for serialization.
-
-## Preserving native error causes
+Prefer `error Name { ... }` (which compiles to `Data.TaggedError`) for domain failures, and keep a `cause: unknown` field when wrapping native exceptions:
 
 ```vibe
 error DocumentDecodeError {
@@ -311,7 +165,7 @@ effect function decodeDocument(text: string) {
     catch: (cause) => new DocumentDecodeError({ cause })
   })
 }
-// any!DocumentDecodeError
+// Inferred: any!DocumentDecodeError
 // Run in an effect function:
 //   {
 //     const jsonValue = try decodeDocument("{\"id\":3}")
@@ -325,18 +179,23 @@ effect function decodeDocument(text: string) {
 DocumentDecodeError true
 ```
 
-A `cause` field keeps the original exception through native error-cause support; it is not Effect's `Cause`, which describes a whole execution failure. Keep the original error for diagnosis, and keep document contents and credentials out of diagnostic fields.
+## Rules and diagnostics
+
+| Code | Cause | Fix |
+| --- | --- | --- |
+| `EK1601` | Variant field named `_tag` | Rename the field; `_tag` is generated from the variant name. |
+| `EK1602` | Variant named `$is` or `$match` | Rename the variant; Effect reserves those helpers. |
+| `EK1603` | `export default data D { ... }` | Declare `data D { ... }`, then `export { D as default }`. |
+| `EK1604` | `data` declaration missing `{ ... }` body | Add braces, or parenthesize an expression statement `(data as T)`. |
+| `EK1605` | Missing separator between variants or fields on one line | Add `;`, `,`, or a newline. |
+| `EK1606` | Malformed variant (`A(x: number)`, method, or non-identifier name) | Use `A { x: number }`. |
+| `EK1607` | `data` in an ambient `declare` context | Use native TypeScript `declare` types and constants. |
+| `EK2126` / `EK2801` / `EK2803` | Constrained, >4, or defaulted generic parameters | Use at most 4 unconstrained type parameters without defaults. |
+| `EK2127` | Accessing a nonexistent variant (`Delivery.Snet`) | Use a declared variant name. |
 
 ## Coming from Effect
 
-Raise a data error with `throw new DocumentMissing({ id })`; ordinary error propagation needs no generator yield or `Effect.fail`.
-
-An exported `data` declaration may use the contextual name `as`. Its declaration file writes `export declare type as = …` so TypeScript consumers can import both its constructor and its type.
-
-A variant’s fields are readonly, as in `Data.TaggedEnum`; a nested object or array keeps its written TypeScript mutability. Nested index signatures are writable unless written `readonly`. Migration-only fixes leave data fields unchanged and explicitly mark nested members that the pre-pin compiler made readonly, preserving published declarations. Ordinary fixes retain their written modifiers.
-Computed keys with the string literal type `"_tag"` report `EK1601` too, including a `const` key and a property of an `as const` object. Broad `string` keys keep the native `Data.TaggedEnum` constraint error.
-
-Only computed key forms admitted by TypeScript receive `EK1601`. Parenthesized keys, element accesses and calls retain native `TS1170` even when their result type is the literal `"_tag"`.
+`data` replaces the `Data.TaggedEnum` + `Data.taggedEnum` pair, and `error` replaces `Data.TaggedError`. Effect's long-form `Data.TaggedEnum` and `Data.Error` still compile when needed.
 
 ---
 

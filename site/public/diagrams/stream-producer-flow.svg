@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" role="img" aria-labelledby="t d">
+  <title id="t">Pull-based Streams: producers yield values on demand into consumers</title>
+  <desc id="d">An effect function* producer yields items lazily under backpressure through Stream operators into a for try loop or Sink.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="300" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">Producers &amp; Streams: pull-based data with built-in backpressure</text>
+      <text x="36" y="64" class="sub">The consumer pulls the next item only when ready — the producer pauses between yields.</text>
+
+      <!-- Producer -->
+      <rect x="36" y="100" width="238" height="138" rx="10" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="54" y="126" class="k" fill="#4338ca">PRODUCER</text>
+      <text x="54" y="150" class="code" fill="#16202e">effect function* pages()</text>
+      <text x="54" y="176" class="code-sm" fill="#4338ca">  yield row</text>
+      <text x="54" y="200" class="p">Returns <tspan class="code-sm" fill="#16202e">Stream&lt;A, E, R&gt;</tspan></text>
+      <text x="54" y="220" class="p">Owns its own cleanup Scope</text>
+
+      <!-- Arrows (data right, pull left) -->
+      <line x1="274" y1="154" x2="326" y2="154" stroke="#4338ca" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+      <text x="300" y="144" text-anchor="middle" class="k" fill="#4338ca">ITEM</text>
+      <line x1="326" y1="186" x2="274" y2="186" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+      <text x="300" y="204" text-anchor="middle" class="k" fill="#6b7280">PULL</text>
+
+      <!-- Operators -->
+      <rect x="334" y="100" width="212" height="138" rx="10" fill="#ffffff" stroke="#d6dde8" stroke-width="1.5"/>
+      <text x="352" y="126" class="k" fill="#6b7280">TRANSFORM</text>
+      <text x="352" y="152" class="code-sm" fill="#16202e">Stream.filter(…)</text>
+      <text x="352" y="174" class="code-sm" fill="#16202e">Stream.map(…)</text>
+      <text x="352" y="196" class="code-sm" fill="#16202e">Stream.take(10)</text>
+      <text x="352" y="222" class="p">Lazy — zero buffering surge</text>
+
+      <!-- Arrows -->
+      <line x1="546" y1="154" x2="598" y2="154" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <text x="572" y="144" text-anchor="middle" class="k" fill="#0f766e">ITEM</text>
+      <line x1="598" y1="186" x2="546" y2="186" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+      <text x="572" y="204" text-anchor="middle" class="k" fill="#6b7280">PULL</text>
+
+      <!-- Consumer -->
+      <rect x="606" y="100" width="238" height="138" rx="10" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="624" y="126" class="k" fill="#0f766e">CONSUMER</text>
+      <text x="624" y="152" class="code" fill="#16202e">for try (const x of s)</text>
+      <text x="624" y="176" class="p">or <tspan class="code-sm" fill="#0f766e">try Stream.runCollect(s)</tspan></text>
+      <text x="624" y="200" class="p"><tspan class="code-sm" fill="#16202e">break</tspan> stops early &amp; closes</text>
+      <text x="624" y="220" class="p">every upstream resource.</text>
+
+      <text x="440" y="274" text-anchor="middle" class="p">Compare with <tspan class="code-sm" fill="#4338ca">for concurrent</tspan>: use <tspan class="code-sm" fill="#4338ca">for concurrent</tspan> for finite Iterables, <tspan class="code-sm" fill="#0f766e">for try</tspan> for Streams.</text>
+    
+</svg>

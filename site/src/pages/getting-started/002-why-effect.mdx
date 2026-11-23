@@ -11,11 +11,32 @@ This page makes the case in four steps: what Effect adds to TypeScript, what wri
 
 ## What Effect adds to TypeScript
 
-A TypeScript signature names a return type. It says nothing about what the function can fail with or what it needs to run. Effect puts all three into one type the compiler checks, `Effect<Success, Error, Requirements>`, and ships one library around it: typed errors, dependency injection, retries, timeouts, structured concurrency, resource cleanup, schemas and tracing. Effect states its own case in [Why Effect?](https://effect.website/docs/getting-started/why-effect/).
+A TypeScript function signature tells you what comes back when things go right. It is silent about what can fail and what dependencies the function secretly reads.
+
+Effect puts all three into one compiler-checked type — `Effect<Success, Error, Requirements>` — and ships one integrated library around it: typed errors, dependency injection, retries, timeouts, structured concurrency, resource cleanup, schemas, and tracing. Effect makes that full case in [Why Effect?](https://effect.website/docs/getting-started/why-effect/).
 
 ## What writing it as a library costs
 
-Effect is a library, so it builds every feature from TypeScript's existing tools. Generators and `yield*` sequence steps. `pipe` composes operators. Classes declare errors and services. Here is a function that looks up a user's name, falls back to a guest, and needs a `Users` service, in Effect TypeScript:
+Because Effect is a library, it builds every construct out of existing TypeScript syntax: generators and `yield*` to sequence work, `pipe` to wire combinators, and boilerplate class declarations for errors and services.
+
+Here is a function that looks up a user's name, falls back to `"guest"`, and depends on a `Users` service — first in Effect TypeScript, then in VibeLang:
+
+:::code-group
+
+```vibe [VibeLang]
+error NotFound { id: string }
+
+service Users {
+  static readonly key = "app/Users"
+  name(id: string): string!NotFound
+}
+
+effect function greet(id: string): string!!Users {
+  const users = try Users
+  const name = users.name(id) catch () => "guest"
+  return `Hello, ${name}`
+}
+```
 
 ```ts [Effect]
 import { Context, Data, Effect } from "effect"
@@ -34,26 +55,20 @@ const greet = (id: string): Effect.Effect<string, never, Users> =>
   })
 ```
 
-The same function in VibeLang:
+:::
 
-```vibe
-error NotFound { id: string }
+Every VibeLang form is exact sugar for the Effect code beside it:
 
-service Users {
-  static readonly key = "app/Users"
-  name(id: string): string!NotFound
-}
+| VibeLang | Compiles to |
+| --- | --- |
+| `error NotFound { id: string }` | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` |
+| `service Users { ... }` | `class Users extends Context.Service<Users, { ... }>()(...) {}` |
+| `effect function greet(id)` | `Effect.gen(function* () { ... })` |
+| `try expr` | `yield* expr` |
+| `expr catch () => "guest"` | `yield* expr.pipe(Effect.orElseSucceed(() => "guest"))` |
+| `string!!Users` | `Effect.Effect<string, never, Users>` |
 
-effect function greet(id: string): string!!Users {
-  const users = try Users
-  const name = users.name(id) catch () => "guest"
-  return `Hello, ${name}`
-}
-```
-
-Every form is exact sugar for the Effect code beside it. `error` is the `Data.TaggedError` class. `service` is the `Context.Service` class. `effect function` returns an Effect, as `Effect.gen` does. `try` is `yield*`. `catch` is `Effect.orElseSucceed`. The return type `string!!Users` is `Effect<string, never, Users>`, and you may leave it out: the compiler infers all three slots from the body.
-
-A layer supplies the service, and `provide` runs the program with it. `throw` fails with the typed error, and `catch` above turns that failure into `guest`:
+Leave off the return annotation and the compiler infers all three channels from the body. Supply the service with a layer and a `provide` block:
 
 ```vibe
 const UsersLive = Layer.succeed(Users, {
@@ -74,42 +89,44 @@ effect function main() {
 // Output: Hello, guest
 ```
 
-The [cheat sheet](/vibelang-features/115-cheat-sheet) puts every VibeLang form beside the Effect code it replaces, and [a real provider, before and after](/getting-started/real-provider-before-after) compares one production module in both languages.
+See the [cheat sheet](/vibelang-features/115-cheat-sheet) for every form side by side, and [A real provider, before and after](/getting-started/real-provider-before-after) for a real production module in both languages.
 
 ## Effect's answer: it should not be a language
 
-Effect's documentation lists ["Effect should be a language or use a different language"](https://effect.website/docs/additional-resources/myths/#effect-should-be-a-language-or-use-a-different-language) among its myths about Effect. The answer opens:
+Effect's documentation lists ["Effect should be a language or use a different language"](https://effect.website/docs/additional-resources/myths/#effect-should-be-a-language-or-use-a-different-language) among its myths about Effect:
 
 > Neither solve the issue of writing production grade software in TypeScript. TypeScript is an amazing language to write full stack code with deep roots in the JS ecosystem and wide compatibility of tools, it is an industrial language adopted by many large scale companies.
 
-The page goes on: TypeScript's support for generators is what lets a library like Effect offer imperative code over a custom type, and even Scala's effect systems have worse interop with their host language than Effect has with TypeScript.
+The argument is sound: leaving TypeScript means forfeiting its compiler, type system, packages, editors, build tools, and talent pool. History backs it up too — Effect's own TypeScript fork, TS+, was [abandoned](https://effect.website/blog/ts-plus-postmortem) because changing `.ts` semantics split the ecosystem and broke build tools on every upgrade.
 
-Taken seriously, the argument is this. A new language forfeits TypeScript's compiler, its type system, its packages, its editors and build tools, and the people who already know it. Every effect system that left its host language paid for the move in interop, and TypeScript's generators are good enough that Effect never had to. That is correct, and the history backs it: Effect's own TypeScript fork, TS+, was [abandoned](https://effect.website/blog/ts-plus-postmortem) because its build tools needed patches on every TypeScript update and changing `.ts` semantics split the ecosystem.
+VibeLang accepts that premise and builds inside it.
 
-VibeLang accepts the premise and is built on it.
+<figure className="vibe-diagram"><img className="vibe-diagram__light" src="/diagrams/vibe-ts-interop.svg" alt="VibeLang compiles .vibe and .ts files in one program without leaving TypeScript or Effect" /><img className="vibe-diagram__dark" src="/diagrams/vibe-ts-interop-dark.svg" alt="VibeLang compiles .vibe and .ts files in one program without leaving TypeScript or Effect" /><figcaption>VibeLang compiles .vibe and .ts files in one program without leaving TypeScript or Effect</figcaption></figure>
 
-- **It does not leave TypeScript.** The compiler is a fork of the TypeScript 7 compiler. It checks `.vibe` and `.ts` files in one program, with TypeScript's type system, and emits JavaScript plus a `.d.vibe.ts` declaration beside each `.vibe` file. Unmarked `.ts` files keep TypeScript's semantics; the experimental directive described below is an explicit exception.
-- **It does not leave Effect.** The output runs on `effect` itself plus `vibelang-runtime`. `try` compiles to the `yield*` the myths page praises. To any TypeScript caller, a VibeLang function is an ordinary Effect function with an ordinary Effect type.
-- **It does not leave the ecosystem.** A `.ts` file sits beside any `.vibe` file and the two import each other. npm packages install as before. [Vite and Vitest](/setup/vite) compile `.vibe` through `vibelang-vite`, and webpack, Rspack, Rollup, Rolldown, esbuild and Bun through `vibelang-unplugin`. The editor extension runs the compiler as a language server.
-- **What changes is the surface.** VibeLang replaces the syntax of the Effect parts: the generator, `yield*`, `pipe` and the class declarations. It keeps the types, the runtime, the library and the tools. It is a syntax for Effect, not a replacement for TypeScript.
+- **It does not leave TypeScript.** The compiler forks the TypeScript 7 compiler. It typechecks `.vibe` and `.ts` files in one program and emits JavaScript plus a `.d.vibe.ts` declaration beside each `.vibe` file. Unmarked `.ts` files keep TypeScript's semantics; the experimental directive below is an explicit opt-in.
+- **It does not leave Effect.** Output runs directly on `effect` and `vibelang-runtime`. `try` compiles to the `yield*` the myths page praises. To any TypeScript caller, a VibeLang function is an ordinary Effect function.
+- **It does not leave the ecosystem.** A `.ts` file sits beside any `.vibe` file and the two import each other. npm packages install normally. [Vite and Vitest](/setup/vite) compile `.vibe` via `vibelang-vite`; webpack, Rspack, Rollup, Rolldown, esbuild, and Bun use `vibelang-unplugin`; editors run the compiler as a language server.
+- **Only the surface changes.** VibeLang replaces the Effect boilerplate — generators, `yield*`, `pipe`, and verbose class headers — with statements, while keeping the types, runtime, library, and ecosystem intact.
 
-The same documentation says, in [Using Generators](https://effect.website/docs/getting-started/using-generators/): "If you find generators unfamiliar or prefer a different coding style, you can explore the documentation about Building Pipelines in Effect." Generators and pipelines are the two ways to write an Effect program in TypeScript. VibeLang is a third: statements.
+Effect's own [Using Generators](https://effect.website/docs/getting-started/using-generators/) guide contrasts two styles for writing Effect programs: pipelines and generators. VibeLang is a third: plain statements.
 
 ## What VibeLang costs
 
-- **A syntax to learn.** Your team reads and reviews `.vibe` files, so everyone needs the forms. The [cheat sheet](/vibelang-features/115-cheat-sheet) is the complete inventory, each form beside its Effect code.
-- **A compiler in the toolchain.** `vibelang` checks `.vibe` files and replaces `tsc` for them. Stock `tsc` reads only the `.d.vibe.ts` declarations the compiler writes. Bundlers and test runners need the plugin, and editors need the language server. [Set up VibeLang](/setup) lists each.
-- **Alpha status.** VibeLang is v0. The language will change in major, breaking ways, and it is not ready for production use. Each release names what changed in the [release notes](/setup/release-notes).
-- **One Effect version.** The compiled output requires `effect@4.1.1` exactly, because the runtime reaches into that version's fiber internals. You upgrade Effect when VibeLang does.
-- **Platform rehearsal.** Native compilers ship for macOS, Linux and Windows on arm64 and x64. The release rehearsal runs the starter on Linux x64 only. [Installation](/getting-started/004-installation) has the table.
+Be clear-eyed about the tradeoffs before adopting an alpha language:
 
-If your team will not take an alpha compiler, write Effect TypeScript. The two interoperate, so you can try VibeLang in one file of an existing Effect project and remove it as easily. [Existing project](/setup/existing-project) shows the steps.
+- **A syntax to learn.** Your team reads and reviews `.vibe` files. The [cheat sheet](/vibelang-features/115-cheat-sheet) covers the entire surface on one page.
+- **A compiler in the toolchain.** `vibelang` checks `.vibe` files. Stock `tsc` reads only the `.d.vibe.ts` declarations the compiler emits. Bundlers, test runners, and editors need the plugin or language server ([Set up VibeLang](/setup)).
+- **Alpha status.** VibeLang is v0. Breaking changes happen frequently; track them in the [release notes](/setup/release-notes).
+- **Pinned Effect version.** Compiled output requires `effect@4.1.1` exactly because the runtime hooks into fiber internals. You upgrade Effect when VibeLang does.
+- **Platform rehearsal.** Native binaries ship for macOS, Linux, and Windows on arm64 and x64, with full release rehearsal running on Linux x64 ([Installation](/getting-started/004-installation)).
 
-After the CLI, plugins and editor support, the experimental [TypeScript shim](/setup/typescript-shim) is a last resort for projects that cannot change TypeScript file names. Its directive does not make stock readers safe: a file can compile successfully with different prelude bindings.
+If your team cannot take an alpha compiler yet, write Effect TypeScript. Because the two interoperate seamlessly, you can try VibeLang in a single file of an existing Effect project and remove it just as easily ([Existing project](/setup/existing-project)).
+
+After the CLI, plugins, and editor support, the experimental [TypeScript shim](/setup/typescript-shim) is a last resort for projects that cannot rename `.ts` files. Its directive does not make stock TypeScript readers safe, because a file can compile under different prelude bindings.
 
 ## Next
 
-[Welcome](/001-onboarding) walks through a complete program. Continue with [The Effect Type](/getting-started/003-the-effect-type) and [Creating Effects](/getting-started/005-creating-effects).
+[Welcome](/001-onboarding) walks through a complete program. Continue the Learning Path with [The Effect Type](/getting-started/003-the-effect-type) and [Creating Effects](/getting-started/005-creating-effects).
 
 ---
 

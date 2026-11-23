@@ -1,8 +1,12 @@
 # Introduction to Effect Schema
 
-`Schema` works exactly as in Effect: it describes values, checks data, and converts between representations. Use one at a boundary where incoming data has an unknown shape, or where a domain value needs a storage or transport format. `.vibe` files need no import for `Schema`.
+`Schema` works in VibeLang exactly as in Effect — plus VibeLang adds `schema` declarations that generate both the runtime codec and the TypeScript type in one place. Use schemas at every system boundary (HTTP JSON, environment variables, database rows, RPC) so untrusted `unknown` input becomes validated domain data.
+
+![One schema declaration generates both the runtime decode/encode codec and the TypeScript type](/diagrams/schema-codec-flow.svg)
 
 ## Configuring compiler prerequisites
+
+Enable `strict` and `exactOptionalPropertyTypes` in `tsconfig.json` so TypeScript distinguishes a missing optional key (`{}`) from an explicit `undefined` (`{ hint: undefined }`):
 
 ```vibe
 // settings.vibe
@@ -15,7 +19,7 @@ const Settings = Schema.Struct({
 effect function readSettings(input: unknown) {
   return try Schema.decodeUnknownEffect(Settings)(input)
 }
-// typeof Settings.Type!Schema.SchemaError
+// Inferred: typeof Settings.Type!Schema.SchemaError
 ```
 
 ```output
@@ -23,38 +27,22 @@ effect function readSettings(input: unknown) {
 false
 ```
 
-Enable `strict` in the compiler options, and `exactOptionalPropertyTypes` to distinguish an absent `hint` from a present `hint: undefined`. At runtime `optionalKey` accepts the absent key and rejects explicit `undefined`, whatever the compiler option. VibeLang v0 uses the TypeScript 7.1 checker and supports exactly `effect@4.1.1`. Install `vibelang-runtime` and `effect@4.1.1` as dependencies and `vibelang` as a dev dependency. `vibelang --noEmit` checks `.vibe` and `.ts` files together; `vibelang` also emits JavaScript and declarations.
+`Schema` is globally in scope without an import. Schema constructors and `Schema.is` guards are pure calls; Effect-returning decoders (`decodeUnknownEffect`, `encodeEffect`) run with `try` and report validation failures on channel `E` as `Schema.SchemaError`.
 
-Synchronous Schema builders, `.pipe` methods, guards, and generated helpers are plain calls when they are known not to throw. An exception escaping into Effect code is a defect that Effect catch does not handle. For typed validation failures, use an Effect-returning parser; to give a synchronous exception an expected error type, use `Effect.try`. Inside an effect function or block, a plain TypeScript function that may throw needs an `Effect.try` wrapper, and a Promise always needs `tryPromise` or `promise`.
+## Schemas vs. Codecs (`Type` vs. `Encoded`)
 
-## Understanding schemas and codecs
+Every schema describes two types — the **decoded** domain type (`Type`) and the **encoded** wire representation (`Encoded`) — plus optional services for each direction:
 
-```vibe
-// run: try Console.log(decodedView === Line, completeView === Line)
-const Quantity = Schema.FiniteFromString
-const Line = Schema.Struct({ sku: Schema.NonEmptyString, quantity: Quantity })
-
-// Views of the same value, retaining different information:
-const decodedView: Schema.Schema<typeof Line.Type> = Line
-const completeView: Schema.Codec<typeof Line.Type, typeof Line.Encoded> = Line
-```
-
-```output
-true true
-```
-
-A schema is an immutable description; adding fields, checks, or annotations produces a new one. Interpreters derive parsers, guards, generators, equality, formatters, and JSON Schema documents from it.
-
-`Schema.Schema<T>` retains only the decoded type; `Schema.Decoder<T, RD>` adds decoding services; `Schema.Encoder<E, RE>` retains the encoded type and encoding services; `Schema.Codec<T, E, RD, RE>` retains all four. `Schema.Top` accepts any schema without preserving a particular value type.
-
-## Distinguishing decoded and encoded views
+- `Schema.Schema<T>` — decoded type `T`
+- `Schema.Codec<T, E, RD, RE>` — decoded `T`, encoded `E`, decoding services `RD`, encoding services `RE`
 
 ```vibe
 // run: { const jsonValue = try unpack(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try pack({ weight: 3.75 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 schema Parcel { readonly weight: Schema.FiniteFromString }
-// Parcel: { readonly weight: number }
+// Type:    { readonly weight: number }
+// Encoded: { readonly weight: string }
 
-type ParcelWire = typeof Parcel.Encoded // { readonly weight: string }
+type ParcelWire = typeof Parcel.Encoded
 
 effect function unpack() {
   return try Schema.decodeEffect(Parcel)({ weight: "3.75" })
@@ -70,9 +58,11 @@ effect function pack(parcel: Parcel) {
 {"weight":"3.75"}
 ```
 
-Decoding goes from `Encoded` to `Type`, encoding from `Type` to `Encoded`. The codec tracks services separately per direction; `never` means that direction needs none.
+Notice `schema Parcel` declares both the runtime codec `Parcel` and the TypeScript type `Parcel` from a single definition.
 
-## Decoding or encoding unknown inputs
+## Decoding and encoding `unknown` input
+
+Use `decodeUnknownEffect` for untrusted boundary data, and `decodeEffect` / `encodeEffect` when the input type is already known statically:
 
 ```vibe
 // run: { const jsonValue = try inspectBoundary("3.75", 2); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(inspectBoundary(3, "2"), (error) => Console.log(error._tag))
@@ -81,7 +71,7 @@ effect function inspectBoundary(incoming: unknown, outgoing: unknown) {
   const text = try Schema.encodeUnknownEffect(Schema.FiniteFromString)(outgoing)
   return { quantity, text }
 }
-// { quantity: number; text: string }!Schema.SchemaError
+// Inferred: { quantity: number; text: string }!Schema.SchemaError
 ```
 
 ```output
@@ -89,11 +79,9 @@ effect function inspectBoundary(incoming: unknown, outgoing: unknown) {
 SchemaError
 ```
 
-The `Unknown` interpreters validate the input before converting it: here decoding takes a string and produces a finite number, and encoding the reverse. The typed `decodeEffect` and `encodeEffect` constrain their arguments statically and still validate them at runtime.
+## Round-trip behavior
 
-Calling an Effect-returning parser builds an Effect. `try` runs it and gives the decoded or encoded value. A schema mismatch fails the enclosing Effect.
-
-## Reasoning about conversion round trips
+Aim for `decode(encode(domainValue))` to preserve domain values. The reverse direction (`encode(decode(wireValue))`) may normalize formatting such as whitespace:
 
 ```vibe
 // run: try Console.log(try roundTrip(3.75)); try Console.log(try normalizeText())
@@ -113,10 +101,8 @@ effect function normalizeText() {
 dispatch
 ```
 
-For a valid domain value, aim for `decode(encode(value))` to be equivalent to `value`; the chosen conversions decide this, and nothing guarantees it. The other direction can normalize: whitespace, numeric spelling, and discarded fields need not survive an encode after a decode.
-
 ## Coming from Effect
 
-Schemas use the same Effect 4 constructors. Write an `effect` function around parser calls and use `try` to run each returned Effect. Use `x catch (e) => y` to recover from `SchemaError` failures.
+`Schema` is in scope without an import. Run `Schema.decodeUnknownEffect` and `Schema.encodeEffect` with `try`, recover `Schema.SchemaError` with `catch`, and use `schema Name { ... }` to avoid writing `Schema.Struct` + `type Name = typeof Name.Type` twice.
 
 [Upstream page](https://effect.website/docs/v4/schema/introduction)

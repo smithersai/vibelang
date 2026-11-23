@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" role="img" aria-labelledby="t d">
+  <title id="t">Difference between try.race and try.any when the first branch fails</title>
+  <desc id="d">try.race takes the earliest completion even if it fails and interrupts slower branches. try.any ignores early failures and waits for the first success, interrupting remaining losers.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#64708a"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#a5b4fc"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fda4af"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#5eead4"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fcd34d"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #eef1f6; }
+    .sub { font-size: 13px; fill: #b3bac7; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #eef1f6; }
+    .p { font-size: 12.5px; fill: #b3bac7; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="300" rx="10" fill="#14151a"/>
+  
+      <text x="36" y="42" class="h">try.race vs. try.any when the fastest branch fails</text>
+      <text x="36" y="64" class="sub">Both cancel losing fibers and wait for their cleanup before returning.</text>
+
+      <!-- Left: try.race -->
+      <rect x="36" y="90" width="392" height="182" rx="10" fill="#1c1d24" stroke="#323544" stroke-width="1.5"/>
+      <text x="56" y="118" class="code" fill="#fda4af">try.race [primary(), backup()]</text>
+      <text x="56" y="138" class="p">First completion wins — failure included</text>
+
+      <rect x="56" y="158" width="124" height="30" rx="6" fill="#3a1d24" stroke="#e11d48" stroke-width="1.5"/>
+      <text x="118" y="177" text-anchor="middle" class="code-sm" fill="#fda4af">primary: FAIL ✕</text>
+
+      <rect x="56" y="198" width="124" height="30" rx="6" fill="#382a14" stroke="#d97706" stroke-width="1.5"/>
+      <text x="118" y="217" text-anchor="middle" class="code-sm" fill="#fcd34d">backup: CANCEL</text>
+      <line x1="184" y1="152" x2="184" y2="236" stroke="#fda4af" stroke-width="1.8" stroke-dasharray="4 3"/>
+      <text x="196" y="198" class="code-sm" fill="#fda4af">Result: FAIL</text>
+      <text x="196" y="218" class="p">backup interrupted</text>
+
+      <!-- Right: try.any -->
+      <rect x="452" y="90" width="392" height="182" rx="10" fill="#1c1d24" stroke="#323544" stroke-width="1.5"/>
+      <text x="472" y="118" class="code" fill="#5eead4">try.any [primary(), backup()]</text>
+      <text x="472" y="138" class="p">First success wins — early failures keep racing</text>
+
+      <rect x="472" y="158" width="110" height="30" rx="6" fill="#3a1d24" stroke="#e11d48" stroke-width="1.5"/>
+      <text x="527" y="177" text-anchor="middle" class="code-sm" fill="#fda4af">primary: FAIL</text>
+
+      <rect x="472" y="198" width="210" height="30" rx="6" fill="#133230" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="577" y="217" text-anchor="middle" class="code-sm" fill="#5eead4">backup: OK ✓</text>
+      <line x1="686" y1="152" x2="686" y2="236" stroke="#5eead4" stroke-width="1.8" stroke-dasharray="4 3"/>
+      <text x="698" y="200" class="code-sm" fill="#5eead4">Result: OK</text>
+      <text x="698" y="218" class="p">slower peers cancelled</text>
+    
+</svg>

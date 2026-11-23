@@ -1,8 +1,12 @@
 # Introduction to Streams
 
-A `Stream` produces values on demand. Use it for large inputs, ongoing events, and sources that need cancellation, resource management, or backpressure. Constructors and operators build values; consuming a stream runs an Effect.
+A `Stream.Stream<A, E, R>` is a pull-based, lazy sequence of zero or more values of type `A` that may fail with `E` and require services `R`. Use a `Stream` for paginated APIs, log tails, large files, and event feeds that need backpressure, cancellation, and automatic resource cleanup.
 
-## Element, error, and service types
+![Pull-based Streams: effect function* producers yield values on demand through operators into for try or a Sink](/diagrams/stream-producer-flow.svg)
+
+## Element, error, and service channels
+
+Like an `Effect`, constructing a `Stream` runs nothing. Work starts only when a consumer pulls from it:
 
 ```vibe
 // run: provide Feed = { next: effect () => "message" } { { const jsonValue = try preview(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
@@ -21,15 +25,13 @@ const messages = Stream.fromEffectRepeat(effect {
 effect function preview() {
   return try Stream.runCollect(Stream.take(messages, 4))
 }
-// Array<string>!FeedUnavailable!Feed
+// Inferred: Array<string>!FeedUnavailable!Feed
 // Output: ["message","message","message","message"]
 ```
 
-`Stream.Stream<A, E, R>` emits `A`, can fail with `E`, and needs services `R` while consumed. A failure ends that run of the source unless an operator recovers. Defining `messages` neither looks up `Feed` nor requests a message.
+## Infinite sources and bounded demand
 
-Wrap calls that may throw with `Effect.try` and run them with `try`. Synchronously invoked callbacks must perform no Effect operations and have no expected failures.
-
-## Choosing a streaming use case
+Because Streams are pull-based, an infinite stream costs nothing beyond the elements you take:
 
 ```vibe
 // run: { const jsonValue = try firstFiveTickets(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -37,13 +39,12 @@ effect function firstFiveTickets() {
   const tickets = Stream.iterate(100, (n) => n + 1)
   return try Stream.runCollect(Stream.take(tickets, 5))
 }
-// Returns [100, 101, 102, 103, 104].
 // Output: [100,101,102,103,104]
 ```
 
-The source never ends; the consumer takes only five elements. Log tails, paginated APIs, and incoming messages work the same way. For a small in-memory collection, an array and a loop often suffice.
+## Effect vs. Stream
 
-## Streams and individual effects
+An `Effect` succeeds with **one** value (even if that value happens to be an array). A `Stream` emits **zero, one, or many** values over time:
 
 ```vibe
 // run: { const jsonValue = [try oneResult(), try Stream.runCollect(noReadings), try Stream.runCollect(oneReading), ...(try compare())]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -66,9 +67,9 @@ effect function compare() {
 // Output: [[12,24,36],[],[12],[12,24,36],[[12,24,36]]]
 ```
 
-A successful Effect run returns one result, even an array. A stream emits zero or more elements and can be empty, finite, or infinite; an array can be one element or the source of many.
+## Backpressure and producers
 
-## Incremental production and backpressure
+Consumers drive demand — a slow consumer naturally throttles upstream production:
 
 ```vibe
 // run: try printReadings()
@@ -96,7 +97,7 @@ effect function printReadings() {
 // Output: received 25
 ```
 
-The consumer controls demand, so production slows when consumption does. Streams exchange internal batches, so a source can prepare several elements per pull, and buffering and concurrency add explicit read-ahead: backpressure does not mean one element at a time in memory.
+In VibeLang, you can also write any Stream source as an `effect function*` producer and consume any Stream with `for try`:
 
 ```vibe
 // run: try Effect.provide(printFirstReading(), Logger.layer([Logger.withConsoleLog(Logger.make(({ message }) => (message as unknown[])[0]))]))
@@ -110,16 +111,18 @@ effect function* readings() {
 effect function printFirstReading() {
   const source = Stream.map(readings(), (n) => n * 10)
   for try (const n of source) {
-    try log(n) // 10
+    try log(n)
     break
   }
 }
 // Output: 10
 ```
 
-An `effect function*` producer returns a Stream, so Stream operators accept it. The producer runs on its own fiber with a one-element buffer, so it may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. This bound is for one sequential emitter. In a `for concurrent` body, each active item can compute its value before waiting to offer it; the one-element buffer does not bound all pending offers or upstream work. `for try` also consumes an Effect Stream, pulling batches and closing it when the loop exits. Here `break` closes the source and interrupts the producer fiber, running its cleanup.
+A sequential producer runs with a one-element buffer (at most two elements ahead of its consumer: one buffered and one waiting to offer). Breaking out of `for try` immediately closes the Stream, interrupts the producer fiber, and runs its cleanup finalizers. See [Producers](../vibelang-features/112-producers.md) for the full guide.
 
 ## Coming from Effect
 
-- Keep Stream constructors and pipelines; pass `work()` where a constructor expects an Effect.
-- In an effect function or block, `try Stream.runCollect(source)` runs consumption and returns an array.
+- Keep `Stream` constructors and operators as-is; pass cold Effect values (`work()`) to `Stream.fromEffect` / `Stream.mapEffect`.
+- Run terminal consumers with `try` (`try Stream.runCollect(source)`) or iterate directly with `for try (const x of source)`.
+
+[Upstream Effect page](https://effect.website/docs/v4/stream/introduction)

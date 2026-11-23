@@ -1,12 +1,15 @@
 # Introduction to Resource Management
 
-Resources need cleanup on success, failure, and cancellation. Use `ensuring` for unconditional cleanup, `scoped` for resource ownership, and Effect's outcome-aware combinators when release depends on how work ended.
+Files, database connections, locks, and temporary directories must be released whether work succeeds, fails with an expected error, dies with a defect, or is interrupted mid-flight.
 
-[Upstream page](https://effect.website/docs/v4/resource-management/introduction)
+VibeLang uses Effect's resource primitives: `ensuring` for unconditional cleanup, `onExit` / `onError` for outcome-aware cleanup, and `scoped` + `acquireRelease` for composable LIFO resource ownership.
 
-`using` keeps TypeScript’s synchronous disposal rules. An `async` callable keeps native `await using` disposal. Inside an `effect` function, producer or `effect { … }` block, `await using` reports `EK0102` at `await`. A nested `async` callable keeps its own disposal rules. For Effect resources, use `scoped` and `acquireRelease`.
+![Resources acquired inside scoped() are always released in reverse order (LIFO), even on failure or interruption](/diagrams/scope-lifecycle.svg)
 
-## Guaranteeing cleanup
+> **Why not JavaScript `using`?**
+> TypeScript's `using` keeps JavaScript's synchronous disposal rules — an Effect failure or fiber interruption can bypass it, so `using` in effect code draws warning `EK0801` (and `await using` is `EK0102`). Use `scoped` + `acquireRelease` for Effect resources, and `acquireDisposable` for JavaScript `Disposable` / `AsyncDisposable` objects.
+
+## Unconditional cleanup (`ensuring`)
 
 ```vibe
 // run: try Console.log(try exportRows(true)); try Effect.catch(exportRows(false), (error) => Console.log(error._tag))
@@ -19,7 +22,7 @@ effect function exportRows(accepted: boolean) {
     return "Export complete"
   }, Console.log("Export finished"))
 }
-// string!ExportRejected
+// Inferred: string!ExportRejected
 // Output: Export started
 // Output: Export finished
 // Output: Export complete
@@ -28,13 +31,11 @@ effect function exportRows(accepted: boolean) {
 // Output: ExportRejected
 ```
 
-`ensuring` runs cleanup after success, a typed failure, a defect, interruption, or an early return from its source Effect block. It has Effect cleanup semantics, including deferred interruption while cleanup runs.
+`ensuring(work, cleanup)` runs `cleanup` uninterruptibly after every exit — success, typed failure, defect, or cancellation. Its cleanup Effect must have `E = never` (catch or `orDie` any cleanup failure).
 
-`try ensuring(work(), cleanup())` combines the work and cleanup Effects. A cleanup failure is kept with the original outcome; it never silently replaces an earlier failure. When either is a defect, the expected failure becomes a defect of the same error.
+## Outcome-aware cleanup (`onExit` and `onError`)
 
-`ensuring` requires cleanup whose typed error channel is `never`; handle an expected cleanup error or promote it on purpose with `orDie`.
-
-## Finalizing based on the outcome
+`onExit` receives the full `Exit<A, E>`, letting cleanup branch on success vs. failure vs. interruption:
 
 ```vibe
 // run: try Console.log(try observedExport(true)); try Effect.catch(observedExport(false), (error) => Console.log(error._tag))
@@ -57,9 +58,7 @@ effect function observedExport(accepted: boolean) {
 // Output: ExportRejected
 ```
 
-`onExit` passes the source's `Exit` to a callback returning an Effect. A success carries the source's value; a failure carries the complete cause, so unlike a boolean success flag it keeps defects and cancellation as well as domain errors. The cleanup runs uninterruptibly, and successful cleanup preserves the original result.
-
-## Cleaning up failed work
+`onError` runs only on unsuccessful outcomes (expected errors, defects, and cancellation), without recovering the error:
 
 ```vibe
 // run: try Console.log(try reportFailedExport(true)); try Effect.catch(reportFailedExport(false), (error) => Console.log(error._tag))
@@ -81,9 +80,9 @@ effect function reportFailedExport(accepted: boolean) {
 // Output: ExportRejected
 ```
 
-`onError` runs only on an unsuccessful outcome, defects and interruption included. Its callback receives the full cause and runs as cleanup; it doesn't recover the computation. A catch expression, by contrast, handles expected failures and skips causes containing defects or only interruption.
+## Single-resource bracket (`acquireUseRelease`)
 
-## Bracketing acquisition, use, and release
+When one resource is acquired, used, and released in a single place:
 
 ```vibe
 // run: provide LeaseStore = { acquire: () => succeed({ id: "test-lease" }), release: (lease) => Console.log(`Released ${lease.id}`) } { try Console.log(try withLease()) }
@@ -110,18 +109,18 @@ effect function withLease() {
     }
   )
 }
-// string!!LeaseStore
+// Inferred: string!!LeaseStore
 // Output: Working with lease test-lease
 // Output: Releasing after Success
 // Output: Released test-lease
 // Output: test-lease
 ```
 
-`acquireUseRelease` protects acquisition and release and allows normal interruption during use. After a successful acquisition, release runs exactly once, even when use fails or is cancelled. After a failed acquisition it never runs, so a failing acquisition must first clean up its own partial work.
+Acquisition and release run uninterruptibly; the use phase stays interruptible. Release runs if and only if acquisition succeeded.
 
-Release receives the resource and the use phase's `Exit`. The combined contract includes the failures and requirements of acquisition, use, and release. Protected acquisition, the default, can delay cancellation, so acquisition should finish in bounded time.
+## Composable ownership (`acquireRelease` + `scoped`)
 
-## Giving the caller resource ownership
+When multiple resources must compose without nested callback pyramids, register each release on the enclosing `Scope` with `acquireRelease` and close them all at once with `scoped`:
 
 ```vibe
 // run: try Console.log(try example()); provide LeaseStore = { acquire: () => succeed({ id: "owned" }), release: (lease) => Console.log(`Released ${lease.id}`) } { try Console.log(try leaseId()) }
@@ -132,7 +131,7 @@ effect function acquireLease() {
     (lease) => store.release(lease)
   )
 }
-// Lease!!(LeaseStore | Scope.Scope)
+// Inferred: Lease!!(LeaseStore | Scope.Scope)
 
 effect function leaseId() {
   return try scoped(effect {
@@ -140,7 +139,7 @@ effect function leaseId() {
     return lease.id
   })
 }
-// string!!LeaseStore
+// Inferred: string!!LeaseStore
 
 const LeaseStoreTest = Layer.succeed(LeaseStore, {
   acquire: () => succeed({ id: "test-lease" }),
@@ -155,16 +154,14 @@ effect function example() {
 // Output: owned
 ```
 
-`acquireRelease` registers a release in a scope and returns the acquired value. `scoped` gives that acquisition a scope, releases it when the Effect ends, and removes `Scope.Scope` from the caller's requirements. The release callback must have no typed failure: handle an expected release error, or promote it on purpose with `orDie`.
+Look at the types:
+- `acquireLease()` carries `Scope.Scope` in `R` — the compiler **prevents** you from forgetting to close it.
+- `scoped(effect { ... })` provides a fresh `Scope`, closes every acquired resource in reverse (LIFO) order when the block ends, and removes `Scope.Scope` from `R`.
 
-Acquisitions inside `scoped` belong to that scope. An acquisition without an inner `scoped` keeps `Scope.Scope` in `R` and belongs to the caller, even when the same function also uses a local resource.
-
-`Scope` is in scope as a module, and its type is `Scope.Scope`, so these contracts need no import. `acquireRelease` masks acquisition by default, and its third argument `{ interruptible: true }` lets cancellation reach an acquisition that waits on the outside world. An adapter that receives a resource after cancellation must release it.
-
-`acquireDisposable` registers a JavaScript Disposable or AsyncDisposable in the current Effect scope and releases it exactly once, even when an interruption is pending as acquisition gives its value. A value acquired with `acquireRelease` is released only by its release ([Releasing JavaScript Disposables](030-scope.md#releasing-javascript-disposables)). TypeScript's `using` retains its JavaScript disposal behavior. In Effect code, `using` reports warning `EK0801` because failure or interruption can bypass JavaScript disposal. Use `acquireDisposable` inside `scoped` for Effect resources. Configure this warning through `vibe.severities`; plain and `async` functions keep native `using` without this warning. When moving the body into `scoped` by hand, preserve bindings, comments, declaration types and the original resource lifetime. Check earlier closures and type references that use a binding that would move. An ambient `Scope` requirement may select a different scope after the move; retain its intended owner.
-
-When converting by hand, preserve the original naming context before the value is created; a class static initializer may already have read its name.
+See [Scope](030-scope.md) for manual scope management, `addFinalizer`, and `acquireDisposable`.
 
 ## Coming from Effect
 
-Use `effect { … }` to build an Effect from statements. Run `ensuring`, `onExit`, `onError`, and resource brackets with `try`. Pass Effect values directly and use effect arrows for callbacks that run several operations.
+`Scope` is globally in scope (`Scope.Scope`). Pass `effect { ... }` blocks and `effect (x) => ...` arrows straight to `ensuring`, `onExit`, `onError`, `acquireUseRelease`, `acquireRelease`, and `scoped`.
+
+[Upstream Effect page](https://effect.website/docs/v4/resource-management/introduction)
