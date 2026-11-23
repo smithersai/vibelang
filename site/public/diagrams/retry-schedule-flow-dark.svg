@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 310" role="img" aria-labelledby="t d">
+  <title id="t">Retrying an Effect with a composable Schedule</title>
+  <desc id="d">Shows how retry(program, schedule) reruns a cold Effect on expected errors with exponential backoff and a retry cap until success or final failure.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#64708a"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#a5b4fc"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fda4af"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#5eead4"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fcd34d"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #eef1f6; }
+    .sub { font-size: 13px; fill: #b3bac7; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #eef1f6; }
+    .p { font-size: 12.5px; fill: #b3bac7; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="310" rx="10" fill="#14151a"/>
+  
+      <text x="36" y="42" class="h">Retry composes a cold Effect with a Schedule policy</text>
+      <text x="36" y="64" class="sub">Each expected failure asks the Schedule whether to wait and rerun. Defects and interruption stop immediately.</text>
+
+      <!-- Attempt 1 -->
+      <rect x="36" y="96" width="150" height="88" rx="10" fill="#3a1d24" stroke="#e11d48" stroke-width="1.5"/>
+      <text x="52" y="122" class="k" fill="#fda4af">ATTEMPT 1</text>
+      <text x="52" y="146" class="code-sm" fill="#eef1f6">fetchRate()</text>
+      <text x="52" y="168" class="p">fails: RateLimited</text>
+
+      <!-- Backoff 1 -->
+      <line x1="186" y1="140" x2="254" y2="140" stroke="#fcd34d" stroke-width="2" marker-end="url(#arrow-amber)"/>
+      <rect x="190" y="108" width="60" height="22" rx="11" fill="#382a14" stroke="#d97706" stroke-width="1.2"/>
+   <text x="220" y="123" text-anchor="middle" class="k" fill="#fcd34d">100ms</text>
+
+      <!-- Attempt 2 -->
+      <rect x="262" y="96" width="150" height="88" rx="10" fill="#3a1d24" stroke="#e11d48" stroke-width="1.5"/>
+      <text x="278" y="122" class="k" fill="#fda4af">ATTEMPT 2</text>
+      <text x="278" y="146" class="code-sm" fill="#eef1f6">fetchRate()</text>
+      <text x="278" y="168" class="p">fails: RateLimited</text>
+
+      <!-- Backoff 2 -->
+      <line x1="412" y1="140" x2="480" y2="140" stroke="#fcd34d" stroke-width="2" marker-end="url(#arrow-amber)"/>
+      <rect x="416" y="108" width="60" height="22" rx="11" fill="#382a14" stroke="#d97706" stroke-width="1.2"/>
+   <text x="446" y="123" text-anchor="middle" class="k" fill="#fcd34d">200ms</text>
+
+      <!-- Attempt 3 -->
+      <rect x="488" y="96" width="156" height="88" rx="10" fill="#133230" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="504" y="122" class="k" fill="#5eead4">ATTEMPT 3</text>
+      <text x="504" y="146" class="code-sm" fill="#eef1f6">fetchRate()</text>
+      <text x="504" y="168" class="p">succeeds: Quote</text>
+
+      <!-- Arrow to Result -->
+      <line x1="644" y1="140" x2="692" y2="140" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <rect x="700" y="96" width="144" height="88" rx="10" fill="#1c1d24" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="716" y="122" class="k" fill="#5eead4">RETURN</text>
+      <text x="716" y="148" class="code" fill="#eef1f6">Quote</text>
+      <text x="716" y="170" class="p">or last E if cap hit</text>
+
+      <!-- Policy strip -->
+      <rect x="36" y="212" width="808" height="68" rx="10" fill="#232445" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="56" y="238" class="k" fill="#a5b4fc">COMPOSABLE SCHEDULE</text>
+      <text x="56" y="262" class="code-sm" fill="#eef1f6">const policy = Schedule.both(Schedule.exponential("100 millis"), Schedule.recurs(3))</text>
+      <text x="748" y="262" text-anchor="end" class="code-sm" fill="#a5b4fc">try retry(fetchRate(), policy)</text>
+    
+</svg>

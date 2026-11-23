@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" role="img" aria-labelledby="t d">
+  <title id="t">Pull-based Stream pipeline into a Sink</title>
+  <desc id="d">Shows how chunks flow lazily from a Stream source through transform operators into a Sink, which folds them into a value and preserves unconsumed leftovers.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="300" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">Streams pull chunks lazily through operators into a Sink</text>
+      <text x="36" y="64" class="sub">Nothing runs until a Sink or for-try loop demands chunks. Sinks return a result plus any unconsumed leftovers.</text>
+
+      <!-- Source -->
+      <rect x="36" y="98" width="174" height="96" rx="10" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="54" y="124" class="k" fill="#4338ca">STREAM SOURCE</text>
+      <text x="54" y="148" class="code-sm" fill="#16202e">Stream.fromIterable</text>
+      <text x="54" y="168" class="code-sm" fill="#16202e">effect function* ()</text>
+      <text x="54" y="186" class="p">emits Chunk&lt;A&gt;</text>
+
+      <line x1="210" y1="146" x2="254" y2="146" stroke="#4338ca" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Operators -->
+      <rect x="262" y="98" width="224" height="96" rx="10" fill="#ffffff" stroke="#d6dde8" stroke-width="1.5"/>
+      <text x="280" y="124" class="k" fill="#4b5563">TRANSFORM OPERATORS</text>
+      <text x="280" y="148" class="code-sm" fill="#16202e">Stream.filter(valid)</text>
+      <text x="280" y="168" class="code-sm" fill="#16202e">Stream.mapEffect(enrich)</text>
+      <text x="280" y="186" class="p">bounded memory &amp; backpressure</text>
+
+      <line x1="486" y1="146" x2="530" y2="146" stroke="#0f766e" stroke-width="2" marker-end="url(#arrow-teal)"/>
+
+      <!-- Sink -->
+      <rect x="538" y="98" width="152" height="96" rx="10" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="556" y="124" class="k" fill="#0f766e">SINK&lt;A, In, L&gt;</text>
+      <text x="556" y="148" class="code-sm" fill="#16202e">Sink.sum</text>
+      <text x="556" y="168" class="code-sm" fill="#16202e">Sink.take(3)</text>
+      <text x="556" y="186" class="p">folds &amp; stops early</text>
+
+      <line x1="690" y1="130" x2="726" y2="130" stroke="#0f766e" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <line x1="690" y1="168" x2="726" y2="168" stroke="#92400e" stroke-width="2" marker-end="url(#arrow-amber)"/>
+
+      <rect x="732" y="104" width="112" height="42" rx="8" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="788" y="129" text-anchor="middle" class="code-sm" fill="#0f766e">Result A</text>
+
+      <rect x="732" y="152" width="112" height="42" rx="8" fill="#fffbeb" stroke="#fcd34d" stroke-width="1.5"/>
+      <text x="788" y="177" text-anchor="middle" class="code-sm" fill="#92400e">Leftover L</text>
+
+      <rect x="36" y="218" width="808" height="52" rx="8" fill="#f1f5f9" stroke="#d6dde8" stroke-width="1.5"/>
+      <text x="440" y="249" text-anchor="middle" class="p">Run with <tspan class="code-sm" fill="#4338ca">try Stream.run(stream, sink)</tspan> or consume inline with <tspan class="code-sm" fill="#0f766e">for try (const item of stream) { ... }</tspan>.</text>
+    
+</svg>

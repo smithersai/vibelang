@@ -1,16 +1,16 @@
 # Vue
 
-Add VibeLang to a Vue app that builds with Vite. A single-file component runs a VibeLang program with a `ManagedRuntime` and renders three states: loading, the result, and an error the program recovers from. Install the packages with [Add VibeLang to an existing project](existing-project.md) first. This page replaces [Vite and Vitest](vite.md): it covers the same plugin, tsconfig.json, Vitest, and build steps.
+Add VibeLang to a Vue + Vite app. A single-file component runs a VibeLang program through a `ManagedRuntime` and renders loading, success, and recovered-error states. Complete [Add VibeLang to an existing project](existing-project.md) first; this page replaces [Vite and Vitest](vite.md).
 
 ## 1. Install the test packages
 
-With Bun, run:
+With Bun:
 
 ```sh
 bun add -d happy-dom@20.14.6 @vue/test-utils@2.5.1
 ```
 
-With npm, run:
+With npm:
 
 ```sh
 npm install --save-dev --save-exact happy-dom@20.14.6 @vue/test-utils@2.5.1
@@ -18,12 +18,12 @@ npm install --save-dev --save-exact happy-dom@20.14.6 @vue/test-utils@2.5.1
 
 ## 2. Configure tsconfig.json
 
-Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](vibelang-cli.md#let-typescript-tools-read-vibe-modules).
+Run `vibelang` to write adjacent `.d.vibe.ts` declarations (even with `--noEmit`) and [configure TypeScript tools to read them](vibelang-cli.md#let-typescript-tools-read-vibe-modules).
 
-Find the configuration that includes `src`. In an app from Vite's `vue-ts` template, `tsconfig.json` has `"files": []` and lists `tsconfig.app.json` and `tsconfig.node.json` as `references`; `tsconfig.app.json` includes `src`. Make two changes there:
+In Vite's `vue-ts` template, `tsconfig.json` references `tsconfig.app.json` (which covers `src`) and `tsconfig.node.json`. Make two changes in `tsconfig.app.json`:
 
-1. The VibeLang plugin automatically enables `rewriteRelativeImportExtensions` for the JavaScript it emits, so `vite build` works with Vue's `allowImportingTsExtensions` setting. For direct CLI emission with `vibelang -b` in step 8, set `"rewriteRelativeImportExtensions": true` in `compilerOptions`; it permits source-extension imports and rewrites them to JavaScript paths. `allowImportingTsExtensions` alone produces TS5096 during CLI emission.
-2. Add `"src/**/*.vibe"` to `include`; the template lists only `.ts`, `.tsx`, and `.vue` globs. Without the `.vibe` glob, the compiler skips `.vibe` files that no other file imports, such as tests, and Vitest reports `vibelang: …/src/todos.test.vibe is not part of …/tsconfig.app.json. Add it to the tsconfig's include.`.
+1. The VibeLang plugin automatically enables `rewriteRelativeImportExtensions` for emitted JavaScript, so `vite build` works alongside `allowImportingTsExtensions`. For direct CLI emission with `vibelang -b` in step 8, set `"rewriteRelativeImportExtensions": true` in `compilerOptions` (`allowImportingTsExtensions` alone produces TS5096).
+2. Add `"src/**/*.vibe"` to `include` so standalone `.vibe` files such as tests are included; without it, Vitest reports `vibelang: …/src/todos.test.vibe is not part of …/tsconfig.app.json. Add it to the tsconfig's include.`.
 
 ```json
 {
@@ -33,7 +33,7 @@ Find the configuration that includes `src`. In an app from Vite's `vue-ts` templ
 
 ## 3. Declare .vue modules
 
-`vibelang` checks `.ts` and `.vibe` files and does not read `.vue` files; it sees a component only through a module declaration. Create `src/env.d.ts`; without it, `vibelang -b` reports TS2307 for every `.vue` import, such as `./App.vue` in `src/main.ts`.
+`vibelang` does not read `.vue` files. Add `src/env.d.ts` so `vibelang -b` does not report `TS2307` on `.vue` imports such as `./App.vue`:
 
 ```ts
 // TypeScript (.ts)
@@ -46,7 +46,7 @@ declare module "*.vue" {
 
 ## 4. Configure Vite and Vitest
 
-Replace `vite.config.ts` with this file, keeping any other plugins the app has. It adds `vibelang()` before `vue()`, passes the configuration that includes `src` as `project`, and imports `defineConfig` from `vitest/config` so the same file configures Vitest. If `tsconfig.json` itself includes `src`, call `vibelang()` without `project`.
+Update `vite.config.ts` (keeping existing plugins) to add `vibelang()` before `vue()`, pass `tsconfig.app.json` as `project` (omit if `tsconfig.json` directly includes `src`), and import `defineConfig` from `vitest/config`:
 
 ```ts
 // TypeScript (.ts)
@@ -252,9 +252,9 @@ If `package.json` has no `test` script, add `"test": "vitest run"`. Run `npx vit
 
 ## 8. Type-check and build
 
-Run `vibelang` first to refresh the adjacent `.d.vibe.ts` declarations. `vue-tsc` reads those declarations for imports from `.vibe` modules and checks the script blocks and templates in `.vue` files. `vibelang` checks the `.vibe` and `.ts` sources; it does not check Vue components.
+Run `vibelang` first to refresh adjacent `.d.vibe.ts` declarations (`vibelang` checks `.vibe` and `.ts`, not `.vue`), then run `vue-tsc` to check `.vue` scripts and templates against those declarations.
 
-Create `tsconfig.check.json` for the component checker:
+Create `tsconfig.check.json` for `vue-tsc`:
 
 ```json
 {
@@ -267,9 +267,9 @@ Create `tsconfig.check.json` for the component checker:
 }
 ```
 
-This configuration keeps source-extension imports for checking without rewriting them. With `rewriteRelativeImportExtensions` enabled, `vue-tsc` 3.3.13 reports `TS2876` for `.vue` imports such as `./App.vue`; leave rewriting enabled in the app configuration for native JavaScript emission, and disable it only in this check configuration. The declarations must exist before the component check runs.
+Disabling `rewriteRelativeImportExtensions` here avoids `TS2876` on `.vue` imports in `vue-tsc` 3.3.13 while keeping rewriting enabled in `tsconfig.app.json` for native emit.
 
-In `package.json`, keep both checks before the Vite build:
+Run both checks before Vite in `package.json`:
 
 ```json
 {
@@ -279,8 +279,8 @@ In `package.json`, keep both checks before the Vite build:
 }
 ```
 
-Run `npm run build` or `bun run build`. The native compiler checks the VibeLang and TypeScript sources first, `vue-tsc` checks the components against their imports' declarations, and Vite builds the app. Refresh the declarations whenever a VibeLang module changes.
+Run `npm run build` or `bun run build`. Refresh declarations whenever a `.vibe` module changes.
 
 ## Next
 
-Set up the editor: [VS Code and Cursor](vscode.md), [Neovim](neovim.md), [Zed](zed.md), or [other editors](other-editors.md). Then verify with step 4 of [Set up VibeLang](../setup.md).
+Configure your editor ([VS Code and Cursor](vscode.md), [Neovim](neovim.md), [Zed](zed.md), or [other editors](other-editors.md)), then verify with step 4 of [Set up VibeLang](../setup.md).

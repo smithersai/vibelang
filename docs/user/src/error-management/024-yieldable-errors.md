@@ -1,8 +1,14 @@
 # Custom Error Classes
 
-Effect's custom error values can be yielded inside TypeScript generators. An effect function signals the same domain failures with `throw`; an `effect function*` produces a Stream, and a plain `function*` remains a JavaScript generator.
+Custom error classes carry typed failure payloads in `E`. In VibeLang, declare them with `error` (or `schema error` for schema serialization) and raise them with `throw` inside an `effect function`; `effect function*` produces a `Stream`, and plain `function*` remains a JavaScript generator.
 
 [Upstream page](https://effect.website/docs/v4/error-management/yieldable-errors)
+
+| Form | `_tag` | Serialization | When to use |
+| --- | --- | --- | --- |
+| `error Name { ... }` | Readonly `"Name"` | None | Standard tagged domain errors in `.vibe` |
+| `schema error Name { ... }` | Readonly `"Name"` | Effect `Schema` | Errors that cross RPC, storage, or wire boundaries |
+| `class ... extends Data.Error<...>` | None | None | Untagged yieldable errors shared with TypeScript generators |
 
 ## Defining an error without a tag
 
@@ -25,7 +31,7 @@ Hello
 doc-1
 ```
 
-`Data.Error` creates an error class with typed fields and Effect's yieldable behavior. An explicit `throw` in an effect function puts `EmptyDocument` in `E`. Creating or returning an error object alone doesn't fail the computation.
+`Data.Error` defines a typed error class that can also be yielded in TypeScript generators. Inside an `effect function`, `throw` puts `EmptyDocument` into `E`; merely constructing or returning an instance does not fail the computation.
 
 ```vibe
 // run: try Console.log(emptyDocumentError("doc-1").documentId); try Console.log((try flip(rejectDocument("doc-1"))).documentId)
@@ -45,7 +51,7 @@ doc-1
 doc-1
 ```
 
-`new` only constructs, and a call returning an error instance returns data; `throw error` in an effect function fails with the held error.
+`new` only allocates the object, and a function that returns an error instance returns plain data. `throw error` inside an `effect function` fails with that value.
 
 ## Creating tagged error classes
 
@@ -70,9 +76,9 @@ EmptyTitle
 81
 ```
 
-An `error` declaration is a class extending `Data.TaggedError` (no import needed). Every instance has a readonly `_tag` equal to the class name, and the class names the instance type as well as constructing values. Use `schema error` when an error also needs schema-based serialization.
+An `error` declaration compiles to a class extending `Data.TaggedError` with no import required. Each instance carries a readonly `_tag` matching the class name, and the declaration serves as both constructor and instance type; use `schema error` when you also need schema codecs.
 
-Give distinct error cases distinct tags. Tag-based matching compares strings, so `catchTag` and `_tag` narrowing can't tell two classes with the same tag apart, and nothing guarantees a duplicate tag is diagnosed. `is` and `match` use the generated `_tag` matcher too, so two packages that declare the same error name match each other's instances.
+Keep tags distinct across error cases. `catchTag`, `_tag` narrowing, `is`, and `match` compare tag strings rather than class identity, so duplicate tags are not distinguished and two packages declaring the same error name match each other's instances.
 
 ## Recovering failures by tag
 
@@ -102,14 +108,12 @@ TitleTooLong
 TitleTooLong
 ```
 
-Both versions remove `EmptyTitle` from `E` and keep `TitleTooLong`. When cases need different responses, `Effect.catchTags` takes one handler per tag. These stay typed failures, though the classes also support generators in TypeScript.
+Both forms remove `EmptyTitle` from `E` while leaving `TitleTooLong` in the error channel. Use `Effect.catchTags` when handling several tags with separate callbacks, or `catch` with `match` in `.vibe` files.
 
 ## Coming from Effect
 
-Existing `.ts` functions that yield `Data.Error` or `Data.TaggedError` stay in TypeScript; effect functions run their returned Effects with `try`. In an effect function, `return yield* new ErrorCase(...)` becomes `throw new ErrorCase(...)`.
+Existing `.ts` generators that yield `Data.Error` or `Data.TaggedError` continue to work; call them from `.vibe` with `try`. Inside an `effect function`, `return yield* new ErrorCase(...)` becomes `throw new ErrorCase(...)`.
 
-In a `.vibe` file, `class NotFound extends Data.TaggedError("NotFound")<{ … }> {}` draws `EK4830`, which suggests `error NotFound { … }`; an eligible `Schema.TaggedError` class draws `EK4837`, which suggests `schema error NotFound { … }`, which keeps its Schema ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
+In `.vibe` files, `class NotFound extends Data.TaggedError("NotFound")<{ … }> {}` triggers `EK4830` (suggesting `error NotFound { … }`), and an eligible `Schema.TaggedError` class triggers `EK4837` (suggesting `schema error NotFound { … }`, which preserves its `Schema`; see [TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Native `Schema.TaggedError` classes with spread fields and native error classes with an explicit static `_tag` remain valid as written with no advisory.
 
-Native `Schema.TaggedError` classes with spread fields, and native error classes with a written static `_tag`, keep their class form without a declaration advisory or manual change.
-
-A producer uses `effect function*` and returns a Stream; a plain `function*` remains a JavaScript generator.
+Use `effect function*` for a `Stream` producer; plain `function*` stays a JavaScript generator.

@@ -1,8 +1,14 @@
 # Batching
 
-Use requests and resolvers when independent lookups can share a backend call. A request describes one answer; a resolver collects compatible pending requests and completes each with its own success or failure.
+Suppose an endpoint renders 50 items and calls `findPart(code)` for each one. Without batching, that triggers 50 separate database or HTTP round trips—even though the backend accepts a list of codes in one call.
 
-## Model requests and domain errors
+Effect solves this by splitting a lookup into two parts: a **Request** (a data value describing one question) and a **RequestResolver** (a batch executor that collects concurrent pending requests, sends one bulk call, and hands each caller its own answer or error). Callers keep writing clean single-item lookups; batching happens automatically whenever calls run concurrently.
+
+![Request batching and TTL Cache](/diagrams/batching-and-caching.svg)
+
+## Step 1: Model requests and domain errors
+
+First, turn "look up one part" into a typed value that carries its inputs, success type, and expected errors.
 
 ```vibe
 // run: const first = FindPart({ code: "ink-blue" }); const same = FindPart({ code: "ink-blue" }); try Console.log(Equal.equals(first, same), Hash.hash(first) === Hash.hash(same)); try Console.log(Equal.equals(first, FindPart({ code: "ink-black" })))
@@ -24,11 +30,15 @@ const FindPart = Request.tagged<FindPart>("FindPart")
 // Output: false
 ```
 
-`Request` is Effect's module in `.vibe`; it is in scope without an import. The request carries the input, success type, and expected errors. `Request.tagged` supplies structural equality and hashing, so equal requests compare equal for cache reuse. A real request model includes every input that affects the answer, such as a tenant or locale.
+`Request` is in scope in `.vibe` without an import. `Request.tagged` generates a constructor with structural equality and hashing—crucial when caching or deduplicating requests, because two `FindPart({ code: "ink-blue" })` objects compare equal by value, not by reference.
 
-A direct service call per item repeats backend work. Batching helps only when the data source can answer several inputs together; it doesn't create a bulk endpoint.
+> Include every input that can change the answer (such as tenant ID or locale) as a field on the request. Missing fields cause silent cache collisions.
 
-## Define request resolvers
+Batching cannot invent a bulk backend where none exists: it pays off when your data source can satisfy multiple keys in one round trip.
+
+## Step 2: Define a request resolver
+
+Next, tell Effect how to answer a whole batch of `FindPart` requests at once.
 
 ```vibe
 // run: { const jsonValue = try request(FindPart({ code: "ink-blue" }), PartResolver); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -51,11 +61,13 @@ const PartResolver = RequestResolver.make<FindPart>(effect (entries) => {
 // Output: {"code":"ink-blue","label":"Blue ink"}
 ```
 
-This fixture resolves a batch from a map; a backend resolver replaces the lookup with one bulk operation, then matches the returned rows to entries. `Request.completeEffect` runs its program and completes the entry with the result, expected failures included.
+In production, swap `DemoCatalog.get` for one bulk query (`SELECT ... WHERE code IN (...)` or a batch HTTP endpoint), then match each returned row back to its entry. `Request.completeEffect` runs an Effect and settles that entry with either its value or its typed failure.
 
-Complete every entry, including requests for absent rows. Use `Request.succeed` and `Request.fail` when you already have a value or error. When each entry needs its own operation rather than a bulk call, `RequestResolver.fromEffect` is simpler.
+**Golden rule for resolvers:** complete *every* entry in the batch, including missing keys. Use `Request.succeed` or `Request.fail` when you already hold a plain value or error. If a data source truly has no bulk API, `RequestResolver.fromEffect` resolves one entry at a time with less boilerplate.
 
-## Build queries from requests
+## Step 3: Wrap requests in ordinary query functions
+
+Callers should never have to construct `FindPart` or reference `PartResolver` directly. Hide both behind small effect functions:
 
 ```vibe
 // run: try Console.log(try partLabel("ink-black")); const missing = try result(findPart("missing")); if (Result.isFailure(missing)) try Console.log(missing.failure._tag)
@@ -73,9 +85,11 @@ effect function partLabel(code: string) {
 // Output: PartMissing
 ```
 
-`try request(...)` submits the request to its resolver and waits for that entry's answer. The resolver's pending work, not the query function's syntax, decides which calls share a backend operation.
+`try request(req, resolver)` submits one request and suspends the fiber until the resolver completes that entry. Notice that `partLabel` looks completely sequential—yet it participates in batching automatically whenever multiple `partLabel` calls run concurrently.
 
-## Combine compatible requests into batches
+## Step 4: Run queries concurrently to trigger batching
+
+Here is the payoff: run independent lookups concurrently, and watch the batch size jump from `1` to `2`.
 
 ```vibe
 // run: { const jsonValue = try labels(["ink-black", "ink-blue"]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -88,11 +102,15 @@ effect function labels(codes: ReadonlyArray<string>) {
 // Output: ["Black ink","Blue ink"]
 ```
 
-Requests with the same resolver and batch key can join one pending batch. The default resolver delay yields before running the collected work, so requests started together accumulate. Dependencies add later waves: a query that needs an earlier answer starts after it arrives.
+Why did both calls merge into one batch? By default, a resolver yields briefly before dispatching, letting sibling fibers submit their pending requests into the same wave. Dependent queries form later waves once the answers they depend on arrive.
 
-`Effect.forEach` and `Effect.all` are sequential by default; enable concurrency to collect independent requests. A bounded limit caps outstanding requests, and so also batch size. Batching alone doesn't guarantee repeated equal requests are cached; add a resolver cache for shared results.
+**Watch out for two common surprises:**
+- `Effect.forEach` and `Effect.all` run *sequentially* unless you enable concurrency. Sequential calls always produce batch size `1`. A numeric `concurrency` limit also caps the maximum batch size.
+- Batching alone does not cache repeated equal requests across waves—add a cache (below) if you want shared results.
 
-## Control batch execution
+## Tune batch windows, sizes, and grouping
+
+Backends have limits: a SQL `IN` clause or batch API may cap each call at 64 keys, or benefit from waiting a few milliseconds to gather more callers.
 
 ```vibe
 // run: const parts = try forEach(Array.from({ length: 65 }, () => "ink-blue"), (code) => tunedLookup(code), { concurrency: "unbounded" }); try Console.log(parts.length, parts.every((part) => part.label === "Blue ink"))
@@ -108,11 +126,18 @@ effect function tunedLookup(code: string) {
 // Output: 65 true
 ```
 
-`setDelay` trades latency for a larger collection window; `batchN` caps each backend batch; `setDelayEffect` takes a program for a custom delay; `grouped` partitions requests by a key. Callers that should share pending batches reuse one configured resolver.
+| Combinator | What it controls |
+| --- | --- |
+| `RequestResolver.setDelay` / `setDelayEffect` | How long to wait to accumulate pending requests before firing |
+| `RequestResolver.batchN` | Maximum entries per backend call (splits larger waves cleanly) |
+| `RequestResolver.grouped` | Partitions one wave into sub-batches by a key (e.g., tenant or shard) |
+| `RequestResolver.makeWith` | Full custom control over `batchKey`, `delay`, `collectWhile`, and `runAll` |
 
-For full control, `RequestResolver.makeWith` accepts `batchKey`, `delay`, `collectWhile`, and `runAll`. Group by backend compatibility, such as destination or tenant. A batch size log like the one above verifies that concurrent callers share work.
+Reuse a single configured resolver instance across callers that should share batches—and keep a batch-size log or metric during development so you can *see* batching working.
 
-## Supply resolver dependencies
+## Wire resolver dependencies in a layer
+
+Real resolvers talk to services like `CatalogApi`. Acquire those services once when building a `Layer` and close over them inside the resolver:
 
 ```vibe
 // run: provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect (codes) => new Map<string, Part>(codes.filter((code) => code !== "missing").map((code) => [code, { code, label: code.toUpperCase() }])) })) { const parts = try Parts; const results = try forEach(["ink", "missing"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(try Effect.try(() => JSON.stringify(results.map((r) => Result.isSuccess(r) ? r.success.label : r.failure._tag)))) }; provide Layer.provide(PartsLive, Layer.succeed(CatalogApi, { fetchMany: effect () => { throw new CatalogUnavailable() } })) { const parts = try Parts; const results = try forEach(["ink", "blue"], (code) => result(parts.find(code)), { concurrency: "unbounded" }); try Console.log(try Effect.try(() => JSON.stringify(results.map((r) => Result.isFailure(r) ? r.failure._tag : "unexpected success")))) }
@@ -150,11 +175,20 @@ export const PartsLive = Layer.effect(Parts, effect {
 // Output: ["CatalogUnavailable","CatalogUnavailable"]
 ```
 
-Read `try CatalogApi` while building the layer and close over its implementation: building `PartsLive` requires `CatalogApi`, and resolver execution requires no services. Every call to the provided `Parts` implementation shares the resolver built for that layer.
+Reading `try CatalogApi` during layer construction gives `PartsLive` the requirement `CatalogApi` while keeping every `Parts.find` call free of extra service dependencies. Every caller using that layer shares the same resolver instance.
 
-Match results by identifier; don't assume the backend preserves request order. A backend failure completes every affected entry with `CatalogUnavailable`; a missing row completes only its entry with `PartMissing`. When wiring the application, supply a `CatalogApi` layer alongside this one.
+Notice two deliberate details in the resolver body:
+1. **Match rows by key (`rows.get(...)`), never by array index**—backends are not guaranteed to preserve request order or return missing rows.
+2. **Isolate row errors from backend errors**—a missing key fails only its own entry with `PartMissing`, whereas a failed `fetchMany` fails every entry in the batch with `CatalogUnavailable`.
 
-## Share and tune request caches
+## Add caching to a resolver
+
+Batching collapses *concurrent* work; caching eliminates *repeated* work across time. Effect offers two levels of request caching:
+
+| API | Eviction / TTL | Best for |
+| --- | --- | --- |
+| `RequestResolver.withCache` | Bounded `capacity` (`"lru"` or `"fifo"`), no TTL | Short-lived request scopes or static reference data |
+| `RequestResolver.asCache` | Full `Cache` with per-exit `timeToLive`, refresh, and invalidation | Long-lived services needing expiry or explicit invalidation |
 
 ```vibe
 // run: { const jsonValue = try cachedExample(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const queries = try cachedQueries(); for (let i = 0; i < 2; i++) { const outcome = try result(queries.find("missing")); if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag) }
@@ -181,9 +215,9 @@ effect function cachedExample() {
 // Output: PartMissing
 ```
 
-`try RequestResolver.withCache(...)` allocates a cache and returns a wrapped resolver. Build it once in a service layer or another shared owner and reuse it for every query that should share answers; allocating it per lookup creates a fresh cache each time.
+`try RequestResolver.withCache(...)` allocates a fresh cache and returns a wrapped resolver—allocate it once in a shared layer or owner, never inside a per-lookup helper. Both successes and completed expected failures (`PartMissing`) are cached; interrupted lookups are not.
 
-The cache is bounded by `capacity`, with `"lru"` eviction by default or `"fifo"` for insertion order. Completed expected failures are cached; interrupted results are not. Entries have no time-based expiry, and hits depend on request equality.
+When entries need time-based expiration or manual invalidation after a write, wrap the resolver with `RequestResolver.asCache`:
 
 ```vibe
 // run: { const jsonValue = try expiringLookup(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -201,10 +235,10 @@ effect function expiringLookup() {
 // Output: {"code":"ink-black","label":"Black ink"}
 ```
 
-Use `asCache` for a first-class cache with expiry, refresh, and invalidation. Its `timeToLive` function receives the request's `Exit` and the request, so success and failure can have different lifetimes. Cache reads whose answers are reusable; keep commands that must run every time out of the cache.
+`timeToLive` receives the request's `Exit` and the request itself, so you can give successes a long TTL and transient failures a short (or zero) TTL. Cache idempotent reads only; keep side-effecting commands outside any cache.
 
 ## Coming from Effect
 
-Requests and resolvers keep Effect 4's APIs. Resolver callbacks that run Effects are effect functions, completion Effects use `effect { … }`, and cache allocation runs with `try RequestResolver.withCache(...)` or `try RequestResolver.asCache(...)`.
+Requests and resolvers use Effect 4's API directly. Resolver callbacks that execute Effects are `effect` functions, per-entry computations use `effect { ... }`, and cache creation runs with `try RequestResolver.withCache(...)` or `try RequestResolver.asCache(...)`.
 
 [Upstream Effect page](https://effect.website/docs/v4/batching)

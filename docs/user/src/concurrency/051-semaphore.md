@@ -1,6 +1,14 @@
 # Semaphore
 
-A semaphore limits access to a shared resource with a pool of permits. One permit gives mutual exclusion; a larger pool lets several operations enter at once. When too few permits remain, callers wait without blocking the JavaScript thread.
+A `Semaphore` bounds concurrent entry to a shared resource with a fixed pool of permits. One permit enforces mutual exclusion; larger pools cap in-flight operations across independent callers while suspending waiters without blocking the thread.
+
+![Fiber coordination with Deferred and Semaphore](/diagrams/deferred-and-semaphore.svg)
+
+| Mechanism | Scope | Permit count | Release guarantee |
+| --- | --- | --- | --- |
+| `Semaphore.withPermit` | Shared across all callers holding the semaphore | 1 | Automatic on success, failure, or interruption |
+| `Semaphore.withPermits(sem, n, eff)` | Shared across all callers holding the semaphore | `n` (atomic) | Automatic on success, failure, or interruption |
+| `forEach(..., { concurrency })` | Single traversal only | Fixed per traversal | Managed by `forEach` |
 
 ## Creating a permit pool
 
@@ -17,7 +25,7 @@ effect function stringify(value: unknown) {
 // Output: three permits acquired
 ```
 
-Create the pool once for the callers that share a limit: a pool allocated inside every upload gives each upload its own permits and no combined limit. A permit represents access, not a resource value such as a connection.
+Allocate one semaphore and share it across every caller subject to the same limit; constructing a new pool per call isolates permits and removes the shared cap. Permits represent concurrency slots, not resource objects like connections.
 
 ## Limiting concurrent access
 
@@ -39,7 +47,7 @@ effect function uploadAll() {
 // Output: ["a.csv","b.csv","c.csv","d.csv"]
 ```
 
-The traversal can start all four callers, but only two enter the permit-protected region at once. Use this when unrelated parts of the application share a resource limit; a traversal's own `concurrency` option limits only that traversal.
+All four fibers start immediately, but at most two enter the permit-guarded body simultaneously. Reach for a semaphore when separate subsystems share one downstream cap; `forEach`'s `concurrency` option bounds only a single traversal.
 
 ## Acquiring several permits around work
 
@@ -56,7 +64,7 @@ effect function weightedJobs() {
 // Output: ["job using 1 units","job using 2 units","job using 3 units"]
 ```
 
-An operation waits until it can acquire all its requested permits together, which models jobs with different resource costs, such as memory reservations. A request for more permits than the pool can supply leaves the operation waiting, so keep job weights within the configured pool.
+`Semaphore.withPermits` acquires all `n` permits atomically, letting callers model weighted costs such as memory units or rate-limit tokens. Requesting more permits than the pool's total capacity suspends forever, so validate weights against the configured pool size.
 
 ## Releasing permits safely
 
@@ -80,4 +88,4 @@ effect function releaseOnFailure() {
 // Output: next job can enter
 ```
 
-`withPermits` returns acquired permits on success, failure, and interruption. Prefer it to pairing `Semaphore.take` and `release` by hand, where cancellation between acquisition and cleanup registration can leak permits. `Semaphore.withPermit` is the single-permit form, with the same release guarantee.
+`Semaphore.withPermits` and `Semaphore.withPermit` always restore permits on success, failure, and interruption. Prefer them over pairing `Semaphore.take` and `release` manually, where interruption between acquisition and cleanup registration can leak permits.

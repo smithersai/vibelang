@@ -1,6 +1,12 @@
 # Sink Operations
 
-Transform a Sink when its consumption rule fits but its input or result type does not. Pure mappings build a new sink; effectful ones defer their work to consumption. To let only selected elements reach a sink, filter the feeding Stream.
+Instead of writing a custom reducer from scratch, adapt an existing `Sink` at its input or output boundary. Pure adapters (`mapInput`, `map`) transform synchronously; `*Effect` adapters defer effectful work to consumption. To omit unwanted elements before a sink counts or sums them, filter the feeding `Stream`.
+
+| Operator | Adapts | When it runs |
+| --- | --- | --- |
+| `Sink.mapInput` / `mapInputEffect` | Incoming elements (`In`) | On every element before the inner sink |
+| `Sink.map` / `mapEffect` | Final result (`A`) | Once after the inner sink succeeds |
+| `Stream.filter` + `Stream.transduce` | Upstream selection + repeated sink execution | Per element before reaching the sink |
 
 ## Adapting consumer input
 
@@ -15,7 +21,7 @@ effect function countItems() {
 // Output: 18
 ```
 
-`mapInput` converts each incoming value before the original sink sees it. Its callback is synchronous and cannot do Effect work; use `mapInputEffect` for validation, service calls, or other work with failures and requirements.
+`Sink.mapInput` projects each incoming record into the type the inner sink expects (`number` for `Sink.sum`). Keep its callback pure and synchronous; use `Sink.mapInputEffect` when parsing or validation can fail or requires services.
 
 ```vibe
 // run: try Console.log(try Stream.run(Stream.make("7", "11"), parsedTotal)); const outcome = try result(Stream.run(Stream.make("bad"), parsedTotal)); if (Result.isFailure(outcome)) match (outcome.failure) { when InvalidQuantity: try Console.log(outcome.failure._tag, outcome.failure.raw); }
@@ -32,7 +38,7 @@ const parsedTotal = Sink.mapInputEffect(Sink.sum, effect (raw: string) => {
 // Output: InvalidQuantity bad
 ```
 
-The new sink accepts strings and can fail with `InvalidQuantity`. A failed input transformation fails consumption; it does not silently discard the input.
+`parsedTotal` accepts `string` inputs and adds `InvalidQuantity` to the sink's error channel. A failure in `mapInputEffect` fails stream consumption rather than silently dropping bad input.
 
 ## Mapping consumer output
 
@@ -47,7 +53,7 @@ effect function totalReport() {
 // Output: {"total":18,"unit":"items"}
 ```
 
-`map` runs once on the sink's successful final result and leaves the input and leftover types unchanged. `mapEffect` allows Effect work there, such as saving a summary.
+`Sink.map` transforms the sink's final result `A` once upon completion without altering input or leftover types. Use `Sink.mapEffect` when post-processing needs an Effect (such as persisting a summary).
 
 ## Composing input and output transformations
 
@@ -65,7 +71,7 @@ effect function byteReport() {
 // Output: 384 bytes
 ```
 
-The input stage adapts each element, the original sink accumulates, and the output stage formats once. The pipeline builds a Sink value; `try Stream.run(source, sink)` executes it.
+Chaining `mapInput` and `map` wraps one reusable core (`Sink.sum`) with both domain extraction and output formatting. The pipe builds an inert `Sink` value; `try Stream.run(source, report)` executes all three stages.
 
 ## Filtering before consumption
 
@@ -79,4 +85,4 @@ effect function positiveBatches() {
 // Output: [[4,8,12],[16]]
 ```
 
-Elements filtered out upstream don't count toward the sink's limit. `Stream.transduce` runs the sink repeatedly, passing batch leftovers to the next run. If input ends exactly at a completed sink boundary, a final empty result can appear; remove empty arrays downstream if you need only non-empty groups.
+Filtering on the `Stream` excludes non-positive numbers before `Sink.take(3)` ever sees them, so dropped elements never count against the batch size. `Stream.transduce` runs the sink repeatedly across the stream, forwarding each cycle's leftovers to the next. If upstream ends right on a sink boundary, a trailing empty result may be emitted—filter empty arrays downstream when you want strictly non-empty groups.

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Website installation metadata is a registry snapshot, independent of main's candidate.
 import { execFileSync } from "node:child_process"
-import { readFileSync, readdirSync, writeFileSync } from "node:fs"
+import { readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { renderReleasePage } from "./release-docs.mjs"
@@ -121,7 +121,7 @@ export function builtInstallProblems(directory, snapshot) {
   return [...new Set(problems)]
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {
   const [mode, path] = process.argv.slice(2)
   if (mode === "--snapshot" && path) {
     writeFileSync(path, JSON.stringify(resolveSiteRelease(), null, 2) + "\n")

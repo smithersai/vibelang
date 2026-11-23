@@ -1,17 +1,17 @@
 ---
 title: "VS Code and Cursor"
-description: "The vibelang package ships the editor extension vibelang.vibelang as node_modules/vibelang/editor/vibelang.vsix. The extension runs the project's compiler as the language server, vibelang --lsp..."
+description: "The vibelang package ships the vibelang.vibelang extension at node_modules/vibelang/editor/vibelang.vsix (not yet on the VS Code Marketplace or Open VSX). It works in VS Code 1.91+ and Cursor,..."
 ---
 
 # VS Code and Cursor
 
-The `vibelang` package ships the editor extension `vibelang.vibelang` as `node_modules/vibelang/editor/vibelang.vsix`. The extension runs the project's compiler as the language server, `vibelang --lsp --stdio`, for diagnostics, hovers, definitions, references, renames, and completions. It works in VS Code 1.91 or later and in Cursor, and is not yet on the VS Code Marketplace or Open VSX.
+The `vibelang` package ships the `vibelang.vibelang` extension at `node_modules/vibelang/editor/vibelang.vsix` (not yet on the VS Code Marketplace or Open VSX). It works in VS Code 1.91+ and Cursor, running the project's `vibelang --lsp --stdio` server for diagnostics, hovers, definitions, references, renames, and completions.
 
 ## 1. Install the extension
 
-On macOS, open the editor’s Command Palette and run **Shell Command: Install 'code' command in PATH** for VS Code or **Shell Command: Install 'cursor' command in PATH** for Cursor. Open a new terminal so the shell can find the command before continuing.
+On macOS, open the Command Palette and run **Shell Command: Install 'code' command in PATH** (VS Code) or **Shell Command: Install 'cursor' command in PATH** (Cursor), then open a new terminal.
 
-From the project directory, after installing dependencies, run the command for your editor:
+From the project directory after installing dependencies, run:
 
 ```sh
 code --install-extension node_modules/vibelang/editor/vibelang.vsix
@@ -24,7 +24,7 @@ cursor --install-extension node_modules/vibelang/editor/vibelang.vsix
 code --list-extensions | grep vibelang
 ```
 
-For Cursor, run `cursor --list-extensions | grep vibelang`. The output is:
+For Cursor, run `cursor --list-extensions | grep vibelang`. Expected output:
 
 ```text
 vibelang.vibelang
@@ -32,53 +32,42 @@ vibelang.vibelang
 
 ## 3. Open your project in the editor
 
-Open the project directory and trust the workspace: the extension runs the workspace's `node_modules/.bin/vibelang`, so it does not run in an untrusted workspace. When it cannot find `vibelang`, the status item next to the language mode reads "vibelang not found". When the server is running, its status detail shows the compiler path and the version reported by the server, including its TypeScript version.
+Open the project and trust the workspace—the extension runs `node_modules/.bin/vibelang` and stays inactive in untrusted workspaces. If missing, the status item reads "vibelang not found"; when running, its status detail shows the compiler path and server/TypeScript version. Reinstall the `.vsix` from `node_modules` after upgrading `vibelang`.
 
-Without adjacent declaration sidecars, VS Code's built-in TypeScript cannot resolve `.vibe` imports. To have VibeLang check a `.ts` file that imports a `.vibe` module, run **VibeLang: Serve TypeScript Files in This Workspace** from the command palette. In Cursor, the command turns the built-in TypeScript features off for the workspace; in VS Code, it shows the extension to disable, "TypeScript and JavaScript Language Features". Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
-
-Open JSX source as `.vibex`; its language mode is **VibeLang JSX**. The extension serves `.vibe` and `.vibex` documents, including untitled documents in either language mode, with the same compiler discovery and server settings. In `.vibex`, component and prop completions, hovers, go-to-definition, and rename work in JSX; renaming a component updates its opening and closing tags. VibeLang expressions inside JSX containers retain their diagnostics and inferred Effect contracts.
-
-After updating `vibelang`, reinstall the extension from `node_modules`.
+- **TypeScript files importing `.vibe`:** Without adjacent declaration sidecars, built-in TypeScript cannot resolve `.vibe` imports. Either run **VibeLang: Serve TypeScript Files in This Workspace** (turns off built-in TypeScript automatically in Cursor; in VS Code, prompts to disable "TypeScript and JavaScript Language Features"), or run `vibelang` to write adjacent `.d.vibe.ts` declarations (even with `--noEmit`) and [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
+- **JSX (`.vibex`):** Open JSX source as `.vibex` (**VibeLang JSX** mode; untitled documents work in both modes). Component/prop completions, hovers, go-to-definition, paired-tag rename, and VibeLang diagnostics/Effect contracts inside JSX containers all work.
 
 ## Editor features
 
-The server advertises these features to LSP clients. In VS Code and Cursor, use the command palette or the symbol's context menu; availability and keyboard shortcuts depend on the client.
+The server advertises these LSP capabilities (client support and shortcuts vary; `.ts` files importing `.vibe` require the TypeScript handoff above):
 
 | Feature | How to use it |
 | --- | --- |
-| Call hierarchy | **Show Call Hierarchy** on a function to explore callers and callees |
+| Call hierarchy | **Show Call Hierarchy** on a function to inspect callers and callees (reports written call sites; generated `error` constructors do not add calls at the declaration) |
 | Type definition | **Go to Type Definition** on a value |
 | Workspace symbols | **Go to Symbol in Workspace** to search project symbols |
 | Signature help | **Trigger Parameter Hints** inside an argument list |
-| Selection ranges | **Expand Selection** / **Shrink Selection** to follow syntax boundaries |
-| Document highlights | Put the cursor on a symbol to highlight its uses in the current file |
-| Inlay hints | Enable the client's inlay hints and supported TypeScript inlay-hint preferences |
-| Code lens | Enable the client's code lens and TypeScript reference/implementation lens preferences |
+| Selection ranges | **Expand Selection** / **Shrink Selection** across syntax boundaries, including nested `schema`/`data`/`match`/typed `catch` and mutable schema arrays |
+| Document highlights | Place cursor on a symbol to highlight file uses |
+| Inlay hints | Enable client inlay hints and TypeScript inlay-hint preferences |
+| Code lens | Enable client code lens and TypeScript reference/implementation lens preferences |
 | Linked editing | Enable linked editing to update paired JSX tags together |
-| On-type formatting | Enable format-on-type for supported typed characters |
+| On-type formatting | Enable format-on-type for supported characters |
 
-These are language-server capabilities, not a guarantee that every construct offers a result. A client must enable and support each feature; for `.ts` files that import `.vibe`, use the VibeLang TypeScript handoff described above.
-
-**Show Call Hierarchy** reports written call sites. Compiler-generated constructors for `error` declarations do not add calls at the declaration's name; written constructor calls remain visible.
-
-**Expand Selection** follows nested source ranges in `schema` and `data` declarations, `match` and typed `catch` expressions, including mutable schema arrays with nested arrays or record values.
-
-Select a TypeScript `module` declaration and request **Move module to a TypeScript file** to copy its body to a sibling TypeScript file and rewrite its imports and re-exports. The [refactor guide](/getting-started/012-devtools#move-a-typescript-module-body-to-a-file) describes filename collisions and import extensions.
-
-Retired `service class` and `layer` declarations report `EK0909` and `EK2121` as errors. Changing warning settings does not make either spelling valid. Edit these declarations explicitly.
-
-Reference search and rename include a parameter's declaration and its use as a destructuring source, including contextual names such as `source`, even when a default contains `do { }` or a `match` arm whose `do { }` returns from the function.
+- **Refactor `module` declarations:** On a TypeScript `module` declaration, run **Move module to a TypeScript file** to extract its body to a sibling `.ts` file and rewrite imports/re-exports. See the [refactor guide](/getting-started/012-devtools#move-a-typescript-module-body-to-a-file) for filename collisions and extensions.
+- **Destructuring parameters:** Reference search and rename include parameter declarations and destructuring sources (including contextual names such as `source`), even when defaults contain `do { }` or a `match` arm returning via `do { }`.
+- **Retired syntax:** `service class` (`EK0909`) and `layer` (`EK2121`) declarations are always errors regardless of warning settings; edit them explicitly.
 
 ## Server settings and troubleshooting
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `vibelang.server.path` | `""` | Override the compiler executable; relative paths start at the first workspace folder |
-| `vibelang.server.typeScriptFiles` | `"auto"` | Serve TypeScript when the built-in server is off; `"on"` always serves it, `"off"` leaves it to the built-in server |
+| `vibelang.server.path` | `""` | Override compiler executable (relative paths start at the first workspace folder) |
+| `vibelang.server.typeScriptFiles` | `"auto"` | Serve TypeScript when the built-in server is off; `"on"` always serves it, `"off"` leaves it to built-in |
 | `vibelang.trace.server` | `"off"` | Set `"messages"` or `"verbose"` to log LSP traffic |
 
-After changing the executable or rebuilding the compiler, run **VibeLang: Restart Language Server** from the command palette. After installing a missing compiler, restart the server even if the earlier notification is still open; it does not block activation or restart. Use **VibeLang: Show Language Server Output** to inspect the server log. For protocol problems, enable tracing, restart, reproduce, then turn tracing off. Review logs before sharing them: protocol traffic can contain source text and file paths.
+Run **VibeLang: Restart Language Server** after changing executables, rebuilding, or installing a missing compiler (even while an earlier notification stays open). Inspect logs with **VibeLang: Show Language Server Output**. For protocol bugs, enable tracing, restart, reproduce, turn tracing off, and review logs before sharing—they can contain source text and file paths.
 
 ## JSX highlighting
 
-Write JSX in `.vibex` files. The extension selects its TSX-derived `source.vibex` grammar, with VibeLang scopes inside JSX expression containers. Tag names, attribute strings and JSX text keep their JSX meaning, including `%` in text. Use `x as T` for assertions and `<T,>` for unconstrained generic arrows, as in `.tsx`.
+`.vibex` files use the TSX-derived `source.vibex` grammar with VibeLang scopes inside JSX expression containers. Tag names, attribute strings, and JSX text (including `%`) keep JSX meaning; use `x as T` for assertions and `<T,>` for unconstrained generic arrows, as in `.tsx`.

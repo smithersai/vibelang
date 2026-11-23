@@ -1,50 +1,12 @@
 # Vite and Vitest
 
-`vibelang-vite` compiles `.vibe` modules for Vite (7 and 8) and Vitest with the project's `vibelang` compiler. It serves JavaScript and source maps, and reports compiler errors in the terminal and in Vite's overlay. The plugin adds `.vibe` to `resolve.extensions`, so an extensionless import or a directory's index (`./mount` for `mount/index.vibe`) reaches a `.vibe` module as it reaches a `.ts` one. As in TypeScript, `x.vibe` comes after `x.ts` and `x.tsx` but ahead of an `x.js` beside it. Install the packages with [Add VibeLang to an existing project](existing-project.md) first.
-
-The project must provide Vite 7 or 8. Yarn does not install that peer automatically; follow the conditional install in [the package setup](existing-project.md#2-install-the-packages).
+`vibelang-vite` compiles `.vibe` and `.vibex` modules for Vite (7 and 8) and Vitest (5) using the project's `vibelang` compiler, serving JavaScript and source maps with diagnostics in the terminal and Vite overlay. Install the packages with [Add VibeLang to an existing project](existing-project.md) first (Yarn projects must install the `vite` 7 or 8 peer explicitly; see [package setup](existing-project.md#2-install-the-packages)).
 
 ![Hot reload and type errors in Vite](/videos/vite-dev.mp4)
 
-The recording uses a live published-package project: it introduces a type error, displays the compiler diagnostic and recovers after an edit. Displayed paths are relative to the project.
-
-Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning. Plugins that run before Vite's resolver see a `.vibe` module's imports of TypeScript files under the names it wrote, such as `./dep.ts`, as they do for a `.ts` importer. Source diagnostics retain their excerpts without appending compiler file-list output.
-
-Creating a missing source file clears the development error overlay and updates its importers. Deleting an imported source reports the compiler error, and restoring it recovers without restarting the server.
-
-Plugin instances in one process share project compiles when their root,
-project configuration and compiler match, including main and worker bundles.
-Edits invalidate the shared result. Closing one instance leaves other instances
-using that compiler running. Closing the last instance waits for the compiler
-and closes its output pipes: after 500 ms teardown sends `SIGTERM`, then after
-another 500 ms sends `SIGKILL` if needed. A later build starts a fresh backend.
-Set `VIBELANG_VITE_DEBUG=1` to trace manager identifiers, active consumer counts,
-project compiles and invalidations.
-
-The plugin selects `vibelang-source` package exports for application and SSR
-bundles, preserving the existing resolution conditions. Under Vitest, which
-passes its conditions to the Node processes that run tests, the defaults are
-Vitest's own, which leave out `module`: Node then loads a dependency through
-its `default` export, as it does without the plugin. A workspace package
-that mixes `.ts` and `.vibe` modules therefore uses one source graph, even
-when its default export points at emitted JavaScript under `.vibelang/js`.
-
-Delegated package imports retain Vite and Rollup resolver options, including SSR mode and CommonJS metadata. This keeps optional native dependencies optional when a CommonJS package is bundled for Node.
-
-The migration flow keeps bundled private imports as exact source entries. When a publication helper maps them to build output, its `types` condition selects the package’s regular declarations in its own output directory. Compatibility sidecars under `.vibe/declarations/` are for source checking and need not be packed. Runtime import targets and declaration contents stay unchanged.
-
-
-The `// @vibe` check reads real source files. Virtual module identifiers from another bundler plugin stay with that plugin, even when their names end in `.ts` or `.vibe`.
-
-Existing `import.meta.hot.accept` dependency handlers keep updates inside the page and preserve its state when a VibeLang dependency changes. Ordinary TypeScript dependency updates continue through Vite's normal hot-reload handling.
-
-Vite's `import.meta.glob`, `import.meta.env` and `import.meta.hot` work in `.vibe` modules with their Vite types. Include `"types": ["vite/client"]` in `compilerOptions` (alongside any other required types). Eager and lazy glob results keep Vite's overloads; Vite transforms the macros when it builds the module.
-
-An included source outside the compilation root reports that boundary directly. Set the root to a directory containing the source, or give an external source package its own `package.json` and `tsconfig.json`; changing an already-correct `include` is unnecessary.
-
 ## 1. Add the plugin to Vite
 
-Add `vibelang()` to the `plugins` array in `vite.config.ts`, beside the existing plugins:
+Add `vibelang()` to `vite.config.ts`:
 
 ```ts
 // TypeScript (.ts)
@@ -55,10 +17,9 @@ import vibelang from "vibelang-vite"
 export default defineConfig({ plugins: [vibelang()] })
 ```
 
-### Workers in the app or its workspace dependencies
+### Workers
 
-Vite builds workers with `worker.plugins`. Add a factory there when a worker
-imports `.vibe`, including workers started inside a workspace dependency:
+Vite builds workers via `worker.plugins`. Add a factory whenever an app or workspace dependency imports `.vibe` inside a worker:
 
 ```ts
 // TypeScript (.ts)
@@ -71,74 +32,26 @@ export default defineConfig({
 })
 ```
 
-The factory creates a fresh plugin for each worker build. Migration setup
-follows local workspace dependencies to detect these workers and adds the
-factory to the consuming app's config. This includes semver ranges and
-npm aliases whose installed package resolves to a local workspace. The nearest
-installed package determines which workspace sources the app loads. Test and
-fixture sources do not trigger this edit.
+### Importing `.vibe` from `vite.config`
 
-### When the Vite config imports a VibeLang module
-
-Vite loads `vite.config.ts` before creating its plugins. If that config, or a
-helper it imports, imports a `.vibe` module, start Vite with the Node source
-hook and select Vite's native config loader:
+Vite loads `vite.config.ts` before initializing plugins. If your config (or its helpers) imports `.vibe` at runtime, preload `vibelang/register` and select Vite's native config loader on the CLI (use `--config vite.config.vibe` if the config itself is `.vibe`):
 
 ```sh
 NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" npx vite build --configLoader native
 ```
 
-Use the same prefix and `--configLoader native` for the dev server and preview.
-The config file itself can be VibeLang too: name it, `vite build --configLoader
-native --config vite.config.vibe`, since Vite discovers no `.vibe` config by name.
-Keep `vibelang()` in the config to compile application modules. The default
-`bundle` config loader parses native syntax before the plugin exists, and
-`runner` does not install the Node source hook. Setting `configLoader` inside
-the config is too late; the CLI flag (or an inline `configLoader: "native"`
-option passed to Vite's JavaScript API) selects how Vite first loads it.
-
-Native loading uses Node's ESM resolution and TypeScript support. Keep explicit
-source extensions in config helpers' relative imports and use package exports
-instead of `tsconfig.json` path aliases. The hook compiles each native module
-with its nearest `tsconfig.json`; if a config helper needs another project,
-set `VIBELANG_PROJECT=tsconfig.node.json` and include the helper there.
-On Vite versions without native dependency watching, restart the dev server
-after editing a config dependency. `VIBELANG_REGISTER_DEBUG=1` reports loader
-compiles and cache hits when diagnosing config startup.
-
-Migration setup detects runtime imports and re-exports into existing native
-modules or the selected source directories, including transitive config
-helpers, and wires the affected `vite` package scripts. Type-only imports
-do not need this path. Before enabling native loading, setup adds the source
-extension TypeScript resolves to extensionless relative runtime imports in
-config helpers it owns, including directory indexes and transitive helpers.
-It stops with the file and import when a required edit belongs to a protected
-file or the helper has no runtime source. A config graph outside the migration
-scope keeps its original loader and imports. Setup reports a config without a
-matching script so its caller can supply the same preload and flag.
-
-A migrated config helper may retain an extensionless import of an unchanged `.ts` or `.js` sibling. The Node preload resolves that sibling or its directory index in TypeScript's file order, so importing the same native file directly keeps one module instance.
+Use the same prefix and `--configLoader native` for dev and preview. Keep explicit relative extensions and package exports in config helpers (not tsconfig `paths`); set `VIBELANG_PROJECT=tsconfig.node.json` if a helper belongs to a different tsconfig, and `VIBELANG_REGISTER_DEBUG=1` to trace config loader compiles.
 
 ## 2. Configure tsconfig.json
 
-The plugin compiles the project `tsconfig.json` describes, with its options and diagnostics. Its compile backend automatically enables `rewriteRelativeImportExtensions` when emitting JavaScript, so source imports such as `./greet.vibe` work with Vite's `allowImportingTsExtensions` configuration. Check two things:
+`vibelang-vite` compiles with your project's `tsconfig.json` and automatically enables `rewriteRelativeImportExtensions` on emit so `./greet.vibe` works alongside Vite's `allowImportingTsExtensions`. (Direct CLI emission still requires `"rewriteRelativeImportExtensions": true` in `tsconfig.json`; see [CLI setup](vibelang-cli.md#1-configure-tsconfigjson).)
 
-1. `include` selects the app's `.vibe` files. When Vite's `root` is a directory inside your package, such as `root: "web"`, name the package's config as `vibelang({ project: "../tsconfig.json" })`: the plugin compiles every module it includes, inside Vite's root or not. A `.vibe` file of another workspace package, such as one the app imports by name, compiles with the nearest `tsconfig.json` above it instead: that package's own project. This holds outside the root and for a package nested inside it, one with its own `package.json` and `tsconfig.json`.
-2. If `tsconfig.json` has `"files": []` and only lists `references`, each module compiles under the first referenced configuration whose program contains it. You can also name a configuration explicitly, for example `vibelang({ project: "tsconfig.app.json" })`.
+**Project resolution rules:**
 
-A package may have separate projects for its app, worker and tools without a
-`package.json` beside each config. A module first uses its nearest config,
-then that config's `references`, then parent configs. When those exclude it,
-the loader searches the package's other configs: first by path among configs
-whose `include` or `files` lists the module, then among programs that import it.
-For example, `worker/tsconfig.json` with `include: [".", "../db"]` serves
-`db/x.vibe` even when the plugin selects a root `tsconfig.json` that includes
-only `src`. The worker's compiler options apply. A module no project contains
-still fails; the loader names the configs searched. Nested packages keep their
-own project boundaries. A composite referenced project must list
-the source among its roots, as TypeScript requires.
-
-When emitting JavaScript directly with the `vibelang` CLI, set `"rewriteRelativeImportExtensions": true` in that project's `compilerOptions`. It permits source-extension imports and rewrites them for the emitted JavaScript; `allowImportingTsExtensions` alone produces TS5096 during CLI emission ([CLI setup](vibelang-cli.md#1-configure-tsconfigjson)).
+- **Custom Vite `root`:** Pass `vibelang({ project: "../tsconfig.json" })` when Vite's `root` sits inside the package.
+- **Solution configs (`"files": []` + `references`):** Each module compiles under the first referenced project containing it, or pass `vibelang({ project: "tsconfig.app.json" })`.
+- **Workspace packages & multi-project layouts:** A `.vibe` module uses its nearest `tsconfig.json`, then its `references`, parent configs, and sibling configs in the same package; nested workspace packages always use their own `tsconfig.json`.
+- **Vite client types:** Add `"types": ["vite/client"]` in `compilerOptions` to use `import.meta.glob`, `import.meta.env`, and `import.meta.hot` in `.vibe` modules.
 
 ## 3. Add a first module
 
@@ -153,7 +66,7 @@ export effect function greet(name: string) {
 // Output: Hello, Vite!
 ```
 
-With Vite or Vitest, import it from `.ts` or `.vibe` modules by its source name, `./greet.vibe`, so the plugin loads and compiles the source. For a CLI build that emits JavaScript to run with Node, a `.ts` importer can instead use `./greet.js`; VibeLang resolves it to `greet.vibe` while checking, and Node loads the emitted `greet.js` ([CLI setup](vibelang-cli.md#3-compile-a-first-module)). TypeScript sees `greet` as a function that returns an Effect, so a `.ts` module can run it with one of Effect's runners:
+In Vite or Vitest, import it by its source extension (`./greet.vibe`) so the plugin compiles it. (In a CLI build targeting Node, a `.ts` importer may use `./greet.js`; see [CLI setup](vibelang-cli.md#3-compile-a-first-module).) TypeScript sees `greet` as returning an `Effect`:
 
 ```ts
 // TypeScript (.ts)
@@ -166,17 +79,17 @@ export const message = Effect.runSync(greet("Vite"))
 // Output: Hello, Vite!
 ```
 
-### Queries on a `.vibe` import
+### Queries and resolution
 
-Vite's own module queries name the module itself: `?import`, `?v=` and `?t=`, which Vite adds, and the worker entry's `?worker_file&type=`. The plugin compiles those ids. Any other query, such as `./x.vibe?raw`, `./x.vibe?url` or a plugin's own `./x.vibe?highlighted`, names a resource that Vite or another plugin loads from the same source. The plugin leaves such an id alone, so a plugin that serves `x.ts?highlighted` as rendered HTML serves `x.vibe?highlighted` the same way, and `?raw` gives the `.vibe` source text.
+- **Extension order:** `vibelang-vite` adds `.vibe` to `resolve.extensions` (`x.ts`, `x.tsx`, `x.vibe`, `x.js`), so extensionless imports and directory indexes (`./mount` → `mount/index.vibe`) work like TypeScript.
+- **Module vs. resource queries:** Vite's module queries (`?import`, `?v=`, `?t=`, `?worker_file&type=`) compile normally. Resource queries (`?raw`, `?url`, or custom plugin queries) pass through untouched.
+- **JSX (`.vibex`):** Configure `compilerOptions.jsx` as for `.tsx`. The plugin emits virtual `.jsx` IDs for downstream framework plugins while keeping `.vibex` names in diagnostics and source maps.
 
 ## 4. Test with Vitest
 
 ![Tests in .vibe with Vitest](/videos/eco-vitest.mp4)
 
-The recording runs the published starter's two tests and shows project-relative paths.
-
-The starter's app project excludes test sources. Create `tsconfig.test.json` so Vitest checks and compiles them too:
+Create `tsconfig.test.json` so Vitest checks test files excluded from the app build (extend `tsconfig.app.json` if your app uses one):
 
 ```json
 {
@@ -185,9 +98,7 @@ The starter's app project excludes test sources. Create `tsconfig.test.json` so 
 }
 ```
 
-If the app uses `tsconfig.app.json`, extend that file instead. Keep the test project's `include` broad enough to select both the app and its tests.
-
-Create `vitest.config.ts`, or add the plugin and the `include` pattern to the project's existing Vitest configuration. Pass the test project to the plugin:
+Add the plugin to `vitest.config.ts`:
 
 ```ts
 // TypeScript (.ts)
@@ -214,38 +125,36 @@ it.effect("greets", () => effect {
 })
 ```
 
-Run `npx vitest run`. Tests need no prior build. The output includes:
+Run `npx vitest run` (no prior build needed):
 
 ```out
  Test Files  1 passed (1)
       Tests  1 passed (1)
 ```
 
-If a test starts a Node process that runs the project's source, such as a command-line program, pass `vibelang({ project: "tsconfig.test.json", register: true })`. The plugin adds `vibelang/register` to the tests' `NODE_OPTIONS`, so that process imports `.vibe` modules too, whatever its working directory. Any `NODE_OPTIONS` the configuration or the environment already sets is kept. A Bun process a test starts, such as `process.execPath` under `bun x --bun vitest`, reads `BUN_OPTIONS` instead, so the plugin also adds `--preload` of `vibelang/bun` there, unless that file's path contains a space, which `BUN_OPTIONS` cannot carry.
-
-When using Vitest's `test.projects`, add `vibelang()` to each project's own `plugins` when its tests import `.vibe` sources. Keep the project's other plugins and test options. A plugin on the outer configuration alone does not configure an independent project. Use `register: true` on a project's plugin when its tests launch source-running child processes. The migrate flow wires inline projects with statically readable roots and test selectors, and reports unsupported shapes for manual setup.
+- **Child processes in tests:** Pass `vibelang({ project: "tsconfig.test.json", register: true })` to inject `vibelang/register` into `NODE_OPTIONS` (and `vibelang/bun` into `BUN_OPTIONS` when the path has no spaces) so spawned Node/Bun processes can import `.vibe` sources.
+- **Vitest `test.projects`:** Add `vibelang()` (with `register: true` if needed) to each project's own `plugins`; top-level plugins do not apply to independent projects.
+- **Coverage:** `@vitest/coverage-v8` counts authored `.vibe` functions and excludes compiler-generated wrappers and `error` registration.
 
 ### Node's test runner and Jest
 
-For `node --test`, write a `.test.ts` suite that imports `.vibe` modules and runs their programs with `Effect.runSync` or `Effect.runPromise`. Include the suite in `tsconfig.test.json`, install `@types/node`, and add `"node"` to that project's `compilerOptions.types` (keeping any existing entries). Load the source hook and select that project:
+For `node --test`, write `.test.ts` files importing `.vibe` modules, add `@types/node` and `"node"` to `tsconfig.test.json`'s `types`, and run with `vibelang/register`:
 
 ```sh
 VIBELANG_PROJECT=tsconfig.test.json node --enable-source-maps --import vibelang/register --test src/greet.test.ts
 ```
 
-For Node's built-in coverage, keep `--enable-source-maps` on the command line and add `--experimental-test-coverage`:
+For built-in coverage, keep `--enable-source-maps` so Node's controller remaps generated offsets to authored `.vibe` functions (add `--test-coverage-functions=100` to require full function coverage):
 
 ```sh
 VIBELANG_PROJECT=tsconfig.test.json node --enable-source-maps --import vibelang/register --test --experimental-test-coverage src/greet.test.ts
 ```
 
-Coverage counts authored `.vibe` functions and excludes compiler-generated functions. Add `--test-coverage-functions=100` to fail when a source function remains uncalled. The source hook enables mapped stacks inside test processes; the command-line flag also enables source-map remapping in Node's test controller. Without it, that controller can treat generated JavaScript offsets as source offsets and incorrectly report an uncalled function as covered.
-
-The repository does not provide a Jest transformer for `.vibe` sources. Use Vitest for `.test.vibe` suites.
+No Jest transformer is shipped; use Vitest for `.test.vibe` suites.
 
 ## 5. Build
 
-In `package.json`, replace `tsc` in the build script with `vibelang` so it checks both `.ts` and `.vibe` files, and add the test script:
+Replace `tsc` with `vibelang` in `package.json`:
 
 ```json
 {
@@ -256,69 +165,19 @@ In `package.json`, replace `tsc` in the build script with `vibelang` so it check
 }
 ```
 
-Run `npm run build`, or `bun run build`; then run `npm run test`, or `bun run test`. The build exits with status 0, and its last line starts with `✓ built in`. Review the files you added before committing them.
+Run `npm run build` (or `bun run build`) and `npm run test` (or `bun run test`). The build exits 0 and ends with `✓ built in`.
 
-Coverage with `@vitest/coverage-v8` counts the functions in your `.vibe` source.
-The compiler's private delegation wrappers, including those for `return try value`
-and a `catch effect` handler with a `throw` expression, add no source functions
-or uncovered statements.
-Generated `error` registration adds no source function. Static initialization and methods written in ordinary classes keep their native TypeScript coverage.
+## Runtime & bundler behavior
 
-## Dependency pre-bundling
-
-A cold dev server scans the application for the packages it imports and
-pre-bundles them before the first request. A `.vibe` module's JavaScript
-imports packages its source does not name, such as `effect/Schema` for a
-`schema` declaration, `effect/Option` for `Option`, or `vibelang-runtime`. The
-plugin adds `.vibe` to `optimizeDeps.extensions` and lets the scan read each
-`.vibe` module's compiled JavaScript, so these imports are pre-bundled with the
-rest. Without that, Vite found them on the first request, optimized again, and
-reloaded the page, which could fail a browser test already running on it. The
-scan compiles each `.vibe` module it reaches once; the requests reuse that
-compile. A module that does not compile scans as empty and reports its errors
-when requested.
-
-With `allowJs`, edits to JavaScript dependencies recheck their VibeLang importers, including imports used only for types. Changed type errors appear in the terminal and overlay; correcting or recreating the JavaScript source restores hot updates.
-
-## Generated declarations
-
-Rolldown declaration builds, including `tsdown` with `dts: true`, use `vibelang-unplugin/rolldown` to receive the compiler's declarations for imported `.vibe` and `.vibex` modules. Interfaces and other type exports remain available in the declaration graph, while the runtime graph receives JavaScript; `vibelang-unplugin/rolldown` keeps its declaration output private, follows native dependencies and package exports, and discards it after the build.
-
-While serving a `.vibe` module, the compiler can write its `.d.vibe.ts`
-declaration beside it. The plugin ignores watcher events for that generated
-file while its owning `.vibe` source exists, keeping the served module and its
-importers cached. Changes to the source still trigger hot updates. The same rule applies to `.d.vibex.ts` beside `.vibex`, and to the module's native declaration `x.d.ts`, which re-exports the sidecar; a hand-written `x.d.ts` stays an input.
-An authored TypeScript declaration without a companion source remains an input.
-Set `VIBELANG_VITE_DEBUG=1` to trace ignored generated declaration events along
-with project compiles and invalidations. Each invalidation reports the new
-revision immediately, even before another module is loaded.
+| Area | Behavior |
+| --- | --- |
+| **Shared compiler** | Plugin instances with matching root, project config, and compiler share one backend and invalidate on edits. Closing the last instance terminates the backend (`SIGTERM` after 500 ms, `SIGKILL` after another 500 ms). Set `VIBELANG_VITE_DEBUG=1` to trace compiles and invalidations. |
+| **Diagnostics** | Loaders compile whole-project types but report only the requested module's diagnostics plus project-wide/config errors; unrelated file errors and warnings (e.g. `EK38130` from `@effect/vitest`) never block loading. Run `vibelang -p tsconfig.json` to check all files. |
+| **Pre-bundling** | `.vibe` is added to `optimizeDeps.extensions` so Vite scans compiled imports (such as `effect/Schema`, `effect/Option`, and `vibelang-runtime`) before the first request. With `allowJs`, JS edits recheck `.vibe` importers. |
+| **Exports & HMR** | Selects `vibelang-source` for app/SSR bundles (Vitest keeps its own Node conditions). Existing `import.meta.hot.accept` handlers keep state; Unicode, spaces, and literal `%` in filenames preserve source maps and HMR. |
+| **Sidecars & declarations** | Watcher ignores generated `.d.vibe.ts`, `.d.vibex.ts`, and forwarding `.d.ts` files while their source exists (hand-written `.d.ts` stays an input). Rolldown/`tsdown` (`dts: true`) builds use `vibelang-unplugin/rolldown` for declaration output. |
+| **Cache & virtual IDs** | `VIBELANG_CACHE_DIR` stays safe even inside Vite's watched root. Virtual module IDs from other plugins pass through untouched. |
 
 ## Next
 
-Set up the editor: [VS Code and Cursor](vscode.md), [Neovim](neovim.md), [Zed](zed.md), or [other editors](other-editors.md). Then verify with step 4 of [Set up VibeLang](../setup.md).
-
-The source loaders compile the whole project for type-directed emit, but report
-only diagnostics for the source being loaded and project-wide errors, including
-configuration diagnostics. Multiline warnings can include source excerpts, including comments resembling network paths and labels resembling library URLs; these remain diagnostic text and do not add watched files or trigger another compile.
-An unrelated file's type errors do not prevent loading a clean module. A
-warning never prevents loading: with the Effect plugin on, `@effect/vitest`'s
-`it` reports `EK38130` (`unstableApiUsage`), which the plugin prints while the
-test loads, whether or not `ignoreEffectWarningsInTscExitCode` is set. Run
-`vibelang -p tsconfig.json` to check every project file.
-
-
-Source maps keep the original `.vibe` positions and source text through repeated
-development requests and hot updates, including modules declared inside a
-`.vibe` file.
-
-Compiler cache entries written under `VIBELANG_CACHE_DIR` preserve loaded modules and SSR maps even when the cache sits inside Vite's watched root. Source and configuration edits still invalidate their compilations.
-
-Both `vibelang-vite` and the shared `vibelang-unplugin` load hook accept
-`.vibex` sources. Configure `compilerOptions.jsx` as for the corresponding
-`.tsx` project. The Vite adapter compiles native JSX before JavaScript parsing
-and serves it with a virtual `.jsx` ID so framework plugins use their ordinary
-JSX filters. Source maps and diagnostics name the original `.vibex` file.
-Module queries such as `?import` keep compiling; resource queries such as
-`?raw` and `?url` keep their resource behavior.
-
-Development imports and hot updates preserve literal percent sequences in filenames. A source such as `percent%20.vibe` and a JavaScript dependency such as `percent%2520.js` retain their own contents and original source-map locations, including under a configured Vite `base`.
+Set up your editor: [VS Code and Cursor](vscode.md), [Neovim](neovim.md), [Zed](zed.md), or [other editors](other-editors.md). Then verify with step 4 of [Set up VibeLang](../setup.md).

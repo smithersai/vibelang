@@ -1,11 +1,16 @@
 ---
 title: "Tracking Fibers"
-description: "FiberSet and FiberMap track groups of running fibers and clean them up with an owning scope. Use a set for an unkeyed group and a map when each operation has an identity, such as a client ID."
+description: "FiberSet and FiberMap track dynamically spawned fibers inside a Scope, automatically pruning finished fibers and interrupting every still-running fiber when that Scope closes."
 ---
 
 # Tracking Fibers
 
-`FiberSet` and `FiberMap` track groups of running fibers and clean them up with an owning scope. Use a set for an unkeyed group and a map when each operation has an identity, such as a client ID.
+`FiberSet` and `FiberMap` track dynamically spawned fibers inside a `Scope`, automatically pruning finished fibers and interrupting every still-running fiber when that Scope closes.
+
+| Collection | Keyed? | On duplicate key | Use when |
+| --- | --- | --- | --- |
+| `FiberSet` | No | N/A | Dynamic pool of background tasks |
+| `FiberMap` | Yes (`K`) | Interrupts prior fiber (or skips with `onlyIfMissing: true`) | Per-entity work (client session, editor preview, job ID) |
 
 ## Managing groups of running fibers
 
@@ -42,7 +47,7 @@ tracked workers 2
 [1,2]
 ```
 
-`FiberSet.run` forks an Effect value and registers its fiber; `FiberSet.add` registers an existing fiber; `try FiberSet.size(workers)` counts the fibers tracked now. Join individual handles to collect results; tracking produces no ordered result list.
+`FiberSet.run` forks an Effect and registers its handle in one step; `FiberSet.add` registers an already-forked fiber; `try FiberSet.size(workers)` reports the current live count. A `FiberSet` tracks lifecycle, not result ordering—join individual fiber handles when you need their return values.
 
 ## Tracking fibers by key
 
@@ -68,7 +73,7 @@ effect function replacePreview() {
 new preview
 ```
 
-Running a fiber under an existing key interrupts that key's previous fiber: latest-request behavior, with no obsolete handle kept elsewhere. `FiberMap.has` and `get` inspect tracked keys, `remove` interrupts and removes a keyed fiber, and `run` with `onlyIfMissing: true` keeps existing work instead of replacing it.
+Calling `FiberMap.run` with a key already in the map interrupts the previous fiber before replacing it—giving latest-wins cancellation with zero manual handle bookkeeping. Pass `{ onlyIfMissing: true }` to keep an existing in-flight task instead of replacing it. Use `FiberMap.has`, `get`, and `remove` (which interrupts and deletes) to inspect or cancel specific keys.
 
 ## Removing completed work
 
@@ -89,7 +94,11 @@ effect function waitForAllTracked() {
 0
 ```
 
-Sets and maps remove completed fibers automatically, so a long-lived owner doesn't accumulate finished handles; a map also keeps an older completion from deleting a newer fiber under the same key. `awaitEmpty` waits for the current group to drain. `FiberSet.join` instead waits on the set's failure signal and propagates a tracked failure; it is not a successful drain.
+Both `FiberSet` and `FiberMap` remove fibers automatically upon completion, preventing memory leaks in long-lived services; `FiberMap` also guards against a stale fiber's completion removing a newer fiber stored under the same key.
+
+Note the distinction between two waiting primitives:
+- `FiberSet.awaitEmpty` suspends until every currently tracked fiber completes.
+- `FiberSet.join` waits on the set's failure signal and fails as soon as any tracked fiber fails—it does *not* complete on normal drain.
 
 ## Interrupting tracked work on scope closure
 
@@ -117,9 +126,9 @@ tracked worker cleaned up
 worker scope has closed
 ```
 
-The child completes `started` from inside `ensuring`; awaiting that `Deferred` proves its cleanup is registered before the scope closes. A sleep cannot establish that order.
+Completing `started` from inside `ensuring` proves the worker has started and installed its finalizer before the outer scope closes—something a `sleep` cannot guarantee.
 
-`make` acquires a scope-owned collection. Here `scoped(effect { ... })` ties that scope to the block, whose exit interrupts remaining work and waits for cleanup. Without `scoped`, the collection belongs to the caller's runtime scope and `Scope` stays in the function's requirements; use that form when a service layer owns the group.
+`FiberSet.make` and `FiberMap.make` attach cleanup to the active `Scope`. Wrapping the block in `scoped(effect { ... })` interrupts all remaining fibers and awaits their finalizers before exiting the block. Omit `scoped` when a service `Layer` owns the collection so the `Scope` requirement propagates to the layer's lifetime.
 
 ---
 

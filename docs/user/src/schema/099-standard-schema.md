@@ -1,8 +1,8 @@
 # Schema to Standard Schema
 
-Standard Schema adaptation works as in Effect: it exposes a codec to libraries that implement the Standard Schema V1 validation interface and keeps the original Schema methods. The codec must have no decoding service requirements. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+`Schema.toStandardSchemaV1` exposes any service-free codec (`RD = never`) to libraries that consume Standard Schema V1 while retaining all Effect Schema methods. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Adapting codecs to the standard validation interface
+## Adapting a codec
 
 ```vibe
 // run: try Console.log(standardMetadata()); { const jsonValue = try tryPromise(() => Promise.resolve(DispatchStandard["~standard"].validate({ reference: "pkg-94", count: "2" }))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -24,9 +24,9 @@ effect
 {"value":{"reference":"pkg-94","count":2}}
 ```
 
-`toStandardSchemaV1` adds the `"~standard"` interface. Validation decodes, transformations included, and returns `{ value }` on success or `{ issues }` on failure. Pass the adapted schema to a compatible library from that library's normal TypeScript integration module.
+Calling `["~standard"].validate(input)` runs full decoding (including transformations) and returns `{ value }` on success or `{ issues }` on failure.
 
-## Choosing synchronous or asynchronous validation
+## Synchronous and asynchronous validation
 
 ```vibe
 // run: { const jsonValue = try validateDispatch({ reference: "pkg-94", count: "2" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try validateDispatch({}); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -53,11 +53,9 @@ error ValidationBoundaryError {
 {"issues":[{"path":["reference"],"message":"Missing key"},{"path":["count"],"message":"Missing key"}]}
 ```
 
-The standard interface tries synchronous validation first and returns a Promise instead of a direct result when it meets asynchronous work. `Promise.resolve` normalizes either result shape for `tryPromise`. Prefer `Schema.decodeUnknownEffect` in ordinary VibeLang application code; use the standard interface for interoperability.
+`validate` executes synchronously when possible and returns a `Promise` when it encounters async steps; `Promise.resolve` normalizes both inside `tryPromise`. Prefer `Schema.decodeUnknownEffect` inside VibeLang code and reserve `~standard` for third-party library boundaries.
 
-Plain TypeScript calls are allowed inside the callback passed to `tryPromise`. The callback always returns a Promise. The boundary maps synchronous exceptions and Promise rejections to `ValidationBoundaryError`; reported validation issues stay data.
-
-## Handling defects during validation
+## Defects during validation
 
 ```vibe
 // run: { const jsonValue = try inspectBrokenValidation(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -76,8 +74,6 @@ effect function inspectBrokenValidation() {
 {"issues":[{"message":"Error: label invariant failed"}]}
 ```
 
-The adapter reports an unexpected defect as one issue without a path, not as a normal field-validation failure. That is the adapter's behavior; `catch` still does not catch defects. To investigate a defect, keep internal diagnostics at an application boundary rather than relying only on the validation message.
-
-Customize the adapter with `leafHook`, `checkHook`, and `parseOptions`; its structured failures use the issue formatter in [Error Formatters](095-error-formatters.md).
+Unexpected defects surface as a single pathless issue in the Standard Schema result (VibeLang's `catch` still does not catch defects). Customize issue output with `leafHook`, `checkHook`, and `parseOptions`; see [Error Formatters](095-error-formatters.md).
 
 [Upstream page](https://effect.website/docs/v4/schema/standard-schema)

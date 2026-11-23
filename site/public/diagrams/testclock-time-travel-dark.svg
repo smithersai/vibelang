@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" role="img" aria-labelledby="t d">
+  <title id="t">Deterministic virtual time with TestClock</title>
+  <desc id="d">Compares real wall-clock sleep taking 5 minutes against TestClock.adjust advancing virtual time instantaneously in tests.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#64708a"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#a5b4fc"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fda4af"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#5eead4"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fcd34d"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #eef1f6; }
+    .sub { font-size: 13px; fill: #b3bac7; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #eef1f6; }
+    .p { font-size: 12.5px; fill: #b3bac7; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="300" rx="10" fill="#14151a"/>
+  
+      <text x="36" y="42" class="h">TestClock turns 5-minute sleeps into 0 ms unit tests</text>
+      <text x="36" y="64" class="sub">Fork the timed Effect, jump virtual time with TestClock.adjust, and join the exact result deterministically.</text>
+
+      <!-- Real Clock -->
+      <rect x="36" y="92" width="808" height="72" rx="10" fill="#3a1d24" stroke="#e11d48" stroke-width="1.5"/>
+      <rect x="54" y="114" width="128" height="26" rx="13" fill="#1c1d24" stroke="#e11d48" stroke-width="1.2"/>
+   <text x="118" y="131" text-anchor="middle" class="k" fill="#fda4af">REAL CLOCK</text>
+      <text x="200" y="124" class="code-sm" fill="#eef1f6">try sleep("5 minutes")</text>
+      <text x="200" y="146" class="p">Blocks the test suite for 300,000 ms — slow and flaky on CI.</text>
+
+      <!-- TestClock -->
+      <rect x="36" y="180" width="808" height="92" rx="10" fill="#133230" stroke="#14b8a6" stroke-width="1.5"/>
+      <rect x="54" y="202" width="128" height="26" rx="13" fill="#1c1d24" stroke="#14b8a6" stroke-width="1.2"/>
+   <text x="118" y="219" text-anchor="middle" class="k" fill="#5eead4">TESTCLOCK</text>
+
+      <rect x="200" y="196" width="178" height="56" rx="8" fill="#1c1d24" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="216" y="218" class="k" fill="#a5b4fc">1. FORK</text>
+      <text x="216" y="238" class="code-sm" fill="#eef1f6">const f = fork work()</text>
+
+      <line x1="378" y1="224" x2="416" y2="224" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
+
+      <rect x="424" y="196" width="214" height="56" rx="8" fill="#1c1d24" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="440" y="218" class="k" fill="#5eead4">2. JUMP VIRTUAL TIME</text>
+      <text x="440" y="238" class="code-sm" fill="#eef1f6">TestClock.adjust("5 minutes")</text>
+
+      <line x1="638" y1="224" x2="676" y2="224" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
+
+      <rect x="684" y="196" width="142" height="56" rx="8" fill="#1c1d24" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="700" y="218" class="k" fill="#5eead4">3. JOIN (0 ms)</text>
+      <text x="700" y="238" class="code-sm" fill="#eef1f6">const v = join f</text>
+    
+</svg>

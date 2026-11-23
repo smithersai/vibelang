@@ -1,11 +1,19 @@
 ---
 title: "Equivalence"
-description: "Equivalence works in VibeLang exactly as in Effect. It packages a reusable rule for whether two values count as equivalent in one operation."
+description: "Equivalence.Equivalence<A> is a reusable synchronous predicate (a: A, b: A) => boolean defining when two values are equivalent for a specific operation. Use it when comparison rules vary by..."
 ---
 
 # Equivalence
 
-`Equivalence` works in VibeLang exactly as in Effect. It packages a reusable rule for whether two values count as equivalent in one operation.
+`Equivalence.Equivalence<A>` is a reusable synchronous predicate `(a: A, b: A) => boolean` defining when two values are equivalent for a specific operation. Use it when comparison rules vary by context—such as case-insensitive labels or comparing records by a single key—without altering global `Equal` semantics.
+
+| Built-in / Combinator | Comparison rule |
+| --- | --- |
+| `Equivalence.String`, `Boolean`, `BigInt` | Strict equality (`===`) |
+| `Equivalence.Number` | Numeric equality with `NaN` equal to `NaN` |
+| `Equivalence.Date` | Compares epoch timestamps with `Equivalence.Number` |
+| `Equivalence.strictEqual<A>()` | Generic strict equality (`===`) |
+| `Equivalence.mapInput(eq, project)` | Projects each operand before comparing with `eq` |
 
 ## Representing a reusable equality relation
 
@@ -19,7 +27,7 @@ sameLabel("inbox", "archive") // false
 // Output: [true,false]
 ```
 
-An `Equivalence.Equivalence<A>` is a synchronous function from two A values to a boolean. A sound relation is reflexive, symmetric, and transitive. Keep it free of service calls and expected failures so Effect can call it as a plain JavaScript callback.
+A valid equivalence is reflexive, symmetric, and transitive. Keep it a pure synchronous function with no services or typed errors so Effect APIs can invoke it directly.
 
 ## Choosing built-in relations
 
@@ -38,7 +46,7 @@ sameSymbol(key, Symbol("entry")) // false
 // Output: [true,false,true,true,true,true,false]
 ```
 
-The string, boolean, bigint, and `strictEqual` relations use strict equality; `Equivalence.Number` also equates `NaN` with itself. The date relation compares timestamps with that numeric relation, not object references.
+`String`, `Boolean`, `BigInt`, and `strictEqual` check strict equality; `Number` also treats `NaN` as equal to itself, and `Date` compares timestamps using `Number` rather than object references.
 
 ## Deriving comparisons through input projections
 
@@ -61,7 +69,7 @@ bySku(
 // Output: true
 ```
 
-`mapInput` projects each operand before applying the relation, so here only the SKU counts. Pass the rule to an API that accepts an equivalence; it does not change `Equal.equals`, JavaScript `===`, or hash-collection keys.
+`Equivalence.mapInput` lifts an existing equivalence to a larger type by projecting the key field first. An `Equivalence` applies only where explicitly passed; it never affects `===`, `Equal.equals`, or hash-collection keys.
 
 ---
 

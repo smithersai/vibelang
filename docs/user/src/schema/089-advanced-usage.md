@@ -1,8 +1,8 @@
 # Advanced Usage
 
-The advanced Schema APIs work as in Effect: declarations for opaque runtime values, brands for static distinctions, field combinators for presence rules, and suspension for recursive descriptions. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Declarations for opaque values, brands for static types, field presence combinators, and `suspend` for recursion all work as in Effect. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Declaring custom scalar and parameterized schemas
+## Custom scalar and parameterized declarations
 
 ```vibe
 // run: try Console.log((try readShelf(new Shelf("S-12"))).code); try Effect.catch(readShelf({ code: "S-12" }), (error) => Console.log(error._tag))
@@ -25,7 +25,7 @@ S-12
 SchemaError
 ```
 
-A declaration's guard establishes identity, with its type predicate inferred from `instanceof`; it does not validate members automatically, so add checks when fields need validation. Unlike a struct, an opaque declaration gives interpreters no structural description to traverse.
+`Schema.declare` establishes identity via a type guard (inferred from `instanceof`). It does not validate fields automatically—chain `.check(...)` if fields need validation. Because declarations are opaque, interpreters have no structural AST to traverse unless you provide hooks.
 
 ```vibe
 // run: try Console.log((try Schema.decodeUnknownEffect(BoxedCount)(new Box("12"))).value); try Console.log((try Schema.encodeEffect(BoxedCount)(new Box(12))).value)
@@ -53,9 +53,9 @@ const BoxedCount = BoxSchema(Schema.FiniteFromString)
 12
 ```
 
-`declareConstructor` passes the type parameters' codecs to its parser factory. The parser returns the declared decoded value or fails with a raw `SchemaIssue.Issue`, which the outer Schema interpreter wraps in a `SchemaError`. Encoding reuses the declaration machinery with the directional parameter codecs. Service requirements must come from the parameter schemas; the declaration parser cannot introduce an unrelated service.
+`declareConstructor` passes directional codecs for each type parameter into the parser factory. Return the decoded instance or fail with a raw `SchemaIssue.Issue` (wrapped in `SchemaError` by the outer parser). Any service requirements must originate from the parameter schemas.
 
-## Adding interpreter support
+## Interpreter hooks
 
 ```vibe
 // run: const codec = Schema.toCodecJson(PortableShelf); try Console.log(try Schema.encodeEffect(codec)(new Shelf("S-12"))); try Console.log((try Schema.decodeUnknownEffect(codec)("S-12")) instanceof Shelf)
@@ -88,9 +88,9 @@ S-12
 true
 ```
 
-`toCodec` supplies a structural representation shared by canonical codecs; `toCodecJson`, `toCodecStringTree`, or `toCodecIso` give one format its own. `toCodecArbitrary` supplies a generatable representation, and the formatter and equivalence annotations supply those interpreters' behavior. For a parameterized declaration, interpreter callbacks receive the matching parameter interpretations.
+Provide `toCodec` for a shared canonical representation (or `toCodecJson`, `toCodecStringTree`, `toCodecIso` per format), `toCodecArbitrary` for generators, and `toFormatter` / `toEquivalence` for display and equality. Parameterized declarations receive the matching parameter interpretations in each hook.
 
-## Creating branded schemas
+## Branded schemas
 
 ```vibe
 // run: try Console.log(try ShelfId.makeEffect("rack-18")); try Console.log(try TrackingIdSchema.makeEffect("pkg-76")); try Console.log(Schema.is(ShelfId)(""))
@@ -108,9 +108,9 @@ pkg-76
 false
 ```
 
-A brand distinguishes values statically without changing their runtime representation. It adds no check; combine it with a validating schema. `fromBrand` reuses an existing branded constructor.
+Brands add static distinction with zero runtime representation change and no validation of their own; pair them with a validating schema. `fromBrand` attaches an existing `Brand` constructor.
 
-## Applying constructor defaults
+## Constructor defaults
 
 ```vibe
 // run: { const jsonValue = try createParcel(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Parcel)({ shelf: "rack-18" }))
@@ -130,9 +130,9 @@ effect function createParcel() {
 false
 ```
 
-`withConstructorDefault` makes a field optional for construction, not decoding, and runs its default Effect when needed. Constructor failures are raw schema issues in local Effect 4.1.1.
+`withConstructorDefault` makes a field optional for construction only—not decoding—and evaluates its Effect when omitted. In Effect 4.1.1, `makeEffect` fails with a raw `SchemaIssue.Issue`.
 
-## Distinguishing optional keys, optional values, null, and absence
+## Optional keys, optional values, null, and defaults
 
 ```vibe
 // run: try Console.log(Schema.is(Presence)({ requiredUndefined: undefined, requiredNullable: null })); try Console.log(Schema.is(Presence)({ exact: undefined, requiredUndefined: undefined, requiredNullable: null })); { const jsonValue = try Schema.decodeUnknownEffect(WithDecodeDefault)({ copies: undefined }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(Schema.decodeUnknownEffect(WithDecodeDefault)({ rank: undefined }), (error) => Console.log(error._tag))
@@ -164,9 +164,13 @@ SchemaError
 | `NullOr(String)` | rejected | rejected | accepted |
 | `optionalKey(Never)` | accepted | rejected | rejected |
 
-A decoding default is an Effect value, not a callback; `Effect.succeed(value)` supplies a constant default, while `effect { return value }` constructs a default program without running it. `withDecodingDefaultType` applies a decoded default to a missing or undefined input; the `Key` variant only to a missing key. `withDecodingDefault` and `withDecodingDefaultKey` instead take defaults in the encoded representation. No decoding default implies a constructor default. Enable `exactOptionalPropertyTypes` to keep these distinctions visible in static types.
+Decoding defaults take an Effect value (`Effect.succeed(v)` or `effect { ... }`):
+- `withDecodingDefaultType` / `withDecodingDefaultTypeKey`: default in the decoded type (missing or `undefined` vs. missing key only).
+- `withDecodingDefault` / `withDecodingDefaultKey`: default in the encoded type.
 
-## Mapping optional fields to options
+Decoding defaults do not add constructor defaults. Enable `exactOptionalPropertyTypes` to reflect these rules in static types.
+
+## Mapping optional fields to `Option`
 
 ```vibe
 // run: const value = try readPreferences(); try Console.log(value.note.isNone(), value.weight.isNone(), value.alias.isNone()); { const jsonValue = try Schema.encodeEffect(Preferences)(value); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -187,7 +191,7 @@ true true true
 {}
 ```
 
-The decoded keys are required and hold `Option` values. The exact-key variant rejects explicit `undefined`; `OptionFromOptional` treats it as absent, and `OptionFromOptionalNullOr` treats null as absent too. Encoding `None` omits the key by default. For a required value that can be null or undefined, use the matching `OptionFromNullOr`, `OptionFromUndefinedOr`, or `OptionFromNullishOr`.
+The decoded keys are always present and hold `Option` values; encoding `None` omits the key by default. `OptionFromOptionalKey` rejects explicit `undefined`; `OptionFromOptional` accepts `undefined` as `None`; `OptionFromOptionalNullOr` accepts both `undefined` and `null`. For required keys that allow `null` or `undefined`, use `OptionFromNullOr`, `OptionFromUndefinedOr`, or `OptionFromNullishOr`.
 
 ## Transforming field presence
 
@@ -230,7 +234,7 @@ const Form = Schema.Struct({
 {"memo":""}
 ```
 
-Optional getters receive an `Option`: `None` means the key is absent, `Some(undefined)` that it is present with an undefined value. Returning `None` removes a key. `note` converts optional to optional, `label` supplies a required nullable output, and `memo` turns a required empty string into an absent decoded field and restores it when encoding. When null should count as absence, filter it out of the input Option.
+`SchemaGetter.transformOptional` receives `Option.none()` for an absent key and `Option.some(v)` for a present key (including `Option.some(undefined)`). Returning `Option.none()` drops the key.
 
 ## Extending and renaming fields
 
@@ -246,9 +250,9 @@ const WireDestination = Routed.pipe(Schema.encodeKeys({ dock: "dock_number" }))
 {"city":"Oslo","dock_number":2,"route":"north"}
 ```
 
-Add fields by spreading `.fields` or with `fieldsAssign`. `encodeKeys` maps decoded names to external names and preserves field optionality. To rename the decoded model, create a field map with the new name and map it back to the original wire key. `mapMembers` applies an operation to each struct in a union.
+Extend structs by spreading `.fields` or calling `fieldsAssign`. `encodeKeys` maps decoded field names to wire names while preserving optionality; `mapMembers` transforms every struct member in a union.
 
-## Modeling recursive and mutually recursive codecs
+## Recursive and mutually recursive codecs
 
 ```vibe
 // run: { const jsonValue = try readCrate({ count: "2", children: [{ count: "1", children: [] }] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try Schema.decodeUnknownEffect(Branch)({ leaves: [{ owner: null }] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -286,6 +290,6 @@ effect function readCrate(input: unknown) {
 {"leaves":[{"owner":null}]}
 ```
 
-`suspend` delays resolving a schema reference, so schemas can refer to themselves or to each other without reading an uninitialized binding. Write the recursive callback's return type to break the inference cycle: `(): Schema.Codec<Crate, CrateWire> => Crate` is a plain function that returns the codec as data, as Schema expects. When encoded and decoded fields differ, define both recursive interfaces and keep both in `Codec`; `Codec<Crate>` would wrongly claim the wire count is already a number. Decoding and encoding services go in the inner `Schema.Codec<T, E, RD, RE>` type.
+`Schema.suspend` defers resolution so self-referential and mutually recursive schemas do not read uninitialized bindings. Annotate the thunk's return type (`Schema.Codec<T, E, RD, RE>`) to break TypeScript's inference cycle, and define a separate encoded interface whenever decoded and wire shapes differ.
 
 [Upstream page](https://effect.website/docs/v4/schema/advanced-usage)

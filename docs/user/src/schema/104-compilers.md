@@ -1,8 +1,8 @@
 # Schema Compilers
 
-Effect's experimental Schema compilers work behind the ordinary Schema APIs. They generate JavaScript for supported parsing operations and leave unsupported work to the interpreter. Measure the change on your schemas before relying on a speedup. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Effect's experimental JIT and AOT compilers generate specialized JavaScript behind the ordinary Schema APIs and fall back to the interpreter for unsupported constructs. Benchmark your own schemas before relying on a speedup. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Understanding optimized validation paths
+## How compiled fast paths work
 
 ```vibe
 // schemas/Parcel.vibe
@@ -22,11 +22,12 @@ effect function readParcel(input: unknown) {
 SchemaError
 ```
 
-A compiler installs optimized operations for exact schema ASTs. A decoder or constructor can try a synchronous fast path: success returns immediately, and failure falls through to the detailed parser that produces normal issues. Guards can return false directly, since they need no detailed failures.
+Compiled parsers register against exact schema AST instances:
+- Decoders and constructors run a synchronous fast path; on failure they fall through to the detailed interpreter to build full `SchemaIssue` trees.
+- Type guards (`Schema.is`) return `false` immediately without falling back.
+- Because a failing fast path re-runs checks and property getters in the interpreter, keep them deterministic and side-effect-free. Compilers automatically skip fast paths that would unsafely replay defaults, class construction, transformations, middleware, or effectful work.
 
-Compilation must be active for the AST and operation before a consumer captures its parser. After a failed fast path, checks and property getters can run twice, so keep them deterministic and free of side effects. The compiler skips fast paths that would unsafely replay defaults, class construction, transformations, middleware, or other effectful work.
-
-## Enabling just-in-time compilation and fallback
+## Just-in-time (JIT) compilation
 
 ```vibe
 // main.vibe
@@ -49,7 +50,7 @@ Missing key
   at ["reference"]
 ```
 
-Put the enabling import before code that creates or runs parsers; importing the compiler namespace alone does not enable it. Operations compile lazily on first use, without eagerly running every check or default.
+Import `"effect/schema/SchemaJITCompiler/enable"` before creating or running parsers; operations compile lazily on first use.
 
 ```vibe
 // run: enableSelectedDirections(); try Console.log(try Schema.decodeEffect(Schema.FiniteFromString)("2")); try Console.log(Schema.is(Schema.toType(Schema.FiniteFromString))(2)); try Console.log(try Schema.encodeEffect(Schema.FiniteFromString)(2))
@@ -66,11 +67,9 @@ true
 2
 ```
 
-Selective enabling covers the exact AST and the dependencies parsing reaches. The original AST decodes, the type projection validates and constructs decoded values, and the flipped AST encodes. Global enabling handles those roots as operations encounter them.
+For targeted compilation, enable each AST direction explicitly: `.ast` for decoding, `SchemaAST.toType(ast)` for type guards and construction, and `SchemaAST.flip(ast)` for encoding. If dynamic function construction is blocked (for example by CSP) or codegen fails, Effect silently stays on the interpreter; exceptions thrown by an already-compiled parser propagate normally.
 
-JIT constructs functions dynamically. When the engine or Content Security Policy blocks that, or generation or initialization fails, parsing stays interpreted. An exception from a compiled parser already running is an ordinary parser exception, not a compiler-initialization failure that triggers a retry.
-
-## Generating and loading ahead-of-time validators
+## Ahead-of-time (AOT) compilation
 
 ```ts
 // TypeScript (.ts)
@@ -118,9 +117,9 @@ await runPromise(main())
 Prepared 1 schema exports
 ```
 
-The build Effect finds directly exported schema values in the listed modules and writes a self-installing ES module. Module keys resolve relative to `baseUrl`; each loader must load the module its key names. The TypeScript helper keeps the Promise-returning dynamic module loaders at the foreign-code boundary. Build requires FileSystem and Path; the helper provides the Node layers. The output URL is relative to the emitted helper, so a helper in `dist/` writes `dist/generated/parcel-validators.js` whatever the working directory; a relative `outFile` string resolves from the process working directory instead.
+`Build.build` scans directly exported schemas from each loader (resolved relative to `baseUrl`, defaulting to `operations: ["decode"]`) and writes a self-installing ES module. Keep the dynamic `import()` loaders and `NodeFileSystem` / `NodePath` wiring in a `.ts` helper, and pass an absolute URL-derived `outFile` so emission does not depend on the process working directory.
 
-With these sources under `src/` and JavaScript output in `dist/`, compile the build entry separately so the application does not need the generated module yet:
+Compile the build entry first with a dedicated `tsconfig.aot.json` so the app does not yet require the generated file:
 
 ```json
 {
@@ -130,9 +129,7 @@ With these sources under `src/` and JavaScript output in `dist/`, compile the bu
 }
 ```
 
-Save this as `tsconfig.aot.json`, then run `vibelang -p tsconfig.aot.json` and `node dist/build.js`. The compiler follows the build entry's imports to the helper and schema module. The entry calls `runPromise(main())` explicitly, so running `dist/build.js` executes the build Effect. For the application compilation, set `compilerOptions.rootDirs` to `["src", "dist"]` so its generated-module import resolves in `dist/`, then compile and run the application.
-
-Decoding is the default operation; add encoding, guards, and construction only when needed. Nested dependencies need no direct export unless an otherwise undiscovered graph requires a separate target.
+Run `vibelang -p tsconfig.aot.json` then `node dist/build.js`. Set `"rootDirs": ["src", "dist"]` in your application's `tsconfig.json` so imports of the generated module resolve cleanly.
 
 ```vibe
 // fragment
@@ -146,9 +143,9 @@ effect function receive(input: unknown) {
 }
 ```
 
-Load the generated module before using the schemas, and ensure the bundler preserves its installation side effect. AOT code uses static functions; it neither imports the source generator nor constructs functions dynamically. Regenerate it whenever schema definitions or the Effect version change, because it reads callbacks and symbols from matching runtime ASTs.
+Import the generated module before touching its schemas and preserve its side effect in your bundler. AOT emits static functions (no `eval` / `new Function`), but must be regenerated whenever schemas or the Effect version change.
 
-## Using lower-level compiler APIs
+## Low-level compiler APIs
 
 ```vibe
 // run: try Console.log(generateSource().includes("export function install"))
@@ -167,7 +164,7 @@ function generateSource() {
 true
 ```
 
-The low-level compiler returns source text and leaves file writing and installation to you: save it as a module and call its exported `install` with the same ASTs in exactly the same order. The application build API does the projections and installation wiring automatically.
+`SchemaAOTCompiler.compile` returns raw module source exporting `install(asts)`. Pass the exact same AST array in the exact same order when calling `install`:
 
 | Goal | Target AST | Low-level operation |
 | --- | --- | --- |
@@ -176,9 +173,9 @@ The low-level compiler returns source text and leaves file writing and installat
 | Validate decoded value | `SchemaAST.toType(ast)` | `is` |
 | Construct decoded value | `SchemaAST.toType(ast)` | `make` |
 
-The low-level API calls directional parsing `decode`, the flipped encoding path included. The ordered AST array is part of the install contract; reordering it can connect a parser to the wrong schema. `SchemaCompiler.set` is the lower-level registry entry point for a custom compiled implementation.
+Use `SchemaCompiler.set` to register custom compiled implementations directly.
 
-## Specialized operations, registries, startup behavior, and limits
+## Coverage, registry, and limits
 
 ```vibe
 // run: { const jsonValue = try parseNormally({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(parseNormally({ reference: "pkg-94", count: 2, extra: true }), (error) => Console.log(error.message))
@@ -195,12 +192,9 @@ Expected no excess property
   at ["extra"]
 ```
 
-Supported primitives, objects, arrays, tuples, unions, and template literals can use generated validation. Struct and homogeneous-array decoding have specialized loops, and pure fixed-struct and homogeneous-array construction can use fast paths. Transformations, middleware, and declarations often keep interpreted callbacks while eligible nested schemas compile.
-
-JIT resolves suspended schemas lazily. AOT does not evaluate suspend thunks, so schemas reached only through them stay interpreted unless installed as separate targets. Large or unsupported graphs keep their interpreter paths.
-
-The interpreter, JIT, AOT, and `SchemaCompiler.set` share a registry keyed by exact AST identity; it stores parser functions, not parsed values. A consumer that already captured an entry keeps it after a replacement; later consumers see the new entry. Install compilers at startup, before parsers are created and used; each operation initializes independently.
-
-Runtime parse options, including concurrency, still apply. Proxy inputs and modified built-in object behavior are outside the optimization contract. Optimized parsing gives check callbacks no permission to pause, fail through arbitrary channels, or perform observable work twice.
+- **Coverage**: Primitives, structs, homogeneous arrays, tuples, unions, and template literals compile; transformations, middleware, and declarations typically remain interpreted while eligible child schemas compile.
+- **Recursion**: JIT compiles `Schema.suspend` targets lazily; AOT does not invoke suspend thunks, so list suspended schemas as explicit targets if they need AOT compilation.
+- **Registry**: The interpreter, JIT, AOT, and `SchemaCompiler.set` share one registry keyed by AST identity. Install compilers at startup before parsers capture entries.
+- **Contract**: Runtime parse options (including `concurrency`) still apply. Proxied inputs and patched built-ins fall outside the optimization contract.
 
 [Upstream page](https://effect.website/docs/v4/schema/compilers)

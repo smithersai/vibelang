@@ -1,8 +1,14 @@
 # Error Accumulation
 
-Independent checks often must report every problem in one response. Validation collects domain errors; partitioning also keeps successful results when other inputs fail.
+`validate` and `partition` execute every Effect in a collection even after earlier items fail with typed errors. Reach for `validate` when any error must fail the batch with all problems reported, and `partition` when valid outputs should survive alongside rejected ones.
 
 [Upstream page](https://effect.website/docs/v4/error-management/error-accumulation)
+
+| Combinator | Success type | Error channel `E` | When to use |
+| --- | --- | --- | --- |
+| `validate` | `A[]` | `[E, ...E[]]` | All items must pass, or report every error |
+| `validate(..., { discard: true })` | `void` | `[E, ...E[]]` | Check validity without retaining outputs |
+| `partition` | `[A[], E[]]` | `never` | Keep valid results and inspect failures together |
 
 ## Validating every computation
 
@@ -33,7 +39,7 @@ river
 ["Jo",""]
 ```
 
-`validate` runs each input's Effect even when others fail with typed errors. If any fail, the error channel holds a nonempty array of every domain error and the successes are discarded; otherwise it returns an array of successes.
+`validate` runs every element despite typed failures. If any element fails, `E` receives a nonempty array of all domain errors and successes are discarded; otherwise it succeeds with every result.
 
 ```vibe
 // run: try checkTeamOnly(); try Console.log("All handles valid")
@@ -49,7 +55,7 @@ effect function checkTeamOnly() {
 All handles valid
 ```
 
-`discard: true` returns `void` on success, when you only need validation. `concurrency` sets how many checks run at once. A cause without an expected failure still terminates the computation. These APIs use Effect's error-to-result conversion: a cause with a defect propagates, its expected failures as defects, and an expected failure beside an interruption shrinks to that error and loses the interruption; inspect the cause when it matters.
+Pass `{ discard: true }` to return `void` on success when only validation matters, and `{ concurrency }` to bound parallel checks. A cause without an expected failure still aborts execution. Both APIs convert errors with Effect's result policy: a cause containing a defect propagates with its expected failures as defects, and an expected failure beside an interruption narrows to the failure and drops the interruption—inspect the full cause when cancellation must be preserved.
 
 ## Partitioning successes and failures
 
@@ -70,8 +76,8 @@ effect function inspectTeam() {
 // Output: {"handles":["river"],"rejected":2}
 ```
 
-The tuple order is `[successes, failures]`. `partition` keeps both arrays and removes expected errors from `E`, so you can accept valid inputs and report rejected ones. Its mixed-cause policy matches validation's.
+`partition` returns `[successes, failures]` and removes expected errors from `E`, letting callers keep valid entries while reporting rejections. Its handling of defects and mixed causes matches `validate`.
 
 ## Coming from Effect
 
-Pass `validate` or `partition` a callback returning an Effect. A plain arrow can return an existing Effect; an effect arrow can run Effects that need services, pause, or have typed failures. A plain array `map` only collects the returned Effects; it does not run them.
+Pass `validate` or `partition` a callback returning an Effect—a plain arrow when forwarding an existing Effect, or an `effect` arrow when the body runs Effects directly. Array `.map` only builds an array of unexecuted Effects without running them.

@@ -1,8 +1,8 @@
 # Terminal
 
-`Terminal` is Effect's interactive input and output service. Use it for prompts and line input, provide a runtime terminal layer, and handle a user's quit request as a typed error where it fits.
+`Terminal` is Effect's interactive input/output service. Request `Terminal.Terminal`, read lines or key events, handle `QuitError` as a typed failure, and supply a runtime terminal layer at the entry point.
 
-## Requesting terminal services
+## Requesting the service
 
 ```vibe
 // run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { { const jsonValue = try dimensions(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
@@ -14,9 +14,9 @@ effect function dimensions() {
 // Output: {"columns":80,"rows":24}
 ```
 
-`try Terminal.Terminal` gets the service implementation; the key itself is `Terminal.Terminal`. `columns`, `rows`, and `readLine` hold Effect values, so run them with `try terminal.columns` or `try terminal.readLine`. `display(text)` returns an Effect that also needs `try`.
+`columns`, `rows`, and `readLine` are Effect properties—run them with `try terminal.columns` or `try terminal.readLine`. `display(text)` returns an Effect that also runs with `try`.
 
-## Writing standard output
+## Writing output
 
 ```vibe
 // main.vibe
@@ -32,9 +32,9 @@ NodeRuntime.runMain(Effect.provide(main(), NodeTerminal.layer))
 // Output: Package prepared.
 ```
 
-`display` writes the string you pass; add a newline to complete a line. Output can fail with `PlatformError`. The Node terminal layer supplies the service, so the application needn't call native standard-output APIs.
+`display` writes verbatim without adding a newline and can fail with `PlatformError`. Provide `NodeTerminal.layer` (or `NodeServices.layer`).
 
-## Reading standard input
+## Reading input
 
 ```vibe
 // run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try askName() }
@@ -49,9 +49,9 @@ effect function askName() {
 // Output: Hello, Ada.
 ```
 
-`try terminal.readLine` waits for a line and returns its text. Reads and displays run in order, so the prompt appears before input is requested. When line input isn't enough, low-level `readInput` exposes scoped input events.
+`try terminal.readLine` waits for one line of input; statements execute in order, so the prompt prints before reading. For key-by-key events, use the scoped `readInput` queue.
 
-## Handling terminal quit errors
+## Handling `QuitError` and signals
 
 ```vibe
 // run: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: fail(new Terminal.QuitError()), display: (text) => Console.log(text.trimEnd()) }) { try askNameOrQuit(); try Console.log("quit handled") }
@@ -65,11 +65,13 @@ effect function askNameOrQuit() {
 // Output: quit handled
 ```
 
-`QuitError` signals that terminal input ended. Handle it when end-of-input counts as normal completion, and rethrow unrelated failures. In Effect 4.1.1, the Node adapter's `readLine` raises it on end-of-input, including Ctrl+D at a terminal. `readLine` leaves the terminal out of raw mode, so Ctrl+C interrupts the program. The quit keys configured by `NodeTerminal.make` govern `readInput`.
+In Effect 4.1.1 on Node:
+- `readLine` raises `QuitError` on EOF (including Ctrl+D). Because `readLine` does not enable raw mode, Ctrl+C raises a host `SIGINT`, interrupting the program and running finalizers (bypassing `catch`).
+- `readInput` puts the terminal in raw mode while active, turning Ctrl+C into a key event governed by `NodeTerminal.make`'s quit-key configuration rather than a host signal.
 
-A host SIGINT or SIGTERM is a separate termination path: the runner interrupts the program, bypassing a `catch` expression, and runs cleanup. While Node's low-level `readInput` holds the terminal in raw mode, Ctrl+C is a key event and raises no host signal.
+Catch `QuitError` when end-of-input should exit cleanly, and rethrow other errors.
 
-## Building an interactive guessing program
+## Interactive guessing game
 
 ```vibe
 // guessing.vibe
@@ -125,11 +127,11 @@ export effect function main() {
 // Output: Correct!
 ```
 
-The random service picks the secret once per game, both endpoints included. Invalid input repeats the prompt without using a guess; valid input increments the attempt count. The loop stops on success, after five valid guesses, or on a quit request; the runner still reports unexpected output failures.
+`Random.nextIntBetween(1, 20)` chooses an inclusive secret once per game. Invalid entries re-prompt without consuming a guess; `main` handles `QuitError` while letting unexpected `PlatformError` values reach the runner.
 
 ## Coming from Effect
 
-`try terminal.readLine` replaces `yield* terminal.readLine`. Effect functions and loops replace the generator and recursive Effect construction TypeScript uses for this interaction. Keep the runner in its own entry module so tests can import `main` and supply terminal input:
+`try terminal.readLine` replaces `yield* terminal.readLine`, and ordinary `while` loops replace recursive Effect combinators. Keep `NodeRuntime.runMain` in a separate entry file so tests can supply scripted `Terminal` layers:
 
 ```vibe
 // guessing-main.vibe

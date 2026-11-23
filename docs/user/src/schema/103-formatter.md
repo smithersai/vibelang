@@ -1,8 +1,8 @@
 # Schema to Formatter
 
-Value formatters work exactly as in Effect. A schema-derived formatter renders decoded values as readable strings for diagnostics or display. It neither validates input nor serializes for transport; use a codec for serialization and an issue formatter for failures. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+`Schema.toFormatter` derives a string formatter for decoded values, useful for diagnostics and display. It does not validate inputs or produce transport serialization—use a codec for wire formats and [Error Formatters](095-error-formatters.md) for failures. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Deriving value formatters from schemas
+## Deriving a value formatter
 
 ```vibe
 // run: try Console.log(try displayDispatch({ depot: "east", counts: [2, 4] }))
@@ -22,9 +22,9 @@ effect function displayDispatch(input: unknown) {
 { "depot": "east", "counts": [2, 4] }
 ```
 
-`toFormatter` walks structs, arrays, unions, and supported declarations. It takes the schema's decoded type, even when the codec accepts a different wire representation, so the example decodes first to give it valid data. Exceptions from formatting callbacks are defects.
+`toFormatter` traverses structs, arrays, unions, and supported declarations on the decoded type, so decode untrusted values first. Exceptions thrown by formatting hooks are defects.
 
-## Customizing formatting at selected syntax-tree nodes
+## Customizing formatting per node
 
 ```vibe
 // run: try Console.log(try displayManifest({ label: "crate", weight: 2 }))
@@ -47,8 +47,11 @@ effect function displayManifest(input: unknown) {
 { "label": [crate], "weight": 2 kg }
 ```
 
-`overrideToFormatter` replaces formatting at one schema node, here the weight. A `toFormatter` annotation takes priority; `onBefore` then intercepts selected AST nodes before built-in derivation, and returning undefined keeps the default.
+Precedence:
+1. A `toFormatter` annotation (via `overrideToFormatter` or on a declaration) wins first.
+2. `onBefore(ast)` intercepts AST nodes before default derivation; returning `undefined` keeps the built-in formatter.
+3. Parameterized declarations receive each type parameter's formatter.
 
-An opaque declaration can supply `toFormatter` when declared; a parameterized one receives the formatter for each parameter. Keep hooks and generated formatter functions synchronous and pure; compute service-dependent display data before formatting. Check custom output for exposed secrets before logging it.
+Keep formatter callbacks synchronous and pure, and ensure custom output does not leak secrets into logs.
 
 [Upstream page](https://effect.website/docs/v4/schema/formatter)

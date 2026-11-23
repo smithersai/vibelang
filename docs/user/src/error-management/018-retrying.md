@@ -1,8 +1,17 @@
 # Retrying
 
-Retry transient domain failures when a new attempt has a useful chance of succeeding. A retry reruns the supplied Effect from the start, side effects included.
+`retry` reruns a failed Effect from the start until it succeeds or its policy stops. Reach for it on transient domain failures where a fresh attempt has a real chance of succeeding.
 
 [Upstream page](https://effect.website/docs/v4/error-management/retrying)
+
+![Retrying an Effect with a composable Schedule](/diagrams/retry-schedule-flow.svg)
+
+| Form | Controls | Stopping rule |
+| --- | --- | --- |
+| `retry(eff, { times })` | Fixed retry budget | Stops after `times` retries (`times + 1` total runs) |
+| `retry(eff, { while / until })` | Error-based filtering | Stops when predicate fails (`while`) or holds (`until`) |
+| `retry(eff, schedule)` | Delay and recurrence policy | Stops when the `Schedule` ends |
+| `retryOrElse(eff, schedule, fallback)` | Retries plus final recovery | Runs `fallback(error, scheduleOutput)` after exhaustion |
 
 ## Retrying failed computations
 
@@ -30,9 +39,9 @@ Attempt 3
 Snapshot ready
 ```
 
-The first attempt always runs; `{ times: 3 }` allows three more, at most four executions. State declared outside the Effect block, such as `attempts`, persists across attempts; locals inside it start fresh.
+The initial attempt always runs; `{ times: 3 }` adds at most three retries, for four total executions. Bindings declared outside the `effect { ... }` block persist across attempts, while locals inside start fresh on every retry.
 
-A failure ends the current attempt before the retry begins. Defects and interruption don't trigger a retry. Retried writes need an application policy that makes repeated execution safe.
+Each failure completes its attempt before the next begins, and every retry reruns side effects from the top—ensure retried writes are idempotent. Defects and interruption never trigger a retry.
 
 ## Selecting retryable domain errors
 
@@ -58,7 +67,7 @@ effect function sendTransient() {
 false
 ```
 
-`while` retries while its predicate holds; `until` stops once its predicate holds. Either can return a boolean or an Effect, so selection can consult a service. Unselected errors stay typed failures.
+`while` retries as long as its predicate holds; `until` stops as soon as its predicate holds. Either predicate may return a boolean or an Effect, allowing checks against services. Errors excluded by the predicate propagate immediately as typed failures.
 
 ## Controlling timing and limits
 
@@ -82,7 +91,7 @@ RequestRejected
 RequestRejected
 ```
 
-A schedule controls delay and can add its own stopping condition; with `times`, predicates, and a schedule combined, retrying stops when the applicable policy says to. `Schedule.recurs(3)` permits three retries. `repeat` repeats after success.
+A `Schedule` sets inter-attempt delays and can supply its own stopping condition. When `times`, predicates, and `schedule` are combined, retrying ends as soon as any configured limit stops it. `Schedule.recurs(3)` permits three retries; use `repeat` instead when looping after success.
 
 ## Recovering after retries end
 
@@ -105,8 +114,8 @@ Queued after 2 retries; transient=false
 Queued for later
 ```
 
-`retryOrElse` runs recovery once its schedule is exhausted, passing the last error and the schedule's output (a retry count for `Schedule.recurs`). Recovery can add its own errors and requirements.
+`retryOrElse` invokes its fallback once the schedule is exhausted, receiving the last typed error and the schedule's output (the retry count for `Schedule.recurs`). The fallback's own errors and service requirements join the returned Effect's type.
 
 ## Coming from Effect
 
-Pass the Effect directly: `try retry(sendRequest(), policy)`. Calling `sendRequest()` constructs the Effect without running its body. Every retry runs it again. Use `effect { … }` for an attempt containing several statements.
+Pass the Effect value directly: `try retry(sendRequest(), policy)`. Calling `sendRequest()` builds the Effect description without executing it, so each retry runs its body again; wrap multi-statement attempts in `effect { … }`.

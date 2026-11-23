@@ -1,15 +1,15 @@
 ---
 title: "React Native and Metro"
-description: "Add VibeLang to a React Native or Expo app that bundles with Metro. Install the packages with Add VibeLang to an existing project first."
+description: "Add VibeLang to a React Native or Expo app bundled with Metro. Complete Add VibeLang to an existing project first."
 ---
 
 # React Native and Metro
 
-Add VibeLang to a React Native or Expo app that bundles with Metro. Install the packages with [Add VibeLang to an existing project](/setup/existing-project) first.
+Add VibeLang to a React Native or Expo app bundled with Metro. Complete [Add VibeLang to an existing project](/setup/existing-project) first.
 
 ## 1. Configure Metro
 
-Wrap the config that the Metro config file exports in `withVibeLang`, keeping everything else. Save it as `metro.config.cjs` because `package.json` has `"type": "module"`: Node loads a `metro.config.js` that uses `require` and `module.exports` as an ES module and fails with `require is not defined in ES module scope`. Rename an existing CommonJS `metro.config.js`:
+Wrap the exported Metro config in `withVibeLang`. Save it as `metro.config.cjs` (renaming an existing CommonJS `metro.config.js`), because `"type": "module"` in `package.json` makes Node load `.js` as ESM and fail on `require`:
 
 ```js
 // metro.config.cjs
@@ -19,15 +19,14 @@ const { withVibeLang } = require("vibelang/metro")
 module.exports = withVibeLang(getDefaultConfig(__dirname))
 ```
 
-`withVibeLang` adds `vibe` to `resolver.sourceExts`, resolves the emitted names of a `.vibe` module's relative imports (`./a.js` for `./a.ts`) to the sources beside it, and puts `vibelang/metro` in front of the app's Babel transformer. That transformer still transforms every module. For a `.vibe` module it receives the module's JavaScript, and the bundle's source maps name `.vibe` lines. The config can also be a promise of a config, or a function that returns one.
+`withVibeLang` accepts a config object, promise, or factory function. It adds `vibe` to `resolver.sourceExts`, resolves emitted relative imports (`./a.js` -> `./a.ts`) beside `.vibe` files, and inserts `vibelang/metro` ahead of the app's Babel transformer so Babel receives compiled JavaScript while bundle source maps point to `.vibe` lines.
 
-Metro caches a transformed module by its own text, but a `.vibe` module's JavaScript also depends on the modules it imports. After a change that alters how an importer compiles, restart Metro with `npx expo start --clear` or `--reset-cache`.
-
-Each `module` declaration compiles to a module of its own, such as `main.vibe.text.js` for `module text` in `main.vibe`. That file is not on disk, so `withVibeLang` writes a stand-in for each declaration under `node_modules/.cache/vibelang-metro` before Metro starts, and the app's Babel transformer reads the declaration's JavaScript as it would a `.ts` file beside the `.vibe` file. It finds the declarations in the `.vibe` and `.vibex` files under the project root and `watchFolders`, so wrap the config that Metro runs. If you add a declaration while Metro runs, Metro names it in an error: restart Metro.
+- **Metro cache:** Because `.vibe` output depends on imported modules, restart with `npx expo start --clear` or `--reset-cache` after changes that alter how importers compile.
+- **Inline `module` declarations:** Each `module` declaration compiles to a virtual module (e.g., `main.vibe.text.js` for `module text` in `main.vibe`). `withVibeLang` scans `.vibe`/`.vibex` files under the project root and `watchFolders` and writes stand-ins under `node_modules/.cache/vibelang-metro` before Metro starts. Restart Metro after adding a new `module` declaration.
 
 ## 2. Configure Babel
 
-Add `vibelang/babel` after the app's presets. Metro does not need it, but any tool that runs Babel on a file directly does, such as a Jest suite or a React Compiler coverage test. Save CommonJS Babel configuration as `babel.config.cjs` because `package.json` has `"type": "module"`. Rename an existing `babel.config.js` that uses `module.exports`:
+List `vibelang/babel` last in Babel presets for tools that invoke Babel directly (such as Jest or React Compiler coverage tests; Metro does not need it). Save as `babel.config.cjs` under `"type": "module"`:
 
 ```js
 // babel.config.cjs
@@ -39,4 +38,4 @@ module.exports = function (api) {
 
 ## 3. Check
 
-Run `npx expo export --platform ios` and expect it to finish without errors. With the React Compiler on, a hook in a `.vibe` module is memoized as it was in its `.ts` module.
+Run `npx expo export --platform ios` and verify zero errors. With the React Compiler enabled, hooks in `.vibe` modules are memoized identically to `.ts`.

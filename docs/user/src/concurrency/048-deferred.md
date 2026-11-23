@@ -1,8 +1,16 @@
 # Deferred
 
-A `Deferred.Deferred<A, E>` is a result another fiber can complete once. Use it to signal readiness, hand a value to waiting work, or share a one-time failure. Waiting suspends the fiber; other work keeps running.
+A `Deferred.Deferred<A, E>` is a write-once synchronization cell completed by one fiber and awaited by any number of others. Use it to signal readiness, hand off a single value, or broadcast a one-time failure while suspending waiters without blocking the thread.
 
-In an `async` function, `await deferred` keeps JavaScript's behavior and reports `EK4610`. To wait for the result, write `await runPromise(Deferred.await(deferred))` with fresh imports, waiting for the result while evaluating `deferred` once.
+![Fiber coordination with Deferred and Semaphore](/diagrams/deferred-and-semaphore.svg)
+
+| Operation | Behavior |
+| --- | --- |
+| `Deferred.succeed` / `Deferred.fail` | Completes once with a value or typed error; returns `false` if already completed |
+| `Deferred.done` / `failCause` / `interrupt` | Completes with an `Exit`, a full `Cause`, or interruption |
+| `Deferred.complete(d, eff)` | Runs `eff` once and stores its outcome for all waiters |
+| `Deferred.completeWith(d, eff)` | Stores `eff` itself so each waiter evaluates it independently |
+| `Deferred.isDone` / `Deferred.poll` | Non-blocking completion check and `Option` of the stored Effect |
 
 ## Creating a one-time result
 
@@ -24,7 +32,7 @@ effect function stringify(value: unknown) {
 // Output: true
 ```
 
-A new deferred is empty, holding neither a success nor a failure. Creating it is an Effect operation, so run `Deferred.make` with `try` inside an effect function or block. Pass the same handle to the producer and every waiter that shares its result.
+A freshly created deferred is empty. Allocation is an Effect operation, so call `try Deferred.make<A, E>()` inside an effect context and share that handle across the producer and every waiter.
 
 ## Waiting for completion
 
@@ -39,9 +47,9 @@ effect function waitForAddress() {
 // Output: 127.0.0.1:8080
 ```
 
-`try Deferred.await(address)` waits while the handle is empty and returns at once after completion. Several fibers can await one deferred and receive the same result. Cancelling one waiter doesn't require completing the deferred for the others.
+`try Deferred.await(address)` suspends until completion and returns immediately afterward. Any number of fibers may await the same deferred and observe the same result; interrupting one waiter leaves the deferred open for the rest.
 
-Only a value with the `Deferred` interface triggers `EK4610`; a wrapper object or a marker-only object remains an ordinary JavaScript value. In effect code, `await` always reports `EK0102`. Its `try Deferred.await(value)` guidance requires the complete `Deferred` interface; a marker-only or partial object receives no Deferred-specific repair.
+In an `async` function, `await deferred` preserves JavaScript's behavior and reports `EK4610` (only values implementing the full `Deferred` interface trigger it, not wrappers or marker-only objects); write `await runPromise(Deferred.await(deferred))` with fresh imports to wait while evaluating `deferred` once. In effect code, `await` always reports `EK0102`, offering `try Deferred.await(value)` guidance only when the value implements the full `Deferred` interface.
 
 ## Completing with success or failure
 
@@ -68,7 +76,7 @@ effect function shareFailure() {
 // Output: 0
 ```
 
-The first completion wins; later completions return `false`. `Deferred.done` takes an `Exit`, `Deferred.failCause` a cause, and `Deferred.interrupt` completes waiters with interruption. `Deferred.complete(deferred, program)` evaluates an Effect and shares its outcome; `completeWith` stores the Effect for each waiter to evaluate, so it doesn't promise one execution.
+The first completion wins and returns `true`; every later completion returns `false` and is ignored. Use `Deferred.complete` to execute an Effect once and share its outcome, and reserve `Deferred.completeWith` for cases where each waiter should run the stored Effect itself.
 
 ## Polling completion state
 
@@ -88,7 +96,7 @@ effect function inspectWithoutWaiting() {
 // Output: {"before":false,"value":9}
 ```
 
-`Deferred.isDone` reports whether completion happened. `Deferred.poll` returns `None` while empty, else `Some` of the completed Effect, which runs with `try stored`. A completed failure is still done; running its stored Effect propagates the failure.
+`Deferred.isDone` returns a boolean without suspending. `Deferred.poll` returns `None` while empty or `Some(storedEffect)` once completed; running `try stored` yields the value or propagates the stored failure.
 
 ## Coordinating work across fibers
 
@@ -111,4 +119,4 @@ effect function coordinate() {
 // Output: part-a+part-b
 ```
 
-The consumer can't proceed before the producer supplies its input, whichever fiber starts first. A producer that fails before completing the signal leaves waiters waiting, so real startup code also completes it with the failure, or supervises producer failure alongside the wait. A deferred is single use; use a Queue for repeated messages or a Latch for a reusable gate.
+The consumer blocks until the producer completes `prepared`, regardless of start order. If a producer can fail before completing the deferred, complete the deferred with that failure (or supervise both fibers together) so waiters do not hang indefinitely. A deferred is single-use: reach for a `Queue` for streams of messages or a `Latch` for a reusable gate.

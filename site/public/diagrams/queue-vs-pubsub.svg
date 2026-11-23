@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 330" role="img" aria-labelledby="t d">
+  <title id="t">Queue vs. PubSub message delivery</title>
+  <desc id="d">Compares point-to-point Queue delivery (each item taken by one consumer with backpressure) against broadcast PubSub delivery (every subscriber receives each message).</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="330" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">Queue distributes work; PubSub broadcasts events</text>
+      <text x="36" y="64" class="sub">Choose Queue when each job should run once. Choose PubSub when every listener needs every event.</text>
+
+      <!-- Left: Queue -->
+      <rect x="36" y="88" width="392" height="214" rx="10" fill="#ffffff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <rect x="54" y="104" width="150" height="24" rx="12" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.2"/>
+   <text x="129" y="120" text-anchor="middle" class="k" fill="#4338ca">QUEUE (1-TO-1)</text>
+      <text x="54" y="150" class="p">Each offered item goes to exactly one worker.</text>
+
+      <rect x="54" y="168" width="86" height="54" rx="8" fill="#f1f5f9" stroke="#d6dde8" stroke-width="1.5"/>
+      <text x="97" y="191" text-anchor="middle" class="b">Producer</text>
+      <text x="97" y="210" text-anchor="middle" class="code-sm" fill="#4338ca">offer(j)</text>
+
+      <line x1="140" y1="195" x2="170" y2="195" stroke="#4338ca" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      <rect x="176" y="173" width="92" height="44" rx="8" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="222" y="200" text-anchor="middle" class="code-sm" fill="#4338ca">[j1, j2, j3]</text>
+
+      <line x1="268" y1="184" x2="306" y2="174" stroke="#4338ca" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+      <line x1="268" y1="206" x2="306" y2="220" stroke="#4338ca" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+
+      <rect x="312" y="156" width="98" height="38" rx="8" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="361" y="180" text-anchor="middle" class="code-sm" fill="#0f766e">W1 ← j1</text>
+      <rect x="312" y="204" width="98" height="38" rx="8" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="361" y="228" text-anchor="middle" class="code-sm" fill="#0f766e">W2 ← j2</text>
+
+      <text x="54" y="276" class="p">Bounded queues apply backpressure when full.</text>
+
+      <!-- Right: PubSub -->
+      <rect x="452" y="88" width="392" height="214" rx="10" fill="#ffffff" stroke="#5eead4" stroke-width="1.5"/>
+      <rect x="470" y="104" width="164" height="24" rx="12" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.2"/>
+   <text x="552" y="120" text-anchor="middle" class="k" fill="#0f766e">PUBSUB (1-TO-MANY)</text>
+      <text x="470" y="150" class="p">Every active subscriber receives every message.</text>
+
+      <rect x="470" y="168" width="92" height="54" rx="8" fill="#f1f5f9" stroke="#d6dde8" stroke-width="1.5"/>
+      <text x="516" y="191" text-anchor="middle" class="b">Publisher</text>
+      <text x="516" y="210" text-anchor="middle" class="code-sm" fill="#0f766e">publish(e)</text>
+
+      <line x1="562" y1="195" x2="594" y2="195" stroke="#0f766e" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <rect x="600" y="173" width="76" height="44" rx="8" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="638" y="200" text-anchor="middle" class="code-sm" fill="#0f766e">topic</text>
+
+      <line x1="676" y1="182" x2="718" y2="164" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="676" y1="195" x2="718" y2="195" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="676" y1="208" x2="718" y2="226" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+
+      <rect x="724" y="148" width="102" height="28" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="775" y="166" text-anchor="middle" class="code-sm" fill="#4338ca">Sub A ← e</text>
+      <rect x="724" y="181" width="102" height="28" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="775" y="199" text-anchor="middle" class="code-sm" fill="#4338ca">Sub B ← e</text>
+      <rect x="724" y="214" width="102" height="28" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="775" y="232" text-anchor="middle" class="code-sm" fill="#4338ca">Sub C ← e</text>
+
+      <text x="470" y="276" class="p">Subscriptions are Scoped and auto-unsubscribe on exit.</text>
+    
+</svg>

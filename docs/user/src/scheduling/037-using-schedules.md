@@ -1,6 +1,14 @@
 # Using schedules
 
-A schedule decides when work runs again and when it stops. `Schedule` values work in VibeLang exactly as in Effect; to run one, pass an Effect value to `repeat`, `schedule`, or `retry` and run the result with `try`. Schedules live in the running process and don't recover jobs missed during downtime.
+A `Schedule` governs when an Effect runs again and when repetition ends. Pass an Effect value to `repeat`, `schedule`, or `retry` and run the result with `try`; schedules live in process memory and do not replay jobs missed during downtime.
+
+![Retrying an Effect with a composable Schedule](/diagrams/retry-schedule-flow.svg)
+
+| Driver | First run | Advances schedule on | Stops immediately on |
+| --- | --- | --- | --- |
+| `repeat` | Immediate | Success (`A`) | Typed failure, defect, or interruption |
+| `schedule` | After first schedule delay | Success (`A`) | Typed failure, defect, or interruption |
+| `retry` | Immediate | Expected failure (`E`) | Success, defect, or interruption |
 
 ## Repeating successful computations
 
@@ -18,7 +26,7 @@ effect function heartbeat() {
 // Output: worker available
 ```
 
-`repeat` runs the Effect immediately, then steps the schedule after each success: here, a fifteen second wait after each completed log. A failure stops the loop; interruption cancels it.
+`repeat` executes the Effect immediately and advances the schedule after each success—here waiting fifteen seconds after every completed log. Any failure ends the loop, and interruption cancels it.
 
 ## Stopping based on a result
 
@@ -40,7 +48,7 @@ effect function waitForBuild() {
 // Output: {"status":"ready","checks":4}
 ```
 
-The initial check is separate from the seven permitted repetitions, so the loop makes at most eight checks. `until` stops on a matching result; `while` continues while its predicate holds. If the count limit wins, `repeat` returns the last result, so check it before assuming the work is ready.
+`times: 7` bounds repetitions beyond the initial execution, allowing at most eight checks. `until` stops once its predicate matches, while `while` keeps looping while its predicate holds; if `times` exhausts first, `repeat` returns the last result, so inspect it rather than assuming the predicate matched.
 
 ## Delaying the initial run
 
@@ -57,7 +65,7 @@ effect function delayedCleanup() {
 // Output: sweeping expired sessions
 ```
 
-`schedule` also waits for the schedule before the first run: this job waits thirty minutes at startup, then thirty minutes after each completed sweep. Use it for calendar jobs and startup delays where an immediate run is wrong.
+`schedule` waits for the first schedule delay before executing the action—here thirty minutes after startup, then thirty minutes after each completed sweep. Use it for calendar jobs and deferred maintenance where an immediate startup run is undesirable.
 
 ## Retrying failed computations
 
@@ -77,7 +85,7 @@ effect function reserveSlot() {
 // Output: reserved
 ```
 
-`retry` steps its schedule after an expected failure and stops immediately on success. `recurs(3)` permits three retries after the first attempt: four attempts at most. Retry doesn't turn defects or interruption into expected failures.
+`retry` advances the schedule only on expected failures and returns on the first success. `Schedule.recurs(3)` permits three retries after the initial run (four attempts total); defects and interruption bypass retry.
 
 ## Handling failures while repeating
 
@@ -105,8 +113,8 @@ effect function sampleContinuously() {
 // Output: sample unavailable SensorOffline
 ```
 
-When later samples should still run, handle a recoverable failure inside the repeated Effect; a `catch` outside `repeat` recovers after the loop has stopped. `Effect.repeatOrElse` instead stops repetition and calls a fallback with the failure and an `Option` of the latest schedule metadata, empty before any schedule step.
+Handle recoverable errors inside the repeated Effect so later iterations keep running; a `catch` outside `repeat` only runs after the loop terminates. `Effect.repeatOrElse` terminates on failure and invokes a fallback with the error and an `Option` of the latest schedule metadata (empty if no schedule step ran yet).
 
 ## Coming from Effect
 
-Pass `sample()` where Effect expects the computation. Schedule constructors and count semantics are unchanged; use `effect { }` for the generator body and `try` to run its Effects.
+Pass an unexecuted Effect value such as `sample()` to `repeat`, `schedule`, or `retry`. Schedule constructors and count semantics match Effect unchanged; wrap multi-statement bodies in `effect { }` and run inner Effects with `try`.

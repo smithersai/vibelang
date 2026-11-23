@@ -1,8 +1,8 @@
 # Effect Data Types
 
-Schemas for Effect data types work as in Effect. Runtime collection schemas expect the actual runtime container on both sides and transform its contents; derive a canonical JSON codec when the external representation is plain JSON. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Schemas for Effect's built-in containers validate runtime instances on both sides and transform their contents. Derive a canonical JSON codec (`Schema.toCodecJson`) when crossing a plain JSON boundary. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Building configuration-compatible codecs
+## Configuration codecs
 
 ```vibe
 // run: { const jsonValue = try configurationExample(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -23,9 +23,9 @@ effect function configurationExample() {
 {"depot":"north","capacity":24}
 ```
 
-`Config.schema` builds a Config value without reading it. `try DispatchConfig` reads the current provider; `try DispatchConfig.parse(provider)` reads the given provider and decodes its representation to the schema's type. The example's structured provider has a numeric capacity; string-based providers need a representation that accepts strings, such as a string-tree codec or explicit `FiniteFromString` fields. Configuration errors use Config's error model, not the raw Schema parser's.
+`Config.schema` builds a `Config` value without reading it; run `try DispatchConfig` against the ambient provider or `try DispatchConfig.parse(provider)` against a specific one. String-backed providers (such as environment variables) require string-accepting schemas like `FiniteFromString` or `toCodecStringTree`. Failures report through `Config`'s error type.
 
-## Encoding options, results, and exits
+## `Option`, `Result`, and `Exit`
 
 ```vibe
 // run: const values = try decodeContainers(); try Console.log(values.option.isSome() ? values.option.value : "none"); try Console.log(values.result.isFailure() ? values.result.failure : "success"); try Console.log(values.exit._tag); try Console.log(try values.exit)
@@ -48,7 +48,7 @@ Success
 9
 ```
 
-`Option` applies its value schema to `Some` and keeps `None`. `Result(success, failure)` transforms each channel independently. `Exit(success, failure, defect)` also describes failures and defects inside the cause. `Exit.succeed` and `Exit.fail` construct data, and an Exit the parser returns stays data: a failure stored in it does not fail the surrounding parser. Running the Exit with `try` succeeds or fails with its stored outcome.
+`Option`, `Result(success, failure)`, and `Exit(success, failure, defect)` transform their payloads while keeping the runtime container intact. A decoded `Exit.Failure` remains ordinary data until executed with `try`.
 
 ```vibe
 // run: { const jsonValue = try encodeResult(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -63,20 +63,18 @@ effect function encodeResult() {
 {"_tag":"Success","success":"9"}
 ```
 
-Canonical JSON uses `{ _tag: "Some", value }` and `{ _tag: "None" }` for options, `Success/success` or `Failure/failure` for results, and `Success/value` or `Failure/cause` for exits; causes keep their failure reasons. `Schema.Defect()` reconstructs supported error-shaped defect data, including name, message, and optional stack.
+Canonical JSON encodes `Option` as `{ _tag: "Some", value } | { _tag: "None" }`, `Result` with `Success/success` and `Failure/failure`, and `Exit` with `Success/value` and `Failure/cause`. `Schema.Defect()` preserves error name, message, and optional stack.
 
-| Option conversion | Inputs decoded as `None` | Default encoding of `None` |
+| Option codec | Decodes as `None` | Default `None` encoding |
 | --- | --- | --- |
-| `OptionFromUndefinedOr` | undefined | undefined |
-| `OptionFromNullOr` | null | null |
-| `OptionFromNullishOr` | null or undefined | undefined |
+| `OptionFromUndefinedOr` | `undefined` | `undefined` |
+| `OptionFromNullOr` | `null` | `null` |
+| `OptionFromNullishOr` | `null` or `undefined` | `undefined` (or `onNoneEncoding: null`) |
 | `OptionFromOptionalKey` | missing key | omitted key |
-| `OptionFromOptional` | missing key or undefined | omitted key |
-| `OptionFromOptionalNullOr` | missing key, null, or undefined | omitted key |
+| `OptionFromOptional` | missing key or `undefined` | omitted key |
+| `OptionFromOptionalNullOr` | missing key, `null`, or `undefined` | omitted key (`"omit"`, `null`, or `undefined`) |
 
-`OptionFromNullishOr` accepts `onNoneEncoding: null` to choose null instead. `OptionFromOptionalNullOr` accepts `"omit"`, null, or undefined for the encoding policy.
-
-## Supporting native and Effect collections
+## Native and persistent collections
 
 ```vibe
 // run: const values = try collectionsFromJson(); try Console.log(try Effect.try(() => JSON.stringify(Array.from(values.set)))); try Console.log(try Effect.try(() => JSON.stringify(Array.from(values.map)))); { const jsonValue = Array.from(try Schema.decodeUnknownEffect(NativeSet)(new Set(["4", "7"]))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = Array.from(try Schema.decodeUnknownEffect(NativeMap)(new Map([["cold", "4"]]))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -101,9 +99,9 @@ effect function collectionsFromJson() {
 [["cold",4]]
 ```
 
-`ReadonlySet` and `ReadonlyMap` describe native Set and Map containers; `HashSet` and `HashMap` describe Effect's persistent collections. Runtime schemas transform each element or entry and keep the container kind. Canonical JSON codecs encode sets as arrays of values and maps as arrays of key-value pairs, keeping the inner codec's explicit string encoding.
+`ReadonlySet` / `ReadonlyMap` wrap native `Set` / `Map`; `HashSet` / `HashMap` wrap Effect's persistent collections. Their canonical JSON codecs serialize sets as arrays and maps as `[key, value]` entry arrays while preserving element codecs.
 
-## Converting durations and protected values
+## `Duration` and `Redacted`
 
 ```vibe
 // run: const value = try durations(); try Console.log(value.milliseconds, Duration.toMillis(value.nanoseconds)); try Console.log(try Effect.try(() => JSON.stringify(value.json)))
@@ -123,7 +121,7 @@ effect function durations() {
 {"_tag":"Millis","value":3000}
 ```
 
-`Schema.Duration` validates an existing Duration. `DurationFromString`, `DurationFromMillis`, and `DurationFromNanos` select text, numeric milliseconds, or bigint nanoseconds. The canonical Duration representation is tagged and preserves the supported precision and infinity cases.
+`Schema.Duration` validates existing `Duration` values; `DurationFromString`, `DurationFromMillis`, and `DurationFromNanos` convert from text, milliseconds, or bigint nanoseconds. Canonical JSON uses tagged objects that preserve precision and infinity.
 
 ```vibe
 // run: const value = try readToken("example-token"); try Console.log(String(value)); const codec = Schema.toCodecJson(NonSerializableToken); try Effect.catch(Schema.encodeEffect(codec)(value), (error) => Console.log(error._tag))
@@ -143,6 +141,6 @@ effect function readToken(input: unknown) {
 SchemaError
 ```
 
-`RedactedFromValue` validates a raw value and wraps it; `Redacted` expects a Redacted container and validates its hidden contents. Redaction protects display, not every serialization path: encoding a raw-value codec or a default canonical JSON codec can expose the contents. Set `disallowJsonEncode: true` on the Redacted schema to make its canonical JSON codec refuse encoding, and don't log decoded secrets.
+`RedactedFromValue` wraps a raw input; `Redacted` validates an existing `Redacted` container. Redaction hides values in display formatting only—encoding a raw-value or default JSON codec still emits the secret unless `disallowJsonEncode: true` is set.
 
 [Upstream page](https://effect.website/docs/v4/schema/effect-data-types)

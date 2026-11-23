@@ -1,6 +1,6 @@
 # Running Effects
 
-An Effect does nothing until you run it. There are only **two places** execution happens:
+An Effect does nothing until you run it, and there are only **two places** where execution happens.
 
 1. **Inside an `effect` function** — use `try program` to run an Effect on the current fiber.
 2. **At the application boundary** (module top level, HTTP handler, CLI entry) — call a **runner** once to kick off the fiber runtime.

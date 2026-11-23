@@ -1,8 +1,21 @@
 # Building an HTTP API
 
-Build routes with Effect's HTTP modules and write each request handler as an effect function. This example creates users, validates JSON bodies, and maps expected failures to HTTP status codes.
+Let's build a real JSON endpoint—`POST /users`—from scratch in four small files.
 
-## Define the body and the service
+By the end, your API will:
+
+1. Validate incoming JSON with a `schema`.
+2. Return `201` for new users, `409` for duplicate names, and `400` for malformed payloads.
+3. Run on a real Node HTTP server without importing `node:http`.
+4. Run full end-to-end route tests in milliseconds without opening a single TCP socket.
+
+Here is how the pieces stack together—portable handlers on top, abstract Effect services in the middle, and swappable host or test layers at the bottom:
+
+![Platform and HTTP server layer stack](/diagrams/http-layer-stack.svg)
+
+## Step 1: Model the contract and state (`users.vibe`)
+
+Before touching HTTP, describe the domain cleanly: what a valid payload looks like (`schema`), what can go wrong (`error`), and what the user store can do (`service`).
 
 ```vibe
 // users.vibe
@@ -30,9 +43,12 @@ export const UsersLive = Layer.effect(Users, effect {
 // Output: Ada
 ```
 
-`schema CreateUser { name: string }` declares a struct schema and its type: it accepts a JSON object with a string `name`. The `create` member declares the expected failure `NameTaken`. The layer owns the name set and the ID counter, so each layer build starts with isolated state.
+**Why build `UsersLive` with `Layer.effect` instead of module globals?**
+Every time a server or test builds `UsersLive`, it gets a brand-new `Set` and counter. Two tests never leak users into each other, and `schema CreateUser` gives you both the static TypeScript type and a runtime JSON decoder in one line.
 
-## Decode the request and map failures
+## Step 2: Decode requests and map failures (`routes.vibe`)
+
+Now connect `Users` to `POST /users`. Read the JSON body through `HttpServerRequest.schemaBodyJson(CreateUser)`, call `users.create`, and translate every expected domain or schema failure into its HTTP status code:
 
 ```vibe
 // routes.vibe
@@ -57,13 +73,19 @@ export const App = HttpRouter.provideRequest(UsersLive)(Routes)
 // Output: [201,409,400]
 ```
 
-`try HttpServerRequest.schemaBodyJson(CreateUser)` runs the JSON decoder and returns the validated body. A repeated name becomes 409, and a body that fails the schema 400. `default: throw error` passes any failure the `match` does not name on to the HTTP boundary.
+Walk through what happens on three different requests:
+- **`{ "name": "Ada" }` (first time)** -> Schema passes, `users.create("Ada")` succeeds -> `201 Created`.
+- **`{ "name": "Ada" }` (second time)** -> `users.create` throws `NameTaken` -> `match` returns `409 Conflict`.
+- **`{ "name": 123 }`** -> `schemaBodyJson` fails with `SchemaError` -> `match` returns `400 Bad Request`.
+- **Anything unexpected** -> `default: throw error` forwards it to the HTTP boundary, and defects never enter `catch`, so a bug can never accidentally masquerade as a `200`.
 
-`catch` sees expected failures only, not defects or interruption. Keep error-to-status mapping explicit so a programming defect cannot become a successful response.
+Notice two subtle details that pay off later:
+- `HttpRouter.add` takes `createUser()`—an **Effect value** that runs fresh on every request.
+- `HttpRouter.provideRequest(UsersLive)(Routes)` attaches `UsersLive` directly to the router, so both the production server and in-memory tests share the exact same wiring.
 
-`HttpRouter.add` receives `createUser()`, an Effect value that runs on each request. `HttpRouter.provideRequest` supplies `Users` to route execution, so `HttpRouter.toHttpEffect` in a test uses the same service implementation as the server.
+## Step 3: Boot the server (`server.vibe` and `start.vibe`)
 
-## Start the Node server
+Because `.vibe` files never import `node:http` directly, `ExperimentalNodeHttpServer.layer({ port })` wraps Node's server behind a standard Effect layer. `HttpRouter.serve(App)` mounts your routes onto it, and `Layer.launch` keeps the server running until shutdown:
 
 ```vibe
 // server.vibe
@@ -84,9 +106,7 @@ export effect function main() {
 // Output: server released
 ```
 
-A `.vibe` file imports no Node.js value directly, so `ExperimentalNodeHttpServer.layer` is `NodeHttpServer.layer` with Node's `createServer` supplied. `NodeHttpServer.layer` runs it and owns its lifetime. `HttpRouter.serve` builds the serving layer, and `Layer.launch` keeps it alive until shutdown.
-
-The module top level constructs schemas, routes, and layers. Start the application from a separate entry module:
+**Keep startup in its own tiny entry file.** `server.vibe` only *defines* `main()`; it opens no ports when imported. Put `NodeRuntime.runMain(main())` in `start.vibe`:
 
 ```vibe
 // start.vibe
@@ -96,9 +116,11 @@ import { main } from "./server.vibe"
 NodeRuntime.runMain(main())
 ```
 
-`node dist/start.js` starts the application by calling `NodeRuntime.runMain(main())`. Importing `server.js` from a test or another module starts nothing.
+Compile your project and run `node dist/start.js` to start listening on port `3000`—while tests can safely import `routes.vibe` or `server.vibe` without launching a server.
 
-## Test a route without a socket
+## Step 4: Test routes with zero sockets (`routes.test.vibe`)
+
+Need to test `201`, `409`, and `400` in CI? You don't need to bind a port or juggle `fetch` timeouts. `HttpRouter.toHttpEffect(App)` turns your router into an ordinary Effect that reads `HttpServerRequest` from `R`:
 
 ```vibe
 // routes.test.vibe
@@ -124,6 +146,11 @@ it.live("validates bodies and rejects duplicate names", () => scoped(effect {
 // Output: [201,409,400]
 ```
 
-`try HttpRouter.toHttpEffect(App)` builds a request Effect without starting a server; hold it as `app`, then provide a request for each execution. The scope shares the service layer across these requests and releases it after the test; a new test scope builds a fresh user registry.
+Look closely at the test lifecycle:
+- `scoped(effect { ... })` builds `UsersLive` once for the test and tears it down automatically at the end—so the three loop iterations share state (`201`, then `409`, then `400`), while the next test gets a clean slate.
+- `it.live` uses the real `Console` so the logged status array prints (`it.effect` captures console output in a test console instead).
+- Wrapping `assert.deepStrictEqual` in `Effect.try` turns a thrown assertion error into a clean test failure.
 
-`it.live` runs the test with live services, so `Console.log` prints the statuses; `it.effect` would provide a test console that records them instead. Import assertions from `@effect/vitest`; an assertion may throw, so wrap it in `Effect.try`; a failed assertion then fails the test. The [installation guide](../getting-started/004-installation.md) sets up the compiler and test plugin. [`examples/http-api`](https://github.com/smithersai/vibelang/tree/main/examples/http-api) holds the complete project, including its Vite configuration.
+## Where to go next
+
+Follow the [installation guide](../getting-started/004-installation.md) to configure the compiler and Vitest plugin, or clone the full runnable project—including Vite config—in [`examples/http-api`](https://github.com/smithersai/vibelang/tree/main/examples/http-api).

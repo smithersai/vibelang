@@ -72,7 +72,7 @@ NodeRuntime.runMain(main())
 > The compiler infers `greeting` as `string!EmptyName` (`Effect<string, EmptyName, never>`).
 >
 > - If a caller runs `try greeting(s)` with no return annotation, `EmptyName` automatically flows into the caller's own error channel.
-> - If a caller promises no failures (`effect function caller(): string!! { return try greeting("") }`), the compiler refuses to build until you either catch `EmptyName` or add it to the signature.
+> - If a caller promises no failures (`effect function caller(): string!! { return try greeting("") }`), leaving that failure unhandled is a compile error: catch `EmptyName` or add it to the signature.
 
 To understand the contract in depth, read [The Effect Type](getting-started/003-the-effect-type.md), [Creating Effects](getting-started/005-creating-effects.md), and [Running Effects](getting-started/009-running-effects.md).
 

@@ -1,6 +1,6 @@
 # Choosing and combining schedules
 
-`Schedule` works in VibeLang exactly as in Effect. Start with the timing rule you need, add limits, and combine rules only when the job needs them. The consumer decides whether schedule input is a successful result (`repeat`) or an expected error (`retry`).
+`Schedule` values in VibeLang work exactly as in Effect: pick a base timing rule, attach bounds or jitter, and combine schedules only when a job needs multiple constraints. The driver supplies each step's input—the latest success in `repeat`, or the latest expected error in `retry`.
 
 ## Choosing a starting rule
 
@@ -18,17 +18,17 @@ const calendar = Schedule.cron("15 4 * * *", "UTC")
 // Output: 15300000
 ```
 
-These declarations build reusable values and run no work. Choose a rule by requirement:
+These constructors return reusable, inert schedule values.
 
-| Requirement | Rule | When it continues |
+| Requirement | Constructor | Next step timing |
 | --- | --- | --- |
-| Four additional runs | `recurs(4)` | Immediately, up to four times |
-| Pause between actions | `spaced` | After a full delay following completion |
-| Keep a regular cadence | `fixed` | At the next interval boundary |
-| Increase retry delays | `exponential` | With a growing wait, doubling by default |
-| Follow a calendar | `cron` | At the next matching date in the given zone |
+| Fixed extra runs | `Schedule.recurs(n)` | Immediately, up to `n` recurrences |
+| Pause after completion | `Schedule.spaced(d)` | Full delay `d` after each run finishes |
+| Regular cadence | `Schedule.fixed(d)` | Next interval boundary on a fixed grid |
+| Growing retry delay | `Schedule.exponential(d)` / `Schedule.fibonacci(d)` | Increasing waits (exponential doubles by default) |
+| Calendar schedule | `Schedule.cron(expr, tz)` | Next matching wall-clock instant in `tz` |
 
-`Schedule.fibonacci` is another growing backoff. None of the interval or backoff rules stops by itself.
+Interval and backoff schedules run indefinitely until bounded.
 
 ## Understanding schedule steps
 
@@ -45,9 +45,9 @@ effect function runChecks() {
 // Output: checking 16000
 ```
 
-With `repeat`, the initial action runs before the schedule advances: starts at about zero, eight, and sixteen seconds. With `fixed` instead of `spaced`, starts are at about zero, eight, and fourteen seconds in this version, because `fixed` anchors its cadence at its first step, after the initial two-second action; later starts follow that cadence instead of adding a full delay after every action. Overruns don't replay every missed interval.
+Under `repeat`, the first run happens before the schedule steps, so `spaced("6 seconds")` starts runs at 0 s, 8 s, and 16 s. With `fixed("6 seconds")`, runs start at 0 s, 8 s, and 14 s because `fixed` anchors its cadence on its first step (after the two-second initial run) and skips missed slots instead of replaying overruns.
 
-A schedule step takes input and produces output plus timing metadata. The input is the latest error in `retry` and the latest success in `repeat`. Loops built from one schedule don't share step state.
+Each step consumes the latest input and emits an output alongside timing metadata. Separate loops reusing the same `Schedule` value maintain independent state.
 
 ## Limiting duration and adjusting delays
 
@@ -67,7 +67,15 @@ const firstThree = Schedule.while(
 // Output: 3 true
 ```
 
-`upTo` stops at whichever configured limit comes first. It checks the duration limit only at schedule steps and never interrupts a running attempt or wait; for a deadline, wrap the whole Effect in `timeout` and run the result with `try`. `modifyDelay` replaces the selected wait, and `while` can stop on metadata. `jittered` multiplies each delay by a factor between 0.8 and 1.2. Here it follows the eight second cap, so the final wait can reach 9.6 seconds; to bound the final wait, cap after `jittered`.
+`Schedule.upTo` stops when either `times` or `duration` is reached, checking elapsed duration only at schedule steps—it never interrupts an in-flight attempt or wait (wrap the call in `timeout` for a hard deadline). `Schedule.modifyDelay` rewrites each proposed wait, and `Schedule.while` filters on step metadata. `Schedule.jittered` scales delays randomly between 0.8x and 1.2x; placing it after an 8-second cap allows waits up to 9.6 seconds, so cap after `jittered` when an upper bound is strict.
+
+## Combining multiple schedules
+
+| Combinator | Continues while | Selected delay |
+| --- | --- | --- |
+| `Schedule.max([...])` | Every input can continue | Longest proposed delay |
+| `Schedule.min([...])` | Any input can continue | Shortest active delay |
+| `Schedule.concat(next)` | Runs first to exhaustion, then `next` | Active phase's delay |
 
 ## Requiring every timing rule
 
@@ -80,7 +88,7 @@ const policy = Schedule.max([
 // Output: [2000,2000,2000,3200]
 ```
 
-`max` continues only while every input schedule can continue and chooses the largest proposed delay. The separate limit permits four recurrences.
+`Schedule.max` advances only while every member schedule agrees to continue, taking the longest proposed delay on each step. Piping `Schedule.upTo({ times: 4 })` caps the combined schedule at four recurrences.
 
 ## Accepting any timing rule
 
@@ -93,7 +101,7 @@ const startupAndSteady = Schedule.min([
 // Output: [500,500,11000,12000,12000]
 ```
 
-`min` continues while any rule is active, chooses the shortest active delay, and stops only when every input has stopped. Both rules advance from the start, so the two quick probes don't restart the twelve second cadence.
+`Schedule.min` runs as long as at least one member remains active, picking the shortest active wait. Because both schedules step from the start, the two 500-millisecond probes do not shift the 12-second fixed cadence.
 
 ## Switching rules in phases
 
@@ -106,4 +114,4 @@ const reconnect = Schedule.spaced("150 millis").pipe(
 // Output: [150,150,3000,3000,3000,3000,3000]
 ```
 
-`concat` exhausts the first rule before starting the second. With `retry`, this permits an initial attempt, two fast retries, then five slow retries. `Schedule.concatResult` keeps the two phases' outputs distinguishable when an observer must identify the active phase.
+`Schedule.concat` runs the first schedule until exhaustion, then begins the second—under `retry`, giving one initial run, two fast retries, and five slow retries. Use `Schedule.concatResult` when callers must distinguish which phase produced a step's output.

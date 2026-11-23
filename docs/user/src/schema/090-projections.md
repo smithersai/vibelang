@@ -1,8 +1,8 @@
 # Schema Projections
 
-Projections work exactly as in Effect: they turn one side of a codec into a schema that validates that representation without running the codec's conversion. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Projections extract one side of a codec as a standalone schema that validates that representation without running conversions or requiring conversion services. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Projecting a codec to its decoded schema
+## Projecting to the decoded type (`toType`)
 
 ```vibe
 // run: try Console.log(try inspectCount(4)); for (const value of ["4", 0, 1.5]) { try Effect.catch(inspectCount(value), (error) => Console.log(error._tag)) }
@@ -24,9 +24,9 @@ SchemaError
 SchemaError
 ```
 
-`toType` makes the original decoded type both the new decoded and encoded type, keeping that side's checks and dropping conversion steps and service requirements. Use it on an already decoded value, or when the first stage of a composed codec has already converted nested elements.
+`Schema.toType` turns a codec's decoded side into both `Type` and `Encoded`, retaining decoded-side checks while dropping conversions and services. Use it to validate already-decoded data or avoid double-decoding elements inside a multi-stage pipeline.
 
-## Projecting a codec to its encoded schema
+## Projecting to the encoded type (`toEncoded`)
 
 ```vibe
 // run: { const jsonValue = try inspectWireName(" x "); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -45,9 +45,9 @@ effect function inspectWireName(input: unknown) {
 " x "
 ```
 
-`toEncoded` uses the original encoded type on both sides: it validates the input representation without trimming it and requires no conversion services. Use it to inspect wire data or generate examples of encoded values.
+`Schema.toEncoded` uses the original encoded type on both sides, validating wire input without transforming it.
 
-## Retaining checks appropriate to each side
+## Side-specific checks
 
 ```vibe
 // run: { const jsonValue = try compareViews(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(Schema.decodeUnknownEffect(ParcelCount)("00"), (error) => Console.log(error._tag))
@@ -70,6 +70,6 @@ effect function compareViews() {
 SchemaError
 ```
 
-`TextOnly` keeps the two-character input check but not the numeric bound; `NumberOnly` keeps the bound above five but no string-length requirement. Neither projection promises that a value can complete the full original conversion: `"00"` satisfies the encoded projection but decodes to a number the original codec rejects.
+Each projection keeps only its own side's checks: `TextOnly` enforces length >= 2 without checking `> 5`, and `NumberOnly` enforces `> 5` without any string constraint. Passing a projection does not guarantee the full codec will succeed (`"00"` passes `TextOnly` but fails `ParcelCount`).
 
 [Upstream page](https://effect.website/docs/v4/schema/projections)

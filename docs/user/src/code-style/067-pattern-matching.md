@@ -1,6 +1,8 @@
 # Pattern Matching
 
-VibeLang matches values with `match` and tests them with `is`, from the TC39 pattern matching proposal. Both compile to plain conditionals, tested in order, and inside an effect function an arm can run an Effect with `try`. Inside each arm, the subject narrows as its test narrows in TypeScript. Bindings take the types of the corresponding extracted values. [Pattern matching with match and is](../vibelang-features/116-match-and-is.md) lists every pattern. Effect's `Match` module still builds reusable matcher functions.
+`match` selects the first arm whose pattern fits a value and returns its result; `is` tests one pattern as a boolean expression. Both implement the TC39 pattern matching proposal, compile to ordered conditionals with TypeScript narrowing, and permit `try` inside effect functions. See [Pattern matching with match and is](../vibelang-features/116-match-and-is.md) for the complete grammar; Effect's `Match` module remains available for building standalone matcher callbacks.
+
+![Exhaustive match narrowing across tagged unions](/diagrams/match-exhaustiveness.svg)
 
 ## Matching values
 
@@ -28,7 +30,7 @@ waiting: 2
 state: done
 ```
 
-Arms are tried in order; the first that matches gives the value. `Number` and `String` test `typeof` or `instanceof` their boxed constructors. An object pattern checks only the properties it names.
+Arms are evaluated top to bottom, and the first match determines the expression's value. Built-in primitive matchers (`Number`, `String`, `Boolean`) check `typeof` or boxed `instanceof`, and object patterns match only the properties they name while narrowing the subject inside the arm.
 
 ## Shapes, guards, and tags
 
@@ -63,7 +65,7 @@ worker w-1
 report.csv
 ```
 
-`let n` binds a property, and a guard, `and if (condition)`, tests the bindings before it. Matching `_tag` tests a tagged union's tag. An `error` class is itself a pattern: `when NotFound:` tests its `_tag` through the class's custom matcher. A [`data` declaration](../data-types/073-data.md) declares a tagged union. Match a variant with an object pattern, such as `when { _tag: "Running", let worker }:`. Renaming `worker` must retain the payload key, as `worker: let renamedWorker`; an explicit property name and a binding name serve different purposes.
+Bind extracted fields with `let` or `const` (`{ let worker }` shorthand, or `{ worker: let renamed }` to rename), and refine arms with `and if (condition)` guards over earlier bindings. An `error` class matches directly by `_tag` through its custom matcher (`when NotFound:`), whereas [`data` declaration](../data-types/073-data.md) variants match via `_tag` object patterns (`when { _tag: "Running", let worker }:`).
 
 ## Negating and combining patterns
 
@@ -89,7 +91,7 @@ can reopen can reopen archived
 true true false
 ```
 
-`not` matches what its pattern does not; `or` matches either pattern. Order still matters: a broad arm takes inputs meant for a later arm. Alternatives can bind the same name, such as `{ left: let value } or { right: let value }`. They share one lexical cell and give `value` the union of the extracted types; `const` bindings retain their assignment checks.
+`not` negates a pattern and `or` matches either branch; place narrower arms before broader ones. Branches of `or` may bind the same name (such as `{ left: let value } or { right: let value }`), sharing one lexical binding typed as the union of extracted types while preserving `const` immutability.
 
 ## Fixing the return type
 
@@ -107,7 +109,7 @@ function display(input: number | boolean): string {
 3.0 enabled disabled
 ```
 
-A `match` expression has the union of its arm types. A `throw` arm contributes `never`. Annotate the return type to require one type from every arm; that catches an arm returning a number from a text formatter.
+A `match` expression takes the union of its arm types, with `throw` arms contributing `never`. Annotating the enclosing function's return type forces every arm to conform to a single type.
 
 ## Exhaustive handling
 
@@ -127,7 +129,13 @@ function phaseLabel(phase: Phase) {
 Draft Published
 ```
 
-`match` is exhaustive. Without a `default` arm, a match over a finite union (such as literals, `boolean`, a data type's variants, `error` classes, or an enum) must handle every case: add a member to `Phase` and this match is EK4701, `This match does not handle every case of Phase: "review" is left.`, until it gets an arm. A guard doesn't prove that every value of a type is covered. The checked kinds also include `null`, `undefined`, `schema error` instances, `Option`, `Exit` and `Result` cases, retained Effect errors, and objects, interfaces or class instances whose `_tag` has a literal type or a union of literal types. Any normalized subject member outside the checked kinds turns the check off. If no arm fits, the match throws a `TypeError` at run time.
+Without a `default:` arm, `match` checks exhaustiveness over finite unions and reports `EK4701` for any unhandled member (for example, adding `"review"` to `Phase` produces `This match does not handle every case of Phase: "review" is left.`). Guarded arms do not count as covering a type. If the subject includes any open type outside the finite kinds below, exhaustiveness checking is disabled and an unmatched value throws `TypeError` at run time.
+
+| Checked finite kinds | Examples |
+| --- | --- |
+| Primitive singletons & enums | String/number/bigint literals, `boolean`, `null`, `undefined`, enums |
+| VibeLang & Effect ADTs | `data` variants, `error` / `schema error` classes, `Option`, `Exit`, `Result`, retained Effect errors |
+| Tagged shapes | Objects, interfaces, or class instances with a literal (or literal-union) `_tag` |
 
 ## Defaults, optional outputs, and result outputs
 
@@ -163,7 +171,7 @@ starting true
 starting help
 ```
 
-A `default` arm comes last and receives every unmatched input. When the caller needs to know whether a case matched, return an `Option` or a `Result` from the arms. A failed Result is a returned value, not a typed Effect failure.
+Place `default:` last to catch any remaining inputs. Return `Option` or `Result` from the arms when callers must inspect whether a specific case matched; a failed `Result` stays a return value rather than entering the Effect error channel.
 
 ## Reusable matchers with the Match module
 
@@ -186,4 +194,4 @@ function describeAll(inputs: ReadonlyArray<number | string>) {
 ["count 3","label news"]
 ```
 
-`Match.type<T>()` builds a matcher with no input yet; its finalizer produces a plain function to pass as a callback. Match callbacks compute values synchronously. Use `match` inside an effect function when an arm needs `try` to run an Effect. Wrap any synchronous call that may throw with `Effect.try` before running it in effect code.
+`Match.type<T>()` builds a reusable synchronous matcher function suitable for collection callbacks. Use VibeLang's `match` expression inside effect functions whenever an arm needs `try`, and wrap any synchronous call that might throw with `Effect.try`.

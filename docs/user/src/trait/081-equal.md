@@ -1,6 +1,13 @@
 # Equal
 
-`Equal` works in VibeLang exactly as in Effect. It compares values structurally and supports custom equality, so separately allocated values can be the same member or key in an Effect hash collection.
+`Equal` defines structural value equality across Effect data structures and collections. Use `Equal.equals` to compare values by content, and implement `Equal.Equal` on classes whose identity depends on a specific subset of fields.
+
+| API | Behavior |
+| --- | --- |
+| `Equal.equals(a, b)` | Recursive structural comparison for plain objects, arrays, `Map`, `Set`, `Date`, `RegExp`, and `Equal` instances |
+| `[Equal.symbol](other)` | Custom equality method on classes implementing `Equal.Equal` (must also implement `[Hash.symbol]`) |
+| `Equal.byReference(obj)` | Returns a proxy that opts out of structural equality without mutating `obj` |
+| `Equal.byReferenceUnsafe(obj)` | Permanently marks `obj` to compare by reference identity |
 
 ## Checking structural equality
 
@@ -15,7 +22,7 @@ Equal.equals(new Set([2, 5]), new Set([5, 2])) // true
 // Output: [false,true,false,true]
 ```
 
-Effect 4 compares plain objects, arrays, maps, sets, dates, and regular expressions by content, recursing into nested values and consulting custom implementations where present. Results are cached, so treat structural values as immutable once compared or hashed.
+Effect 4 compares plain objects, arrays, maps, sets, dates, and regular expressions recursively by content, delegating to custom `[Equal.symbol]` methods where present. Because equality and hash results are cached, treat structurally compared objects as immutable afterward.
 
 ## Implementing the equality protocol
 
@@ -46,9 +53,7 @@ Equal.equals(
 // Output: true
 ```
 
-`Equal.Equal` extends `Hash.Hash`, so implement both computed methods. The equality method defines which fields matter, and equal values must hash the same. Both methods leave out `observedBy`: it describes an observation, not revision identity.
-
-Both compile to plain JavaScript methods, which callers call as ordinary methods. An effect method returns an Effect, which does not satisfy the protocol's boolean or number return type; compute the value before building the object.
+`Equal.Equal` extends `Hash.Hash`, so implement both `[Equal.symbol]` and `[Hash.symbol]` over the exact same identity fields (here excluding `observedBy`). Both must be synchronous plain methods—an effect method returns an Effect rather than `boolean` or `number`.
 
 ## Opting into reference identity
 
@@ -66,7 +71,7 @@ Equal.equals(owned, { state: "ready" }) // false
 // Output: [false,true,true,false]
 ```
 
-`byReference` returns a proxy that opts out of structural comparison and leaves the original unchanged; compare and store that proxy consistently. `byReferenceUnsafe` marks the original object permanently, without allocating a proxy.
+`Equal.byReference` wraps an object in a reference-equality proxy while leaving the original structurally comparable. `Equal.byReferenceUnsafe` marks the object in place without allocating a proxy.
 
 ## Using custom equality in hash-based collections
 
@@ -87,4 +92,4 @@ Option.getOrElse(HashMap.get(byFolder, { folder: "inbox" }), () => 0) // 9
 // Output: [1,1,9]
 ```
 
-`HashSet` uses equality to deduplicate members and `HashMap` to identify keys. Plain structural keys need no custom class; implement the protocol when only some fields determine identity. JavaScript's native `Set` and `Map` ignore the protocol and keep their normal identity rules.
+`HashSet` and `HashMap` use `Equal` and `Hash` for deduplication and key lookup. Plain structural records work out of the box, whereas JavaScript's native `Set` and `Map` ignore the protocol and compare objects by reference.

@@ -1,8 +1,8 @@
 # Schema Annotations
 
-Annotations work exactly as in Effect: they attach metadata or interpreter hooks without changing the value's static type. Use them for documentation, error messages, representation choices, and custom tooling. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Annotations attach metadata and interpreter hooks to schema nodes without altering their static TypeScript types. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Attaching built-in metadata
+## Built-in metadata
 
 ```vibe
 // run: for (const input of [{}, { destination: 1 }, { destination: "" }]) { try Effect.catch(Schema.decodeUnknownEffect(Request)(input), (error) => Console.log(error.message)) }
@@ -31,13 +31,11 @@ Choose a destination
   at ["destination"]
 ```
 
-`identifier` gives interpreters a stable name; `title`, `description`, and `documentation` explain the value. `examples` and `default` only document: they check no examples and apply no defaults. To change runtime behavior, use the explicit constructor or decoding default combinators.
+- **Documentation**: `identifier` sets a stable name for interpreters; `title`, `description`, `documentation`, `examples`, and `default` are metadata only—they never validate examples or supply runtime defaults.
+- **Error messages**: `message` targets the current node (after `.check(...)`, only the last check). `annotateKey` targets a struct field or tuple slot (`messageMissingKey`), `annotateEncoded` targets the wire side, and `messageUnexpectedKey` customizes excess-key errors.
+- **Interpreter hooks**: `toCodec`, `toCodecJson`, `toCodecStringTree`, `toCodecIso`, `toCodecArbitrary`, `toFormatter`, `toEquivalence`, plus `toJsonSchema` and `arbitraryConstraint` on checks.
 
-`message` targets a schema node or check; annotating after a check targets the last check. `annotateKey` applies to a struct field or tuple position, `annotateEncoded` to a codec's external representation. `messageUnexpectedKey` customizes excess-key errors.
-
-Representation hooks include `toCodec`, `toCodecJson`, `toCodecStringTree`, `toCodecIso`, and `toCodecArbitrary`. `toFormatter` and `toEquivalence` define behavior for opaque declarations; checks explain their constraints to interpreters with `toJsonSchema` and `arbitraryConstraint`. To change execution, pass parse options to a parser instead of relying on arbitrary annotation keys.
-
-## Controlling decoding concurrency
+## Decoding concurrency
 
 ```vibe
 // run: { const jsonValue = try reviewLabels(["north", "south"]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(reviewLabels([""]), (error) => Console.log(error.message))
@@ -61,9 +59,9 @@ Empty label
   at [0]
 ```
 
-Product schemas such as arrays, structs, and tuples can run effectful child parsers concurrently. The default is sequential; pass a positive concurrency limit or `"unbounded"` when creating or applying the parser. Concurrency changes the completion order of side effects, so a check must not depend on which sibling finishes first.
+Arrays, structs, and tuples decode sequentially by default. Pass `{ concurrency: n }` or `{ concurrency: "unbounded" }` to parse effectful children concurrently; do not rely on sibling completion order.
 
-## Recovering decoding failures with fallback values
+## Decoding fallbacks
 
 ```vibe
 // run: try Console.log(try readLabel("crate")); try Console.log(try readLabel(42)); try Effect.catch(Schema.encodeUnknownEffect(OptionalLabel)(42), (error) => Console.log(error._tag))
@@ -86,11 +84,9 @@ unlabeled
 SchemaError
 ```
 
-`catchDecoding` receives the decoding issue and returns an Effect producing an `Option` of the decoded value. `Some` is a fallback value; `None` means absence, which succeeds only where the surrounding schema permits it. Throw the issue to propagate it. A fallback changes decoding only: it does not repair encoding or capture defects.
+`Schema.catchDecoding` intercepts decoding issues and returns an Effect of `Option`: `Some(v)` supplies a fallback value, `None` signals absence (valid only in optional slots), and throwing the issue re-propagates it. Fallbacks apply to decoding only and never catch defects. Log issue tags rather than rejected payloads that may contain secrets or user data.
 
-Log the issue tag or stage when diagnostics help; don't record a rejected payload that contains secrets or customer data.
-
-## Defining custom schema annotations
+## Custom annotations
 
 ```vibe
 // run: try Console.log(isInternal(DepotCode), isInternal(Schema.String))
@@ -115,6 +111,6 @@ function isInternal(schema: Schema.Top) {
 true false
 ```
 
-A namespaced symbol avoids collisions with other tools, and module augmentation makes the annotation's value type checkable. `resolveAnnotations` retrieves metadata from the appropriate schema node; custom metadata has no effect until application tooling interprets it.
+Key custom metadata with a namespaced `Symbol.for(...)` and augment `effect/Schema`'s `Annotations` interface for type checking. Read values with `Schema.resolveAnnotations`.
 
 [Upstream page](https://effect.website/docs/v4/schema/annotations)

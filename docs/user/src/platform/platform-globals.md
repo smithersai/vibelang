@@ -1,52 +1,23 @@
 # Platform globals
 
-Node.js reaches a `.vibe` file only through Effect's services, which a layer provides, or by escaping to TypeScript: a `.ts` file or a native `module` declaration. So Node.js's globals, such as `process`, `Buffer`, `require`, and `__dirname`, and the web's globals that do I/O or read the clock or randomness, such as `fetch`, `setTimeout`, `crypto`, `performance`, and `localStorage`, are not in scope in a `.vibe` file, and a `.vibe` file does not import a Node.js built-in module, such as `node:fs` or `fs`, as a value.
+Node.js and browser I/O reach a `.vibe` file only through Effect services (provided by a layer) or a TypeScript boundary (a `.ts` file or a native `module` declaration). Direct uses of host globals (`process`, `Buffer`, `require`, `__dirname`, `fetch`, `setTimeout`, `crypto`, `performance`, `localStorage`, `postMessage`, etc.) and value imports of Node built-in modules (`node:fs`, `fs`, and legacy internal names like `_http_agent`, `_stream_readable`, `_tls_wrap`) report `EK4402` with their replacement.
 
-Each use is `EK4402`, and the error names what replaces it. Object-rest bindings create new local objects: `const { ...timeout } = AbortSignal` does not select `AbortSignal.timeout`, regardless of the local binding's name. Selecting that method explicitly still reports `EK4402`. Selecting a host method through a nested pattern, such as `const { timeout: { name } } = AbortSignal`, reads that method before its metadata and reports `EK4402`. For eligible leading `const` bindings in an ES module, the manual change retains the same eager reads and live bindings in a native `module` declaration. Captured or annotated initializers, other runtime dependencies, documentation or directives, and other module formats need an explicit TypeScript boundary. A type-only import, as in `import type { Server } from "node:http"`, stays allowed, and `.ts` files keep every global. With `verbatimModuleSyntax` enabled, `import { type Server } from "node:http"` and `import {} from "node:http"` keep an empty runtime import and report `EK4402`. The manual change rewrites type bindings to a whole `import type` clause, preserving aliases and comments. An explicit empty import has no type bindings to rewrite: move that dependency into TypeScript. With import elision enabled, already-erased imports remain allowed.
+**What stays allowed vs. what reports `EK4402`:**
 
-Parameters, ordinary imports and injected services can supply `Performance` and `Crypto` values. Calls such as `input.now()` and `input.randomUUID()` use that supplied value and do not report `EK4402`. Their other call contracts still apply: effect code uses `try Effect.try(() => input.now())` when the call may throw.
-
-The same boundary applies to `import FS = require("node:fs")`, including an unused alias and `export import`. A type-only alias, such as `import type FS = require("node:fs")`, stays allowed. When the alias has only type uses or no uses, write `import type`; a value use or re-export keeps the diagnostic and its service advice. Internal aliases such as `import Alias = Local` and ordinary package imports keep TypeScript's behavior.
-
-With `verbatimModuleSyntax`, `export { type Stats } from "node:fs"` and `export {} from "fs"` retain runtime loads and report `EK4402`. The manual change retains each runtime dependency in a side-effect-imported native `module` declaration and keeps type bindings in a whole `export type` clause. Aliases and comments within the export are preserved; exports with attributes, leading JSDoc or tool directives need a manual boundary. With import elision enabled, these inline type and empty re-exports remain allowed.
-
-ECMAScript's built-ins stay: `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `Symbol`, `Date`, `Intl`, and the rest, including `Date.now()`, `Date()`, `new Date()`, and `Math.random()`. `Temporal.Now` reads stay available when the selected ECMAScript library declares `Temporal`. A test can't control those reads, so code under test reads time through `try Clock.currentTimeMillis` and randomness through `try Random.next`. `Intl` is an ECMAScript library declaration and needs no web-utility allowlist entry. A closed list of the web's pure helpers stays too, because they touch nothing outside the program: `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `AbortController`, `AbortSignal`, `Intl`, `atob` and `btoa`. Every other web or Node.js global, such as `Blob`, `FormData`, `EventTarget` and the web streams, is EK4402 as a value. In a value position, bare `Headers`, `Response` and `Event` name Effect's namespaces from its subpaths; as types they keep the DOM's meaning.
-
-The restriction covers the whole file, including plain and `async` functions and the bodies passed to `Effect.try`, `tryPromise`, `sync` and `callback`. Wrapping a host read changes its failure handling, not its platform access. Inside a callback passed to `Effect.tryPromise`, bare `Headers` and `Response` still name implicit Effect namespaces. Their `globalThis` spellings name the host constructors and still report `EK4402`; put those constructor calls in a TypeScript boundary. VibeLang ships no codemod of its own before its first release. Keep native timer registration and cancellation in a sibling `.ts` adapter when testing a `callback` finalizer. See [the platform introduction](105-introduction.md).
-
-Spelling suggestions in these callbacks follow the same boundary: a misspelled value name never recommends a banned host global. Local bindings, pure utilities and erased type references keep TypeScript's suggestions.
-
-The migrate flow can move a zero-argument optional host call, such as `process.getuid?.()`, into a native module helper while keeping the class and its `import.meta.url` in the original module. The helper performs the whole optional call on its original receiver, only when the call is reached. Calls with value or type arguments retain the preservation refusal.
-
-The migrate flow keeps `import.meta` expressions, such as `import.meta.dirname` and `import.meta.env`, in the original module and generates no metadata companion, because `import.meta` follows TypeScript in a `.vibe` file.
-
-Platform repairs from one source share one fresh `<source>.platform.ts` companion. A moved host call becomes a companion helper with the callee's own type: the helper forwards the call and asserts its forwarding arrow to `typeof` the callee, and a `// SAFETY:` comment before the helper states why that assertion is sound, so a repository lint that requires a justification for every type assertion accepts the generated companion. Clock and randomness helpers have signatures of their own and assert nothing. Explicit `sync` inputs stay evaluated at the original call site, in order; the callback still runs only when its Effect runs. A callback that captures other bindings or a lexical receiver keeps the existing preservation checks, and an existing foreign module is never rewritten. During migration, host access inside formerly accepted boundary callbacks reports an `EK4402` warning. Unwrapped host access remains an error.
-
-For `fetch`, `XMLHttpRequest` and `EventSource`, the diagnostic shows `try HttpClient.get(url)` in Effect code. `HttpClient.get(url)` constructs the request Effect; `try` runs it using the provided `HttpClient` service.
-
-Path diagnostic examples obtain the implementation with `try Path.Path`. Pure members such as `join` and `sep` return values directly; `fromFileUrl` and `toFileUrl` return Effects, so run a conversion with `try` before passing its result to `dirname`. Construct a URL through `try orDie(Effect.try(() => new URL(import.meta.url)))` when deriving a filename from the module identity.
-
-A host messaging reference such as `postMessage`, `globalThis.postMessage` or `globalThis["postMessage"]` is also `EK4402`, even when held without calling it. Put native host messaging in a `.ts` file; local bindings named `postMessage` keep their ordinary meaning.
-
-The builtin boundary covers the supported Node versions' internal and legacy names too: bare imports such as `_http_agent`, `_stream_readable` and `_tls_wrap` report `EK4402`, just like their `node:` forms. Type-only imports remain allowed and emit no Node import.
-
-Pure platform helpers do not make every member pure: `AbortSignal.timeout`, `URL.createObjectURL` and `URL.revokeObjectURL` report `EK4402`. The check also follows constant constructor/function aliases, named destructuring, and function-local `let` bindings with no source writes to that binding, and applies inside `Effect.try`, `Effect.tryPromise` and `Effect.sync` arrows. Use Effect's timeout operators, or move these host operations into a sibling `.ts` module and expose them through an Effect. A project's type-only augmentation of `AbortSignal` or `URL` leaves these host operations banned; it changes the interface, not the runtime constructor. Static `globalThis` access keeps the same origin through dotted, quoted, template-key and repeated `globalThis` receivers, including optional accesses. Literal keys on these host constructors retain their identity through parentheses and erased type assertions: `AbortSignal[("timeout" as const)]` is the same host operation as `AbortSignal.timeout`. The same rule covers destructured literal keys. Parentheses and erased `as`, `satisfies` and non-null wrappers on the `globalThis` receiver preserve a static access, such as `(globalThis as typeof globalThis).URL`. Pure helpers stay available; host operations retain `EK4402` and copying `globalThis` retains `EK0107`. Changing an asserted property type does not change the original global binding or turn a host operation into a local implementation. The key grammar stays closed: `globalThis[("URL")]` and `globalThis[key]` are `EK0107`, even when `key` has a string-literal type. Local bindings, pure methods and erased type queries remain valid.
-
-Adding a type-only host interface augmentation in a `.ts` or `.d.ts` file does not change the global's origin: references to host constructors such as `XMLHttpRequest` still report `EK4402`. Local declarations and explicit imports continue to shadow those globals.
+- **Allowed — ECMAScript built-ins:** `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `Symbol`, `Date` (including `Date.now()`, `new Date()`), `Math.random()`, `Intl`, and `Temporal.Now` (when the configured lib declares `Temporal`). `Intl` is an ECMAScript library declaration and needs no web-utility allowlist entry. Use `try Clock.currentTimeMillis` and `try Random.next` where tests must control time or randomness.
+- **Allowed — pure web helpers:** `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `AbortController`, `AbortSignal`, `atob`, and `btoa`. Host methods on these helpers (`AbortSignal.timeout`, `URL.createObjectURL`, `URL.revokeObjectURL`) still report `EK4402` — including through constant aliases, named destructuring, read-only local `let` bindings, static `globalThis` accesses, or erased assertions (`AbortSignal[("timeout" as const)]`). Every other web/Node global (`Blob`, `FormData`, `EventTarget`, web streams) is `EK4402` as a value.
+- **Allowed — erased types & injected values:** Type-only imports (`import type { Server } from "node:http"`, `import type FS = require("node:fs")`), erased type queries, local shadows, and parameters/services typed as `Performance` or `Crypto` (still wrap potentially throwing calls like `try Effect.try(() => input.now())` in effect code). With `verbatimModuleSyntax`, inline type-only or empty imports/exports (`import { type Server } from "node:http"`, `import {} from "node:http"`, `export { type Stats } from "node:fs"`) retain runtime loads and report `EK4402`; rewrite to whole `import type` / `export type` or move runtime loads to TypeScript.
+- **Whole-file scope:** `EK4402` applies everywhere in `.vibe` — including plain/`async` functions and callbacks passed to `Effect.try`, `tryPromise`, `sync`, and `callback`. Bare `Headers`, `Response`, and `Event` name Effect namespaces in value position (DOM types in type position); their `globalThis.*` spellings report `EK4402`. Type-only host augmentations in `.ts`/`.d.ts` do not change a global's origin, and spelling suggestions never recommend banned host globals. See [the platform introduction](105-introduction.md).
 
 ## Replacements
 
-Console replacement advice includes `try`: `Console.log(message)` builds a logging Effect, and `try Console.log(message)` runs it in effect code. If implicit Effect modules are disabled, import `Console` from `effect` first.
+The table below matches the compiler's `EK4402` advice: Effect APIs first, then VibeLang's experimental services, then an escape to TypeScript. In effect code, obtain services with `try` before calling members (e.g. `try (try FileSystem.FileSystem).readFileString(path)`), and run returned Effects with an outer `try` (`Console` needs no layer; `Stream`/`Sink` builders like `FileSystem.stream` stay values; `Socket.makeWebSocket(url)` needs `NodeSocket.layerWebSocketConstructor` or `BrowserSocket.layerWebSocketConstructor`).
 
-Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. The compiler's `EK4402` advice names these APIs; the guide runs Effect values with `try` and explains where native behavior needs a TypeScript adapter. In effect code, `try` runs an Effect value. Get a service first, then call its members. In effect code, write a `console` call as Effect's `Console`, which needs no layer: `console.error("failed:", name)` becomes `try Console.error("failed:", name)`.
+Key semantic differences to keep in mind:
+- **Path & URLs:** Obtain `Path` with `try Path.Path`; `join`/`sep` are pure, while `fromFileUrl`/`toFileUrl` return Effects (run with `try` before `dirname`). Build a URL from `import.meta.url` with `try orDie(Effect.try(() => new URL(import.meta.url)))`.
+- **Random integers:** `crypto.randomInt(min, max)` excludes `max`; pass `{ halfOpen: true }` to `SecureRandom.intBetween` to match that half-open range (keep native calls in `.ts` if you need Node's strict argument validation).
+- **Hardware concurrency:** Read browser `navigator.hardwareConcurrency` in a `.ts` adapter; `try (try Experimental.Process.Process).availableParallelism` reports Node/Bun cores only.
 
-FileSystem advice gets the implementation with `try FileSystem.FileSystem` before calling a member. Run a returned Effect with `try`, as in `try (try FileSystem.FileSystem).readFileString(path)`. The module `FileSystem` supplies the service key; its methods belong to the retrieved implementation. Replacement advice runs methods that return Effects with an outer `try`. The `stream`, `sink` and `watch` methods construct `Stream` or `Sink` values; consume those values with their ordinary APIs.
-
-WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provide `NodeSocket.layerWebSocketConstructor` or `BrowserSocket.layerWebSocketConstructor` for its `Socket.WebSocketConstructor` requirement. A `layerWebSocket(url)` provides `Socket.Socket`; retrieve that service with `try Socket.Socket`.
-
-`crypto.randomInt(min, max)` excludes `max`. Its replacement hint sets `halfOpen: true` explicitly. For valid native integer bounds, set `halfOpen: true` on the `SecureRandom.SecureRandom` service’s `intBetween` method to retain that range. The Effect method includes both bounds by default and rounds fractional bounds; keep a native call in a `.ts` adapter when its argument validation is required.
-
-Browser hardware concurrency is read through a `navigator.hardwareConcurrency` adapter in TypeScript. A Node or Bun program can instead run `try (try Experimental.Process.Process).availableParallelism` after providing its process layer; this service member does not report the browser’s count.
 
 | Global | Use instead |
 | --- | --- |
@@ -181,57 +152,13 @@ Browser hardware concurrency is read through a `navigator.hardwareConcurrency` a
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 
-`process.hrtime()` returns a `[seconds, nanoseconds]` tuple; `process.hrtime.bigint()` returns a `bigint`. To measure elapsed time, capture `const startNanos = try Clock.monotonicTimeNanos`, then use `Duration.toHrTime((try Clock.monotonicTimeNanos) - startNanos)` for a tuple or subtract the readings directly for a `bigint`. Use readings from the same injected clock: its arbitrary origin need not match native `hrtime`, so do not subtract a saved native tuple from it.
+### Key notes on replacements
 
-Node's `crypto.hash(algorithm, bytes)` returns lowercase hex by default, so its replacement uses `digestHex`. For `"buffer"` output, use `digest` to keep bytes. Select the matching digest algorithm and encode text input with `TextEncoder` before hashing.
-
-The `EK4402` replacement examples obtain `SecureRandom.SecureRandom` with `try` before calling its methods. The `randomBytes` method returns new bytes; it does not fill an existing array.
-
-For storage diagnostics, `KeyValueStore` names a namespace. Obtain `KeyValueStore.KeyValueStore` with `try`, then run the Effect returned by its `get(key)` method.
-
-For byte I/O, first obtain `Stdio.Stdio` with `try`. Its `stdout()` and `stderr()` methods return sinks, and its `stdin` property is a stream. Its `args` property is an Effect: use `try (try Stdio.Stdio).args`, without calling `args`. `args` omits the executable and script entries; on Node it matches `process.argv.slice(2)`. Read the full array in a `.ts` adapter when needed. The platform diagnostic's replacement examples use these service members.
-
-`Clock.monotonicTimeNanos` is for elapsed intervals: record `startNanos` from that clock before work and subtract it afterward. Its arbitrary origin can differ from `performance.now()` on Node. A native timestamp, including one combined with `performance.timeOrigin`, belongs in a `.ts` adapter. Subtract the `bigint` readings before converting the difference to milliseconds: `Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6`. This keeps an injected clock's origin out of the interval.
-
-The terminal diagnostic examples obtain `Terminal.Terminal` with `try` and run its `readLine` Effect property to read a line.
-
-Digest diagnostic examples obtain `Digest.Digest` with `try`, then run its `digest(Digest.sha256, bytes)` method. This hashes the bytes in one operation.
-
-For `os.tmpdir()`, use `try (try Experimental.Process.Process).temporaryDirectory`. It queries the native temporary directory without creating a directory or file.
-
-MAC diagnostic examples obtain `Mac.Mac` with `try`, then run its `sign(key, data)` method. Build an HMAC key with `try Mac.key(Mac.hmacSha256, bytes)` before signing the data.
-
-Signature diagnostic examples obtain `Signature.Signature` with `try` before signing, verifying or generating a key pair. Building keys from bytes also runs an Effect: use `try Signature.privateKey(Signature.ed25519, bytes)` or `try Signature.publicKey(Signature.ed25519, bytes)`.
-
-Authenticated-encryption diagnostic examples obtain `Aead.Aead` with `try` before running `encrypt` or `decrypt`. Build a key with `try Aead.key(Aead.aes256Gcm, bytes)`, then pass that key, the bytes and `{ nonce }` to the service method.
-
-Environment diagnostic examples run `Config.String("NAME")` directly with `try`. A config value is an Effect; it is not called again as a function.
-
-Every service example in platform advice obtains the injected service first, then reads or calls its member: `try (try Geolocation.Geolocation).getCurrentPosition()`, `try (try Permissions.Permissions).query("geolocation")`, `try (try UserDirectories.UserDirectories).home`, and for the experimental services `try (try Experimental.Process.Process).pid`, `try (try Experimental.FileSystem.FileSystem).access(path, { executable: true })` and `try (try Experimental.Locks.Locks).hold(name)`. A module is a namespace, not a service, so `Experimental.Process.pid()` names no function.
-
-Timer-cancellation advice uses `try Fiber.interrupt(fiber)`. The public `Fiber` module function returns an Effect; `try` runs it.
-
-Timer advice runs a delay with `try sleep("1 second")`. Repetition runs in the background with `fork effect { try repeat(program, Schedule.spaced("1 second")) }`; keep its fiber when it needs interruption. Constructing either Effect alone starts no timer.
-
-Clipboard advice first obtains the injected `Clipboard.Clipboard` service. Its `readString` member is an Effect value: `try (try Clipboard.Clipboard).readString` reads the text.
-
-The `versions` member of the `Experimental.Process.Process` service supplies a map of component versions, matching `process.versions`. The `process.version` diagnostic shows the string expression `"v" + (try (try Experimental.Process.Process).versions).node` for Node. On Node, `process.version` is the `node` entry with a leading `v`; selecting that entry alone omits the prefix. Keep a runtime-specific version read in a `.ts` adapter when it does not follow Node’s spelling.
-
-A numeric return value from `main` does not set the exit status:
-`effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
-fail for exit 1, or interrupt for exit 130.
-
-`globalThis` is available only as the object of a statically named member access: `.name`, `?.name`, a string-literal key or a template key without substitutions. Copying the object, destructuring it, passing or spreading it, using it with `in` or value-level `typeof`, or reading a nonliteral key reports `EK0107`; move that code to a `.ts` file. A repeated `globalThis.globalThis` also has to be a static member's object. Type queries and local bindings with the name `globalThis` keep their TypeScript meaning. Static access still follows the platform and dynamic-code rules. An internal import alias such as `import g = globalThis.globalThis` also copies the object and reports `EK0107`. An alias of a static member, such as `import U = globalThis.globalThis.URL`, retains that member's rules.
-
-Type-only import aliases keep TypeScript's native diagnostics, including `TS1392` when the internal alias form does not support `import type`.
-
-`globalThis.eval` and `globalThis.Function` follow the same `EK0107` rule as the bare names. The `Function` exemptions also apply: `x instanceof globalThis.Function` and `globalThis.Function.prototype` are allowed. An import alias of either global, such as `import E = globalThis.eval`, is a value reference and reports `EK0107` as well.
-
-Native `import.source(...)` and `import.defer(...)` calls retain TypeScript's option and argument checks during service checking; their callees are import syntax rather than service-key values.
-
-Invalid meta-property names such as `import.x` keep TypeScript's `TS17012` syntax diagnostic. An incomplete `import.source` or `import.defer` keeps the native `TS1005` syntax diagnostic.
-
-`import.meta` follows TypeScript. Members are checked against the program's `ImportMeta` declarations. Enable `vite/client` for Vite's `glob`, `env` and `hot`, or `@types/node` for Node metadata such as `dirname`. An undeclared member gets TypeScript's ordinary diagnostic, not `EK4402`. Aliases, destructuring, computed access, arguments and spreads keep their ordinary meaning.
+- **Services vs. namespaces:** Modules like `SecureRandom`, `KeyValueStore`, `Stdio`, `Terminal`, `Digest`, `Mac`, `Signature`, `Aead`, `Clipboard`, `Geolocation`, `Permissions`, `UserDirectories`, and `Experimental.*` are namespaces, not services. Obtain the service first (`try (try Service.Service).member(...)`); Effect-valued properties (`(try Stdio.Stdio).args`, `(try Terminal.Terminal).readLine`, `(try Clipboard.Clipboard).readString`, `Config.String("NAME")`, `(try Experimental.Process.Process).pid`) are run with `try` without extra `()`.
+- **Clocks & elapsed time:** `Clock.monotonicTimeNanos` has an arbitrary origin — subtract readings from the same clock before converting (`Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6` or `Duration.toHrTime(...)`). Keep native timestamps paired with `performance.timeOrigin` in a `.ts` adapter.
+- **Crypto & bytes:** `SecureRandom.randomBytes` allocates new bytes. `Digest.digestHex` matches Node's default hex output (`digest` returns bytes). Build keys with `try Mac.key(...)`, `try Signature.privateKey(...)` / `publicKey(...)`, and `try Aead.key(...)` before passing them to the service.
+- **Process metadata & exit codes:** `(try Stdio.Stdio).args` returns user arguments (`process.argv.slice(2)`); `try (try Experimental.Process.Process).temporaryDirectory` queries `os.tmpdir()` without creating a directory; `try (try Experimental.Process.Process).versions` returns a map of component versions (`"v" + versions.node` on Node). A numeric return value from `main` does not set the exit status: `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 under `NodeRuntime.runMain`. Return normally for exit 0, fail for exit 1, or interrupt for exit 130.
+- **`globalThis` and `import.meta`:** `globalThis` is allowed only as the receiver of a static member access (`.name`, `?.name`, literal/non-interpolated template key, or repeated `globalThis.globalThis.*`). Copying, destructuring, spreading, `in`, value-level `typeof`, non-literal keys, or `import g = globalThis.globalThis` report `EK0107`; `globalThis.eval` and `globalThis.Function` follow the same `EK0107` rule (keeping `instanceof globalThis.Function` and `globalThis.Function.prototype`). `import.meta` follows TypeScript's `ImportMeta` declarations (`vite/client` or `@types/node`), and `import.source(...)` / `import.defer(...)` retain TypeScript's own checks.
 
 
 ## The replacements at work
@@ -397,40 +324,15 @@ A server that needs custom `createServer` options belongs in a `.ts` file, which
 
 ## Limits of static checks
 
-The platform check also recognizes optional accesses, string-literal and template-literal keys without substitutions, and repeated `globalThis.globalThis` objects. For example, ``globalThis[`fetch`]`` and `globalThis.globalThis.fetch` report the same `EK4402` as `globalThis.fetch`. Local shadows and erased type queries keep their TypeScript meaning.
+`EK4402` and `EK0107` are static, lint-strength checks — not a security sandbox. Use process isolation for untrusted code.
 
-Host globals outside the replacement table are checked by their resolved declarations too. For example, value reads of `FileReader`, `WebAssembly`, window properties such as `name`, and `globalThis.Headers` report `EK4402`. Local properties and erased type queries remain allowed; Effect's in-scope namespaces retain precedence over host names.
-
-An unresolved name or property keeps TypeScript's normal diagnostic. Without DOM declarations, for example, `fetch` reports `TS2304`; missing Node.js declarations can produce `TS2591`. Platform diagnostics apply to values that resolve to host declarations.
-
-EK4402 is a static, lint-strength check, not a sandbox or a
-security boundary. They recognize direct uses, statically named members of `globalThis`, and
-aliases, which keep the symbol they copy. Any other use of `globalThis`, such as
-`const g = globalThis`, a computed key, a cast or an argument to `Reflect.get`, is EK0107. Use process isolation when running untrusted
-code.
-
-The same code covers the other legacy JavaScript the language removes anywhere in a `.vibe` file, plain functions included: `eval`, direct or indirect; the `Function` constructor, except `x instanceof Function` and `Function.prototype`; `arguments`, replaced by a rest parameter; `with`; reading `constructor` from a function value; and a string-literal `data:` or `blob:` import specifier. Grouping and erased type assertions keep the `instanceof Function` and `Function.prototype` exemptions: `x instanceof (Function)` and `(Function as FunctionConstructor).prototype` are allowed. Property names such as `o.eval` and the type `Function` keep their TypeScript meaning. The qualified exemptions also survive erased wrappers: `x instanceof (globalThis.Function as FunctionConstructor)` and `(globalThis.Function as FunctionConstructor).prototype` are allowed, as are their `satisfies` and non-null forms. Code that needs one of these lives in a `.ts` or `.js` file.
-
-Optional access keeps the function-constructor rule: `f?.constructor` and `f?.["constructor"]` report `EK0107` when the non-nullish receiver is a function or `Function`. Optional access on an ordinary object or `any`, and deleting a property without reading it, retain their TypeScript rules. Destructuring reads the same property, so `const { constructor: C } = f` and `({ constructor: C } = f)` report it too.
-
-An object shorthand such as `{ Function }` reads its value binding, so a reference to the global constructor is `EK0107`; a local binding named `Function` stays allowed.
-
-The qualified `Function.prototype` exemption recognizes literal keys through parentheses and erased assertions, for example `globalThis.Function[("prototype" as const)]`. A key read through a variable remains a computed key, even when its value is `"prototype"`.
-
-`Date.now()`, `Date()`, `new Date()`, and `Intl.DateTimeFormat().format()` with no
-argument read the current clock without a diagnostic. Read time through `try Clock.currentTimeMillis` and pass that
-value to the formatter when you need controlled time, including in tests.
-
-
-## Namespace aliases
-
-A qualified namespace alias such as `import NativeModule = WebAssembly.Module` also reads the host global and reports `EK4402`, even when the alias is unused. Only an alias target with a value meaning reads the host: namespaces containing only types and direct interface aliases retain their TypeScript rules, as do local or imported namespaces, `globalThis.Intl`, and erased type queries. Move a needed host alias into a `.ts` adapter.
-
-A grouped string key keeps its static member name: `f[("constructor")]` reports `EK0107` for a function value, while `Function[("prototype" as const)]` keeps the prototype exemption. Erased assertions do not change the key.
+- **What `EK4402` tracks:** Direct reads, optional accesses, static `globalThis` / `globalThis.globalThis` members (dotted, quoted, or non-interpolated template keys), aliases (including `{ timeout }` object shorthand), value-level namespace aliases (`import M = WebAssembly.Module`), and host globals outside the table (`WebAssembly`, `FileReader`, window properties). Undeclared names keep TypeScript diagnostics (`TS2304`, `TS2591`); local shadows and erased type queries (`typeof timeout`) stay allowed.
+- **What `EK0107` bans anywhere in `.vibe`:** Dynamic `globalThis` use (copying, computed keys, `Reflect.get`), `eval`, the `Function` constructor (including `{ Function }`, but keeping `instanceof Function` and `Function.prototype` through grouping or erased assertions), `arguments`, `with`, reading `.constructor` from a function value (including `f?.constructor`, `f[("constructor")]`, and `{ constructor: C } = f`), and literal `data:` / `blob:` module URLs.
+- **Unchecked clock reads:** `Date.now()`, `Date()`, `new Date()`, and no-arg `Intl.DateTimeFormat().format()` compile without a diagnostic; pass `try Clock.currentTimeMillis` when tests need controlled time.
 
 ## Literal module URLs
 
-A string-literal `data:` or `blob:` specifier in an import or re-export reports `EK0107`: these module URLs supply code in a string. URL-equivalent scheme spellings, including uppercase letters and ASCII whitespace, get the same diagnostic. Move the import into a `.ts` helper and call it through `Effect.tryPromise`:
+String-literal or non-interpolated template `data:` / `blob:` imports (case- and whitespace-insensitive) report `EK0107`. Move dynamic module URL imports into a `.ts` helper and call it with `Effect.tryPromise`:
 
 ```ts
 // load-module.ts
@@ -448,28 +350,16 @@ effect function loadData() {
 // Output: 1
 ```
 
-A computed `import(specifier)` stays unchecked by this rule. A template without substitutions, such as ``import(`node:fs`)``, is a literal specifier: it reports `EK4402` for a Node builtin and `EK0107` for a `data:` or `blob:` URL. Type-level `import(…)` queries keep their TypeScript meaning.
+Computed `import(specifier)` stays unchecked by this rule; type-level `import(...)` queries keep TypeScript semantics.
 
-For an inherited child whose cancellation must return without waiting for exit,
-`Experimental.ChildProcess.ChildProcess` provides `runInherited(command, args,
-{ cwd, shell })`. Provide `ExperimentalNodeChildProcess.layer` or
-`ExperimentalBunChildProcess.layer`. Ordinary commands, pipes and stdio streams
-use Effect's `ChildProcessSpawner`.
+## Additional experimental helpers
 
-For a native mutable copy of Web headers, `try (try Experimental.Headers.Headers).copy(input)` preserves duplicate-cookie behavior; provide `ExperimentalNodeHeaders.layer`, `ExperimentalBunHeaders.layer` or `ExperimentalBrowserHeaders.layer`.
-
-For a Web response body that must become a Node readable, `try (try Experimental.NodeStream.NodeStream).fromWeb(body, { response, signal })` takes ownership eagerly and cancels the reader when the response closes. Provide the Node or Bun layer.
-
-To construct a native `Request` at a different URL while retaining its body, headers and signal, use `try (try Experimental.Request.Request).atUrl(url, request)` with the Node, Bun or browser layer.
-
-### Scoped IPv6 predicates
-
-For `node:net`'s `isIPv4`, use the pure boolean expression `Result.isSuccess(NetAddress.ipv4FromString(address))`. The generic `ipFromString` parser returns a `Result` for either IP family; even its failure is an object, so testing that object directly does not validate an address.
-
-Replace `node:net`'s `isIPv6` with the pure `Experimental.NetAddress.isIPv6(address)` when Node's scoped-host syntax must be retained. It needs no layer or `try`. It delegates bare IPv6 parsing to Effect and preserves Node's ASCII zone syntax, including numeric scope strings beyond the unsigned 32-bit range. Effect's own `NetAddress.ipv6FromString` remains the bare-address decoder.
-
-For `node:net`'s `isIP`, preserve its numeric family with `Result.isSuccess(NetAddress.ipv4FromString(address)) ? 4 : Experimental.NetAddress.isIPv6(address) ? 6 : 0`. This yields `4` for IPv4, `6` for IPv6 including Node-compatible zones, and `0` otherwise. `NetAddress.ipFromString` returns a `Result` instead of this number.
-
-Object shorthand keeps a host alias's identity: reading `{ timeout }` after `const timeout = AbortSignal.timeout` has the same platform restriction as reading `timeout` directly. A local parameter or another shadowing binding keeps its own meaning.
-
-A type query such as `typeof timeout` is erased and does not read the host, even when `timeout` aliases `AbortSignal.timeout`. Value uses of the same alias still follow the platform rule.
+| Need | VibeLang replacement | Layer |
+| --- | --- | --- |
+| Inherited child process (non-blocking cancel) | `try (try Experimental.ChildProcess.ChildProcess).runInherited(command, args, { cwd, shell })` (use Effect's `ChildProcessSpawner` for ordinary commands/pipes) | `ExperimentalNodeChildProcess.layer` / `ExperimentalBunChildProcess.layer` |
+| Mutable Web `Headers` copy (preserves duplicate cookies) | `try (try Experimental.Headers.Headers).copy(input)` | `ExperimentalNodeHeaders.layer` / `ExperimentalBunHeaders.layer` / `ExperimentalBrowserHeaders.layer` |
+| Web response body → Node readable (eager cancel) | `try (try Experimental.NodeStream.NodeStream).fromWeb(body, { response, signal })` | Node / Bun layer |
+| Clone `Request` at a new URL | `try (try Experimental.Request.Request).atUrl(url, request)` | Node / Bun / Browser layer |
+| `node:net` `isIPv4(address)` | `Result.isSuccess(NetAddress.ipv4FromString(address))` | None (pure) |
+| `node:net` `isIPv6(address)` (with Node zones) | `Experimental.NetAddress.isIPv6(address)` — It needs no layer or `try`. Preserves Node's ASCII zone syntax, including numeric scopes beyond the unsigned 32-bit range (`NetAddress.ipv6FromString` decodes bare addresses). | None (pure) |
+| `node:net` `isIP(address)` (`4 \| 6 \| 0`) | `Result.isSuccess(NetAddress.ipv4FromString(address)) ? 4 : Experimental.NetAddress.isIPv6(address) ? 6 : 0` | None (pure) |

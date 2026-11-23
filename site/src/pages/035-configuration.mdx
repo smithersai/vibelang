@@ -1,11 +1,11 @@
 ---
 title: "Configuration"
-description: "Config loads typed settings with Effect's validation and error types; ConfigProvider chooses their source. A call returning Config.Config<T> builds a descriptor; try descriptor loads its value."
+description: "Config separates what a program needs from where settings live. A Config.Config<T> value is an immutable descriptor—building one reads nothing. Running try descriptor decodes a typed value from..."
 ---
 
 # Configuration
 
-`Config` loads typed settings with Effect's validation and error types; `ConfigProvider` chooses their source. A call returning `Config.Config<T>` builds a descriptor; `try descriptor` loads its value.
+`Config` separates *what* a program needs from *where* settings live. A `Config.Config<T>` value is an immutable descriptor—building one reads nothing. Running `try descriptor` decodes a typed value from the active `ConfigProvider`, failing with `ConfigError` when a key is missing or invalid.
 
 ## Declare typed configuration
 
@@ -23,21 +23,19 @@ effect function serverSettings() {
 // Output: {"host":"localhost","port":9091}
 ```
 
-`try Host` and `try Port` load from the active provider, by default the environment; constructing the descriptors reads nothing. Missing or invalid input fails with `ConfigError`. `.vibe` files need no direct environment access.
+Constructing `Host` and `Port` performs no I/O. Inside `serverSettings`, `try Host` and `try Port` read from the active provider—by default the process environment—so `.vibe` code never touches `process.env` directly.
 
 | Constructor | Decoded value |
 | --- | --- |
-| `Config.String`, `Config.NonEmptyString` | A string, optionally nonempty |
-| `Config.Finite`, `Config.Int`, `Config.Port` | A finite number, integer, or port from 1 to 65535 |
-| `Config.Boolean` | A boolean |
-| `Config.Literal`, `Config.Literals` | One literal, or one of several |
-| `Config.Duration`, `Config.Date`, `Config.URL` | The corresponding value type |
-| `Config.LogLevel` | A log severity |
-| `Config.Redacted` | A protected string |
+| `Config.String`, `Config.NonEmptyString` | String, optionally non-empty |
+| `Config.Finite`, `Config.Int`, `Config.Port` | Finite number, integer, or TCP port (`1`–`65535`) |
+| `Config.Boolean` | Boolean (case-sensitive: `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`, `y`/`n`) |
+| `Config.Literal`, `Config.Literals` | One literal value, or membership in a set |
+| `Config.Duration`, `Config.Date`, `Config.URL` | Parsed duration, date, or URL |
+| `Config.LogLevel` | Effect log severity |
+| `Config.Redacted` | Secret string masked in logs and formatting |
 
-Prefer `Finite` to `Number` for ordinary numeric settings: `Number` also accepts non-finite values. Boolean text is case sensitive: `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`, and `y`/`n`.
-
-`Config.all`, `Config.nested`, and `Config.withDefault` compose descriptors as data in `.vibe`. Descriptors are Effect values; `try` runs them and returns their decoded settings.
+Prefer `Config.Finite` over `Config.Number` for numeric settings; `Number` also accepts `NaN` and `Infinity`. Compose descriptors as data with `Config.all`, `Config.nested`, and `Config.withDefault`, then execute the composed descriptor with `try`.
 
 ## Parse with schemas
 
@@ -56,7 +54,7 @@ effect function teamName() {
 // Output: ConfigError
 ```
 
-`Config.schema` builds a descriptor that decodes the provider's representation with the schema; `try` runs it and returns the decoded value. Put constraints in the schema so invalid input reports a configuration failure. A structured schema can describe a whole object, its field paths mapping to environment keys or object properties.
+`Config.schema` turns any `Schema` into a `Config` descriptor. Constraints live in the schema itself, so malformed values fail with `ConfigError` at load time rather than deeper in application logic. Structured schemas map field paths directly to nested object properties or environment keys.
 
 ```vibe
 // descriptors.vibe
@@ -88,7 +86,7 @@ effect function localServer() {
 // Output: {"host":"127.0.0.1","port":9091}
 ```
 
-Use `descriptor.parse(provider)` for an explicit source, especially in tests; it returns an `Effect`, so run it with `try`. `try server` instead uses the active provider.
+Call `try descriptor.parse(provider)` to decode against an explicit provider—ideal in tests—instead of reading the ambient provider via `try descriptor`.
 
 ## Read arrays and records
 
@@ -102,7 +100,7 @@ effect function routingSettings() {
 // Output: {"regions":["north","south"],"labels":{"team":"search","tier":"internal"}}
 ```
 
-Arrays accept structural values or a separated string such as `north,south`; records accept objects or text such as `team=search,tier=internal`. Both constructors take separator options. To accept only structural input, use plain schema arrays or records through `Config.schema`.
+`Config.Array` accepts either a native array or a delimiter-separated string (default `,`); `Config.Record` accepts either an object or `key=value` pairs. Both accept custom separator options. To reject string encodings and require structural input only, pass a plain array or record schema to `Config.schema`.
 
 ## Nest and combine configuration
 
@@ -136,7 +134,7 @@ effect function testDatabaseSettings() {
 // Output: {"host":"db.internal","port":5433}
 ```
 
-`Config.all` keeps the input's tuple or named-object shape. `Config.nested` prepends a path to every lookup; the environment provider joins segments with `_`. A library accepting nested records of descriptors can type its input `Config.Wrap<T>` and build the combined descriptor with `Config.unwrap`.
+`Config.all` combines descriptors while preserving their tuple or object shape. `Config.nested` prepends a path segment to every child lookup; `fromEnv` joins path segments with `_`. Libraries accepting arbitrary nested records of descriptors can type the parameter as `Config.Wrap<T>` and collapse it with `Config.unwrap`.
 
 ## Defaults and fallbacks
 
@@ -173,9 +171,13 @@ effect function defaultsExample() {
 // Output: 9091 true standby.internal
 ```
 
-`withDefault` replaces missing input and keeps validation failures. `option` returns `Option.none()` for absence. `orElse` tries another descriptor after any `ConfigError`, invalid input included, so use that broader recovery deliberately.
+| Combinator | On missing key | On invalid value |
+| --- | --- | --- |
+| `Config.withDefault` | Returns fallback value | Fails with `ConfigError` |
+| `Config.option` | Returns `Option.none()` | Fails with `ConfigError` |
+| `Config.orElse` | Tries secondary descriptor | Tries secondary descriptor |
 
-A default on a `Config.all` group replaces the whole group when any child is absent, unless another child fails validation or its source fails. Put defaults on individual children to keep supplied siblings.
+Because `orElse` recovers from *any* `ConfigError`, including invalid data, use it deliberately. Placing `withDefault` on a `Config.all` group replaces the entire group if any child is absent (provided no other child failed validation or I/O); attach defaults to individual fields to preserve supplied siblings.
 
 ## Transform parsed values
 
@@ -201,7 +203,7 @@ effect function reportOrigin() {
 // Output: https://example.test:9091
 ```
 
-Use `Config.map` for a transformation that can't fail, a schema for validation, and `Config.mapEffect` when the transformation needs an Effect with `ConfigError`. When you don't need a reusable descriptor, load first and transform with ordinary statements.
+Use `Config.map` for infallible transformations, a `Schema` for validation, and `Config.mapEffect` when transformation requires an Effect failing with `ConfigError`. If a derived value does not need to be shared as a descriptor, load the raw settings first and compute it with ordinary statements.
 
 ## Protect secrets
 
@@ -216,7 +218,7 @@ effect function secretSetting() {
 // Output: <redacted>
 ```
 
-`Redacted` hides its contents in ordinary string representations. Call `Redacted.value(token)` only where the raw secret is needed. For a decoded secret, combine `Config.schema` with `Schema.RedactedFromValue`, as in a protected number decoded with `Schema.FiniteFromString`.
+`Config.Redacted` wraps a string so `String(...)`, JSON serialization, and loggers print `<redacted>`. Unwrap with `Redacted.value(token)` only at the exact call site that sends the credential. For non-string secrets, combine `Config.schema` with `Schema.RedactedFromValue` (for example, wrapping `Schema.FiniteFromString`).
 
 ## Load providers
 
@@ -240,9 +242,16 @@ effect function fileProvider() {
 // Output: 9095
 ```
 
-`fromUnknown` reads object properties and array indexes as path segments. `fromEnv()` reads the host environment; an explicit `{ env }` replaces it for tests. Both treat empty strings as missing; pass `preserveEmptyStrings: true` when empty text has meaning.
+| Provider | Source | Platform layers required |
+| --- | --- | --- |
+| `ConfigProvider.fromUnknown` | Plain JS objects and arrays | None |
+| `ConfigProvider.fromEnv` | Process environment, or `{ env }` override | None |
+| `ConfigProvider.fromDotEnvContents` | `.env` string already in memory | None |
+| `ConfigProvider.fromDotEnv` | `.env` file on disk | `FileSystem` |
+| `ConfigProvider.fromDir` | Directory tree of secret/config files | `FileSystem`, `Path` |
+| `ConfigProvider.make` | Custom backing store | Whatever your store requires |
 
-`fromDotEnvContents` parses text in memory. `fromDotEnv` reads a file through `FileSystem`, and `fromDir` a directory tree through `FileSystem` and `Path`; provide their platform layers before running them. `ConfigProvider.make` supports a custom backing store.
+`fromUnknown` and `fromEnv` treat empty strings as missing keys; pass `preserveEmptyStrings: true` when `""` is a valid value.
 
 ## Remap provider paths
 
@@ -258,7 +267,7 @@ effect function deploymentPort() {
 // Output: 9094
 ```
 
-`constantCase` converts requested string segments to environment-style names, `ConfigProvider.nested` adds a fixed prefix, and `ConfigProvider.mapInput` transforms a requested path. Adapt the provider when a whole source follows a naming convention; nest a descriptor when one settings group has a prefix.
+Path adapters decouple descriptor names from backend conventions: `constantCase` maps `servicePort` to `SERVICE_PORT`, `ConfigProvider.nested` prepends a fixed prefix, and `ConfigProvider.mapInput` rewrites arbitrary path segments. Transform the provider when an entire source shares a convention; use `Config.nested` when one group of descriptors has a prefix.
 
 ## Compose and install providers
 
@@ -281,11 +290,11 @@ effect function configuredServer() {
 // Output: {"host":"edge.internal","port":9091}
 ```
 
-Provider fallback fills absent paths; it doesn't recover from source or validation errors. `ConfigProvider.layer` replaces the active provider for its region. `layerAdd` adds a fallback to the current provider, or with `{ asPrimary: true }` gives the added source precedence.
+`ConfigProvider.orElse` consults the secondary provider only when a path is absent—it never hides source I/O failures or validation errors. `ConfigProvider.layer` replaces the active provider for its block; `ConfigProvider.layerAdd` appends a fallback, or prepends a higher-precedence override when given `{ asPrimary: true }`.
 
 ## Coming from Effect
 
-Compose Config descriptors directly in `.vibe`; run a descriptor with `try` to load it, or run its `parse` Effect with an explicit provider. Returning a descriptor doesn't read it, just as returning an `Exit`, a Context key, or an error instance doesn't run it. `new` constructs an instance and never runs it.
+Compose `Config` descriptors directly as values in `.vibe`, then read them with `try descriptor` or `try descriptor.parse(provider)`. Returning a descriptor does not execute it—just as returning an `Exit`, a service key, an error instance, or `new ...` never runs an Effect.
 
 ---
 

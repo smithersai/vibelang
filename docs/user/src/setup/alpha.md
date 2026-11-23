@@ -1,10 +1,10 @@
 # What is in the alpha
 
-VibeLang 0.0.13 is the alpha. It supports the 33 accepted VIPs numbered 1 to 41, the core language. Code built from open proposals is experimental: a project opts in with `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`, and without it the compiler reports `EK3013`.
+VibeLang 0.0.13 is the alpha. It supports the 33 accepted VIPs numbered 1 to 41 (the core language). Features from open proposals are experimental and require `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`.
 
-`Experimental` holds two kinds of module. VIP-33's platform additions, such as `Experimental.FileSystem` and `Experimental.Encoding`, are core and need no opt-in. The modules built from open proposals, listed below as experimental, need the opt-in.
+`Experimental` holds two kinds of module: VIP-33's platform additions (`Experimental.FileSystem`, `Experimental.Encoding`, and peers) are core and need no opt-in, while open-proposal modules marked experimental below require it.
 
-Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml). Propose a change with an [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml); Will approves each VIP after it is discussed.
+File a [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml) or propose a change with an [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml); Will approves each VIP after discussion.
 
 | VIP | Title | In 0.0.13 |
 | --- | --- | --- |

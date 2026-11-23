@@ -1,11 +1,19 @@
 ---
 title: "DateTime"
-description: "DateTime works in VibeLang exactly as in Effect. It represents immutable instants, optionally with a time zone, and provides parsing, calendar operations, and formatting without mutating a..."
+description: "DateTime represents an immutable instant in time—either pure Utc or Zoned with an attached TimeZone—along with parsing, calendar math, and formatting. Use it instead of mutable JavaScript Date..."
 ---
 
 # DateTime
 
-`DateTime` works in VibeLang exactly as in Effect. It represents immutable instants, optionally with a time zone, and provides parsing, calendar operations, and formatting without mutating a JavaScript `Date`.
+`DateTime` represents an immutable instant in time—either pure `Utc` or `Zoned` with an attached `TimeZone`—along with parsing, calendar math, and formatting. Use it instead of mutable JavaScript `Date` instances whenever you need testable clocks, explicit time zones, or DST-aware calendar arithmetic.
+
+| Task | Key APIs |
+| --- | --- |
+| Construct | `make`, `makeZoned`, `makeZonedFromString`, `makeUnsafe`, `fromDateUnsafe`, `makeZonedUnsafe` |
+| Read clock | `try DateTime.now`, `try DateTime.nowInCurrentZone` |
+| Time zones | `zoneMakeNamed`, `zoneFromString`, `zoneMakeOffset`, `zoneMakeNamedEffect`, `setZone`, `setZoneOffset` |
+| Compare & convert | `isLessThan`, `min`, `max`, `between`, `distance`, `toEpochMillis`, `toDateUtc`, `removeTime` |
+| Calendar & format | `getPart`/`toParts`/`setParts` (`*Utc`), `add`/`subtract`, `addDuration`, `startOf`/`endOf`, `formatIso*`, `format` |
 
 ## Modeling UTC and zoned instants
 
@@ -24,7 +32,7 @@ true
 2026-04-12T12:00:00.000+02:00[Europe/Paris]
 ```
 
-A `Utc` holds epoch milliseconds; a `Zoned` adds a `TimeZone`, either a fixed millisecond offset or a named region with daylight saving rules. Attaching a zone normally changes the calendar view, not the instant.
+A `Utc` value stores epoch milliseconds; a `Zoned` value adds a `TimeZone` (either a fixed millisecond offset or a named IANA region with daylight saving rules). Attaching a zone changes the calendar projection without shifting the underlying instant.
 
 ## Constructing timestamps from supported inputs
 
@@ -49,9 +57,9 @@ const serialized = DateTime.makeZonedFromString(
 ["2026-04-12T10:00:00.000Z","1970-01-01T00:00:00.000Z","2026-04-12T00:00:00.000Z","2026-04-12T10:00:00.000Z",true,"2026-04-12T10:00:00.000+02:00[Europe/Paris]","2026-04-12T10:00:00.000+02:00[Europe/Paris]"]
 ```
 
-`DateTime.Input` is a `DateTime`, a JavaScript `Date`, epoch milliseconds, partial calendar parts, or a parseable string. `make` and `makeZoned` return an `Option`; `makeUnsafe`, `fromDateUnsafe`, and `makeZonedUnsafe` throw for invalid input. Explicit offsets or UTC strings avoid host-dependent parsing.
+`DateTime.Input` accepts a `DateTime`, `Date`, epoch milliseconds, partial calendar parts, or a timestamp string (prefer explicit UTC or offset strings to avoid host-dependent parsing). Safe constructors (`make`, `makeZoned`) return `Option`; `*Unsafe` variants throw on invalid input.
 
-`adjustForTimeZone: true` reads the parts as wall-clock time in the zone; without it, zoned construction attaches the zone to the input instant. The `disambiguation` option chooses how daylight saving gaps and repeated times resolve.
+Set `adjustForTimeZone: true` to interpret input parts as local wall-clock time in the target zone rather than attaching the zone to a UTC instant; use `disambiguation` to resolve DST spring-forward gaps and fall-back overlaps.
 
 ## Reading current time
 
@@ -72,7 +80,7 @@ effect function timestamp() {
 1970-01-01T00:00:00.000Z
 ```
 
-`DateTime.now` is an Effect value: `try DateTime.now` reads UTC time through Effect's Clock, which tests can control. Effect's `nowUnsafe` bypasses Clock. Read application time with `try DateTime.now`, not `Date.now()` or `new Date()`.
+`DateTime.now` is an Effect that reads UTC time through Effect's `Clock`, allowing deterministic control via `TestClock`. Always read application time with `try DateTime.now` rather than `Date.now()`, `new Date()`, or `DateTime.nowUnsafe`.
 
 ## Identifying timestamp variants
 
@@ -93,7 +101,7 @@ function describe(value: unknown) {
 not a timestamp UTC Europe/Paris 3600000
 ```
 
-`isDateTime` narrows unknown input; `isUtc` and `isZoned` tell the variants apart. `isTimeZone` recognizes a zone; `isTimeZoneNamed` and `isTimeZoneOffset` expose its region identifier or fixed offset.
+Use `isDateTime`, `isUtc`, and `isZoned` to narrow timestamps, and `isTimeZone`, `isTimeZoneNamed`, and `isTimeZoneOffset` to inspect a zone's `.id` or fixed `.offset`.
 
 ## Parsing and changing time zones
 
@@ -130,7 +138,7 @@ true true +09:00 true
 1970-01-01T09:00:00.000+09:00[Asia/Tokyo]
 ```
 
-For an invalid identifier, `zoneMakeNamed` and `zoneFromString` return `None`, `zoneMakeNamedEffect` fails with the expected error `IllegalArgumentError`, and `zoneMakeNamedUnsafe` throws. `zoneMakeLocal` reads the host's local zone; prefer a configured zone for reproducible output.
+On an unknown zone ID, `zoneMakeNamed` and `zoneFromString` return `None`, `zoneMakeNamedEffect` fails with `IllegalArgumentError`, and `zoneMakeNamedUnsafe` throws. Prefer an explicit configured zone over `zoneMakeLocal` for host-independent output.
 
 ## Comparing and converting instants
 
@@ -154,9 +162,7 @@ true true true 3 -3
 1775988000000 2026-04-12T10:00:00.000Z 2026-04-12T00:00:00.000Z
 ```
 
-Ordering compares instants, ignoring zones. `distance(start, end)` is signed: reversed arguments give a negative duration. `toDateUtc` keeps the instant in a JavaScript `Date`; `toDate` gives the zone-adjusted calendar view, so it does not substitute for `toDateUtc`.
-
-`isGreaterThan`, `isGreaterThanOrEqualTo`, `isLessThanOrEqualTo`, and inclusive `between` cover the other comparisons. `isFuture` and `isPast` return Effects that read Clock. For zoned values, `zonedOffset` and `zonedOffsetIso` return the effective offset at that instant.
+Comparisons (`isLessThan`, `isLessThanOrEqualTo`, `isGreaterThan`, `isGreaterThanOrEqualTo`, inclusive `between`, `min`, `max`) operate on instants regardless of zone, and `distance(start, end)` returns a signed `Duration`. Use `toDateUtc` to preserve the instant as a JavaScript `Date` (`toDate` shifts the timestamp for local calendar display), `isFuture`/`isPast` to compare against `Clock`, and `zonedOffset`/`zonedOffsetIso` to read a zoned value's active offset.
 
 ## Accessing calendar components
 
@@ -182,7 +188,7 @@ const utcEdited = DateTime.setPartsUtc(evening, { hour: 9 })
 2026-04-12T09:30:00.000Z
 ```
 
-`Parts` has year, month, day, hour, minute, second, and millisecond, with months starting at one; `PartsWithWeekday` adds `weekDay`. The UTC variants ignore an attached zone.
+`Parts` contains 1-indexed `month` alongside `year`, `day`, `hour`, `minute`, `second`, and `millisecond` (`PartsWithWeekday` adds `weekDay`). The `*Utc` functions ignore any attached zone.
 
 ## Calendar arithmetic and formatting
 
@@ -209,7 +215,7 @@ DateTime.format(appointment, { locale: "en-GB", dateStyle: "long" })
 ["2026-04-13T10:00:00.000Z","2026-03-12T11:00:00.000Z","2026-04-12T11:00:00.000Z","2026-04-12T09:45:00.000Z","2026-04-11T22:00:00.000Z","2026-04-12T21:59:59.999Z","2026-04-12T10:00:00.000Z","2026-04-12","2026-04-12","2026-04-12T12:00:00.000+02:00","12 April 2026"]
 ```
 
-Calendar `add` and `subtract` change parts in the value's zone; duration arithmetic adds fixed elapsed time, so the two differ across daylight saving transitions. `formatIsoZoned` keeps a named zone, `formatUtc` forces UTC, `formatLocal` uses the host's zone, and `formatIntl` takes an existing formatter.
+`add` and `subtract` adjust calendar fields in the value's time zone, whereas `addDuration` and `subtractDuration` add exact elapsed time—diverging across DST boundaries. For output, `formatIsoZoned` preserves named zones, `formatUtc` forces UTC, `formatLocal` uses the host zone, and `formatIntl` reuses an existing `Intl.DateTimeFormat`.
 
 ## Providing a default time zone
 
@@ -233,7 +239,7 @@ effect function main() {
 1970-01-01
 ```
 
-`CurrentTimeZone` supplies the zone for `nowInCurrentZone` and `setZoneCurrent`. Provide it with `layerCurrentZone`, `layerCurrentZoneNamed` (which fails for an invalid identifier), `layerCurrentZoneOffset`, or `layerCurrentZoneLocal`. `withCurrentZone`, `withCurrentZoneNamed`, `withCurrentZoneOffset`, and `withCurrentZoneLocal` provide it around one Effect, passed as `work()`.
+`DateTime.CurrentTimeZone` supplies the ambient zone for `nowInCurrentZone` and `setZoneCurrent`. Provide it as a layer (`layerCurrentZone`, `layerCurrentZoneNamed`—which fails on invalid IDs—`layerCurrentZoneOffset`, `layerCurrentZoneLocal`) or around a single Effect value (`withCurrentZone`, `withCurrentZoneNamed`, `withCurrentZoneOffset`, `withCurrentZoneLocal`).
 
 ---
 

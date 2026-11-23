@@ -1,11 +1,19 @@
 ---
 title: "Control Flow Operators"
-description: "VibeLang uses ordinary branches and loops for sequential work. Effect's operators serve concurrent execution, collected results, and policies over whole programs. Pass them Effect values. The..."
+description: "Use ordinary JavaScript branches and loops for sequential effect work, and Effect's control-flow combinators for concurrency, structured collection, and alternate failure modes. Combinators accept..."
 ---
 
 # Control Flow Operators
 
-VibeLang uses ordinary branches and loops for sequential work. Effect's operators serve concurrent execution, collected results, and policies over whole programs. Pass them Effect values. The operator controls when each Effect runs.
+Use ordinary JavaScript branches and loops for sequential effect work, and Effect's control-flow combinators for concurrency, structured collection, and alternate failure modes. Combinators accept Effect values directly and decide when and how each Effect runs.
+
+| Operator | Use when |
+| --- | --- |
+| `Effect.when` | Running an Effect conditionally based on an Effectful predicate |
+| `Effect.zip` / `Effect.zipWith` | Pairing two Effects sequentially or concurrently |
+| `Effect.whileLoop` | Repeating an Effect from an options object in operator style |
+| `forEach` | Mapping or iterating a collection with optional concurrency or `{ discard: true }` |
+| `all` | Running tuples, iterables, or records of Effects with concurrency or `{ mode: "result" }` |
 
 ## Branching and conditional computations
 
@@ -46,7 +54,7 @@ notifications enabled
 announced
 ```
 
-`if`, early `return`, and `throw` work in an effect function, after a service call too. `Effect.when` runs its condition Effect first, runs its source only on `true`, and returns an `Option` saying whether it ran: `false` gives `None`, and a condition failure propagates instead of skipping work. Run it with `try` to get that Option.
+`if`, early `return`, and `throw` work directly inside effect functions, including after service calls. `Effect.when` evaluates its condition Effect first, runs the body only if it yields `true`, and returns `Option.Some` or `Option.None`; a condition failure propagates immediately.
 
 ## Combining two results
 
@@ -89,7 +97,7 @@ effect function formattedPair() {
 [[18,"USD"],[18,"USD"],"18 USD"]
 ```
 
-`zip` returns a tuple; `zipWith` applies a synchronous combining callback. Both run left then right by default; `{ concurrent: true }` starts both branches together, and completion order doesn't change tuple positions. A failed branch interrupts its sibling and waits for cleanup before the combined operation finishes.
+`Effect.zip` returns a tuple and `Effect.zipWith` combines both results synchronously. Both run left-to-right by default; `{ concurrent: true }` starts both Effects together while preserving tuple order, interrupting and cleaning up the sibling if either fails.
 
 ## Repeating work in loops
 
@@ -122,7 +130,7 @@ effect function logAttempts() {
 // Output: attempt 3
 ```
 
-A loop can call services, pause, fail, and use `break` or `continue`. Accumulate results only when the caller needs them; a loop without an explicit return completes with `void`. Each run of the function recreates its local state.
+Standard `while` and `for` loops support `try`, `break`, `continue`, and `throw`, recreating local state on each invocation. Collect into an array only when callers need the accumulated values; otherwise a loop completes with `void`.
 
 ```vibe
 effect function operatorLoop() {
@@ -142,7 +150,7 @@ iteration 1
 iteration 2
 ```
 
-In Effect 4.1.1, `whileLoop` takes one options object and returns an Effect with success type `void`. `body` lazily supplies an Effect; `step` updates state synchronously after each successful iteration. It has no initial-state argument or result-collection option; collect results in local state and an array.
+In Effect 4.1.1, `Effect.whileLoop` takes one options object (`while`, `body`, `step`) and returns a `void` Effect. `body` constructs the iteration's Effect lazily and `step` advances state synchronously after each success; store accumulated values in local state if needed.
 
 ## Traversing collections and discarding values
 
@@ -180,7 +188,7 @@ id 5
 id 8
 ```
 
-`forEach` returns results in input order and runs sequentially by default. A concurrency limit overlaps work and bounds active callbacks. `{ discard: true }` runs all work and keeps no results. A failure stops traversal; concurrent callbacks already running are interrupted and cleaned up.
+`forEach` runs sequentially by default and preserves input order in the returned array. Passing `concurrency` bounds overlapping callbacks, and `{ discard: true }` omits result allocation. Any failure stops traversal, interrupting and finalizing in-flight siblings.
 
 ## Collecting programs
 
@@ -203,7 +211,7 @@ effect function collected() {
 // Output: {"tuple":[12,"ready"],"object":{"count":12,"status":"ready"},"array":["prepared-3","prepared-5"]}
 ```
 
-`all` takes tuples, iterables, objects, and records and returns the matching shape. Each entry is an Effect value. Building the collection does not run its Effects. It runs sequentially unless you pass `concurrency`. `discard: true` drops the combined result when only completion matters.
+`all` accepts tuples, iterables, objects, and records of Effects and returns results in the matching shape. Constructing the collection does not start its Effects; execution is sequential unless `concurrency` is set, and `{ discard: true }` drops the combined value.
 
 ## Early termination and alternate collection modes
 
@@ -240,11 +248,11 @@ effect function collectOutcomes() {
 // Output: ["item-3","Unavailable","item-8"]
 ```
 
-The default mode stops at a typed failure and keeps it in the consuming function's `E`. `mode: "result"` runs every program and puts each typed outcome in a Result value instead; it doesn't turn defects or interruption into successful outcomes. Add a concurrency limit when independent jobs should all report their expected outcomes.
+By default, `all` aborts on the first typed failure and propagates it in `E`. With `{ mode: "result" }`, every Effect runs to completion and each typed outcome is captured as a `Result`; defects and interruption still abort the collection.
 
 ## Coming from Effect
 
-Use `try` with ordinary statements for sequential work. Pass `work()` directly when a combinator expects an Effect. Use `effect { ... }` for several statements, or an effect arrow when a callback must build an Effect.
+Write sequential logic with `try` and standard statements. Pass `work()` directly to combinators expecting an Effect, and use `effect { ... }` or an effect arrow when building an inline Effect value.
 
 ---
 

@@ -118,7 +118,7 @@ effect function printFirstReading() {
 // Output: 10
 ```
 
-A sequential producer runs with a one-element buffer (at most two elements ahead of its consumer: one buffered and one waiting to offer). Breaking out of `for try` immediately closes the Stream, interrupts the producer fiber, and runs its cleanup finalizers. See [Producers](../vibelang-features/112-producers.md) for the full guide.
+A producer runs on its own fiber with a one-element buffer, so it may run up to two elements ahead of its consumer: one buffered and one waiting to be offered. This bound is for one sequential emitter; in a `for concurrent` body, each active item can compute its value before waiting, so the buffer does not bound all pending offers. Breaking out of `for try` immediately closes the Stream, interrupts the producer fiber, and runs its cleanup finalizers. See [Producers](../vibelang-features/112-producers.md) for the full guide.
 
 ## Coming from Effect
 

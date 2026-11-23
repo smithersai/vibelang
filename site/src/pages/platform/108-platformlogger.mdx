@@ -1,11 +1,11 @@
 ---
 title: "PlatformLogger"
-description: "File logging uses Effect's Logger module. Combine a string formatter with Logger.toFile, then install the logger with a layer whose scope owns the file and pending batches."
+description: "File logging builds on Effect's Logger module: pair a string formatter with Logger.toFile and install it via Logger.layer, whose scope owns the file handle and flushes pending batches on exit."
 ---
 
 # PlatformLogger
 
-File logging uses Effect's `Logger` module. Combine a string formatter with `Logger.toFile`, then install the logger with a layer whose scope owns the file and pending batches.
+File logging builds on Effect's `Logger` module: pair a string formatter with `Logger.toFile` and install it via `Logger.layer`, whose scope owns the file handle and flushes pending batches on exit.
 
 ## Writing formatted logs to a file
 
@@ -31,11 +31,11 @@ effect function application() {
 // Output: true
 ```
 
-`formatLogFmt` produces string records; `toFile` creates a scoped logger that appends them to the path. The array holds an Effect value, so the file opens when `Logger.layer` builds, not at module initialization. The layer replaces the installed loggers with its list.
+`Logger.toFile` returns a scoped Effect value; the file opens only when `Logger.layer` builds, not at module load. `Logger.layer` replaces the active loggers with its list.
 
-In Effect 4.1.1, `toFile` batches with a one-second window by default; `batchWindow` changes it. Pending entries flush when the logger's scope closes. Opening the file can fail with `PlatformError`; later flush write failures are ignored, so no log call gets a durable-write acknowledgment.
+In Effect 4.1.1, `toFile` batches writes with a 1-second default `batchWindow` and flushes pending entries when its scope closes. Opening the file fails with `PlatformError`; subsequent background flush errors are ignored rather than failing individual `log` calls.
 
-## Supplying file-system dependencies
+## Supplying `FileSystem`
 
 ```vibe
 // main.vibe
@@ -63,9 +63,9 @@ NodeRuntime.runMain(Effect.provide(main(), NodeFileSystem.layer))
 // Output: true
 ```
 
-`Logger.toFile` needs FileSystem and Scope: `Logger.layer` owns the scope, and `Layer.provide` supplies the file system. Reading after the provided program completes avoids racing the batch window; a successful read still doesn't prove every earlier write succeeded.
+`Logger.layer` satisfies `toFile`'s `Scope` requirement, and `Layer.provide(..., NodeFileSystem.layer)` supplies `FileSystem`. Reading the file after the `provide` block exits guarantees the final batch has flushed.
 
-## Combining file and console output
+## Combining file and console loggers
 
 ```vibe
 // main.vibe
@@ -89,11 +89,11 @@ NodeRuntime.runMain(Effect.provide(main(), LoggerLive))
 // Output: Worker ready
 ```
 
-Install both loggers in one list: the console gets message text, the file gets logfmt. `Logger.consolePretty()` gives formatted console records with timestamps. To add to the loggers already installed, use `Logger.layer(loggers, { mergeWithExisting: true })`. Keep secrets in `Redacted`, and don't log raw request or customer payloads.
+Pass multiple loggers to `Logger.layer`, or pass `{ mergeWithExisting: true }` to keep previously installed loggers (`Logger.consolePretty()` formats timestamped console output). Wrap secrets in `Redacted` and keep raw customer payloads out of logs.
 
 ## Coming from Effect
 
-Pass the Effect returned by `Logger.toFile` directly to `Logger.layer`. Calling `toFile` builds that Effect without acquiring the logger.
+Pass the Effect returned by `Logger.toFile(...)` directly inside the `Logger.layer([...])` array; constructing it does not open the file.
 
 ---
 

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 315" role="img" aria-labelledby="t d">
+  <title id="t">Exhaustive match narrowing across tagged unions</title>
+  <desc id="d">Shows a tagged error union entering match (e), branching into narrowed when arms, and failing at compile time if any variant is omitted.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="315" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">match narrows each variant and catches missing cases at compile time</text>
+      <text x="36" y="64" class="sub">Add a new error or data variant anywhere, and the compiler points straight to every match that must handle it.</text>
+
+      <!-- Input union -->
+      <rect x="36" y="114" width="210" height="134" rx="10" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="54" y="142" class="k" fill="#4338ca">INPUT UNION</text>
+      <text x="54" y="168" class="code-sm" fill="#16202e">NotFound</text>
+      <text x="54" y="190" class="code-sm" fill="#16202e">| RateLimited</text>
+      <text x="54" y="212" class="code-sm" fill="#16202e">| Timeout</text>
+      <text x="54" y="236" class="p">3 known variants</text>
+
+      <!-- Branches -->
+      <line x1="246" y1="150" x2="318" y2="118" stroke="#4338ca" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      <line x1="246" y1="181" x2="318" y2="181" stroke="#4338ca" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      <line x1="246" y1="212" x2="318" y2="244" stroke="#4338ca" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Arms -->
+      <rect x="326" y="92" width="272" height="52" rx="8" fill="#ffffff" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="344" y="114" class="code-sm" fill="#0f766e">when NotFound(let id):</text>
+      <text x="344" y="134" class="p">404 — binds id as string</text>
+
+      <rect x="326" y="155" width="272" height="52" rx="8" fill="#ffffff" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="344" y="177" class="code-sm" fill="#0f766e">when RateLimited(let retryAfter):</text>
+      <text x="344" y="197" class="p">429 — binds retryAfter as number</text>
+
+      <rect x="326" y="218" width="272" height="52" rx="8" fill="#ffffff" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="344" y="240" class="code-sm" fill="#0f766e">when Timeout:</text>
+      <text x="344" y="260" class="p">504 — remaining union is never</text>
+
+      <!-- Gate -->
+      <line x1="598" y1="118" x2="648" y2="165" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="598" y1="181" x2="648" y2="181" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="598" y1="244" x2="648" y2="197" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+
+      <rect x="656" y="122" width="188" height="118" rx="10" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="674" y="150" class="k" fill="#0f766e">EXHAUSTIVE CHECK</text>
+      <text x="674" y="174" class="b">All 3 covered</text>
+      <text x="674" y="198" class="p">Miss any variant →</text>
+      <text x="674" y="218" class="code-sm" fill="#b91c1c">compile error</text>
+    
+</svg>

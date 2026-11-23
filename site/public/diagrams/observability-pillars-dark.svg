@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 320" role="img" aria-labelledby="t d">
+  <title id="t">Built-in observability: Logging, Metrics, and Tracing</title>
+  <desc id="d">Shows how a single Effect fiber automatically propagates annotations, updates metrics, and nests spans across Logging, Metrics, and Tracing.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#64708a"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#a5b4fc"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fda4af"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#5eead4"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fcd34d"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #eef1f6; }
+    .sub { font-size: 13px; fill: #b3bac7; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #eef1f6; }
+    .p { font-size: 12.5px; fill: #b3bac7; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="320" rx="10" fill="#14151a"/>
+  
+      <text x="36" y="42" class="h">One Effect fiber feeds Logging, Metrics, and Tracing</text>
+      <text x="36" y="64" class="sub">Fiber context propagates log annotations and parent spans automatically across every try call and forked child.</text>
+
+      <!-- Fiber source -->
+      <rect x="36" y="116" width="224" height="132" rx="10" fill="#232445" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="54" y="144" class="k" fill="#a5b4fc">RUNNING EFFECT FIBER</text>
+      <text x="54" y="170" class="code-sm" fill="#eef1f6">try log("order created")</text>
+      <text x="54" y="192" class="code-sm" fill="#eef1f6">try Metric.update(c, 1)</text>
+      <text x="54" y="214" class="code-sm" fill="#eef1f6">try withSpan(work, "pay")</text>
+      <text x="54" y="236" class="p">carries FiberRefs + TraceId</text>
+
+      <!-- 3 arrows -->
+      <line x1="260" y1="146" x2="342" y2="122" stroke="#5eead4" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <line x1="260" y1="182" x2="342" y2="182" stroke="#fcd34d" stroke-width="2" marker-end="url(#arrow-amber)"/>
+      <line x1="260" y1="218" x2="342" y2="242" stroke="#a5b4fc" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Logging -->
+      <rect x="350" y="88" width="494" height="58" rx="10" fill="#133230" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="370" y="112" class="k" fill="#5eead4">STRUCTURED LOGGING</text>
+      <text x="370" y="134" class="p">Level-filtered logs with automatic fiber ID, span, and <tspan class="code-sm" fill="#eef1f6">annotateLogs</tspan> fields.</text>
+
+      <!-- Metrics -->
+      <rect x="350" y="154" width="494" height="58" rx="10" fill="#382a14" stroke="#d97706" stroke-width="1.5"/>
+      <text x="370" y="178" class="k" fill="#fcd34d">METRICS (COUNTERS, GAUGES, HISTOGRAMS)</text>
+      <text x="370" y="200" class="p">Tagged in-memory measurements exported to Prometheus or OpenTelemetry.</text>
+
+      <!-- Tracing -->
+      <rect x="350" y="220" width="494" height="58" rx="10" fill="#1c1d24" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="370" y="244" class="k" fill="#a5b4fc">DISTRIBUTED TRACING</text>
+      <text x="370" y="266" class="p">Nested parent-child spans with timing, attributes, and error causes.</text>
+    
+</svg>

@@ -72,13 +72,7 @@ false
 - **Supported types:** primitives (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined`, `null`), literals, unions, arrays, tuples, `Record<K, V>`, nested object types, and other schemas (like `Shipment`, `Schema.FiniteFromString`, `Schema.Unknown`).
 - **Unsupported types** (functions, bare `unknown`/`any`/`never`/`object`, or shadowed library types) report `EK2109` — name an explicit schema such as `Schema.Unknown`.
 - **Mutability:** fields are writable unless marked `readonly`; `T[]` / `Array<T>` / `[A, B]` map to mutable schemas, while `readonly T[]` / `ReadonlyArray<T>` / `readonly [A, B]` stay readonly.
-- **Optional fields (`name?: T`):** follow `exactOptionalPropertyTypes`:
-
-| `exactOptionalPropertyTypes` | Field | Accepts `{}` | Accepts `{ name: undefined }` |
-| --- | --- | --- | --- |
-| `true` | `name?: string` | Yes (`Schema.optionalKey`) | No |
-| `false` | `name?: string` | Yes (`Schema.optional`) | Yes |
-| `true` | `name?: string \| undefined` | Yes (`Schema.optional`) | Yes |
+- **Optional fields (`name?: T`):** follow `exactOptionalPropertyTypes`. With it on, `name?: string` maps to `Schema.optionalKey` and rejects an explicit `undefined`; with it off, or with `name?: string | undefined`, the field maps to `Schema.optional` and accepts one.
 
 ```vibe
 // run: try Console.log(Schema.is(Nickname)({}), Schema.is(Nickname)({ name: undefined }))
@@ -88,6 +82,14 @@ schema Nickname { name?: string | undefined }
 ```output
 true true
 ```
+
+The same program, with each field spelling and setting, prints:
+
+| `exactOptionalPropertyTypes` | Field | Output |
+| --- | --- | --- |
+| `true` | `name?: string` | `true false` |
+| `false` | `name?: string` | `true true` |
+| `true` | `name?: string \| undefined` | `true true` |
 
 `schema` bodies accept only typed fields (methods and index signatures are `EK1505`; missing separator on one line is `EK1504`; ambient `declare schema` is `EK1506`; `export default schema` is `EK1501`; type parameters are `EK1502`).
 

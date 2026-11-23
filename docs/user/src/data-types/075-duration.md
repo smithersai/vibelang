@@ -1,6 +1,13 @@
 # Duration
 
-`Duration` works in VibeLang exactly as in Effect. Use it for elapsed time, delays, and timeout budgets with explicit units; Effect 4.1.1 also supports negative durations and infinities.
+`Duration` represents a signed time span with explicit units, including positive and negative infinities. Use it for delays, timeouts, retry backoffs, and elapsed measurements instead of bare numbers whose unit is implicit.
+
+| Category | Key APIs |
+| --- | --- |
+| Unit constructors | `nanos`, `micros`, `millis`, `seconds`, `minutes`, `hours`, `days`, `weeks`, `infinity`, `negativeInfinity` |
+| Input parsing | `fromInput(x)` (`Option`), `fromInputUnsafe(x)` (throws on invalid input) |
+| Unit extraction | `toMillis`, `toSeconds`, `toMinutes`, `toHours`, `toDays`, `toWeeks`, `toNanos` (`Option<bigint>`), `toNanosUnsafe` |
+| Arithmetic & comparison | `sum`, `times`, `equals`, `isLessThan`, `isLessThanOrEqualTo`, `isGreaterThan`, `isGreaterThanOrEqualTo`, `format` |
 
 ## Constructing finite and infinite durations
 
@@ -22,7 +29,7 @@ const negative = Duration.seconds(-2)
 ["750","20000",250,12,15,8,3,2,"Infinity",-2]
 ```
 
-Constructors name the unit at the call site. `infinity` is an unbounded positive span and `negativeInfinity` its negative counterpart. A day is a fixed 24 hours, not a calendar day across daylight saving changes.
+Unit constructors document scale directly at the call site, and `infinity` / `negativeInfinity` represent unbounded spans. Every unit is fixed length (`Duration.days(1)` is always 24 hours, not a calendar day across DST transitions).
 
 ```vibe
 // run: try Console.log(Duration.toMillis(milliseconds), String(try Effect.try(() => Duration.toNanosUnsafe(nanoseconds))), Duration.toSeconds(text), Option.isSome(checked), Option.isNone(Duration.fromInput("invalid" as Duration.Input)))
@@ -36,7 +43,7 @@ const checked = Duration.fromInput("3 seconds")
 240 240 3 true true
 ```
 
-`fromInputUnsafe` accepts durations, numeric milliseconds, bigint nanoseconds, and supported duration strings, and throws for invalid input; `fromInput` returns an `Option` instead. When you know the unit, prefer its constructor.
+`fromInput` parses existing durations, numeric milliseconds, `bigint` nanoseconds, and duration strings into an `Option`; `fromInputUnsafe` throws on invalid input. Prefer explicit unit constructors when the unit is known statically.
 
 ## Extracting values in chosen units
 
@@ -57,7 +64,7 @@ Duration.toNanos(Duration.infinity) // None
 [120000,120,2,0.03333333333333333,7,2,"3000000",true]
 ```
 
-Numeric conversions return a number in the requested unit. `toNanos` returns an `Option.Option<bigint>`, since infinity has no bigint form; `toNanosUnsafe` returns the bigint for finite input and throws for infinite input.
+Standard `to*` converters return floating-point `number` values in the chosen unit. Because `bigint` cannot represent infinity, `toNanos` returns `Option.Option<bigint>` while `toNanosUnsafe` throws on infinite spans.
 
 ## Comparing durations
 
@@ -76,7 +83,7 @@ Duration.equals(Duration.seconds(1), Duration.millis(1000)) // true
 true true true true true
 ```
 
-Comparison uses the elapsed span, whatever the constructor. Compare durations directly rather than converting them to a less precise unit first.
+Comparisons evaluate the underlying elapsed span regardless of how each value was constructed. Compare `Duration` values directly instead of down-converting them to numbers first.
 
 ## Adding and scaling durations
 
@@ -97,7 +104,7 @@ effect function waitBeforeRetry() {
 9000 9000
 ```
 
-`sum` adds spans and `times` scales by a number; both return new values. `sleep` accepts the result and waits when run with `try` inside an effect function or block.
+`Duration.sum` adds two spans and `Duration.times` scales a span by a factor, both returning new values. Pass the result directly to `try sleep(duration)` inside effect code.
 
 ## Converting and formatting
 
@@ -112,4 +119,4 @@ Duration.toNanosUnsafe(Duration.millis(2)) // 2000000n
 6s 250ms Infinity 2000000
 ```
 
-Use `format` for a compact display string and explicit unit conversions for calculations. Formatted text is presentation; when a wire protocol requires a numeric unit, store that.
+Use `Duration.format` only for human-readable output. For calculations, storage, or wire formats, extract an explicit numeric unit.

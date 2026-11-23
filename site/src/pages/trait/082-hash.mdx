@@ -1,11 +1,17 @@
 ---
 title: "Hash"
-description: "Hash works in VibeLang exactly as in Effect. It gives equality-aware collections a numeric fingerprint of a value, so they find likely matches before a full comparison."
+description: "Hash computes a numeric bucket fingerprint for Effect's equality-aware collections (HashSet, HashMap). Implement [Hash.symbol] whenever you implement Equal.Equal so equal instances always hash..."
 ---
 
 # Hash
 
-`Hash` works in VibeLang exactly as in Effect. It gives equality-aware collections a numeric fingerprint of a value, so they find likely matches before a full comparison.
+`Hash` computes a numeric bucket fingerprint for Effect's equality-aware collections (`HashSet`, `HashMap`). Implement `[Hash.symbol]` whenever you implement `Equal.Equal` so equal instances always hash identically.
+
+| Rule | Requirement |
+| --- | --- |
+| Consistency | `Equal.equals(a, b)` implies `Hash.hash(a) === Hash.hash(b)` |
+| Return type | `[Hash.symbol]()` must synchronously return a `number` (never an effect method) |
+| Stability | Never mutate fields included in the hash after inserting into a collection |
 
 ## Connecting hashing to equality
 
@@ -18,7 +24,7 @@ Hash.hash(first) === Hash.hash(same) // true
 // Output: [true,true]
 ```
 
-Equal values must have equal hashes, but equal hashes do not prove equality: different values can collide, so collections still compare candidates. Hashes are lookup implementation details, not cryptographic digests or stable storage identifiers.
+Equal values must produce identical hashes, though distinct values may collide in the same bucket (collections confirm matches with `Equal.equals`). Treat hashes as in-memory lookup hints, never as cryptographic digests or persistent identifiers.
 
 ## Implementing the hashing protocol
 
@@ -42,9 +48,7 @@ Equal.equals(new GridCell(3, 7), new GridCell(3, 8)) // false
 // Output: [true,false]
 ```
 
-A `[Hash.symbol]` method must return a number synchronously. `Hash.hash` handles primitive and structural inputs, so hashing a tuple of identity fields is an easy implementation. `Equal.Equal` includes hashing in its interface.
-
-It compiles to a plain JavaScript method. An effect method returns an Effect, which does not satisfy the protocol's number return type.
+`Hash.hash` accepts primitives and structural tuples, so delegating `[Hash.symbol]()` to `Hash.hash([field1, field2])` is usually sufficient. Because `Equal.Equal` extends `Hash.Hash`, `[Hash.symbol]()` must be a synchronous plain method returning a `number`.
 
 ## Keeping equal values hash-consistent
 
@@ -58,7 +62,7 @@ Hash.hash(first) === Hash.hash(equivalent) // true
 // Output: [1,true]
 ```
 
-Hash the identity fields equality compares. A field equality ignores can send equal values to different buckets and break lookup. Fewer fields stay correct but add collisions. Hashes can be cached, so keep hashed fields immutable after insertion.
+Hash only fields compared by `[Equal.symbol]`: including an ignored field places equal values in different buckets and breaks lookup, whereas omitting an identity field remains correct at the cost of extra collisions. Keep hashed fields immutable after insertion because hashes may be cached.
 
 ---
 

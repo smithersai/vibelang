@@ -1,6 +1,8 @@
 # Cache
 
-A `Cache` stores lookup outcomes by key and shares in-progress lookups across callers. Use it when many requests need the same data; capacity and expiration control how long the sharing lasts.
+`Cache` is a bounded, concurrent key-value store backed by a lookup function. Callers ask for keys via `Cache.get`; on a miss, the cache runs the lookup once, shares that in-flight fiber across concurrent callers for the same key, and stores the settled outcome subject to capacity and TTL limits.
+
+![Request batching and TTL Cache](/diagrams/batching-and-caching.svg)
 
 ## Building a lookup cache
 
@@ -26,7 +28,7 @@ effect function makePrices() {
 // Output: 42
 ```
 
-The default cache captures lookup services when created. `try Cache.get(cache, sku)` then reads an entry or runs the captured lookup. A cache created per request shares nothing across requests; when the cache belongs to the application, allocate it in a service layer.
+Acquire lookup dependencies when constructing the cache and close over them: `Cache.get(prices, sku)` then needs no extra services. Allocate an application-wide cache once inside a `Layer`; allocating inside a request handler creates a private cache that shares nothing across requests.
 
 ## Sharing concurrent requests
 
@@ -53,7 +55,7 @@ effect function concurrentLookup() {
 // Output: {"values":["NORTH","NORTH","NORTH"],"calls":1}
 ```
 
-Requests for the same missing key wait on one computation without blocking the JavaScript thread. A failed lookup shares and caches its failure. An interrupted lookup is removed, so a later call can try again.
+Three concurrent callers for `"north"` trigger `lookup` exactly once without blocking the thread. Expected failures are also shared and cached for the entry's lifetime; interrupted lookups are discarded so the next caller retries cleanly.
 
 ## Setting capacity and expiration
 
@@ -70,7 +72,7 @@ effect function makePermanentNames() {
 // Output: item-blue
 ```
 
-Capacity bounds entries, not bytes; eviction keeps recently used entries over older ones. With a finite TTL, an expired outcome isn't reused and the next lookup reloads it. An infinite TTL disables time expiration; capacity eviction stays active.
+`capacity` limits entry count, not byte size, evicting least-recently-used entries first. A finite `timeToLive` causes expired entries to reload lazily on the next `get`. `Duration.infinity` disables time expiration while keeping capacity eviction active.
 
 ## Inspecting cache state
 
@@ -89,7 +91,7 @@ effect function inspect() {
 // Output: {"present":true,"size":1,"keys":["paper"],"entries":[["paper",5]]}
 ```
 
-`has`, `size`, `keys`, and `entries` return Effects that inspect state without loading missing keys; run each with `try`. `entries` includes resolved successes only, not failures or unfinished lookups. Concurrent access can change these observations at once, so don't use `has` followed by `get` as a synchronization protocol.
+`has`, `size`, `keys`, and `entries` inspect current state without triggering lookups; run each with `try`. `entries` yields only resolved successes, omitting failures and in-flight lookups. Because other fibers may update the cache between operations, treat inspection as a point-in-time snapshot—never branch on `has` before calling `get`.
 
 ## Invalidating and refreshing entries
 
@@ -112,4 +114,10 @@ effect function refreshExample() {
 // Output: {"first":"profile:1","refreshed":"profile:2","reloaded":"profile:3"}
 ```
 
-`refresh` forces a new lookup and returns the refreshed value; readers still get an existing valid value while its replacement loads. `invalidate` removes one entry and `invalidateAll` removes every entry; the next `get` loads again. Refresh when the caller needs recomputation now; invalidate when a later reader should trigger it.
+| Operation | Effect on cache | Behavior for concurrent readers |
+| --- | --- | --- |
+| `Cache.refresh(cache, key)` | Runs lookup immediately and replaces the entry | Readers keep seeing the current valid entry until the refresh completes |
+| `Cache.invalidate(cache, key)` | Deletes one entry | Next `Cache.get` triggers a fresh lookup |
+| `Cache.invalidateAll(cache)` | Deletes every entry | Subsequent `Cache.get` calls reload on demand |
+
+Use `refresh` when you need the fresh value right now without stalling concurrent readers; use `invalidate` when reloading can wait until the next reader asks.

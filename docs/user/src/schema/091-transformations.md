@@ -1,8 +1,8 @@
 # Schema Transformations
 
-Transformations work as in Effect: a codec validates one representation, converts it, and validates the result. `decodeTo` connects schemas; supply pure conversions or effectful getters as needed. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+`Schema.decodeTo` connects two schemas into a codec that validates the source, converts it, and validates the target. Supply synchronous functions for pure conversions or effectful getters for fallible and service-backed ones. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Defining reversible infallible conversions
+## Reversible infallible conversions
 
 ```vibe
 // run: try Console.log(try readAvailability("ready"), try readAvailability("held")); try Console.log(try Schema.encodeEffect(Availability)(true))
@@ -23,9 +23,9 @@ true false
 ready
 ```
 
-`SchemaTransformation.transform` takes two synchronous, infallible functions. Input validation can still fail before either runs, and output validation after. Pure callbacks cannot call services or throw typed failures; use effectful getters for those.
+`SchemaTransformation.transform` takes pure, synchronous `decode` and `encode` functions. Input validation still runs before conversion and output validation after.
 
-## Understanding transformation inputs and outputs
+## Transformation boundaries
 
 ```vibe
 // run: try Console.log(try readNumericAvailability()); try Console.log(try Schema.encodeEffect(NumericAvailability)(true))
@@ -46,11 +46,9 @@ true
 1
 ```
 
-Decoding runs the source codec, converts the source's `Type` to the target's `Encoded`, then runs the target codec; encoding reverses the sequence. The complete codec has the source's `Encoded` and the target's `Type`.
+Decoding runs `source -> decode -> target`; encoding runs `target -> encode -> source` in reverse. The conversion connects the source's `Type` (`number`) to the target's `Encoded` (`"ready" | "held"`), while the resulting codec connects `string` to `boolean`. Normalizing conversions are lossy: encoding `true` yields `"1"`, not `"12"`.
 
-The middle functions above handle a number and a status string, though the complete codec connects strings to booleans. The conversion normalizes quantities: encoding `true` produces `"1"`, so the original `"12"` is lost.
-
-## Defining fallible conversions
+## Fallible conversions
 
 ```vibe
 // run: try Console.log(try Schema.decodeUnknownEffect(DeliveryMode)(" RAIL ")); try Effect.catch(Schema.decodeUnknownEffect(DeliveryMode)("air"), (error) => Console.log(error.message))
@@ -71,9 +69,9 @@ rail
 Choose road or rail
 ```
 
-`transformEffect` receives the converted input and active parse options. Its `effect` callback returns an Effect that produces the converted value and fails with a `SchemaIssue.Issue` for an expected conversion failure, which the outer Schema parser wraps in `SchemaError`. Translate a service's domain error to an issue before it escapes the getter.
+`SchemaGetter.transformEffect` takes an `effect` function that returns the converted value or throws a `SchemaIssue.Issue`, which the parser wraps in `SchemaError`. Translate domain errors to schema issues before returning.
 
-## Running asynchronous conversions with dependencies
+## Asynchronous conversions with services
 
 ```vibe
 // run: try Console.log(try previewRoute()); provide Routes = { effect check(code) { throw new UnknownRoute({ code }) } } { try Effect.catch(readRoute("missing"), (error) => Console.log(error.message)) }
@@ -119,9 +117,9 @@ coastal
 Route is unavailable
 ```
 
-The getter can pause while its service runs. Decoding requires `Routes`; encoding does not, because its getter only passes the value through. Use the Effect interpreter whenever services or asynchronous work are involved. The Effect catch translates expected service failures and leaves defects and interruption intact.
+Service requirements attach per direction: decoding `RouteCode` requires `Routes`, while `passthrough()` encoding does not. Use Effect-based interpreters (`decodeUnknownEffect`, `encodeEffect`) whenever services or async steps are present. Catching expected service errors preserves defects and interruption.
 
-## Forbidding an encoding direction
+## Forbidding one direction
 
 ```vibe
 // run: try Console.log(try readInitial("Ada")); try Effect.catch(Schema.encodeEffect(Initial)("A"), (error) => Console.log(error.message))
@@ -142,9 +140,9 @@ A
 An initial cannot recover the full name
 ```
 
-A lossy conversion has no meaningful inverse. `forbidden` reports a schema issue when that direction runs instead of pretending to reconstruct discarded information; the codec keeps its encoding API, but using it fails.
+Use `SchemaGetter.forbidden` for one-way projections so encoding fails explicitly instead of fabricating lost data.
 
-## Composing transformations and effectful checks
+## Composing pipelines and effectful checks
 
 ```vibe
 // run: { const jsonValue = try readNumbers(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(try Schema.decodeEffect(DeferredLabel)("crate")); try Effect.catch(Schema.decodeEffect(DeferredLabel)("x"), (error) => Console.log(error.message))
@@ -177,11 +175,9 @@ crate
 Label is too short
 ```
 
-Omit the custom conversion when the source's decoded type already fits the target's encoded type. `checkEffect` validates without changing the value and returns the same filter outputs as a synchronous predicate. It can pause or require services but cannot leak arbitrary domain errors; convert them to schema issues.
+Omit the conversion argument in `decodeTo` when the source's `Type` already matches the target's `Encoded`. Use `Schema.toType(elementSchema)` on target collections whose elements are already decoded so inner conversions do not run twice. `SchemaGetter.checkEffect` validates asynchronously or with services without changing the value.
 
-When converting a collection whose elements are already decoded, use `Schema.toType(elementSchema)` on the target collection, or the element transformations run twice.
-
-## Converting string case, JSON, and binary encodings
+## String case, JSON, and binary encodings
 
 ```vibe
 // run: { const jsonValue = try decodeTextFormats(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -207,11 +203,10 @@ effect function decodeTextFormats() {
 {"trimmed":"crate","lower":"crate","data":{"label":"crate"},"base64":"crate","hex":"crate"}
 ```
 
-`Schema.Trim` removes surrounding whitespace. `SchemaTransformation.toUpperCase`, `capitalize`, and `uncapitalize` are the other case conversions; pair each with a matching target check. Case conversion and trimming normalize values and lose the original spelling.
+- **Whitespace & case**: `Schema.Trim`, plus `SchemaTransformation.toLowerCase`, `toUpperCase`, `capitalize`, and `uncapitalize` (pair each with its matching target check). All normalize and discard original spelling.
+- **Structured & encoded text**: `Schema.fromJsonString`, `StringFromBase64`, `StringFromBase64Url`, `StringFromHex`, and `StringFromUriComponent`.
 
-`fromJsonString(schema)` parses JSON text and validates its contents; encoding serializes the encoded contents back to text. `StringFromBase64`, `StringFromBase64Url`, `StringFromHex`, and `StringFromUriComponent` decode encoded text to a UTF-8 string and encode it back. For structured URL data, compose the URI codec with a JSON-string codec.
-
-## Parsing numeric, date, and decimal values
+## Numbers, dates, and decimals
 
 ```vibe
 // run: const value = try readManifest({ units: "3.5", sequence: "12", departure: "2026-01-02T00:00:00Z", price: "1.25" }); try Console.log(value.units, String(value.sequence), value.departure.toISOString(), BigDecimal.format(value.price)); try Effect.catch(readManifest({ units: "Infinity", sequence: "12", departure: "invalid", price: "bad" }), (error) => Console.log(error._tag))
@@ -232,10 +227,13 @@ effect function readManifest(input: unknown) {
 SchemaError
 ```
 
-`FiniteFromString` rejects unparseable and nonfinite numbers; it requires an integer only if you add a check. `BigIntFromString` rejects fractions and invalid bigint text. `DateFromString` produces a valid `Date`, rejects invalid dates, and encodes to its normalized string representation. `BigDecimalFromString` preserves decimal precision without converting through a JavaScript number.
+- `FiniteFromString`: rejects non-numeric text, `NaN`, and infinities (add `Schema.isInt()` for integers).
+- `BigIntFromString`: rejects fractions and malformed bigint text.
+- `DateFromString`: validates `Date` instances and encodes to normalized ISO strings.
+- `BigDecimalFromString`: preserves exact decimal precision without passing through IEEE 754 `number`.
 
 ## Coming from Effect
 
-Pass an `effect` function to `SchemaGetter.transformEffect`. Use `try` to run service methods, and throw a schema issue for an expected conversion failure. The resulting codec carries the service requirement for that direction.
+Pass an `effect` arrow to `SchemaGetter.transformEffect`, run service methods with `try`, and `throw` a `SchemaIssue.Issue` for expected conversion failures.
 
 [Upstream page](https://effect.website/docs/v4/schema/transformations)

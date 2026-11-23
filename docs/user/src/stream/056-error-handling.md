@@ -1,6 +1,16 @@
 # Error Handling in Streams
 
-Stream recovery replaces a failed source with another. Recover during consumption with stream operators, or use a `catch` expression on the consuming Effect when the whole consuming function handles a typed failure. Elements emitted before a failure are not rolled back.
+When a stream fails, elements already emitted stay emitted—stream recovery cannot roll them back. Instead, recovery operators intercept the failure and switch to a replacement stream, or let the consuming Effect handle the typed error with `catch`.
+
+| Operator | Intercepts | Effect on stream |
+| --- | --- | --- |
+| `Stream.catch` | All typed failures (`E`) | Switches to fallback stream |
+| `Stream.catchTag` | One tagged error variant | Removes handled tag from `E` |
+| `Stream.catchFilter` | Typed failures matching a `Filter` | Keeps unmatched failures in `E` |
+| `Stream.catchDefect` | Unchecked defects | Recovers at an explicit fault boundary |
+| `Stream.catchCause` / `catchCauseFilter` | Full `Cause` (failures, defects, interruption) | Low-level cause-aware recovery |
+| `Stream.retry` | Typed failures (`E`) | Restarts source according to a `Schedule` |
+| `Stream.timeout` / `timeoutOrElse` | Pull idle longer than duration | Ends stream or switches to replacement |
 
 ## Recovering typed failures and defects
 
@@ -22,7 +32,7 @@ const tagged = Stream.catch(
 // Output: [["live-a","live-b","cached"],["Success","Success","Failure"]]
 ```
 
-`Stream.catch` receives a typed failure and returns the replacement Stream. Recovery abandons the rest of the failed source; it does not resume after the failing step. Tag each source with `Result` when downstream code must tell live data from fallback.
+`Stream.catch` discards the remainder of the failed source and appends the fallback stream. When downstream consumers need to distinguish live items from fallback items, wrap each branch in `Result`.
 
 ```vibe
 // run: { const jsonValue = try Stream.runCollect(boundary); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -33,7 +43,7 @@ const boundary = Stream.catchDefect(
 // Output: ["unreadable"]
 ```
 
-`catchDefect` handles defects at a deliberate boundary. `catchCause` receives the full Cause, with failure, defect, and interruption reasons; use it only when you need all of it. A VibeLang `catch` expression handles typed failures only, as `Effect.catch` does. It propagates a cause with a defect, whose typed failures are defects by then, and an interruption without a typed failure.
+Reserve `Stream.catchDefect` and `Stream.catchCause` for deliberate isolation boundaries. A VibeLang `catch` expression on a consuming Effect handles typed failures only (matching `Effect.catch`), letting defects and interruptions propagate untouched.
 
 ## Selective recovery
 
@@ -57,7 +67,7 @@ const defectOnly = Stream.catchCauseFilter(Stream.die("corrupt frame"), Cause.fi
 // Output: AccessDenied
 ```
 
-`catchTag` removes the handled tagged error from the output failure type. `catchFilter` handles the values a Filter selects and keeps the failures it rejects. `catchCauseFilter` selects from the full Cause; `Cause.findDie` selects a defect reason instead of treating every failure as recoverable.
+`catchTag` eliminates the matched `_tag` from the stream's error union while leaving unhandled errors (`AccessDenied`) intact. `catchFilter` matches non-tagged error values through a `Filter`, and `catchCauseFilter` targets specific `Cause` slices (such as `Cause.findDie` for defects alone).
 
 ## Cleanup after failure
 
@@ -78,7 +88,7 @@ effect function consumeChecked() {
 // Output: read failed
 ```
 
-`onError` runs its callback on an unsuccessful stream exit and keeps the failure if the callback succeeds: use it for source diagnostics. Use `Stream.ensuring(source, cleanup)` for every stream exit, or `try ensuring(consume(), cleanup)` around the consuming Effect. Cleanup failure is never silently discarded.
+`Stream.onError` runs a side effect only on unsuccessful stream exits while preserving the original failure. For cleanup that must run on *every* exit (success, failure, or interruption), attach `Stream.ensuring` to the stream or wrap the consumer in `try ensuring(...)`. Finalizer failures are never silently dropped.
 
 ## Retrying a source
 
@@ -97,7 +107,7 @@ const readings = Stream.fromEffect(effect {
 // Output: [42] 4
 ```
 
-`retry` restarts the wrapped source after a typed failure, per its schedule. A retried multi-element source can repeat delivered elements, so retry the smallest source that represents the operation and make downstream side effects safe to repeat. An exponential schedule adds backoff; a finite recurrence schedule bounds the retries.
+`Stream.retry(schedule)` restarts the wrapped stream from its beginning after a typed failure. Because restarting a multi-element stream can re-emit earlier elements, wrap the narrowest failing unit possible (such as a single page or RPC call) and keep downstream handlers idempotent. Combine exponential backoff with a finite cap (`Schedule.recurs`) in production.
 
 ## Narrowing error types
 
@@ -114,7 +124,7 @@ function keepSyntaxErrors(source: Stream.Stream<string, Error>) {
 // Output: true
 ```
 
-Refail the errors callers are expected to handle and turn impossible failures into defects; `Stream.orDie(source)` makes every typed failure a defect. These operators change the failure channel; they don't make a faulty source succeed.
+Keep recoverable domain errors in `E` and escalate unrecoverable errors with `Stream.die` (or escalate all typed errors at once with `Stream.orDie`). Escalation tightens the error signature without masking the underlying failure.
 
 ## Timeout failures and replacement sources
 
@@ -138,4 +148,4 @@ const fallbackWhenIdle = Stream.timeoutOrElse(Stream.never, {
 // Output: [[],"Failure",true,["backup-a","backup-b"]]
 ```
 
-`timeout` completes normally when an upstream pull waits too long. `timeoutOrElse` switches to the Stream `orElse` returns, which can fail, defect, or emit fallback data. The timeout applies to each upstream pull, not total consumption time, and does not time the replacement stream.
+`Stream.timeout` ends the stream cleanly when an upstream pull waits longer than `duration`; `Stream.timeoutOrElse` switches to the stream returned by `orElse` (which may fail, die, or emit fallback elements). The deadline applies *per upstream pull*, not to total stream lifetime, and does not govern the replacement stream.

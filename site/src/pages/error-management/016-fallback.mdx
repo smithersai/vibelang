@@ -43,7 +43,11 @@ The handler after `catch` is always a function literal — its modifier determin
 | `e catch (err) => value` | Plain function | Formatting or deriving a fallback value from `err` |
 | `e catch effect (err) => { ... }` | Effect function | Running backup Effects, logging, or rethrowing unhandled cases |
 
-Always write `=>` (`program catch (e) { ... }` is `EK0509`) and never put `try` right before `catch` — write `expr catch h`, not `try expr catch h` (`EK0505`).
+A `throw` in a plain handler is `EK0401`; write `catch effect` for a typed failure, or `catch effect (error) => try die(error)` for a defect. Never put `try` right before `catch` — write `expr catch h`, not `try expr catch h` (`EK0505`).
+
+A handler written as a parameter list followed directly by a block, `x catch (e) { … }`, is missing its `=>`. It reports the `EK0509` syntax diagnostic while retaining the file's independent errors. Write `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own, or `x catch (e) => { … }` for a plain fallback. Keep comments and line breaks before the body after the arrow you add.
+
+A plain handler's default parameters, destructuring and computed binding keys follow the same known-throwing-call check as its body (`EK0401`). Use an effect handler with nonthrowing parameters, then perform throwing initialization inside its body through `Effect.try`; `try` cannot run in a parameter default.
 
 ## Falling back to a default value
 

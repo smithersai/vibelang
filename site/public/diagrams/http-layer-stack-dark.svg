@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 325" role="img" aria-labelledby="t d">
+  <title id="t">Platform and HTTP server layer stack</title>
+  <desc id="d">Shows portable application routes and handlers depending only on abstract HttpRouter and Platform services, wired once at main to Node, Bun, or Browser layers.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#64708a"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#a5b4fc"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fda4af"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#5eead4"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#fcd34d"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #eef1f6; }
+    .sub { font-size: 13px; fill: #b3bac7; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #eef1f6; }
+    .p { font-size: 12.5px; fill: #b3bac7; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="325" rx="10" fill="#14151a"/>
+  
+      <text x="36" y="42" class="h">Write portable handlers; wire the host platform once at main()</text>
+      <text x="36" y="64" class="sub">Business routes depend on abstract Effect services. Swap Node, Bun, or test layers without editing handlers.</text>
+
+      <!-- Top layer: App Routes -->
+      <rect x="36" y="88" width="808" height="62" rx="10" fill="#232445" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="56" y="114" class="k" fill="#a5b4fc">1. APPLICATION ROUTES &amp; HANDLERS (.vibe)</text>
+      <text x="56" y="136" class="p">HttpRouter routes, Schema request validation, typed errors, and domain services (Users, Clock, FileSystem).</text>
+
+      <line x1="440" y1="150" x2="440" y2="172" stroke="#a5b4fc" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Middle layer: Abstract Platform Services -->
+      <rect x="36" y="178" width="808" height="56" rx="10" fill="#1c1d24" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="56" y="202" class="k" fill="#5eead4">2. PORTABLE SERVICE CONTRACTS (R CHANNEL)</text>
+      <text x="56" y="222" class="code-sm" fill="#eef1f6">HttpServer   ·   HttpClient   ·   FileSystem   ·   Path   ·   Terminal   ·   ChildProcessSpawner</text>
+
+      <line x1="200" y1="234" x2="200" y2="254" stroke="#5eead4" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="440" y1="234" x2="440" y2="254" stroke="#5eead4" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="680" y1="234" x2="680" y2="254" stroke="#5eead4" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+
+      <!-- Bottom: Host Adapters -->
+      <rect x="36" y="260" width="254" height="46" rx="8" fill="#133230" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="163" y="288" text-anchor="middle" class="code-sm" fill="#5eead4">NodeHttpServer / NodeServices</text>
+
+      <rect x="313" y="260" width="254" height="46" rx="8" fill="#382a14" stroke="#d97706" stroke-width="1.5"/>
+      <text x="440" y="288" text-anchor="middle" class="code-sm" fill="#fcd34d">BunHttpServer / BunServices</text>
+
+      <rect x="590" y="260" width="254" height="46" rx="8" fill="#242630" stroke="#323544" stroke-width="1.5"/>
+      <text x="717" y="288" text-anchor="middle" class="code-sm" fill="#b3bac7">In-memory Test Layers</text>
+    
+</svg>

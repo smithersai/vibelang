@@ -1,87 +1,81 @@
 # Set up VibeLang
 
-VibeLang is a fork of TypeScript for Effect programs. These steps set it up in a project; each gives a command and its expected output. When the output differs, stop and show the user the command and its output. VibeLang is v0: the language will change in major, breaking ways, and it is not suitable for production use.
+VibeLang is a fork of TypeScript for Effect programs. Follow these steps in order; if a command's output differs from what is shown, stop and report the command and output. VibeLang is v0: expect breaking changes and do not use it in production.
 
 ![VibeLang with your TypeScript tools](/videos/ecosystem.mp4)
 
-The overview combines the individual tooling recordings, using project-relative display paths.
-
 ## 1. Check the tools
 
-Run `node --version`. Use Node `22.22.3` (`22.x`) or Node `24.11.1` or later. With Bun, run `bun --version` and expect `1.4.0` or later, or `1.4.2` or later to [run sources with Bun](setup/vibelang-cli.md#run-sources-with-bun).
+- **Node:** run `node --version` and require Node `22.22.3` (`22.x`) or Node `24.11.1` or later.
+- **Bun (optional):** run `bun --version` and require `1.4.0` or later (`1.4.2`+ to [run sources with Bun](setup/vibelang-cli.md#run-sources-with-bun)).
+- **Registry:** run `npm view vibelang@0.0.13 version` and expect `0.0.13`. `E404` means the configured registry lacks that version — report the registry and error before continuing.
 
-Version 0.0.13 publishes native packages for macOS, Linux and Windows on arm64 and x64. The end-to-end npm and Bun rehearsal runs on Linux x64.
-
-Run `npm view vibelang@0.0.13 version` and expect `0.0.13`. `E404` means the configured registry lacks that version: report the registry and error before continuing.
+Version 0.0.13 publishes native binaries for macOS, Linux, and Windows on arm64 and x64 (rehearsed end-to-end with npm and Bun on Linux x64).
 
 ## 2. Detect the project
 
-Read the project's root directory and record:
+Inspect the project root and record:
 
 | Fact | Signal | Result |
 | --- | --- | --- |
 | Project | No `package.json` | New project |
-| | A `package.json` | Existing project |
+| | `package.json` present | Existing project |
 | Package manager | `bun.lock` or `bun.lockb` | Bun |
 | | `package-lock.json`, or no lockfile | npm |
-| | `pnpm-lock.yaml` | pnpm: install the npm commands' packages with `pnpm add` |
-| | `yarn.lock` | Yarn: configure its [transitive pin](setup/existing-project.md#2-install-the-packages), then use `yarn add` |
-| Build | `vite` or `vitest` in `package.json`, or a `vite.config.*` or `vitest.config.*` file | Vite |
-| | `webpack`, `rollup`, `esbuild`, or `@rspack/core` in `package.json`, or `bun build` in a script | Another bundler: `vibelang-unplugin` |
-| | `metro` or `expo` in `package.json`, or a `metro.config.*` file | Metro |
-| | None of these | The `vibelang` CLI |
-| Framework | `next` or `astro` in `package.json` | Follow Next.js or Astro below |
-| | `wrangler` in `package.json`, or a `wrangler.toml` or `wrangler.jsonc` file | Cloudflare Workers |
-| | `react`, `vue`, or `svelte` in `package.json`, with a Vite build | React, Vue, or Svelte. With `@sveltejs/kit` or `nuxt`, tell the user these pages don't cover it |
-| Editor | A `.vscode/` or `.cursor/` directory | VS Code or Cursor |
-| | A `.zed/` directory | Zed |
+| | `pnpm-lock.yaml` | pnpm (configure [workspace pin](setup/existing-project.md#2-install-the-packages), then `pnpm add`) |
+| | `yarn.lock` | Yarn (configure [transitive pin](setup/existing-project.md#2-install-the-packages), then `yarn add`) |
+| Build | `vite` or `vitest` in `package.json`, or `vite.config.*` / `vitest.config.*` | Vite |
+| | `webpack`, `rollup`, `esbuild`, `@rspack/core`, or `bun build` | `vibelang-unplugin` |
+| | `metro` or `expo` in `package.json`, or `metro.config.*` | Metro |
+| | None of these | `vibelang` CLI |
+| Framework | `next` or `astro` in `package.json` | [Framework setup](#framework-setup) below |
+| | `wrangler` or `wrangler.toml` / `wrangler.jsonc` | Cloudflare Workers |
+| | `react`, `vue`, or `svelte` with Vite | React, Vue, or Svelte (`@sveltejs/kit` and `nuxt` are not covered here) |
+| Editor | `.vscode/` or `.cursor/` | VS Code or Cursor |
+| | `.zed/` | Zed |
 | | None of these | Ask the user |
-
-For `pnpm`, configure the [workspace pin](setup/existing-project.md#2-install-the-packages) before installing packages.
 
 ## 3. Follow the matching pages
 
-Follow each matching page, in this order: project, build or framework, editor.
+Follow each matching page in order: **project → build or framework → editor**.
 
 | Case | Page |
 | --- | --- |
-| New project | [Start a new project](setup/new-project.md); it sets up the build and tests |
+| New project | [Start a new project](setup/new-project.md) (includes build and tests) |
 | Existing project | [Add VibeLang to an existing project](setup/existing-project.md) |
-| Build with the `vibelang` CLI, as with `tsc` | [Build with the vibelang CLI](setup/vibelang-cli.md) |
-| Vite or Vitest, without React, Vue, or Svelte | [Vite and Vitest](setup/vite.md) |
-| React, Vue, or Svelte with Vite | [React](setup/react.md), [Vue](setup/vue.md), or [Svelte](setup/svelte.md), instead of the Vite page |
-| React Native or Expo, bundled with Metro | [React Native and Metro](setup/react-native.md) |
-| Next.js with webpack, or Astro | [Framework setup](#framework-setup) below |
-| Cloudflare Workers | [Cloudflare Workers](platform/cloudflare-workers.md), instead of the bundler's page |
-| Format with dprint, or a `dprint.json` in the project | [Format with dprint](setup/formatting.md) |
+| `vibelang` CLI (replaces `tsc`) | [Build with the vibelang CLI](setup/vibelang-cli.md) |
+| Vite or Vitest (plain) | [Vite and Vitest](setup/vite.md) |
+| React, Vue, or Svelte with Vite | [React](setup/react.md), [Vue](setup/vue.md), or [Svelte](setup/svelte.md) |
+| React Native or Expo (Metro) | [React Native and Metro](setup/react-native.md) |
+| Next.js (webpack) or Astro | [Framework setup](#framework-setup) below |
+| Cloudflare Workers | [Cloudflare Workers](platform/cloudflare-workers.md) |
+| dprint formatting | [Format with dprint](setup/formatting.md) |
 | VS Code or Cursor | [VS Code and Cursor](setup/vscode.md) |
 | Neovim | [Neovim](setup/neovim.md) |
 | Zed | [Zed](setup/zed.md) |
-| Another editor with an LSP client | [Other editors](setup/other-editors.md) |
-| Claude Code, Codex, opencode, or an agent in Cursor or VS Code | [Coding agents](setup/coding-agents.md) |
+| Other LSP editor | [Other editors](setup/other-editors.md) |
+| Coding agents | [Coding agents](setup/coding-agents.md) |
 
-For webpack, Rspack, Rollup, Rolldown, esbuild, and `bun build`, version 0.0.13 includes `vibelang-unplugin`: install `vibelang@0.0.13` and `vibelang-unplugin@0.0.13` as dev dependencies and follow the [plugin configuration](https://www.npmjs.com/package/vibelang-unplugin#configure) for the bundler. Vite and Vitest use `vibelang-vite`.
+For webpack, Rspack, Rollup, Rolldown, esbuild, and `bun build`, install `vibelang@0.0.13` and `vibelang-unplugin@0.0.13` as dev dependencies and follow the [vibelang-unplugin configuration](https://www.npmjs.com/package/vibelang-unplugin#configure). Vite and Vitest use `vibelang-vite`.
 
 ## 4. Verify the setup
-
-From the project directory, run:
 
 ```sh
 npx vibelang --version
 npx vibelang --noEmit
 ```
 
-The first prints `VibeLang 0.0.13 (TypeScript 7.1.0-dev)`; the second prints nothing and exits with status 0. Then run the project's `build` and `test` scripts; each must exit with status 0. Report the pages you followed and each command's output to the user.
+Expect `VibeLang 0.0.13 (TypeScript 7.1.0-dev)` from the first command and empty output (exit 0) from the second. Then run the project's `build` and `test` scripts (both must exit 0) and report the pages followed and command outputs.
 
 ## Framework setup
 
-First follow [Add VibeLang to an existing project](setup/existing-project.md). Keep a `tsconfig.json` that includes the `.vibe` modules and `.ts` / `.tsx` importers. The bundler compiles with this project; a missing config is an error. Run `npx vibelang --noEmit` separately to check the whole program.
+Complete [Add VibeLang to an existing project](setup/existing-project.md) first. Keep a `tsconfig.json` that includes `.vibe`, `.ts`, and `.tsx` files; the bundler requires it. Run `npx vibelang --noEmit` separately for whole-program checking.
 
 ### Next.js with webpack
 
 ![vibelang-unplugin in webpack](/videos/webpack.mp4)
 
-Install `vibelang-unplugin@0.0.13` as a dev dependency. Next's Turbopack does not run webpack plugins: use `next dev --webpack` and `next build --webpack` with this integration. In `next.config.mjs`:
+Install `vibelang-unplugin@0.0.13` as a dev dependency. Next's Turbopack does not run webpack plugins, so use `--webpack`. In `next.config.mjs`:
 
 ```js
 import vibelang from "vibelang-unplugin/webpack"
@@ -95,7 +89,7 @@ export default {
 }
 ```
 
-Next's separate stock TypeScript checker reads only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on. `ignoreBuildErrors` bypasses that entire checker, including ordinary TypeScript errors; it does not add `.vibe` support to stock TypeScript. Preserve checking with a required build script:
+Next's stock TypeScript checker reads only compiler-emitted `x.d.vibe.ts` declarations (with `allowArbitraryExtensions`). Because `ignoreBuildErrors` bypasses that entire checker (including ordinary TypeScript errors), run `vibelang --noEmit` in `package.json`:
 
 ```json
 {
@@ -107,13 +101,11 @@ Next's separate stock TypeScript checker reads only the `x.d.vibe.ts` declaratio
 }
 ```
 
-Run `npm run check` during development too. The plugin checks the projects it loads; the separate command also catches errors in modules the bundle does not reach. Keep Next's generated type includes in tsconfig. This recipe covers webpack builds; it does not integrate VibeLang into Turbopack.
-
-In a TypeScript component, import the `.vibe` source and run the returned Effect before rendering its value. Use `Effect.runPromise` in an async server component for asynchronous work, with its required layers provided. Avoid passing the Effect object to React.
+Keep Next's generated type includes in `tsconfig.json`, and run `npm run check` during development to catch errors in files outside the bundle. In components, run imported Effects (e.g. `Effect.runPromise` in async server components with layers provided) before rendering — never pass an Effect object directly to React.
 
 ### Astro with Vite
 
-Install `vibelang-vite@0.0.13` as a dev dependency. In `astro.config.mjs`, put the plugin under `vite.plugins`:
+Install `vibelang-vite@0.0.13` as a dev dependency. In `astro.config.mjs`:
 
 ```js
 import { defineConfig } from "astro/config"
@@ -122,7 +114,7 @@ import vibelang from "vibelang-vite"
 export default defineConfig({ vite: { plugins: [vibelang()] } })
 ```
 
-Use `"include": ["src"]` or add `"src/**/*.vibe"` to an existing include list. Astro's `.astro` frontmatter runs as TypeScript: run an Effect before rendering it. For a `src/lib/greeter.vibe` exporting an Effect-returning `greet(name)`:
+Ensure `tsconfig.json` includes `src` or `src/**/*.vibe`. Run Effects in `.astro` frontmatter before rendering (use `await Effect.runPromise(...)` for async Effects):
 
 ```astro
 ---
@@ -133,8 +125,8 @@ const message = Effect.runSync(greet("Astro"))
 <h1>{message}</h1>
 ```
 
-Use `await Effect.runPromise(...)` for asynchronous Effects, providing required layers and handling failures first. Rendering the Effect itself can recurse through its iterator. Run `npx vibelang --noEmit` and `npx astro build`; Astro's own checker is separate and does not gain `.vibe` support from this Vite plugin.
+Run `npx vibelang --noEmit` and `npx astro build`; Astro's own checker does not gain `.vibe` support from `vibelang-vite`.
 
 ## Last resort: keep TypeScript file names
 
-After the CLI, bundler plugins, framework setup and editor integrations above, a project that cannot use `.vibe` or `.vibex` names can consider the experimental [TypeScript shim](setup/typescript-shim.md). Use this fallback only when the supported routes do not fit; stock readers can accept a marked file with different meaning.
+If a project cannot use `.vibe` or `.vibex` extensions with the CLI, bundler plugins, framework setup, and editor integrations above, consider the experimental [TypeScript shim](setup/typescript-shim.md). Read its stock-tool limitations first.

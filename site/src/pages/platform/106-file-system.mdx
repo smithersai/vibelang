@@ -1,13 +1,13 @@
 ---
 title: "FileSystem"
-description: "FileSystem exposes Effect's portable file operations, in place of node:fs. Get the service with try FileSystem.FileSystem, then run its operations with try. Provide a runtime implementation or..."
+description: "FileSystem provides Effect's portable file operations in place of node:fs. Fetch the service with try FileSystem.FileSystem, execute methods with try, and wire a runtime or test layer at the entry..."
 ---
 
 # FileSystem
 
-`FileSystem` exposes Effect's portable file operations, in place of `node:fs`. Get the service with `try FileSystem.FileSystem`, then run its operations with `try`. Provide a runtime implementation or test layer around the application.
+`FileSystem` provides Effect's portable file operations in place of `node:fs`. Fetch the service with `try FileSystem.FileSystem`, execute methods with `try`, and wire a runtime or test layer at the entry point.
 
-## Requesting the file-system service
+## Requesting the service
 
 ```vibe
 effect function readSettings() {
@@ -18,11 +18,9 @@ effect function readSettings() {
 // Output: {"theme":"dark"}
 ```
 
-Getting the service adds `FileSystem` to the Effect's requirements. `readFileString` returns an Effect that succeeds with text or fails with `PlatformError`. The module's own exports, such as `FileSystem.layerNoop`, keep their meaning, and the key itself is `FileSystem.FileSystem`.
+`try FileSystem.FileSystem` adds `FileSystem.FileSystem` to `R`; file operations add `PlatformError` to `E`. In type annotations, write `FileSystem.FileSystem` rather than bare `FileSystem` (which can collide with the DOM interface).
 
-In a written requirement type, use `FileSystem.FileSystem`. A bare `FileSystem` in a type position can name the DOM interface.
-
-## Performing file operations
+## File operations
 
 ```vibe
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
@@ -38,23 +36,23 @@ effect function saveSummary(text: string) {
 // Output: {"content":"ready","entries":["summary.txt"]}
 ```
 
-The `try` expressions run in order: the write completes before the read starts. Expected I/O failures enter E, and a `catch` expression handles them. `readFile` and `writeFile` take byte arrays where text encoding doesn't fit.
+Operations execute sequentially in statement order; handle expected `PlatformError` values with `catch`. Use `readFile` / `writeFile` for raw `Uint8Array` bytes.
 
 | Operations | Purpose |
 | --- | --- |
-| `access`, `exists` | Check accessibility or presence |
-| `copy`, `copyFile` | Copy a tree or a single file |
-| `chmod`, `chown` | Change permissions or ownership |
-| `link`, `symlink`, `readLink` | Work with hard and symbolic links |
-| `makeDirectory`, `readDirectory` | Create and list directories |
-| `makeTempDirectory`, `makeTempFile` | Create temporary paths owned by the caller |
-| `makeTempDirectoryScoped`, `makeTempFileScoped` | Create temporary paths with scope-managed removal |
+| `access`, `exists` | Check permissions or existence |
+| `copy`, `copyFile` | Copy a directory tree or file |
+| `chmod`, `chown` | Update permissions or ownership |
+| `link`, `symlink`, `readLink` | Manage hard and symbolic links |
+| `makeDirectory`, `readDirectory` | Create or list directories |
+| `makeTempDirectory`, `makeTempFile` | Create caller-owned temporary paths |
+| `makeTempDirectoryScoped`, `makeTempFileScoped` | Create temporary paths removed on scope exit |
 | `open` | Open a scope-managed file handle |
-| `readFile`, `readFileString` | Read bytes or text |
-| `writeFile`, `writeFileString` | Write bytes or text |
-| `stat`, `realPath` | Inspect metadata or resolve a canonical path |
-| `remove`, `rename`, `truncate`, `utimes` | Remove, move, resize, or change timestamps |
-| `stream`, `sink`, `watch` | Stream bytes, write through a sink, or observe changes |
+| `readFile`, `readFileString` | Read bytes or UTF-8 text |
+| `writeFile`, `writeFileString` | Write bytes or UTF-8 text |
+| `stat`, `realPath` | Read metadata or resolve symlinks |
+| `remove`, `rename`, `truncate`, `utimes` | Delete, move, resize, or update timestamps |
+| `stream`, `sink`, `watch` | Stream bytes, write via sink, or watch paths |
 
 ```vibe
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
@@ -70,9 +68,9 @@ effect function fileSize(path: string) {
 // Output: 5
 ```
 
-`open` requires a Scope and registers the close itself. `scoped` supplies a Scope and closes it after its Effect completes, including on failure or interruption. Without `scoped`, the acquisition keeps Scope in R and belongs to the caller's scope.
+`open` and the `*Scoped` constructors require `Scope` and register cleanup automatically. Wrap them in `scoped(effect { ... })` to close handles on normal exit, failure, or interruption; omit `scoped` to bind them to the caller's scope.
 
-## Supplying platform implementations
+## Platform layers
 
 ```vibe
 // main.vibe
@@ -94,9 +92,9 @@ NodeRuntime.runMain(main())
 // Output: Project notes
 ```
 
-`NodeFileSystem.layer` supplies only the file system; providing `NodeServices.layer` instead supplies the whole Node platform bundle, and `BunServices.layer` Bun's. Application functions need only `FileSystem`, not an adapter package.
+Provide `NodeFileSystem.layer` for standalone file access, or `NodeServices.layer` / `BunServices.layer` for the full host bundle.
 
-## Replacing behavior in tests
+## Testing with `FileSystem.layerNoop`
 
 ```vibe
 // files.vibe
@@ -127,11 +125,11 @@ it.effect("reads the configured title", () => effect {
 })
 ```
 
-`FileSystem.layerNoop` supplies a complete service with the methods you override. Its other methods fail or die; it is not an in-memory file system. Override every operation the test exercises, so unexpected access exposes a missing test behavior.
+`FileSystem.layerNoop` stubs only the methods you pass; unimplemented methods fail or die rather than simulating an in-memory filesystem, exposing unexpected I/O in tests.
 
 ## Coming from Effect
 
-Test overrides return Effect values explicitly. Use `() => succeed("Release notes")` for a fixed result, or an effect arrow when the implementation needs several operations.
+Overrides in `layerNoop` return explicit Effects: `() => succeed("Release notes")` for constants, or `effect () => { ... }` for multi-step stubs.
 
 ---
 

@@ -196,14 +196,22 @@ async function withHoverServer(compiler: string, use: (server: Server, temp: str
   }
 }
 
+export function cacheFile(cache: string, root: string, path: string): string {
+  const rel = relative(root, path)
+  if (!rel.startsWith("..") && rel !== "..") return join(cache, rel.replace(/\.md$/, ".json"))
+  const fromRepo = relative(repo, path)
+  const safe = (!fromRepo.startsWith("..") && fromRepo !== "..") ? fromRepo : rel.replace(/^(\.\.[/\\])+/, "")
+  return join(cache, "_external", safe.replace(/\.md$/, ".json"))
+}
+
 // Brings the cache up to date for the pages under root and returns what it did.
 export async function updateHovers(options: { compiler: string; root: string; cache: string; filter?: string }): Promise<Summary> {
   const started = performance.now()
   const base = baseKey(options.compiler)
   const pages = markdownPages(options.root).filter(p => relative(options.root, p).includes(options.filter ?? ""))
-    .map(path => ({ page: relative(options.root, path), blocks: extract(readFileSync(path, "utf8")) }))
+    .map(path => ({ path, page: relative(options.root, path), blocks: extract(readFileSync(path, "utf8")) }))
     .filter(p => p.blocks.length)
-    .map(p => ({ ...p, key: pageKey(base, p.blocks), file: join(options.cache, p.page.replace(/\.md$/, ".json")) }))
+    .map(p => ({ ...p, key: pageKey(base, p.blocks), file: cacheFile(options.cache, options.root, p.path) }))
   const read = (file: string): PageHovers | undefined => { try { return JSON.parse(readFileSync(file, "utf8")) } catch { return undefined } }
   const entries = new Map(pages.map(p => [p.file, read(p.file)]))
   const stale = pages.filter(p => entries.get(p.file)?.key !== p.key)

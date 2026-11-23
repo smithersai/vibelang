@@ -1,6 +1,8 @@
 # SubscriptionRef
 
-A `SubscriptionRef` combines shared state with a stream of changes. Use it for observable application state where each subscriber needs a current snapshot, then later updates. Its updates support the same serialized, effectful operations as `SynchronizedRef`.
+A `SubscriptionRef<A>` combines a `SynchronizedRef` with a live change stream. Each subscriber receives the current value immediately upon subscribing, followed by every subsequent committed update.
+
+![Atomic Ref vs. reactive SubscriptionRef](/diagrams/ref-and-subscriptionref.svg)
 
 ## Combining state with subscriptions
 
@@ -22,7 +24,7 @@ effect function advance(progress: SubscriptionRef.SubscriptionRef<{
 // Output: {"completed":1,"total":12}
 ```
 
-Running the creation Effect sets the reference's initial state. An update through `SubscriptionRef` commits the value and publishes the change to subscribers. Keep values immutable so observers receive meaningful snapshots.
+`SubscriptionRef.make(initial)` allocates the cell and its broadcast hub. Every update commits the new state and publishes it to active subscribers. Store immutable values so past snapshots emitted to subscribers are never mutated under them.
 
 ## Reading and updating observable state
 
@@ -39,7 +41,7 @@ effect function renameStatus() {
 // Output: {"before":"starting","after":"RUNNING"}
 ```
 
-`get` reads without subscribing. `set`, `update`, and `modify` change the value; their effectful variants compute replacements while holding the update lock. A read outside an update callback is a snapshot; it doesn't reserve the value for a later write.
+`SubscriptionRef.get` reads the current state without creating a subscription. `set`, `update`, `modify`, and their `*Effect` counterparts behave identically to `SynchronizedRef`, holding the update lock across effectful transitions. A standalone `get` is only a snapshot and does not reserve the value for a later write.
 
 ## Consuming current and future values
 
@@ -53,7 +55,7 @@ effect function currentSnapshot() {
 // Output: [7]
 ```
 
-`changes` builds a Stream that starts listening only when it runs. Each run first emits the value current at subscription time, then future updates. Consume it with Stream operators such as `take` and `runForEach`, or iterate it with `for try (const value of changes) { … }`; leaving the loop closes the stream and its subscription.
+`SubscriptionRef.changes(ref)` returns a cold `Stream`—no subscription is registered until the stream is consumed. Each consumption first emits the value current at subscription time, then every later update. Consume it with Stream operators (`Stream.take`, `Stream.runForEach`) or a `for try (const value of changes) { ... }` loop; exiting the loop closes the stream and unsubscribes automatically.
 
 ## Coordinating concurrent subscribers
 
@@ -85,4 +87,4 @@ effect function observeTwoClients() {
 // Output: observed 1
 ```
 
-Each subscriber signals readiness from its first stream element, so both subscriptions exist before the update. Each client observes zero, then one, and `Stream.take(…, 2)` ends its subscription. A sleep or one scheduler yield doesn't establish that ordering; when every observer must see a particular change, signal readiness explicitly.
+Because `changes` subscribes lazily when consumption begins, forking a subscriber does not guarantee it is subscribed before the next `set`. Here each client completes a `Deferred` upon receiving its initial snapshot (`0`), proving both subscriptions are live before `SubscriptionRef.set(count, 1)` runs. Never rely on `sleep` or a yield to synchronize subscriber startup—signal readiness explicitly.

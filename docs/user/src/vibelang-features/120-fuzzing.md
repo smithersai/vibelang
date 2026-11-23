@@ -1,10 +1,10 @@
 # Fuzzing with Experimental.Fuzz
 
-> **Open proposal ([VIP-70](https://vibelang.sh/vips/0070-std-fuzz)), experimental, not part of the alpha.** This page needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+> **Open proposal ([VIP-70](https://vibelang.sh/vips/0070-std-fuzz)), experimental, not part of the alpha.** Requires `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. Any release may change or remove it.
 
-`Experimental.Fuzz.run` generates inputs from a schema, keeps the inputs that made the program do something new, mutates them, and reports a shrunk failure you can replay. With `Experimental.FuzzSimulation.execution()` it also chooses how fibers interleave and when timers fire, so a race is found, shrunk and replayed the same way a bad value is. Both are in scope in a `.vibe` file with no import once the project opts in with `"vibe": { "experimental": ["builtins"] }`; their code is `vibelang-runtime/experimental/Fuzz` and `vibelang-runtime/experimental/FuzzSimulation`.
+`Experimental.Fuzz.run` generates inputs from a schema, keeps inputs that trigger new coverage feedback, mutates them, and reports shrunk, replayable failures. Paired with `Experimental.FuzzSimulation.execution()`, it also controls fiber interleaving and virtual timers to find, shrink, and replay concurrency races and deadlocks. Both modules are in scope once opted in (implemented at `vibelang-runtime/experimental/Fuzz` and `vibelang-runtime/experimental/FuzzSimulation`), require no layer, and run in browsers, Workers, Node, and Bun.
 
-The module is a copy of a `Fuzz` module written for Effect and kept file for file with it, so it moves to Effect's own module when Effect ships one ([VIP-70](https://vibelang.sh/vips/0070-std-fuzz#decision)). Like the other [experimental APIs](118-experimental-platform-apis.md), a release can change or remove it. It needs no layer and runs in a browser, a Worker, Node and Bun.
+Mirrored file-for-file from a `Fuzz` module written for Effect so it can transition directly when Effect ships one ([VIP-70](https://vibelang.sh/vips/0070-std-fuzz#decision)). Like the other [experimental APIs](118-experimental-platform-apis.md), any release may change or remove it.
 
 ```text
  seed ─► pick a kept input ─► mutate ─► generate a value ─► run the property
@@ -16,11 +16,11 @@ The module is a copy of a `Fuzz` module written for Effect and kept file for fil
 
 ## When to use it
 
-A property check such as `Arbitrary.checkEffect` runs a law on random inputs. It misses a failure that hides behind conditions random inputs rarely meet together: a magic number, a protocol prefix, a precise sequence of commands, or one interleaving of two fibers. Use `Experimental.Fuzz` for those. Keep property checks for laws that random inputs exercise well.
+Use `Arbitrary.checkEffect` for laws that random inputs test well. Use `Experimental.Fuzz` when failures hide behind narrow conditions—magic bytes, protocol prefixes, command sequences, or rare fiber interleavings.
 
 ## A first run
 
-The parser below fails only on input that starts with the bytes `0x7f 0x45`. Random arrays almost never do. Each byte it matches is a `Fuzz.observe` label, so the fuzzer keeps the inputs that get closer and finds the failure:
+The parser below fails only when input starts with `0x7f 0x45`. `Fuzz.observe` labels mark each matched byte so the fuzzer keeps closer inputs and reaches the failure:
 
 ```vibe
 // run: try Console.log(try firstRun())
@@ -42,34 +42,34 @@ export effect function firstRun() {
 // Output: [ 127, 69 ]
 ```
 
-The first argument is a schema or an Effect `Arbitrary`. A schema, including one declared with `schema`, is compiled with `Arbitrary.schema`. `Fuzz.formatReport(report)` gives a printable diagnostic, or `undefined` when the run passed.
+The first argument is a schema (compiled via `Arbitrary.schema`, including `schema` declarations) or an Effect `Arbitrary`. `Fuzz.formatReport(report)` returns a diagnostic string, or `undefined` on pass.
 
-The property contract is `Arbitrary.checkEffect`'s: return `true`, or an Effect of `true`, to pass. Returning anything else, failing or dying is a finding. A defect is a finding too, because a crash is what fuzzing looks for. Interruption propagates. The property may run many times on equal inputs and must give the same outcome for the same input; don't mutate the input.
+The property contract matches `Arbitrary.checkEffect`: return `true` (or an Effect of `true`) to pass; any other value, typed failure, or defect is a finding, while interruption propagates. Properties must be deterministic and must not mutate their input.
 
 ## Budgets
 
-A run stops at the first of these options:
+A run stops at the first reached limit:
 
-| Option | Stops the run after | Default |
+| Option | Stops after | Default |
 | --- | --- | --- |
-| `duration` | that much wall time | 10 seconds, when no other budget is given |
-| `executions` | that many executions | none |
-| `plateau` | that many executions without new feedback or a new finding | none |
-| `maxFindings` | that many distinct failure signatures | 1 |
+| `duration` | Wall time | `10 seconds` (when no other budget is set) |
+| `executions` | Execution count | None |
+| `plateau` | Executions without new feedback or findings | None |
+| `maxFindings` | Distinct failure signatures | `1` |
 
-A run bounded only by `duration` does not run the same number of executions on every machine. In a test, give `executions`. `seed` fixes the fuzzer's choices: the same seed, input, property and options give the same report. Without a seed the run draws one and reports it in `report.stats.seed`. `size` (default 100) bounds generated values and `maxShrinks` (default 1,000) bounds shrinking.
+Use `executions` in tests for machine-independent determinism. `seed` makes runs reproducible (otherwise drawn randomly and recorded in `report.stats.seed`). `size` defaults to `100` and `maxShrinks` defaults to `1,000`.
 
 ## What guides the search
 
 | Source | Records | Setup |
 | --- | --- | --- |
-| spans | each `(parent span, span)` edge, so `Effect.fn("Bank.withdraw")` is a coverage point | on by default; `feedback: []` turns it off |
-| causes | the exit tag, each error `_tag`, each defect constructor | always |
-| observations | each `Experimental.Fuzz.observe(label)` | call it where reaching a stage matters |
-| scores | the best `Experimental.Fuzz.score(label, value)` per label | call it to climb toward a goal |
-| structure | the shape of the generated input | always |
+| Spans | `(parent span, span)` edges (`Effect.fn("Bank.withdraw")` or `withSpan`) | On by default (`feedback: []` disables) |
+| Causes | Exit tag, error `_tag`, defect constructor | Always |
+| Observations | `Experimental.Fuzz.observe(label)` calls | Call at milestones |
+| Scores | Highest `Experimental.Fuzz.score(label, value)` per label | Call to climb toward a goal |
+| Structure | Generated input shape | Always |
 
-VibeLang adds no spans of its own, so an `effect function` is a span only when it runs inside `withSpan(program, "name")`, as in [Tracing](../observability/033-tracing.md). Effect code written with `Effect.fn("name")` already is. Without spans, `observe` labels guide the search. `observe` and `score` do nothing outside a fuzz run, so they can stay in production code. A score turns a needle into a hill: report the negative of a distance and the fuzzer keeps the inputs that get closer.
+VibeLang does not emit automatic spans; wrap `effect function` calls with `withSpan(program, "name")` ([Tracing](../observability/033-tracing.md)) or use `observe`/`score` (no-ops outside a fuzz run, safe to leave in production code). Passing negative distance to `score` turns a needle into a hill:
 
 ```vibe
 // run: try Console.log(try climb())
@@ -86,25 +86,25 @@ export effect function climb() {
 // Output: 777777777
 ```
 
-The `feedback` option replaces the spans source with your own `Experimental.Fuzz.Feedback` values, each a `name` and a `measure` that wraps one execution. A span named from data, such as an id, makes every execution look new; turn spans off for such a program. A report whose only feedback is structure and causes says "structural exploration": nothing measured coverage.
+`feedback` replaces spans with custom `Experimental.Fuzz.Feedback` (`{ name, measure }`) collectors. Disable spans if span names include dynamic data such as IDs. A report showing `"structural exploration"` means only structure and causes were active.
 
 ## Findings
 
 | Report `_tag` | Meaning |
 | --- | --- |
-| `Passed` | No failure in the budget |
-| `Falsified` | `findings` holds each distinct failure; `flaky` holds failures that did not repeat |
+| `Passed` | No failure within budget |
+| `Falsified` | `findings` holds distinct failures; `flaky` holds non-repeating failures |
 | `Flaky` | Every failure was flaky |
 | `Exhausted` | Every execution was discarded |
-| `ReplayMismatch` | A replay token no longer regenerates its input |
+| `ReplayMismatch` | Replay token no longer regenerates its input |
 
-Each finding has a `signature`: `ReturnedFalse`, `PropertyError:<tag>`, `Died:<constructor>` or `Deadlock`. Shrinking keeps the signature, so one failure never shrinks into another. Before a finding is reported, its final input runs once more; one that does not fail the same way twice is flaky, never falsified. A flaky finding means the property depends on something besides its input, such as shared state or real time.
+Each finding has a `signature` (`ReturnedFalse`, `PropertyError:<tag>`, `Died:<constructor>`, or `Deadlock`) preserved during shrinking. Every final shrunk input is rechecked; non-repeating failures are classified as flaky (indicating shared state or real-time dependence).
 
-`finding.replay` is a token holding the generator tape, the schedule tape and the shrink path. `Experimental.Fuzz.run(input, property, { replay })` reproduces the finding with every other option ignored except `execution`. A token replayed against a changed generator is a `ReplayMismatch`, not a pass.
+`finding.replay` stores the generator tape, schedule tape, and shrink path. `Experimental.Fuzz.run(input, property, { replay })` reproduces it (ignoring all options except `execution`), reporting `ReplayMismatch` if the generator changed.
 
 ## Keeping failures between runs
 
-`Experimental.Fuzz.target(input, property, { id, revision, codec? })` gives a property a stable identity, and `Experimental.Fuzz.runTarget(target, options)` runs it with the store in the `Experimental.Fuzz.Corpus` service. A run first replays the store's saved failures, then its saved inputs, then searches. With no store, the corpus lives in memory for one run.
+`Experimental.Fuzz.target(input, property, { id, revision, codec? })` gives a property a stable identity, and `Experimental.Fuzz.runTarget(target, options)` runs it against the `Experimental.Fuzz.Corpus` service (replaying saved failures, then saved inputs, then searching; defaults to an in-memory corpus per run):
 
 ```vibe
 // run: try Console.log(try twice())
@@ -122,11 +122,11 @@ export effect function twice() {
 // Output: [ 'Falsified', 0 ]
 ```
 
-A confirmed failure is saved as a value, encoded with the schema's JSON codec, so it survives a change to the generator. An `Arbitrary` input has no codec unless you pass one, and its failures are saved as tapes that replay only while `revision` is unchanged. Kept inputs are a search cache tied to `revision`. `executions: 0` only replays saved failures, which is the regression mode for a test suite. A store is any `{ load, save }` value; a store that fails, or holds an entry it cannot read, fails the run with a `FuzzError` whose `reason` is `"Corpus"`. A file-backed store needs `FileSystem` and belongs with the test integration.
+Schema-backed failures save as JSON values (surviving generator changes); `Arbitrary` failures without a codec save as tapes tied to `revision`, as do cached inputs. `executions: 0` replays saved failures only (regression mode). A corpus store is any `{ load, save }` value—store errors fail the run with `FuzzError` (`reason: "Corpus"`), and file-backed stores use `FileSystem`.
 
 ## Races and deadlocks
 
-`Experimental.FuzzSimulation.execution()` runs each execution in a closed world: its own scheduler, and a virtual clock that jumps to the next timer when nothing can run. The schedule tape decides how many operations each fiber runs before it yields, and the fuzzer mutates that tape like any other input. Two withdrawals that read, check and write a balance pass every ordinary run, because the default scheduler runs each one to completion. Under the simulation, a yield between the read and the write loses an update:
+`Experimental.FuzzSimulation.execution()` runs in a closed world with a controlled scheduler and virtual clock (jumping to the next timer when idle). The fuzzer mutates the schedule tape (operations per fiber before yield) alongside inputs, exposing races invisible under the default scheduler:
 
 ```vibe
 // run: try Console.log(try lostUpdate())
@@ -158,6 +158,6 @@ export effect function lostUpdate() {
 // Output: [ 1, 1 ]
 ```
 
-The same seed gives the same schedule and the same result, and the replay token reproduces the interleaving. A program with nothing runnable, no pending timer and an unfinished property is a `Deadlock` finding. `maxSteps` (default 100,000) bounds one execution; an execution that reaches it is discarded.
+Same seed reproduces the exact schedule, and `finding.replay` replays the interleaving. No runnable fibers, no pending timers, and an unfinished property reports `Deadlock`; hitting `maxSteps` (default `100,000`) discards the execution.
 
-The closed world has edges. Real I/O, a Promise from outside Effect, `Date.now`, `Math.random` and shared mutable state are outside it, and a property that touches them is not deterministic: an escape looks like a deadlock or makes a replay diverge. Provide in-memory services to the property. A synchronous loop that never yields cannot be interrupted; bound such a property with a process or a worker.
+**Closed-world boundaries:** Real I/O, external Promises, `Date.now`, `Math.random`, and shared mutable state break determinism (causing false deadlocks or replay divergence)—provide in-memory services instead. Unyielding synchronous loops cannot be interrupted; bound them with a process or worker.

@@ -1,8 +1,8 @@
 # Filters
 
-Filters work as in Effect: they add validation without changing the decoded type, and run after the underlying schema accepts the value. Use synchronous predicates for local checks and effectful getters for checks that need services. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Filters validate values after the underlying schema accepts them, without changing the decoded TypeScript type. Use synchronous predicates for local checks and effectful getters when validation needs services. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Defining predicate-based checks
+## Predicate checks
 
 ```vibe
 // run: try Console.log(try readShelf("S-12")); try Effect.catch(readShelf("A-12"), (error) => Console.log(error.message))
@@ -20,11 +20,14 @@ S-12
 Use an S- shelf code
 ```
 
-A predicate receives the value, the schema AST, and the active parse options. Returning `true` or `undefined` accepts the value; `false` rejects it with the default message, and a string with that message. It can also return a `SchemaIssue.Issue`, a path-and-issue object, or an array of issues.
+A predicate receives `(value, ast, options)`:
+- Return `true` or `undefined` to accept.
+- Return `false` to reject with the default message, or a `string` for a custom message.
+- Return a `SchemaIssue.Issue`, a `{ path, issue }` object, or an array of issues for structured diagnostics.
 
-Filters keep the original TypeScript type; add a brand to give validated values a distinct static identity. A plain filter callback must complete synchronously, with no typed failures or service calls; effectful checks use `SchemaGetter.checkEffect`.
+Filters preserve the underlying static type; add a brand when validated values need a distinct type. Plain predicates must be synchronous and pure—use `SchemaGetter.checkEffect` for service calls or typed failures.
 
-## Annotating validation checks
+## Annotating checks
 
 ```vibe
 // run: try Console.log(Schema.is(FourDigits)("1234")); try Effect.catch(Schema.decodeUnknownEffect(FourDigits)("abc"), (error) => Console.log(error.message))
@@ -42,9 +45,11 @@ true
 Expected four decimal digits
 ```
 
-`expected` supplies the default formatter's description; `message` replaces its message. `toJsonSchema` explains the constraint to the JSON Schema interpreter. A custom predicate alone cannot tell a generator or document exporter its meaning; add `arbitraryConstraint` when the generator can construct matching values.
+- `expected` feeds the default formatter (`Expected ...`); `message` overrides the whole message.
+- `toJsonSchema` exports the constraint to JSON Schema.
+- `arbitraryConstraint` guides `Arbitrary` generators when an opaque predicate alone cannot construct valid samples.
 
-## Assigning issue paths and reporting several issues
+## Issue paths and multiple issues
 
 ```vibe
 // run: try Effect.catch(validateWindow({ start: 2, end: 1, destination: "" }), (error) => Console.log(error.message))
@@ -77,9 +82,9 @@ Choose a destination
   at ["destination"]
 ```
 
-Paths are relative to the checked value and can contain keys or array indices. Each returned issue attaches to its own field; an empty list succeeds. `errors: "all"` also collects independent failures elsewhere in the schema. The cross-field check runs only on a valid struct value.
+Paths are relative to the checked value (property keys or array indices). An empty array accepts the value. Cross-field struct checks run only after every field passes its own schema; `errors: "all"` collects independent issues across the struct.
 
-## Applying built-in constraints
+## Built-in constraints
 
 ```vibe
 // run: try Console.log(Schema.is(Label)(" ok"), Schema.is(Count)(4), Schema.is(Count)(3), Schema.is(Ratio)(2), Schema.is(Batch)([]), Schema.is(Serial)(1n))
@@ -98,9 +103,10 @@ const Serial = Schema.BigInt.check(Schema.isGreaterThanBigInt(0n))
 false true false false false true
 ```
 
-String checks include `isNonEmpty`, `isPattern`, `isStartingWith`, `isEndingWith`, `isIncluding`, `isTrimmed`, `isLowercased`, `isUppercased`, `isCapitalized`, and `isUncapitalized`. Length checks work on strings and arrays; `isBetweenLength(n, n)` is an exact length. `Schema.NonEmptyString` is a ready-made nonempty string schema.
-
-Numbers have strict and inclusive lower and upper bounds, `isBetween`, `isInt`, and `isMultipleOf`; bigints have the matching `BigInt` bounds, `isBetweenBigInt` included. Checks only validate: they do not round numbers, change case, or trim strings.
+Checks validate without transforming—they never trim, round, or change case:
+- **Strings**: `isNonEmpty`, `isPattern`, `isStartingWith`, `isEndingWith`, `isIncluding`, `isTrimmed`, `isLowercased`, `isUppercased`, `isCapitalized`, `isUncapitalized` (plus the prebuilt `Schema.NonEmptyString`).
+- **Lengths** (strings and arrays): `isMinLength`, `isMaxLength`, `isBetweenLength` (`isBetweenLength(n, n)` for exact length).
+- **Numbers & BigInts**: strict and inclusive bounds, `isBetween`, `isInt`, `isMultipleOf`, and the `BigInt`-suffixed equivalents (`isGreaterThanBigInt`, `isBetweenBigInt`, etc.).
 
 ```vibe
 // run: try Console.log(Schema.is(ShipDate)(new Date("2026-06-01T00:00:00Z")), Schema.is(ShipDate)(new Date("invalid"))); try Console.log(Schema.is(try sync(() => boundedPriceSchema()))(try sync(() => BigDecimal.fromStringUnsafe("1.25")))); try Console.log(Schema.is(HoldDuration)(Duration.seconds(5)), Schema.is(HoldDuration)(Duration.seconds(31)))
@@ -129,8 +135,6 @@ true
 true false
 ```
 
-`Schema.Date` rejects invalid dates before date bounds run. Date and BigDecimal checks have strict, inclusive, and range variants with `Date` and `BigDecimal` suffixes. For durations, write a custom filter with `Duration.isGreaterThan`, `isLessThan`, their inclusive variants, or `between`.
-
-Fixed date parsing is deterministic. For a bound relative to the current time, read the time through Effect's clock APIs inside a function and build the schema there.
+`Schema.Date` rejects invalid `Date` instances before bounds run. Date and `BigDecimal` checks follow the `Date` and `BigDecimal` suffixes; durations use custom filters with `Duration.isGreaterThan`, `isLessThan`, their inclusive variants, or `between`. For bounds relative to the current time, read `Clock` inside an `effect` function and build the schema there.
 
 [Upstream page](https://effect.website/docs/v4/schema/filters)

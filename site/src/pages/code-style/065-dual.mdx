@@ -1,13 +1,13 @@
 ---
 title: "Dual APIs"
-description: "Many Effect APIs are dual: they take the data then the options (data-first), or the options then the data (data-last). VibeLang keeps both. With the pipe operator, |>, data-first usually reads best."
+description: "A dual function accepts either the data followed by options (data-first) or the options alone, returning a function that takes the data later (data-last). Use direct data-first calls for single..."
 ---
 
 # Dual APIs
 
-Many Effect APIs are dual: they take the data then the options (data-first), or the options then the data (data-last). VibeLang keeps both. With the pipe operator, `|>`, data-first usually reads best.
+A dual function accepts either the data followed by options (data-first) or the options alone, returning a function that takes the data later (data-last). Use direct data-first calls for single operations, `|>` with `%` for multi-step VibeLang pipelines, and data-last overloads when composing reusable stages with `pipe`.
 
-## Data first or data last
+## Data-first and data-last calls
 
 ```vibe
 const source = Stream.make(5, 10, 15)
@@ -30,9 +30,9 @@ effect function compare() {
 [[1,2,3],[1,2,3]]
 ```
 
-The direct form supplies `source` in the first call; the data-last form builds a stage, then `pipe` supplies `source`. Both build the same kind of Stream value and process nothing until consumed.
+The direct call passes `source` immediately; the data-last call builds a reusable transformation stage that `pipe` applies to `source`. Both produce an identical lazy `Stream` value and perform no work until consumed.
 
-## Methods
+## Module functions over data types
 
 ```vibe
 const missing = Cause.fail("missing port")
@@ -56,9 +56,9 @@ effect function methods() {
 {"error":"missing port","amount":"2.5","pairs":[1,2]}
 ```
 
-Use Effect's module functions to transform its data types. A data-first function is an overload that takes the value first. For example, `Cause.findErrorOption(missing)` returns an Option, which `Option.getOrElse` unwraps. A value's own methods, such as an Effect's `.pipe`, keep their library meaning.
+Effect data types are transformed through module functions rather than instance methods, while built-in object methods such as `.pipe` retain their standard behavior. Calling a binary operator data-first (such as `Stream.zipLeft(source, other)`) returns the transformed value; calling it data-last (`Stream.zipLeft(other)`) returns a stage for `pipe`.
 
-| Module | Functions |
+| Module | Representative functions |
 | --- | --- |
 | `BigDecimal` | `abs`, `format`, `isInteger`, `isNegative`, `isPositive`, `isZero`, `negate`, `round`, `sign`, `toExponential`, `toNumberUnsafe` |
 | `Cause` | `findErrorOption`, `pretty` |
@@ -67,8 +67,6 @@ Use Effect's module functions to transform its data types. A data-first function
 | `Exit` | `findDefect`, `findError` |
 | `Schedule` | `toStep`, `toStepWithMetadata`, `toStepWithSleep` |
 | `Stream` | `cross`, `crossWith`, `mergeLeft`, `mergeRight`, `race`, `toChannel`, `zipLatest`, `zipLatestWith`, `zipLeft`, `zipRight`, `zipWith`, `zipWithArray` |
-
-A data-last overload such as `Stream.zipLeft(other)` returns a function for `pipe`. A data-first call such as `Stream.zipLeft(source, other)` returns the transformed Stream. Neither consumes the Stream.
 
 ## Direct calls and nested programs
 
@@ -92,7 +90,7 @@ effect function nestedLookup() {
 found found
 ```
 
-`retry` and `timeout` take Effect values. `retry` reruns its Effect on each attempt, and the outer `timeout` limits the whole retried computation. A pipe's `%` is the value before its `|>`, so `lookup() |> retry(%, policy)` passes the Effect to `retry`.
+Combinators like `retry` and `timeout` operate on Effect values, not settled results. Here `retry` re-executes `lookup()` on failure, while the outer `timeout` bounds the entire retried sequence.
 
 ## Choosing a form
 
@@ -111,7 +109,7 @@ const reusableLookup = lookup()
 found found
 ```
 
-A direct call suits one operator. Nest calls or use a pipe for several. Bind an Effect value to reuse it. Each `try reusableLookup` runs the computation again. To transform a completed value, ordinary statements are usually clearer than `Effect.map` or `Effect.flatMap`.
+Use a direct call for a single operator, and the pipe operator `|>` (where `%` stands for the left-hand value) when chaining several operators. Binding an Effect value to a constant makes it reusable—each `try reusableLookup` runs the workflow anew—while plain local variables and statements replace `Effect.map` and `Effect.flatMap` for post-processing results.
 
 ---
 

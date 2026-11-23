@@ -1,8 +1,8 @@
 # Error Formatters
 
-Schema issue formatters work as in Effect. They render failures as readable strings for diagnostics or as structured issue paths for forms and other validation clients; [value formatters](103-formatter.md) render successful values. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Issue formatters turn `SchemaIssue.Issue` trees into human-readable strings for logs or path-indexed issue lists for forms; for successful values, see [Schema to Formatter](103-formatter.md). Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Rendering schema issues as readable strings
+## Default string formatter
 
 ```vibe
 // run: try Console.log(try readableFailure({})); try Console.log(try readableFailure({ destination: "north", packages: 2 }))
@@ -25,9 +25,9 @@ Missing key
 Accepted
 ```
 
-`makeFormatterDefault()` returns a function from an issue to a multiline string; paths identify nested keys and indices. `SchemaError.message` already uses this format, so read it directly unless you need custom formatting.
+`SchemaIssue.makeFormatterDefault()` produces the same multiline output exposed by `error.message`; call it directly only when customizing formatting.
 
-## Reporting several issues
+## Collecting multiple issues
 
 ```vibe
 // run: try Console.log(try allFailures({}))
@@ -47,9 +47,9 @@ Missing key
   at ["packages"]
 ```
 
-Formatting shows only the issues parsing collected; set `errors: "all"` on the parser to collect several independent failures. Nested prerequisites still apply: a struct-level check runs only after its input validates.
+Formatters render only the issues recorded during parsing. Pass `{ errors: "all" }` to collect independent failures; dependent checks (such as struct-level filters) still wait for their prerequisites to pass.
 
-## Formatting Standard Schema validation errors
+## Standard Schema issue lists
 
 ```vibe
 // run: { const jsonValue = try formFailures({}); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -66,7 +66,7 @@ effect function formFailures(input: unknown) {
 [{"path":["destination"],"message":"Missing key"},{"path":["packages"],"message":"Missing key"}]
 ```
 
-The Standard Schema formatter returns a failure object with an `issues` array. Each leaf issue carries its full path, so each message maps to a form field. Keep paths structured when field names contain dots or array indices matter; joining segments into a string loses that distinction.
+`makeFormatterStandardSchemaV1()` returns `{ issues }`, where each leaf carries its structured `path` array (preserving dots in keys and numeric array indices) and `message`.
 
 ## Customizing leaf messages
 
@@ -91,9 +91,9 @@ effect function localizedFailures(input: unknown) {
 [{"path":["destination"],"message":"Expected string"}]
 ```
 
-`leafHook` replaces selected leaf messages; delegate other cases to `defaultLeafHook` to keep the built-in messages. Keep the hook synchronous and free of service calls; load translated strings before creating it.
+Override selected issue tags in `leafHook` and fall back to `SchemaIssue.defaultLeafHook(issue)` for the rest. Keep hooks synchronous and pure; load translations beforehand.
 
-## Connecting validation to form libraries
+## Form library integration
 
 ```vibe
 // run: { const jsonValue = try tryPromise(() => Promise.resolve(formSchema()["~standard"].validate({}))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -113,8 +113,6 @@ function formSchema() {
 {"issues":[{"path":["destination"],"message":"Complete this field"},{"path":["packages"],"message":"Complete this field"}]}
 ```
 
-Pass the adapter to a form library that accepts Standard Schema V1 from the UI integration's normal TypeScript module. The adapter exposes structured issues and keeps the original Schema operations; its decoding services must be `never`.
-
-For React Hook Form, pass `DispatchForm` to [`standardSchemaResolver`](https://github.com/react-hook-form/resolvers/tree/master/standard-schema) from `@hookform/resolvers/standard-schema`, which calls the Standard Schema validation interface. The separate `effectTsResolver` uses Effect 3's `ParseResult` API and does not support Effect 4.1.1.
+`Schema.toStandardSchemaV1` adapts any service-free codec (`RD = never`) while retaining its Schema methods. For React Hook Form, pass `DispatchForm` to [`standardSchemaResolver`](https://github.com/react-hook-form/resolvers/tree/master/standard-schema) from `@hookform/resolvers/standard-schema` (`effectTsResolver` targets Effect 3's `ParseResult` and does not support Effect 4.1.1).
 
 [Upstream page](https://effect.website/docs/v4/schema/error-formatters)

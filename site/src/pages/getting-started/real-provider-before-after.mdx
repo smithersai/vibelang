@@ -1,13 +1,13 @@
 ---
 title: "A Real Provider, Before and After"
-description: "Alchemy deploys cloud resources from Effect programs. This page compares one of its resource providers in both languages: RegistryPolicy, the permissions policy of a private Amazon ECR registry...."
+description: "Alchemy deploys cloud resources from Effect programs. Below is one of its AWS resource providers (RegistryPolicy, for private Amazon ECR registry permissions) in Alchemy's Effect TypeScript and in..."
 ---
 
 # A Real Provider, Before and After
 
-[Alchemy](https://alchemy.run) deploys cloud resources from Effect programs. This page compares one of its resource providers in both languages: `RegistryPolicy`, the permissions policy of a private Amazon ECR registry. The TypeScript is Alchemy's own. The VibeLang is the conversion in [smithersai/alchemy](https://github.com/smithersai/alchemy/tree/vibe), which is a fork, with the hand edits listed below.
+[Alchemy](https://alchemy.run) deploys cloud resources from Effect programs. Below is one of its AWS resource providers (`RegistryPolicy`, for private Amazon ECR registry permissions) in Alchemy's Effect TypeScript and in VibeLang from the [smithersai/alchemy](https://github.com/smithersai/alchemy/tree/vibe) fork, with the hand edits noted below.
 
-Both listings show only `RegistryPolicyProvider`, with Alchemy's comments removed. In the rest of the file, the VibeLang drops the `effect/Effect` import, which it keeps in scope, and imports `../IAM/Policy.vibe` instead of `../IAM/Policy.ts`. The props interface and the doc comment read the same.
+Both listings omit Alchemy's comments and show only `RegistryPolicyProvider`. Elsewhere in the file, VibeLang drops the `effect/Effect` import (already in scope) and imports `../IAM/Policy.vibe` instead of `.ts`; props and doc comments are unchanged.
 
 ## Effect TypeScript
 
@@ -151,25 +151,23 @@ export const RegistryPolicyProvider = () =>
 | `yield* e` | `try e` |
 | `e.pipe(Effect.catchTag("X", () => Effect.void))` | `e catch effect (err) => match (err) { when { _tag: "X" }: undefined; default: throw err; }` |
 
-Over the provider, the 9 `yield*`, 2 `Effect.gen`, 3 `Effect.fn` and 2 `.pipe` calls are gone. The listing takes 60 lines against 57, and 1372 characters against 1436, counting no whitespace.
-
-The catch is the one place VibeLang is longer. `Effect.catchTag` rethrows every other error for you, and `match` writes that rethrow out as `default: throw err`.
+Across the provider, 9 `yield*`, 2 `Effect.gen`, 3 `Effect.fn`, and 2 `.pipe` calls disappear: 60 lines vs 57, and 1,372 non-whitespace characters vs 1,436. The `catch` is the one spot VibeLang is longer, because `match` writes the rethrow explicitly (`default: throw err`) where `Effect.catchTag` rethrows implicitly.
 
 ## Hand edits
 
-The converter produced everything above except these, all made by hand:
+Manual cleanup after automated conversion:
 
-- `when { _tag: "..." }: try Effect.void` and `try Effect.undefined` became `undefined`.
-- `ecr.getRegistryPolicy({})` and `ecr.deleteRegistryPolicy({})` moved onto one line with their `catch`.
-- Two `: infer _` return annotations and every `mutable` member modifier, which an earlier converter wrote, were removed. The fork keeps the two annotations until it moves to the compiler this page documents.
+- Replaced `when { _tag: "..." }: try Effect.void` and `try Effect.undefined` with `undefined`.
+- Joined `ecr.getRegistryPolicy({})` and `ecr.deleteRegistryPolicy({})` onto one line with their `catch`.
+- Removed two `: infer _` return annotations and `mutable` member modifiers emitted by an earlier converter (the fork keeps the two annotations until it upgrades).
 
 ## How it was checked
 
-- **Compiler.** The current compiler reports no diagnostics for this module. The rest of the fork was still on its pinned compiler for these runs.
-- **Declarations.** The `.d.ts` this listing emits matches the one Alchemy's TypeScript emits, apart from the extensions of relative imports.
-- **Tests.** Alchemy's own test, `test/AWS/ECR/RegistryPolicy.test.ts`, passes unchanged on the JavaScript this listing compiles to. It deploys the policy, reads it back, deploys again and destroys it. It is a live AWS test and these runs had no AWS account, so its HTTP calls went to a local stand-in for ECR and STS. The test failed when a planted fault replaced the delete call.
-- **Formatting.** `vibelang-format --check` passes on the file.
+- **Compiler:** Zero diagnostics on this module (the rest of the fork ran on its pinned compiler).
+- **Declarations:** Emitted `.d.ts` matches Alchemy's TypeScript output apart from relative import extensions.
+- **Tests:** `test/AWS/ECR/RegistryPolicy.test.ts` (deploy, read, redeploy, destroy) passes unchanged against a local ECR/STS stand-in, and fails when a planted fault replaces the delete call.
+- **Formatting:** `vibelang-format --check` passes.
 
 ## Coming from Effect
 
-Nothing in `Provider.effect`'s signature changed, so TypeScript callers see the same module. See the [cheat sheet](/vibelang-features/115-cheat-sheet) for every form beside its Effect code, and [Alchemy](/platform/alchemy) for how the two fit together.
+`Provider.effect`'s signature is unchanged, so TypeScript callers see the same module. See the [cheat sheet](/vibelang-features/115-cheat-sheet) and [Alchemy](/platform/alchemy).

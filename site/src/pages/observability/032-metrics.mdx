@@ -1,11 +1,20 @@
 ---
 title: "Metrics"
-description: "Effect's Metric module counts events, records current values, and measures distributions over time. Metric constructors build values exactly as in Effect; updates, state reads, and instrumented..."
+description: "Effect's Metric module instruments counts, current levels, durations, and distributions. Metric definitions are pure values shared by identity (name + type + attributes); updating a metric,..."
 ---
 
 # Metrics
 
-Effect's `Metric` module counts events, records current values, and measures distributions over time. Metric constructors build values exactly as in Effect; updates, state reads, and instrumented programs return Effects that run with `try`.
+Effect's `Metric` module instruments counts, current levels, durations, and distributions. Metric definitions are pure values shared by identity (name + type + attributes); updating a metric, inspecting its value, or wrapping a computation with tracking returns an Effect executed with `try`.
+
+| Metric | Tracks | Typical use |
+| --- | --- | --- |
+| `Metric.counter` | Cumulative sum (number or `bigint`) | Request totals, bytes transferred |
+| `Metric.gauge` | Latest scalar value (number or `bigint`) | Queue depth, active connections |
+| `Metric.histogram` | Bucketed distribution + count/sum/min/max | Payload sizes, cross-instance latency |
+| `Metric.timer` | Millisecond histogram over `Duration` | Operation latency via `trackDuration` |
+| `Metric.summary` | Sliding-window quantiles (`maxAge`, `maxSize`) | Single-instance percentile snapshots |
+| `Metric.frequency` | Occurrences per string category | Error tags, bounded status codes |
 
 ## Recording counters and gauges
 
@@ -48,7 +57,7 @@ effect function stringify(value: unknown) {
 {"requests":8,"queued":5}
 ```
 
-A counter accumulates changes; a gauge keeps its latest value. `incremental: true` ignores negative counter inputs; without it, a counter also decrements. Counters and gauges both have bigint variants. Updates to the same metric identity share state, so the totals above accumulate across runs.
+Counters sum updates over time; gauges retain only their latest value. Setting `incremental: true` makes a counter monotonic by ignoring negative deltas, and `bigint: true` enables 64-bit-plus counts on both counters and gauges. Metric state is keyed by identity in the runtime registry, so the second call to `recordBatch()` advances `requests` from `4` to `8`.
 
 ```vibe
 const completions = Metric.withConstantInput(
@@ -66,7 +75,7 @@ effect function instrumentedValue() {
 processed 1
 ```
 
-`trackSuccesses` sends a successful return value to a metric and leaves the program's result unchanged. `withConstantInput` replaces that input with one, so this metric counts successes whatever the string.
+`trackSuccesses` forwards a program's return value to a metric without altering the result. Wrapping a counter in `Metric.withConstantInput(..., 1)` ignores the return type and increments by `1` on every success.
 
 ## Measuring distributions
 
@@ -104,7 +113,7 @@ effect function recordSizes() {
 4 147 8 91
 ```
 
-A histogram sorts observations into configured buckets and tracks count, sum, minimum, and maximum; its boundaries set precision and allow aggregation across instances. A summary keeps recent samples, bounded by `maxAge` and `maxSize`, and computes quantiles over that window; don't average its quantiles across instances.
+Histograms group values into fixed cumulative buckets (`Metric.linearBoundaries`, `exponentialBoundaries`, or explicit arrays), making them safe to merge across servers. Summaries compute quantiles over a bounded rolling sample (`maxAge`, `maxSize`)—accurate locally, but never mathematically valid to average across instances.
 
 ## Timing computations
 
@@ -134,7 +143,7 @@ rendered
 1 30 30 30
 ```
 
-`trackDuration` records the wrapped computation's duration, time spent waiting included, and keeps its return value. `Metric.timer` is a duration-input histogram whose bucket boundaries and stored values are milliseconds.
+`trackDuration` measures wall-clock (or `TestClock`) elapsed time—including suspension and I/O waits—and passes the computation's return value through unchanged. `Metric.timer` is a histogram whose boundaries and recorded values are in milliseconds.
 
 ## Counting categorical events
 
@@ -158,7 +167,7 @@ effect function recordOutcomes() {
 [["accepted",2],["rejected",1]]
 ```
 
-A frequency metric counts each observed string. Use a bounded set of categories, such as result kinds or error tags; user and request IDs are unbounded and belong in logs or span attributes.
+`Metric.frequency` counts occurrences per distinct string key. Restrict inputs to a small, bounded vocabulary (status kinds, error tags); high-cardinality identifiers like user or request IDs belong in logs or span attributes, never metric series.
 
 ## Attaching attributes to metrics and regions
 
@@ -190,7 +199,7 @@ effect function attributed() {
 0 0
 ```
 
-`withAttributes` adds attributes to one metric. `CurrentMetricAttributes` adds attributes to every metric operation in a region, reads included, so read state under the attributes you updated it with. Each attribute combination is a separate series; prefer bounded categories such as deployment and route.
+`Metric.withAttributes` binds static attributes to one metric definition. `Metric.CurrentMetricAttributes` attaches ambient attributes to *every* metric operation in its `provide` block—reads included. Because each unique attribute set defines a separate time series, reading `apiRequests` outside the `staging` block returns `0`, not `1`. Keep attribute cardinality bounded (environment, route, region).
 
 ---
 

@@ -1,11 +1,13 @@
 ---
 title: "Tracing"
-description: "Tracing records an operation's duration and its relation to other operations. VibeLang uses Effect's spans, attributes, and exporters, so traces connect work across services. Functions are..."
+description: "Tracing records how long operations take and how they nest across sequential calls, concurrent fibers, and service boundaries. Functions are untraced by default; wrap the operations worth..."
 ---
 
 # Tracing
 
-Tracing records an operation's duration and its relation to other operations. VibeLang uses Effect's spans, attributes, and exporters, so traces connect work across services. Functions are untraced by default; add spans around the operations you want to observe.
+Tracing records how long operations take and how they nest across sequential calls, concurrent fibers, and service boundaries. Functions are untraced by default; wrap the operations worth observing with `withSpan` and attach an exporter layer at the application boundary.
+
+<figure className="vibe-diagram"><img className="vibe-diagram__light" src="/diagrams/observability-pillars.svg" alt="Built-in observability: Logging, Metrics, and Tracing" /><img className="vibe-diagram__dark" src="/diagrams/observability-pillars-dark.svg" alt="Built-in observability: Logging, Metrics, and Tracing" /><figcaption>Built-in observability: Logging, Metrics, and Tracing</figcaption></figure>
 
 ## Relating spans to traces
 
@@ -33,7 +35,7 @@ response
 report-request Ended true
 ```
 
-A span describes one operation: name, identifiers, timestamps, status, and attributes. A trace groups related spans under one trace ID, usually starting at a request's root span. Parent span IDs link the spans into a tree, which a trace viewer shows as a waterfall.
+A **span** records one timed operation: name, span ID, optional parent span ID, timestamps, exit status, events, and attributes. A **trace** groups all spans sharing a root trace ID into a parent-child tree rendered as a waterfall in trace viewers.
 
 ## Adding spans around computations
 
@@ -57,11 +59,11 @@ report.csv
 render-report csv Ended
 ```
 
-`withSpan` starts the span before the program runs and ends it when the program exits, keeping the program's success and failure. A stable name groups comparable work; put variable details in attributes, not in a new span name per request.
+`withSpan` starts a span before executing its Effect and closes it on every exit (success, failure, defect, or interruption) without changing the return value or error channel. Keep span names low-cardinality (`"render-report"`) so traces aggregate cleanly; put variable data (`format`, IDs) in `attributes`.
 
 ## Exporting spans and SDK boundaries
 
-The following TypeScript fixture supplies an in-memory HTTP collector for the examples. Keep Web API implementations in a `.ts` adapter and inject them through the HTTP client's service.
+Keep browser or platform Web API fixtures in a `.ts` adapter and inject them through `FetchHttpClient.Fetch`:
 
 ```ts
 // collector.ts
@@ -101,9 +103,9 @@ report.csv
 1 true true
 ```
 
-Effect 4.1.1, the version VibeLang pins, exports OTLP/HTTP directly under `effect/observability`. The layer batches ended spans, sends them with the supplied HTTP client and serialization, and flushes when its scope shuts down. Provide it around the application's lifetime, so requests don't each create and close an exporter.
+Effect 4.1.1 ships OTLP/HTTP export directly under `effect/observability`. `OtlpTracer.layer` batches ended spans, transmits them through the provided HTTP client and serializer, and flushes pending spans when its scope closes. Install `Tracing` once at the application lifetime (or in a `ManagedRuntime`) rather than per request.
 
-An application that already owns an OpenTelemetry SDK tracer provider initializes its compatible bridge in a TypeScript bootstrap or adapter and provides the resulting Effect layer to VibeLang. Wrap a synchronous SDK call that may throw with `Effect.try` and run it with `try`; wrap a Promise with `tryPromise` and run it with `try`. A synchronous SDK context callback must compile to plain JavaScript, so it can't call services or run other Effect operations.
+When integrating with an existing OpenTelemetry SDK tracer provider, wire its bridge in a TypeScript bootstrap module and hand the resulting `Layer` to VibeLang. Wrap throwing synchronous SDK calls with `Effect.try` and Promises with `tryPromise`; synchronous SDK context callbacks compile to plain JavaScript and cannot invoke Effect operations or services.
 
 ## Inspecting failures and attributes
 
@@ -133,7 +135,7 @@ true unknown
 true
 ```
 
-An exported failure carries error status and failure details; attributes identify the operation's context. `annotateCurrentSpan` enriches the active span from inside its body. An exit recorded as data lets a diagnostic boundary inspect failures, defects, and interruption without changing the outcome the span already recorded.
+Failed spans automatically capture error status and the failure cause. Call `try annotateCurrentSpan(key, value)` from anywhere inside the span to attach context discovered mid-flight. Wrapping `withSpan(...)` in `exit(...)` lets a boundary inspect the `Exit` without hiding the failure from the span.
 
 ## Representing logs as span events
 
@@ -159,7 +161,7 @@ effect function tracedLogs() {
 ["input validated","artifact written"] Ended
 ```
 
-The tracer logger records logs inside an active span as timestamped events, a timeline between the span's start and finish. Replacing the logger set without `tracerLogger` stops this forwarding.
+`Logger.tracerLogger` mirrors log records emitted inside an active span as timestamped span events. If you install a custom `Logger.layer([...])`, keep `Logger.tracerLogger` in the list to preserve this bridge.
 
 ## Nesting operations
 
@@ -196,7 +198,7 @@ effect function generate() {
 [["generate-report",false,true,"Ended"],["load-template",true,true,"Ended"],["render-report",true,true,"Ended"]]
 ```
 
-The inner spans take the outer span as parent and share its trace ID; each has its own ID and duration. Child fibers inherit the tracing context too, so concurrent operations appear as siblings in one trace.
+Inner `withSpan` calls automatically inherit the active span as their parent and share its trace ID. Forked child fibers inherit the active span too, placing concurrent branches side by side in the same waterfall.
 
 ## Viewing traces locally
 
@@ -216,11 +218,11 @@ effect function demonstration() {
 1 true true true
 ```
 
-Run an OTLP/HTTP collector and a trace viewer on the endpoints configured above. For a local Grafana LGTM container, with a collector, Tempo for trace storage, and Grafana for inspection, run `docker run --rm --name vibelang-telemetry --publish 3000:3000 --publish 4318:4318 grafana/otel-lgtm`. Wait until it reports that the stack is ready, and keep it running.
+To inspect traces locally, start a Grafana LGTM stack (OTLP collector, Tempo, and Grafana):
 
-In another terminal, run `demonstration` through the application runner and let the exporter close cleanly. Open `http://localhost:3000/explore`, sign in as the container's startup instructions say, and search Tempo for service `report-worker`; Tempo needs time to index received spans first.
+`docker run --rm --name vibelang-telemetry --publish 3000:3000 --publish 4318:4318 grafana/otel-lgtm`
 
-Open a `generate-report` trace to compare parent and child durations, attributes, events, and failure status. If nothing arrives, check the trace URL, HTTP transport, serialization, and exporter diagnostics before adding instrumentation.
+Once the stack is ready, run `demonstration` through your application runner so the exporter flushes on shutdown. Open `http://localhost:3000/explore`, sign in using the container's startup credentials, and query Tempo for service `report-worker` (allowing a moment for indexing). Open a `generate-report` trace to inspect parent/child timings, attributes, events, and error statuses. If traces are missing, verify the OTLP URL, HTTP client layer, serialization layer, and exporter logs first.
 
 ## Connecting external tracing services
 
@@ -250,11 +252,11 @@ effect function productionReport() {
 1 true
 ```
 
-`Config.String` builds a configuration value; `try TraceEndpoint` reads it when the layer builds. Point the exporter at an authenticated collector or a service's documented OTLP traces endpoint, and set any required headers through `OtlpTracer.layer`. A collector can route the spans to a hosted tracing backend. For Sentry or another service that installs its own SDK, use its compatible SDK bridge or documented OTLP route; exported successful spans don't create error-monitoring issues.
+Read `TRACE_ENDPOINT` via `Config` inside `Layer.unwrap` so environments supply their own collector URL and auth headers via `OtlpTracer.layer`. Point directly at a vendor's OTLP endpoint or an intermediate OpenTelemetry Collector. For services with proprietary SDKs (such as Sentry), connect through their documented OTLP endpoint or compatible SDK bridge; successful spans do not generate error alerts.
 
 ## Coming from Effect
 
-`withSpan` adds tracing explicitly and takes an Effect value: `try withSpan(program, "name")`. Use `effect { ... }` when the spanned operation needs several statements. Automatic function spans are not a compiler option; use `withSpan` to choose each operation boundary. Don't span every helper to reproduce function boundaries; instrument the operations you need to diagnose.
+Tracing in VibeLang is explicit: wrap operations with `try withSpan(program, "name")`, using `effect { ... }` for multi-statement spans. The compiler does not auto-span every function—place spans on meaningful operational boundaries instead of mirroring every helper call.
 
 ---
 

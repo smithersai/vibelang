@@ -1,6 +1,6 @@
 # Class APIs
 
-Schema classes work as in Effect. A class validates its fields, acts as a codec, and gives its instances domain behavior. Use one when methods or class identity help the model; use `Struct` for plain records. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+`Schema.Class` combines validated fields, codec derivation, structural equality, and class methods on one nominal type. Use it when instances need behavior or `instanceof` identity; use `Schema.Struct` for plain records. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
 ## Declaring validated classes
 
@@ -21,9 +21,9 @@ effect function readPackage(input: unknown) {
 true 2
 ```
 
-Pass the class itself as the `Self` type, a stable identifier, and its fields. The class extends a generated base; it is an ordinary data class, not a VibeLang service. `Package.identifier` holds the identifier, which helps Effect recognize instances across module reloads.
+Pass the class itself as the `Self` type parameter, a unique identifier (stored on `Package.identifier` for cross-reload identity), and its fields. This is a data class, not a VibeLang `service`.
 
-## Constructing and checking instances
+## Constructing instances
 
 ```vibe
 // run: try Console.log((try constructPackage("pkg-94", 2)).pieces, (try Effect.try(() => constructWithNew("pkg-94"))).pieces); try Effect.catch(constructPackage("", 2), (issue) => Console.log(issue._tag))
@@ -41,11 +41,13 @@ function constructWithNew(reference: string) {
 Composite
 ```
 
-Construction takes decoded fields, so `pieces` is a number though decoding takes a string. `new Package(...)` and `Package.make(...)` apply defaults and type-side checks and throw on invalid input; use `makeEffect` for expected failures. In local Effect 4.1.1, `makeEffect` fails with a raw `SchemaIssue.Issue`. A class with no fields constructs without an argument.
+Constructors take decoded field types (`pieces: number`), apply constructor defaults, and run type-side checks:
+- `new Package(...)` and `Package.make(...)` throw on invalid input.
+- `Package.makeEffect(...)` fails with a raw `SchemaIssue.Issue` in Effect 4.1.1.
+- A fieldless class constructs with no argument.
+- Pass a checked `Schema.Struct` instead of a plain fields object to enforce cross-field invariants during both construction and decoding.
 
-For a cross-field invariant, pass a checked `Schema.Struct` instead of a fields object; its checks apply during construction and codec use.
-
-## Bypassing checks deliberately
+## Bypassing checks
 
 ```vibe
 // run: try Console.log((try sync(() => fromVerifiedFields("", 2))).reference === "")
@@ -58,9 +60,9 @@ function fromVerifiedFields(reference: string, pieces: number) {
 true
 ```
 
-`disableChecks` skips validation; it neither decodes fields nor proves an untrusted value valid. Use it only when the input already satisfies the decoded model. Defaults still apply.
+`{ disableChecks: true }` skips validation while still applying defaults. Use it only for values already proven valid.
 
-## Defining structural equality
+## Structural equality
 
 ```vibe
 // run: try Console.log(try sameContainer())
@@ -79,9 +81,9 @@ effect function sameContainer() {
 true
 ```
 
-Instances support Effect's structural equality, nested arrays and objects included; JavaScript `===` still compares object identity. Keep fields stable while values are in hash collections.
+Instances implement Effect's structural `Equal` (including nested arrays and structs), while `===` remains reference identity. Do not mutate fields of instances stored in hash collections.
 
-## Adding getters and methods
+## Getters and methods
 
 ```vibe
 // run: try Console.log(try announcePackage())
@@ -113,7 +115,7 @@ Package pkg-94
 PKG-94
 ```
 
-Getters derive synchronous values from fields; keep them pure so formatting, checks, and compiled validators can read properties safely. Mark a method `effect` when it runs Effects, as `announce` does. Calling it returns an Effect; `try` runs it.
+Keep getters pure so formatters, checks, and compiled validators can read properties safely. Prefix effectful methods with `effect` and run them with `try`.
 
 ## Using classes as codecs
 
@@ -131,9 +133,9 @@ effect function packageWireRoundTrip(input: unknown) {
 [{"reference":"pkg-94","pieces":"2"}]
 ```
 
-A class schema is a transformation: decoding a plain object creates an instance, and encoding an instance gives a plain object with encoded fields. A class fits anywhere a schema does, including arrays and nested structs. `Package.fields` exposes the original field descriptions for reuse.
+Decoding constructs a class instance from an encoded plain object; encoding produces the encoded plain object. `Package.fields` exposes the underlying field map for composition.
 
-## Annotating classes
+## Annotations
 
 ```vibe
 // run: try Console.log(Dock.identifier); try Console.log(Schema.resolveAnnotations(Dock)?.title); try Console.log((try Dock.makeEffect({ number: 2 })).number)
@@ -149,9 +151,9 @@ Loading dock
 2
 ```
 
-Pass annotations after the fields or struct. The class identifier is also its default identifier annotation. Metadata documents the model; it adds no checks and changes no construction defaults.
+Pass annotations as the second argument after the fields or struct. The class identifier doubles as its default `identifier` annotation.
 
-## Modeling recursive classes
+## Recursive classes
 
 ```vibe
 // run: const value = try readCrate({ count: "2", children: [{ count: "1", children: [] }] }); try Console.log(value instanceof Crate, value.children[0] instanceof Crate); { const jsonValue = try Schema.encodeEffect(Crate)(value); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -177,9 +179,9 @@ true true
 {"count":"2","children":[{"count":"1","children":[]}]}
 ```
 
-Suspend the recursive edge and annotate the callback's return type to break the inference cycle; the callback returns the codec as data and compiles to a plain JavaScript callback. Declare a separate encoded interface when fields transform. For mutual recursion, suspend the reference to the later class and state the decoded and encoded types on each recursive edge.
+Wrap recursive references in `Schema.suspend` with an explicit `Schema.Codec<T, E>` return type to break TypeScript's inference cycle, declaring a separate wire interface when fields transform.
 
-## Creating tagged variants and extending classes
+## Tagged classes, schema errors, and extension
 
 ```vibe
 // run: try Console.log((try Packed.makeEffect({ reference: "pkg-94" }))._tag); try Console.log((try InsuredPackage.makeEffect({ reference: "pkg-94", pieces: 2, insuredValue: 100 })).summary()); try Effect.catch(reportMissing("pkg-94"), (error) => Console.log(error._tag))
@@ -211,8 +213,8 @@ pkg-94: 100
 MissingPackage
 ```
 
-`TaggedClass` adds `_tag` with a constructor default. A `schema error` declaration is a `Schema.TaggedError` class, which also supplies Error behavior and a serializable schema. A constructed instance is data until thrown or run with `try`; `new` constructs it without running it. Throw it for an expected failure. The example's contract also keeps the constructor's issue channel: `try MissingPackage.makeEffect({ reference })` constructs the error, then `throw` fails with it. For errors that need no serialization, use an `error` declaration.
-
-`extend` adds fields and keeps inherited behavior; give each extension its own identifier. Schema data-class inheritance is separate from service declarations, whose implementations use object literals or `implements`.
+- `Schema.TaggedClass`: adds a defaulted `_tag` field.
+- `schema error`: compiles to a serializable `Schema.TaggedError` class; construct and `throw` it for expected failures (use plain `error` when serialization is not needed).
+- `.extend(...)`: inherits fields and methods under a new unique identifier.
 
 [Upstream page](https://effect.website/docs/v4/schema/classes)

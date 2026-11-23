@@ -1,8 +1,8 @@
 # Schema to Arbitrary
 
-Effect's native `Arbitrary` module derives generators and shrinkers from schemas exactly as in Effect. Use it to explore valid inputs and check properties across many examples. The module and replay format are unstable in Effect 4.1.1. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+`Arbitrary` derives random value generators and shrinkers directly from schemas for property-based testing. The module and its replay token format are unstable in Effect 4.1.1. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Generating schema-conforming random values
+## Generating samples
 
 ```vibe
 // run: const values = try sampleParcels(); try Console.log(values.length, values.every(Schema.is(Parcel)))
@@ -21,9 +21,9 @@ effect function sampleParcels() {
 12 true
 ```
 
-`Arbitrary.schema` derives a generator immediately; unsupported derivation is a defect. `sampleEffect` runs generation and takes `count`, `size`, `maxDiscards`, and `seed`. A seed makes sampling reproducible; `size` is a local complexity budget for each collection or recursive component, not one global maximum length.
+`Arbitrary.schema` builds a generator synchronously (failing as a defect if derivation is unsupported). `Arbitrary.sampleEffect` accepts `count`, `size` (a per-component complexity budget), `maxDiscards`, and a deterministic `seed`.
 
-## Translating filters into generation constraints
+## Filters and constructive constraints
 
 ```vibe
 // run: const generator = try sync(() => Arbitrary.schema(EvenCapacity)); const values = try Arbitrary.sampleEffect(generator, { count: 12, seed: 17 }); try Console.log(values.length, values.every(Schema.is(EvenCapacity)))
@@ -45,9 +45,9 @@ const EvenCapacity = Schema.Number.check(Schema.makeFilter(
 12 true
 ```
 
-Built-in bounds, lengths, patterns, property counts, and uniqueness checks give constructive constraints where supported. Custom `arbitraryConstraint` metadata guides construction without replacing the predicate: the example constructs integers in range and the predicate rejects odd ones. Every generated root and shrink candidate still passes the schema's filters.
+Built-in bounds, lengths, patterns, and uniqueness checks drive construction automatically. For custom predicates, add `arbitraryConstraint` to narrow generation while still enforcing the predicate on every generated and shrunk candidate.
 
-## Handling opaque checks and transformed values
+## Decoded vs. encoded generation
 
 ```vibe
 // run: const values = try sampleRepresentations(); try Console.log(values.numbers.length, values.numbers.every(Number.isFinite)); try Console.log(values.strings.length, values.strings.every((value) => typeof value === "string")); try Console.log(values.strings.some((value) => Schema.decodeUnknownResult(Schema.FiniteFromString)(value).isFailure()))
@@ -66,7 +66,7 @@ effect function sampleRepresentations() {
 true
 ```
 
-Generation targets the decoded type, so a string-to-number codec generates numbers. Derive from `toEncoded` to generate values the encoded-side schema accepts; here that is `String`, so the strings need not decode as finite numbers. For valid wire values, encode generated decoded values. Opaque predicates without constructive metadata still run, but rejected candidates use up the discard budget. When it runs out, sampling fails with `SampleError` and property checking returns `Exhausted`.
+`Arbitrary.schema` targets the decoded type (`number` for `FiniteFromString`). Project with `Schema.toEncoded` to sample raw encoded-side values, or encode generated decoded values to produce guaranteed-valid wire data. Opaque predicates without constructive constraints burn through `maxDiscards`, failing sampling with `SampleError` and returning `Exhausted` from property checks.
 
 ## Checking properties
 
@@ -87,11 +87,12 @@ effect function checkCountRoundTrip() {
 Passed
 ```
 
-`checkEffect` takes a pure or effectful boolean property. False results and expected failures are shrinkable falsifications; defects and interruption fail the checking Effect itself. The result is `Passed`, `Falsified`, `Exhausted`, or `ReplayMismatch`.
+`Arbitrary.checkEffect` runs a pure or effectful boolean property and returns `Passed`, `Falsified`, `Exhausted`, or `ReplayMismatch`:
+- Returning `false` or failing with a typed error triggers shrinking; defects and interruption fail the outer Effect.
+- `Falsified` carries `shrunkInput` and a `replay` token; pass `{ replay: result.replay }` to reproduce the exact failing case.
+- `Arbitrary.formatCheckFailure(result)` formats a diagnostic string for non-`Passed` outcomes.
 
-A falsification includes `shrunkInput` and a `replay` token. To reproduce it, call `checkEffect` with the same property and `{ replay: result.replay }`; the token sets the seed, attempt, size, and shrink path, overriding other checking options. `formatCheckFailure` returns a diagnostic for unsuccessful results and undefined for `Passed`.
-
-## Composing generators and customizing shrinking
+## Composing generators and shrinking
 
 ```vibe
 // run: const values = try sampleDispatchPlans(); try Console.log(values.length, values.every((plan) => plan.label === "test-dispatch" && Number.isInteger(plan.count) && plan.count >= 0 && plan.count <= 32))
@@ -113,11 +114,9 @@ effect function sampleDispatchPlans() {
 6 true
 ```
 
-`map` transforms values and shrink candidates; `flatMap` selects dependent generators; `all` combines a tuple, iterable, or record. `filter` and `filterMap` discard rejected values, while `Constant` produces one value with no shrink candidates. Prefer constructive schema constraints when valid values are rare.
+Compose generators with `map`, `flatMap`, `all`, `filter`, `filterMap`, and `Constant`. A custom `shrink` callback replaces shrinking only (not root generation) and must be synchronous, deterministic, terminating, and pure. Treat generated values as immutable.
 
-A custom `shrink` replaces the derived shrink strategy, not root generation. It must be synchronous, deterministic, terminating, and free of mutation. The schema validates candidates before the property sees them. Treat generated values as immutable: checking, shrinking, and replay can examine them repeatedly.
-
-## Supporting custom declarations
+## Custom declarations
 
 ```vibe
 // run: const values = try sampleShelves(); try Console.log(values.length, values.every((shelf) => shelf instanceof ShelfRef && shelf.code.startsWith("shelf_")))
@@ -144,7 +143,7 @@ effect function sampleShelves() {
 5 true
 ```
 
-An opaque declaration needs a generatable representation through `toCodecArbitrary`; the link converts generated representation values into domain values. Parameterized declarations receive decoded parameter schemas and normalized constraints in their annotation callback.
+Supply `toCodecArbitrary` on opaque declarations to link them to a generatable schema.
 
 ## Diagnosing derivation failures
 
@@ -162,6 +161,6 @@ effect function reportImpossibleGenerator() {
 Arbitrary derivation failed for the empty domain
 ```
 
-`exit` captures the derivation defect as an `Exit.Failure`. Derivation fails immediately for impossible constraints, `Never`, unsupported declarations, and recursion with no finite generation path. For runtime exhaustion, inspect the effective seed and discard budget, then add constructive constraints or fix the predicate. Keep the seed and replay token with a failing test to reexamine the same counterexample.
+Derivation fails immediately on `Schema.Never`, contradictory bounds, unhooked declarations, or ungrounded recursion. Capture derivation defects with `exit` when testing schemas, and record the seed or `replay` token with failing property tests.
 
 [Upstream page](https://effect.website/docs/v4/schema/arbitrary)

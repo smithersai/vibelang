@@ -1,8 +1,15 @@
 # Sandboxing
 
-Sandboxing puts the complete runtime failure cause in the typed error channel, for an inspection pipeline that must treat defects, interruption, and expected failures as explicit error data.
+`sandbox` lifts the complete runtime failure cause into the typed error channel, changing `A!E!R` to `A!Cause.Cause<E>!R`. Use it when a boundary pipeline must inspect or handle defects, interruption, and expected failures as explicit typed error data.
 
 [Upstream page](https://effect.website/docs/v4/error-management/sandboxing)
+
+| Operation | Effect on `E` | When to use |
+| --- | --- | --- |
+| `sandbox(eff)` | `E` becomes `Cause.Cause<E>` | Multi-step inspection or error-channel pipelines over full causes |
+| `failCause(cause)` | Restores original `E`, defects, and interrupts | Re-emitting an unhandled sandboxed cause faithfully |
+| `fail(cause)` / `throw cause` | Keeps `Cause<E>` as typed error data | Passing a cause value onward as a normal error |
+| `catchCause(eff, handler)` | Unchanged outside handler | Single-step cause inspection or recovery without lifting `E` |
 
 ## Moving causes into the error channel
 
@@ -27,7 +34,7 @@ effect function sandboxedRow() {
 ["Fail"]
 ```
 
-`Cause` is in scope in `.vibe` files. `sandbox` changes `A!E!R` into `A!Cause.Cause<E>!R`: a defect in the original computation becomes a `Die` reason inside a typed cause value, not a defect at the outer level.
+`Cause` is in scope in `.vibe` files without an import. Inside `sandbox`, a defect in the wrapped computation becomes a `Die` reason inside the typed `Cause` value rather than crashing the outer computation.
 
 ## Inspecting individual reasons
 
@@ -46,7 +53,7 @@ effect function rowFailureKinds() {
 ["row 8"]
 ```
 
-Effect 4 stores reasons in a flat readonly array; one outcome can hold several, so inspect them all. `Cause.isFailReason` exposes `error`, `Cause.isDieReason` exposes `defect`, and `Cause.isInterruptReason` identifies cancellation.
+Effect 4 stores failure reasons in a flat readonly array (`cause.reasons`), and one outcome can contain several. Narrow each entry with `Cause.isFailReason` (`reason.error`), `Cause.isDieReason` (`reason.defect`), or `Cause.isInterruptReason`.
 
 ## Recovering selected variants
 
@@ -66,7 +73,7 @@ effect function rowOrPlaceholder() {
 Malformed row omitted
 ```
 
-This boundary recovers only causes made entirely of domain failures; checking only for a `Fail` reason would also consume a mixed cause's defects or interruption. Sandboxing makes that decision explicit; you still need a recovery policy.
+This handler recovers only causes composed strictly of expected domain failures. Checking only for a `Fail` reason would also swallow defects or interruption in a mixed cause; sandboxing forces that policy to be explicit.
 
 ## Restoring causes after inspection
 
@@ -87,6 +94,6 @@ Row computation stopped ["Fail"]
 8
 ```
 
-`failCause(cause)` restores the original failure model, with every expected failure, defect, and interruption in the cause; `fail(cause)` and `throw cause` instead keep the cause as typed error data. For a single inspection or recovery step, `catchCause(readRow(), handler)` avoids changing the error channel first.
+`failCause(cause)` restores every expected failure, defect, and interruption to its original runtime channel, whereas `fail(cause)` or `throw cause` leaves the `Cause` object as typed error data. For one-off inspection or recovery, `catchCause(readRow(), handler)` avoids rewriting `E` first.
 
-The diagnostic serializes only reason tags. `orDie` keeps a serialization bug out of the restored domain error channel.
+The log records only reason tags, and `orDie` keeps a serialization bug out of the restored domain error channel.

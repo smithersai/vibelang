@@ -1,11 +1,20 @@
 ---
 title: "Branded Types"
-description: "Brand provides Effect's branded types: a brand distinguishes domain values without changing their runtime representation. Use brands when two strings or numbers mean different things, and..."
+description: "A branded type attaches a compile-time tag to a primitive value without altering its runtime representation. Use Brand when two values share the same underlying type (such as two strings or..."
 ---
 
 # Branded Types
 
-`Brand` provides Effect's branded types: a brand distinguishes domain values without changing their runtime representation. Use brands when two strings or numbers mean different things, and construct them at a boundary where their origin or validation is clear.
+A branded type attaches a compile-time tag to a primitive value without altering its runtime representation. Use `Brand` when two values share the same underlying type (such as two strings or numbers) but carry distinct domain meaning, constructing brands at the boundary where values enter or are validated.
+
+| API | Purpose | On invalid input |
+| --- | --- | --- |
+| `Brand.nominal<T>()` | Unchecked constructor for already-trusted values | Never fails |
+| `Brand.make<T>(check)` | Validated constructor with a synchronous predicate | Throws `Brand.BrandError` |
+| `Brand.all(a, b, ...)` | Combines multiple brand checks on the same base type | Throws `Brand.BrandError` |
+| `Ctor.option(x)` | Safe validation returning `Option.Option<T>` | Returns `None` |
+| `Ctor.result(x)` | Safe validation returning `Result.Result<T, BrandError>` | Returns `Result.fail` |
+| `Ctor.is(x)` | Type guard predicate | Returns `false` |
 
 ## Distinguishing identical representations
 
@@ -27,7 +36,7 @@ function customerUrl(id: CustomerId) {
 /invoices/inv-3 /customers/customer-5
 ```
 
-Two plain aliases for `string` stay interchangeable; these branded types differ at compile time, so a `CustomerId` can't be passed to `invoiceUrl`. The brand adds no field to the runtime string and doesn't validate external input.
+Plain `string` aliases are interchangeable at compile time, whereas `InvoiceId` and `CustomerId` are incompatible types so `customerUrl` rejects an `InvoiceId`. Branding adds no runtime wrapper or fields and performs no validation on its own.
 
 ## Nominal brands
 
@@ -46,7 +55,7 @@ function knownInvoice(raw: string) {
 {"id":"inv-3","url":"/invoices/inv-3"}
 ```
 
-`Brand.nominal` builds a constructor that returns its input unchanged, branded in its type. It validates nothing, so use it only where the domain meaning is already established. Call a constructor directly from plain code. In effect code, wrap a call that may throw with `Effect.try`, or use a validation method that returns an Option or Result.
+`Brand.nominal` creates an identity constructor whose return type carries the brand. Because it performs no runtime checks, restrict it to values whose provenance is already known.
 
 ## Refined brands and validation
 
@@ -74,7 +83,7 @@ effect function parseAmount(raw: number) {
 InvalidAmount
 ```
 
-`Brand.make` takes a synchronous check that returns `true` for valid input or an explanation for invalid input. Its constructor throws a `Brand.BrandError` when validation fails. Use `result` to avoid that exception. `fromResult` converts a failed Result to a typed Effect failure, and `catch` maps it to `InvalidAmount`. A plain function can use JavaScript `try`/`catch` for constructor exceptions.
+`Brand.make` takes a synchronous predicate that returns `true` or a failure message. Calling the constructor directly throws `Brand.BrandError` on invalid input; in effect code, prefer `fromResult(WholeCents.result(raw))` (mapping the error with `catch` when needed) or wrap the call in `Effect.try`.
 
 ```vibe
 function inspectAmount(raw: number) {
@@ -95,7 +104,7 @@ true true true
 true true false
 ```
 
-`option` returns `Some` or `None`; `result` returns a `Result` whose failure holds `BrandError`; `is` returns a boolean and has a refinement signature. These calls report invalid data without throwing. To fail with `BrandError` in E, use `try fromResult(WholeCents.result(raw))`. Unexpected exceptions stay defects.
+`option`, `result`, and `is` validate without throwing, returning `Option`, `Result` (with `BrandError` on failure), or a type-guard boolean. To surface `BrandError` directly in the error channel `E`, run `try fromResult(WholeCents.result(raw))`; uncaught exceptions remain defects.
 
 ## Composing constraints
 
@@ -130,11 +139,11 @@ InvalidCharge
 InvalidCharge
 ```
 
-`Brand.all` combines the checks of constructors with the same underlying type. A valid result carries every constituent brand, so `Charge` is both an integer and positive. Deriving the type from the constructor keeps it aligned with the combined constraints.
+`Brand.all` intersects multiple brand constructors over the same base type, enforcing every check and attaching every constituent brand. Derive the type alias with `Brand.Brand.FromConstructor<typeof Charge>` so the type stays synchronized with its constraints.
 
 ## Coming from Effect
 
-Brands keep their usual types and runtime behavior. For an expected failure on invalid input, use the constructor's `result` with `fromResult`, or wrap the constructor with `Effect.try`. Run the resulting Effect with `try` or handle its failure with `catch`.
+Branded types retain their standard Effect types and runtime behavior. For typed failures in VibeLang, lift validation with `fromResult(Ctor.result(raw))` or `Effect.try`, then execute with `try` or recover with `catch`.
 
 ---
 

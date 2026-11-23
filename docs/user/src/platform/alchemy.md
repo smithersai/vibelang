@@ -1,8 +1,8 @@
 # Alchemy
 
-[Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs, and a stack deploys them. Write the Worker and the stack in VibeLang. These pages use `alchemy` and `@alchemy.run/cloudflare` 2.0.0-beta.84, `effect` 4.1.1 and VibeLang 0.0.13. Alchemy 2.0.0-beta.84 was built for Effect 4.0: its `Auth/OAuthFlow` module imports `effect/Crypto`, which Effect 4.1 removed, and `@alchemy.run/cloudflare` loads that module, so importing `@alchemy.run/cloudflare` fails with `Cannot find module` until you apply the patch in [Install](#install).
+[Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs. This guide targets `alchemy` and `@alchemy.run/cloudflare` `2.0.0-beta.84`, `effect` `4.1.1`, and VibeLang `0.0.13`. Because Alchemy `2.0.0-beta.84` imports `effect/Crypto` (removed in Effect 4.1), apply the patch in [Install](#install) before importing `@alchemy.run/cloudflare`.
 
-The complete stack, an R2 bucket of notes and a Worker that stores (`PUT /key`) and serves (`GET /key`) them, is [`examples/alchemy-stack`](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack). One Vitest suite runs against its VibeLang version and its Effect TypeScript original.
+The complete notes API (an R2 bucket plus `PUT /key` and `GET /key` Worker) lives in [`examples/alchemy-stack`](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack), where one Vitest suite verifies both the VibeLang and Effect TypeScript versions.
 
 ## Install
 
@@ -11,7 +11,7 @@ mkdir my-stack && cd my-stack
 bun init -y
 ```
 
-Before installing dependencies, add this transitive pin to `package.json`. It keeps the Node helper on the Effect version VibeLang supports:
+Pin `@effect/platform-node-shared` in `package.json` before installing:
 
 ```json
 {
@@ -27,7 +27,7 @@ bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.1.1
 bun add -d vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
-Until Alchemy publishes a build for Effect 4.1, patch the installed `alchemy` with Alchemy's own Effect 4.1 port ([alchemy-run/alchemy#2754](https://github.com/alchemy-run/alchemy/pull/2754)). Copy `patches/alchemy@2.0.0-beta.84.patch` from the example and add it to `package.json`; `bun install` applies it:
+Copy `patches/alchemy@2.0.0-beta.84.patch` (from [alchemy-run/alchemy#2754](https://github.com/alchemy-run/alchemy/pull/2754)) along with `tsconfig.json`, `vitest.config.ts`, and `bunfig.toml` from the example, then register the patch in `package.json` and run `bun install`:
 
 ```json
 {
@@ -37,11 +37,11 @@ Until Alchemy publishes a build for Effect 4.1, patch the installed `alchemy` wi
 }
 ```
 
-The Alchemy CLI refuses to start without `@effect/platform-bun` (`Alchemy could not load the required peer dependency`). Copy `tsconfig.json`, `vitest.config.ts` and `bunfig.toml` from the example; `bunfig.toml` lists the beta's exactly pinned `@alchemy.run/*` and `@distilled.cloud/*` packages, which are younger than the example's minimum release age.
+`@effect/platform-bun` is a required peer dependency of the Alchemy CLI; `bunfig.toml` allows the pinned beta packages.
 
 ## Errors and matching
 
-An `error` declaration and `throw` replace `Data.TaggedError` and `Effect.fail`, and a `match` in `catch` replaces `Effect.catchTags`. This handler serves notes from a `Map`; the Worker below does the same over an R2 bucket:
+`error`, `throw`, and `catch` + `match` replace `Data.TaggedError`, `Effect.fail`, and `Effect.catchTags`:
 
 ```ts effect
 import { Data, Effect } from "effect"
@@ -92,7 +92,7 @@ export effect function handle() {
 
 ## The Worker and its bucket
 
-Alchemy declares a resource as an Effect value at the module's top level. Store that value directly. Run binding operations with `try`, and use `provide` to supply the binding layer around the Worker's initialization:
+Hold top-level Alchemy resources as plain `const` Effect values, run binding operations with `try`, and wrap Worker initialization in `provide`:
 
 ```ts effect
 // fragment
@@ -192,7 +192,7 @@ export default Cloudflare.Worker("Api", { main: import.meta.url }, effect {
 })
 ```
 
-Alchemy reads the init's `fetch` as an Effect, so pass `{ fetch: handle() }`; `{ fetch: handle }` holds a function, which `Cloudflare.Worker` rejects with TS2345. The handler's error channel is closed to `HttpBodyError | HttpServerError`, so it handles R2's failures too. Alchemy's `R2Error` class comes from a declaration file. Tagged-member coverage applies to classes from declaration files too. An unguarded `when { _tag: "R2Error" }:` covers its tag case.
+Pass `{ fetch: handle() }` (an Effect value, not the function `{ fetch: handle }`, which fails with `TS2345`). Because `Cloudflare.Worker` restricts the handler error channel to `HttpBodyError | HttpServerError`, match both `MissingNote` and Alchemy's ambient `R2Error` (`when { _tag: "R2Error" }:`).
 
 ## The stack
 
@@ -223,7 +223,7 @@ export default Alchemy.Stack(
 
 ## Test without an account
 
-Copy `src/`, `ts/` and `test/` from the complete example into the project. Add its test script to `package.json`:
+Copy `src/`, `ts/`, and `test/` from the example, add the test script to `package.json`, and run it:
 
 ```json
 {
@@ -246,12 +246,12 @@ $ vibelang -p tsconfig.json --noEmit && vitest run
       Tests  4 passed (4)
 ```
 
-The test needs no Cloudflare account, credentials or network. It provides the `Cloudflare.R2.ReadWriteBucket` binding with an in-memory bucket and an empty Alchemy `Stack` service, which `Cloudflare.R2.Bucket` reads, then sends `PUT /todo`, `GET /todo` and `GET /other` and expects 204, `milk`, and 404 `No note at other`.
+The test supplies an in-memory `Cloudflare.R2.ReadWriteBucket` binding and an empty Alchemy `Stack` service—no Cloudflare credentials or network required—and verifies `PUT /todo` (`204`), `GET /todo` (`milk`), and `GET /other` (`404`).
 
 ## Deploying
 
-Deploying `.vibe` sources with Alchemy is not supported yet: Alchemy imports `alchemy.run.ts` and bundles the Worker's `main` itself, and neither path loads `.vibe` files. `alchemy plan` and `alchemy deploy` also need a configured Cloudflare profile; without one, plan stops with `Provider 'Cloudflare' is not configured in profile 'default'`. Until a deploy is verified, use the stack's code and the credential-free test above.
+Direct deployment of `.vibe` sources via `alchemy deploy` is not supported yet because Alchemy loads `alchemy.run.ts` and bundles the Worker `main` without a VibeLang loader (and `alchemy plan` / `deploy` require a configured Cloudflare profile). Use the credential-free Vitest suite until deployment support lands.
 
 ## Migrating Alchemy code
 
-The [migration pairs](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack/pairs) are two excerpts from VibeLang's migration of Alchemy's `Telemetry.ts`. [Add VibeLang to an existing project](../setup/existing-project.md) covers porting an Effect file.
+See the [migration pairs](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack/pairs) from Alchemy's `Telemetry.ts` and [Add VibeLang to an existing project](../setup/existing-project.md).

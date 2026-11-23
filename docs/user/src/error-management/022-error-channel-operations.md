@@ -1,8 +1,16 @@
 # Error Channel Operations
 
-Error-channel operations transform, observe, or expose failures without immediately replacing the whole computation. Ordinary statements still suit local validation and selective recovery.
+Error-channel combinators transform, reject, observe, or reify failures on an Effect value without rewriting the surrounding control flow. Reach for them in combinator pipelines; use `if`/`throw` and `catch` expressions for multi-statement local logic.
 
 [Upstream page](https://effect.website/docs/v4/error-management/error-channel-operations)
+
+| Goal | Combinators | Changes outcome? |
+| --- | --- | --- |
+| Transform channel values | `mapError`, `mapBoth` | Maps `E` (and `A`) synchronously; failures stay failures |
+| Reject a success | `filterOrFail`, `filterOrElse` | Fails or runs fallback when predicate is false |
+| Observe without handling | `tapError`, `tapErrorTag`, `tapCause`, `tapDefect` | Preserves original outcome if observer succeeds |
+| Reify failure into `A` | `result`, `exit` | Moves typed `E` (`Result`) or full `Cause` (`Exit`) into `A` |
+| Swap `A` and `E` | `flip` | Exchanges success and typed error channels |
 
 ## Mapping failures or both outcomes
 
@@ -41,11 +49,9 @@ Quantity must be positive: 0
 Rejected quantity 0
 ```
 
-`mapError` changes `E` and preserves successes. `mapBoth` maps each outcome channel separately; failures stay failures. The callbacks are plain synchronous functions, which can't perform Effect operations; for a transformation that needs Effect operations, use a catch expression with an effect handler or an effectful operator.
+`mapError` transforms `E` while leaving successes intact; `mapBoth` transforms both channels while keeping failures in `E`. Both callbacks are synchronous plain functions—use a `catch` expression with an `effect` handler when transformation itself needs Effects.
 
-These combinators keep Effect's own policy: `mapError` maps every expected failure in place and keeps defects and interruption. A cause with a defect has no expected failure left to map. A catch expression recovers the first expected failure of a cause with no defect and handles the whole cause.
-
-`mapErrorEager` and `mapBothEager` are eager optimization variants with the same channel distinction, not substitutes for effectful callbacks.
+`mapError` transforms every expected failure in place while preserving defects and interruption; a cause that already carries a defect has no expected failure left to map. By contrast, a `catch` expression recovers only the first expected failure of a defect-free cause and handles the entire cause. `mapErrorEager` and `mapBothEager` are eager optimizations with the same semantics, not effectful variants.
 
 ## Rejecting successes with a predicate
 
@@ -75,9 +81,9 @@ Maximum is 20; received 21
 InvalidQuantity
 ```
 
-`filterOrFail` keeps a success that passes the predicate and otherwise adds the generated error to `E`; a type guard can narrow the success type. `filterOrElse` runs a replacement Effect on a rejected success, so that branch can use services or fail.
+`filterOrFail` keeps successes that satisfy the predicate and fails with the supplied error otherwise; a type-guard predicate narrows the success type. `filterOrElse` runs a replacement Effect on rejected successes, so the fallback may use services or fail.
 
-The statement form is an `if` followed by `throw`. Neither form changes the source's existing failures.
+In statement style, write an `if` followed by `throw`. Neither form alters failures already produced by the source Effect.
 
 ## Observing errors, tags, causes, and defects
 
@@ -108,9 +114,9 @@ Inventory defect recorded
 true
 ```
 
-`tapError` observes typed errors; `tapErrorTag` selects a tagged member without handling it; `tapCause` sees the full cause, interruption and combined reasons included; `tapDefect` observes defect values. After a successful observation, the original outcome propagates.
+`tapError` observes typed failures, `tapErrorTag` narrows to a single `_tag`, `tapCause` inspects the entire cause (including interruption and combined reasons), and `tapDefect` observes defects. When the observer succeeds, the original outcome propagates untouched.
 
-A failing observation can change the resulting cause, so observe with code that can't fail when preserving the original outcome matters. Log diagnostic fields, not entire customer values or credentials. For local typed error observation, a catch expression with an effect handler can log and rethrow.
+A failing observer alters the resulting cause, so keep observation callbacks infallible whenever preserving the original failure matters, and log structured diagnostic fields rather than customer payloads or credentials. For local observation of typed errors, a `catch` expression can also log and rethrow.
 
 ## Exposing failures as successes
 
@@ -139,7 +145,7 @@ effect function quantityOrErrorValue(value: number) {
 InvalidQuantity
 ```
 
-`result` exposes typed errors as `Result` data; `exit` captures the complete outcome with its cause. The last example puts the original number or error directly into one success union; removing `E` this way doesn't resolve the error at the application level.
+`result` wraps typed failures and successes into a `Result`, leaving defects and interruption in the failure channel; `exit` captures the complete `Exit` including its full `Cause`. Returning the error directly from `catch` merges both types into a single success union without resolving the domain failure itself.
 
 ## Swapping channels
 
@@ -155,4 +161,4 @@ effect function rejectedQuantity() {
 InvalidQuantity
 ```
 
-`flip` swaps typed errors and successful values. A cause without an expected failure still propagates, and so does one with a defect, its failures as defects; an expected failure beside an interruption becomes a success and loses the interruption. Use it to inspect an error in a focused test; `mapError` and catch expressions usually express production transformations more clearly.
+`flip` exchanges the success and typed error channels. Causes without an expected failure still propagate, causes with a defect promote their failures to defects, and an expected failure beside an interruption succeeds while dropping the interruption. Reach for `flip` when asserting on errors in tests; use `mapError` or `catch` for production error transforms.

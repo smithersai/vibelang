@@ -652,6 +652,466 @@ const DIAGRAMS = {
       <text x="440" y="276" text-anchor="middle" class="p">Need a serializable failure? Write <tspan class="code-sm" fill="${t.red}">schema error NotFound { id: string }</tspan>.</text>
     `,
   },
+
+  // 13. Retrying with Schedules
+  'retry-schedule-flow': {
+    height: 310,
+    title: 'Retrying an Effect with a composable Schedule',
+    desc: 'Shows how retry(program, schedule) reruns a cold Effect on expected errors with exponential backoff and a retry cap until success or final failure.',
+    body: (t) => `
+      <text x="36" y="42" class="h">Retry composes a cold Effect with a Schedule policy</text>
+      <text x="36" y="64" class="sub">Each expected failure asks the Schedule whether to wait and rerun. Defects and interruption stop immediately.</text>
+
+      <!-- Attempt 1 -->
+      ${box(36, 96, 150, 88, t.redBg, t.redBorder)}
+      <text x="52" y="122" class="k" fill="${t.red}">ATTEMPT 1</text>
+      <text x="52" y="146" class="code-sm" fill="${t.text}">fetchRate()</text>
+      <text x="52" y="168" class="p">fails: RateLimited</text>
+
+      <!-- Backoff 1 -->
+      <line x1="186" y1="140" x2="254" y2="140" stroke="${t.amber}" stroke-width="2" marker-end="url(#arrow-amber)"/>
+      ${pill(190, 108, 60, 22, t.amberBg, t.amberBorder, '100ms', t.amber)}
+
+      <!-- Attempt 2 -->
+      ${box(262, 96, 150, 88, t.redBg, t.redBorder)}
+      <text x="278" y="122" class="k" fill="${t.red}">ATTEMPT 2</text>
+      <text x="278" y="146" class="code-sm" fill="${t.text}">fetchRate()</text>
+      <text x="278" y="168" class="p">fails: RateLimited</text>
+
+      <!-- Backoff 2 -->
+      <line x1="412" y1="140" x2="480" y2="140" stroke="${t.amber}" stroke-width="2" marker-end="url(#arrow-amber)"/>
+      ${pill(416, 108, 60, 22, t.amberBg, t.amberBorder, '200ms', t.amber)}
+
+      <!-- Attempt 3 -->
+      ${box(488, 96, 156, 88, t.tealBg, t.tealBorder)}
+      <text x="504" y="122" class="k" fill="${t.teal}">ATTEMPT 3</text>
+      <text x="504" y="146" class="code-sm" fill="${t.text}">fetchRate()</text>
+      <text x="504" y="168" class="p">succeeds: Quote</text>
+
+      <!-- Arrow to Result -->
+      <line x1="644" y1="140" x2="692" y2="140" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      ${box(700, 96, 144, 88, t.card, t.tealBorder)}
+      <text x="716" y="122" class="k" fill="${t.teal}">RETURN</text>
+      <text x="716" y="148" class="code" fill="${t.text}">Quote</text>
+      <text x="716" y="170" class="p">or last E if cap hit</text>
+
+      <!-- Policy strip -->
+      ${box(36, 212, 808, 68, t.indigoBg, t.indigoBorder)}
+      <text x="56" y="238" class="k" fill="${t.indigo}">COMPOSABLE SCHEDULE</text>
+      <text x="56" y="262" class="code-sm" fill="${t.text}">const policy = Schedule.both(Schedule.exponential("100 millis"), Schedule.recurs(3))</text>
+      <text x="748" y="262" text-anchor="end" class="code-sm" fill="${t.indigo}">try retry(fetchRate(), policy)</text>
+    `,
+  },
+
+  // 14. Queue vs PubSub
+  'queue-vs-pubsub': {
+    height: 330,
+    title: 'Queue vs. PubSub message delivery',
+    desc: 'Compares point-to-point Queue delivery (each item taken by one consumer with backpressure) against broadcast PubSub delivery (every subscriber receives each message).',
+    body: (t) => `
+      <text x="36" y="42" class="h">Queue distributes work; PubSub broadcasts events</text>
+      <text x="36" y="64" class="sub">Choose Queue when each job should run once. Choose PubSub when every listener needs every event.</text>
+
+      <!-- Left: Queue -->
+      ${box(36, 88, 392, 214, t.card, t.indigoBorder)}
+      ${pill(54, 104, 150, 24, t.indigoBg, t.indigoBorder, 'QUEUE (1-TO-1)', t.indigo)}
+      <text x="54" y="150" class="p">Each offered item goes to exactly one worker.</text>
+
+      ${box(54, 168, 86, 54, t.cardAlt, t.border, 8)}
+      <text x="97" y="191" text-anchor="middle" class="b">Producer</text>
+      <text x="97" y="210" text-anchor="middle" class="code-sm" fill="${t.indigo}">offer(j)</text>
+
+      <line x1="140" y1="195" x2="170" y2="195" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      ${box(176, 173, 92, 44, t.indigoBg, t.indigoBorder, 8)}
+      <text x="222" y="200" text-anchor="middle" class="code-sm" fill="${t.indigo}">[j1, j2, j3]</text>
+
+      <line x1="268" y1="184" x2="306" y2="174" stroke="${t.indigo}" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+      <line x1="268" y1="206" x2="306" y2="220" stroke="${t.indigo}" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+
+      ${box(312, 156, 98, 38, t.tealBg, t.tealBorder, 8)}
+      <text x="361" y="180" text-anchor="middle" class="code-sm" fill="${t.teal}">W1 ← j1</text>
+      ${box(312, 204, 98, 38, t.tealBg, t.tealBorder, 8)}
+      <text x="361" y="228" text-anchor="middle" class="code-sm" fill="${t.teal}">W2 ← j2</text>
+
+      <text x="54" y="276" class="p">Bounded queues apply backpressure when full.</text>
+
+      <!-- Right: PubSub -->
+      ${box(452, 88, 392, 214, t.card, t.tealBorder)}
+      ${pill(470, 104, 164, 24, t.tealBg, t.tealBorder, 'PUBSUB (1-TO-MANY)', t.teal)}
+      <text x="470" y="150" class="p">Every active subscriber receives every message.</text>
+
+      ${box(470, 168, 92, 54, t.cardAlt, t.border, 8)}
+      <text x="516" y="191" text-anchor="middle" class="b">Publisher</text>
+      <text x="516" y="210" text-anchor="middle" class="code-sm" fill="${t.teal}">publish(e)</text>
+
+      <line x1="562" y1="195" x2="594" y2="195" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      ${box(600, 173, 76, 44, t.tealBg, t.tealBorder, 8)}
+      <text x="638" y="200" text-anchor="middle" class="code-sm" fill="${t.teal}">topic</text>
+
+      <line x1="676" y1="182" x2="718" y2="164" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="676" y1="195" x2="718" y2="195" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="676" y1="208" x2="718" y2="226" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+
+      ${box(724, 148, 102, 28, t.indigoBg, t.indigoBorder, 6)}
+      <text x="775" y="166" text-anchor="middle" class="code-sm" fill="${t.indigo}">Sub A ← e</text>
+      ${box(724, 181, 102, 28, t.indigoBg, t.indigoBorder, 6)}
+      <text x="775" y="199" text-anchor="middle" class="code-sm" fill="${t.indigo}">Sub B ← e</text>
+      ${box(724, 214, 102, 28, t.indigoBg, t.indigoBorder, 6)}
+      <text x="775" y="232" text-anchor="middle" class="code-sm" fill="${t.indigo}">Sub C ← e</text>
+
+      <text x="470" y="276" class="p">Subscriptions are Scoped and auto-unsubscribe on exit.</text>
+    `,
+  },
+
+  // 15. Deferred & Semaphore
+  'deferred-and-semaphore': {
+    height: 315,
+    title: 'Fiber coordination with Deferred and Semaphore',
+    desc: 'Shows Deferred as a one-shot async value completed once by one fiber and awaited by others, and Semaphore as a bounded permit gate limiting concurrency.',
+    body: (t) => `
+      <text x="36" y="42" class="h">Coordinate fibers cleanly with Deferred and Semaphore</text>
+      <text x="36" y="64" class="sub">Deferred passes one future result between fibers. Semaphore caps how many fibers enter a critical section at once.</text>
+
+      <!-- Left: Deferred -->
+      ${box(36, 88, 392, 198, t.card, t.indigoBorder)}
+      ${pill(54, 104, 188, 24, t.indigoBg, t.indigoBorder, 'DEFERRED (ONE-SHOT)', t.indigo)}
+      ${box(54, 144, 114, 42, t.cardAlt, t.border, 8)}
+      <text x="111" y="169" text-anchor="middle" class="code-sm" fill="${t.text}">Deferred.succeed</text>
+      <line x1="168" y1="165" x2="210" y2="165" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      ${box(216, 144, 68, 42, t.indigoBg, t.indigoBorder, 8)}
+      <text x="250" y="170" text-anchor="middle" class="code" fill="${t.indigo}">v</text>
+      <line x1="284" y1="158" x2="316" y2="148" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="284" y1="172" x2="316" y2="184" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      ${box(322, 134, 88, 28, t.tealBg, t.tealBorder, 6)}
+      <text x="366" y="152" text-anchor="middle" class="code-sm" fill="${t.teal}">await → v</text>
+      ${box(322, 170, 88, 28, t.tealBg, t.tealBorder, 6)}
+      <text x="366" y="188" text-anchor="middle" class="code-sm" fill="${t.teal}">await → v</text>
+      <text x="54" y="232" class="p">Completed at most once; subsequent calls return false.</text>
+      <text x="54" y="254" class="p">Waiters park without blocking an OS thread.</text>
+
+      <!-- Right: Semaphore -->
+      ${box(452, 88, 392, 198, t.card, t.amberBorder)}
+      ${pill(470, 104, 196, 24, t.amberBg, t.amberBorder, 'SEMAPHORE (N PERMITS)', t.amber)}
+      ${box(470, 144, 96, 56, t.cardAlt, t.border, 8)}
+      <text x="518" y="168" text-anchor="middle" class="b">4 fibers</text>
+      <text x="518" y="188" text-anchor="middle" class="code-sm" fill="${t.amber}">withPermits(1)</text>
+      <line x1="566" y1="172" x2="604" y2="172" stroke="${t.amber}" stroke-width="2" marker-end="url(#arrow-amber)"/>
+      ${box(610, 136, 98, 72, t.amberBg, t.amberBorder, 8)}
+      <text x="659" y="160" text-anchor="middle" class="k" fill="${t.amber}">PERMITS: 2</text>
+      <text x="659" y="182" text-anchor="middle" class="code-sm" fill="${t.text}">2 running</text>
+      <text x="659" y="198" text-anchor="middle" class="p">2 queued</text>
+      <line x1="708" y1="172" x2="736" y2="172" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      ${box(742, 144, 84, 56, t.tealBg, t.tealBorder, 8)}
+      <text x="784" y="168" text-anchor="middle" class="code-sm" fill="${t.teal}">DB pool</text>
+      <text x="784" y="188" text-anchor="middle" class="p">bounded</text>
+      <text x="470" y="232" class="p">Permits release automatically on success, error, or cancel.</text>
+      <text x="470" y="254" class="p">Use Latch when fibers wait for a gate to open once.</text>
+    `,
+  },
+
+  // 16. Ref vs SubscriptionRef
+  'ref-and-subscriptionref': {
+    height: 300,
+    title: 'Atomic Ref vs. reactive SubscriptionRef',
+    desc: 'Shows Ref providing atomic compare-and-swap state updates across fibers, and SubscriptionRef extending Ref with a changes Stream for subscribers.',
+    body: (t) => `
+      <text x="36" y="42" class="h">Share mutable state safely with Ref and SubscriptionRef</text>
+      <text x="36" y="64" class="sub">Ref makes concurrent updates atomic. SubscriptionRef also streams every state change to listeners.</text>
+
+      <!-- Left: Ref -->
+      ${box(36, 88, 386, 184, t.card, t.indigoBorder)}
+      ${pill(54, 104, 152, 24, t.indigoBg, t.indigoBorder, 'REF (ATOMIC CELL)', t.indigo)}
+      ${box(54, 144, 104, 48, t.cardAlt, t.border, 8)}
+      <text x="106" y="166" text-anchor="middle" class="code-sm" fill="${t.text}">Ref.update</text>
+      <text x="106" y="183" text-anchor="middle" class="p">n =&gt; n + 1</text>
+      <line x1="158" y1="168" x2="202" y2="168" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      ${box(208, 142, 92, 52, t.indigoBg, t.indigoBorder, 8)}
+      <text x="254" y="164" text-anchor="middle" class="k" fill="${t.indigo}">STATE</text>
+      <text x="254" y="184" text-anchor="middle" class="code" fill="${t.text}">42 → 43</text>
+      <line x1="300" y1="168" x2="330" y2="168" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      ${box(336, 148, 68, 40, t.tealBg, t.tealBorder, 8)}
+      <text x="370" y="173" text-anchor="middle" class="code-sm" fill="${t.teal}">get</text>
+      <text x="54" y="226" class="p">Need an effectful update? Use <tspan class="code-sm" fill="${t.indigo}">SynchronizedRef</tspan>.</text>
+      <text x="54" y="248" class="p">Zero race conditions across concurrent fibers.</text>
+
+      <!-- Right: SubscriptionRef -->
+      ${box(444, 88, 400, 184, t.card, t.tealBorder)}
+      ${pill(462, 104, 212, 24, t.tealBg, t.tealBorder, 'SUBSCRIPTIONREF (REACTIVE)', t.teal)}
+      ${box(462, 142, 96, 52, t.tealBg, t.tealBorder, 8)}
+      <text x="510" y="164" text-anchor="middle" class="k" fill="${t.teal}">CELL</text>
+      <text x="510" y="184" text-anchor="middle" class="code-sm" fill="${t.text}">v0 → v1</text>
+      <line x1="558" y1="168" x2="604" y2="168" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      ${box(610, 144, 104, 48, t.cardAlt, t.tealBorder, 8)}
+      <text x="662" y="166" text-anchor="middle" class="code-sm" fill="${t.teal}">ref.changes</text>
+      <text x="662" y="183" text-anchor="middle" class="p">Stream&lt;A&gt;</text>
+      <line x1="714" y1="158" x2="748" y2="148" stroke="${t.indigo}" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+      <line x1="714" y1="178" x2="748" y2="188" stroke="${t.indigo}" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+      ${box(754, 134, 74, 28, t.indigoBg, t.indigoBorder, 6)}
+      <text x="791" y="152" text-anchor="middle" class="code-sm" fill="${t.indigo}">UI view</text>
+      ${box(754, 172, 74, 28, t.indigoBg, t.indigoBorder, 6)}
+      <text x="791" y="190" text-anchor="middle" class="code-sm" fill="${t.indigo}">Logger</text>
+      <text x="462" y="226" class="p">New subscribers receive the current value first,</text>
+      <text x="462" y="248" class="p">then every subsequent update in order.</text>
+    `,
+  },
+
+  // 17. Stream + Operators + Sink Pipeline
+  'stream-and-sink-pipeline': {
+    height: 300,
+    title: 'Pull-based Stream pipeline into a Sink',
+    desc: 'Shows how chunks flow lazily from a Stream source through transform operators into a Sink, which folds them into a value and preserves unconsumed leftovers.',
+    body: (t) => `
+      <text x="36" y="42" class="h">Streams pull chunks lazily through operators into a Sink</text>
+      <text x="36" y="64" class="sub">Nothing runs until a Sink or for-try loop demands chunks. Sinks return a result plus any unconsumed leftovers.</text>
+
+      <!-- Source -->
+      ${box(36, 98, 174, 96, t.indigoBg, t.indigoBorder)}
+      <text x="54" y="124" class="k" fill="${t.indigo}">STREAM SOURCE</text>
+      <text x="54" y="148" class="code-sm" fill="${t.text}">Stream.fromIterable</text>
+      <text x="54" y="168" class="code-sm" fill="${t.text}">effect function* ()</text>
+      <text x="54" y="186" class="p">emits Chunk&lt;A&gt;</text>
+
+      <line x1="210" y1="146" x2="254" y2="146" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Operators -->
+      ${box(262, 98, 224, 96, t.card, t.border)}
+      <text x="280" y="124" class="k" fill="${t.muted}">TRANSFORM OPERATORS</text>
+      <text x="280" y="148" class="code-sm" fill="${t.text}">Stream.filter(valid)</text>
+      <text x="280" y="168" class="code-sm" fill="${t.text}">Stream.mapEffect(enrich)</text>
+      <text x="280" y="186" class="p">bounded memory &amp; backpressure</text>
+
+      <line x1="486" y1="146" x2="530" y2="146" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+
+      <!-- Sink -->
+      ${box(538, 98, 152, 96, t.tealBg, t.tealBorder)}
+      <text x="556" y="124" class="k" fill="${t.teal}">SINK&lt;A, In, L&gt;</text>
+      <text x="556" y="148" class="code-sm" fill="${t.text}">Sink.sum</text>
+      <text x="556" y="168" class="code-sm" fill="${t.text}">Sink.take(3)</text>
+      <text x="556" y="186" class="p">folds &amp; stops early</text>
+
+      <line x1="690" y1="130" x2="726" y2="130" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <line x1="690" y1="168" x2="726" y2="168" stroke="${t.amber}" stroke-width="2" marker-end="url(#arrow-amber)"/>
+
+      ${box(732, 104, 112, 42, t.tealBg, t.tealBorder, 8)}
+      <text x="788" y="129" text-anchor="middle" class="code-sm" fill="${t.teal}">Result A</text>
+
+      ${box(732, 152, 112, 42, t.amberBg, t.amberBorder, 8)}
+      <text x="788" y="177" text-anchor="middle" class="code-sm" fill="${t.amber}">Leftover L</text>
+
+      ${box(36, 218, 808, 52, t.cardAlt, t.border, 8)}
+      <text x="440" y="249" text-anchor="middle" class="p">Run with <tspan class="code-sm" fill="${t.indigo}">try Stream.run(stream, sink)</tspan> or consume inline with <tspan class="code-sm" fill="${t.teal}">for try (const item of stream) { ... }</tspan>.</text>
+    `,
+  },
+
+  // 18. Observability Pillars
+  'observability-pillars': {
+    height: 320,
+    title: 'Built-in observability: Logging, Metrics, and Tracing',
+    desc: 'Shows how a single Effect fiber automatically propagates annotations, updates metrics, and nests spans across Logging, Metrics, and Tracing.',
+    body: (t) => `
+      <text x="36" y="42" class="h">One Effect fiber feeds Logging, Metrics, and Tracing</text>
+      <text x="36" y="64" class="sub">Fiber context propagates log annotations and parent spans automatically across every try call and forked child.</text>
+
+      <!-- Fiber source -->
+      ${box(36, 116, 224, 132, t.indigoBg, t.indigoBorder)}
+      <text x="54" y="144" class="k" fill="${t.indigo}">RUNNING EFFECT FIBER</text>
+      <text x="54" y="170" class="code-sm" fill="${t.text}">try log("order created")</text>
+      <text x="54" y="192" class="code-sm" fill="${t.text}">try Metric.update(c, 1)</text>
+      <text x="54" y="214" class="code-sm" fill="${t.text}">try withSpan(work, "pay")</text>
+      <text x="54" y="236" class="p">carries FiberRefs + TraceId</text>
+
+      <!-- 3 arrows -->
+      <line x1="260" y1="146" x2="342" y2="122" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <line x1="260" y1="182" x2="342" y2="182" stroke="${t.amber}" stroke-width="2" marker-end="url(#arrow-amber)"/>
+      <line x1="260" y1="218" x2="342" y2="242" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Logging -->
+      ${box(350, 88, 494, 58, t.tealBg, t.tealBorder)}
+      <text x="370" y="112" class="k" fill="${t.teal}">STRUCTURED LOGGING</text>
+      <text x="370" y="134" class="p">Level-filtered logs with automatic fiber ID, span, and <tspan class="code-sm" fill="${t.text}">annotateLogs</tspan> fields.</text>
+
+      <!-- Metrics -->
+      ${box(350, 154, 494, 58, t.amberBg, t.amberBorder)}
+      <text x="370" y="178" class="k" fill="${t.amber}">METRICS (COUNTERS, GAUGES, HISTOGRAMS)</text>
+      <text x="370" y="200" class="p">Tagged in-memory measurements exported to Prometheus or OpenTelemetry.</text>
+
+      <!-- Tracing -->
+      ${box(350, 220, 494, 58, t.card, t.indigoBorder)}
+      <text x="370" y="244" class="k" fill="${t.indigo}">DISTRIBUTED TRACING</text>
+      <text x="370" y="266" class="p">Nested parent-child spans with timing, attributes, and error causes.</text>
+    `,
+  },
+
+  // 19. TestClock Time Travel
+  'testclock-time-travel': {
+    height: 300,
+    title: 'Deterministic virtual time with TestClock',
+    desc: 'Compares real wall-clock sleep taking 5 minutes against TestClock.adjust advancing virtual time instantaneously in tests.',
+    body: (t) => `
+      <text x="36" y="42" class="h">TestClock turns 5-minute sleeps into 0 ms unit tests</text>
+      <text x="36" y="64" class="sub">Fork the timed Effect, jump virtual time with TestClock.adjust, and join the exact result deterministically.</text>
+
+      <!-- Real Clock -->
+      ${box(36, 92, 808, 72, t.redBg, t.redBorder)}
+      ${pill(54, 114, 128, 26, t.card, t.redBorder, 'REAL CLOCK', t.red)}
+      <text x="200" y="124" class="code-sm" fill="${t.text}">try sleep("5 minutes")</text>
+      <text x="200" y="146" class="p">Blocks the test suite for 300,000 ms — slow and flaky on CI.</text>
+
+      <!-- TestClock -->
+      ${box(36, 180, 808, 92, t.tealBg, t.tealBorder)}
+      ${pill(54, 202, 128, 26, t.card, t.tealBorder, 'TESTCLOCK', t.teal)}
+
+      ${box(200, 196, 178, 56, t.card, t.indigoBorder, 8)}
+      <text x="216" y="218" class="k" fill="${t.indigo}">1. FORK</text>
+      <text x="216" y="238" class="code-sm" fill="${t.text}">const f = fork work()</text>
+
+      <line x1="378" y1="224" x2="416" y2="224" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+
+      ${box(424, 196, 214, 56, t.card, t.tealBorder, 8)}
+      <text x="440" y="218" class="k" fill="${t.teal}">2. JUMP VIRTUAL TIME</text>
+      <text x="440" y="238" class="code-sm" fill="${t.text}">TestClock.adjust("5 minutes")</text>
+
+      <line x1="638" y1="224" x2="676" y2="224" stroke="${t.teal}" stroke-width="2" marker-end="url(#arrow-teal)"/>
+
+      ${box(684, 196, 142, 56, t.card, t.tealBorder, 8)}
+      <text x="700" y="218" class="k" fill="${t.teal}">3. JOIN (0 ms)</text>
+      <text x="700" y="238" class="code-sm" fill="${t.text}">const v = join f</text>
+    `,
+  },
+
+  // 20. Batching & Caching
+  'batching-and-caching': {
+    height: 315,
+    title: 'Request batching and TTL Cache',
+    desc: 'Shows concurrent Request calls collapsed by a RequestResolver into a single batched backend query, with a Cache serving repeat lookups within TTL.',
+    body: (t) => `
+      <text x="36" y="42" class="h">Eliminate N+1 queries with RequestResolver batching and Cache</text>
+      <text x="36" y="64" class="sub">Concurrent Effect requests automatically group into one batch; Cache deduplicates repeated lookups in memory.</text>
+
+      <!-- Callers -->
+      ${box(36, 94, 176, 46, t.card, t.indigoBorder, 8)}
+      <text x="124" y="122" text-anchor="middle" class="code-sm" fill="${t.text}">getUser(1)</text>
+      ${box(36, 152, 176, 46, t.card, t.indigoBorder, 8)}
+      <text x="124" y="180" text-anchor="middle" class="code-sm" fill="${t.text}">getUser(2)</text>
+      ${box(36, 210, 176, 46, t.card, t.indigoBorder, 8)}
+      <text x="124" y="238" text-anchor="middle" class="code-sm" fill="${t.text}">getUser(1)  (dup)</text>
+
+      <!-- Arrows to Cache -->
+      <line x1="212" y1="117" x2="274" y2="152" stroke="${t.indigo}" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+      <line x1="212" y1="175" x2="274" y2="175" stroke="${t.indigo}" stroke-width="1.8" marker-end="url(#arrow-indigo)"/>
+      <line x1="212" y1="233" x2="274" y2="198" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+
+      <!-- Cache / Dedupe -->
+      ${box(282, 118, 174, 114, t.tealBg, t.tealBorder)}
+      <text x="300" y="146" class="k" fill="${t.teal}">CACHE &amp; DEDUPE</text>
+      <text x="300" y="170" class="p">TTL + capacity bound</text>
+      <text x="300" y="192" class="code-sm" fill="${t.teal}">key 1 hit / shared</text>
+      <text x="300" y="214" class="p">misses forward keys [1, 2]</text>
+
+      <line x1="456" y1="175" x2="506" y2="175" stroke="${t.amber}" stroke-width="2" marker-end="url(#arrow-amber)"/>
+
+      <!-- Batched Resolver -->
+      ${box(514, 118, 172, 114, t.amberBg, t.amberBorder)}
+      <text x="532" y="146" class="k" fill="${t.amber}">REQUESTRESOLVER</text>
+      <text x="532" y="170" class="code-sm" fill="${t.text}">makeBatched</text>
+      <text x="532" y="192" class="p">1 round trip:</text>
+      <text x="532" y="214" class="code-sm" fill="${t.amber}">WHERE id IN (1,2)</text>
+
+      <line x1="686" y1="175" x2="726" y2="175" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Backend -->
+      ${box(734, 134, 110, 82, t.card, t.border)}
+      <text x="789" y="168" text-anchor="middle" class="b">Database</text>
+      <text x="789" y="190" text-anchor="middle" class="p">or HTTP API</text>
+
+      <text x="440" y="290" text-anchor="middle" class="p">Run callers concurrently with <tspan class="code-sm" fill="${t.indigo}">try.all</tspan> or <tspan class="code-sm" fill="${t.indigo}">for concurrent</tspan> so Effect can batch them together.</text>
+    `,
+  },
+
+  // 21. HTTP & Platform Layer Stack
+  'http-layer-stack': {
+    height: 325,
+    title: 'Platform and HTTP server layer stack',
+    desc: 'Shows portable application routes and handlers depending only on abstract HttpRouter and Platform services, wired once at main to Node, Bun, or Browser layers.',
+    body: (t) => `
+      <text x="36" y="42" class="h">Write portable handlers; wire the host platform once at main()</text>
+      <text x="36" y="64" class="sub">Business routes depend on abstract Effect services. Swap Node, Bun, or test layers without editing handlers.</text>
+
+      <!-- Top layer: App Routes -->
+      ${box(36, 88, 808, 62, t.indigoBg, t.indigoBorder)}
+      <text x="56" y="114" class="k" fill="${t.indigo}">1. APPLICATION ROUTES &amp; HANDLERS (.vibe)</text>
+      <text x="56" y="136" class="p">HttpRouter routes, Schema request validation, typed errors, and domain services (Users, Clock, FileSystem).</text>
+
+      <line x1="440" y1="150" x2="440" y2="172" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Middle layer: Abstract Platform Services -->
+      ${box(36, 178, 808, 56, t.card, t.tealBorder)}
+      <text x="56" y="202" class="k" fill="${t.teal}">2. PORTABLE SERVICE CONTRACTS (R CHANNEL)</text>
+      <text x="56" y="222" class="code-sm" fill="${t.text}">HttpServer   ·   HttpClient   ·   FileSystem   ·   Path   ·   Terminal   ·   ChildProcessSpawner</text>
+
+      <line x1="200" y1="234" x2="200" y2="254" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="440" y1="234" x2="440" y2="254" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="680" y1="234" x2="680" y2="254" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+
+      <!-- Bottom: Host Adapters -->
+      ${box(36, 260, 254, 46, t.tealBg, t.tealBorder, 8)}
+      <text x="163" y="288" text-anchor="middle" class="code-sm" fill="${t.teal}">NodeHttpServer / NodeServices</text>
+
+      ${box(313, 260, 254, 46, t.amberBg, t.amberBorder, 8)}
+      <text x="440" y="288" text-anchor="middle" class="code-sm" fill="${t.amber}">BunHttpServer / BunServices</text>
+
+      ${box(590, 260, 254, 46, t.cardAlt, t.border, 8)}
+      <text x="717" y="288" text-anchor="middle" class="code-sm" fill="${t.muted}">In-memory Test Layers</text>
+    `,
+  },
+
+  // 22. Exhaustive Match & Narrowing
+  'match-exhaustiveness': {
+    height: 315,
+    title: 'Exhaustive match narrowing across tagged unions',
+    desc: 'Shows a tagged error union entering match (e), branching into narrowed when arms, and failing at compile time if any variant is omitted.',
+    body: (t) => `
+      <text x="36" y="42" class="h">match narrows each variant and catches missing cases at compile time</text>
+      <text x="36" y="64" class="sub">Add a new error or data variant anywhere, and the compiler points straight to every match that must handle it.</text>
+
+      <!-- Input union -->
+      ${box(36, 114, 210, 134, t.indigoBg, t.indigoBorder)}
+      <text x="54" y="142" class="k" fill="${t.indigo}">INPUT UNION</text>
+      <text x="54" y="168" class="code-sm" fill="${t.text}">NotFound</text>
+      <text x="54" y="190" class="code-sm" fill="${t.text}">| RateLimited</text>
+      <text x="54" y="212" class="code-sm" fill="${t.text}">| Timeout</text>
+      <text x="54" y="236" class="p">3 known variants</text>
+
+      <!-- Branches -->
+      <line x1="246" y1="150" x2="318" y2="118" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      <line x1="246" y1="181" x2="318" y2="181" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      <line x1="246" y1="212" x2="318" y2="244" stroke="${t.indigo}" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+
+      <!-- Arms -->
+      ${box(326, 92, 272, 52, t.card, t.tealBorder, 8)}
+      <text x="344" y="114" class="code-sm" fill="${t.teal}">when NotFound(let id):</text>
+      <text x="344" y="134" class="p">404 — binds id as string</text>
+
+      ${box(326, 155, 272, 52, t.card, t.tealBorder, 8)}
+      <text x="344" y="177" class="code-sm" fill="${t.teal}">when RateLimited(let retryAfter):</text>
+      <text x="344" y="197" class="p">429 — binds retryAfter as number</text>
+
+      ${box(326, 218, 272, 52, t.card, t.tealBorder, 8)}
+      <text x="344" y="240" class="code-sm" fill="${t.teal}">when Timeout:</text>
+      <text x="344" y="260" class="p">504 — remaining union is never</text>
+
+      <!-- Gate -->
+      <line x1="598" y1="118" x2="648" y2="165" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="598" y1="181" x2="648" y2="181" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="598" y1="244" x2="648" y2="197" stroke="${t.teal}" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+
+      ${box(656, 122, 188, 118, t.tealBg, t.tealBorder)}
+      <text x="674" y="150" class="k" fill="${t.teal}">EXHAUSTIVE CHECK</text>
+      <text x="674" y="174" class="b">All 3 covered</text>
+      <text x="674" y="198" class="p">Miss any variant →</text>
+      <text x="674" y="218" class="code-sm" fill="${t.red}">compile error</text>
+    `,
+  },
 }
 
 let written = 0

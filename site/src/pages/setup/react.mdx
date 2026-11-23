@@ -1,21 +1,21 @@
 ---
 title: "React"
-description: "Add VibeLang to a React app that builds with Vite. A component runs a VibeLang program with a ManagedRuntime and renders three states: loading, the result, and an error the program recovers from...."
+description: "Add VibeLang to a React + Vite app. A component runs a VibeLang program through a ManagedRuntime and renders loading, success, and recovered-error states. Complete Add VibeLang to an existing..."
 ---
 
 # React
 
-Add VibeLang to a React app that builds with Vite. A component runs a VibeLang program with a `ManagedRuntime` and renders three states: loading, the result, and an error the program recovers from. Install the packages with [Add VibeLang to an existing project](/setup/existing-project) first. This page replaces [Vite and Vitest](/setup/vite): it covers the same plugin, tsconfig.json, Vitest, and build steps.
+Add VibeLang to a React + Vite app. A component runs a VibeLang program through a `ManagedRuntime` and renders loading, success, and recovered-error states. Complete [Add VibeLang to an existing project](/setup/existing-project) first; this page replaces [Vite and Vitest](/setup/vite).
 
 ## 1. Install the test packages
 
-With Bun, run:
+With Bun:
 
 ```sh
 bun add -d happy-dom@20.14.6 @testing-library/react@16.3.3 @testing-library/dom@10.4.2
 ```
 
-With npm, run:
+With npm:
 
 ```sh
 npm install --save-dev --save-exact happy-dom@20.14.6 @testing-library/react@16.3.3 @testing-library/dom@10.4.2
@@ -23,17 +23,13 @@ npm install --save-dev --save-exact happy-dom@20.14.6 @testing-library/react@16.
 
 ## 2. Configure tsconfig.json
 
-Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
+Run `vibelang` to write adjacent `.d.vibe.ts` declarations (even with `--noEmit`) and [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
 
-Find the configuration that includes `src`. In an app from Vite's `react-ts` template, `tsconfig.json` has `"files": []` and lists `tsconfig.app.json` and `tsconfig.node.json` as `references`; `tsconfig.app.json` includes `src`. Check that `include` selects the `.vibe` files. The template's `"include": ["src"]` does.
-
-The VibeLang plugin's compile backend automatically enables `rewriteRelativeImportExtensions` for the JavaScript it emits. `vite build` therefore works with the template's `allowImportingTsExtensions` setting.
-
-If you also emit JavaScript directly with the `vibelang` CLI, set `"rewriteRelativeImportExtensions": true` in that emitting project's `compilerOptions`. It permits source-extension imports and rewrites them to JavaScript paths; `allowImportingTsExtensions` alone produces TS5096 during CLI emission.
+In Vite's `react-ts` template, `tsconfig.json` references `tsconfig.app.json` (which includes `src`, covering `.vibe` files) and `tsconfig.node.json`. The VibeLang plugin automatically enables `rewriteRelativeImportExtensions` during emit, so `vite build` works alongside `allowImportingTsExtensions`. If you also emit JavaScript directly via the `vibelang` CLI, add `"rewriteRelativeImportExtensions": true` to `compilerOptions` (`allowImportingTsExtensions` alone produces `TS5096`).
 
 ## 3. Configure Vite and Vitest
 
-Replace `vite.config.ts` with this file, keeping any other plugins the app has. It adds `vibelang()` before `react()`, passes the configuration that includes `src` as `project`, and imports `defineConfig` from `vitest/config` so the same file configures Vitest. If `tsconfig.json` itself includes `src`, call `vibelang()` without `project`.
+Update `vite.config.ts` (preserving any existing plugins) to place `vibelang()` before `react()`, pass the config covering `src` as `project` (omit `project` if `tsconfig.json` directly includes `src`), and import `defineConfig` from `vitest/config`:
 
 ```ts
 // TypeScript (.ts)
@@ -205,7 +201,7 @@ If `package.json` has no `test` script, add `"test": "vitest run"`. Run `npx vit
 
 ## 7. Type-check and build
 
-TypeScript cannot read `.vibe` files, so the template's `tsc -b` fails with TS2307: `Cannot find module './users.vibe'`. `vibelang -b` replaces it: it builds the same project references and checks `.vibe`, `.ts`, and `.tsx` files as one program. In `package.json`, change the `build` script:
+`tsc -b` cannot read `.vibe` files and fails with `TS2307` (`Cannot find module './users.vibe'`). Replace it with `vibelang -b`, which builds the same project references and checks `.vibe`, `.ts`, and `.tsx` together:
 
 ```json
 {
@@ -215,8 +211,8 @@ TypeScript cannot read `.vibe` files, so the template's `tsc -b` fails with TS23
 }
 ```
 
-Run `npx vibelang -b`; it prints nothing and exits with status 0. Then run `npm run build` or `bun run build`; it exits with status 0, and its last line starts with `✓ built in`. Review the files you added and changed.
+Run `npx vibelang -b` (silent, exit 0), then `npm run build` or `bun run build` (exit 0, ending with `✓ built in`).
 
 ## Next
 
-Set up the editor: [VS Code and Cursor](/setup/vscode), [Neovim](/setup/neovim), [Zed](/setup/zed), or [other editors](/setup/other-editors). Then verify with step 4 of [Set up VibeLang](/setup).
+Configure your editor ([VS Code and Cursor](/setup/vscode), [Neovim](/setup/neovim), [Zed](/setup/zed), or [other editors](/setup/other-editors)), then verify with step 4 of [Set up VibeLang](/setup).

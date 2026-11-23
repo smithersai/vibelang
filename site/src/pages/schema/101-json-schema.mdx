@@ -1,13 +1,13 @@
 ---
 title: "Schema to JSON Schema"
-description: "JSON Schema export works as in Effect. It describes the encoded side of a schema's canonical JSON codec, so the exported shape matches the selected JSON representation. Export is best-effort and..."
+description: "Schema.toJsonSchemaDocument derives the canonical JSON codec for a schema and exports its encoded side as JSON Schema. Export is best-effort documentation and interop—keep runtime validation at..."
 ---
 
 # Schema to JSON Schema
 
-JSON Schema export works as in Effect. It describes the encoded side of a schema's canonical JSON codec, so the exported shape matches the selected JSON representation. Export is best-effort and does not replace runtime decoding. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
+`Schema.toJsonSchemaDocument` derives the canonical JSON codec for a schema and exports its encoded side as JSON Schema. Export is best-effort documentation and interop—keep runtime validation at the boundary. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
-## Exporting JSON Schema documents
+## Exporting a document
 
 ```vibe
 const Depot = Schema.Struct({
@@ -29,9 +29,9 @@ draft-2020-12
 {"type":"object","properties":{"name":{"type":"string"},"capacity":{"type":"number"}},"required":["name","capacity"],"additionalProperties":true}
 ```
 
-The document holds `dialect` (default `"draft-2020-12"`), the root `schema`, and a separate `definitions` map. The default excess-property policy leaves unmodeled keys open, though the default runtime decoder removes them.
+The returned document contains `dialect` (default `"draft-2020-12"`), `schema`, and `definitions`. By default, `additionalProperties` is `true` even though runtime decoding strips excess keys unless `onExcessProperty: "error"` is set.
 
-## Selecting canonical representations and specification drafts
+## Canonical representations and drafts
 
 ```vibe
 function alternateDrafts() {
@@ -49,9 +49,9 @@ function alternateDrafts() {
 {"draft07":{"dialect":"draft-07","schema":{"type":"array","maxItems":2,"minItems":2,"items":[{"type":"string"},{"type":"string"}]},"definitions":{}},"draft04":{"dialect":"draft-04","schema":{"type":"array","maxItems":2,"minItems":2,"items":[{"type":"string"},{"type":"string"}]},"definitions":{}}}
 ```
 
-Export derives `toCodecJson`, then describes its encoded side: `FiniteFromString` exports a string schema, and a runtime Date its canonical JSON representation. Custom declaration hooks define the representation for both runtime JSON codecs and export. For another draft, convert the document with `JsonSchema`.
+Because export describes `toCodecJson`'s encoded side, `FiniteFromString` exports as `{ "type": "string" }` and custom `toCodecJson` hooks govern both runtime JSON and exported JSON Schema. Convert to older drafts with `JsonSchema.toDocumentDraft07` or `toDocumentDraft04`.
 
-## Carrying annotations and encoded-side metadata
+## Encoded-side metadata
 
 ```vibe
 const DepotName = Schema.Trim.pipe(Schema.annotateEncoded({
@@ -74,9 +74,9 @@ function nameDocument() {
 {"type":"string","title":"Depot input","description":"Text entered before surrounding whitespace is removed","default":"central","examples":[" north "],"x-widget":"depot-picker"}
 ```
 
-`annotateEncoded` attaches metadata to the wire representation; `.annotate` targets the decoded side. Standard JSON Schema annotations include `title`, `description`, `default`, `examples`, `readOnly`, `writeOnly`, `format`, `contentEncoding`, `contentMediaType`, and `contentSchema`. `includeAnnotationKey` admits selected nonstandard keys and keeps the standard ones. A documented default does not make the runtime decoder apply it.
+Use `Schema.annotateEncoded` for wire-facing metadata. Standard JSON Schema keywords (`title`, `description`, `default`, `examples`, `readOnly`, `writeOnly`, `format`, `contentEncoding`, `contentMediaType`, `contentSchema`) are exported automatically; use `includeAnnotationKey` to opt in custom keys.
 
-## Exporting constraints and optional fields
+## Constraints and optional fields
 
 ```vibe
 const DepotRequest = Schema.Struct({
@@ -96,11 +96,11 @@ function requestDocument() {
 {"type":"object","properties":{"code":{"type":"string","pattern":"^[A-Z]{2}[0-9]{3}$"},"note":{"type":"string"},"alias":{"anyOf":[{"type":"string"},{"type":"null"}]},"capacity":{"type":"integer","minimum":1,"maximum":120}},"required":["code","capacity"],"additionalProperties":true}
 ```
 
-Built-in filters contribute constraints such as numeric bounds, lengths, patterns, and uniqueness; a custom filter needs a `toJsonSchema` annotation to describe a representable constraint. An exact optional key is omitted from `required`; `optional` also allows undefined, which canonical JSON expresses as null. `isPattern` exports a pattern only with the Unicode `u` flag and no flags besides `d`, `g`, or `y`; other flag combinations leave the check out of JSON Schema unless its annotations override `toJsonSchema`.
+- `optionalKey` omits the field from `required`; `optional` also permits `undefined`, which canonical JSON maps to `null`.
+- `isPattern` exports `pattern` only with the `u` flag (and no flags other than `d`, `g`, `y`); add a `toJsonSchema` annotation to override.
+- JavaScript counts UTF-16 code units while JSON Schema counts Unicode code points, so string length bounds export conservatively (e.g., `isMinLength(3)` may emit `minLength: 2`).
 
-JavaScript counts string length in UTF-16 code units; JSON Schema counts Unicode code points. Built-in export uses conservative bounds where needed: `isMinLength(3)` can become `minLength: 2`. Arbitrary predicates and opaque declarations without a structural JSON codec cannot always be described exactly.
-
-## Emitting references for recursive definitions
+## Recursive definitions
 
 ```vibe
 interface DepotTree {
@@ -122,9 +122,9 @@ function treeDocument() {
 {"dialect":"draft-2020-12","schema":{"$ref":"#/$defs/DepotTree"},"definitions":{"DepotTree":{"type":"object","properties":{"name":{"type":"string"},"branches":{"type":"array","items":{"$ref":"#/$defs/DepotTree"}}},"required":["name","branches"],"additionalProperties":true}}}
 ```
 
-An identifier creates a named definition referenced through `$ref`. Without one, recursive export still works: the exporter allocates a name such as `Objects_` for the cycle. Supply an identifier when consumers need a stable reference name. Reuse stable identifiers for shared descriptions; never give one identifier to different shapes.
+Annotate recursive or shared schemas with a unique `identifier` to emit stable `#/$defs/<name>` references (otherwise the exporter generates names such as `Objects_`). Never reuse one `identifier` for different shapes.
 
-## Adjusting document generation
+## Generation options
 
 ```vibe
 function strictDocument() {
@@ -141,9 +141,11 @@ function strictDocument() {
 {"type":"object","properties":{"code":{"type":"string","pattern":"^[A-Z]{2}[0-9]{3}$","description":"a string matching the RegExp ^[A-Z]{2}[0-9]{3}$"},"note":{"type":"string"},"alias":{"anyOf":[{"type":"string"},{"type":"null"}]},"capacity":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991,"description":"an integer","allOf":[{"minimum":1,"maximum":120,"description":"a value between 1 and 120"}]}},"required":["code","capacity"],"additionalProperties":false}
 ```
 
-`onExcessProperty: "error"` closes unmodeled keys where their key space is expressible; set the same runtime parsing option so both reject those keys. `generateDescriptions` derives missing check descriptions from `expected`; `referencePolicy` controls allocation of named references and receives canonical JSON ASTs.
+- `onExcessProperty: "error"`: emits `additionalProperties: false` when expressible (match with the same runtime parse option).
+- `generateDescriptions: true`: fills missing check descriptions from `expected`.
+- `referencePolicy`: controls `$defs` allocation over canonical JSON ASTs.
 
-## Describing JSON string codecs
+## JSON string codecs
 
 ```vibe
 const DepotText = Schema.fromJsonString(Depot)
@@ -158,7 +160,7 @@ function jsonTextDocument() {
 {"type":"string","contentMediaType":"application/json","contentSchema":{"type":"object","properties":{"name":{"type":"string"},"capacity":{"type":"number"}},"required":["name","capacity"],"additionalProperties":true}}
 ```
 
-The external value is JSON text, so the root schema is a string with `contentMediaType: "application/json"`. Its `contentSchema` describes the embedded object's encoded representation. Content keywords document the embedded format; validators vary in enforcing them.
+`Schema.fromJsonString` exports a string schema with `contentMediaType: "application/json"` and `contentSchema` set to the inner schema's JSON representation.
 
 ---
 

@@ -4,7 +4,7 @@
 // release check (scripts/deploy-docs.sh) also requires each recorded version to be
 // the release the site states, so a page never plays an older compiler's output.
 import { createHash } from "node:crypto"
-import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs"
 import { join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -129,7 +129,7 @@ export function videoManifestProblems(repository = root, { release } = {}) {
   return problems
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {
   const args = process.argv.slice(2)
   const release = args[0] === "--release" ? args[1] : undefined
   if ((args.length && args[0] !== "--release") || (args[0] === "--release" && !/^\d+\.\d+\.\d+/.test(release ?? ""))) {

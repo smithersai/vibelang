@@ -1,8 +1,8 @@
 # Default Constructors
 
-Schema constructors work as in Effect, on decoded values: they apply constructor defaults and type-side checks without running the codec's encoded-to-decoded conversion. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Schema constructors operate on decoded types: they apply constructor defaults and type-side filters without running encoded-to-decoded conversions. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Constructing structs and records
+## Structs and records
 
 ```vibe
 // run: { const jsonValue = try makeLabels(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -20,9 +20,9 @@ effect function makeLabels() {
 {"label":{"text":"Keep upright"},"byId":{"handling":"Keep upright"}}
 ```
 
-Every schema has `make`, `makeOption`, and `makeEffect`. Each takes the schema's constructor input. `make` returns the decoded value, `makeOption` returns an Option, and `makeEffect` returns an Effect. For example, `FiniteFromString.makeEffect(6)` constructs a number when run, while its decoder accepts text. Struct and record constructors validate fields and entries.
+Every schema exposes `make`, `makeOption`, and `makeEffect`. Each expects the decoded constructor input (for instance, `FiniteFromString.makeEffect(6)` takes a `number`, not `"6"`) and validates all fields or record entries.
 
-## Applying filters and brands during construction
+## Filters and brands
 
 ```vibe
 // run: try Console.log(try makeCaseCount(6)); try Effect.catch(makeCaseCount(0), (issue) => Console.log(issue._tag))
@@ -40,9 +40,9 @@ effect function makeCaseCount(value: number) {
 Composite
 ```
 
-Filters run during construction as well as parsing. A filter leaves the static type unchanged; a brand returns a branded number with the same runtime number representation. `{ disableChecks: true }` skips checks; it neither decodes an encoded input nor proves the value valid.
+Type-side checks run during construction, and brands attach statically without changing the runtime value. Passing `{ disableChecks: true }` skips validation without proving the value conforms.
 
-## Handling constructor failures
+## Constructor failures
 
 ```vibe
 // run: try Console.log(try constructOrExplain(6)); try Console.log(constructAsOption(0).isNone()); try Effect.catch(constructWithExpectedFailure(0), (error) => Console.log("Construction rejected"))
@@ -67,9 +67,13 @@ true
 Construction rejected
 ```
 
-In local Effect 4.1.1, `makeEffect` fails with a raw `SchemaIssue.Issue`, not the `SchemaError` wrapper Schema decoders return. Format the issue directly or translate it to an application error. `makeOption` discards schema-validation details; `make` throws a generic validation Error with the issue in `cause`. Both synchronous APIs can also throw for non-schema causes or asynchronous work; those exceptions are defects. Use `makeEffect` for expected validation failures.
+- `makeEffect`: fails in the typed error channel with a raw `SchemaIssue.Issue` (Effect 4.1.1—not wrapped in `SchemaError`). Format it directly or map it to a domain error.
+- `makeOption`: returns `Option.none()` on schema failure, discarding issue details.
+- `make`: throws a validation `Error` with the issue on `cause`.
 
-## Setting nested and lazy defaults
+Unexpected non-schema exceptions or asynchronous defaults in `make` / `makeOption` throw as defects; prefer `makeEffect` for expected validation failures.
+
+## Nested and lazy defaults
 
 ```vibe
 // run: const first = try makePacking(); const second = try makePacking(); try Console.log(try Effect.try(() => JSON.stringify(first))); try Console.log(first.labels === second.labels)
@@ -93,9 +97,7 @@ effect function makePacking() {
 false
 ```
 
-Pass an Effect to `withConstructorDefault`; the constructor runs it only when the field needs a default. An outer default supplies nested constructor input, then inner defaults fill their own fields. Each run of the labels default creates a fresh `[]`, so no mutable array is shared.
-
-A default Effect may fail with schema issues but cannot require services; read service-dependent values in the enclosing effect function and pass them as explicit fields. `make` and `makeOption` need defaults that complete synchronously; use `makeEffect` if a default pauses.
+`Schema.withConstructorDefault` runs its Effect lazily only when the field is omitted—each call allocates a fresh `[]` for `labels`, and nested defaults fill missing inner fields after an outer default runs. Default Effects may fail with schema issues but cannot require services; pass service-derived values explicitly. Use `makeEffect` if any default is asynchronous.
 
 ## Reusing defaults
 
@@ -116,9 +118,9 @@ effect function makeReturnPacking() {
 {"reason":"inspection","handling":"standard","labels":[]}
 ```
 
-Defaults belong to field descriptions, so reusing a field carries its constructor default into the new struct. A documented `default` annotation is metadata only, and a constructor default does not make decoding accept a missing field; add a decoding default separately when you need both.
+Constructor defaults travel with field schemas when reused via `.fields`. A `default` annotation is documentation only, and constructor defaults never apply during decoding—add a decoding default separately when needed.
 
-## Initializing schema-backed classes
+## Schema-backed classes
 
 ```vibe
 // run: const value = try createPackingRequest("pkg-94"); try Console.log(value instanceof PackingRequest); try Console.log(try Effect.try(() => JSON.stringify(value)))
@@ -138,6 +140,6 @@ true
 {"reference":"pkg-94","handling":"standard","labels":[]}
 ```
 
-Classes use the same default-bearing field descriptions as structs and give a validated instance with its class behavior. `new PackingRequest(...)` also applies defaults. An exception escaping into Effect code is a defect unless an explicit `Effect.try` wrapper gives it an expected error type. In effect code, wrap a constructor that may throw with `Effect.try`; `new` itself never runs an Effect.
+Classes reuse the same field defaults in both `makeEffect` and `new`. Inside `effect` code, wrap throwing `new` calls with `Effect.try` if validation failure is expected; `new` never executes an Effect on its own.
 
 [Upstream page](https://effect.website/docs/v4/schema/default-constructors)

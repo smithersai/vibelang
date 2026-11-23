@@ -1,6 +1,6 @@
 # Neovim
 
-With one Lua module, Neovim 0.10 or later runs `vibelang --lsp --stdio` in its built-in LSP client. `.vibe` and `.vibex` files get the `vibe` and `vibex` filetypes, TypeScript and TSX highlighting, and the project's compiler as language server: `node_modules/.bin/vibelang`, else `vibelang` on `PATH`.
+With one Lua module, Neovim 0.10+ runs `vibelang --lsp --stdio` in its built-in LSP client. `.vibe` and `.vibex` files get `vibe`/`vibex` filetypes, TypeScript/TSX highlighting, and the project's `node_modules/.bin/vibelang` (falling back to `vibelang` on `PATH`).
 
 ![Errors and hovers in Neovim](/videos/nvim-lsp.mp4)
 
@@ -10,7 +10,7 @@ Run `nvim --version`; the first line must be `NVIM v0.10.0` or later.
 
 ## 2. Add the module
 
-Save this file as `~/.config/nvim/lua/vibelang.lua`:
+Save as `~/.config/nvim/lua/vibelang.lua`:
 
 ```lua
 -- VibeLang for Neovim 0.10 or later, with the built-in LSP client.
@@ -74,13 +74,13 @@ end
 return M
 ```
 
-Add this line to `~/.config/nvim/init.lua` if it is missing:
+Add to `~/.config/nvim/init.lua`:
 
 ```lua
 require("vibelang").setup()
 ```
 
-`setup({ typescript = true })` also attaches the server to `.ts` and `.js` files, so a `.ts` file that imports a `.vibe` module resolves it. First turn off the other TypeScript server, such as `ts_ls` or `vtsls`, for those projects, or both report every `.ts` file. `setup({ cmd = "/path/to/vibelang" })` names another compiler.
+Pass `setup({ typescript = true })` to also attach to `.ts`/`.js` files (disable `ts_ls`/`vtsls` for those projects first to avoid duplicate diagnostics), or `setup({ cmd = "/path/to/vibelang" })` to override the compiler path.
 
 ## 3. Check the filetype and the server
 
@@ -88,14 +88,12 @@ require("vibelang").setup()
 nvim --headless "+lua io.write((vim.filetype.match({ filename = 'main.vibe' })))" +qa
 ```
 
-It prints `vibe`. Then, from the project directory, open one of its `.vibe` files, here `src/main.vibe`:
+Expected output: `vibe`. Next, from the project directory, open a `.vibe` file (e.g., `src/main.vibe`):
 
 ```sh
 nvim --headless src/main.vibe "+lua vim.wait(5000, function() return #vim.lsp.get_clients({ name = 'vibelang' }) > 0 end)" "+lua io.write(#vim.lsp.get_clients({ name = 'vibelang' }) .. ' vibelang client')" +qa
 ```
 
-It prints `1 vibelang client`. A language server spawn error means Neovim found no `vibelang`: install the project's dependencies.
+Expected output: `1 vibelang client`. A spawn error means Neovim could not find `vibelang`; install project dependencies.
 
-The repository’s `editors/nvim/vibelang.lua` also registers the VibeLang tree-sitter grammars. With `nvim-treesitter` on its `master` branch, run `:TSInstall vibe vibex` for VibeLang forms inside JSX containers. The `vibex` queries inherit TSX and VibeLang highlights.
-
-JSX tag names, including member tags such as `<catch.Box/>`, follow JSX’s name rules in `.vibex` files. Keywords remain reserved in ordinary code.
+**Tree-sitter grammars:** `editors/nvim/vibelang.lua` also registers the VibeLang tree-sitter grammars. With `nvim-treesitter` on `master`, run `:TSInstall vibe vibex` for VibeLang forms inside JSX containers (`vibex` queries inherit TSX and VibeLang highlights). JSX tag names—including member tags like `<catch.Box/>`—follow JSX rules in `.vibex` while keywords remain reserved in ordinary code.

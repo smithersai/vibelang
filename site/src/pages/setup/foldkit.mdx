@@ -1,13 +1,13 @@
 ---
 title: "Foldkit"
-description: "Foldkit is a UI framework for Effect in the Elm architecture: a Model schema, Messages, an update function, Commands for side effects, and a view. Write the app in VibeLang; a TypeScript entry..."
+description: "Foldkit is an Elm-architecture UI framework for Effect: Model schema, Messages, update, Commands, and view. Write the app in VibeLang and mount it from a TypeScript entry file (foldkit 0.169.0,..."
 ---
 
 # Foldkit
 
-[Foldkit](https://github.com/foldkit/foldkit) is a UI framework for Effect in the Elm architecture: a Model schema, Messages, an `update` function, Commands for side effects, and a `view`. Write the app in VibeLang; a TypeScript entry file mounts it with Foldkit's runtime. These pages use `foldkit` 0.169.0, `effect` 4.1.1 and VibeLang 0.0.13.
+[Foldkit](https://github.com/foldkit/foldkit) is an Elm-architecture UI framework for Effect: Model schema, Messages, `update`, Commands, and `view`. Write the app in VibeLang and mount it from a TypeScript entry file (`foldkit` 0.169.0, `effect` 4.1.1, VibeLang 0.0.13).
 
-The complete app, a counter, a todo list and an HTTP command, is [`examples/foldkit-app`](https://github.com/smithersai/vibelang/tree/main/examples/foldkit-app). One Vitest suite runs against its VibeLang version and its Effect TypeScript original, so each pair below has the same tested behavior.
+The complete app (counter, todo list, HTTP command) lives in [`examples/foldkit-app`](https://github.com/smithersai/vibelang/tree/main/examples/foldkit-app). One Vitest suite tests both the VibeLang version and its Effect TypeScript original.
 
 ## Install
 
@@ -18,11 +18,11 @@ bun add effect@4.1.1 @effect/platform-browser@4.1.1 foldkit@0.169.0 vibelang-run
 bun add -d vibelang@0.0.13 vibelang-vite@0.0.13 vite@8.3.4 vitest@5.1.0 happy-dom@20.14.6
 ```
 
-`bun install` warns `incorrect peer dependency "effect@4.1.1"`: Foldkit 0.169.0 pins its `effect` and `@effect/platform-browser` peers to exactly 4.0.0. The example's tests and production build pass on 4.1.1.
+`bun install` warns `incorrect peer dependency "effect@4.1.1"` because Foldkit 0.169.0 pins `effect` and `@effect/platform-browser` to 4.0.0; the example's tests and build pass on 4.1.1.
 
 ## Configure
 
-Copy `tsconfig.json`, `vite.config.ts`, `index.html`, `src/entry.ts` and `test/setup.ts` from the example. Foldkit's functions are plain TypeScript. Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
+Copy `tsconfig.json`, `vite.config.ts`, `index.html`, `src/entry.ts`, and `test/setup.ts` from the example. Run `vibelang` to write adjacent `.d.vibe.ts` declarations (even with `--noEmit`) and [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
 
 ```json
 {
@@ -151,7 +151,7 @@ export const FetchQuote = Command.define("FetchQuote", {
 
 ## update and view are plain functions
 
-Foldkit's runtime calls `update` and `view` as plain functions. Declare them with `function` and leave off `effect`. A return annotation can check their result shape. It does not decide the function's kind.
+Foldkit calls `update` and `view` synchronously, so declare them with `function` (without `effect`). A return annotation checks the result shape without changing the function's kind.
 
 :::code-group
 

@@ -1,6 +1,14 @@
 # Chunk
 
-`Chunk` works in VibeLang exactly as in Effect. It is an immutable sequence optimized for repeated concatenation; when concatenation is not the main workload, use an array.
+`Chunk` is an immutable sequence optimized for repeated concatenation and structural sharing. Use it when assembling streams or batches through repeated appends; for ordinary indexed lists without heavy concatenation, prefer a standard array.
+
+| Operation | Purpose |
+| --- | --- |
+| `empty()`, `make(...xs)`, `fromIterable(it)` | Construct empty, nonempty, or iterable-backed chunks |
+| `fromArrayUnsafe(arr)` | Wrap an array without copying (caller relinquishes mutation) |
+| `appendAll(a, b)`, `drop(c, n)` | Concatenate or slice without mutating inputs |
+| `Equal.equals(a, b)` | Order-sensitive structural equality |
+| `toReadonlyArray(c)` | Return a readonly array view preserving nonemptiness in types |
 
 ## Choosing sequence storage
 
@@ -19,7 +27,7 @@ function collectBatches(batches: ReadonlyArray<ReadonlyArray<string>>) {
 ["queued","running","done"]
 ```
 
-A chunk keeps order and shares internal structure across updates, so repeated concatenation does not recopy the whole prefix. Its bookkeeping adds overhead.
+`Chunk` shares internal structure across updates so repeated concatenation avoids copying the accumulated prefix. That structural tree carries bookkeeping overhead, so reserve `Chunk` for concatenation-heavy workloads or APIs that expect it.
 
 ## Building chunks
 
@@ -35,7 +43,7 @@ const fromSet = Chunk.fromIterable(new Set(["center"]))
 [[],["north","south"],["east","west"],["center"]]
 ```
 
-`make` returns a nonempty chunk; `empty` has no elements. `fromIterable` accepts arrays, sets, and other iterables, and reuses input arrays and existing chunks, so copy an array that other code can still mutate. Immutability covers the sequence, not mutable objects stored as elements.
+`Chunk.make` produces a typed nonempty chunk and `Chunk.empty` produces an empty one. `Chunk.fromIterable` reuses input arrays and existing chunks without copying, so spread mutable arrays first (`[...arr]`) if other code still mutates them; immutability protects the sequence, not mutable elements inside it.
 
 ## Reusing an array unsafely
 
@@ -52,7 +60,7 @@ function ownedBatch() {
 ["queued","running"]
 ```
 
-`fromArrayUnsafe` does not copy its input: any later mutation of that array, through any alias, breaks the chunk's immutability. For a copy, use `Chunk.fromIterable([...values])`; `fromIterable(values)` alone also reuses the array.
+`Chunk.fromArrayUnsafe` wraps an array directly with zero copy; mutating that array through any alias afterward breaks the chunk's immutability. Copy explicitly with `Chunk.fromIterable([...values])` when the source array may still change.
 
 ## Concatenating and dropping elements
 
@@ -69,7 +77,7 @@ Chunk.toReadonlyArray(remaining) // ["review", "published"]
 [["draft","review"],["review","published"]]
 ```
 
-`appendAll` keeps both chunks' order; `drop` removes a prefix. Neither changes its inputs.
+`Chunk.appendAll` preserves both operands' order and `Chunk.drop` discards leading elements. Neither mutates its inputs.
 
 ## Checking structural equality
 
@@ -86,7 +94,7 @@ Equal.equals(first, reversed) // false
 true false
 ```
 
-Equality compares lengths and corresponding elements by Effect's equality rules, so distinct chunks can be equal, even with separately created plain object elements. Order matters.
+`Equal.equals` compares chunks by length and element-by-element structural equality, including separately allocated plain objects. Element order is significant.
 
 ## Converting to arrays
 
@@ -102,4 +110,4 @@ mutableCopy.push(9)
 [[7,8],[],[7,8,9]]
 ```
 
-`toReadonlyArray` returns a readonly view that keeps the nonempty type for a known nonempty input. Do not cast it to a mutable array; copy it with spread when JavaScript code needs mutable storage.
+`Chunk.toReadonlyArray` returns a readonly view that retains the nonempty array type for nonempty chunks. Never cast the result to a mutable array; copy it with `[...view]` whenever JavaScript code requires mutation.

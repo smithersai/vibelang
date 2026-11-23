@@ -1,11 +1,17 @@
 ---
 title: "Cause"
-description: "Cause works in VibeLang exactly as in Effect. It records every reason a computation failed (typed errors, defects, interruption); use it when the error channel alone cannot explain an outcome."
+description: "Cause is a lossless record of why an Effect failed, capturing typed errors, unexpected defects, and fiber interruptions together. Use it at logging, telemetry, or supervision boundaries where the..."
 ---
 
 # Cause
 
-`Cause` works in VibeLang exactly as in Effect. It records every reason a computation failed (typed errors, defects, interruption); use it when the error channel alone cannot explain an outcome.
+`Cause` is a lossless record of why an Effect failed, capturing typed errors, unexpected defects, and fiber interruptions together. Use it at logging, telemetry, or supervision boundaries where the typed error channel `E` alone omits defects or cancellation.
+
+| Reason `_tag` | Constructor | Guard | Payload field |
+| --- | --- | --- | --- |
+| `"Fail"` | `Cause.fail(e)` | `Cause.isFailReason` | `.error` |
+| `"Die"` | `Cause.die(d)` | `Cause.isDieReason` | `.defect` |
+| `"Interrupt"` | `Cause.interrupt(fiberId?)` | `Cause.isInterruptReason` | `.fiberId` |
 
 ## Representing failure reasons
 
@@ -22,7 +28,7 @@ empty.reasons.length // 0
 Fail Die Interrupt 0
 ```
 
-`Cause.fail` stores an error in E, `Cause.die` a defect outside E, and `Cause.interrupt` an interruption with an optional numeric fiber ID. An empty cause has no reasons; there is no `Empty` reason variant.
+`Cause.fail` wraps a typed error in `E`, `Cause.die` wraps an untyped defect, and `Cause.interrupt` records cancellation with an optional numeric fiber ID. `Cause.empty` has an empty `reasons` array rather than a separate `Empty` variant.
 
 ## Combining reasons
 
@@ -40,7 +46,7 @@ Cause.combine(Cause.fail("same error"), Cause.fail("same error")).reasons.length
 1
 ```
 
-Effect 4 stores reasons in a flat array: `combine` merges both sets and drops equal duplicates, building no sequential or parallel tree. `combine` keeps an expected failure beside a defect, but where the runtime combines them, at a cleanup or a concurrent sibling, the failure becomes a defect of the same error. Inspect a mixed cause as a whole.
+Effect 4 represents causes as a flat `reasons` array: `Cause.combine` merges both arrays and deduplicates equal reasons without building nested trees. When the runtime merges a typed failure with a defect (such as during cleanup or concurrent failure), the typed failure is promoted to a defect, so inspect mixed causes as a whole.
 
 ## Extracting a computation's cause
 
@@ -65,7 +71,7 @@ effect function diagnose() {
 MissingRecord:
 ```
 
-`try exit(program)` runs the Effect and returns its full outcome as data. A failure exit's `.cause` includes defects and interruption, which ordinary `catch` does not handle. `try failCause(cause)` propagates the entire cause again, while `throw cause` fails with the cause object itself as a typed error; to branch on the whole outcome, `match` the exit with `Exit.Success(let value)` and `Exit.Failure(let cause)` arms.
+`try exit(program)` executes `program` and returns its complete `Exit` as data, exposing `.cause` for failures including defects and interruptions that `catch` bypasses. Re-raise a captured cause with `try failCause(cause)` (whereas `throw cause` fails with the `Cause` object itself as a typed error), or dispatch with `match` over `Exit.Success(let value)` and `Exit.Failure(let cause)`.
 
 ## Identifying reason variants
 
@@ -105,7 +111,7 @@ interruption: 17
 {"failed":false,"defective":false,"interrupted":false,"interruptionOnly":false}
 ```
 
-Cause predicates test whether a kind of reason is present. Reason guards narrow one entry to `Fail`, `Die`, or `Interrupt`, exposing `.error`, `.defect`, or `.fiberId`. An empty cause has `reasons.length === 0`.
+Summary predicates (`hasFails`, `hasDies`, `hasInterrupts`, `hasInterruptsOnly`) check the whole cause, while per-entry guards (`isFailReason`, `isDieReason`, `isInterruptReason`) narrow each element of `cause.reasons`. An empty cause has `reasons.length === 0`.
 
 ## Formatting and inspecting errors
 
@@ -130,11 +136,11 @@ function inspect<E>(cause: Cause.Cause<E>) {
 {"failures":[],"defects":[],"rendered":""}
 ```
 
-`Cause.pretty` renders errors and traces readably, and returns an empty string for `Cause.empty`. Select individual reasons when a reporting boundary needs separate counts or categories. Error fields and messages can hold sensitive application data, so format only errors fit for the destination.
+`Cause.pretty` formats errors and stack traces for diagnostics and returns `""` for `Cause.empty`. Filter `cause.reasons` directly when structured reporting needs counts or separate buckets, and avoid logging errors whose fields contain sensitive data.
 
 ## Coming from Effect
 
-A VibeLang `catch` uses Effect's `catch`: a defect or a cause with no typed failure propagates; a typed failure can be recovered even beside an interruption. To inspect the full outcome, use `try exit(work())`, which keeps the complete cause.
+VibeLang's `catch` handles typed failures only—defects and causes without a typed failure propagate unchanged, while a typed failure can still be recovered alongside an interruption. Use `try exit(work())` whenever you need the full `Cause`.
 
 ---
 

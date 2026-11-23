@@ -1,6 +1,6 @@
 # Cloudflare Workers
 
-A Worker is a module whose `fetch` handler answers each request. Write the handler in TypeScript and the program in VibeLang: the handler runs the program with an Effect runner. esbuild bundles both through `vibelang-unplugin`, and Wrangler runs the bundle locally in workerd, Cloudflare's runtime.
+A Cloudflare Worker exports a `fetch` handler rather than running `main()`. Write the application logic in `.vibe`, invoke it from a thin `.ts` `fetch` adapter with `Effect.runPromise`, bundle both with `esbuild` + `vibelang-unplugin`, and run locally in `workerd` via Wrangler.
 
 ## Install
 
@@ -11,7 +11,7 @@ npm install -D vibelang vibelang-unplugin esbuild wrangler
 
 ## Configure
 
-Keep a normal `tsconfig.json` that includes the `.vibe` sources: the plugin compiles with it, and without one the build stops with TS5058.
+Include `.vibe` sources in `tsconfig.json` (required by `vibelang-unplugin`; omitting it fails with `TS5058`):
 
 ```json
 {
@@ -29,7 +29,7 @@ Keep a normal `tsconfig.json` that includes the `.vibe` sources: the plugin comp
 }
 ```
 
-`build.mjs` bundles the Worker into one ES module, with the export conditions workerd resolves:
+Bundle to a single ES module using `workerd` export conditions in `build.mjs`:
 
 ```js
 // build.mjs
@@ -47,7 +47,7 @@ await esbuild.build({
 })
 ```
 
-`wrangler.toml` runs that build and serves its output unbundled:
+Point `wrangler.toml` at the prebuilt bundle:
 
 ```toml
 name = "greeter"
@@ -97,9 +97,9 @@ export default {
 }
 ```
 
-A Worker has no `main`; its TypeScript `fetch` callback runs each request Effect with `Effect.runPromise`. Provide each program's layers where it runs, as `greeting` does; `HttpClient` takes `FetchHttpClient.layer`, which calls the Worker's own `fetch`.
+Provide all required layers inside the invoked Effect (`FetchHttpClient.layer` uses the Worker's native `fetch` for outbound HTTP).
 
-## Run it locally
+## Run locally and deploy
 
 ```sh
 npx wrangler dev
@@ -109,4 +109,4 @@ curl "http://localhost:8787/?name="
 # Hello, stranger!
 ```
 
-`npx wrangler deploy` runs the same build and uploads it to your Cloudflare account.
+Deploy with `npx wrangler deploy`.

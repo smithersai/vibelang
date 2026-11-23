@@ -32,7 +32,7 @@ InvalidCode
 
 `error InvalidCode { input: string }` declares a tagged error class — short for `class InvalidCode extends Data.TaggedError("InvalidCode")<{ readonly input: string }> {}`. Every instance has a readonly `_tag` matching the class name, shallowly readonly payload fields, and an object-argument constructor. Omit braces for a fieldless error: `error Timeout`.
 
-Inside an `effect` function, `throw` fails with that typed error (equivalent to `try fail(err)`). Inside a plain `.vibe` function, `throw` and unwrapped calls to throwing functions are compile errors (`EK0401`) — either make the function `effect`, catch exceptions inside a plain `try`/`catch` block, or keep throwing code in a `.ts` module.
+Inside an `effect` function, `throw` fails with that typed error (equivalent to `try fail(err)`). A plain function can't throw: a `throw` there is `EK0401`, and so is an unwrapped call known to throw — either make the function `effect`, catch exceptions inside a plain `try`/`catch` block, or keep JavaScript's `throw` in a `module` block (with `@throws {T}`) or a `.ts` file.
 
 ```vibe
 // run: try Console.log(quantityOr("3", 0)); try Console.log(quantityOr("x", 0))

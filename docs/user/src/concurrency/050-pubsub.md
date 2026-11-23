@@ -1,6 +1,15 @@
 # PubSub
 
-A `PubSub` broadcasts values to independent subscribers: each active subscriber can receive the same published value. Use it for notifications and live event feeds; use a Queue when workers divide messages among themselves.
+A `PubSub` broadcasts every published value to all active subscribers independently. Use it for live notifications and event fan-out; choose a `Queue` when workers should split items among themselves instead of each receiving a copy.
+
+![Queue vs. PubSub message delivery](/diagrams/queue-vs-pubsub.svg)
+
+| Constructor | Behavior when buffer is full | Tradeoff |
+| --- | --- | --- |
+| `PubSub.bounded(n)` | Suspends `publish` until all subscribers advance | Slowest subscriber backpressures publishers |
+| `PubSub.dropping(n)` | Rejects new items (`publish` returns `false`) | Publishers never stall; new events may drop |
+| `PubSub.sliding(n)` | Evicts oldest retained items | Publishers never stall; slow subscribers miss older events |
+| `PubSub.unbounded()` | Always accepts immediately | Memory grows if subscribers lag |
 
 ## Broadcasting to independent subscribers
 
@@ -23,7 +32,7 @@ effect function stringify(value: unknown) {
 // Output: ["deployment complete","deployment complete"]
 ```
 
-Subscribe before publishing a message that must be received: without replay configuration, a later subscriber receives future messages, not past ones. Each subscription has its own read position; reading from one doesn't consume another subscriber's copy.
+Subscribe before publishing any message a listener must see: without replay configuration, late subscribers only receive subsequent publications. Each subscription tracks its own cursor, so taking from one leaves every other subscriber's copy intact.
 
 ## Selecting capacity and overflow behavior
 
@@ -40,7 +49,7 @@ effect function makeHubs() {
 // Output: 64 64 64 9007199254740991
 ```
 
-When the buffer is full, a bounded hub backpressures publishers, so a slow subscriber can delay publication; dropping rejects new values and reports `false`; sliding removes old values to keep newer ones, so slow subscribers can miss events. An unbounded hub never waits for capacity, but memory grows when subscribers fall behind.
+Pick `bounded` when every subscriber must observe every event, `dropping` or `sliding` when publishers must stay responsive despite slow consumers, and `unbounded` only when publication rate is externally constrained.
 
 ## Managing scoped subscriptions
 
@@ -56,9 +65,7 @@ effect function listen(hub: PubSub.PubSub<string>) {
 // Output: notification ready
 ```
 
-`subscribe` acquires a scoped subscription; `scoped(effect { ... })` releases it when the scope closes on success, failure, or interruption. Releasing a subscriber also removes its pressure on retained messages. Without `scoped`, `Scope` stays in the caller's requirements, so the caller's scope owns the subscription.
-
-In Effect 4, consume the returned `PubSub.Subscription` with `PubSub.take` and the other PubSub taking functions.
+`PubSub.subscribe` returns a scoped `PubSub.Subscription` that releases automatically when its `Scope` closes on success, failure, or interruption, freeing any backpressure that subscriber held. Omitting `scoped` leaves `Scope` in `R` so the caller owns the subscription's lifetime. In Effect 4, read from subscriptions using `PubSub.take` and its companion `PubSub` consumers.
 
 ## Publishing batches
 
@@ -76,7 +83,7 @@ effect function batch() {
 // Output: {"accepted":true,"messages":["queued","started","finished"]}
 ```
 
-`publishAll` publishes a collection under the hub's overflow strategy and reports whether all values were published. A bounded batch can suspend while subscribers make room, so when a batch exceeds the available capacity, run its producer concurrently with its consumers.
+`PubSub.publishAll` publishes a collection under the hub's overflow policy and returns whether every element succeeded. Because a bounded batch suspends once capacity fills, run producers and consumers on separate fibers whenever a batch can exceed capacity.
 
 ## Inspecting size and capacity
 
@@ -98,7 +105,7 @@ effect function inspect() {
 // Output: {"capacity":5,"size":1,"empty":false,"full":false}
 ```
 
-Capacity is a plain value; size and fullness queries return Effects that run with `try`. Size counts messages the hub retains, not a sum of copies across subscribers. These are snapshots: they don't guarantee a later publication finds space.
+`PubSub.capacity` returns a plain number, while `size`, `isEmpty`, and `isFull` return Effects. `size` counts retained messages in the hub rather than copies across subscribers, and all counts are point-in-time snapshots rather than reservations.
 
 ## Ending subscriptions and shutting down
 
@@ -119,4 +126,4 @@ effect function ownHub() {
 // Output: true
 ```
 
-Closing one subscription leaves the hub and other subscriptions active. Shutting down the hub terminates its subscriptions and releases blocked operations. `awaitShutdown` waits for the shutdown signal and `isShutdown` reads that state. Keep hub shutdown in the owner's cleanup path.
+Closing a single subscription affects neither the hub nor other subscribers. `PubSub.shutdown` terminates every subscription and releases blocked calls, while `awaitShutdown` and `isShutdown` observe that terminal state; always place `PubSub.shutdown` in the owner's cleanup path.

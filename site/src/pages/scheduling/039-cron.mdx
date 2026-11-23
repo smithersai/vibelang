@@ -1,11 +1,19 @@
 ---
 title: "Scheduling work with cron"
-description: "Cron and Schedule.cron work in VibeLang exactly as in Effect. Use them for work tied to calendar dates, such as a weekday report; use interval schedules when only elapsed time matters."
+description: "Cron and Schedule.cron align work with calendar dates and wall-clock times, matching Effect's behavior unchanged. Reach for cron on calendar jobs such as weekday reports; use interval schedules..."
 ---
 
 # Scheduling work with cron
 
-`Cron` and `Schedule.cron` work in VibeLang exactly as in Effect. Use them for work tied to calendar dates, such as a weekday report; use interval schedules when only elapsed time matters.
+`Cron` and `Schedule.cron` align work with calendar dates and wall-clock times, matching Effect's behavior unchanged. Reach for cron on calendar jobs such as weekday reports; use interval schedules (`spaced`, `fixed`) when only elapsed duration matters.
+
+| API | Purpose |
+| --- | --- |
+| `Schedule.cron(expr, tz)` / `Schedule.cron(rule)` | Builds a `Schedule` firing on each matching instant |
+| `Cron.parse(expr, tz)` | Validates an expression and time zone, returning a `Result<Cron, CronParseError>` |
+| `Cron.next(rule, date)` | Computes the next matching `Date` after `date` |
+| `Cron.sequence(rule, date)` | Iterates lazily over future matching instants |
+| `Cron.match(rule, date)` | Tests whether a `Date` satisfies `rule` |
 
 ## Defining calendar execution
 
@@ -29,9 +37,9 @@ effect function reportJob() {
 // Output: generating daily report
 ```
 
-The five fields are minute, hour, day of month, month, and weekday. This rule runs at 07:45 Monday through Friday; with the optional leading seconds field, `0 45 7 * * 1-5` is equivalent. Fields accept `*`, ranges, comma separated lists, and steps such as `*/10`.
+The five fields are minute, hour, day-of-month, month, and weekday, accepting `*`, ranges, comma lists, and steps like `*/10`; an optional leading seconds field (`0 45 7 * * 1-5`) is also accepted.
 
-When day of month and weekday both restrict dates, either field can match, so leave day of month as `*` in a weekday rule. `try schedule(action, rule)` waits for the first match, so the report doesn't run immediately at startup.
+When both day-of-month and weekday are restricted, matching *either* triggers the job—keep day-of-month as `*` for weekday-only rules. Run cron jobs with `try schedule(action, rule)` so the first execution waits for the next matching instant rather than firing at startup.
 
 ## Selecting a time zone
 
@@ -55,7 +63,7 @@ const fixedUtc = Schedule.cron("45 7 * * 1-5", "UTC")
 // Output: [56700000,27900000]
 ```
 
-A named zone follows its local calendar, daylight saving changes included; `UTC` keeps one offset all year. Test dates near clock changes, especially times that disappear or occur twice, and pass the zone explicitly instead of depending on the machine's location.
+Always pass an explicit time zone instead of relying on the host's locale. Named IANA zones track daylight saving transitions while `"UTC"` keeps a fixed offset year-round; test around spring-forward and fall-back boundaries when scheduling local wall-clock times.
 
 ## Validating expressions
 
@@ -75,7 +83,7 @@ effect function validateRule(expression: string, timeZone: string) {
 // Output: CronParseError
 ```
 
-`Cron.parse` returns a `Result`, so parsing alone throws no typed failure; `try fromResult(Cron.parse(...))` puts invalid expressions and invalid zones in the error channel. Validate configuration before starting any work, and report the configuration error at the application boundary.
+`Cron.parse` returns a `Result` without failing the Effect; convert it with `try fromResult(...)` so bad expressions or unknown time zones surface as `Cron.CronParseError` in `E`. Validate user- or config-supplied rules at startup before launching background fibers.
 
 ## Previewing future runs
 
@@ -98,7 +106,7 @@ effect function preview() {
 // Output: ["2026-11-02T07:45:00.000Z","2026-11-03T07:45:00.000Z","2026-11-04T07:45:00.000Z"]
 ```
 
-`Cron.next` finds the next matching instant after the given date; explicit dates make a preview reproducible. Wrap calls that can throw with `Effect.try`, then run them with `try`. `Cron.sequence` iterates over future matches, and `Cron.match` tests an existing date against a rule.
+Pass explicit anchor dates to `Cron.next` for reproducible previews, wrapping throwing helpers in `Effect.try`. Reach for `Cron.sequence` to stream upcoming matches and `Cron.match` to check an existing timestamp.
 
 ## Starting and stopping a job
 
@@ -126,9 +134,9 @@ effect function runApplication() {
 // Output: application stopped
 ```
 
-Keep the job's fiber alive for the part of the application that needs it. `try Fiber.interrupt(reports)` waits for cleanup, and parent-fiber ownership also interrupts this child when its parent ends. A failure stops the schedule unless the action handles it or retries internally.
+Tie the forked job fiber to the application scope that owns it: `try Fiber.interrupt(reports)` waits for active cleanup, and structured concurrency interrupts child fibers automatically when the parent exits. Unhandled failures stop the schedule, so catch or retry recoverable errors inside the job body.
 
-These cron jobs exist only in memory. For a job that must survive restarts or recover missed dates, use an external scheduler or durable pending-work records.
+In-memory cron jobs do not survive restarts or recover missed ticks. Use an external scheduler or durable work records when missed runs must execute after downtime.
 
 ---
 

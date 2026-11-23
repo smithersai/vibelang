@@ -1,13 +1,13 @@
 ---
 title: "Path"
-description: "Path is Effect's platform-specific path service, in place of node:path. Use it to join, split, normalize, and convert paths without hard-coding host separators or importing a native path module."
+description: "Path provides Effect's portable path manipulation service in place of node:path, avoiding hard-coded separators and native imports."
 ---
 
 # Path
 
-`Path` is Effect's platform-specific path service, in place of `node:path`. Use it to join, split, normalize, and convert paths without hard-coding host separators or importing a native path module.
+`Path` provides Effect's portable path manipulation service in place of `node:path`, avoiding hard-coded separators and native imports.
 
-## Requesting the path service
+## Requesting the service
 
 ```vibe
 import * as NodePath from "@effect/platform-node/NodePath"
@@ -20,9 +20,9 @@ effect function pathSeparator() {
 // Output: /
 ```
 
-`try Path.Path` gets the implementation from the current environment. Its `sep` property is a value, and `path.join(...)` calls one of its methods. The module's own exports, such as `Path.layer`, keep their meaning, and the key itself is `Path.Path`.
+`try Path.Path` fetches the active `Path` implementation and adds `Path.Path` to `R`. Module exports such as `Path.layer` retain their normal meaning.
 
-## Manipulating paths portably
+## Manipulating paths
 
 ```vibe
 import * as NodePath from "@effect/platform-node/NodePath"
@@ -46,18 +46,18 @@ effect function describeReport() {
 // Output: {"joined":"reports/weekly.txt","normalized":"reports/weekly.txt","base":"weekly.txt","directory":"reports","extension":".txt","absolute":false,"rebuilt":"reports/weekly.txt"}
 ```
 
-Most `Path` methods are plain synchronous TypeScript functions. Getting the service with `try Path.Path` adds `Path` to R even when a member returns a string. Call non-throwing methods directly. Wrap a synchronous call that may throw with `Effect.try` before running it in effect code.
+Most `Path` operations are synchronous string functions—call them directly without `try`. Wrap any synchronous call that might throw in `Effect.try`.
 
 | Operation | Result |
 | --- | --- |
-| `basename`, `dirname`, `extname` | File name, directory, or extension |
-| `join`, `normalize` | A combined or simplified path |
-| `parse`, `format` | Structured path components or their string form |
-| `isAbsolute` | Whether a path has an absolute root |
-| `relative`, `resolve` | A relative relationship or an absolute resolution |
-| `sep` | The implementation's separator |
-| `toNamespacedPath` | A Windows namespace path where applicable |
-| `toFileUrl`, `fromFileUrl` | Effectful file-URL conversion |
+| `basename`, `dirname`, `extname` | File name, parent directory, or extension |
+| `join`, `normalize` | Joined or normalized path |
+| `parse`, `format` | Parsed path components or formatted string |
+| `isAbsolute` | Whether the path has an absolute root |
+| `relative`, `resolve` | Relative path or resolved absolute path |
+| `sep` | Host path separator |
+| `toNamespacedPath` | Windows namespace path (no-op on POSIX) |
+| `toFileUrl`, `fromFileUrl` | Effectful `file://` URL conversion |
 
 ```vibe
 import * as NodePath from "@effect/platform-node/NodePath"
@@ -72,9 +72,9 @@ effect function asFileUrl(file: string) {
 // Output: /reports/weekly.txt
 ```
 
-URL conversions return Effects, run with `try`, and report `BadArgument` on invalid input. Path string operations are lexical: normalizing or resolving a path doesn't check that a file exists. Use FileSystem when file-system state matters.
+`toFileUrl` and `fromFileUrl` return Effects (failing with `BadArgument` on invalid input). All `Path` operations are purely lexical and never touch the filesystem—use `FileSystem` to check existence or resolve symlinks.
 
-## Supplying a platform path implementation
+## Platform layers
 
 ```vibe
 // main.vibe
@@ -90,11 +90,11 @@ NodeRuntime.runMain(Effect.provide(main(), NodePath.layer))
 // Output: reports/weekly.txt
 ```
 
-`NodePath.layer` supplies host path behavior; `NodeServices.layer` supplies it as part of the whole Node service bundle, and `BunServices.layer` supplies Bun's. The module's `Path.layer` supplies the built-in POSIX implementation, for programs that use POSIX paths on purpose, deterministic tests included: `provide Path.layer { ... }` inside `main` wins over the bundle.
+Provide `NodePath.layer` (or `NodeServices.layer` / `BunServices.layer`) for host conventions, or `Path.layer` for deterministic POSIX paths across platforms and tests.
 
 ## Coming from Effect
 
-Use `try Path.Path` to get the service. Call synchronous methods directly, and run Effect-returning methods with `try`. Read value properties from the implementation, as in `path.sep`.
+Fetch the service with `try Path.Path`, read properties like `path.sep` and call synchronous helpers directly, and run `toFileUrl` / `fromFileUrl` with `try`.
 
 ---
 

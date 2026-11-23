@@ -1,6 +1,6 @@
 # The Effect Type
 
-In ordinary TypeScript, a function signature tells only one-third of the story:
+In ordinary TypeScript, a function signature tells only one-third of the story. It names the success value, but not what can go wrong or what the function needs.
 
 ```ts
 // TypeScript (.ts)

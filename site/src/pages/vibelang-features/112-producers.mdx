@@ -36,8 +36,8 @@ effect function firstAlert() {
 ```
 
 - Calling `readings()` constructs a lazy `Stream.Stream<number>` without running its body.
-- Each `yield x` offers one element and pauses under backpressure. A sequential producer runs at most two elements ahead of its consumer (one in its one-element buffer and one waiting to offer); yields from inside a `for concurrent` body have no such bound.
-- The producer supplies its own `Scope` (so `addFinalizer`, `acquireRelease`, and `fork.scoped` inside it do not add `Scope.Scope` to the Stream's `R` channel).
+- Each `yield x` offers one element and pauses under backpressure. The producer can run up to two elements ahead of its consumer: one in its one-element buffer and one waiting to be offered. This bound is for one sequential emitter. In a `for concurrent` body, each active item can compute its value before waiting to offer it, so the buffer does not bound all pending offers or upstream work.
+- The producer supplies its own `Scope`. For inferred body requirements `RBody`, the Stream requires `Exclude<RBody, Scope.Scope>`, so `addFinalizer`, `acquireRelease`, and `fork.scoped` inside it add nothing to `R`. `Scope.Scope | Users` becomes `Users`; other service requirements remain.
 - `break` or a failure in `for try` closes the Stream and runs all producer finalizers (`sensor closed`) before returning.
 
 ## Calling services between yields
@@ -117,7 +117,11 @@ Rules for `for try` and producers:
 | --- | --- |
 | `effect function*` / `effect *method()` | Bare `return` ends the stream; `return value` is `EK2128`. `yield*` is `EK2103` — forward another stream with `for try (const x of other) yield x`. Non-Stream return annotation is `EK2102`. `yield` inside a non-producer `effect` function is `EK2104`. |
 | `for try (const x of stream)` | Valid only in effect code (`EK2001`). Operand must be a `Stream` (`EK2004`). Head must use `const` or `let` (`EK2005`). `continue` skips an item; `break` closes the stream; `return` (`EK2002`) and labeled jumps outside the loop (`EK2003`) are errors — save into a variable and `break`. |
-| Fibers inside `for try` | Each item runs on the consuming fiber; a plain `fork` inside the body is owned by that consuming fiber, not implicitly joined per item. |
+| Fibers inside `for try` | Each item runs on the current consuming fiber. A plain `fork` inside the body is owned by that fiber: it may outlive its item and the loop, is never implicitly joined, and is interrupted when its owner ends. `fork.in`, `fork.scoped`, and `fork.detached` keep their own owners. |
+
+## Native iteration and cleanup
+
+Ordinary `for...of` and array destructuring keep ECMA-262 semantics: the native algorithm determines which completions close an iterator, and an exhausted iterator is not closed again. Effect failure is different. An `Effect` run by `try` that fails, dies or is interrupted abandons the generator, so neither its iterator closing nor `using` disposal runs. For cleanup on every exit, use `scoped` with `acquireRelease`.
 
 ## Plain JavaScript generators (`function*`)
 

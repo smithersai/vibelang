@@ -1,6 +1,14 @@
 # Schedule cookbook
 
-These recipes use Effect values as repeatable programs. Each bounds its attempts or checks, and a successful request stops retrying immediately. `Schedule` values and duration calculations work exactly as in Effect.
+These recipes pair repeatable Effect values with bounded `Schedule` policies for common production patterns. Every recipe caps its retries or polls, and `Schedule` and `Duration` behave identically to Effect.
+
+| Pattern | Key combinators |
+| --- | --- |
+| Server `Retry-After` floor | `Schedule.setInputType`, `Schedule.modifyDelay`, `Duration.max` |
+| Response-driven polling | `repeat`, `until`, `Schedule.modifyDelay` |
+| Hard total deadline | Outer `timeout(retry(...), d)` |
+| Fast-then-slow retries | `Schedule.concat` |
+| Retry telemetry | `Schedule.tap` placed after `Schedule.upTo` |
 
 ## Honoring server retry hints
 
@@ -31,7 +39,7 @@ effect function download() {
 // Output: archive ready
 ```
 
-Parse the response's retry hint into a duration at the HTTP boundary. The policy waits the longer of that duration and the backoff for the same failure, so the first two waits are two seconds each. Three permitted retries mean at most four requests; exhausting them propagates the last `Throttled` failure.
+Parse the HTTP `Retry-After` header into a `Duration` at the client boundary. `Duration.max` enforces the server hint as a floor over exponential backoff (two seconds on both retries here), and exhausting all three retries propagates the final `Throttled` error.
 
 ## Polling with response-dependent delays
 
@@ -68,7 +76,7 @@ effect function waitForArchive() {
 // Output: /archives/week.csv
 ```
 
-A pending response is a success, so it feeds `repeat`, not `retry`. This simulation waits 300 then 600 milliseconds and returns the path on its third check. The count limit permits at most six checks; reaching it with another pending result becomes `PollLimit`.
+Because a `Pending` status is a valid response rather than a failure, drive polling with `repeat` instead of `retry`. The schedule waits 300 ms, then 600 ms, and returns on the third check; if all six checks return `Pending`, the trailing check turns exhaustion into `PollLimit`.
 
 ## Bounding the whole retry operation
 
@@ -85,7 +93,7 @@ effect function readWithDeadline() {
 // Output: TimeoutError
 ```
 
-The outer timeout covers the first attempt, every wait, and every retry; a timeout inside the retried program gives each attempt its own budget. A schedule checks its elapsed-duration limit only at its steps and can't interrupt an attempt in progress; a timeout interrupts the work and waits for its cleanup.
+Wrapping `retry` inside `timeout` bounds the initial attempt, all delays, and every retry together; placing `timeout` inside the retried Effect instead gives each attempt its own budget. Unlike `Schedule.upTo({ duration })`, which only checks elapsed time between steps, `timeout` interrupts an active attempt and waits for its cleanup.
 
 ## Switching from rapid to slower retries
 
@@ -108,7 +116,7 @@ effect function reconnect() {
 // Output: connected
 ```
 
-The first two retries wait briefly; later ones wait four seconds. This simulation succeeds on attempt four, in the slow phase. If every attempt fails, the two phases allow five retries plus the initial attempt.
+Two fast retries handle brief blips before falling back to four-second intervals. This example succeeds on attempt four (inside the slow phase); total capacity is six attempts—one initial run plus five retries.
 
 ## Recording retry decisions
 
@@ -143,4 +151,4 @@ effect function observedRequest() {
 // Output: accepted
 ```
 
-Put `tap` after the limit so it records accepted retries only. The retry number starts at one and describes the next planned attempt, before its wait begins. A telemetry failure also fails the schedule; when an export failure must not stop the request, handle it inside the callback.
+Place `Schedule.tap` after `Schedule.upTo` so it logs only retries that will actually execute; `attempt` starts at 1 and fires before the delay begins. Because a failing `tap` callback aborts the schedule, catch telemetry errors inside the callback when export failures must not cancel retries.

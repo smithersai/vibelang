@@ -1,6 +1,15 @@
 # Creating Streams
 
-Build a Stream from values, effectful work, or an existing source. Construction is lazy: callbacks that do Effect work run at consumption. The [introduction](053-introduction.md) covers Stream builders and `effect function*` producers as Streams.
+A `Stream` is a lazy blueprint for producing zero or more elements on demand. Constructing a stream performs no work and acquires no resources; effectful callbacks run only when a consumer pulls from it. See the [introduction](053-introduction.md) for stream fundamentals and `effect function*` producers.
+
+| Source | Constructors |
+| --- | --- |
+| Values & sequences | `make`, `empty`, `succeed`, `fail`, `range`, `iterate` |
+| Collections & iterables | `fromArray`, `fromArrays`, `fromIterable`, `fromIterableEffect`, `fromAsyncIterable` |
+| Effects & push callbacks | `fromEffect`, `callback`, `scoped` |
+| Repetition & time | `forever`, `repeat`, `fromEffectRepeat`, `tick`, `fromSchedule`, `fromEffectSchedule` |
+| Stateful generation | `unfold`, `paginate` |
+| Concurrency primitives | `fromQueue`, `fromPubSub` |
 
 ## Finite and empty streams
 
@@ -18,7 +27,7 @@ effect function readPowers() {
 // Output: [["queued","running","complete"],[],1,[4,5,6,7],[2,4,8,16]]
 ```
 
-`make` takes individual elements; `empty` emits none. `range` includes both endpoints. `iterate` emits the initial value, then applies its pure callback repeatedly; limit an infinite source before collecting it.
+`make` emits its arguments in order; `empty` completes immediately with no elements; `range(start, end)` is inclusive on both ends. `iterate(initial, next)` emits `initial` and applies its pure step indefinitely—always bound infinite streams (for example, with `Stream.take`) before collecting.
 
 ## Successes and failures
 
@@ -37,7 +46,7 @@ effect function readClosed() {
 // Output: [["ready"],["source unavailable"]]
 ```
 
-`succeed` emits once and completes. `fail` builds a failing source without throwing at construction; a `catch` expression on the consuming Effect handles its typed failure.
+`Stream.succeed` emits one value and ends; `Stream.fail` constructs a stream that fails on consumption without throwing at definition time. Handle its typed failure with stream recovery operators or a `catch` expression on the consuming Effect.
 
 ## Arrays and iterables
 
@@ -58,7 +67,7 @@ const codes = Stream.fromIterableEffect(effect {
 // Output: [[11,22],[11,22,33],["east","west"],["A","B"]]
 ```
 
-`fromArray` and `fromIterable` emit collection members; `fromArrays` keeps the supplied batch boundaries internally. `fromIterableEffect` runs the Effect to get an iterable, then emits its members; service requirements belong to consumption.
+`fromArray` and `fromIterable` emit collection elements; `fromArrays` preserves each array as an internal chunk boundary. `fromIterableEffect` defers computing the iterable until consumption, carrying any service requirements into the stream's `R` parameter.
 
 ## Async iterables
 
@@ -95,7 +104,7 @@ function adaptRows(rows: AsyncIterable<string>) {
 // Output: IteratorFailed
 ```
 
-`rows` is a plain function: TypeScript callers get the async iterable from `rows()`, as VibeLang calls do. Its `@throws {never}` annotation describes the call. The iterator can still reject while reading. Pass an async iterable from a TypeScript adapter or a service; the error mapper turns iteration exceptions and rejections into the stream's failure type. Async generators and `for await` keep their JavaScript meaning in async code; use Stream consumers after adaptation to run the source inside Effect code.
+`Stream.fromAsyncIterable` bridges a JavaScript `AsyncIterable` from a TypeScript adapter or service into an Effect `Stream`. `@throws {never}` on `rows` declares only that constructing the iterable does not throw; the second argument maps rejections thrown during iteration into the stream's typed error channel.
 
 ## Effects and callbacks
 
@@ -115,9 +124,9 @@ effect function readNotices() {
 // Output: [[123],["connected","ready"]]
 ```
 
-`fromEffect` emits one success value. `callback` hands its Effect callback a queue: `Queue.offer` emits, `Queue.end` completes normally, and `Queue.fail` fails with a typed error. The optional second argument takes `bufferSize` and a `strategy`: `"suspend"`, `"dropping"`, or `"sliding"`.
+`Stream.fromEffect` emits a single Effect's result. `Stream.callback` bridges push-style producers via a bounded queue: call `Queue.offer` to emit, `Queue.end` to complete, and `Queue.fail` to signal a typed error. Pass `{ bufferSize, strategy }` (`"suspend"`, `"dropping"`, or `"sliding"`) as the optional second argument to control backpressure.
 
-For a foreign event API, register the raw callback in a TypeScript adapter and register unsubscription with `Effect.acquireRelease`; the registration callback's Scope stays open for the stream's lifetime. A synchronous platform callback can return an Effect value, but it cannot run it with `try`. Use an Effect runner at that boundary when the adapter needs to start work.
+For external event listeners, register and unregister the listener with `Effect.acquireRelease` inside a TypeScript adapter; the callback's `Scope` remains open for the stream's lifetime. Because synchronous platform callbacks cannot run `try`, invoke an Effect runner at the adapter boundary when a listener needs to start work.
 
 ## Scoped sources
 
@@ -140,7 +149,7 @@ const sessionNames = Stream.fromEffect(openSession()).pipe(
 // Output: ["metrics"]
 ```
 
-`Stream.scoped` takes a Stream and supplies its Scope during consumption; `Effect.acquireRelease` registers release in that Scope. Put every operation that uses the resource inside the scoped stream; see [Resourceful Streams](058-resourceful-streams.md).
+`Stream.scoped` closes the stream's `Scope` as soon as consumption ends, fails, or is interrupted, running every finalizer registered with `acquireRelease`. Place all stages that depend on the resource before `Stream.scoped`; see [Resourceful Streams](058-resourceful-streams.md).
 
 ## Repeating values, streams, and effects
 
@@ -161,9 +170,7 @@ effect function countdown() {
 // Output: [["ping","ping","ping"],["start","finish","start","finish","start","finish"],2,[3,2,1]]
 ```
 
-`forever` restarts its stream indefinitely. `repeat` runs the stream once, then again as its schedule allows; `rounds` emits three rounds. `fromEffectRepeat` reruns its Effect per element and treats `Cause.Done` as normal completion; `try Cause.done()` runs an Effect that signals it.
-
-Keep mutable per-run state inside a function, as in `countdown`, so consumptions don't share it. `Stream.take` also bounds repetition.
+`forever` repeats a stream endlessly; `repeat(stream, schedule)` runs the stream once plus every repetition permitted by `schedule` (`Schedule.recurs(2)` yields three passes total). `fromEffectRepeat` re-evaluates an Effect for each element and terminates cleanly when the Effect signals `Cause.Done` via `try Cause.done()`. Keep mutable per-run state inside an enclosing function (as in `countdown`) so independent consumptions never share it.
 
 ## Periodic elements
 
@@ -177,7 +184,7 @@ effect function collectSamples() {
 // Output: 4 true
 ```
 
-`tick` emits `void` on an interval; map each signal to the value you need. This example collects four timestamps. Backpressure still applies, so slow work can fall behind that frequency.
+`Stream.tick(interval)` emits `void` on a fixed cadence; pair it with `Stream.mapEffect` to sample on each tick. Because streams are pull-based, slow downstream stages apply backpressure rather than accumulating unbounded ticks.
 
 ## Unfolding state and paginating responses
 
@@ -203,7 +210,7 @@ const names = Stream.paginate(0, effect (cursor) => {
 // Output: [[32,16,8,4,2],["0","1","2"]]
 ```
 
-`unfold`'s callback returns an Effect that succeeds with `[element, nextState]`, or `undefined` to stop without emitting; write an `effect` callback to run work between steps. `paginate`'s callback returns an Effect that succeeds with `[batch, nextStateOption]`, and it emits each whole batch, including the final page, whose next state is `None`.
+`Stream.unfold` steps one element at a time: return `[element, nextState]` to emit and continue, or `undefined` to stop without emitting. `Stream.paginate` fetches whole batches: return `[batch, Option.some(nextCursor)]` to continue, or `[batch, Option.none()]` to emit the final page and end.
 
 ## Queues and broadcasts
 
@@ -224,7 +231,7 @@ function fromBroadcast(bus: PubSub.PubSub<string>) {
 // Output: ["broadcast"]
 ```
 
-`fromQueue` takes items from a shared queue, so competing consumers divide the work. `fromPubSub` subscribes during consumption, so each subscriber receives published elements. A plain PubSub source stays live until the bus ends or the consumer stops; without replay configuration, elements published before subscription can be missed.
+`Stream.fromQueue` creates a work-sharing stream—multiple consumers pull competing elements from the same queue. `Stream.fromPubSub` creates a fan-out stream—each consumption opens its own subscription and receives every element published while subscribed (plus any configured `replay` buffer).
 
 ## Schedules as sources
 
@@ -239,4 +246,4 @@ effect function readPulses() {
 // Output: [0,1,2]
 ```
 
-`fromSchedule` emits schedule outputs until the schedule stops; `Stream.fromEffectSchedule(work(), policy)` emits the Effect's results, repeated on the schedule. Both keep the schedule's timing and service requirements.
+`Stream.fromSchedule(schedule)` emits each schedule output until the schedule stops. `Stream.fromEffectSchedule(work(), schedule)` runs an Effect on that cadence and emits its results. Both carry the schedule's timing and service requirements.

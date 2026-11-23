@@ -1,6 +1,14 @@
 # BigDecimal
 
-`BigDecimal` works in VibeLang exactly as in Effect. Use it for decimal arithmetic where binary floating point loses information, such as prices imported as decimal strings.
+`BigDecimal` represents arbitrary-precision base-10 numbers as an integer coefficient and a decimal scale. Use it for monetary amounts, rates, and decimal inputs where IEEE 754 binary floating point introduces rounding error.
+
+| Constructor / Operation | Behavior |
+| --- | --- |
+| `make(value, scale)` / `fromBigInt(n)` | Exact construction (`value × 10^-scale`; scale 0 for `fromBigInt`) |
+| `fromString(s)` / `fromNumber(n)` | Safe parsing returning `Option.Option<BigDecimal>` |
+| `fromStringUnsafe(s)` / `fromNumberUnsafe(n)` | Throws on invalid text or non-finite numbers |
+| `sum`, `subtract`, `multiply` | Exact decimal arithmetic |
+| `divide`, `remainder` | Return `Option` (`None` on zero divisor); `*Unsafe` throws |
 
 ## Representing decimal values
 
@@ -17,7 +25,7 @@ BigDecimal.format(bulkPrice) // "8750"
 8750
 ```
 
-A value is an integer coefficient and a scale, meaning coefficient × 10^-scale: a positive scale places digits after the decimal point, a negative one adds integer zeros. Precision is arbitrary up to implementation and memory limits, not JavaScript's number precision.
+Each value stores `coefficient × 10^-scale`: a positive scale places digits after the decimal point, while a negative scale appends integer zeros. Precision scales with memory rather than JavaScript's 53-bit significand.
 
 ## Constructing decimals
 
@@ -37,7 +45,7 @@ BigDecimal.format(whole) // "42"
 true true 42 true
 ```
 
-`make` takes a coefficient and scale; `fromBigInt` uses scale zero. `fromString` and `fromNumber` return an `Option`, so invalid input stays data. Prefer strings for external decimals: converting a number cannot recover digits floating point already lost.
+`fromString` and `fromNumber` return `Option`, keeping malformed inputs as data. Parse external decimal values from strings rather than numbers, since converting a `number` cannot recover precision already lost to binary rounding.
 
 ## Safe and unsafe constructors
 
@@ -63,7 +71,7 @@ const fixedRate = BigDecimal.fromNumberUnsafe(1.25)
 InvalidPrice invalid
 ```
 
-`fromStringUnsafe` throws for invalid text, `fromNumberUnsafe` for non-finite numbers. Use an unsafe constructor for a known valid constant; validate input with the safe constructor and fail explicitly.
+Use `fromStringUnsafe` and `fromNumberUnsafe` only for known-valid literals or constants. For external input, call the safe constructor and raise a domain error on `None`.
 
 ## Performing arithmetic
 
@@ -87,7 +95,7 @@ BigDecimal.format(BigDecimal.abs(BigDecimal.negate(total))) // "32.5"
 ["32.5","35","8.125","0.5",-1,"32.5"]
 ```
 
-`sum`, `subtract`, and `multiply` return new decimals. For a zero divisor, `divide` and `remainder` return `None`, and `divideUnsafe` and `remainderUnsafe` throw. A nonterminating quotient follows the library's precision policy: arbitrary precision does not mean an infinitely long quotient.
+`sum`, `subtract`, and `multiply` return new immutable decimals; `divide` and `remainder` return `None` when the divisor is zero (`divideUnsafe` and `remainderUnsafe` throw). Nonterminating quotients are truncated according to Effect's division precision policy.
 
 ## Comparing values
 
@@ -114,7 +122,7 @@ BigDecimal.isInteger(amount) // false
 [true,true,true,true,"32.5","40",true,false,true,false,false]
 ```
 
-Compare decimals directly, not as numbers. `between` bounds are inclusive. The sign and integer predicates test the value, whatever its stored scale.
+Always compare `BigDecimal` values with module comparators instead of converting to `number`. `between` uses inclusive bounds, and sign or integer predicates inspect the numerical value independent of stored scale.
 
 ## Normalization and equality
 
@@ -131,4 +139,4 @@ BigDecimal.toExponential(compact) // "8.75e+0"
 true 8.75 8.75e+0
 ```
 
-Normalization strips trailing coefficient zeros and adjusts the scale. Numeric equality already ignores that difference: normalize for a compact representation, not before comparing.
+`BigDecimal.equals` compares numerical value regardless of trailing zeros, so normalization is unnecessary before equality checks. Call `BigDecimal.normalize` when you need a canonical compact representation.

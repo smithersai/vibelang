@@ -1,8 +1,8 @@
 # Runtime
 
-A platform `runMain` starts a VibeLang application and ties its lifetime to the host process: it reports unhandled failures, handles termination signals, waits for cleanup, and chooses an exit code.
+A platform `runMain` executes an application Effect at process startup, logs unhandled failures, handles termination signals, waits for finalizers, and sets the process exit code.
 
-## Running an application entry point
+## Running an entry point
 
 ```vibe
 // preparation.vibe
@@ -19,13 +19,14 @@ NodeRuntime.runMain(main())
 // Output: Export complete
 ```
 
-Pass the runner the Effect value, `main()`. Calling an effect function builds its Effect without running its body. The top-level runner starts the application. Supply application layers with `NodeRuntime.runMain(Effect.provide(main(), AppLive))`.
+Calling `main()` constructs the Effect without running it; `NodeRuntime.runMain` executes it. Provide application layers at the edge with `NodeRuntime.runMain(Effect.provide(main(), AppLive))`.
 
-A runner also works in a plain callback passed from the top level to TypeScript, such as a framework's route handler or a `describe` body. Inside effect code, use `try` to run another Effect or `fork` to start a child. Tests in `.vibe` use `it.effect("name", () => effect { ... })`.
+- Inside `effect` code, use `try` or `fork` rather than a runner.
+- In tests, use `it.effect("...", () => effect { ... })`.
+- Use `BunRuntime` from `@effect/platform-bun/BunRuntime` on Bun, and `NodeRuntime` from `@effect/platform-node/NodeRuntime` on Node.js and Deno.
+- Always import Node modules from subpaths (`@effect/platform-node/NodeRuntime`), not the barrel `@effect/platform-node`—the barrel imports `NodeRedis`, which fails under Yarn Classic with `Cannot find package 'redis'`.
 
-Bun uses `BunRuntime.runMain` from `@effect/platform-bun`; Node.js and Deno use the Node adapter. Run the generated JavaScript entry module after the VibeLang build. Import each Node module from its own subpath, as `@effect/platform-node/NodeRuntime`: the package's index loads every module, `NodeRedis` included, so under Yarn Classic `import { NodeRuntime } from "@effect/platform-node"` fails at startup with `Cannot find package 'redis'`.
-
-## Configuring runtime launch behavior
+## Launch options and custom teardown
 
 ```vibe
 // startup-rejected.vibe
@@ -42,7 +43,7 @@ effect function main() {
 NodeRuntime.runMain(main(), { disableErrorReporting: true })
 ```
 
-`disableErrorReporting` suppresses automatic failure logging; the failure stays a failure, and the default exit-code policy holds. Leave reporting on unless the application has another reporting boundary. The optional `teardown` callback controls completion handling and finally calls the provided exit callback.
+`disableErrorReporting: true` suppresses automatic error logging while preserving failure exit codes. Provide a custom `teardown` callback in TypeScript to override exit-code mapping (keep effectful cleanup inside the Effect itself):
 
 ```ts
 // TypeScript (.ts)
@@ -69,9 +70,7 @@ NodeRuntime.runMain(main(), launchOptions)
 // Output: Starting with custom exit handling
 ```
 
-Teardown is a plain host callback, not an Effect program. Write a custom one in TypeScript when it calls the host's plain `onExit` function; put effectful cleanup in the application, before teardown runs. This example deliberately maps every failure to exit code 2.
-
-## Handling completion and failures
+## Completion, signals, and exit codes
 
 ```vibe
 // invalid-batch.vibe
@@ -91,13 +90,16 @@ effect function exportBatch(count: number) {
 NodeRuntime.runMain(exportBatch(0))
 ```
 
-A normal return is success; `main`'s return value isn't printed. An unhandled expected failure or defect is reported by default and gets a failing exit code. Effect 4.1.1's default teardown exits 0 on success, 130 for interruption-only causes, and 1 for other failures, unless a supported error-specific exit code overrides it.
+Default Effect 4.1.1 teardown exit codes:
+- `0`: normal return (the return value is not printed).
+- `130`: interruption-only cause (including `SIGINT` / `SIGTERM`).
+- `1`: unhandled typed failure or defect (unless an error supplies its own exit code).
 
-On a termination signal, the platform interrupts the application and waits for registered cleanup; a finalizer that must know whether `SIGINT` or `SIGTERM` arrived reads it from [`observeSignals`](../vibelang-features/118-experimental-platform-apis.md#which-signal-ended-the-program). Finalizers registered with `ensuring`, `onExit`, and scoped acquisitions run during interruption. A `catch` expression handles typed failures and lets interruption propagate. Handle recoverable failures inside the program, and let the runner report the rest.
+On termination signals, `runMain` interrupts the root fiber and awaits all `ensuring`, `onExit`, and scoped finalizers before exiting. `catch` handles typed failures without swallowing interruption. To inspect which signal fired, use [`observeSignals`](../vibelang-features/118-experimental-platform-apis.md#which-signal-ended-the-program).
 
-## Check process completion
+## Verifying process exit codes
 
-These host-side checks run the emitted entries in separate processes to verify silent failure, cleanup before a failing exit, and both outcomes of the custom teardown.
+These host-side checks launch each compiled entry in its own Node process to verify silent failure, finalizer execution on error, and custom exit-code mapping:
 
 ```ts
 // TypeScript (.ts)
@@ -145,4 +147,4 @@ Promise.all([
 
 ## Runtime package compatibility
 
-Keep the compiler and `vibelang-runtime` at matching versions when distributing generated JavaScript. The guarded runtime package entry supplies every compiler ABI helper, including generated error matcher registration, and checks the supported Effect version before loading the ABI.
+Pin `vibelang` and `vibelang-runtime` to matching versions. The runtime entry provides the compiler's ABI helpers (including error matcher registration) and verifies the installed Effect version at load time.

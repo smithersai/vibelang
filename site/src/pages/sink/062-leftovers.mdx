@@ -1,11 +1,11 @@
 ---
 title: "Leftovers"
-description: "Leftovers are elements of a batch that a sink received but had not consumed when it completed. Keep them when another sink should continue from that batch, or move them into the result to inspect..."
+description: "When a Stream delivers a batch (chunk) to a Sink and the sink finishes before exhausting that batch, the unused suffix of that batch becomes leftovers. Leftovers let composed or repeated sinks..."
 ---
 
 # Leftovers
 
-Leftovers are elements of a batch that a sink received but had not consumed when it completed. Keep them when another sink should continue from that batch, or move them into the result to inspect them. They are not every element left in the source.
+When a `Stream` delivers a batch (chunk) to a `Sink` and the sink finishes before exhausting that batch, the unused suffix of *that batch* becomes **leftovers**. Leftovers let composed or repeated sinks (`Stream.transduce`) resume without dropping already-pulled elements—they are not the entire unread remainder of the upstream stream.
 
 ## Collecting leftover elements
 
@@ -26,7 +26,7 @@ effect function inspectRemainder() {
 // Output: {"selected":[21,34],"leftover":[55,89]}
 ```
 
-`Sink.mapEnd` receives `[result, optionalLeftoverBatch]` and returns another such tuple. A one-element tuple moves the leftovers into the success result, leaving no separate leftover batch; `try Stream.run(source, sink)` returns that result.
+`Sink.mapEnd` intercepts `[result, optionalLeftoverBatch]` as the sink finishes and returns a replacement tuple. Returning a 1-tuple folds the leftovers into the sink's success value `A` and clears the separate leftover slot, so `try Stream.run` returns both together.
 
 ```vibe
 effect function inspectSmallBatches() {
@@ -46,7 +46,13 @@ effect function inspectSmallBatches() {
 // Output: {"first":21,"leftover":[34]}
 ```
 
-Here `55` and `89` are in a batch the sink never requests, so the leftovers you can inspect depend on internal batch boundaries. `Stream.peel` gives both the sink result and a live remainder stream, including input not yet requested; consume that remainder inside its Scope.
+Because `rechunk(..., 2)` splits the stream into `[21, 34]` and `[55, 89]`, `Sink.head()` pulls only the first batch—yielding `21` and leftover `[34]`. The second batch (`55, 89`) is never requested and therefore never appears in leftovers. When you need both a prefix result *and* a live stream of every remaining element (requested or not), use `Stream.peel` inside a `Scope`.
+
+| Need | API | Sees unpulled upstream batches? |
+| --- | --- | --- |
+| Inspect unused suffix of current batch | `Sink.mapEnd` | No |
+| Run a prefix sink, then stream the entire tail | `Stream.peel` (scoped) | Yes |
+| Drop leftovers and set `L = never` | `Sink.ignoreLeftover` | No |
 
 ## Explicitly discarding leftovers
 
@@ -69,7 +75,7 @@ effect function discardRemainder() {
 // Output: {"selected":[21,34],"leftover":[]}
 ```
 
-`ignoreLeftover` changes the sink's leftover type to `never` and drops its unused batch suffix; it does not drain the rest of the upstream source. In sink composition or repeated consumption, dropping leftovers can lose already-pulled elements, so use it only when you intend that loss.
+`Sink.ignoreLeftover` drops the unused batch suffix and narrows `L` to `never` without draining upstream. Use it only when discarding already-pulled elements is intentional—in composed sinks or `Stream.transduce`, dropping leftovers silently skips elements between runs.
 
 ---
 

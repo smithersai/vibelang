@@ -29,6 +29,7 @@ effect function buildDashboard() {
 - `fork expr` starts an Effect on a child fiber and returns its `Fiber.Fiber<A, E>` immediately.
 - `join fiber` waits for the fiber and yields `A` (or propagates its failure/defect/interruption).
 - `fork` and `join` are valid only inside effect code (`EK1701` outside); `fork` requires an Effect (`EK1703`) and `join` requires a `Fiber` (`EK1704`). Both have the unary precedence of `await`, so parenthesize member access or exponentiation: `(join child).length`, `(join child) ** 2` (`EK0510`).
+- In an `async` function, awaiting a fiber is the `EK4609` lint warning; keep the native Promise context with `await runPromise(Fiber.join(fiber))`. Awaiting a `Deferred` is `EK4610`, repaired with `await runPromise(Deferred.await(deferred))`. In effect code every `await` is `EK0102`: write `join fiber` or `try Deferred.await(d)`.
 
 ### Awaiting a fiber as data (`Fiber.await`)
 

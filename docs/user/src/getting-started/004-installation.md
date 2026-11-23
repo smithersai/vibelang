@@ -1,6 +1,8 @@
 # Installation
 
-Create a VibeLang project from the starter with npm, or with Bun if you use it.
+The fastest way to start is the starter project, which pins every package at a compatible version.
+
+Create it with npm:
 
 ```sh
 npm create vibelang@latest my-app
@@ -18,17 +20,19 @@ bun run start
 
 The native `vibelang` compiler compiles `.vibe` sources to JavaScript. Version 0.0.13 installs from npm.
 
-> **For agents.** To set up VibeLang with a coding agent, give it this prompt:
+> **For agents.** Give a coding agent:
 >
 > ```text
 > Set up VibeLang in this project: read https://vibelang.sh/setup and follow it.
 > ```
 >
-> The agent detects the project's package manager, build, and editor, and follows the matching steps in [Set up VibeLang](../setup.md), which you can read too.
+> It detects the package manager, build tool, and editor and follows [Set up VibeLang](../setup.md).
 
 ## Prerequisites
 
-Install Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.4 or later. To [run sources with Bun](../setup/vibelang-cli.md#run-sources-with-bun), use Bun 1.4.2 or later. Bun is optional. The compiler is a native binary: `vibelang` lists one package per platform as an optional dependency, and your package manager installs only the one that matches your machine:
+Install Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.4 or later. To [run sources with Bun](../setup/vibelang-cli.md#run-sources-with-bun), use Bun 1.4.2 or later. Bun is optional.
+
+`vibelang` installs one platform binary via optional dependencies — keep optional dependencies enabled (avoid `--omit=optional`):
 
 | Platform | Package | Rehearsed for 0.0.13 |
 | --- | --- | --- |
@@ -39,9 +43,7 @@ Install Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.
 | Windows on x64 | `@smthrs/cli-win32-x64` | No |
 | Windows on arm64 | `@smthrs/cli-win32-arm64` | No |
 
-Version 0.0.13 publishes six native packages for macOS, Linux and Windows on arm64 and x64. The release rehearsal creates, starts and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built but have not been rehearsed on their target platforms for this release.
-
-Keep optional dependencies enabled: if an install skips them, as `npm install --omit=optional` does, `vibelang` cannot find its binary and exits with an error.
+Version 0.0.13 publishes six native packages; the release rehearsal creates, starts, and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built and not yet rehearsed on target hardware.
 
 ## Create a project
 
@@ -52,20 +54,20 @@ npm run start
 npm run test
 ```
 
-With Bun, use `bun create vibelang@latest my-app`, `bun run start` and `bun run test`. Either create command copies the starter into `my-app`, pins the VibeLang packages to the version that created it, and installs dependencies. `--no-install` skips installation; then run `npm install` (or `bun install`) in the project before building.
-
-`npm run start` builds the project and prints:
+With Bun, use `bun create vibelang@latest my-app`, `bun run start`, and `bun run test`. Pass `--no-install` to skip dependency installation. `npm run start` builds and prints:
 
 ```out
 Hello, VibeLang!
 Recovered from EmptyName
 ```
 
-See [Getting Started](../013-getting-started.md) for the starter's files and [Running Effects](009-running-effects.md) for execution.
+See [Getting Started](../013-getting-started.md) for the starter files and [Running Effects](009-running-effects.md) for execution.
 
 ## Add VibeLang to an existing project
 
-For npm, merge this transitive pin into the root `package.json`:
+Pin the transitive `@effect/platform-node-shared` helper in the root `package.json` before installing so package managers do not select a mismatched patch.
+
+For npm (or Bun when `overrides` exists or neither table exists):
 
 ```json
 {
@@ -75,9 +77,7 @@ For npm, merge this transitive pin into the root `package.json`:
 }
 ```
 
-This keeps the platform package from selecting a newer patch with a different Effect peer requirement.
-
-With Bun, keep using the active pin table in the root `package.json`. If `overrides` already exists, merge the helper pin there. If only `resolutions` exists, keep its other entries and add the pin to it:
+With Bun, if the root `package.json` uses only `resolutions`, add the pin there instead — when both fields exist, [Bun uses only `overrides`](https://bun.com/docs/pm/overrides#resolutions) and ignores `resolutions`:
 
 ```json
 {
@@ -87,30 +87,26 @@ With Bun, keep using the active pin table in the root `package.json`. If `overri
 }
 ```
 
-If neither table exists, use `overrides` as shown above. When both fields are present, [Bun uses only `overrides`](https://bun.com/docs/pm/overrides#resolutions). Adding `overrides` to a project that uses only `resolutions` would disable its existing pins.
-
-Then run:
+Then install the pinned packages (for pnpm and Yarn, see [existing project](../setup/existing-project.md#2-install-the-packages)):
 
 ```sh
 bun add --exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
 bun add -d --exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
-With npm, run `npm install --save-exact` for the first line and `npm install --save-dev --save-exact` for the second.
+With npm, use `npm install --save-exact` and `npm install --save-dev --save-exact`.
 
 | Package | Install as | Purpose |
 | --- | --- | --- |
-| `vibelang-runtime` | Dependency | The small helpers compiled code imports, such as `Symbol.customMatcher` where an engine lacks it; it adds no runtime semantics of its own |
-| `effect`, `@effect/platform-node` | Dependency | Effect 4.1.1 and its Node platform |
-| `vibelang` | Dev dependency | The compiler and language server, its native binary, and the VS Code extension |
+| `vibelang-runtime` | Dependency | Small compiled-code helpers (e.g. `Symbol.customMatcher` polyfill); adds no runtime semantics |
+| `effect`, `@effect/platform-node` | Dependency | Effect 4.1.1 and Node platform |
+| `vibelang` | Dev dependency | Compiler, language server, native binary, and VS Code extension |
 | `vibelang-vite` | Dev dependency | Compiles `.vibe` modules for Vite and Vitest |
-| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` 4.1.1 for tests |
+| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` 4.1.1 |
 
-The compiler reads the `effect` the project resolves and reports `EK3201` when its version is not the pinned 4.1.1 (`The resolved effect is 4.0.3; VibeLang 0.0.13 pins 4.1.1: upgrade both together`), in the CLI and the editor. Upgrade `effect` and VibeLang together. The error points to the project configuration, or to the nearest ancestor `package.json` for a standalone file. If neither exists, it has no source location; standalone Windows files and untitled editor documents can still be checked.
+**Version pinning:** `vibelang-runtime` requires `effect` 4.1.1 exactly — it depends on Effect internals and checks the exact version at load. The compiler reports `EK3201` if the resolved `effect` differs from `4.1.1`. VibeLang follows Effect 4.0.6's defect precedence, which 4.1.1 keeps: a failure whose cleanup crashes is a defect (see [release notes](../setup/release-notes.md)). Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at `4.1.1`, and keep `vibelang`, `vibelang-runtime`, and `vibelang-vite` at one matching version.
 
-`vibelang-runtime` requires `effect` 4.1.1 exactly. The runtime depends on Effect internals and checks the exact version at load. VibeLang follows Effect 4.0.6's defect precedence, which 4.1.1 keeps: a failure whose cleanup crashes is a defect. Read the [release notes](../setup/release-notes.md) before updating code that inspects causes or recovers mixed failures. Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at 4.1.1, so the runtime and your program share one copy of `effect`. Keep `vibelang`, `vibelang-runtime`, and `vibelang-vite` at one version; they are released together.
-
-Add a `tsconfig.json` that selects `.vibe` sources and emits Node ESM to `dist/`:
+Add `tsconfig.json` (VibeLang checks `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`; VibeLang-specific options go under a top-level `"vibe"` key, which plain `tsc` ignores):
 
 ```json
 {
@@ -132,9 +128,7 @@ Add a `tsconfig.json` that selects `.vibe` sources and emits Node ESM to `dist/`
 }
 ```
 
-VibeLang reads `vibe.config.json` first, then `tsconfig.json`, then `jsconfig.json`. `vibe.config.json` accepts every tsconfig field. VibeLang's own options go in a top-level `"vibe"` section of whichever file it reads, which plain `tsc` ignores.
-
-Add scripts to `package.json`, which must have `"type": "module"`:
+Add scripts to `package.json` (which must set `"type": "module"`):
 
 ```json
 {
@@ -147,11 +141,11 @@ Add scripts to `package.json`, which must have `"type": "module"`:
 }
 ```
 
-`src/main.vibe` calls its runner at the top level, as an Effect TypeScript program does: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`. A function named `main` is an ordinary function. The compiler adds no call to `main`; the top-level runner starts it.
+`src/main.vibe` invokes its runner explicitly at top level (`NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`); the compiler does not auto-call `main`.
 
-`node --enable-source-maps` maps JavaScript locations back to `.vibe` lines. It does not add the logical caller chain, and VibeLang adds no spans of its own, so a defect can show only one frame. Name a span where it matters with `try withSpan(effect { ... }, "checkout")`. For a sparse failure message or a missing caller stack, follow [Debug stack traces](012-devtools.md#debug-stack-traces).
+`node --enable-source-maps` maps JS locations back to `.vibe` lines, but VibeLang adds no spans of its own so a defect stack can show one frame. Name spans with `try withSpan(effect { ... }, "checkout")`, and see [Debug stack traces](012-devtools.md#debug-stack-traces) when a caller stack is missing.
 
-Keep source tests out of the build output. Add `tsconfig.test.json` so Vitest also checks and compiles those files:
+Add `tsconfig.test.json` and `vitest.config.ts` so Vitest compiles `.test.vibe` files without emitting them into `dist/`:
 
 ```json
 {
@@ -159,8 +153,6 @@ Keep source tests out of the build output. Add `tsconfig.test.json` so Vitest al
   "exclude": []
 }
 ```
-
-Test `.vibe` files through the Vite plugin:
 
 ```ts
 // TypeScript (.ts)
@@ -174,20 +166,18 @@ export default defineConfig({
 })
 ```
 
-The plugin compiles the project that `tsconfig.json` describes, so keep `"rewriteRelativeImportExtensions": true` from the configuration above: without it, a `.ts` file that imports a `.vibe` module fails with TS5097. If your `tsconfig.json` has `"files": []` and only lists `references`, as Vite's templates do, pass the referenced configuration that includes your sources: `vibelang({ project: "tsconfig.app.json" })`. [Vite and Vitest](../setup/vite.md) covers the setup step by step.
+Keep `"rewriteRelativeImportExtensions": true` so `.ts` files can import `.vibe` modules without TS5097. If your root `tsconfig.json` uses `"files": []` with `references`, pass the app config (`vibelang({ project: "tsconfig.app.json" })`). See [Vite and Vitest](../setup/vite.md).
 
-To update, install the new version of all three VibeLang packages together:
+To upgrade all three VibeLang packages together (read [release notes](../setup/release-notes.md) first, as v0 releases can break):
 
 ```sh
 bun add vibelang-runtime@latest
 bun add -d vibelang@latest vibelang-vite@latest
 ```
 
-VibeLang is v0, so a new version can change the language in breaking ways. Read the [release notes](../setup/release-notes.md) before updating.
-
 ## Configure your editor
 
-From the project directory, after installing dependencies:
+After installing dependencies, install the bundled extension:
 
 ```sh
 code --install-extension node_modules/vibelang/editor/vibelang.vsix
@@ -195,13 +185,9 @@ code --install-extension node_modules/vibelang/editor/vibelang.vsix
 cursor --install-extension node_modules/vibelang/editor/vibelang.vsix
 ```
 
-Open the project directory. The extension starts the project's compiler as the language server, `vibelang --lsp --stdio`, for diagnostics, hovers, and completions. It is not on the VS Code Marketplace or Open VSX yet; reinstall it from `node_modules` after you update `vibelang`.
-
-Other editors run `vibelang --lsp --stdio` through their LSP client for `.vibe` and `.ts` files. See [Devtools](012-devtools.md).
+It is not yet on the VS Code Marketplace or Open VSX; reinstall from `node_modules` after updating `vibelang`. Other editors configure their LSP client to run `vibelang --lsp --stdio` for `.vibe` and `.ts` files ([Devtools](012-devtools.md)).
 
 ## Compiler commands
-
-From a project, run:
 
 ```sh
 bun run build
@@ -210,20 +196,22 @@ bun run test
 bun x --no-install vibelang --noEmit
 ```
 
-The compiler writes `x.d.vibe.ts` for each `x.vibe`, beside it by default; the starter's `vibe.sidecarDir` puts it in the ignored `.vibe/declarations/` folder instead. Stock `tsc` and TypeDoc resolve `.vibe` imports through `allowArbitraryExtensions`. When a `check` script is declared, `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution. Bun 1.4.4 also provides a native checker: `bun check --no-script` selects it even when the project has a `check` script. The runtime preload does not replace that checker. For native checking of `.vibe` sources, use `vibelang -b`, or declare `"check": "vibelang -b"` in `package.json` and run `bun run check`. Migration setup replaces supported forced Bun checks with `vibelang`, preserving build mode and project selection even when `--no-script` follows other arguments. Each exported function, method or constructor that doesn't return an Effect, a Stream or a Layer carries `@throws` in its declaration: what it may throw, or `@throws {never}`. An `effect` function, or one that returns a Stream or a Layer, carries none, because calling it can't throw; getters and setters carry none either. Each overload and returned callable keeps its own signature contract, and `@rethrows` is preserved alongside own throws. A callable constant uses a type literal so its call signature can carry JSDoc. Set `"declaration": true` in `compilerOptions` to also emit `.d.ts` files to `dist/`. The starter leaves this option off. The starter's `tsconfig.json` selects `.vibe` and TypeScript files under `src/`, excludes `*.test.vibe` and `*.test.vibex` from the build, turns on Effect's lint rules with the `@effect/language-service` plugin entry, emits Node ESM to `dist/`, enables strict checking and source maps, and prevents emit on errors. Local source imports use `.vibe`; generated JavaScript and declaration files import `.js`, so a TypeScript project that installs your package resolves each module's declarations. `vibelang` accepts TypeScript compiler flags such as `--noEmit`, `--watch`, and `-b`.
+`vibelang` accepts TypeScript flags (`--noEmit`, `--watch`, `-b`) and emits compatibility declarations (`x.d.vibe.ts`) alongside each `.vibe` module (or in `vibe.sidecarDir`, such as the starter's `.vibe/declarations/`):
 
-For project-aware typed tools that follow source exports between referenced workspace packages, leave `disableSourceOfProjectReferenceRedirect` absent or `false`. Source redirects preserve sidecar resolution for a native type exported through a TypeScript namespace barrel. [Typed tooling](012-devtools.md) describes this configuration.
+- **Stock TypeScript tools:** `tsc` and TypeDoc resolve `.vibe` imports via `allowArbitraryExtensions`. When a `check` script is declared, `bun check` runs the project's `check` script; a script invoking a TypeScript checker uses its sidecar resolution. (`bun check --no-script` selects Bun's native checker, which the runtime preload does not replace; use `vibelang -b` or `"check": "vibelang -b"` for native `.vibe` checking.)
+- **Generated declarations:** Non-effectful exported callables carry `@throws` (or `@throws {never}`) in their `.d.vibe.ts` declarations; `effect` functions, `Stream`/`Layer`-returning callables, getters, and setters carry none. Set `"declaration": true` to also emit `.d.ts` files to `dist/` (the starter omits this option). Local source imports use `.vibe`; emitted JS and `.d.ts` files rewrite them to `.js`.
+- **Workspace project references:** Leave `disableSourceOfProjectReferenceRedirect` absent or `false` so typed tools preserve sidecar resolution across namespace barrels ([Devtools](012-devtools.md)).
 
 ### TypeScript declaration consumers
 
-A downstream project using stock `tsc` needs **TypeScript 5.7 or later** for declarations built against the pinned `effect@4.1.1`. Effect's declarations use generic typed arrays such as `Uint8Array<ArrayBuffer>`, introduced in TypeScript 5.7; TypeScript 5.6 and earlier report errors such as “Type 'Uint8Array' is not generic.” This consumer requirement is separate from VibeLang's TypeScript 7.1 checker. Upgrade the consumer's `typescript` dependency; `skipLibCheck` can hide library errors but is not compatibility support. The declarations can reference `vibelang-runtime`, so a consumer installs it beside `effect`; [Services and errors from TypeScript](../vibelang-features/114-vibelang-for-effect-users.md#services-and-errors-from-typescript) shows how a TypeScript consumer implements a service and catches an error.
+Downstream projects checking emitted declarations with stock `tsc` require **TypeScript 5.7 or later** for `effect@4.1.1`, whose types use generic typed arrays like `Uint8Array<ArrayBuffer>` (introduced in TS 5.7). This consumer requirement is separate from VibeLang's TypeScript 7.1 checker; upgrade `typescript` rather than relying on `skipLibCheck`. Consumers also install `vibelang-runtime` beside `effect` ([Services and errors from TypeScript](../vibelang-features/114-vibelang-for-effect-users.md#services-and-errors-from-typescript)).
 
 ## Coming from Effect
 
-Install `vibelang` to compile `.vibe` and `vibelang-runtime` beside `effect@4.1.1`. Write application logic in `.vibe` and keep ordinary TypeScript integrations in `.ts`; the compiler checks both file types as one program.
+Install `vibelang` and `vibelang-runtime` beside `effect@4.1.1`. Write application logic in `.vibe` and keep TypeScript integrations in `.ts`; the compiler checks both as one program.
 
 ## Last resort: keep TypeScript file names
 
-Prefer the compiler, plugins and editor setup above. If the project cannot use `.vibe` or `.vibex` names, the experimental [TypeScript shim](../setup/typescript-shim.md) is the fallback. Read its stock-tool limitations before using it.
+Prefer the compiler, plugins, and editor setup above. Only if a project cannot rename files to `.vibe`/`.vibex`, see the experimental [TypeScript shim](../setup/typescript-shim.md) and its stock-tool limitations.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/installation)

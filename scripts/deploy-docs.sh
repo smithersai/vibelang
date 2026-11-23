@@ -20,10 +20,13 @@ node "$root/docs/tools/published-site.mjs" --snapshot "$root/.cache/site-release
 export VIBELANG_SITE_RELEASE_FILE="$root/.cache/site-release.json"
 release=$(node -p 'require(process.argv[1]).compiler.version' "$VIBELANG_SITE_RELEASE_FILE")
 
-# The site build runs the kernel's law suite first, which needs these installs.
+# The site build runs the kernel's law suite and starter tests first, which need these installs.
 for dir in docs/tools experiments packages/runtime; do
 	(cd "$root/$dir" && bun install --silent --frozen-lockfile)
 done
+if [ -f "$root/packages/vite/package.json" ]; then
+	(cd "$root/packages/vite" && bun install --silent --frozen-lockfile)
+fi
 # The docs are checked and annotated with the release that
 # `npm create vibelang@latest` installs: the native compiler and runtime npm latest declares (or the explicit rehearsal version), from
 # the release tarballs (VIBELANG_RELEASE_TARBALLS, else dist-npm/tarballs, else the

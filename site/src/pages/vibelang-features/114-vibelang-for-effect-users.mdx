@@ -252,7 +252,7 @@ NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))
 
 `NodeServices.layer` supplies `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner` (Bun uses `BunServices.layer`; `effect/crypto` uses `NodeCrypto.layer`; `HttpClient` uses `FetchHttpClient.layer`). See [Platform globals](/platform/platform-globals) and [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis).
 
-Foreign `.ts` functions declare throws with `@throws {ErrorType}` (unannotated defaults to `@throws {unknown}`); wrap throwing calls in `Effect.try` (`EK0403`) and Promises in `tryPromise` (`EK0404`). Exported non-effectful VibeLang declarations automatically carry `@throws {never}`. The retired `trusted(predicate, [])` wrapper reports `EK0407`.
+Foreign `.ts` functions declare throws with `@throws {ErrorType}` (unannotated defaults to `@throws {unknown}`); wrap throwing calls in `Effect.try` (`EK0403`) and Promises in `tryPromise` (`EK0404`). A callable returning an `Effect`, `Stream` or `Layer` is effectful: call it directly, regardless of `@throws`. Exported non-effectful VibeLang declarations automatically carry `@throws {never}`. The retired `trusted(predicate, [])` wrapper reports `EK0407`.
 
 ## Catch expected failures only
 

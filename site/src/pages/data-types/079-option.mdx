@@ -1,11 +1,18 @@
 ---
 title: "Option"
-description: "Option works in VibeLang exactly as in Effect. It represents a present (Some<A>) or absent (None) value, for lookups, optional fields, and validation that needs no error description."
+description: "Option.Option<A> models an optional value as either Some<A> (present) or None (absent). Use it for lookups, explicit absence in data models, and validations where no error payload is needed."
 ---
 
 # Option
 
-`Option` works in VibeLang exactly as in Effect. It represents a present (`Some<A>`) or absent (`None`) value, for lookups, optional fields, and validation that needs no error description.
+`Option.Option<A>` models an optional value as either `Some<A>` (present) or `None` (absent). Use it for lookups, explicit absence in data models, and validations where no error payload is needed.
+
+| Category | Key APIs |
+| --- | --- |
+| Construct & guard | `some`, `none`, `fromNullishOr`, `liftPredicate`, `isSome`, `isNone` |
+| Transform & combine | `map`, `flatMap`, `filter`, `zipWith`, `all` |
+| Extract & fallback | `match`, `getOrElse`, `getOrNull`, `getOrUndefined`, `getOrThrow`, `orElse`, `firstSomeOf` |
+| Effect & traits | `fromOption`, `makeEquivalence`, `makeOrder` |
 
 ## Representing optional values and properties
 
@@ -24,7 +31,7 @@ const unnamed: Contact = { name: "Sol", nickname: Option.none() }
 Mi true
 ```
 
-The `nickname` property always exists and its value records presence; an optional TypeScript property instead lets the key itself be missing. Choose by the distinction you need.
+An `Option` field is always present on the object and explicitly encodes presence or absence, whereas an optional TypeScript property (`nickname?: string`) permits omitting the key itself.
 
 ## Constructing and identifying variants
 
@@ -52,7 +59,7 @@ Limit: 24
 No limit
 ```
 
-`some` wraps a value; `none` carries no payload. `liftPredicate` makes a function that returns `Some` only for values that pass its predicate. Guards narrow the union; only `Some` has `.value`.
+`Option.some` wraps a value, `Option.none` constructs absence, and `Option.liftPredicate` turns a predicate into an `Option`-returning function. `Option.isSome` narrows the union to expose `.value`.
 
 ```vibe
 function describe(value: Option.Option<string>) {
@@ -71,7 +78,7 @@ Signed in as Mina
 Anonymous
 ```
 
-A `match` with `Option.Some` and `Option.None` arms handles both cases and removes the wrapper. In a plain function its arms only compute values; when handling presence needs services or other Effects, write the `match` inside an effect function and run Effects with `try` in its arms.
+`match` handles `Option.Some(let x)` and `Option.None` exhaustively. Inside an effect function, arms may run Effects directly with `try`.
 
 ## Mapping, sequencing, and filtering present values
 
@@ -95,7 +102,7 @@ Main St
 true true
 ```
 
-`map` transforms a present payload and skips `None`. `flatMap` sequences a callback that returns another option, without nesting wrappers. `filter` keeps a present value only if the predicate passes.
+`map` transforms a `Some` payload and passes `None` through unchanged. `flatMap` chains `Option`-returning callbacks without nesting, and `filter` demotes non-matching values to `None`.
 
 ## Extracting values with defaults or exceptions
 
@@ -122,7 +129,7 @@ known
 false true
 ```
 
-`getOrElse` computes its fallback only for `None`; `getOrNull` and `getOrUndefined` suit APIs that expect nullish values. `getOrThrow` throws a JavaScript exception on `None`. In Effect code, wrap it in `Effect.try`, which captures the exception as a typed failure; `sync` takes only a function that can't throw. When absence is expected rather than a programming error, prefer a guard, a default, or `fromOption`.
+`getOrElse` evaluates its fallback lazily on `None`, while `getOrNull` and `getOrUndefined` adapt to nullable JavaScript APIs. `getOrThrow` throws on `None`—wrap it in `Effect.try` (not `sync`, which requires non-throwing callbacks) if called in effect code, or prefer `fromOption` when absence is expected.
 
 ## Choosing fallback options
 
@@ -144,7 +151,7 @@ const first = Option.firstSomeOf([
 preferred backup regional
 ```
 
-`orElse` calls its fallback only when the first option is absent; `firstSomeOf` picks the first present option in an iterable. Neither retries Effects: both operate on optional data.
+`orElse` computes a fallback `Option` only on `None`, and `firstSomeOf` returns the first `Some` in an iterable. Both operate purely on optional data rather than retrying Effects.
 
 ## Adapting nullable values
 
@@ -160,7 +167,7 @@ Option.fromNullishOr("") // Some containing ""
 true true 0 ""
 ```
 
-`fromNullishOr` treats only `null` and `undefined` as absent and keeps other falsy values, including zero, false, and the empty string. At an interop boundary, convert back with `getOrNull` or `getOrUndefined`.
+`Option.fromNullishOr` maps only `null` and `undefined` to `None`, preserving falsy values (`0`, `false`, `""`). Convert back at interop boundaries with `getOrNull` or `getOrUndefined`.
 
 ## Converting options into effects
 
@@ -189,7 +196,7 @@ effect function requiredPair() {
 NoSuchElementError
 ```
 
-`try fromOption(name)` gives the present value or fails with `NoSuchElementError` for `None`; import that error from `Cause` for its type or guard. Option is not an Effect subtype, so conversion is explicit: calling a function that returns an option gives the option object.
+`try fromOption(opt)` unwraps `Some` or fails in `E` with `Cause.NoSuchElementError` on `None`. Because `Option` is not an Effect subtype, convert explicitly with `fromOption` before passing it to Effect combinators.
 
 ## Combining options
 
@@ -215,7 +222,7 @@ function combine(
 true true true
 ```
 
-`zipWith` combines two present values with a callback; `all` combines a tuple, record, or iterable of options into one. If any value is absent, the result is `None`.
+`zipWith` combines two present options through a callback, and `all` combines tuples, records, or iterables of options. Any `None` input yields `None`.
 
 ## Combining several options
 
@@ -257,7 +264,7 @@ function combinedData() {
 {"title":"Daily","total":3}
 ```
 
-`Option.gen` sequences JavaScript generator yields and stops at the first `None`. A plain `function*` keeps its JavaScript meaning in `.vibe`, so the same generator API works there. In VibeLang, use `flatMap`, `zipWith`, and `all` for the same computation, as above.
+`Option.gen` uses a plain JavaScript generator (`function*`, which keeps standard JS semantics in `.vibe`) to short-circuit on the first `None`. In VibeLang, prefer `Option.flatMap`, `Option.zipWith`, and `Option.all`.
 
 ## Deriving equality and ordering
 
@@ -282,7 +289,7 @@ true false
 [[null,2,8],[8,2,null]]
 ```
 
-`makeEquivalence` compares present values with a chosen relation; two absent options are equivalent. `makeOrder` puts `None` before `Some` and compares present values with the supplied order. Flipping the whole option order reverses present values and moves `None` to the end.
+`makeEquivalence` considers two `None` values equal and delegates `Some` pairs to the inner equivalence. `makeOrder` sorts `None` before `Some` and orders present values with the inner order; `Order.flip` reverses both present values and `None`'s position.
 
 ---
 

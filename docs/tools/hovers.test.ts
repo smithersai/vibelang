@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
-import { baseKey, type PageHovers, sanitize, trimDocs, updateHovers, words } from "./hovers"
+import { baseKey, cacheFile, type PageHovers, sanitize, trimDocs, updateHovers, words } from "./hovers"
 import { leaks } from "./leaks"
 
 test("hovers identifiers, keywords, the topic, and template substitutions, not comments or strings", () => {
@@ -113,4 +113,18 @@ test("another runtime directory changes every page's key", () => {
   const release = runtime("runtime-release", "export declare const a: 1\n")
   expect(keyWith(release)).toBe(keyWith(release))
   expect(keyWith(runtime("runtime-other", "export declare const a: 2\n"))).not.toBe(keyWith(release))
+})
+
+test("cacheFile never escapes the cache directory for pages outside root", () => {
+  const repoRoot = resolve(import.meta.dir, "../..")
+  const docsRoot = join(repoRoot, "docs/user")
+  const cacheDir = join(repoRoot, ".cache/docs-hovers")
+  const inside = cacheFile(cacheDir, docsRoot, join(docsRoot, "src/001-onboarding.md"))
+  const outsideReadme = cacheFile(cacheDir, docsRoot, join(repoRoot, "README.md"))
+  const outsideAgents = cacheFile(cacheDir, docsRoot, join(repoRoot, "templates/app/AGENTS.md"))
+  expect(inside).toBe(join(cacheDir, "src/001-onboarding.json"))
+  expect(outsideReadme).toBe(join(cacheDir, "_external/README.json"))
+  expect(outsideAgents).toBe(join(cacheDir, "_external/templates/app/AGENTS.json"))
+  expect(outsideReadme.startsWith(cacheDir + "/")).toBe(true)
+  expect(outsideAgents.startsWith(cacheDir + "/")).toBe(true)
 })

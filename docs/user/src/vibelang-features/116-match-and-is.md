@@ -2,6 +2,8 @@
 
 `match` selects the first arm whose pattern fits a value and returns that arm's expression. `is` tests a value against one pattern and returns a boolean. Both implement the TC39 [pattern matching](https://github.com/tc39/proposal-pattern-matching) proposal, compile to plain conditionals tested in order, narrow types naturally, and allow `try` inside arms in effect code.
 
+![Exhaustive match narrowing across tagged unions](/diagrams/match-exhaustiveness.svg)
+
 **`match` is exhaustive.** When matching a finite union (literals, `data` variants, `error` classes, `Option`, `Exit`, `Result`, tagged objects) without a `default` arm, missing a case is compile error `EK4701`.
 
 ## `match` expressions

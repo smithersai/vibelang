@@ -1,6 +1,6 @@
 # Guidelines
 
-Run a VibeLang application through its platform runtime, keep its lifetime in `main`, and make callback arguments explicit. These habits keep shutdown predictable and stop accidental argument forwarding in composed functions.
+A VibeLang program runs through a single platform runtime at its entry point, scopes shared resources in `main`, and passes explicit lambdas to callbacks. Following these three rules keeps signal handling and cleanup predictable and prevents silent argument forwarding.
 
 ## Running application entry points
 
@@ -25,13 +25,9 @@ checking work
 worker stopped
 ```
 
-The example finishes after one check. Put repeated work in a loop to keep the process running; press Ctrl-C to interrupt it and run cleanup.
+Calling `main()` builds an Effect without executing it; `NodeRuntime.runMain(main())` starts execution and handles OS signals, interruption, and graceful shutdown. Wrap cleanup in `ensuring`, manage application resources in `scoped(effect { ... })`, and provide the application layer once around the top-level Effect so services share a single lifetime.
 
-Call `NodeRuntime.runMain(main())` from the entry module. Calling `main()` builds an Effect. The runner starts it and coordinates interruption and shutdown. `ensuring` runs cleanup when the worker stops, including on interruption. Use `scoped(effect { ... })` for application resources, and provide the application layer once around the Effect passed to the runner so its services share one lifetime.
-
-Use `runPromise` when another host owns execution and needs a Promise; for a standalone process, prefer the platform runner, which handles signals and shutdown. Module-level calls build values or call a runner; application work belongs inside effect functions.
-
-A runner also works in a plain framework callback registered from the module's top level. Inside an effect function, use `try` to run another Effect or `fork` to start a child fiber. Tests in `.vibe` use `it.effect("name", () => effect { ... })`.
+This example exits after one check; place repeated work in a loop to keep a process alive until Ctrl-C interrupts it. Use `runPromise` only when an external host owns the process lifecycle and expects a Promise. Keep application logic inside effect functions—reserve module top-level code for building values, registering framework callbacks, or invoking the runner—and write tests with `it.effect("name", () => effect { ... })`.
 
 ## Selecting a platform runtime
 
@@ -50,9 +46,9 @@ BunRuntime.runMain(main())
 running on Bun
 ```
 
-Choose the runtime that matches the host and install its platform package at the Effect version VibeLang pins. The starter already depends on `@effect/platform-node`; for Bun, run `bun add --exact @effect/platform-bun@4.1.1`, or `npm install --save-exact @effect/platform-bun@4.1.1`. The application still uses Effect's services, not Node.js modules or browser globals.
+Match the runtime package to the target host and pin it to VibeLang's Effect version. The starter template already depends on `@effect/platform-node`; for Bun, install `@effect/platform-bun` with `bun add --exact @effect/platform-bun@4.1.1` or `npm install --save-exact @effect/platform-bun@4.1.1`. Program logic still targets Effect services rather than host-specific APIs.
 
-| Host | Runtime | Import |
+| Host | Entry runner | Package |
 | --- | --- | --- |
 | Node.js | `NodeRuntime.runMain` | `@effect/platform-node` |
 | Bun | `BunRuntime.runMain` | `@effect/platform-bun` |
@@ -75,10 +71,10 @@ effect function printValues(values: ReadonlyArray<number>) {
 // Output: 20
 ```
 
-Write a lambda that names the arguments you pass: `Number.parseInt` passed straight to array `map` would receive the array index as its radix. Explicit lambdas also keep overload selection and make generic inference easier to inspect.
+Wrap functions in explicit lambdas when passing callbacks. Passing `Number.parseInt` directly to `Array.prototype.map` forwards the element index as its radix; an explicit arrow locks in the intended arguments, stabilizes overload selection, and keeps generic inference clear.
 
-When the callback does Effect work, use `forEach` or an ordinary loop. Array `map` accepts plain JavaScript callbacks: they can build Effects but cannot run them with `try`. A composition helper doesn't change that boundary.
+For effectful iteration, use `forEach` or an ordinary loop. Plain JavaScript collection callbacks such as `Array.prototype.map` can construct Effects but cannot execute them with `try`.
 
 ## Coming from Effect
 
-An effect function builds the application Effect. `try` sequences its operations, and `ensuring` and `scoped` manage cleanup. Keep `runMain` at the outer boundary and pass it the Effect value, `main()`.
+An `effect function` defines the application Effect, `try` sequences steps, and `ensuring` and `scoped` handle finalization. Keep `runMain` at the process boundary and pass it the Effect returned by `main()`.

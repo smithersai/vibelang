@@ -1,8 +1,15 @@
 # Layer Memoization
 
-Effect shares repeated uses of one layer value within a build graph, and VibeLang keeps this: reuse a layer value when consumers should share its initialization and resources.
+Effect builds a layer value at most once within a single build graph, and VibeLang preserves that rule. Reuse the same layer reference when consumers should share initialization and resources, and opt out explicitly when each consumer needs an isolated instance.
 
 [Upstream page](https://effect.website/docs/v4/requirements-management/layer-memoization)
+
+| Mechanism | Scope of sharing | When to use |
+| --- | --- | --- |
+| Same layer variable in one graph | Shared across the build graph | Shared pools, caches, or single initialization |
+| `Layer.fresh(layer)` | Built fresh per reference | Isolated state or separate resource ownership |
+| Sibling vs. nested `provide` | Separate per sibling; reused when nested | Local overrides vs. one shared entry-point boundary |
+| `Layer.makeMemoMap` + `Layer.buildWithMemoMap` | Shared across explicit builds in one `Scope` | Custom runtimes or multi-step manual assembly |
 
 ## Sharing acquisition across a graph
 
@@ -55,9 +62,9 @@ effect function stringify(value: unknown) {
 // Output: ["Monthly report","Monthly archive"]
 ```
 
-Both branches reference `PrefixLive`, so its initialization logs once per run of `documentLabels()`. Memoization uses layer object identity, not the output service type or structural equivalence; when sharing matters, call a layer-building factory once and reuse its value.
+Both `HeadingLive` and `FooterLive` depend on the same `PrefixLive` reference, so initialization logs once per `documentLabels()` run. Memoization keys on layer object identity rather than service type or structural equality—call a layer factory once and reuse the returned constant whenever consumers must share it.
 
-Sharing lasts for the graph's managed lifetime, not process-wide. Scoped acquisitions stay open while the graph uses them and release when the owning lifetime ends.
+Sharing lasts for the graph's managed lifetime, not process-wide. Scoped resources stay alive while the graph runs and release when that owning lifetime closes.
 
 ## Requesting fresh acquisition
 
@@ -78,7 +85,7 @@ effect function isolatedLabels() {
 // Output: ["Monthly report","Monthly archive"]
 ```
 
-`Layer.fresh` isolates acquisition from the surrounding graph's memoization: each fresh branch acquires its own prefix implementation. Use it when separate state or resource ownership is intended.
+`Layer.fresh` bypasses memoization for that branch, forcing an independent build. Use it whenever two consumers require separate state or distinct resource ownership.
 
 ## Local provision boundaries
 
@@ -109,7 +116,7 @@ effect function oneSharedReadBoundary() {
 // Output: ["Monthly","Monthly"]
 ```
 
-Each sibling `provide` starts its own build boundary, and a nested one reuses a layer its enclosing `provide` already built, so `twoLocalReads` builds twice; `oneSharedReadBoundary` builds once and shares within it. Provide the application layer around the entry point; use `ManagedRuntime` when several entry points need a common runtime lifetime.
+Each sibling `provide` creates an independent build boundary, whereas a nested `provide` reuses layers already built by its enclosing boundary. Provide your application layer once at the entry point, or use `ManagedRuntime` when multiple entry points must share a single runtime lifetime.
 
 ## Controlling memoization explicitly
 
@@ -131,6 +138,6 @@ effect function manualSharing() {
 // Output: ["Monthly","Monthly"]
 ```
 
-`Layer.makeMemoMap` is an Effect value; run `try Layer.makeMemoMap` to get the map. Building one layer twice with the same map reuses its acquisition, and providing the resulting contexts doesn't rebuild it. The explicit scope owns resource release; both contexts are consumed before it closes.
+`Layer.makeMemoMap` is an Effect value; obtain it with `try Layer.makeMemoMap`. Building the same layer twice with one memo map reuses the acquisition, and providing the resulting contexts performs no rebuild.
 
-A memo map controls sharing; a scope controls lifetime. Align both with the intended application or test boundary, and don't retain resource-owning implementations after their scopes close.
+The memo map governs sharing while the `Scope` governs resource release. Keep both aligned with the application or test boundary, and never retain resource-owning services past their scope's close.

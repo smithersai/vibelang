@@ -1,14 +1,21 @@
 ---
 title: "Default Services"
-description: "Effect gives the clock, random generation, console output, configuration sources, and tracing live defaults. VibeLang uses them, so using these adds no application service requirement."
+description: "Effect supplies live defaults for the clock, random generator, console, configuration, tracing, and scheduler, so using them adds nothing to R. Override them locally with provide or module helpers..."
 ---
 
 # Default Services
 
-Effect gives the clock, random generation, console output, configuration sources, and tracing live defaults. VibeLang uses them, so using these adds no application service requirement.
+Effect supplies live defaults for the clock, random generator, console, configuration, tracing, and scheduler, so using them adds nothing to `R`. Override them locally with `provide` or module helpers whenever tests or subsystems require deterministic behavior.
 
-`service Name: Type { static readonly defaultValue = () => value }` uses the written `Type` as the whole shape and checks the factory against `() => Type`. Its declaration is `Context.Reference<Type>`; the body admits only `key` and `defaultValue`.
 
+| Default service | Module access | Replaces |
+| --- | --- | --- |
+| `Clock.Clock` | `Clock.currentTimeMillis`, `sleep` | `Date.now()`, timers |
+| `Random.Random` | `Random.next`, `Random.withSeed` | `Math.random()` |
+| `Console.Console` | `Console.log` | `console.log` |
+| `ConfigProvider.ConfigProvider` | `Config.*` | `process.env` |
+| `Tracer.Tracer` | Tracing spans | Ad-hoc instrumentation |
+| `Scheduler.Scheduler` | Fiber execution | Direct event-loop scheduling |
 
 ## Using the clock, random, and console
 
@@ -29,9 +36,7 @@ effect function stringify(value: unknown) {
 // Output: Started at 1000; sample=0.25
 ```
 
-`Clock.currentTimeMillis` and `Random.next` are Effect values, so run them with `try`; `Console.log` returns an Effect, so run its result with `try` too. Use these modules, not `Date.now()`, `Math.random()`, or the browser console, so tests and local overrides control the behavior.
-
-Default references include `Clock.Clock`, `ConfigProvider.ConfigProvider`, `Console.Console`, `Random.Random`, `Tracer.Tracer`, and `Scheduler.Scheduler`; their modules need no import in `.vibe` files. These defaults are why the example's `R` is `never` though it reads time and random state.
+`Clock.currentTimeMillis` and `Random.next` are Effect values, and `Console.log` returns an Effect—run each with `try`. All six default-service modules are in scope in `.vibe` files with no import, and because they have built-in defaults, `startupMessage` keeps `R = never`. Prefer them over `Date.now()`, `Math.random()`, and global `console` so tests and local overrides stay deterministic.
 
 ```vibe
 const Port = Config.withDefault(Config.Port("PORT"), 3000)
@@ -44,7 +49,7 @@ effect function configuredPort() {
 // Output: 3000
 ```
 
-`Config.Port` and `Config.withDefault` build configuration data without reading the environment; `try Port` reads it through the default configuration provider. A call returning a `Config`, an `Exit`, or a Context key leaves it as data; running the held Effect value with `try` executes it.
+`Config.Port` and `Config.withDefault` construct configuration descriptions without reading the environment; `try Port` evaluates that description against the active `ConfigProvider`. Calls returning a `Config`, `Exit`, or context key produce data until executed with `try`.
 
 ## Replacing default implementations
 
@@ -58,9 +63,9 @@ effect function fixedRandomSample() {
 // Output: 0.25
 ```
 
-`provide Random.Random = …` overrides a default reference inside its block. The implementation has Effect 4's synchronous `Random` interface; both callbacks only return constants, so they qualify as plain JavaScript functions. Override any other default reference the same way, with a complete implementation.
+`provide Random.Random = …` replaces a default reference within its block. Effect 4's `Random` interface is synchronous, so constant-returning callbacks are plain JavaScript functions.
 
-An override holds across pauses, is inherited by new child fibers, and leaves unrelated programs unchanged. Prefer a module helper when it supplies the behavior without implementing a whole service.
+Overrides persist across suspensions, propagate to child fibers forked inside the block, and leave outside code untouched. When a module offers a targeted helper such as `Random.withSeed`, prefer it over supplying a full service object.
 
 ```vibe
 service DisplaySettings {
@@ -80,7 +85,9 @@ effect function defaultLabel(id: number) {
 // Output: Order 17
 ```
 
-A service with `static readonly defaultValue = () => implementation` compiles to a `Context.Reference` and exports its `Shape` type in declaration files, so using it adds nothing to `R`; override it with a `provide Key = value` block as above. Effect's own `Context.Reference(key, { defaultValue })` works unchanged and returns a key as data. A service that declares `static readonly default = implementation` draws one `EK4855` at the declaration. Its value is ordinary cached static data, not a `Context.Reference` fallback. For a local key, write its native `Context.Service` class, retaining `default` and its existing reads. The initializer still runs once at the declaration, repeated reads return the same value, and looking up an unprovided key still fails. Shape references use `Context.Service.Shape<typeof S>`. Choose a `defaultValue` factory explicitly when Reference fallback is the behavior you intend.
+A `service` declaring `static readonly defaultValue = () => implementation` compiles to a `Context.Reference` and exports its `Shape` type in `.d.ts` output, adding nothing to `R`; override it with `provide Key = value`. Effect's `Context.Reference(key, { defaultValue })` also works directly and returns a key value.
+
+Declaring `static readonly default = implementation` instead emits `EK4855`: that field is ordinary cached static data evaluated once at declaration, not a `Context.Reference` fallback, so unprovided lookups still fail. Keep a native `Context.Service` class (referencing its shape via `Context.Service.Shape<typeof S>`) when you intentionally want cached static data, or declare `static readonly defaultValue` for fallback behavior.
 
 ## Reproducible random computations
 
@@ -100,15 +107,15 @@ effect function reproduciblePairs() {
 // Output: true true
 ```
 
-Each `withSeed` call installs a new deterministic generator, so both pairs hold the same sequence. Reads in one seeded region advance the generator; they don't repeat one value. When a test depends on the sequence, keep consumption order stable: concurrent consumers can change which task gets which number.
+Each `Random.withSeed` installs a fresh deterministic generator, so identical seeds produce identical sequences while successive reads inside one call advance the generator. Keep consumption order sequential when tests assert exact outputs, since concurrent reads can interleave.
 
 ## Coming from Effect
 
-Default services behave as in Effect. Effect values such as `Random.next` run with `try Random.next`; provision and seed helpers take an Effect value such as `pair()`.
+Default services follow Effect's exact rules: execute Effect values like `Random.next` with `try`, and pass unexecuted Effects like `pair()` to helpers such as `Random.withSeed`.
 
-The `static readonly defaultValue` initializer follows a source class-field boundary, even inside an Effect function. It cannot run `try e` there (`EK0501`). Compute an Effect-based factory first in the surrounding Effect body, then assign it with `static readonly defaultValue = factory`. Creating that value runs when the declaration is reached; invoking the factory follows `Context.Reference` fallback behavior.
+`static readonly defaultValue` is evaluated at a class-field boundary even inside an `effect function`, so it cannot execute `try e` inline (`EK0501`). Compute any effectful factory in the surrounding effect body first, then assign `static readonly defaultValue = factory`.
 
-A default service with a written whole-shape annotation uses that annotation directly: `service Flags: Config { static readonly key = "app/Flags"; static readonly defaultValue: () => Config = () => config }`. It adds no public `Flags.Shape` namespace. Use `Config` or `Context.Service.Shape<typeof Flags>` outside its body; a member-body default service retains its public shape alias. See [Declaring a service of any shape](/requirements-management/025-services#declaring-a-service-of-any-shape).
+A whole-shape default service—`service Name: Type { static readonly defaultValue = () => value }`—checks the factory against `() => Type`, compiles to `Context.Reference<Type>`, allows only `key` and `defaultValue` in its body, and emits no `Name.Shape` namespace; refer to `Type` or `Context.Service.Shape<typeof Name>` externally (a member-body service keeps its `Shape` alias). See [Declaring a service of any shape](/requirements-management/025-services#declaring-a-service-of-any-shape).
 
 ---
 

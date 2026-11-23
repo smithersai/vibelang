@@ -1,20 +1,19 @@
 # Introduction to Effect Platform
 
-VibeLang reaches files, paths, processes, HTTP, randomness, and terminals through Effect's platform services. Write the application against those services; the entry module provides the platform's implementations to `main()` and passes that Effect to a runner. Node's globals and the web's I/O globals are not in scope in a `.vibe` file, and it imports no `node:*` module as a value; it needs no wrapper of its own around one.
+VibeLang accesses files, paths, child processes, HTTP, crypto, and terminals through Effect's platform services. Application modules depend only on abstract services; the entry module provides the concrete runtime layer and starts `main()`.
 
-Importing one as a value is `EK4402`. Bare internal Node builtins, including `_http_client` and `_tls_wrap`, have the same `EK4402` import rule as `node:fs`. Legacy builtin names from supported Node 22/24 remain reserved across runtimes; move their value imports to a `.ts` module.
+![Platform and HTTP server layer stack](/diagrams/http-layer-stack.svg)
 
-The pure helpers `AbortSignal` and `URL` remain available, but `AbortSignal.timeout`, `URL.createObjectURL` and `URL.revokeObjectURL` reach the host and report `EK4402`. Grouping and erased TypeScript assertions on a `globalThis` receiver retain the same rule. Move those operations into a sibling `.ts` module; `Effect.try`, `Effect.tryPromise` and `Effect.sync` arrows inside `.vibe` files keep the same restriction.
+## Host boundaries (`EK4402`)
 
-The restriction covers the whole file: plain and `async` functions, nested callbacks, and `Effect.try`, `tryPromise`, `sync` and `callback` bodies all report `EK4402` for a host binding such as `window` or `document`. A local binding with the same name keeps its own meaning, and erased type queries remain allowed.
+`.vibe` files keep host I/O out of scope and report `EK4402` on:
+- Value imports of `node:*` modules or legacy/internal Node builtins (such as `_http_client` or `_tls_wrap`).
+- Host globals (`process`, `window`, `document`, `fetch`, `performance`, `crypto`, `Buffer`) anywhere in a `.vibe` file—including plain/async functions, nested callbacks, and `Effect.try` / `tryPromise` / `sync` / `callback` bodies.
+- Host-reaching methods on pure web constructors: `AbortSignal.timeout`, `URL.createObjectURL`, and `URL.revokeObjectURL` (pure `AbortSignal` and `URL` remain allowed).
 
-For a self-contained wrapper, move the wrapper into a new sibling `.ts` factory and import it. The factory builds the Effect at the original call site, so platform work stays deferred until the Effect runs. When the wrapper reads another binding of the file or `this`, as `Effect.try({ try: () => decrypt(Buffer.from(value)), catch: ... })` does, keep the wrapper and move only the platform code, `Buffer.from(value)`, into a new sibling `.ts` function that takes its arguments as parameters.
+Erased type queries (`typeof`), local shadowed bindings, and `import.meta` (checked against your `ImportMeta` declarations, such as `vite/client` or `@types/node`) remain allowed.
 
-The migrate flow can move a zero-argument optional host call, such as `process.getuid?.()`, into a native module helper while keeping the class and its `import.meta.url` in the original module. The helper performs the whole optional call on its original receiver, only when the call is reached. Calls with value or type arguments retain the preservation refusal.
-
-`import.meta` follows TypeScript. Members are checked against the program's `ImportMeta` declarations. Enable `vite/client` for Vite's `glob`, `env` and `hot`, or `@types/node` for Node metadata such as `dirname`. An undeclared member gets TypeScript's ordinary diagnostic, not `EK4402`. Aliases, destructuring, computed access, arguments and spreads keep their ordinary meaning. The migrate flow preserves these expressions in the original module and generates no metadata companion.
-
-Platform repairs from one source share one fresh `<source>.platform.ts` companion. A moved host call becomes a companion helper with the callee's own type: the helper forwards the call and asserts its forwarding arrow to `typeof` the callee, and a `// SAFETY:` comment before the helper states why that assertion is sound, so a repository lint that requires a justification for every type assertion accepts the generated companion. Clock and randomness helpers have signatures of their own and assert nothing. Explicit `sync` inputs stay evaluated at the original call site, in order; the callback still runs only when its Effect runs. A callback that captures other bindings or a lexical receiver keeps the existing preservation checks, and an existing foreign module is never rewritten. During migration, host access inside formerly accepted boundary callbacks reports an `EK4402` warning. Unwrapped host access remains an error.
+When no Effect or experimental service covers a host API, put the host call in a sibling `.ts` module (either as an Effect-returning factory, or as a small `.ts` helper called inside `Effect.try` / `tryPromise`).
 
 ## Using platform services
 
@@ -42,19 +41,13 @@ NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))
 // Output: from a child process
 ```
 
-`try FileSystem.FileSystem` gets the implementation from the current environment. `try fs.readFileString(file)` runs its method and returns the text. Its `PlatformError` joins E. The module's own exports keep their meaning, as `FileSystem.layerNoop` does, and the service's type is `FileSystem.FileSystem` ([Effect's modules](../getting-started/008-importing-effect.md#a-modules-own-export)). `scoped` closes the temporary directory's scope when the block completes, fails, or is interrupted.
+`try FileSystem.FileSystem` reads the service from `R`; `try fs.readFileString(file)` runs the operation and adds `PlatformError` to `E`. Module exports such as `FileSystem.layerNoop` keep their normal meaning ([Effect's modules](../getting-started/008-importing-effect.md#a-modules-own-export)). `scoped` releases the temporary directory and any spawned `ChildProcessSpawner` handles when the block completes, fails, or is interrupted.
 
-The child-process `EK4402` examples obtain `ChildProcessSpawner.ChildProcessSpawner` with `try`, then run its `string` or `spawn` method. A spawned handle needs `Scope`; keep it inside `scoped`, as in the example above.
-
-Calling `main()` builds an Effect. `NodeRuntime.runMain` runs it, and `Effect.provide` supplies `NodeServices.layer`. Shared modules declare effect functions and leave platform selection to the entry module or test.
+Shared modules declare `effect` functions and leave platform selection to the entry module or test; the entry calls `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`.
 
 ## Replacing Node.js and web calls
 
-An unresolved experimental name such as `Process` keeps its TypeScript missing-name diagnostic. Its hint names the `Experimental` module, shows how to read and run the service, and identifies a layer that provides it. For example, read a process identifier with `try (try Experimental.Process.Process).pid` and provide `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node`. Pure helpers such as `Experimental.NetAddress.isIPv6(address)` need no service lookup or layer.
-
-Project-defined globals keep TypeScript's normal spelling suggestions even when their name is also a host-global name, such as `process` or `fetch`. Suggestions in value expressions omit every banned host global, including names outside the replacement table such as `screen`, `status` and `MutationObserver`. Allowed web utilities and ECMAScript globals keep TypeScript’s suggestions. Erased type references, including interface inheritance and `implements` clauses, keep native suggestions too; class `extends` expressions still read values.
-
-Each Node.js or web call has an Effect replacement, which needs no import. `EK4402` names it and its layer. `Date.now` and `Math.random` are ECMAScript and allowed; their rows give the replacement a test can control:
+Effect and experimental platform services are in scope without imports; `EK4402` names the replacement and its layer. `Date.now` and `Math.random` remain allowed ECMAScript APIs, with testable Effect replacements listed below:
 
 | Call | Effect | Layer |
 | --- | --- | --- |
@@ -75,7 +68,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 | `process.argv.slice(2)` | `try (try Stdio.Stdio).args` | `NodeServices.layer` |
 | `process.getuid?.()` | `try (try Experimental.Process.Process).currentUid` | `ExperimentalNodeServices.layer` |
 | `os.hostname` | `try (try Experimental.Process.Process).hostname` | `ExperimentalNodeServices.layer` |
-| `os.homedir` | `try (try Experimental.Process.Process).homeDirectory`, including native account fallback | `ExperimentalNodeServices.layer` |
+| `os.homedir` | `try (try Experimental.Process.Process).homeDirectory` | `ExperimentalNodeServices.layer` |
 | `process.kill` | `try (try Experimental.Process.Process).kill(pid, { killSignal })` | `ExperimentalNodeServices.layer` |
 | `fs.constants.X_OK` | `try (try Experimental.FileSystem.FileSystem).access(path, { executable: true })` | `ExperimentalNodeServices.layer` |
 | `crypto.createHmac` | `try (try Mac.Mac).sign(key, data)` | `NodeCrypto.layer` |
@@ -87,27 +80,16 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 | `performance.now() - start` | `Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6` | none |
 | `Math.random` | `try Random.next` | none |
 
-`try (try FileSystem.FileSystem).readFile(path)` returns bytes, as Node’s default `fs.readFile` does. For UTF-8 text, use `try (try FileSystem.FileSystem).readFileString(path)`, corresponding to `fs.readFile(path, "utf8")`.
-
-`HttpRouter.serve(app)` builds a `Layer`. Run it with `try Layer.launch(HttpRouter.serve(app))` to keep the server alive until interruption, and provide the server layer named in the table.
-
-The old `EK4403` is retired: host `performance` and `crypto` reads report `EK4402`, even when a legacy config tries to lower that code. Run native clock Effect values with `try`, and look up `SecureRandom.SecureRandom` before calling its methods.
-
-`try (try Stdio.Stdio).args` reads user arguments, matching `process.argv.slice(2)` on Node. It omits the executable and script entries. Keep a full `process.argv` read in a `.ts` adapter when those entries are needed.
-
-For elapsed intervals, capture `const startNanos = try Clock.monotonicTimeNanos` before work and subtract it from a later reading of the same clock. This clock has an arbitrary origin, which can differ from `performance.now()` on Node. In the table, `start` is the earlier native reading. Keep native `performance.now()` reads in a `.ts` adapter when their original origin is required, including when adding `performance.timeOrigin`.
-
-Get a service with `try`, as in `const random = try SecureRandom.SecureRandom`, then run `try random.uuidV4()`; `ChildProcess`, `HttpClient`, `HttpRouter`, and `FetchHttpClient` are in scope too. `NodeServices.layer` provides `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner`; `BunServices.layer` from `@effect/platform-bun` is Bun's. Since Effect 4.1 the crypto services, `SecureRandom`, `Digest`, `Mac`, `Signature` and the rest of `effect/crypto`, come from `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. Provide the platform's bundle to the application Effect and every other layer inside `main`. Effect's runtime provides the prelude's services itself.
-
-Where Effect has no service yet, as for `os.hostname()`, `process.pid`, an execute-permission check, or `navigator.locks`, EK4402 names the experimental service VibeLang adds, such as `try (try Experimental.Process.Process).pid` ([Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md)), whose layers come from `vibelang-runtime/experimental/platform-node`, `-bun`, or `-browser`. There, `ExperimentalNodeServices.layer` is `@effect/platform-node`'s bundle plus the experimental `FileSystem`, `Crypto`, `Process` and `Stdio`, so it replaces Effect's in `main`; like Effect's, it holds none of Effect's crypto services. Where nothing covers the call yet, as for `os.uptime()`, EK4402 says to escape to TypeScript: a `.ts` file that imports the API. Wrap calls that may throw with `Effect.try`, or Promises with `tryPromise`. [Platform globals](platform-globals.md) answers every Node.js and web global.
-
-Ordinary `namespace` blocks keep these VibeLang rules. An unresolved experimental name receives the same guidance there as outside the namespace, and spelling suggestions omit banned host globals. A named top-level `module` body is TypeScript and keeps TypeScript’s suggestions. Erased `typeof` type queries also keep TypeScript’s suggestions, because they read no host value.
+Key notes:
+- **Bytes vs. UTF-8**: `readFile(path)` returns bytes; use `readFileString(path)` for UTF-8 text.
+- **Arguments**: `Stdio.args` matches `process.argv.slice(2)`. Use a `.ts` adapter if you need the executable or script path.
+- **Monotonic time**: capture `const startNanos = try Clock.monotonicTimeNanos` before the work and subtract it from a later reading of the same clock. This clock has an arbitrary origin, which can differ from `performance.now()` on Node; keep native `performance.now()` reads in a `.ts` adapter when you rely on `performance.timeOrigin`.
+- **Bundles**: `NodeServices.layer` (and `BunServices.layer`) provides `FileSystem`, `Path`, `Stdio`, `Terminal`, and `ChildProcessSpawner`. Effect 4.1 crypto services (`SecureRandom`, `Digest`, `Mac`, `Signature`) come from `NodeCrypto.layer`, `BunCrypto.layer`, or `BrowserCrypto.layer`.
+- **Experimental services**: VibeLang adds services Effect does not ship yet under `Experimental.*` ([Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md)), backed by `ExperimentalNodeServices.layer`, `-bun`, or `-browser` from `vibelang-runtime/experimental/platform-*`. See [Platform globals](platform-globals.md) for the complete Node.js and web catalog.
 
 ## Making an HTTP client request
 
-Provide `FetchHttpClient.layer` to make requests through Effect 4's `HttpClient`.
-The host service bundle does not supply this client.
-All three module names below are in scope without imports.
+`FetchHttpClient.layer` supplies Effect 4's `HttpClient` (not included in `NodeServices.layer`). All three modules below are in scope without imports:
 
 ```vibe
 effect function requestJson(url: string) {
@@ -124,29 +106,16 @@ export effect function main() {
 await runPromise(main())
 ```
 
-`try HttpClient.get(url)` waits for the response; `try response.json` reads and parses its
-body. Both operations can fail, and the function infers those failures. The JSON is
-data, not a validated application type: decode it with a Schema before relying
-on its fields.
+Both `HttpClient.get` and `response.json` can fail in `E`. Decode the returned `unknown` JSON with a `Schema` before trusting its fields.
 
 ## Installing runtime-specific packages
 
-Follow [Install the packages](../setup/existing-project.md#2-install-the-packages)
-for the exact npm and Bun commands, including the
-`"@effect/platform-node-shared": "4.1.1"` override. Keep `effect` and every
-`@effect/platform-*` package at exactly 4.1.1; use npm's `--save-exact` or
-Bun's `--exact` when adding them.
+Follow [Install the packages](../setup/existing-project.md#2-install-the-packages) for exact npm and Bun commands, including the `"@effect/platform-node-shared": "4.1.1"` override. Pin `effect` and every `@effect/platform-*` package to exactly `4.1.1`:
+- **Node.js / Deno**: `@effect/platform-node@4.1.1`
+- **Bun**: `@effect/platform-bun@4.1.1`
+- **Browser**: `@effect/platform-browser@4.1.1`
 
-The `effect` package holds the interfaces. Use `@effect/platform-node@4.1.1`
-for Node.js or Deno, `@effect/platform-bun@4.1.1` for Bun, or
-`@effect/platform-browser@4.1.1` for browsers. Deno uses the same exact
-versions through `npm:` package specifiers.
-
-`vibelang` ships the `vibelang` binary. `npx vibelang` checks and compiles
-the project's `.vibe` and `.ts` sources, then you launch the generated
-JavaScript; `npx vibelang --noEmit` only checks. Bun and Deno projects also
-need `vibelang-runtime` and the compiler. Never pass `.vibe` files to a
-TypeScript runner.
+Compile `.vibe` and `.ts` sources with `npx vibelang` (`npx vibelang --noEmit` to type-check only), then execute the emitted JavaScript—never pass `.vibe` files directly to a TypeScript runner.
 
 ## Writing platform-independent programs
 
@@ -161,7 +130,7 @@ export effect function greet() {
 // Output: Hello, VibeLang!
 ```
 
-`greet` requires `FileSystem` and nothing else, so it runs on any platform that provides it, and a test provides a layer of its own, here the module's `FileSystem.layerNoop`. Shared modules name no platform; the entry file does.
+`greet` depends only on `FileSystem`, so production entry points wire a real runtime layer while tests supply `FileSystem.layerNoop`.
 
 ## Supplying Node or Deno implementations
 
@@ -181,9 +150,7 @@ NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))
 // Output: Hello, VibeLang!
 ```
 
-`NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))` starts `main` with the Node platform service bundle when this module loads. The services each bundle supplies come from its installed declarations. Tests import the shared program module and supply their own layers. The same package works in Deno's Node compatibility environment, subject to Deno permissions. Run the generated entry module with Node or Deno, granting only the permissions the application needs.
-
-A `provide` inside `main` wins for the code inside it, so `provide NodeFileSystem.layer { ... }` replaces one service. Provide every other service `main` needs, such as `UserDirectories.layer`, inside `main`.
+`@effect/platform-node` runs on both Node.js and Deno's Node compatibility layer (subject to Deno permissions). An inner `provide` overrides a single service inside its block.
 
 ## Supplying Bun implementations
 
@@ -203,11 +170,11 @@ BunRuntime.runMain(Effect.provide(main(), BunServices.layer))
 // Output: Hello, VibeLang!
 ```
 
-The entry provides `BunServices.layer` from `@effect/platform-bun`. The same `greet` uses Bun's implementations. A target-specific package can supply a narrower layer than the whole bundle, such as `NodeFileSystem.layer`. The FileSystem, Path, PlatformLogger, Runtime, and Terminal pages cover each integration.
+Swap the entry module to `BunRuntime` and `BunServices.layer`; `greet` stays unchanged. Provide narrower layers (such as `NodeFileSystem.layer`) when a program only needs one service.
 
 ## Starting `main` in a browser
 
-Use `@effect/platform-browser`'s `BrowserRuntime.runMain` to start the browser program; the compiled module imports nothing of Node's. Provide `BrowserCrypto.layer` for Effect's crypto services. A program that also needs `Experimental.Locks` or `Experimental.MediaQuery` provides `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`. Keep the browser program separate from the module that starts it:
+Use `BrowserRuntime.runMain` from `@effect/platform-browser` (with `BrowserCrypto.layer` for crypto and `ExperimentalBrowserServices.layer` for `Experimental.Locks` or `Experimental.MediaQuery`). Keep the program separate from the page entry module:
 
 ```vibe
 // app.vibe
@@ -229,10 +196,8 @@ import { main } from "./app.vibe"
 BrowserRuntime.runMain(Effect.provide(main(), BrowserCrypto.layer))
 ```
 
-The page loads `page.vibe`'s JavaScript as a module script, bundled or not, and the runner call at its top level starts `main`, as a top-level runner call does in any module. `BrowserRuntime.runMain` interrupts `main` when the page is discarded.
+Load the compiled `page.js` as a module script; `BrowserRuntime.runMain` interrupts `main` automatically when the page unloads.
 
 ## Coming from Effect
 
-An effect function returns an Effect value. `try` replaces `yield*`, including when getting a service. `provide layer { ... }` runs the block with that layer. The entry module passes the application Effect to a platform runner.
-
-A rejected copy or computed read of `globalThis` keeps independent TypeScript errors in the computed key or its type wrappers.
+An `effect` function returns an `Effect`. `try` replaces `yield*` for both services and operations, `provide layer { ... }` supplies a layer to a block, and the entry module runs `main()` with `NodeRuntime`, `BunRuntime`, or `BrowserRuntime`.

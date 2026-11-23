@@ -1,8 +1,8 @@
 # Canonical Codecs
 
-Canonical codec derivation works as in Effect: it preserves a schema's decoded type and chooses a standard external representation for JSON, string trees, or structural updates. Derivation only builds a codec; parsing and encoding are separate calls. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+Canonical codec derivation preserves a schema's decoded type while selecting a standard external representation for JSON, string trees, or structural updates. Derivation returns a codec; decoding and encoding remain separate calls. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Deriving JSON, string-tree, and isomorphism codecs
+## JSON, string-tree, and isomorphism codecs
 
 ```vibe
 // run: { const jsonValue = try encodeAudit({ created: new Date("2026-01-02T00:00:00Z"), sequence: 12n, labels: ["fragile"] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -24,7 +24,7 @@ effect function encodeAudit(input: unknown) {
 {"created":"2026-01-02T00:00:00.000Z","sequence":"12","labels":["fragile"]}
 ```
 
-`toCodecJson` recursively chooses JSON-compatible encodings for domain values, nested declarations with built-in representations included. It keeps explicit encodings: a date explicitly encoded as epoch milliseconds stays numeric. Its output is a JSON value, not serialized JSON text; for text, use `fromJsonString`.
+`Schema.toCodecJson` recursively maps domain types to JSON values (preserving explicit encodings, such as epoch-millisecond dates). Wrap with `Schema.fromJsonString` when you need serialized JSON text.
 
 ```vibe
 // run: { const jsonValue = try encodeSearch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -45,7 +45,7 @@ effect function encodeSearch() {
 {"offset":"20","archived":"false","labels":["large"]}
 ```
 
-`toCodecStringTree` preserves object and array structure and converts leaves to strings. A string tree can also contain `undefined`, so it is not limited to JSON values. It suits configuration, forms, and query parameters.
+`Schema.toCodecStringTree` keeps object and array structure while encoding leaves as strings (and permitting `undefined`), fitting query strings, forms, and config providers.
 
 ```vibe
 // run: const slot = try slotRepresentation({ row: 2, column: 3 }); try Console.log(slot instanceof Slot, slot.row, slot.column)
@@ -66,9 +66,9 @@ effect function slotRepresentation(input: unknown) {
 true 2 3
 ```
 
-`toCodecIso` selects the schema's `Iso` representation, such as plain fields for a class, for tools that update plain objects and arrays, then reconstruct the domain value. It is a structural isomorphism codec: it does not guarantee that the original runtime object is retained by identity.
+`Schema.toCodecIso` maps domain values (such as `Schema.Class` instances) to plain structural objects and back without promising reference identity.
 
-## Supplying canonical conversions for custom declarations
+## Hooks for custom declarations
 
 ```vibe
 // run: { const jsonValue = try encodeDepot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
@@ -97,11 +97,14 @@ effect function encodeDepot() {
 {"region":"nw","number":"14"}
 ```
 
-Declarations are opaque, so give derivation a structural codec. JSON prefers `toCodecJson`, then `toCodec`; StringTree prefers `toCodecStringTree`, then `toCodecJson`, then `toCodec`; Iso prefers `toCodecIso`, then `toCodec`. A JSON or StringTree hook can return `undefined` to mark the declaration as already canonical.
+Hook fallback order for opaque declarations:
+- **JSON**: `toCodecJson` -> `toCodec` -> unconstrained JSON fallback.
+- **StringTree**: `toCodecStringTree` -> `toCodecJson` -> `toCodec` -> throws.
+- **Iso**: `toCodecIso` -> `toCodec` -> keeps declaration as-is.
 
-Without a hook, JSON uses an unconstrained JSON fallback and parsing can still fail; StringTree derivation throws; Iso keeps the declaration's own representation. Hooks can use effectful conversions but cannot add services absent from the resulting codec's service type. The separate `Schema.toIso` helper consumes its Iso conversion synchronously.
+Returning `undefined` from a JSON or StringTree hook marks the declaration as already canonical. Hooks cannot introduce services outside the codec's service type; `Schema.toIso` runs synchronously.
 
-## Relating canonical representations to JSON Schema output
+## Relation to JSON Schema
 
 ```vibe
 // run: try Console.log(try Effect.try(() => JSON.stringify(describeDepotJson())))
@@ -114,6 +117,6 @@ function describeDepotJson() {
 {"dialect":"draft-2020-12","schema":{"type":"object","properties":{"region":{"type":"string"},"number":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991}},"required":["region","number"],"additionalProperties":true},"definitions":{}}
 ```
 
-JSON Schema export derives the canonical JSON codec first and describes its encoded side, so the custom depot representation appears as an object with a region and number. A custom JSON hook controls both runtime serialization and the exported shape; an opaque declaration without a structural hook yields an unconstrained document.
+`Schema.toJsonSchemaDocument` derives `toCodecJson` first and describes its encoded side. A single `toCodecJson` hook therefore defines both runtime JSON encoding and exported JSON Schema; an unhooked opaque declaration exports an unconstrained schema.
 
 [Upstream page](https://effect.website/docs/v4/schema/canonical-codecs)

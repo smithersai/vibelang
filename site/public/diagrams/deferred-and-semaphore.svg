@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 315" role="img" aria-labelledby="t d">
+  <title id="t">Fiber coordination with Deferred and Semaphore</title>
+  <desc id="d">Shows Deferred as a one-shot async value completed once by one fiber and awaited by others, and Semaphore as a bounded permit gate limiting concurrency.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#4338ca"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#92400e"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+    .h { font-size: 18px; font-weight: 700; fill: #16202e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+    .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .b { font-size: 14px; font-weight: 600; fill: #16202e; }
+    .p { font-size: 12.5px; fill: #4b5563; }
+    .code { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; font-weight: 600; }
+    .code-sm { font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 11.5px; }
+  </style>
+  <rect x="0" y="0" width="880" height="315" rx="10" fill="#f8fafc"/>
+  
+      <text x="36" y="42" class="h">Coordinate fibers cleanly with Deferred and Semaphore</text>
+      <text x="36" y="64" class="sub">Deferred passes one future result between fibers. Semaphore caps how many fibers enter a critical section at once.</text>
+
+      <!-- Left: Deferred -->
+      <rect x="36" y="88" width="392" height="198" rx="10" fill="#ffffff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <rect x="54" y="104" width="188" height="24" rx="12" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.2"/>
+   <text x="148" y="120" text-anchor="middle" class="k" fill="#4338ca">DEFERRED (ONE-SHOT)</text>
+      <rect x="54" y="144" width="114" height="42" rx="8" fill="#f1f5f9" stroke="#d6dde8" stroke-width="1.5"/>
+      <text x="111" y="169" text-anchor="middle" class="code-sm" fill="#16202e">Deferred.succeed</text>
+      <line x1="168" y1="165" x2="210" y2="165" stroke="#4338ca" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+      <rect x="216" y="144" width="68" height="42" rx="8" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+      <text x="250" y="170" text-anchor="middle" class="code" fill="#4338ca">v</text>
+      <line x1="284" y1="158" x2="316" y2="148" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <line x1="284" y1="172" x2="316" y2="184" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrow-teal)"/>
+      <rect x="322" y="134" width="88" height="28" rx="6" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="366" y="152" text-anchor="middle" class="code-sm" fill="#0f766e">await → v</text>
+      <rect x="322" y="170" width="88" height="28" rx="6" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="366" y="188" text-anchor="middle" class="code-sm" fill="#0f766e">await → v</text>
+      <text x="54" y="232" class="p">Completed at most once; subsequent calls return false.</text>
+      <text x="54" y="254" class="p">Waiters park without blocking an OS thread.</text>
+
+      <!-- Right: Semaphore -->
+      <rect x="452" y="88" width="392" height="198" rx="10" fill="#ffffff" stroke="#fcd34d" stroke-width="1.5"/>
+      <rect x="470" y="104" width="196" height="24" rx="12" fill="#fffbeb" stroke="#fcd34d" stroke-width="1.2"/>
+   <text x="568" y="120" text-anchor="middle" class="k" fill="#92400e">SEMAPHORE (N PERMITS)</text>
+      <rect x="470" y="144" width="96" height="56" rx="8" fill="#f1f5f9" stroke="#d6dde8" stroke-width="1.5"/>
+      <text x="518" y="168" text-anchor="middle" class="b">4 fibers</text>
+      <text x="518" y="188" text-anchor="middle" class="code-sm" fill="#92400e">withPermits(1)</text>
+      <line x1="566" y1="172" x2="604" y2="172" stroke="#92400e" stroke-width="2" marker-end="url(#arrow-amber)"/>
+      <rect x="610" y="136" width="98" height="72" rx="8" fill="#fffbeb" stroke="#fcd34d" stroke-width="1.5"/>
+      <text x="659" y="160" text-anchor="middle" class="k" fill="#92400e">PERMITS: 2</text>
+      <text x="659" y="182" text-anchor="middle" class="code-sm" fill="#16202e">2 running</text>
+      <text x="659" y="198" text-anchor="middle" class="p">2 queued</text>
+      <line x1="708" y1="172" x2="736" y2="172" stroke="#0f766e" stroke-width="2" marker-end="url(#arrow-teal)"/>
+      <rect x="742" y="144" width="84" height="56" rx="8" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
+      <text x="784" y="168" text-anchor="middle" class="code-sm" fill="#0f766e">DB pool</text>
+      <text x="784" y="188" text-anchor="middle" class="p">bounded</text>
+      <text x="470" y="232" class="p">Permits release automatically on success, error, or cancel.</text>
+      <text x="470" y="254" class="p">Use Latch when fibers wait for a gate to open once.</text>
+    
+</svg>

@@ -1,12 +1,21 @@
 ---
 title: "Matching"
-description: "Matching turns an outcome into one value or selects the next computation. Use typed matching for domain failures, and cause matching when a boundary also needs defects and interruptions."
+description: "Effect.match, matchEffect, matchCause, and matchCauseEffect fold an Effect's success and failure outcomes into one value or next branch. Use typed matching for domain errors, and cause matching at..."
 ---
 
 # Matching
 
-Matching turns an outcome into one value or selects the next computation. Use typed matching for domain failures, and cause matching when a boundary also needs defects and interruptions.
+`Effect.match`, `matchEffect`, `matchCause`, and `matchCauseEffect` fold an Effect's success and failure outcomes into one value or next branch. Use typed matching for domain errors, and cause matching at boundaries that must inspect defects or interruption.
 
+
+| Combinator | Handles | Callbacks | Resulting `E` |
+| --- | --- | --- | --- |
+| `Effect.match` | Success and typed `E` | Plain synchronous functions | `never` |
+| `matchEffect` | Success and typed `E` | Effectful functions | Union of branch errors |
+| `matchCause` | Success and full `Cause<E>` | Plain synchronous functions | `never` |
+| `matchCauseEffect` | Success and full `Cause<E>` | Effectful functions | Union of branch errors |
+| `ignore` | Discards success and typed `E` | None | `never` |
+| `ignoreCause` | Discards success and full `Cause<E>` | None | `never` |
 
 ## Folding success and failure into values
 
@@ -35,7 +44,7 @@ effect function countLabel(raw: number) {
 Count unavailable
 ```
 
-`Effect.match` applies synchronous value callbacks, which are plain functions and can't perform Effect operations, such as one that only formats text. A cause without an expected failure propagates. A cause with a defect propagates too, its expected failures as defects. From an expected failure beside an interruption, Effect selects the failure and discards the interruption, as ordinary catch does.
+`Effect.match` runs synchronous callbacks that return plain values and cannot execute Effects. Causes with no expected failure propagate unchanged, and causes containing a defect propagate with their expected failures promoted to defects. When an expected failure occurs alongside an interruption, Effect selects the expected failure and drops the interruption, matching ordinary `catch`.
 
 ## Choosing effectful branches
 
@@ -64,7 +73,7 @@ Invalid count received
 Count unavailable
 ```
 
-`matchEffect` accepts callbacks returning Effects that can pause, fail, or use services. Only the selected branch runs; its errors and requirements join the result's contract. Use a catch expression with an effect handler when recovery needs several statements.
+`matchEffect` runs only the selected branch, and that branch's errors and service requirements join the returned Effect's type. Prefer a `catch` expression with an effect handler when recovery needs several statements and the success path needs no transformation.
 
 ## Matching complete failure causes
 
@@ -96,7 +105,7 @@ Index stopped ["Die"]
 Unavailable
 ```
 
-`matchCause` passes the full cause to a synchronous failure callback; `matchCauseEffect` allows Effect operations in both callbacks. Both can consume cancellation and mixed causes, so use them where the boundary's policy calls for that.
+`matchCause` passes the full `Cause` to a synchronous failure callback; `matchCauseEffect` allows Effects in both branches. Because both consume defects, interruption, and mixed causes, restrict them to boundaries whose policy explicitly owns those outcomes.
 
 ## Discarding failures or all causes
 
@@ -114,7 +123,7 @@ effect function discardBoundaryOutcome() {
 //   try discardBoundaryOutcome()
 ```
 
-`ignore` discards the success value and typed failures; causes without an expected failure propagate, and so do causes with a defect, but an expected failure beside an interruption is consumed with it. `ignoreCause` consumes the full failure cause, even one with no expected failure; use it only where losing both diagnostics and cancellation is deliberate.
+`ignore` discards both the success value and typed failures while keeping the same mixed-cause rules as `Effect.match`: causes without an expected failure propagate, causes with a defect propagate, and an expected failure paired with an interruption is consumed together with it. `ignoreCause` swallows every cause—including defects and interruption—so use it only when suppressing both diagnostics and cancellation is intentional.
 
 ---
 

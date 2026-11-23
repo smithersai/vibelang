@@ -1,21 +1,21 @@
 ---
 title: "Svelte"
-description: "Add VibeLang to a Svelte 5 app that builds with Vite. A component runs a VibeLang program with a ManagedRuntime and renders three states: loading, the result, and an error the program recovers..."
+description: "Add VibeLang to a Svelte 5 + Vite app. A component runs a VibeLang program through a ManagedRuntime and renders loading, success, and recovered-error states. Complete Add VibeLang to an existing..."
 ---
 
 # Svelte
 
-Add VibeLang to a Svelte 5 app that builds with Vite. A component runs a VibeLang program with a `ManagedRuntime` and renders three states: loading, the result, and an error the program recovers from. Install the packages with [Add VibeLang to an existing project](/setup/existing-project) first. This page replaces [Vite and Vitest](/setup/vite): it covers the same plugin, tsconfig.json, Vitest, and build steps.
+Add VibeLang to a Svelte 5 + Vite app. A component runs a VibeLang program through a `ManagedRuntime` and renders loading, success, and recovered-error states. Complete [Add VibeLang to an existing project](/setup/existing-project) first; this page replaces [Vite and Vitest](/setup/vite).
 
 ## 1. Install the test packages
 
-With Bun, run:
+With Bun:
 
 ```sh
 bun add -d happy-dom@20.14.6 @testing-library/svelte@5.4.2
 ```
 
-With npm, run:
+With npm:
 
 ```sh
 npm install --save-dev --save-exact happy-dom@20.14.6 @testing-library/svelte@5.4.2
@@ -23,12 +23,12 @@ npm install --save-dev --save-exact happy-dom@20.14.6 @testing-library/svelte@5.
 
 ## 2. Configure tsconfig.json
 
-Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
+Run `vibelang` to write adjacent `.d.vibe.ts` declarations (even with `--noEmit`) and [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
 
-Find the configuration that includes `src`. In an app from Vite's `svelte-ts` template, `tsconfig.json` has `"files": []` and lists `tsconfig.app.json` and `tsconfig.node.json` as `references`; `tsconfig.app.json` includes `src`. Make two changes there:
+In Vite's `svelte-ts` template, `tsconfig.json` references `tsconfig.app.json` (which covers `src`) and `tsconfig.node.json`. Make two changes in `tsconfig.app.json`:
 
-1. The VibeLang plugin automatically enables `rewriteRelativeImportExtensions` for the JavaScript it emits, so `vite build` works without this setting. For the separate `vibelang -b` check in step 7, set `"rewriteRelativeImportExtensions": true` in `compilerOptions`; without it, a `.ts` file importing a `.vibe` module reports TS5097. It also rewrites source-extension imports during CLI emission; `allowImportingTsExtensions` alone produces TS5096 when emitting JavaScript.
-2. Add `"src/**/*.vibe"` to `include`; the template lists only `.ts`, `.js`, and `.svelte` globs. Without the `.vibe` glob, the compiler skips `.vibe` files that no other file imports, such as tests, and Vitest reports `vibelang: …/src/cart.test.vibe is not part of …/tsconfig.app.json. Add it to the tsconfig's include.`.
+1. The VibeLang plugin automatically enables `rewriteRelativeImportExtensions` for emitted JavaScript, so `vite build` works without it. For `vibelang -b` in step 7, set `"rewriteRelativeImportExtensions": true` in `compilerOptions`; without it, `vibelang -b` reports TS5097 on `.ts` files importing `.vibe` (and `allowImportingTsExtensions` alone produces TS5096 on CLI emit).
+2. Add `"src/**/*.vibe"` to `include` so standalone `.vibe` files such as tests are included; without it, Vitest reports `vibelang: …/src/cart.test.vibe is not part of …/tsconfig.app.json. Add it to the tsconfig's include.`.
 
 ```json
 {
@@ -38,7 +38,7 @@ Find the configuration that includes `src`. In an app from Vite's `svelte-ts` te
 
 ## 3. Configure Vite and Vitest
 
-Replace `vite.config.ts` with this file, keeping any other plugins the app has. It adds `vibelang()` before `svelte()`, passes the configuration that includes `src` as `project`, and imports `defineConfig` from `vitest/config` so the same file configures Vitest. `svelteTesting()` makes Vitest load Svelte's browser build and clean up after each test. If `tsconfig.json` itself includes `src`, call `vibelang()` without `project`.
+Update `vite.config.ts` (keeping existing plugins) to add `vibelang()` before `svelte()` and `svelteTesting()` (which loads Svelte's browser build and cleans up between tests), pass `tsconfig.app.json` as `project` (omit if `tsconfig.json` directly includes `src`), and import `defineConfig` from `vitest/config`:
 
 ```ts
 // TypeScript (.ts)
@@ -227,9 +227,9 @@ If `package.json` has no `test` script, add `"test": "vitest run"`. Run `npx vit
 
 ## 7. Type-check and build
 
-Run `vibelang` first to refresh the adjacent `.d.vibe.ts` declarations. `svelte-check` reads those declarations for imports from `.vibe` modules and checks the script blocks and templates in `.svelte` files. `vibelang` checks the `.vibe` and `.ts` sources; it does not check Svelte components.
+Run `vibelang` first to refresh adjacent `.d.vibe.ts` declarations (`vibelang` checks `.vibe` and `.ts`, not `.svelte`), then run `svelte-check` to type-check `.svelte` scripts and templates against those declarations.
 
-Create `tsconfig.check.json` for the component checker:
+Create `tsconfig.check.json` for `svelte-check`:
 
 ```json
 {
@@ -242,9 +242,9 @@ Create `tsconfig.check.json` for the component checker:
 }
 ```
 
-`allowArbitraryExtensions` lets the checker resolve a `./cart.vibe` import through `cart.d.vibe.ts`. Without the declarations, the import still reports `TS2307`. This check configuration does not emit JavaScript; keep import rewriting enabled in the app configuration for native emission.
+`allowArbitraryExtensions` resolves `./cart.vibe` through `cart.d.vibe.ts` (avoiding `TS2307`). Keep import rewriting enabled in `tsconfig.app.json` for native emit.
 
-In `package.json`, keep both checkers in the `check` script:
+Run both checkers in `package.json`:
 
 ```json
 {
@@ -254,8 +254,8 @@ In `package.json`, keep both checkers in the `check` script:
 }
 ```
 
-Run `npm run check` or `bun run check` to check the VibeLang and TypeScript sources first, then the Svelte components against their imports' declarations. Run `npm run build` or `bun run build` to build the app. Refresh the declarations whenever a VibeLang module changes.
+Run `npm run check` or `bun run check`, and `npm run build` or `bun run build`. Refresh declarations whenever a `.vibe` module changes.
 
 ## Next
 
-Set up the editor: [VS Code and Cursor](/setup/vscode), [Neovim](/setup/neovim), [Zed](/setup/zed), or [other editors](/setup/other-editors). Then verify with step 4 of [Set up VibeLang](/setup).
+Configure your editor ([VS Code and Cursor](/setup/vscode), [Neovim](/setup/neovim), [Zed](/setup/zed), or [other editors](/setup/other-editors)), then verify with step 4 of [Set up VibeLang](/setup).

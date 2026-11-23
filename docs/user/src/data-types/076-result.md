@@ -1,6 +1,14 @@
 # Result
 
-`Result` works in VibeLang exactly as in Effect. A `Result.Result<A, E>` stores a synchronous success or an expected failure as data, so validation can return an outcome without raising it in the caller.
+`Result.Result<A, E>` represents a synchronous outcome as data—either `Success<A>` or an expected `Failure<E>`. Use it in plain functions such as parsers and validators to return typed errors without throwing or invoking Effect.
+
+| Operation | Purpose |
+| --- | --- |
+| `succeed(a)`, `fail(e)` | Construct success or failure values |
+| `isResult`, `isSuccess`, `isFailure` | Narrow to `.success` or `.failure` |
+| `map`, `mapError`, `mapBoth`, `match` | Transform or unwrap payloads synchronously |
+| `flatMap`, `all` | Sequence or combine multiple results, short-circuiting on first failure |
+| `fromResult(r)`, `result(eff)` | Bridge between `Result` and Effect's typed error channel |
 
 ## Results and execution exits
 
@@ -19,7 +27,7 @@ function parseCount(text: string) {
 true true true
 ```
 
-Returning a failed `Result` does not throw: `parseCount` is a plain function that returns the result object. `Result` is a choice between A and E and records no defects or interruption; for a computation's complete outcome, use `Exit`.
+Returning `Result.fail` never throws; the caller receives the failure value directly. Because `Result` models only `A | E` with no defects or interruption, use `Exit` when you need a computation's complete execution outcome.
 
 ## Constructing and identifying variants
 
@@ -43,7 +51,7 @@ Count: 8
 Rejected: limit exceeded
 ```
 
-A success holds its payload in `.success`, a failure in `.failure`; guards narrow the union before you read them. Neither variant is an Effect subtype, though JavaScript Effect generators can yield a Result.
+Guards narrow a `Result` to expose `.success` on success or `.failure` on failure. `Result` is plain data rather than an Effect subtype, even though TypeScript `Effect.gen` allows yielding one.
 
 ## Matching and mapping outcomes
 
@@ -68,7 +76,7 @@ Accepted 8
 Rejected COUNT: INVALID
 ```
 
-`map` transforms only success and `mapError` only failure; `mapBoth` applies the transformation for the current variant, and `match` handles both and removes the wrapper. Keep these callbacks synchronous; for service work, narrow the result in an effect function and run Effects with `try`.
+`map` updates the success payload, `mapError` updates the failure payload, `mapBoth` transforms whichever branch is present, and `match` unwraps both branches to a single return value. Keep these callbacks synchronous; when handling a variant requires services or effects, narrow the `Result` inside an effect function and use `try`.
 
 ## Converting results into effects
 
@@ -100,7 +108,7 @@ effect function validatePair() {
 InvalidCount -1
 ```
 
-`try fromResult(result)` runs the Effect: success gives A, failure enters E. Convert explicitly when passing a result to an Effect combinator. Conversely, `try result(work())` collects expected failures into a result: a cause with none still propagates, and so does one with a defect, its expected failures as defects; for an expected failure beside an interruption, Effect returns the first expected failure and discards the interruption. To keep every reason, use `try exit(work())`.
+`try fromResult(r)` lifts a `Result` into Effect: success yields `A` and failure enters `E`. In the reverse direction, `try result(work())` captures expected failures as `Result.fail`—causes with defects or without a typed failure still propagate, and a typed failure combined with interruption returns the first typed failure while discarding the interruption. Use `try exit(work())` to preserve all causes.
 
 ## Sequencing and combining results
 
@@ -123,7 +131,7 @@ function combine(
 missing missing missing
 ```
 
-`flatMap` chains a callback that returns a result, stopping at the first failure. `all` combines a tuple, record, or iterable of results into one, returning the first failure. It combines values already supplied; it is not a concurrency operator.
+`Result.flatMap` chains dependent validations and `Result.all` combines tuples, records, or iterables of existing results, short-circuiting on the first failure. Because inputs are already-computed values, `Result.all` performs no concurrency.
 
 ```ts
 // TypeScript (.ts)
@@ -161,4 +169,4 @@ function combinedData() {
 {"title":"Weekly","count":6}
 ```
 
-`Result.gen` sequences with JavaScript generators: the first yielded failure skips the rest. A plain `function*` keeps its JavaScript meaning in `.vibe`, so the same generator API works there without `EK1002`. An explicit `effect function*` is an Effect producer and cannot serve as a `Result.gen` callback. In VibeLang, use `flatMap` and `all` for the same computation, as above.
+`Result.gen` short-circuits on the first yielded failure using a plain JavaScript generator (`function*`, which keeps its standard meaning in `.vibe` without `EK1002`, unlike `effect function*`). In VibeLang, prefer `Result.flatMap` and `Result.all` directly.

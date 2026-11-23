@@ -1,8 +1,8 @@
 # Error Messages
 
-Schema error messages work as in Effect. A `SchemaError` combines a readable message with a structured issue, including paths into nested values. Customize a message at the node that fails, so users get an explanation that fits that field. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+A `SchemaError` pairs a formatted string (`error.message`) with a structured issue tree (`error.issue`), including property and index paths. Annotate the node where a failure occurs so messages stay specific to that field or check. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
 
-## Understanding default validation messages
+## Default validation messages
 
 ```vibe
 // run: try Console.log(try explainPackage({ label: 7, pieces: "several" })); try Console.log(try explainPackage({ label: "crate", pieces: 2 }))
@@ -28,9 +28,9 @@ Expected number
 Accepted
 ```
 
-A base-type mismatch reports the expected type, an absent required field `Missing key`; a nested mismatch adds a key or index path. `errors: "all"` collects independent issues instead of stopping at the first. Checks run only after their underlying type is accepted.
+Type mismatches report `Expected <type>`, missing required fields report `Missing key`, and nested failures append `at [...]`. Pass `{ errors: "all" }` to collect all independent failures instead of stopping at the first. Checks run only after their base type passes.
 
-## Identifying schemas in error output
+## Naming schemas with `identifier` and `expected`
 
 ```vibe
 // run: for (const input of [{ tracking: 1, count: 1 }, { tracking: "pkg", count: NaN }, { tracking: "pkg", count: "1" }]) { try Effect.catch(Schema.decodeUnknownEffect(LabeledPackage)(input), (error) => Console.log(error.message)) }
@@ -50,11 +50,13 @@ Expected number
   at ["count"]
 ```
 
-An identifier replaces a generic expected-value description with a stable domain name. `expected` supplies readable text for the annotated node or check. `Count` annotates the finite-number check: `NaN` reports `Expected a finite package count`, while a string reports `Expected number` before that check runs. `title` is documentation metadata and leaves the default validation message unchanged.
+- `identifier`: replaces the generic type name with a stable domain identifier.
+- `expected`: replaces the expected-value phrase on the annotated node or check (`Count` annotates `Finite`'s check, so `NaN` reports `Expected a finite package count`, while `"1"` fails the earlier `number` check).
+- `title`: documentation metadata only; does not alter default messages.
 
-Naming the whole struct changes only the struct's own errors; an invalid nested tracking value still reports the tracking schema's own identity.
+Outer struct annotations apply only to struct-level failures; nested fields keep their own messages.
 
-## Customizing messages for checks and conversions
+## Messages on checks and conversions
 
 ```vibe
 // run: for (const input of [2, "no", "1.5"]) { try Effect.catch(Schema.decodeUnknownEffect(WholeCount)(input), (error) => Console.log(error.message)) }; try Effect.catch(Schema.decodeUnknownEffect(TrackingText)("x"), (error) => Console.log(error.message))
@@ -87,9 +89,9 @@ Use a whole package count
 Reference needs at least four characters
 ```
 
-The conversion has three failure sites, each with its own message: the encoded string, the conversion function, and the decoded integer check. For checks, pass a message to the check constructor; `.annotate({ message })` after several checks targets only the last check, not every earlier failure.
+A conversion has three distinct failure sites: source validation, the getter itself, and target validation. For multiple checks, pass `{ message }` to each check constructor—`.annotate({ message })` after `.check(...)` targets only the final check.
 
-## Assigning messages to scalar and compound values
+## Scalar and compound messages
 
 ```vibe
 // run: try Console.log(try explainOrders({ contacts: [], delivery: "air" })); try Console.log(try explainOrders({ contacts: [1], delivery: "courier" }))
@@ -121,9 +123,9 @@ Contact must be text
   at ["contacts"][0]
 ```
 
-A scalar message replaces a mismatch at that scalar. A union message summarizes failure of all alternatives, and a collection check explains a failure of the collection's size. Nested failures keep their own messages and paths; a message on an outer node does not replace every inner issue.
+A union `message` summarizes failure when every branch fails; a collection check explains size or container constraints; element failures keep their own messages and index paths.
 
-## Explaining missing fields
+## Missing fields and tuple elements
 
 ```vibe
 // run: try Effect.catch(Schema.decodeUnknownEffect(Dispatch)({}), (error) => Console.log(error.message)); try Effect.catch(readCoordinates([]), (error) => Console.log(error.message))
@@ -151,6 +153,6 @@ Supply latitude
   at [1]
 ```
 
-`messageMissingKey` belongs to a field or tuple position and explains absence; a present but wrong value still uses its value schema's message. This lets a form give different instructions for a missing answer and an invalid one.
+Attach `messageMissingKey` via `.annotateKey(...)` to distinguish an omitted field or tuple element from a present invalid value, which still reports the value schema's message.
 
 [Upstream page](https://effect.website/docs/v4/schema/error-messages)

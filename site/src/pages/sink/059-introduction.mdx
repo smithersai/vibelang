@@ -1,11 +1,13 @@
 ---
 title: "Introduction to Sinks"
-description: "A Sink describes how to consume a Stream into one result. Use one to make a consumption rule reusable: take a header, count records, accumulate totals, or run work for every element. Building a..."
+description: "A Sink is a reusable stream consumer: it specifies how to pull elements from a Stream, decide when to stop, and produce a single result. Constructing a Sink is pure and consumes nothing; try..."
 ---
 
 # Introduction to Sinks
 
-A Sink describes how to consume a Stream into one result. Use one to make a consumption rule reusable: take a header, count records, accumulate totals, or run work for every element. Building a Sink consumes nothing.
+A `Sink` is a reusable stream consumer: it specifies how to pull elements from a `Stream`, decide when to stop, and produce a single result. Constructing a `Sink` is pure and consumes nothing; `try Stream.run(source, sink)` drives it.
+
+<figure className="vibe-diagram"><img className="vibe-diagram__light" src="/diagrams/stream-and-sink-pipeline.svg" alt="Pull-based Stream pipeline into a Sink" /><img className="vibe-diagram__dark" src="/diagrams/stream-and-sink-pipeline-dark.svg" alt="Pull-based Stream pipeline into a Sink" /><figcaption>Pull-based Stream pipeline into a Sink</figcaption></figure>
 
 ## Consumers and result types
 
@@ -19,9 +21,17 @@ const header: Sink.Sink<Array<string>, string, string, never, never> = Sink.take
 // Output: ["one","two"]
 ```
 
-`Sink.Sink<A, In, L, E, R>` returns `A`, accepts input elements `In`, can leave unconsumed elements `L`, can fail with `E`, and requires services `R`. A sink can consume nothing, stop early, or read the whole source.
+A sink carries five type parameters: `Sink.Sink<A, In, L, E, R>`:
 
-Sink constructors and operators that return Sinks build values; wrap any call that may throw with `Effect.try` and run it with `try`. An `effect function*` producer can be the source of `Stream.run`, since it returns a Stream.
+| Parameter | Meaning |
+| --- | --- |
+| `A` | Final result produced on completion |
+| `In` | Element type accepted from the stream |
+| `L` | Leftover element type returned if the sink stops mid-batch (`never` if none) |
+| `E` | Typed failures the sink can produce |
+| `R` | Services required while consuming |
+
+A sink may finish immediately without pulling, stop after a prefix, or drain the entire source. Sink constructors build values; wrap any throwing helper with `Effect.try` and run it with `try`. Because `effect function*` producers return Streams, they plug directly into `Stream.run`.
 
 ## Running a consumer against a source
 
@@ -41,7 +51,7 @@ effect function parseHeader() {
 // Output: ["format-v2","length-64"]
 ```
 
-`try Stream.run(source, sink)` runs consumption and returns the sink's result. The source's and sink's failures and services join the consuming function's contract; provide those services around consumption or with the source's and sink's own provision operators.
+`try Stream.run(source, sink)` executes the stream into the sink and returns `A`. The combined Effect unions both the stream's and sink's failures (`E`) and service requirements (`R`). Satisfy those requirements with `provide` around `Stream.run` or via the stream's and sink's own provision operators.
 
 ## Unconsumed elements
 
@@ -61,11 +71,11 @@ effect function headerWithLeftovers() {
 // Output: {"header":["header"],"rest":["first","second"]}
 ```
 
-Streams deliver batches internally. When the sink stops within a batch, the batch's unused suffix becomes leftovers; they are not the source's whole unread tail, which can include batches never requested. `try Stream.run(source, sink)` returns only `A`; use `Sink.mapEnd` to move leftovers into `A` when they matter.
+Streams pull elements in internal chunks (batches). If a sink completes mid-batch, the unused suffix of *that batch* becomes leftovers `L`—not the entire unread tail of the source, since later batches are never requested. `Stream.run` returns only `A`; use `Sink.mapEnd` to fold leftovers into `A` when callers need them.
 
 ## Coming from Effect
 
-Sink's five type parameters and its operators keep their Effect meanings. Constructing a Sink builds a value; `try Stream.run(source, sink)` runs an Effect and returns the sink's success value directly.
+All five `Sink` type parameters and combinators keep their Effect semantics. Construct sinks as plain values and run them with `try Stream.run(source, sink)` to obtain `A` directly.
 
 ---
 

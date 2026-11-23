@@ -1,6 +1,6 @@
 # SynchronizedRef
 
-A `SynchronizedRef` serializes updates that run Effects. Use it when the next value depends on both the current value and work that can pause, such as refreshing a credential or loading a revision.
+A `SynchronizedRef<A>` pairs a mutable cell with an internal lock that serializes effectful updates. Use it when computing the next state depends on both the current value and an Effect that can suspend—such as refreshing an expiring token or loading the next revision from a service.
 
 ## Serializing effectful updates
 
@@ -19,7 +19,7 @@ effect function recordRevisions() {
 // Output: [1,2,3]
 ```
 
-Three fibers call the callbacks concurrently, but they acquire the reference's update lock one at a time. Each sees the value the previous update committed, so all three revisions stay in the final array. Return a replacement immutable value instead of changing the stored array in place.
+All three fibers invoke `updateEffect` concurrently, but the lock lets only one callback run at a time. Each callback sees the value committed by the previous update, so none of the three entries is lost. As with `Ref`, treat the stored value as immutable and return a new array or object rather than mutating `current`.
 
 ## Reading synchronized references
 
@@ -35,7 +35,7 @@ effect function inspect() {
 // Output: {"before":{"version":0,"ready":false},"after":{"version":1,"ready":true}}
 ```
 
-`get` reads the latest committed value without waiting for an in-progress update to compute its replacement. `set`, `update`, and `modify` make synchronous changes. A read and a later write stay two operations, not one atomic one, even on a synchronized reference.
+`SynchronizedRef.get` is non-blocking: it returns the most recently committed value immediately without waiting for an in-progress `updateEffect`. Pure `set`, `update`, and `modify` operations work just like `Ref`. Even on a `SynchronizedRef`, a `get` followed by a separate `set` is two independent steps, not an atomic transition.
 
 ## Keeping dependent asynchronous updates atomic
 
@@ -62,8 +62,10 @@ effect function refreshTwice() {
 // Output: 1
 ```
 
-The second update reads the first update's committed version before calling `loadAfter`. A failing callback commits no replacement and releases the lock. This protects the reference's update sequence; it doesn't roll back remote side effects, coordinate several references, or make recursive updates to the same reference safe.
+Because `updateAndGetEffect` holds the lock across `versions.loadAfter(current)`, the second concurrent `refresh()` waits until the first commits `1`, then passes `1` to `loadAfter` and receives `2`. When a callback fails or is interrupted, the reference keeps its prior value and releases the lock so subsequent callers can proceed.
+
+Know the boundary of this guarantee: `SynchronizedRef` serializes transitions on *one* reference. It does not roll back external side effects performed before a failure, coordinate across multiple references, or permit re-entrant updates to the same reference (which deadlock).
 
 ## Coming from Effect
 
-Pass a callback returning an Effect to `updateEffect`. A plain arrow can return an existing Effect, such as `versions.loadAfter(current)`. An effect arrow can run several operations with `try` before returning the next value. `try.all` runs the two refresh Effects concurrently and keeps their results.
+Pass an Effect-returning callback to `updateEffect` or `updateAndGetEffect`. A plain arrow suffices when forwarding an existing Effect (`(current) => versions.loadAfter(current)`); use an `effect (current) => { ... }` arrow when the transition runs multiple `try` steps. `try.all` executes the two refreshes concurrently and returns their ordered tuple.

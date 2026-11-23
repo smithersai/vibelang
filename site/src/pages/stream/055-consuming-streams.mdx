@@ -1,11 +1,19 @@
 ---
 title: "Consuming Streams"
-description: "A consumer such as Stream.runCollect returns an Effect that consumes a Stream; in an effect function or block, run it with try to get its result. Bound an unbounded source before a consumer that..."
+description: "A Stream does nothing until a consumer runs it. Every consumer (Stream.runCollect, Stream.runForEach, Stream.runFold, Stream.run) returns an Effect—execute it with try inside an effect function or..."
 ---
 
 # Consuming Streams
 
-A consumer such as `Stream.runCollect` returns an Effect that consumes a Stream; in an effect function or block, run it with `try` to get its result. Bound an unbounded source before a consumer that waits for its end.
+A Stream does nothing until a consumer runs it. Every consumer (`Stream.runCollect`, `Stream.runForEach`, `Stream.runFold`, `Stream.run`) returns an Effect—execute it with `try` inside an effect function or block. Always bound infinite streams (with `Stream.take`, `takeWhile`, or a stopping consumer) before running a consumer that waits for stream end.
+
+| Consumer | Purpose | Stops early? |
+| --- | --- | --- |
+| `Stream.runCollect` | Gather all elements into an array | No |
+| `Stream.runForEach` | Execute an Effect per element | Only on failure |
+| `Stream.runForEachWhile` | Execute an Effect until callback returns `false` | Yes |
+| `Stream.runFold` / `runFoldEffect` | Reduce elements into one accumulator | No |
+| `Stream.run(source, sink)` | Delegate consumption policy to a `Sink` | Depends on sink |
 
 ## Collecting elements
 
@@ -22,7 +30,7 @@ effect function collectLabels() {
 // Output: ["north","south","west"]
 ```
 
-`try Stream.runCollect(source)` returns an array in emission order. It keeps every element, so use it for finite results that fit in memory. If the source fails, it fails, never returning a partial array.
+`try Stream.runCollect(source)` buffers every emitted element into an ordered array. Use it only when the stream is finite and fits in memory. If the stream fails mid-way, `runCollect` fails with that error rather than returning a partial array.
 
 ## Executing per-element effects
 
@@ -40,7 +48,7 @@ effect function announce() {
 // Output: starting package
 ```
 
-`runForEach` runs the callback for each element in sequence and discards its result; the callback's errors and service requirements join the source's. For concurrent preparation, use `Stream.mapEffect` with a concurrency limit before consuming.
+`runForEach` invokes its callback sequentially on each element and succeeds with `void`. Any typed failures or service requirements from the callback merge into the resulting Effect. To process elements concurrently before a final consumer, stage the work with `Stream.mapEffect(..., { concurrency })`.
 
 ## Stopping conditionally
 
@@ -57,7 +65,7 @@ effect function reachBudget() {
 // Output: 16
 ```
 
-The callback's Effect succeeds with `true` to continue or `false` to stop; the element whose callback succeeds with `false` is already consumed and its callback has run. Stopping closes the source and runs its finalizers. State declared in the function is fresh per call.
+`runForEachWhile` keeps pulling while the callback returns `true` and halts as soon as it returns `false`. Note that the element causing `false` (`8`) has already been consumed and its callback body executed (`total` reaches `16`). Stopping early immediately closes the stream and runs all upstream finalizers.
 
 ## Folding into an accumulator
 
@@ -84,7 +92,7 @@ effect function totalWithProgress() {
 // Output: 896
 ```
 
-The initial-state callback runs per consumption, so a mutable accumulator starts fresh. `runFold` needs a synchronous, non-failing reducer; `runFoldEffect` takes a callback that returns an Effect. Both wait for the source to end; to stop early based on the accumulator, use `runForEachWhile`.
+The initial-value thunk (`() => 0`) runs once per consumption, guaranteeing fresh state even for mutable accumulators. Use `runFold` for pure, non-failing reducers and `runFoldEffect` when folding needs Effects. Both consume to stream end; for early termination based on accumulator state, use `runForEachWhile` or `Sink.fold`.
 
 ## Running a sink
 
@@ -102,7 +110,7 @@ effect function readHeader() {
 // Output: ["version","length"]
 ```
 
-A Sink packages a reusable consumption policy. `Stream.run` combines the source's and sink's failures and requirements in an Effect; run it with `try` to get the sink's result. A sink can finish before the source ends; see [Leftovers](/sink/062-leftovers) for elements it pulled but did not use.
+`Stream.run(source, sink)` pairs a stream with a reusable `Sink`, unifying both components' error channels and service requirements. When a sink stops before the source finishes, any unused elements from the current batch become leftovers—see [Leftovers](/sink/062-leftovers).
 
 ---
 

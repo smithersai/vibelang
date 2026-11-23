@@ -1,8 +1,8 @@
 # Durable tasks and workflows
 
-> **Open proposal ([VIP-55](https://vibelang.sh/vips/0055-durable-tasks-workflows), [VIP-60](https://vibelang.sh/vips/0060-std-durable)), experimental, not part of the alpha.** This page needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+> **Open proposal ([VIP-55](https://vibelang.sh/vips/0055-durable-tasks-workflows), [VIP-60](https://vibelang.sh/vips/0060-std-durable)), experimental, not part of the alpha.** Requires `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. Any release may change or remove it.
 
-A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks. Both are written like a `service`: a class-shaped body with one `effect call` method and `static readonly` options. They run on `Experimental.Durable`, which journals each step: a run that crashes resumes where it stopped, and a finished step never runs twice.
+A `task` is one journaled step of a durable run, and a `workflow` is a deterministic plan over tasks. Both have a class-shaped body with one `effect call` method and `static readonly` options. They run on `Experimental.Durable`, so crashed runs resume where they stopped and finished steps never run twice.
 
 ```vibe
 // experimental: builtins
@@ -24,7 +24,7 @@ export workflow Triage {
 }
 ```
 
-Run a workflow inside its layer and an engine. A second run with an equal input joins the first, so nothing calls the task again:
+Run a workflow inside its layer and an engine. A second call with equal input joins the first run instead of rerunning the task:
 
 ```vibe
 // experimental: builtins
@@ -47,27 +47,34 @@ export effect function main() {
 }
 ```
 
-`Experimental.Durable.memory` keeps runs in the process; `layerSql` keeps them in a database, so a restarted program resumes its runs.
+`Experimental.Durable.memory` keeps state in-process; `layerSql` persists runs in a database across restarts.
 
 ## Tasks
 
-- A task's `call` writes a type for every parameter and an `A!E` return type. That annotation is the step's boundary: the body is checked against `A` and `E`, and the services the body reads belong to the task's implementation, not to its callers. The `R` slot is never written.
-- A `call` without a body declares a step whose implementation is supplied separately: `effect call(order: Order): Receipt!Declined`.
-- Each parameter type and the `A` and `E` of the annotation need a schema form, as a `schema` field's type does: `string`, a `schema` declaration, `Date`, `ReadonlySet<T>` and the other mapped types. A type without one, such as `Set<string>`, `unknown` or a plain type alias, is `EK2109`. The derived schemas are on the declaration: `FetchIssues.schemas.payload` holds one schema per parameter, and `schemas.success` and `schemas.error` hold the annotation's.
-- Each `static readonly` member is an option, passed through under its own name. `static readonly key = "billing/Charge"` replaces the declared name.
-- A declaration's tag is `<package>#<Name>`, from the package's `package.json` name, or its written `static readonly key`. The tag names its recorded runs, so moving the file keeps them. Two declarations of one package with one tag are `EK5503`.
-- A task runs only as a step of a workflow. Calling one anywhere else, even inside an `effect` block in a workflow, is `EK5502`.
+- **Signature boundary:** Every parameter and an `A!E` return type must be annotated (never write `R`). The body checks against `A` and `E`; services read by the body belong to the task's implementation, not callers. Omit the body to declare a step implemented separately via `Charge.toLayer(effect (order) => …)`.
+- **Schema types:** Parameter, `A`, and `E` types must have a schema form (`string`, `schema` declarations, `Date`, `ReadonlySet<T>`, and other mapped types). Unmappable types (`Set<string>`, `unknown`, plain type aliases) report `EK2109`. Derived schemas live on `TaskName.schemas` (`payload`, `success`, `error`).
+- **Options and tags:** `static readonly` members pass through as options. The durable tag defaults to `<package>#<Name>` (from `package.json`), keeping runs valid if the file moves; `static readonly key = "billing/Charge"` overrides it. Duplicate tags in a package report `EK5503`.
+- **Call site:** Tasks run only as workflow steps. Calling one outside a workflow—even inside an `effect` block within a workflow—reports `EK5502`.
 
 ## Workflows
 
-- A workflow's `call` may leave out its return type: its success and error come from the steps it runs.
-- A workflow's `call` is a plan, built before anything runs. In it, `try` runs only steps: a task, another workflow, `W.child(…)`, or `try.all`, `try.race` or `try.any` over them (`EK5504`). It reads no clock, randomness or module-level `let` (`EK5505`), has no loops or reassignments (`EK5506`), and never reaches itself through its steps (`EK5507`). Work that needs any of these is a task.
-- A `retryPolicy` with neither `maxAttempts` nor `expirationMs` never gives up, and draws the warning `EK5509`. A spread or computed property name may supply a bound, so either suppresses this warning.
-- `return Fix.to(issue, attempt + 1)` ends this round and starts the next in the same run, as a loop would; `static readonly maxRounds` bounds the rounds. A handoff stands only after `return` (`EK5508`), and a workflow that hands off to itself needs no return type.
-- `try Review.child(patch)` in a workflow runs `Review` as a separate run and waits for it.
-- `try Triage("smithersai/vibelang")` runs the workflow to completion. Its type requires Effect's `WorkflowEngine`, which `Experimental.Durable.memory` provides, so a program that runs a workflow without an engine has a missing requirement. `Triage.layer` holds the workflow and the tasks it calls; a task without a body gets its implementation from `Charge.toLayer(effect (order) => …)`.
+- **Deterministic plan:** `call` may omit its return type (inferred from its steps). Inside it, `try` may run only steps: a task, another workflow, `W.child(…)` (runs a child workflow and awaits it), or `try.all`/`try.race`/`try.any` over steps (`EK5504`). Reading clocks, randomness, or module-level `let` reports `EK5505`; loops and reassignments report `EK5506`; reaching itself through steps reports `EK5507`. Put non-deterministic or looping work in a task.
+- **Retries and handoffs:** A `retryPolicy` lacking both `maxAttempts` and `expirationMs` warns `EK5509` (suppressed if a spread or computed property may supply a bound). `return Fix.to(issue, attempt + 1)` ends the current round and starts the next in the same run (bounded by `static readonly maxRounds`; needs no return annotation for self-handoff; valid only directly after `return`, else `EK5508`).
+- **Execution and layers:** `try Triage("smithersai/vibelang")` runs to completion and requires Effect's `WorkflowEngine` (provided by `Experimental.Durable.memory` or `layerSql`). `Triage.layer` bundles the workflow and its tasks.
 
-## Rules
+## Rules and diagnostics
 
-- A `task` or `workflow` body holds one non-static `effect call` method and `static readonly` members with initializers. Anything else, such as a second `call`, an instance field or a type parameter, is `EK5501`.
-- `task` and `workflow` are contextual keywords. They start a declaration only at the start of a statement, followed on the same line by a name, so `const task = 1`, `task as Job` and `workflow.run()` keep their TypeScript meaning.
+`task` and `workflow` are contextual keywords—only recognized at statement start followed on the same line by a name—so `const task = 1`, `task as Job`, and `workflow.run()` stay valid TypeScript.
+
+| Code | Condition |
+| --- | --- |
+| `EK5501` | Body contains anything besides one non-static `effect call` and `static readonly` initializers (e.g., second `call`, instance field, type parameter) |
+| `EK5502` | Task called outside a workflow step |
+| `EK5503` | Duplicate durable tag in the same package |
+| `EK5504` | Workflow `try` operand is not a step or step combinator |
+| `EK5505` | Workflow reads clock, randomness, or module-level `let` |
+| `EK5506` | Workflow contains a loop or reassignment |
+| `EK5507` | Workflow recursively reaches itself through steps |
+| `EK5508` | `.to(...)` handoff used outside a `return` |
+| `EK5509` | Warning: `retryPolicy` omits both `maxAttempts` and `expirationMs` |
+| `EK2109` | Task parameter, success, or error type lacks a schema form |

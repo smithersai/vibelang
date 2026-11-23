@@ -1,10 +1,12 @@
 # TestClock
 
-`TestClock` replaces live time with time your test controls, so you can check sleeps, timeouts, recurring work, and clock reads without waiting for wall-clock time. It comes from `effect/testing` and needs no import.
+Testing a 30-second timeout or a 15-minute refresh loop against real wall-clock time makes tests slow and flaky. `TestClock` replaces live time with a deterministic virtual clock that starts at `0` and **only moves when your test explicitly advances it**—so a 15-minute schedule finishes in milliseconds and never races against CPU load. `TestClock` comes from `effect/testing` and is in scope in `.vibe` without an import.
 
-## Configure the test runner
+![Deterministic virtual time with TestClock](/diagrams/testclock-time-travel.svg)
 
-The [starter](../getting-started/004-installation.md) includes Vitest 5.1.0, `@effect/vitest` 4.1.1, and the local `vibelang-vite` plugin. `bun run test` compiles and runs `src/**/*.test.vibe` directly, with no prior `dist/` build. The starter's `tsconfig.test.json` includes tests that the build excludes. Select it in the plugin and keep configuration in TypeScript:
+## Step 1: Configure the test runner
+
+The [starter](../getting-started/004-installation.md) comes preconfigured with Vitest 5.1.0, `@effect/vitest` 4.1.1, and the `vibelang-vite` plugin. Running `bun run test` compiles and executes `src/**/*.test.vibe` directly—no separate `dist/` build required. Point the plugin at `tsconfig.test.json` (which includes test files excluded from production builds) inside TypeScript config:
 
 ```ts
 // TypeScript (.ts)
@@ -18,11 +20,13 @@ export default defineConfig({
 })
 ```
 
-Register `it.effect` at the top level or inside `describe`; its callback returns an Effect, as in `() => effect { … }`.
+Register `it.effect` at module top level or inside `describe`, passing a callback that returns an Effect (`() => effect { ... }`).
 
-## Prefer Effect's test tools
+## Step 2: Wrap assertions with `Effect.try`
 
-Write tests with Effect's own tools: `it.effect` and `it.live` from `@effect/vitest`, its `layer` to provide services to a group of tests, and Effect's test services, such as `TestClock`. Vitest's assertions are plain functions that throw. `assert`, `expect` and `vi` carry no `@throws`, including the copies `@effect/vitest` re-exports, so each call may throw `unknown` ([Wrap synchronous operations](../getting-started/005-creating-effects.md#wrap-synchronous-operations)). In effect code, run an assertion through `Effect.try`; a direct call such as `expect(sum).toBe(7)` is `EK0403`, and `sync` takes only a function that can't throw:
+Use Effect's test primitives—`it.effect`, `it.live`, `layer`, and `TestClock`—rather than hand-rolled test harnesses.
+
+**Watch out for throwing assertions:** Vitest's `assert`, `expect`, and `vi` (including the copies re-exported by `@effect/vitest`) are plain functions that throw on failure without `@throws` annotations, so VibeLang treats them as potentially throwing `unknown` ([Bridging synchronous code](../getting-started/005-creating-effects.md#4-bridging-synchronous-code-that-may-throw-effecttry)). Calling `expect(sum).toBe(7)` directly inside an `effect` block triggers compiler error `EK0403`, and `sync` only accepts non-throwing functions. Wrap assertions in `try Effect.try(() => ...)`:
 
 ```vibe
 import { assert, expect, it } from "@effect/vitest"
@@ -39,9 +43,16 @@ it.effect("totals a cart", () => effect {
 })
 ```
 
-A failed assertion fails the Effect with `UnknownError`, which fails the test, and the plugin's maps point its stack at the original `.vibe` line. The examples below use a local `check` helper that runs `assert.isTrue` the same way.
+When an assertion throws, `Effect.try` converts it into an `UnknownError` that fails the test, and source maps point the failure directly to the `.vibe` line. The next examples tuck `assert.isTrue` behind a tiny `check` helper for readability.
 
-## Controlling virtual time
+## Step 3: Fork first, then advance virtual time
+
+Here is the single most important rule of `TestClock`: **virtual time never moves on its own.** If your test fiber calls `try sleep("30 seconds")` directly, the test fiber suspends forever waiting for a clock adjustment it is now blocked from making!
+
+Instead, follow the three-step rhythm:
+1. **`fork`** the timed computation onto a child fiber.
+2. **`try TestClock.adjust(...)`** (or `TestClock.setTime(...)`) on the test fiber to jump virtual time forward.
+3. **`join`** the child fiber (or await its `Queue` / `Deferred`) and assert the result.
 
 ```vibe
 import { assert, it } from "@effect/vitest"
@@ -66,7 +77,13 @@ it.effect("a deadline returns the fallback", () => effect {
 })
 ```
 
-`it.effect` provides the test services, virtual time included. `adjust` advances by a duration and runs sleepers whose deadlines fall within it; `setTime` sets an absolute timestamp in milliseconds. Fork the timed work first so the test's own fiber stays free to adjust the clock. The test fiber owns `pending` and interrupts it if the test exits early.
+`it.effect` installs Effect's test services automatically—`TestClock` included. `TestClock.adjust(duration)` advances the clock incrementally and wakes every sleeper whose deadline falls within that window; `TestClock.setTime(millis)` jumps to an absolute timestamp. The test fiber supervises `pending` and interrupts it automatically if the test exits early.
+
+| Context | How `TestClock` is installed |
+| --- | --- |
+| Inside `it.effect(...)` | Provided automatically by `@effect/vitest` |
+| Inside `it.live(...)` | Uses live wall-clock `Clock` instead of `TestClock` |
+| Outside Vitest / standalone scripts | Wrap with `provide TestClock.layer() { ... }` |
 
 ```vibe
 // run: try Console.log(try standaloneClockExample())
@@ -83,9 +100,9 @@ effect function standaloneClockExample() {
 7000
 ```
 
-Outside the test harness, provide `TestClock.layer()` yourself. Real time passing does not advance the virtual clock. Sleeping on the test's own fiber before adjusting time leaves the test waiting for an adjustment it cannot make.
+## Testing recurring loops step by step
 
-## Advancing recurring computations
+Recurring jobs schedule their *next* sleep only after the previous iteration wakes up. Advance the clock to each boundary—and test one minute *before* the boundary too—so you prove the work fires neither too early nor twice:
 
 ```vibe
 import { it } from "@effect/vitest"
@@ -113,9 +130,13 @@ it.effect("emits once per interval", () => scoped(effect {
 }))
 ```
 
-Use the `check` helper from the first example. Advancing to each boundary lets the loop schedule its next sleep before the next adjustment. The queue makes each recurrence observable without real-time delays, and the explicit scope interrupts the background loop when the test's Effect ends.
+(Reuses `check` from the example above.) Notice two clean testing habits here:
+- A `Queue` turns background iterations into deterministic, inspectable events without relying on real delays.
+- `scoped` + `fork.scoped` guarantees the infinite `while (true)` worker is interrupted cleanly the moment the test finishes.
 
-## Checking clock-dependent behavior
+## Checking exact clock boundaries
+
+Application code must read time through `try Clock.currentTimeMillis`, never `Date.now()` or `new Date()`—those read the OS wall clock and ignore `TestClock`.
 
 ```vibe
 import { it } from "@effect/vitest"
@@ -134,9 +155,11 @@ it.effect("expires at the boundary", () => effect {
 })
 ```
 
-Application code reads time with `Clock`: `try Clock.currentTimeMillis` reads the supplied clock, so it stays deterministic under the test layer. `Date.now()` and zero-argument `new Date()` read the real clock, so `TestClock` doesn't move them. Testing just before and at a boundary catches comparison mistakes that a later timestamp alone misses.
+Stepping to `9 seconds` and then `1 second` catches off-by-one bugs (`>` vs `>=`) that a single coarse jump past the deadline would miss.
 
-## Timed waits and deferred results
+## Synchronizing delayed outcomes with `Deferred`
+
+Advancing `TestClock` wakes sleepers, and forking only proves a worker *started*—always synchronize on the observable outcome (`Deferred.await` or `join`) before asserting:
 
 ```vibe
 import { it } from "@effect/vitest"
@@ -156,4 +179,4 @@ it.effect("completes a deferred after a delay", () => scoped(effect {
 }))
 ```
 
-The worker sleeps before completing, so the test checks delayed completion. After advancing time, wait for the Deferred with `try Deferred.await(ready)` or join the worker to synchronize with the observable outcome. A fork alone says work started, not that its result is ready.
+After `TestClock.adjust("6 seconds")`, `try Deferred.await(ready)` blocks until the worker finishes publishing `42`, and `join worker` confirms the background fiber exited cleanly before the test asserts the result.

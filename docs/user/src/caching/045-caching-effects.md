@@ -1,6 +1,13 @@
 # Caching Effects
 
-Caching shares a computation's outcome across callers instead of repeating the work. Use a keyed `Cache` for parameterized lookups, or `cached` and its TTL variants for one reusable Effect. Create the cache once, at the lifetime where callers share it.
+Caching reuses a computation's outcome across callers instead of repeating the work. Allocation is itself an Effect: create the cache once at the scope where callers share it—such as a service layer—never inside a per-request function.
+
+| Primitive | Keyed? | Expiration | Explicit invalidation |
+| --- | --- | --- | --- |
+| `Cache.make` | Yes | Optional TTL + capacity | `Cache.invalidate` / `refresh` |
+| `cached` | No (single Effect) | None | No |
+| `cachedWithTTL` | No (single Effect) | Fixed TTL | No |
+| `cachedInvalidateWithTTL` | No (single Effect) | Fixed TTL | Returns `[effect, invalidate]` |
 
 ## Memoizing parameterized computations
 
@@ -26,7 +33,7 @@ effect function memoizeLengths() {
 // Output: {"first":6,"again":6,"other":4,"lookups":2}
 ```
 
-Each key stores its own outcome: repeated calls for the key reuse it, and concurrent requests for it share one lookup. Capacity bounds the number of entries; without `timeToLive`, entries don't expire by time.
+A keyed `Cache` memoizes one outcome per key and coalesces concurrent requests for the same missing key onto a single lookup. `capacity` bounds stored entries; without `timeToLive`, entries never expire by time.
 
 ## Reusing one computed result
 
@@ -47,7 +54,7 @@ effect function cachedSettings() {
 // Output: {"first":{"theme":"dark","revision":1},"again":{"theme":"dark","revision":1},"loads":1}
 ```
 
-`try cached(program)` allocates a reusable Effect value; `try settings` runs that value. The first caller starts the work; later callers reuse its success or expected failure, and concurrent callers wait for the same result. An interrupted computation isn't cached; shared pending work is interrupted only once every waiting caller is. Each `try cached(program)` allocates independent storage, so for requests to share it, allocate it outside the per-request function.
+`try cached(program)` allocates storage and returns a reusable Effect value without running `program`. The first `try settings` executes `program`; later callers reuse its success or expected failure, and concurrent callers wait on the same in-flight fiber. An interrupted computation is not cached, and shared in-flight work is interrupted only when *every* waiting caller is interrupted. Each `try cached(...)` allocates independent storage.
 
 ## Expiring results after a duration
 
@@ -65,7 +72,7 @@ effect function expiringSnapshot() {
 // Output: {"first":1,"same":1,"fresh":2}
 ```
 
-The TTL bounds how long an outcome is reused. Expiration starts no background refresh; the next evaluation recomputes it. Use Effect's clock and sleep operations so tests can advance time without real waiting.
+`cachedWithTTL` bounds how long a stored result stays valid. Expiry triggers no background refresh—the next `try snapshot` recomputes lazily. Expiration uses Effect's `Clock`, so tests can drive it deterministically with `TestClock`.
 
 ## Invalidating explicitly
 
@@ -85,8 +92,8 @@ effect function reloadableSnapshot() {
 // Output: {"first":1,"fresh":2}
 ```
 
-The returned pair is a cached Effect and an invalidation Effect. `try invalidate` clears the stored outcome without loading a replacement; the next `try snapshot` loads it. Invalidate after a successful write when callers must stop seeing the previous result before the TTL expires.
+`cachedInvalidateWithTTL` returns `[cachedEffect, invalidateEffect]`. Running `try invalidate` clears the stored entry without triggering a reload; the next `try snapshot` computes a fresh value. Invalidate immediately after a successful mutation when readers must not observe stale data until the TTL elapses.
 
 ## Coming from Effect
 
-Keep returned Effect values such as `snapshot` and `invalidate`, and run them with `try`. Passing `load()` to a caching constructor leaves the Effect unrun until the cache needs it.
+Caching constructors return cold Effect values (`snapshot`, `invalidate`); hold them as values and execute them with `try`. Passing a cold `load()` call to a caching constructor defers execution until the first cache miss.
