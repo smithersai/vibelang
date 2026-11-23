@@ -1607,6 +1607,39 @@ The VibeLang compiler checks both extensions; its TypeScript path checks
 `effect-ts`. This verifies fixture correctness and equivalence, without
 measuring compiler performance.
 
+## Incremental performance benchmarks
+
+Every compiler, runtime, bundler, and tooling subsystem has a cached benchmark
+target in `scripts/bench/PACKAGE.ts` (`//scripts/bench:*`). Each benchmark is an
+`S.Shell.Build` target keyed strictly on its own inputs and writing
+`//.cache/bench/results/<suite>.json` into Smithers' `.flows/` CAS cache, so an
+unrelated edit replays unchanged suites in milliseconds instead of re-running
+everything.
+
+- Run all suites incrementally and print a baseline-compared summary table:
+
+~~~sh
+sh scripts/bench.sh
+~~~
+
+- Run a single subsystem (for example runtime pattern matching or Go parser):
+
+~~~sh
+sh scripts/bench.sh //scripts/bench:runtime-match //scripts/bench:go-parser
+~~~
+
+- Refresh the committed baseline (`scripts/bench/baseline.json`) and regenerate
+  the JSON, Markdown, and self-contained HTML reports under `.cache/bench/`:
+
+~~~sh
+sh scripts/bench.sh --save-baseline
+~~~
+
+The suite covers 15 JS/E2E/runtime/bundler/tooling targets (`//scripts/bench:report-js`)
+and 7 Go compiler internal microbenchmark targets (`//scripts/bench:report-go`),
+aggregated by `//scripts/bench:report`. `//scripts/bench:report-test` verifies
+harness pre-timing assertions, report rendering, and `--fail-on-regression`.
+
 The `//packages:migrate-toolchain-baseline` target runs the complete upgrade-baseline regression file when baseline admission, capability probing, its fixtures, or the target definition changes. Its offline installer checks the staged runtime and Effect pins; its compiler separates successful capability probes from failing project compiles. The tests retain new collection failures, missing tests, exit regressions, compiler errors and downstream refusal checks.
 
 ## Cache contracts

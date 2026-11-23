@@ -281,10 +281,21 @@ export function parse(code, options) {
 // bigint, regular expression, and non-finite number literals.
 function finish(ast, code) {
   const starts = [0]
-  for (const match of code.matchAll(/\r\n|[\r\n\u2028\u2029]/gu)) starts.push(match.index + match[0].length)
+  const codeLen = code.length
+  for (let i = 0; i < codeLen; i++) {
+    const ch = code.charCodeAt(i)
+    if (ch === 10) starts.push(i + 1)
+    else if (ch === 13) {
+      if (i + 1 < codeLen && code.charCodeAt(i + 1) === 10) i++
+      starts.push(i + 1)
+    } else if (ch === 0x2028 || ch === 0x2029) {
+      starts.push(i + 1)
+    }
+  }
+  const startsLast = starts.length - 1
   const position = (offset) => {
     let low = 0
-    let high = starts.length - 1
+    let high = startsLast
     while (low < high) {
       const middle = (low + high + 1) >> 1
       if (starts[middle] <= offset) low = middle
@@ -293,27 +304,37 @@ function finish(ast, code) {
     return { line: low + 1, column: offset - starts[low] }
   }
   const locate = (item) => {
-    item.loc = { start: position(item.range[0]), end: position(item.range[1]) }
+    const range = item.range
+    item.loc = { start: position(range[0]), end: position(range[1]) }
   }
   const visit = (node) => {
     if (Array.isArray(node)) {
-      for (const item of node) if (item !== null && typeof item === "object") visit(item)
+      for (let i = 0; i < node.length; i++) {
+        const item = node[i]
+        if (item !== null && typeof item === "object") visit(item)
+      }
       return
     }
     if (typeof node.type !== "string") {
-      for (const value of Object.values(node)) if (value !== null && typeof value === "object") visit(value)
+      for (const key in node) {
+        const value = node[key]
+        if (value !== null && typeof value === "object") visit(value)
+      }
       return
     }
     locate(node)
     if (node.type === "Literal") literal(node)
-    for (const [key, value] of Object.entries(node)) {
-      if (key === "range" || key === "loc" || value === null || typeof value !== "object") continue
-      visit(value)
+    for (const key in node) {
+      if (key === "range" || key === "loc") continue
+      const value = node[key]
+      if (value !== null && typeof value === "object") visit(value)
     }
   }
   visit(ast)
-  for (const token of ast.tokens) locate(token)
-  for (const comment of ast.comments) locate(comment)
+  const tokens = ast.tokens
+  for (let i = 0; i < tokens.length; i++) locate(tokens[i])
+  const comments = ast.comments
+  for (let i = 0; i < comments.length; i++) locate(comments[i])
 }
 
 function literal(node) {

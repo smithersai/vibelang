@@ -97,15 +97,22 @@ const unreadable = (path, why) =>
 // can prepare the same checked process plugin without publishing that version.
 // Keep generated archives outside immutable installs and reuse them per process.
 const preparedPlugins = new Map()
+const cachedConfigs = new Map()
+const pluginDigests = new Map()
 process.once("exit", () => {
   for (const manifest of preparedPlugins.values()) rmSync(dirname(manifest), { recursive: true, force: true })
+  for (const config of cachedConfigs.values()) rmSync(dirname(config), { recursive: true, force: true })
 })
+const shippedPluginPath = fileURLToPath(new URL("./dprint-plugin.json", import.meta.url))
+let shippedUsesNpmReference
 function processPlugin() {
-  const shipped = fileURLToPath(new URL("./dprint-plugin.json", import.meta.url))
-  const manifest = JSON.parse(readFileSync(shipped, "utf8"))
-  if (!Object.values(manifest).some(entry => entry?.reference?.startsWith("npm:"))) return shipped
+  if (shippedUsesNpmReference === undefined) {
+    const manifest = JSON.parse(readFileSync(shippedPluginPath, "utf8"))
+    shippedUsesNpmReference = Object.values(manifest).some(entry => entry?.reference?.startsWith("npm:"))
+  }
+  if (!shippedUsesNpmReference) return shippedPluginPath
   const binary = resolveNativeBinary()
-  if (binary === undefined) return shipped
+  if (binary === undefined) return shippedPluginPath
   let stamp
   try { const stat = statSync(binary); stamp = [stat.size, stat.mtimeMs, stat.ctimeMs] } catch {}
   const key = JSON.stringify([binary, stamp])
@@ -120,7 +127,34 @@ function processPlugin() {
   } catch (error) { rmSync(dir, { recursive: true, force: true }); throw error }
 }
 
-function withConfig(style, filePath, action) {
+function pluginDigest(plugin) {
+  let stamp = ""
+  try {
+    const stat = statSync(plugin)
+    stamp = `${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`
+  } catch {}
+  const cached = pluginDigests.get(plugin)
+  if (cached && cached.stamp === stamp) return cached.hash
+  const hash = createHash("sha256").update(readFileSync(plugin)).digest("hex")
+  pluginDigests.set(plugin, { stamp, hash })
+  return hash
+}
+
+function buildConfigJson(style, filePath, plugin) {
+  const reference = plugin === shippedPluginPath ? "npm:vibelang/dprint-plugin.json" : plugin
+  const tsx = /\.(?:vibex|tsx)$/i.test(filePath)
+  // The two pinned plugins spell the semicolon option differently; a
+  // configuration may use either. Without one, VibeLang writes "asi".
+  const { semicolons, semiColons, ...typescript } = style.typescript ?? {}
+  return JSON.stringify({
+    ...style.globals,
+    lineWidth: style.lineWidth,
+    plugins: [tsx ? tsxTypescriptPlugin : typescriptPlugin, reference + "@" + pluginDigest(plugin)],
+    typescript: { ...typescript, [tsx ? "semiColons" : "semicolons"]: semicolons ?? semiColons ?? "asi", quoteStyle: style.quoteStyle }
+  })
+}
+
+function writeConfigDir(configJson) {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-format-"))
   try {
     // Keep npm process references in their package context, including when
@@ -128,24 +162,42 @@ function withConfig(style, filePath, action) {
     mkdirSync(join(dir, "node_modules"))
     symlinkSync(fileURLToPath(new URL(".", import.meta.url)), join(dir, "node_modules", "vibelang"), process.platform === "win32" ? "junction" : "dir")
     const config = join(dir, "dprint.json")
-    const plugin = processPlugin()
-    const reference = plugin === fileURLToPath(new URL("./dprint-plugin.json", import.meta.url)) ? "npm:vibelang/dprint-plugin.json" : plugin
-    const tsx = /\.(?:vibex|tsx)$/i.test(filePath)
-    // The two pinned plugins spell the semicolon option differently; a
-    // configuration may use either. Without one, VibeLang writes "asi".
-    const { semicolons, semiColons, ...typescript } = style.typescript ?? {}
-    writeFileSync(config, JSON.stringify({
-      ...style.globals,
-      lineWidth: style.lineWidth,
-      plugins: [tsx ? tsxTypescriptPlugin : typescriptPlugin, reference + "@" + createHash("sha256").update(readFileSync(plugin)).digest("hex")],
-      typescript: { ...typescript, [tsx ? "semiColons" : "semicolons"]: semicolons ?? semiColons ?? "asi", quoteStyle: style.quoteStyle }
-    }))
-    return action(config)
-  } finally { rmSync(dir, { recursive: true, force: true }) }
+    writeFileSync(config, configJson)
+    return config
+  } catch (error) {
+    rmSync(dir, { recursive: true, force: true })
+    throw error
+  }
 }
-function spawnDprint(args, options) {
+
+function withConfig(style, filePath, action) {
+  const config = writeConfigDir(buildConfigJson(style, filePath, processPlugin()))
+  try {
+    return action(config)
+  } finally { rmSync(dirname(config), { recursive: true, force: true }) }
+}
+
+function cachedConfig(style, filePath) {
+  const configJson = buildConfigJson(style, filePath, processPlugin())
+  let config = cachedConfigs.get(configJson)
+  if (config !== undefined && existsSync(config)) return config
+  config = writeConfigDir(configJson)
+  cachedConfigs.set(configJson, config)
+  return config
+}
+
+let cachedDprintCommand
+function dprintCommand() {
+  if (cachedDprintCommand !== undefined) return cachedDprintCommand
   const cli = createRequire(import.meta.url).resolve("dprint/bin.cjs")
-  return spawnSync(process.execPath, [cli, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, ...options })
+  const exe = join(dirname(cli), process.platform === "win32" ? "dprint.exe" : "dprint")
+  cachedDprintCommand = existsSync(exe) ? [exe] : [process.execPath, cli]
+  return cachedDprintCommand
+}
+
+function spawnDprint(args, options) {
+  const [command, ...prefix] = dprintCommand()
+  return spawnSync(command, [...prefix, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, ...options })
 }
 function dprint(args, input) {
   const result = spawnDprint(args, { input })
@@ -166,7 +218,8 @@ function formatText(text, filePath, style, flags = []) {
     filePath = filePath.replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
   }
   try {
-    return withConfig(style, filePath, config => dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text))
+    const config = cachedConfig(style, filePath)
+    return dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text)
   } catch (error) {
     throw new Error(`${requestedPath}: ${error.message}`, { cause: error })
   }

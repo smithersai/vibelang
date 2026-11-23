@@ -20,6 +20,8 @@ import * as Layer from "effect/Layer"
  * checked the value against the first overload's shape, and a method in the
  * value took the form that shape gave it (D92) for every later overload.
  */
+const directServices = new WeakMap<Layer.Any, readonly [Context.Key<any, any>, unknown]>()
+
 export function $provideService<const N extends string, K extends Context.Key<any, any> | { readonly [P in N]: Context.Key<any, any> }>(
   key: K,
   name: N,
@@ -30,7 +32,9 @@ export function $provideService(key: any, name: string, value: unknown): Layer.L
   if (!Context.isKey(service)) {
     throw new TypeError(`provide ${name} = ...: ${name} is not a service key, and it has no service key named ${name}`)
   }
-  return Layer.succeed(service as Context.Key<any, any>)(value)
+  const layer = Layer.succeed(service as Context.Key<any, any>)(value)
+  directServices.set(layer, [service as Context.Key<any, any>, value])
+  return layer
 }
 
 /**
@@ -51,9 +55,27 @@ export const $provideEntries: {
 }
 
 function provideEntries(self: Effect.Effect<any, any, any>, layers: ReadonlyArray<Layer.Any>): Effect.Effect<any, any, any> {
-  return layers.length === 1
-    ? Effect.provide(self, layers[0] as Layer.Layer<any, any, any>)
-    : Effect.provide(self, layers as [Layer.Any, ...Array<Layer.Any>])
+  const len = layers.length
+  if (len === 1) return Effect.provide(self, layers[0] as Layer.Layer<any, any, any>)
+  // Coalesce consecutive Key = value service entries into a single Layer.succeedContext
+  // so Effect.provide builds one layer instead of N while preserving Layer.CurrentMemoMap
+  // and exact left-to-right override order.
+  let allDirect = true
+  for (let i = 0; i < len; i++) {
+    if (!directServices.has(layers[i])) {
+      allDirect = false
+      break
+    }
+  }
+  if (allDirect) {
+    let context = Context.empty()
+    for (let i = 0; i < len; i++) {
+      const entry = directServices.get(layers[i])!
+      context = Context.add(context, entry[0], entry[1])
+    }
+    return Effect.provide(self, Layer.succeedContext(context))
+  }
+  return Effect.provide(self, layers as [Layer.Any, ...Array<Layer.Any>])
 }
 
 /** The service key that `key` names: the key itself, or its export named `name`. */
