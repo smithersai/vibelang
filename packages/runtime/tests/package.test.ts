@@ -19,6 +19,12 @@ const fixture = (version: string, runtimeVersion = runtimeMetadata.version) => {
   writeFileSync(join(runtime, "package.json"), JSON.stringify({ ...runtimeMetadata, version: runtimeVersion }))
   writeFileSync(join(effect, "package.json"), JSON.stringify({ ...effectMetadata, version }))
   symlinkSync(join(effectDir, "dist"), join(effect, "dist"))
+  // A packed runtime resolves its provider and interpreter dependencies from the install.
+  for (const name of Object.keys(runtimeMetadata.dependencies)) {
+    const target = join(dir, "node_modules", name)
+    mkdirSync(dirname(target), { recursive: true })
+    symlinkSync(join(packageDir, "node_modules", name), target, "dir")
+  }
   writeFileSync(join(dir, "package.json"), '{"type":"module"}')
   writeFileSync(join(dir, "main.js"), `import { Effect, $bind } from "vibelang-runtime"; console.log(Effect.runSync($bind(42)))`)
   return dir

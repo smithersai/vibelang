@@ -1,6 +1,6 @@
 # VIP-62: `Experimental.Model`: language models and decision models with no SDK
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](README.md#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. No implementation exists.
+**Status:** Accepted, 2026-11-23. The runtime exports model selection, fallback, proxying and durable recording as `Experimental.Model`.
 
 ## Will's words
 > Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
@@ -96,6 +96,10 @@ Only `Experimental.Model` is new in both examples.
 10. **A decision is evidence, not permission.** An unreachable decision model fails; it never answers yes. A fallback to a language model is opt-in, and the record says which answered.
 11. **A browser holds no key.** It provides `Model.proxied({ url })`, and a server mounts `Model.proxy`.
 12. **The permission is `model:call`.** Under [capabilities](0058-capabilities.md), a model request needs it.
+
+### Replay in the runtime
+
+A model call, stream or decision made inside a durable task gets its own journal entry. Its key uses the task's replay identity and retry attempt, the request digest and the occurrence within the enclosing named race. Equal prompts in separate races or task attempts can produce different answers. Recovery reuses each call's own recorded answer.
 
 ### What must be built
 

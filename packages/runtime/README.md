@@ -18,20 +18,18 @@ Effect redesign. VIP-35 remains open and is outside the first release.
 ## What is in the alpha
 
 VibeLang 0.0.13 is the alpha: the core language of the 33 accepted VIPs
-numbered 1 to 41. Exports built from the open proposals VIPs 55 to 73 are
-experimental and not part of the alpha. They are the `task` and `workflow`
-helpers (`$task`, `$workflow` and the other exports whose decision is VIP-55),
-and the [open-proposal modules](#open-proposal-modules-opt-in) `Human`,
-`Fuzz`, `FuzzSimulation`, `Durable`, `Eval`, `Test`, `Memory`, `Scorer` and
-`Patterns`.
-`.vibe` code that uses one compiles only in a project that opts in, in
-`tsconfig.json`, `jsconfig.json` or `vibe.config.json`:
+numbered 1 to 41. The [accepted runtime modules](#accepted-runtime-modules)
+are experimental. The compiler's built-in opt-in covers `Durable`, the
+`task` and `workflow` helpers (`$task` and `$workflow`), and the
+[open-proposal modules](#open-proposal-modules-opt-in) `Human`, `Fuzz`,
+`FuzzSimulation`, `Eval`, `Test`, `Memory`, `Scorer` and `Patterns`.
+Enable it in `tsconfig.json`, `jsconfig.json` or `vibe.config.json`.
 
 ```json
 { "vibe": { "experimental": ["builtins"] } }
 ```
 
-Without the opt-in, the first use in a file reports `EK3013`. The other
+Without the opt-in, the first use of a gated module in a file reports `EK3013`. Platform
 `Experimental` modules, such as `Experimental.FileSystem` and
 `Experimental.Encoding`, are VIP-33's [platform additions](#experimental-platform-apis):
 they are core and need no opt-in.
@@ -316,7 +314,8 @@ missing-method failure.
 ## Experimental platform APIs
 
 These modules are VIP-33's platform additions, part of the core alpha; they
-need no opt-in. The [open-proposal modules](#open-proposal-modules-opt-in)
+need no opt-in. The [accepted runtime modules](#accepted-runtime-modules)
+and [open-proposal modules](#open-proposal-modules-opt-in)
 that share the `vibelang-runtime/experimental` path are listed separately.
 
 `vibelang-runtime/experimental` holds what VibeLang adds where Effect lacks a
@@ -365,15 +364,25 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/Encoding` | Pure `decodeBase64Lenient`, requiring no layer |
 | `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns` layer |
 
+### Accepted runtime modules
+
+| Subpath | Purpose |
+| --- | --- |
+| `vibelang-runtime/experimental/Capability` | Check platform operations against a policy and narrow grants for a caller |
+| `vibelang-runtime/experimental/Durable` | Resume a crashed workflow from its journal and reuse completed steps |
+| `vibelang-runtime/experimental/Trigger` | Start workflows on a schedule or deliver verified webhooks |
+| `vibelang-runtime/experimental/WorkQueue` | Offer keyed work to a worker and wait for its durable result |
+| `vibelang-runtime/experimental/Model` | Select a model provider and replay recorded calls and streams in workflows |
+| `vibelang-runtime/experimental/Agent` | Discover installed coding agents and run a configured agent over the Agent Client Protocol |
+
 ### Open-proposal modules (opt-in)
 
-These modules are built from open proposals (VIPs 56, 60, 66, 69, 70, 71 and 73). They are
+These modules are built from open proposals (VIPs 56, 66, 69, 70, 71 and 73). They are
 experimental, not part of the alpha, and `.vibe` code that names one, through
 `Experimental` or its subpath, needs the [opt-in](#what-is-in-the-alpha).
 
 | Subpath | Purpose |
 | --- | --- |
-| `vibelang-runtime/experimental/Durable` | A journaled engine for Effect's `Workflow` and `Activity`: crashed runs resume and skip finished steps |
 | `vibelang-runtime/experimental/Human` | Questions a durable workflow asks a person, and the answers that wake it |
 | `vibelang-runtime/experimental/Eval` | Eval suites, runs, baselines, regression comparison and a gate with a CI exit code |
 | `vibelang-runtime/experimental/Scorer` | Scorers with a stable identity: `exact`, `contains`, `checks`, `rubric` (a model judge) and `make`; `bind` scores a durable workflow's live runs into a memory or SQL score store |

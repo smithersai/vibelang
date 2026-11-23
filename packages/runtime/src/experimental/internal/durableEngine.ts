@@ -26,6 +26,7 @@ import { Workflow, WorkflowEngine } from "effect/workflow"
 import type { Activity } from "effect/workflow"
 import { canonicalJson, refuseRedacted, sha256, sortCollections } from "./canonical.js"
 import { isTerminal, type JournalEntry, type NewEvent, type RunRow, type RunStatus, type Store } from "./durableStore.js"
+import { StepScope } from "./modelStepScope.js"
 
 const WorkflowInstance = WorkflowEngine.WorkflowInstance
 type Instance = WorkflowEngine.WorkflowInstance["Service"]
@@ -417,6 +418,10 @@ export const make = (store: Store) =>
         const activityInstance = WorkflowInstance.initial(instance.workflow, instance.executionId)
         activityInstance.interrupted = instance.interrupted
         return yield* activity.executeEncoded.pipe(
+          // Step metadata belongs to this activity. Nested calls get their own
+          // journal key, scoped to this occurrence and retry attempt.
+          Effect.provideService(StepInfo, {}),
+          Effect.provideService(StepScope, stepId),
           Workflow.intoResult,
           Effect.provideService(WorkflowInstance, activityInstance),
           Effect.tap((result) => {

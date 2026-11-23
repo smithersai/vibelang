@@ -1,6 +1,6 @@
 # VIP-58: Capabilities: a permission kernel in the standard library
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](README.md#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. No implementation exists.
+**Status:** Accepted, 2026-11-23. The runtime exports the policy evaluator, grant stores and platform service guards as `Experimental.Capability`.
 
 ## Will's words
 
@@ -87,7 +87,7 @@ Only an irreversible step needs an idempotency key to retry. Containment is lexi
 
 ### Host needs
 
-Pure evaluation runs everywhere. Enforcement needs the platform services it decorates, and directory handles for file confinement, which Node and Bun have. A host that cannot confine a path refuses the operation; it does not fall back to a lexical check.
+Pure evaluation runs everywhere. The runtime guard checks resolved file paths and HTTP redirect targets through the platform services it decorates. It operates on the resolved path, so confinement against concurrent filesystem changes still requires directory handles pinned by the host. Private-network enforcement also requires host-side address checks because the guard evaluates request URLs before DNS resolution.
 
 ## Maintainers' decisions
 

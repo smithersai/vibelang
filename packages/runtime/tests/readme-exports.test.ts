@@ -47,7 +47,7 @@ const section = (heading: string) => {
   const next = readme.slice(start + heading.length + 2).search(/^#{1,3} /m)
   return readme.slice(start, next < 0 ? undefined : start + heading.length + 2 + next)
 }
-const openModules = ["Human", "Fuzz", "FuzzSimulation", "Durable", "Eval", "Test", "Memory", "Scorer", "Patterns"]
+const openModules = ["Human", "Fuzz", "FuzzSimulation", "Eval", "Test", "Memory", "Scorer", "Patterns"]
 
 test("README separates the core platform modules from the open-proposal modules", () => {
   const core = section("## Experimental platform APIs")
