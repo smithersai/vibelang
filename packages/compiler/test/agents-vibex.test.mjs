@@ -129,3 +129,66 @@ test("the generated agent plugin checks JSX edits and patch destinations", { ski
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+// Issue 480: a TypeScript file whose first line is `// @vibe` is VibeLang
+// source (VIP-42), so the post-edit checks cover it as they cover .vibe.
+function directiveProject() {
+  const root = brokenProject()
+  writeFileSync(join(root, "src/directed.ts"), '// @vibe\nexport const n: number = "wrong"\n')
+  writeFileSync(join(root, "src/types.d.ts"), "// @vibe\nexport declare const n: number\n")
+  return root
+}
+test("the generated plugin carries the directive rules of vibe-directive.mjs", () => {
+  const rules = readFileSync(new URL("../vibe-directive.mjs", import.meta.url), "utf8")
+  const root = scratch()
+  try {
+    setup(root)
+    const plugin = read(root, ".opencode/plugins/vibelang.js")
+    for (const name of ["directive", "typeScriptSource", "typeScriptDeclaration"]) {
+      const pattern = new RegExp("^const " + name + " = /(.+)/$", "m").exec(rules)[1]
+      assert.ok(plugin.includes("const " + name + " = new RegExp(" + JSON.stringify(pattern) + ")"), name)
+    }
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+test("post-edit hooks check a TypeScript file with the VibeLang directive", { skip: skipNative }, () => {
+  const root = directiveProject()
+  try {
+    const hook = (name) => spawnSync(process.execPath, [launcher, "agents", "hook"], { cwd: root, encoding: "utf8", input: JSON.stringify({ cwd: root, hook_event_name: "PostToolUse", tool_input: { file_path: join(root, name) } }), env: { ...process.env, VIBELANG_BINARY: native }, timeout: 20000 })
+    const result = hook("src/directed.ts")
+    assert.equal(result.status, 2, result.stdout + result.stderr)
+    assert.ok(result.stderr.includes("src/directed.ts"), result.stderr)
+    assert.match(result.stderr, /TS2322/)
+    for (const name of ["src/ignored.ts", "src/types.d.ts"]) {
+      const ignored = hook(name)
+      assert.deepEqual([ignored.status, ignored.stdout, ignored.stderr], [0, "", ""])
+    }
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+test("the generated agent plugin checks a TypeScript file with the VibeLang directive", { skip: skipNative }, async () => {
+  const root = directiveProject()
+  const previous = process.env.VIBELANG_BINARY
+  process.env.VIBELANG_BINARY = native
+  try {
+    setup(root)
+    const { VibeLang } = await import(pathToFileURL(join(root, ".opencode/plugins/vibelang.js")).href)
+    const hooks = await VibeLang({ directory: root })
+    for (const input of [
+      { tool: "edit", args: { filePath: join(root, "src/directed.ts") } },
+      { tool: "apply_patch", args: { patchText: "*** Begin Patch\n*** Update File: src/directed.ts\n*** End Patch" } }
+    ]) {
+      const output = { output: "Edit applied." }
+      await hooks["tool.execute.after"](input, output)
+      assert.match(output.output, /TS2322/)
+      assert.match(output.output, /directed\.ts/)
+    }
+    for (const name of ["src/ignored.ts", "src/types.d.ts", "src/missing.ts"]) {
+      const output = { output: "Edit applied." }
+      await hooks["tool.execute.after"]({ tool: "edit", args: { filePath: join(root, name) } }, output)
+      assert.equal(output.output, "Edit applied.")
+    }
+  } finally {
+    if (previous === undefined) delete process.env.VIBELANG_BINARY
+    else process.env.VIBELANG_BINARY = previous
+    rmSync(root, { recursive: true, force: true })
+  }
+})
