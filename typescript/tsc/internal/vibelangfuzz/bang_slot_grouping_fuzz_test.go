@@ -64,7 +64,11 @@ func FuzzBangSlotGrouping(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer r.Remove()
-		return r.Outputs["out/main.d.ts"]
+		declaration := r.Outputs["out/main.d.ts"]
+		if HasError(r.Diagnostics) || declaration == "" {
+			t.Fatalf("invalid slot grouping %q: %v (declaration %q)", text, SortedKeys(Keys(r.Dir, r.Diagnostics)), declaration)
+		}
+		return declaration
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
 		si, bi := 0, 0

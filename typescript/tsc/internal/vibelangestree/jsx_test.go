@@ -66,8 +66,8 @@ func TestVibexJSXContainsVibeLangForms(t *testing.T) {
 		}
 	}
 	_, failure := Parse("/View.vibe", text)
-	if failure == nil {
-		t.Error(".vibe unexpectedly accepts JSX")
+	if failure == nil || !strings.Contains(failure.Message, "'>' expected") {
+		t.Errorf("want TypeScript angle-bracket diagnostic for .vibe, got %v", failure)
 	}
 	_, failure = Parse("/View.tsx", text)
 	if failure == nil || !strings.Contains(failure.Message, "expected") {

@@ -92,12 +92,13 @@ func FuzzGlobalThisErasedStaticAccess(f *testing.F) {
 			if ext == "ts" {
 				want = nil
 			}
+			oracleKey := key + ":" + ext
 			if !slices.Equal(codes, want) {
-				Gap(t, globalThisErasedKeysTarget, key+":"+ext, "%s; want%v got%v; source=%s", globalThisErasedKeysQuote, want, codes, source)
+				Gap(t, globalThisErasedKeysTarget, oracleKey, "%s; want%v got%v; source=%s", globalThisErasedKeysQuote, want, codes, source)
 				return
 			}
+			ExpectPending(t, globalThisErasedKeysTarget, oracleKey)
 		}
-		ExpectPending(t, globalThisErasedKeysTarget, key)
 		ExpectPending(t, globalThisErasedKeysTarget, specCorpusKey(t))
 	})
 }

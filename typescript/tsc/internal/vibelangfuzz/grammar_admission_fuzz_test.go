@@ -527,14 +527,19 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"service-separators-leading-comma", "service S { , n : number }"},
 }
 
+// These exact unkeyed seeds predate names. Inputs mutated from them do not
+// inherit any pending family.
+var grammarAdmissionArchivedSeeds = []string{"b810000100000000010", "c20a20-", "}1709X78!0\xc01%"}
+
 func FuzzGrammarAdmission(f *testing.F) {
 	// Spec rule: docs/design/src/001-functions.md#cf6d8b7ccc47907d
 	// Chapter 001: inline module seeds violate the current grammar (FuzzGrammarAdmission).
 
 	startShortBudget(f)
+	grammarRequireRegExpNode(f)
 	w := NewWorkspace(f)
 	// Archived unkeyed inputs retain the frozen prefix's original programs.
-	for _, raw := range []string{"b810000100000000010", "c20a20-", "}1709X78!0\xc01%"} {
+	for _, raw := range grammarAdmissionArchivedSeeds {
 		f.Add([]byte(raw))
 	}
 	for _, s := range grammarAdmissionSeeds {
@@ -545,7 +550,8 @@ func FuzzGrammarAdmission(f *testing.F) {
 			t.Skip("bounded grammar subset")
 		}
 		key, source := grammarAdmissionInput(data)
-		checkGrammarAdmission(t, w, key, source)
+		archived := slices.Contains(grammarAdmissionArchivedSeeds, string(data))
+		checkGrammarAdmissionInput(t, w, key, source, archived)
 	})
 }
 
@@ -919,7 +925,25 @@ func grammarCompletingBang(toks []grammarToken, i int) bool {
 
 func checkGrammarAdmission(t *testing.T, w *Workspace, key, source string) {
 	t.Helper()
+	checkGrammarAdmissionInput(t, w, key, source, strings.HasPrefix(t.Name(), "Test"))
+}
+
+// grammarAdmissionOracleKey allows shape classification only for authored
+// witnesses. A generated mutation can contain a known form and an independent
+// grammar gap, so it retains its own key.
+func grammarAdmissionOracleKey(key, source string, authored bool) string {
+	if authored {
+		if form := grammarAdmissionForm(source); form != "" {
+			return form
+		}
+	}
+	return key
+}
+
+func checkGrammarAdmissionInput(t *testing.T, w *Workspace, key, source string, authored bool) {
+	t.Helper()
 	g := &Gaps{Target: "FuzzGrammarAdmission", Input: source}
+	corpus := corpusFile(t, g.Target)
 	mismatch, detail := grammarAdmissionMismatch(source)
 	if mismatch {
 		// Only an absent derivation needs a full check. Type/name errors do not
@@ -931,6 +955,7 @@ func checkGrammarAdmission(t *testing.T, w *Workspace, key, source string) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer result.Remove()
 		if result.Program != nil && HasError(result.Program.GetSyntacticDiagnostics(context.Background(), nil)) {
 			mismatch = false
 		}
@@ -947,17 +972,14 @@ func checkGrammarAdmission(t *testing.T, w *Workspace, key, source string) {
 		detail += "\ncompiler diagnostics: " + strings.Join(observed, ", ")
 	}
 	if mismatch {
-		if form := grammarAdmissionForm(source); form != "" {
-			key = form
-		}
+		key = grammarAdmissionOracleKey(key, source, authored || corpus != "" || strings.HasPrefix(key, "admission:"))
 		g.Add(key, "%s\nprogram:\n%s", detail, source)
 	}
 	if !mismatch {
 		ExpectPending(t, g.Target, key)
 	}
-	corpus := ""
-	if name := corpusFile(t, g.Target); name != "" {
-		corpus = "corpus:" + name
+	if corpus != "" {
+		corpus = "corpus:" + corpus
 	}
 	g.FinishInput(t, corpus)
 }

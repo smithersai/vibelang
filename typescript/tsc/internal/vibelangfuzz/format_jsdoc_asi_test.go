@@ -1,9 +1,10 @@
 package vibelangfuzz
 
 import (
-	"github.com/microsoft/TypeScript/tsc/internal/vibelangfmt"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangfmt"
 )
 
 const formatJSDocASIQuote = "Comments and their code associations survive, including JSDoc, compiler/linter/tool directives and directive-prologue meaning."
@@ -23,6 +24,7 @@ func TestFormatJSDocASIQuoted(t *testing.T) {
 // keys also keep a corpus witness independent of this list's ordering.
 func FuzzFormatJSDocASI(f *testing.F) {
 	startShortBudget(f)
+	w := NewWorkspace(f)
 	keys := []string{"parenthesized-object", "cast-assignment", "parenthesized-call", "assignment-call", "parenthesized-receiver", "destructuring"}
 	for _, key := range keys {
 		for n := uint8(0); n < 16; n++ {
@@ -56,8 +58,8 @@ func FuzzFormatJSDocASI(f *testing.F) {
 		if err != nil {
 			Gap(t, "FuzzFormatJSDocASI", "format:jsdoc-asi:"+key, "Chapter 007 comment association: %v\n%s", err, source)
 		}
-		if err := vibelangfmt.SameProgram(source, once); err != nil {
-			Gap(t, "FuzzFormatJSDocASI", "format:jsdoc-asi:"+key, "Chapter 007 comment association: %v\n%s", err, source)
+		if difference := formatCompilationDifference(t, w, "FuzzFormatJSDocASI", source, once); difference != "" {
+			Gap(t, "FuzzFormatJSDocASI", "format:jsdoc-asi:"+key, "Chapter 007 comment association: %v\n%s", difference, source)
 		}
 		for _, comment := range []string{"/** documentation */", "/** @internal */", "/** @throws {Error} */", "/** first */", "/** second */"} {
 			if strings.Count(source, comment) != strings.Count(once, comment) {

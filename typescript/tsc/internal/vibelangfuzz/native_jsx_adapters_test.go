@@ -28,7 +28,7 @@ func nativeJSXAdapterModel(t *testing.T, area, key string, mode uint8) (bool, st
 	script := filepath.Join(repoTestdata(), "oracles", "native_jsx_adapters.mjs")
 	cmd := exec.CommandContext(ctx, "node", script, area, key, strconv.Itoa(int(mode&7)))
 	cmd.Dir = Root()
-	output, err := cmd.CombinedOutput()
+	output, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("native adapter oracle %s/%s: %v; context=%v\n%s", area, key, err, ctx.Err(), output)
 	}

@@ -6,9 +6,9 @@ import { spawnSync } from "node:child_process"
 import { dirname,join,relative } from "node:path"
 import { compareDeclarations,recordDeclarationSurface } from "../../../../../../.smithers/flows/migrate/lib/declarations.mjs"
 const ts=createRequire(join(process.cwd(),"packages/runtime/package.json"))("typescript")
-const [key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&15
+const [key,rawMode,compiler]=process.argv.slice(2),mode=Number(rawMode)&15
 const fixture=JSON.parse(readFileSync(new URL("../corpus/t3code-wide-root-transitive-declaration.json",import.meta.url),"utf8"))
-mkdirSync(".cache",{recursive:true});const root=mkdtempSync(join(process.cwd(),".cache/wide-root-layouts-"))
+mkdirSync(".cache",{recursive:true});const root=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(process.cwd(),".cache/wide-root-layouts-"))
 const put=(f,t)=>{mkdirSync(dirname(f),{recursive:true});writeFileSync(f,t)}
 // Keys: where the imported file sits and whether the root lists it.
 // transitive-*: rootDir above the package, include ["src"], and src/main.ts
@@ -46,7 +46,7 @@ try {
   const errors=ts.getPreEmitDiagnostics(program).filter(d=>d.category===ts.DiagnosticCategory.Error).map(d=>d.code)
   assert.deepEqual(errors,[],JSON.stringify({key,mode,side,errors}))
   if(native){
-   const compiler=join(process.cwd(),"packages/compiler/native/vibelang")
+   assert.ok(compiler, "the native-transitive oracle requires the compiler path")
    const run=spawnSync(compiler,["-p",join(pkg,"tsconfig.json"),"--singleThreaded","--pretty","false"],{encoding:"utf8",timeout:120000})
    assert.equal(run.status,0,JSON.stringify({key,mode,side,stdout:run.stdout,stderr:run.stderr,error:run.error?.message}))
   }else{const emitted=program.emit();assert.equal(emitted.emitSkipped,false)}

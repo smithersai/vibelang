@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("ek:EK4701/open-string\x00template:minimal\x00")

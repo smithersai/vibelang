@@ -53,19 +53,20 @@ func TestFormatErrorFieldCommas(t *testing.T) {
 			}
 		})
 	}
-	for _, source := range []string{
-		"class E { id: string, code: number }",
-		"error E { get value() { return [1,,2,, } }",
-		"schema error E { get value() { return [1,,2,, } }",
+	for _, tc := range []struct{ source, diagnostic string }{
+		{"class E { id: string, code: number }", "Expected '=' for property initializer"},
+		{"error E { get value() { return [1,,2,, } }", "Expression or comma expected"},
+		{"schema error E { get value() { return [1,,2,, } }", "Expression or comma expected"},
 	} {
-		if _, err := Format("main.vibe", source, func(text string) (string, error) { return text, nil }); err == nil {
-			t.Errorf("accepted invalid ordinary TypeScript: %s", source)
+		_, err := Format("main.vibe", tc.source, func(text string) (string, error) { return text, nil })
+		if err == nil || !strings.Contains(err.Error(), tc.diagnostic) {
+			t.Errorf("want %q for %s, got %v", tc.diagnostic, tc.source, err)
 		}
 	}
 }
 
 // A separator can own a comment independently of the next payload member.
-// Formatting must retain both, or leave the input unchanged with a clear refusal.
+// Formatting must retain both with their original comment ownership.
 func TestFormatErrorFieldCommaComments(t *testing.T) {
 	t.Parallel()
 	for _, kind := range []string{"error", "schema error"} {
@@ -75,10 +76,7 @@ func TestFormatErrorFieldCommaComments(t *testing.T) {
 				t.Run(kind+"/"+comment+"/"+member, func(t *testing.T) {
 					got, err := Format("main.vibe", source, func(text string) (string, error) { return text, nil })
 					if err != nil {
-						if !strings.Contains(err.Error(), "JSDoc attachment") {
-							t.Fatal(err)
-						}
-						return
+						t.Fatal(err)
 					}
 					if !strings.Contains(got, comment) {
 						t.Fatalf("lost separator comment %q: %s", comment, got)

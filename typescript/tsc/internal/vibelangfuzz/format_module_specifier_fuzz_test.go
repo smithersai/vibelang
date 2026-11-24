@@ -49,8 +49,13 @@ func formatBodySpecifierSource(key string, mode byte) (string, bool) {
 	return source, invalid
 }
 
-func checkFormatBodySpecifier(t *testing.T, key string, mode byte, fuzz bool) {
+func checkFormatBodySpecifier(t *testing.T, w *Workspace, key string, mode byte, fuzz bool) {
 	t.Helper()
+	pass := func(stage string) {
+		if fuzz {
+			ExpectPending(t, "FuzzFormatModuleBodySpecifiers", stage+":"+key)
+		}
+	}
 	fail := func(stage, message string, args ...any) {
 		if fuzz {
 			Gap(t, "FuzzFormatModuleBodySpecifiers", stage+":"+key, message, args...)
@@ -64,6 +69,7 @@ func checkFormatBodySpecifier(t *testing.T, key string, mode byte, fuzz bool) {
 		fail("classification", "specifier=%s mode=%d syntax=%q invalid=%v source=%s", key, mode, syntax, invalid, source)
 		return
 	}
+	pass("classification")
 	calls := 0
 	host := func(text string) (string, error) { calls++; return text, nil }
 	once, err := vibelangfmt.Format("main.vibe", source, host)
@@ -71,27 +77,32 @@ func checkFormatBodySpecifier(t *testing.T, key string, mode byte, fuzz bool) {
 		if err == nil || calls != 0 || once != "" {
 			fail("refusal", "invalid body reached formatter: calls=%d output=%q error=%v", calls, once, err)
 		}
+		pass("refusal")
 		return
 	}
 	if err != nil || calls == 0 {
 		fail("valid", "valid control refused: calls=%d error=%v", calls, err)
 		return
 	}
+	pass("valid")
 	twice, err := vibelangfmt.Format("main.vibe", once, host)
 	if err != nil || twice != once {
 		fail("idempotence", "valid control is not idempotent: %v", err)
 		return
 	}
-	if err := vibelangfmt.SameProgram(source, once); err != nil {
-		fail("program", "%v", err)
+	pass("idempotence")
+	if difference := formatCompilationDifference(t, w, "FuzzFormatModuleBodySpecifiers", source, once); difference != "" {
+		fail("program", "%s", difference)
 	}
+	pass("program")
 }
 
 func TestFormatModuleBodySpecifiers(t *testing.T) {
 	formatBodySpecifiersQuoted(t)
+	w := NewWorkspace(t)
 	for _, key := range formatBodySpecifierKeys {
 		for mode := byte(0); mode < 8; mode++ {
-			t.Run(fmt.Sprintf("%s/%d", key, mode), func(t *testing.T) { checkFormatBodySpecifier(t, key, mode, false) })
+			t.Run(fmt.Sprintf("%s/%d", key, mode), func(t *testing.T) { checkFormatBodySpecifier(t, w, key, mode, false) })
 		}
 	}
 }
@@ -99,6 +110,7 @@ func TestFormatModuleBodySpecifiers(t *testing.T) {
 func FuzzFormatModuleBodySpecifiers(f *testing.F) {
 	startShortBudget(f)
 	formatBodySpecifiersQuoted(f)
+	w := NewWorkspace(f)
 	for _, key := range formatBodySpecifierKeys {
 		for _, mode := range []byte{0, 1, 2, 4} {
 			f.Add([]byte(key + "\x00" + string([]byte{mode})))
@@ -121,8 +133,7 @@ func FuzzFormatModuleBodySpecifiers(f *testing.F) {
 		if len(parts) > 1 && len(parts[1]) > 0 {
 			mode = parts[1][0] & 7
 		}
-		checkFormatBodySpecifier(t, key, mode, true)
-		ExpectPending(t, "FuzzFormatModuleBodySpecifiers", key)
+		checkFormatBodySpecifier(t, w, key, mode, true)
 		ExpectPending(t, "FuzzFormatModuleBodySpecifiers", specCorpusKey(t))
 	})
 }

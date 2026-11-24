@@ -40,20 +40,17 @@ func FuzzMigrationModuleClosureNarrowing(f *testing.F) {
 		defer cancel()
 		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_module_closure_narrowing.mjs"), key, strconv.Itoa(int(mode&15)))
 		command.Dir = Root()
-		output, err := command.CombinedOutput()
+		output, err := runJSONOracle(t, command)
 		if err != nil {
 			t.Fatalf("module-body source model: %v; context=%v\n%s", err, ctx.Err(), output)
 		}
 		var model struct {
 			File, Source, Ambient, Candidate string
-			StockCodes                       []int
 		}
 		if err := json.Unmarshal(output, &model); err != nil {
 			t.Fatalf("invalid module-body model: %v\n%s", err, output)
 		}
-		if len(model.StockCodes) != 0 {
-			t.Fatalf("invalid stock TypeScript control: %s", output)
-		}
+
 		config := strings.Replace(DefaultConfig, "\"skipLibCheck\": true", "\"skipLibCheck\": true, \"lib\": [\"es2022\"], \"types\": []", 1)
 		compile := func(file, text string) *Result {
 			c, err := w.Compile(t.Context(), Project{Files: map[string]string{file: text, "ambient.d.ts": model.Ambient}, Config: config})

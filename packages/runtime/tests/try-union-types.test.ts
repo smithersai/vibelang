@@ -62,13 +62,14 @@ test("$try keeps the explicit three-type-argument overload", () => {
 test("$try reads a type parameter through its constraint", () => {
   const check = checker()
   const successes = ["string", "number", "boolean", "readonly number[]", "{readonly id:string}"]
-  fc.assert(fc.property(fc.constantFrom(...successes), fc.integer({ min: 0, max: 2 }), (success, kind) => {
+  // The domain is 15 combinations; check every one rather than a fixed-seed sample.
+  for (const success of successes) for (const kind of [0, 1, 2]) {
     const bound = ["Config.Config<" + success + ">", "Effect.Effect<" + success + ",\"E\",{readonly r:\"R\"}>", "Exit.Exit<" + success + ",\"E\">"][kind]
     const source = prelude + equal + "function run<T extends " + bound + ">(held:T){const result=$try(held);" +
       "const success:Equal<typeof result,Effect.Effect<Effect.Success<" + bound + ">,Effect.Error<" + bound + ">,Effect.Services<" + bound + ">>>=true;return success}"
-    expect(check(source)).toEqual([])
-  }), { seed: 334452, numRuns: 8 })
-}, 30_000)
+    expect([success, kind, check(source)]).toEqual([success, kind, []])
+  }
+}, 60_000)
 
 // A rejected call reports only itself: an any result would turn the function
 // that holds it into any, and the caller into a second diagnostic (EK3205).

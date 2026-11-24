@@ -6,7 +6,7 @@ import { splitBatchPlatform } from "../../../../../../.smithers/flows/migrate/li
 const ts=createRequire(join(process.cwd(),"packages/runtime/package.json"))("typescript")
 const fixture=JSON.parse(readFileSync(new URL("../corpus/t3code-import-meta-companion-shebang.json",import.meta.url),"utf8"))
 const [key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&15
-mkdirSync(".cache",{recursive:true});const root=mkdtempSync(join(process.cwd(),".cache/metadata-shebang-"))
+mkdirSync(".cache",{recursive:true});const root=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(process.cwd(),".cache/metadata-shebang-"))
 try {
  let source=fixture.source
  if(key==="filename")source=source.replace('import.meta.dirname + "/input"',"import.meta.filename")

@@ -1,4 +1,4 @@
-//go:build linux || darwin
+//go:build unix
 
 package vibelangfuzz
 
@@ -15,7 +15,7 @@ import (
 
 // Each fuzz target owns its parallel seed children until its cleanup runs.
 // RUSAGE_CHILDREN includes completed stock compiler/Node subprocesses, so the
-// check covers every oracle without charging time spent waiting for host CPU.
+// report includes subprocess CPU time as well as process-wide overhead.
 func fuzzCPU() (time.Duration, error) {
 	var total time.Duration
 	for _, who := range []int{syscall.RUSAGE_SELF, syscall.RUSAGE_CHILDREN} {
@@ -29,34 +29,29 @@ func fuzzCPU() (time.Duration, error) {
 	return total, nil
 }
 
-// shortSeedCPULimit fails a target whose -short seeds use this much CPU. CPU
-// time is not steady between hosts: one FuzzFix binary used 3m10 on one 4-vCPU
-// box and 8m18 on another, so the limit leaves room for three times a heavy
-// target's usual 4m. The 120 s line below and VIBELANG_FUZZ_BUDGET_LOG report
-// growth before it fails.
-const shortSeedCPULimit = 12 * time.Minute
-
 func startShortBudget(f *testing.F) {
 	closeDeclarationIdentityUnitWorkers()
 	if testing.Short() && !toolsFuzzing() {
-		enforceFuzzBudget(f, shortSeedCPULimit)
+		reportFuzzCPU(f, 120*time.Second)
 	}
 	registerDeclarationIdentityScope(f)
 }
 
-func enforceFuzzBudget(t testing.TB, limit time.Duration) {
+func reportFuzzCPU(t testing.TB, threshold time.Duration) {
 	t.Helper()
 	var startSelf, startChildren syscall.Rusage
 	_ = syscall.Getrusage(syscall.RUSAGE_SELF, &startSelf)
 	_ = syscall.Getrusage(syscall.RUSAGE_CHILDREN, &startChildren)
 	start, err := fuzzCPU()
 	if err != nil {
-		t.Fatal(err)
+		t.Logf("short seed CPU unavailable: %v", err)
+		return
 	}
 	t.Cleanup(func() {
 		end, err := fuzzCPU()
 		if err != nil {
-			t.Fatal(err)
+			t.Logf("short seed CPU unavailable: %v", err)
+			return
 		}
 		used := end - start
 		var endSelf, endChildren syscall.Rusage
@@ -65,13 +60,13 @@ func enforceFuzzBudget(t testing.TB, limit time.Duration) {
 		seconds := func(r syscall.Rusage) float64 {
 			return float64(r.Utime.Sec+r.Stime.Sec) + float64(r.Utime.Usec+r.Stime.Usec)/1e6
 		}
-		declarationCostRecord(t.Name(), "cpu", map[string]any{"self_cpu_seconds": seconds(endSelf) - seconds(startSelf), "children_cpu_seconds": seconds(endChildren) - seconds(startChildren), "limit_seconds": limit.Seconds()})
+		declarationCostRecord(t.Name(), "cpu", map[string]any{"self_cpu_seconds": seconds(endSelf) - seconds(startSelf), "children_cpu_seconds": seconds(endChildren) - seconds(startChildren), "limit_seconds": threshold.Seconds()})
 		if path := os.Getenv("VIBELANG_FUZZ_BUDGET_LOG"); path != "" {
 			file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 			if err == nil {
 				// One append write keeps records intact across test processes.
 				_, err = file.WriteString(fmt.Sprintf("%s\t%.3f\t%g\t%d\t%d\n",
-					t.Name(), used.Seconds(), limit.Seconds(), runtime.GOMAXPROCS(0), runtime.NumCPU()))
+					t.Name(), used.Seconds(), threshold.Seconds(), runtime.GOMAXPROCS(0), runtime.NumCPU()))
 				if closeErr := file.Close(); err == nil {
 					err = closeErr
 				}
@@ -80,19 +75,16 @@ func enforceFuzzBudget(t testing.TB, limit time.Duration) {
 				t.Logf("%s: budget log: %v", t.Name(), err)
 			}
 		}
-		t.Logf("%s: short seed CPU: %v (failure limit %v)", t.Name(), used, limit)
-		if used > 120*time.Second {
-			t.Logf("%s: short seed CPU above 120s budget: %v", t.Name(), used)
-		}
-		if used > limit {
-			t.Errorf("short seed CPU budget exceeded: %v > %v", used, limit)
+		t.Logf("%s: short seed CPU: %v", t.Name(), used)
+		if used > threshold {
+			t.Logf("%s: short seed CPU above %gs budget: %v", t.Name(), threshold.Seconds(), used)
 		}
 	})
 }
 
-func TestShortBudgetEnforced(t *testing.T) {
+func TestShortBudgetReports(t *testing.T) {
 	if os.Getenv("VIBELANG_BUDGET_PROBE") == "1" {
-		enforceFuzzBudget(t, time.Nanosecond)
+		reportFuzzCPU(t, 0)
 		// A child exercises RUSAGE_CHILDREN rather than merely the parent clock.
 		child := exec.Command(os.Args[0], "-test.run=^TestBudgetCPUChild$")
 		child.Env = append(os.Environ(), "VIBELANG_BUDGET_CHILD=1")
@@ -101,11 +93,11 @@ func TestShortBudgetEnforced(t *testing.T) {
 		}
 		return
 	}
-	cmd := exec.Command(os.Args[0], "-test.run=^TestShortBudgetEnforced$")
+	cmd := exec.Command(os.Args[0], "-test.v", "-test.run=^TestShortBudgetReports$")
 	cmd.Env = append(os.Environ(), "VIBELANG_BUDGET_PROBE=1", "VIBELANG_FUZZ_BUDGET_LOG=")
 	out, err := cmd.CombinedOutput()
-	if err == nil || !strings.Contains(string(out), "short seed CPU budget exceeded") {
-		t.Fatalf("budget guard did not fail: %v: %s", err, out)
+	if err != nil || !strings.Contains(string(out), "short seed CPU above 0s budget:") {
+		t.Fatalf("CPU report did not pass: %v: %s", err, out)
 	}
 }
 

@@ -40,7 +40,7 @@ func TestFormatJSXModuleBodyGuard(t *testing.T) {
 	source := "module host { export const view = <div /> }\n"
 	if _, err := vibelangfmt.Format("view.vibex", source, func(text string) (string, error) {
 		return strings.ReplaceAll(text, "<div />", "<span />"), nil
-	}); err == nil {
-		t.Fatal("accepted a changed JSX module body")
+	}); err == nil || !strings.Contains(err.Error(), `"div" became "span"`) {
+		t.Fatalf("want JSX tag change diagnostic, got %v", err)
 	}
 }

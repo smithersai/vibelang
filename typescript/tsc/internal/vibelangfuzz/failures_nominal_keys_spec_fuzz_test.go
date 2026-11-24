@@ -38,7 +38,7 @@ func failuresNominalKeyCases() []*failCase {
 			code, quote = 2117, reservedQuote
 			member = "⟦" + member + "⟧"
 		}
-		cases = append(cases, &failCase{Name: "schema-error-nominal-key-" + row.name, Quote: quote, Owner: "impl-hunt-fail", VIP: 29, Host: "none", Decls: prelude + "declare const key: " + row.domain + "; export schema error Bad { id: string; " + member + " }", Code: code, OneDiagnostic: row.reserved})
+		cases = append(cases, &failCase{Name: "schema-error-nominal-key-" + row.name, Quote: quote, VIP: 29, Host: "none", Decls: prelude + "declare const key: " + row.domain + "; export schema error Bad { id: string; " + member + " }", Code: code, OneDiagnostic: row.reserved})
 	}
 	return cases
 }

@@ -2,22 +2,17 @@ import { afterAll, expect, test } from "bun:test"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { Cause, Effect, Exit, Layer, ManagedRuntime, Option, Stream } from "effect"
+import { Cause, Effect, Exit, Layer, Option, Stream } from "effect"
 import { SqlClient } from "effect/sql"
 import { Durable } from "vibelang-runtime/experimental"
-import { layer as sqlite } from "./fixtures/bun-sqlite-client.ts"
+import { layer as sqlite, sqliteStore } from "./fixtures/bun-sqlite-client.ts"
+import { spawnBounded } from "./subprocess.ts"
 
 const scratch = mkdtempSync(join(tmpdir(), "durable-sql-"))
 afterAll(() => rmSync(scratch, { recursive: true, force: true }))
 let files = 0
 const database = () => join(scratch, `runs-${++files}.db`)
 
-// The store an engine sees over SQLite, read through the engine's own layer.
-// The runtime stays open for the test, so the database does too.
-const sqlStore = (filename: string) =>
-  ManagedRuntime.make(Durable.layerSql.pipe(Layer.provide(sqlite(filename)))).runPromise(
-    Effect.map(Effect.service(Durable.Durable), (durable) => durable.internals.store)
-  )
 
 // One contract, two stores: what the engine relies on.
 const contract = (name: string, make: () => Promise<Durable.Store>) => {
@@ -86,15 +81,20 @@ const contract = (name: string, make: () => Promise<Durable.Store>) => {
 }
 
 contract("memory", async () => Durable.makeMemoryStore())
-contract("SQLite", () => sqlStore(database()))
+contract("SQLite", () => sqliteStore(database()))
 
 // A real crash: the child process kills itself with SIGKILL inside a step.
-const child = (db: string, effects: string, crash: string) =>
-  Bun.spawnSync(["bun", join(import.meta.dir, "fixtures/durable-crash-child.ts"), db, effects, crash], {
-    cwd: join(import.meta.dir, ".."),
-    stdout: "pipe",
-    stderr: "pipe"
-  })
+// The timeout stays below the test's own deadline, which cannot fire while
+// a synchronous child runs.
+const crashChild = join(import.meta.dir, "fixtures/durable-crash-child.ts")
+const child = (db: string, effects: string, crash: string, mode = "order") =>
+  spawnBounded(["bun", crashChild, db, effects, crash, mode], { cwd: join(import.meta.dir, ".."), timeout: 20_000 })
+const historyOf = (db: string, run: string) =>
+  Effect.runPromise(
+    Stream.runCollect(Stream.map(Durable.history(run), (entry) => `${entry.eventType}:${(entry.payload as { step?: string }).step ?? ""}`)).pipe(
+      Effect.provide(Durable.layerSql.pipe(Layer.provide(sqlite(db))))
+    )
+  ).then((kinds) => Array.from(kinds))
 
 for (const phase of ["before", "after"] as const) {
   test(`a process killed ${phase} a step's effect resumes from SQLite on its next start`, async () => {
@@ -111,12 +111,7 @@ for (const phase of ["before", "after"] as const) {
     expect(ran).toEqual(phase === "after"
       ? ["reserve:o1", "charge:o1", "charge:o1", "ship:o1"]
       : ["reserve:o1", "charge:o1", "ship:o1"])
-    const kinds = await Effect.runPromise(
-      Stream.runCollect(Stream.map(Durable.history(run), (entry) => `${entry.eventType}:${(entry.payload as { step?: string }).step ?? ""}`)).pipe(
-        Effect.provide(Durable.layerSql.pipe(Layer.provide(sqlite(db))))
-      )
-    )
-    expect(Array.from(kinds)).toEqual([
+    expect(await historyOf(db, run)).toEqual([
       "RunStarted:",
       "StepStarted:crash#Reserve/1",
       "StepCompleted:crash#Reserve/1",
@@ -133,6 +128,64 @@ for (const phase of ["before", "after"] as const) {
     expect(readFileSync(effects, "utf8").trim().split("\n")).toEqual(ran)
   }, 60000)
 }
+
+test("a process killed between two concurrent calls of one task replays the finished call and runs the other", async () => {
+  const db = database()
+  const effects = join(scratch, `effects-pair-${files}.txt`)
+  writeFileSync(effects, "")
+  // fetch:a is recorded; the process dies as fetch:b is about to run.
+  const killed = child(db, effects, "fetch:b:before", "pair")
+  expect(killed.signalCode).toBe("SIGKILL")
+  expect(readFileSync(effects, "utf8").trim().split("\n")).toEqual(["fetch:a"])
+  const finished = child(db, effects, "", "pair")
+  expect(finished.stderr.toString()).toBe("")
+  expect(finished.exitCode).toBe(0)
+  const { result, run } = JSON.parse(finished.stdout.toString())
+  // Each call gets the result recorded for its own payload.
+  expect(result).toEqual(["issues-of-a", "issues-of-b"])
+  expect(readFileSync(effects, "utf8").trim().split("\n")).toEqual(["fetch:a", "fetch:b"])
+  const kinds = await historyOf(db, run)
+  expect(kinds.filter((kind) => kind.startsWith("StepCompleted:")).sort()).toEqual(["StepCompleted:crash#Fetch/1", "StepCompleted:crash#Fetch/2"])
+  expect(kinds.at(-1)).toBe("RunCompleted:")
+}, 60000)
+
+// Two live engines, in two processes with their own connections, execute
+// one run on one SQLite file at once. The store's fence decides: an engine
+// whose claim was overtaken dies with FenceLost at its next write, and no
+// step is recorded as finished twice.
+test("two processes executing one run on one SQLite file record each step once", async () => {
+  for (let round = 0; round < 3; round++) {
+    const db = database()
+    const effects = join(scratch, `effects-race-${files}.txt`)
+    writeFileSync(effects, "")
+    const start = () =>
+      Bun.spawn(["bun", crashChild, db, effects, "", "race"], { cwd: join(import.meta.dir, ".."), stdout: "pipe", stderr: "pipe", timeout: 20_000 })
+    const children = [start(), start()]
+    const outcomes = await Promise.all(children.map(async (proc) => ({
+      code: await proc.exited,
+      stdout: await new Response(proc.stdout).text(),
+      stderr: await new Response(proc.stderr).text()
+    })))
+    const winners = outcomes.filter((outcome) => outcome.code === 0)
+    expect(winners.length).toBeGreaterThanOrEqual(1)
+    for (const outcome of outcomes) {
+      if (outcome.code === 0) expect(JSON.parse(outcome.stdout).result).toBe("o1:receipt-42")
+      else expect(outcome.stderr).toContain("FenceLost")
+    }
+    const { run } = JSON.parse(winners[0]!.stdout)
+    const kinds = await historyOf(db, run)
+    expect(kinds.filter((kind) => kind.startsWith("StepCompleted:"))).toEqual([
+      "StepCompleted:crash#Reserve/1",
+      "StepCompleted:crash#Charge/1",
+      "StepCompleted:crash#Ship/1"
+    ])
+    expect(kinds.filter((kind) => kind === "RunCompleted:").length).toBe(1)
+    expect(kinds.at(-1)).toBe("RunCompleted:")
+    // Every effect ran at least once; the journal, not the effects file, is exactly-once.
+    const ran = new Set(readFileSync(effects, "utf8").trim().split("\n"))
+    expect([...ran].sort()).toEqual(["charge:o1", "reserve:o1", "ship:o1"])
+  }
+}, 120000)
 
 test("the SQL layer needs a SqlClient, the requirement a program provides", () => {
   const requirement: Layer.Layer<unknown, never, SqlClient.SqlClient> = Durable.layerSql

@@ -689,7 +689,12 @@ func (e *formatterError) Error() string { return e.err.Error() + ": " + e.stderr
 // TestFormatGolden formats each testdata/format/*.vibe file, compares the
 // result with its .golden file, and checks that formatting the result again
 // changes nothing.
+// Refresh locally with go test -run ^TestFormatGolden$ -update, then rerun
+// without -update. A refresh fails deliberately.
 func TestFormatGolden(t *testing.T) {
+	if *update && os.Getenv("CI") != "" {
+		t.Fatal("-update is disabled under CI")
+	}
 	formatter := dprintFormatter(t)
 	inputs, err := filepath.Glob(filepath.Join("testdata", "format", "*.vibe"))
 	if err != nil || len(inputs) == 0 {
@@ -710,6 +715,7 @@ func TestFormatGolden(t *testing.T) {
 				if err := os.WriteFile(golden, []byte(got), 0o644); err != nil {
 					t.Fatal(err)
 				}
+				t.Fatal("golden rewritten; rerun without -update")
 			}
 			want, err := os.ReadFile(golden)
 			if err != nil {
@@ -776,12 +782,12 @@ func TestFormatDocsCorpus(t *testing.T) {
 		}
 		for i, match := range vibeBlock.FindAllStringSubmatch(string(text), -1) {
 			source := match[1]
-			if _, err := encode(page, source); err != nil && strings.Contains(err.Error(), "vibelang format: ") && !strings.Contains(err.Error(), "internal error") && !strings.Contains(err.Error(), "comment") {
-				skipped++
-				continue // a block that does not parse, such as one showing a syntax error
-			}
 			name := filepath.Base(page) + "#" + strconv.Itoa(i)
-			once, err := Format(name, source, formatter)
+			once, parsed, err := formatDocsBlock(name, source, formatter)
+			if !parsed {
+				skipped++
+				continue
+			}
 			if err != nil {
 				t.Errorf("%s: %v\n%s", name, err, source)
 				continue
@@ -798,8 +804,29 @@ func TestFormatDocsCorpus(t *testing.T) {
 		}
 	}
 	t.Logf("formatted %d docs blocks from %d pages; skipped %d that do not parse", formatted, len(pages), skipped)
+	const wantSkipped = 2
+	if skipped != wantSkipped {
+		t.Errorf("parser rejected %d docs blocks; want %d", skipped, wantSkipped)
+	}
 	if formatted < 500 {
-		t.Fatalf("formatted only %d docs blocks", formatted)
+		t.Errorf("formatted only %d docs blocks", formatted)
+	}
+}
+
+func formatDocsBlock(name, source string, formatter TypeScriptFormatter) (string, bool, error) {
+	file := parser.ParseSourceFile(sourceOptions(name), source, core.ScriptKindTS)
+	if len(file.Diagnostics()) != 0 {
+		return "", false, nil
+	}
+	formatted, err := Format(name, source, formatter)
+	return formatted, true, err
+}
+
+func TestFormatDocsBlockReportsEncoderRefusal(t *testing.T) {
+	source := "const text = " + strconv.Quote(strings.Join(sentinels, " "))
+	_, parsed, err := formatDocsBlock("example.vibe", source, func(text string) (string, error) { return text, nil })
+	if !parsed || err == nil || !strings.Contains(err.Error(), "every placeholder prefix") {
+		t.Fatalf("valid source must surface the encoder refusal, got parsed=%v, err=%v", parsed, err)
 	}
 }
 
@@ -993,32 +1020,43 @@ func TestFormatVibex(t *testing.T) {
 }
 
 func TestFormatVibexRejectsTSXAmbiguities(t *testing.T) {
-	for _, source := range []string{
-		"const x = <T>value",
-		"const f = <T>(x: T) => x",
-		"const f = effect <T>(x: T) => x",
-		"const el = <p>a |> b</p>",
-		"const el = <p>{</p>",
-		"const x = a </b/.source.length",
-		"const x = match (n) { when <b/>: 1; default: 2; }",
-		"const el = match (s) { when < /b/: <A/>; default: <B/>; }",
-		"const el = match (s) { when === /b/: <A/>; default: <B/>; }",
+	for _, tc := range []struct{ name, source, diagnostic string }{
+		{"angle assertion", "const x = <T>value", "JSX element 'T' has no corresponding closing tag"},
+		{"generic arrow", "const f = <T>(x: T) => x", "Did you mean"},
+		{"generic effect arrow", "const f = effect <T>(x: T) => x", "',' expected"},
+		{"unescaped JSX text", "const el = <p>a |> b</p>", "Did you mean"},
+		{"adjacent less-than and regex", "const x = a </b/.source.length", "',' expected"},
+		{"JSX pattern", "const x = match (n) { when <b/>: 1; default: 2; }", "Unterminated regular expression literal"},
+		{"less-than regex pattern", "const el = match (s) { when < /b/: <A/>; default: <B/>; }", "Identifier expected"},
+		{"strict equality regex pattern", "const el = match (s) { when === /b/: <A/>; default: <B/>; }", "Identifier expected"},
 	} {
-		if got, err := Format("bad.vibex", source, func(s string) (string, error) { return s, nil }); err == nil {
-			t.Fatalf("formatted invalid TSX %q as %q", source, got)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Format("bad.vibex", tc.source, func(s string) (string, error) { return s, nil })
+			if err == nil || !strings.Contains(err.Error(), tc.diagnostic) {
+				t.Fatalf("want %q for %q, got %v", tc.diagnostic, tc.source, err)
+			}
+		})
+	}
+}
+
+func TestFormatVibexRejectsMalformedJSX(t *testing.T) {
+	_, err := Format("bad.vibex", "const el = <p>{</p>", func(s string) (string, error) { return s, nil })
+	if err == nil || !strings.Contains(err.Error(), "Expression expected") {
+		t.Fatalf("want JSX expression diagnostic, got %v", err)
 	}
 }
 
 func TestFormatVibexRefusesChangedJSX(t *testing.T) {
-	for _, pair := range [][2]string{
-		{"Hello", "Goodbye"}, {"50%", "51%"}, {"&amp;", "&lt;"},
-		{"one", "two"},
+	for _, tc := range []struct{ before, after, diagnostic string }{
+		{"Hello", "Goodbye", "the TypeScript formatter changed JSX text"},
+		{"50%", "51%", "the TypeScript formatter changed JSX text"},
+		{"&amp;", "&lt;", "the TypeScript formatter changed JSX text"},
+		{"one", "two", `"one" became "two"`},
 	} {
 		source := "const el = <p title=\"one\">Hello 50% &amp; a  b</p>\n"
-		_, err := Format("view.vibex", source, func(s string) (string, error) { return strings.Replace(s, pair[0], pair[1], 1), nil })
-		if err == nil {
-			t.Fatalf("accepted JSX change %q -> %q", pair[0], pair[1])
+		_, err := Format("view.vibex", source, func(s string) (string, error) { return strings.Replace(s, tc.before, tc.after, 1), nil })
+		if err == nil || !strings.Contains(err.Error(), tc.diagnostic) {
+			t.Errorf("want %q for JSX change %q -> %q, got %v", tc.diagnostic, tc.before, tc.after, err)
 		}
 	}
 }

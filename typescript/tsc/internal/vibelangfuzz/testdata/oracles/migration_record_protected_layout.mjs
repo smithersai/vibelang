@@ -15,7 +15,7 @@ const prettierManifest=JSON.parse(readFileSync(prettierManifestPath,"utf8"))
 const prettierBin=join(dirname(prettierManifestPath),typeof prettierManifest.bin==="string"?prettierManifest.bin:prettierManifest.bin.prettier)
 const [key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&15
 const corpus=JSON.parse(readFileSync(new URL("../corpus/t3code-record-protected-import-layout.json",import.meta.url),"utf8"))
-const outer=mkdtempSync(join(tmpdir(),"protected-record-layout-")),target=join(outer,"repo"),run=join(outer,"run")
+const outer=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(tmpdir(),"protected-record-layout-")),target=join(outer,"repo"),run=join(outer,"run")
 try {
  mkdirSync(join(target,"node_modules/.bin"),{recursive:true})
  symlinkSync(dirname(runtimeRequire.resolve("typescript/package.json")),join(target,"node_modules/typescript"),"dir")

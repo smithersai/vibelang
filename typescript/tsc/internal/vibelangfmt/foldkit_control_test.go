@@ -164,3 +164,45 @@ func TestFoldkitIsBodyRebrace(t *testing.T) {
 		}
 	})
 }
+
+func TestFoldkitReturnAndLabelFixtures(t *testing.T) {
+	for _, name := range []string{
+		"foldkit-return-type-module.vibe",
+		"foldkit-ui-public-return-parentheses.ts",
+		"foldkit-ui-return-union-comments.vibe",
+		"foldkit-website-labeled-arrow-block.vibe",
+		"foldkit-website-labeled-arrow-expression.vibe",
+		"foldkit-website-labeled-arrow-module.vibe",
+		"foldkit-website-labeled-arrow-return-type.vibe",
+	} {
+		for _, host := range []struct {
+			name   string
+			format vibelangfmt.TypeScriptFormatter
+		}{
+			{"identity", func(text string) (string, error) { return text, nil }},
+			{"language-server", foldkitLSFormatter},
+		} {
+			t.Run(name+"/"+host.name, func(t *testing.T) {
+				data, err := os.ReadFile(filepath.Join("testdata", name))
+				if err != nil {
+					t.Fatal(err)
+				}
+				source := string(data)
+				once, err := vibelangfmt.Format(name, source, host.format)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := vibelangfmt.SameProgram(source, once); err != nil {
+					t.Fatal(err)
+				}
+				twice, err := vibelangfmt.Format(name, once, host.format)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if once != twice {
+					t.Fatalf("not idempotent\nonce:\n%s\ntwice:\n%s", once, twice)
+				}
+			})
+		}
+	}
+}

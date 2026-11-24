@@ -47,6 +47,7 @@ func formatUnnamedModuleSource(source string) string {
 }
 
 func TestFormatUnnamedModuleGenerator(t *testing.T) {
+	w := NewWorkspace(t)
 	formatter := toolsFormatter(t)
 	for body := byte(0); body < 4; body++ {
 		for gap := byte(0); gap < 3; gap++ {
@@ -59,8 +60,8 @@ func TestFormatUnnamedModuleGenerator(t *testing.T) {
 				if err != nil {
 					t.Fatalf("%v\n%s", err, source)
 				}
-				if err := vibelangfmt.SameProgram(source, once); err != nil {
-					t.Fatal(err)
+				if difference := formatCompilationDifference(t, w, "TestFormatUnnamedModuleGenerator", source, once); difference != "" {
+					t.Fatal(difference)
 				}
 				twice, err := vibelangfmt.Format("main.vibe", once, formatter)
 				if err != nil || once != twice {

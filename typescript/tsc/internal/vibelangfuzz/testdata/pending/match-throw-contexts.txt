@@ -1,2 +1,0 @@
-# CLI witnesses from the unchanged vibe compiler are recorded in the lane report.
-# Keys remain precise; a passing pending context is an XPASS.

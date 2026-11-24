@@ -54,7 +54,7 @@ var foreignLazyWrappers = []foreignLazyWrapper{
 	{name: "Effect.try", bridge: true},
 }
 
-var foreignLazyForms = []string{"reference", "arrow", "block", "function", "local"}
+var foreignLazyForms = []string{"reference", "arrow", "block", "function", "local", "stored"}
 
 // A contract is the tag on the foreign declaration; throws says whether its
 // thrown type is other than never.
@@ -82,10 +82,13 @@ func foreignLazyCases() []foreignLazyCase {
 	var cases []foreignLazyCase
 	for _, w := range foreignLazyWrappers {
 		for _, form := range foreignLazyForms {
-			if form == "reference" && w.effect {
+			if form == "stored" && w.name != "Effect.sync" || form == "reference" && w.effect {
 				continue // a number-returning foreign function is no suspend thunk
 			}
 			for _, c := range foreignLazyContracts {
+				if form == "stored" && c.name != "untagged" && c.name != "never" {
+					continue
+				}
 				cases = append(cases, foreignLazyCase{key: w.name + "/" + form + "/" + c.name, wrapper: w, form: form, tag: c.tag, throws: c.throws})
 			}
 		}
@@ -113,13 +116,19 @@ func (c foreignLazyCase) project() *failCase {
 		thunk = "() => { return " + value + " }"
 	case "function":
 		thunk = "function () { return " + value + " }"
+	case "stored":
+		thunk = "stored"
 	default:
 		thunk = "() => { const v = " + call + "; return " + local + " }"
 	}
 	if c.rejects() {
 		thunk = "⟦" + thunk + "⟧"
 	}
-	return &failCase{Host: "effect", Lib: c.tag + "export declare function " + callee + "(): " + result + "\n", Body: "const n = try " + c.wrapper.name + "(" + thunk + ")"}
+	body := "const n = try " + c.wrapper.name + "(" + thunk + ")"
+	if c.form == "stored" {
+		body = "const stored = () => " + value + "; " + body
+	}
+	return &failCase{Host: "effect", Lib: c.tag + "export declare function " + callee + "(): " + result + "\n", Body: body}
 }
 
 // foreignLazyVerdict compiles files and lists what the chapter forbids: a

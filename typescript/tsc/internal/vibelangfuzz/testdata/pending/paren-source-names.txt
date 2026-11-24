@@ -9,12 +9,12 @@
 # function, effect function, do expression). Function values (effect arrows,
 # effect function expressions, arrows, classes) keep their names everywhere.
 # target                       key                                       owner     what is missing
-FuzzParenthesizedSourceNames  block/paren/const  compiler  Chapter 1: const target = (effect { ... }) runs anonymously, while the bare block runs as target; lane migfix-alchemy
-FuzzParenthesizedSourceNames  block/paren/property  compiler  Chapter 1: the object property target: (effect { ... }) runs anonymously, while the bare block runs as target; lane migfix-alchemy
-FuzzParenthesizedSourceNames  block/double-paren/const  compiler  Chapter 1: const target = ((effect { ... })) runs anonymously, while the bare block runs as target; lane migfix-alchemy
-FuzzParenthesizedSourceNames  block/double-paren/property  compiler  Chapter 1: the object property target: ((effect { ... })) runs anonymously, while the bare block runs as target; lane migfix-alchemy
-FuzzParenthesizedSourceNames  block/as/const  compiler  Chapter 1: const target = (effect { ... }) as T runs anonymously, while the bare block runs as target; lane migfix-alchemy
-FuzzParenthesizedSourceNames  block/as/property  compiler  Chapter 1: the object property target: (effect { ... }) as T runs anonymously, while the bare block runs as target; lane migfix-alchemy
-FuzzParenthesizedSourceNames  block/satisfies/const  compiler  Chapter 1: const target = (effect { ... }) satisfies T runs anonymously, while the bare block runs as target; lane migfix-alchemy
-FuzzParenthesizedSourceNames  block/satisfies/property  compiler  Chapter 1: the object property target: (effect { ... }) satisfies T runs anonymously, while the bare block runs as target; lane migfix-alchemy
-FuzzParenthesizedSourceNames  witness:alchemy-paren-effect-block-name  compiler  Chapter 7: alchemy prisma const catchProgram = (effect { ... }) runs anonymously, and as vibelang-format writes it, without parentheses, as catchProgram; lane migfix-alchemy
+FuzzParenthesizedSourceNames  block/paren/const  compiler  Chapter 1: const target = (effect { ... }) runs anonymously, while the bare block runs as target
+FuzzParenthesizedSourceNames  block/paren/property  compiler  Chapter 1: the object property target: (effect { ... }) runs anonymously, while the bare block runs as target
+FuzzParenthesizedSourceNames  block/double-paren/const  compiler  Chapter 1: const target = ((effect { ... })) runs anonymously, while the bare block runs as target
+FuzzParenthesizedSourceNames  block/double-paren/property  compiler  Chapter 1: the object property target: ((effect { ... })) runs anonymously, while the bare block runs as target
+FuzzParenthesizedSourceNames  block/as/const  compiler  Chapter 1: const target = (effect { ... }) as T runs anonymously, while the bare block runs as target
+FuzzParenthesizedSourceNames  block/as/property  compiler  Chapter 1: the object property target: (effect { ... }) as T runs anonymously, while the bare block runs as target
+FuzzParenthesizedSourceNames  block/satisfies/const  compiler  Chapter 1: const target = (effect { ... }) satisfies T runs anonymously, while the bare block runs as target
+FuzzParenthesizedSourceNames  block/satisfies/property  compiler  Chapter 1: the object property target: (effect { ... }) satisfies T runs anonymously, while the bare block runs as target
+FuzzParenthesizedSourceNames  witness:alchemy-paren-effect-block-name  compiler  Chapter 7: alchemy prisma const catchProgram = (effect { ... }) runs anonymously, and as vibelang-format writes it, without parentheses, as catchProgram

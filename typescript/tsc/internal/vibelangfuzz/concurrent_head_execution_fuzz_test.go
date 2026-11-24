@@ -27,7 +27,7 @@ func FuzzConcurrentHeadExecution(f *testing.F) {
 	}
 	keys := []string{"object-default", "array-default", "computed-key", "nested-default", "plain-default"}
 	for _, key := range keys {
-		for variant := uint8(0); variant < 8; variant++ {
+		for variant := uint8(0); variant < 16; variant++ {
 			f.Add(key, variant)
 		}
 	}

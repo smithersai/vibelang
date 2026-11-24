@@ -11,7 +11,7 @@ const require = createRequire(join(repo, "packages/runtime/package.json")), ts =
 const corpus = JSON.parse(readFileSync(new URL("../corpus/t3code-managed-type-query-routes.json", import.meta.url), "utf8"))
 const [key, rawMode, binary] = process.argv.slice(2), mode = Number(rawMode) & 15
 const [stage, form] = key.split(":")
-const root = mkdtempSync(join(tmpdir(), "managed-type-route-"))
+const root = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(tmpdir(), "managed-type-route-"))
 const put = (file, value) => { const p = join(root, file); mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, typeof value === "string" ? value : JSON.stringify(value)) }
 const stem = "src/" + (mode & 1 ? "nested/space δ/" : "") + "actions"
 const model = "src/" + (mode & 1 ? "nested/space δ/" : "") + "model.vibe"

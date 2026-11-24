@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"strings"
 	"testing"
 )
@@ -62,11 +61,7 @@ func TestGrammarAdmissionUnhomedReferenceRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarUnhomedReservedReferences() {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
-			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
+			checkGrammarAdmission(t, w, "admission:unhomed-pattern-reserved-identifier", source)
 		})
 	}
 	for _, source := range grammarUnhomedReferenceControls {

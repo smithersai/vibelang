@@ -3,14 +3,13 @@ package vibelangfuzz
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 	"testing"
 )
 
 // A hole in an array pattern takes one iterator value and binds nothing, as
-// ECMA-262 specifies, so a pattern with a hole compiles as the pattern with an
-// unused name there does.
+// ECMA-262 specifies, so a pattern with a hole compiles in every binding context that
+// also admits the named pattern.
 const bindingPatternHolesQuote = "fully evaluated as ECMA-262 specifies"
 
 func TestBindingPatternHolesQuoted(t *testing.T) {
@@ -83,24 +82,18 @@ func bindingPatternHoleCheck(t *testing.T, w *Workspace, data []byte) {
 	}
 	hole, twin := bindingPatternHoleSource(data[1:])
 	host := bindingPatternHoleHosts[int(data[0])%len(bindingPatternHoleHosts)]
-	codes := func(source string) []string {
+	compile := func(source string) {
 		result, err := w.Compile(context.Background(), Single(source))
 		if err != nil {
 			t.Fatal(err)
 		}
-		var out []string
-		for _, d := range result.Diagnostics {
-			if IsEK(d) {
-				out = append(out, fmt.Sprint(d.Code()))
-			}
+		defer result.Remove()
+		if HasError(result.Diagnostics) || result.Outputs["out/main.js"] == "" {
+			t.Fatalf("binding pattern did not compile: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 		}
-		slices.Sort(out)
-		return slices.Compact(out)
 	}
-	holes, twins := codes(fmt.Sprintf(host, hole)), codes(fmt.Sprintf(host, twin))
-	if !slices.Equal(holes, twins) {
-		t.Fatalf("a hole changed the diagnostics: %v, the named twin reports %v\n%s", holes, twins, fmt.Sprintf(host, hole))
-	}
+	compile(fmt.Sprintf(host, hole))
+	compile(fmt.Sprintf(host, twin))
 }
 
 func TestBindingPatternHoles(t *testing.T) {

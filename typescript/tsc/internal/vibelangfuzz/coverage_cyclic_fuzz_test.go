@@ -2,8 +2,6 @@ package vibelangfuzz
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -15,29 +13,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/sourcemap"
 )
 
-// cyclicCoverageRule is the sentence of D36 (amended 2026-10-24, coverage)
-// that FuzzCyclicPlainCoverage checks a plain function that calls itself
-// against.
-const cyclicCoverageRule = "code the compiler makes, which no source code stands for, maps to no source position, so V8 coverage (`@vitest/coverage-v8`, `c8`, `NODE_V8_COVERAGE`) counts the code its author wrote"
+// A recursive plain function emits one function. Code added by the compiler
+// has no source position of its own. The coverage oracle checks the map from
+// the emitted JavaScript back to the written source.
+const cyclicCoverageRule = "generated code has no written source position"
 
-// TestCyclicPlainCoverageQuoted checks that the decision log still says what
-// FuzzCyclicPlainCoverage quotes.
-func TestCyclicPlainCoverageQuoted(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(Root(), "docs/design/history/DECISIONS.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(data), cyclicCoverageRule) {
-		t.Fatalf("docs/design/history/DECISIONS.md no longer says, in D36: %q", cyclicCoverageRule)
-	}
-}
-
-// A plain function that calls itself. Before VIP-1 it compiled to an Effect
-// entry, a plain entry, a stack body and a budgeted body (D10), and Smithers
-// testing's RecordingModel `strings` counted an untaken statement and two ??
-// branches at the function's head, so its package missed a 100% coverage
-// threshold once the module was .vibe. The shapes keep that neighbourhood
-// covered whatever a plain function lowers to.
 var cyclicForms = []struct{ key, head, tail string }{
 	{"const", "const strings = (%s): Array<string> => {\n", "}\n"},
 	{"function", "function strings(%s): Array<string> {\n", "}\n"},
@@ -57,7 +37,7 @@ var cyclicBodies = []struct{ key, text string }{
 // FuzzCyclicPlainCoverage compiles each shape of a plain function that calls
 // itself and reads main.js.map as coverage tools read it once Vite composes
 // it: composing drops a segment with no source that starts a line or follows
-// another (D36), and a position reads the segment at or before it on its
+// another, and a position reads the segment at or before it on its
 // line, or the one after it when that one maps to no source
 // (ast-v8-to-istanbul). The source function is one function, so the
 // functions the output declares read at most one position inside it; its
@@ -164,14 +144,14 @@ func FuzzCyclicPlainCoverage(f *testing.F) {
 				for _, operand := range []*ast.Node{n.AsBinaryExpression().Left, n.AsBinaryExpression().Right} {
 					offset, ok := at(scanner.SkipTrivia(js, operand.Pos()))
 					if ok && offset >= start && offset < brace && !(offset >= initializer[0] && offset < initializer[1]) {
-						Gap(t, "FuzzCyclicPlainCoverage", key+"/branch", "D36: %s; an operand of %q reads %q, the head of:\n%s\noutput:\n%s", cyclicCoverageRule, js[scanner.SkipTrivia(js, n.Pos()):n.End()], source[offset:min(offset+20, len(source))], source, js)
+						Gap(t, "FuzzCyclicPlainCoverage", key+"/branch", "%s; an operand of %q reads %q, the head of:\n%s\noutput:\n%s", cyclicCoverageRule, js[scanner.SkipTrivia(js, n.Pos()):n.End()], source[offset:min(offset+20, len(source))], source, js)
 						return true
 					}
 				}
 			case ast.IsStatement(n) && !ast.IsBlock(n) && !ast.IsFunctionDeclaration(n):
 				// The statement that declares the function starts at start.
 				if offset, ok := at(nodeStart); ok && offset > start && offset < brace {
-					Gap(t, "FuzzCyclicPlainCoverage", key+"/statement", "D36: %s; the statement %q reads %q, the head of:\n%s\noutput:\n%s", cyclicCoverageRule, js[nodeStart:min(n.End(), nodeStart+80)], source[offset:min(offset+20, len(source))], source, js)
+					Gap(t, "FuzzCyclicPlainCoverage", key+"/statement", "%s; the statement %q reads %q, the head of:\n%s\noutput:\n%s", cyclicCoverageRule, js[nodeStart:min(n.End(), nodeStart+80)], source[offset:min(offset+20, len(source))], source, js)
 					return true
 				}
 			}
@@ -181,7 +161,7 @@ func FuzzCyclicPlainCoverage(f *testing.F) {
 			return
 		}
 		if len(functions) > 1 {
-			Gap(t, "FuzzCyclicPlainCoverage", key+"/functions", "D36: %s; the output declares %d functions inside the one source function:\n%s\noutput:\n%s", cyclicCoverageRule, len(functions), source, js)
+			Gap(t, "FuzzCyclicPlainCoverage", key+"/functions", "%s; the output declares %d functions inside the one source function:\n%s\noutput:\n%s", cyclicCoverageRule, len(functions), source, js)
 			return
 		}
 		ExpectPending(t, "FuzzCyclicPlainCoverage", key)

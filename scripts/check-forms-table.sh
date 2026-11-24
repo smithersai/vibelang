@@ -7,9 +7,9 @@
 #
 # forms_decisions.txt records what the resolver decides at every lambda,
 # block, and by-name argument of the repository's .vibe files
-# (typescript/vibelang, examples, templates). --write refuses a decision that
-# moved at a site the snapshot already has unless
-# forms_decisions_approved.txt names the move, one line each:
+# (typescript/vibelang, examples, templates). Both modes compare against the
+# merge base and require a fresh entry in forms_decisions_approved.txt for
+# each changed decision, one line each:
 #
 #   typescript/vibelang/cases/x/main.vibe:12:7 lambda: plain fallback -> effectFn table # why it is right
 #
@@ -20,6 +20,9 @@
 # or someone edited the file.
 #
 # Environment:
+#   FORMS_BASE_REF       target branch or commit (default CI_GATE_BASE or origin/<PR base or main>)
+#                        standalone jj workspaces use their local target bookmark
+#                        history back to the merge base must be available
 #   FORMS_NODE_MODULES   effect and @effect/* to read (default docs/tools/node_modules, pinned by docs/tools/bun.lock)
 #   FORMS_BINARY       absolute path to a prepared cmd/vibelang-forms executable
 #                      (the graph keys it on compiler sources); unset uses go run
@@ -75,17 +78,34 @@ if [ -n "${FORMS_NODE_MODULES:-}" ]; then
   modules=(-node-modules "$FORMS_NODE_MODULES")
 fi
 
-gate=()
-if [ "$write" = 1 ]; then
-  gate=(-previous "$decisions" -approved "$approved")
+target="${GITHUB_BASE_REF:-main}"
+if [ -d "$root/.jj" ] && [ ! -e "$root/.git" ]; then
+  base_ref="${FORMS_BASE_REF:-${CI_GATE_BASE:-$target}}"
+  if ! base="$(jj -R "$root" --ignore-working-copy log --no-graph \
+      -r "heads(::@ & ::($base_ref))" -T 'commit_id ++ "\n"')" ||
+      [[ ! "$base" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "check-forms-table: cannot identify one merge base with $base_ref; set FORMS_BASE_REF to the target revision" >&2
+    exit 1
+  fi
+  show_base() { (cd "$root" && jj --ignore-working-copy file show -r "$base" -- "$1"); }
+else
+  base_ref="${FORMS_BASE_REF:-${CI_GATE_BASE:-origin/$target}}"
+  if ! base="$(git -C "$root" merge-base HEAD "$base_ref")"; then
+    echo "check-forms-table: cannot find the merge base with $base_ref; fetch the target branch and its history or set FORMS_BASE_REF" >&2
+    exit 1
+  fi
+  show_base() { git -C "$root" show "$base:$1"; }
 fi
+show_base "${decisions#"$root"/}" > "$tmp/previous-decisions.txt"
+show_base "${approved#"$root"/}" > "$tmp/previous-approvals.txt"
+gate=(-previous "$tmp/previous-decisions.txt" -approved "$approved" -previous-approved "$tmp/previous-approvals.txt")
 generator=(go run -trimpath ${overlay[@]+"${overlay[@]}"} ./cmd/vibelang-forms)
 if [ -n "${FORMS_BINARY:-}" ]; then
   generator=("$FORMS_BINARY")
 fi
 run_generator() {
   (cd "$root/typescript/tsc" && CGO_ENABLED=0 "${generator[@]}" -repo "$root" ${modules[@]+"${modules[@]}"} \
-    -o "$tmp/forms_table.jsonl" -decisions "$tmp/forms_decisions.txt" ${gate[@]+"${gate[@]}"})
+    -o "$tmp/forms_table.jsonl" -decisions "$tmp/forms_decisions.txt" "${gate[@]}")
 }
 if [ -n "${FORMS_BINARY:-}" ]; then
   run_generator

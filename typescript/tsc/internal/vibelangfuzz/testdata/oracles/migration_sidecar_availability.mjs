@@ -7,7 +7,7 @@ import { sidecarChanges } from "../../../../../../.smithers/flows/migrate/lib/de
 const ts=createRequire(join(process.cwd(),"packages/runtime/package.json"))("typescript")
 const [key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&15
 const corpus=JSON.parse(readFileSync(new URL("../corpus/t3code-independent-sidecar-unavailable.json",import.meta.url),"utf8"))
-mkdirSync(".cache",{recursive:true});const root=mkdtempSync(join(process.cwd(),".cache/sidecar-availability-"))
+mkdirSync(".cache",{recursive:true});const root=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(process.cwd(),".cache/sidecar-availability-"))
 const put=(f,t)=>{mkdirSync(dirname(f),{recursive:true});writeFileSync(f,t)}
 try {
  const usesBad=["unrelated-error","changed-with-error","doc-with-error","dependent-error"].includes(key)

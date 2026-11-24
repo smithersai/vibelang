@@ -111,7 +111,7 @@ func FuzzMigrationFormatterFixedPoint(f *testing.F) {
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_formatter_fixed_point.mjs"))
 		cmd.Dir = Root()
 		cmd.Stdin = strings.NewReader(string(input))
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("formatter oracle process: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

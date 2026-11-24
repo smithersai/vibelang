@@ -1,4 +1,4 @@
-// Package vibelangfuzz holds the shared harness of VibeLang's fuzz targets:
+// Package vibelangfuzz holds the shared Unix-only harness for VibeLang fuzz targets:
 // a workspace that compiles generated or mutated sources against the real
 // effect and vibelang-runtime packages, the invariants every compilation must
 // keep, the specification facts those invariants come from, and a Node worker

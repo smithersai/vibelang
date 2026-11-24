@@ -17,7 +17,7 @@ const file = (mode & 8 ? "src/space δ/" : "src/") + name + ".ts"
 let source = source0
 if (mode & 1) source = "// Retain the module metadata at this evaluation point.\n" + source
 if (mode & 2) source = source.replaceAll("\n", "\r\n")
-const root = mkdtempSync(join(tmpdir(), "migration-import-meta-policy-"))
+const root = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(tmpdir(), "migration-import-meta-policy-"))
 try {
   mkdirSync(dirname(join(root, file)), {recursive: true})
   writeFileSync(join(root, file), source)
@@ -36,7 +36,7 @@ try {
   const stockErrors = ts.getPreEmitDiagnostics(program).filter(d => d.category === ts.DiagnosticCategory.Error)
   assert.deepEqual(stockErrors.map(d => d.code), [], stockErrors.map(d => ts.flattenDiagnosticMessageText(d.messageText, "\n")).join("\n"))
   const original = { [file]: source, "ambient.d.ts": ambient, "package.json": packageText }
-  const compile = (files, extra = []) => {
+  const compile = (files) => {
     for (const [name, text] of Object.entries(files)) {
       mkdirSync(dirname(join(root,name)), {recursive:true})
       writeFileSync(join(root,name),text)
@@ -48,7 +48,7 @@ try {
         ...(key==="dirname-ignore-exit"?{ignoreEffectErrorsInTscExitCode:true}:{})}],
     },vibe:{effectGlobals:false,effectModules:false},files:Object.keys(files).filter(n=>/\.(?:ts|vibe)$/.test(n))}
     writeFileSync(join(root,"tsconfig.json"),JSON.stringify(config))
-    const p=spawnSync(binary,["-p","tsconfig.json","--singleThreaded","--pretty","false",...extra],{cwd:root,encoding:"utf8",timeout:30000,maxBuffer:4*1024*1024})
+    const p=spawnSync(binary,["-p","tsconfig.json","--singleThreaded","--pretty","false"],{cwd:root,encoding:"utf8",timeout:30000,maxBuffer:4*1024*1024})
     assert.equal(p.error,undefined,String(p.error))
     assert.equal(p.signal,null,p.signal)
     const text=p.stdout+p.stderr
@@ -65,7 +65,7 @@ try {
     assert.equal(readFileSync(join(root, file), "utf8"), source, "refusal must retain source")
     assert.equal(readFileSync(join(root,"package.json"),"utf8"),packageText,"refusal must retain the manifest")
     assert.equal(existsSync(join(root,file.replace(/\.ts$/, ".platform.ts"))),false,"refusal must not create its helper")
-    console.log(JSON.stringify({key,mode,original,candidate,refused:result.refused,unchanged,stockCodes:[],guard,before,after:null}))
+    console.log(JSON.stringify({key,mode,original,candidate,refused:result.refused,unchanged,guard,before,after:null}))
   } else {
     const split = result.splits[0]
     // import.meta follows TypeScript (chapter 5): a declared member stays in the module, so no member needs a helper.
@@ -84,6 +84,6 @@ try {
     candidate["package.json"]=JSON.stringify(pkg)+"\n"
     if(!key.endsWith("-pragma"))for(const [name,text] of Object.entries(candidate))assert.ok(!/@effect-diagnostics[^\n]*nodeBuiltinImport:off/.test(text),"the generated candidate must not introduce a policy suppression: "+name)
     const after=compile(candidate)
-    console.log(JSON.stringify({key,mode,original,candidate,refused:[],unchanged,stockCodes:[],guard,before,after}))
+    console.log(JSON.stringify({key,mode,original,candidate,refused:[],unchanged,guard,before,after}))
   }
 } finally { rmSync(root, {recursive: true, force: true}) }

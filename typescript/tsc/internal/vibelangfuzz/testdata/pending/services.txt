@@ -1,5 +1,0 @@
-# Chapter 5 (Services) static rules: FuzzServicesRules reads each table row at test time.
-# Recovered service fixes and current VIP-9 syntax retire the satisfied pending rules.
-
-
-

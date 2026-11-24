@@ -1,1 +1,0 @@
-# Native effect-body try statements report EK0503; plain nested callbacks retain JavaScript try/catch.

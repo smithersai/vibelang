@@ -102,7 +102,7 @@ func FuzzMigrationDoTemporaryReturns(f *testing.F) {
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_do_temporary_returns.mjs"))
 		cmd.Dir = Root()
 		cmd.Stdin = strings.NewReader(string(input))
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("static returned-program oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

@@ -42,7 +42,7 @@ async function sourceModule(file) {
 const module = await sourceModule(join(root, "packages/unplugin/src/index.js"))
 await module.evaluate()
 mkdirSync(join(root, ".cache"), { recursive: true })
-const temporary = mkdtempSync(join(root, ".cache/native-companion-"))
+const temporary = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(root, ".cache/native-companion-"))
 try {
  const extension = key === "vibe-js" ? "vibe" : key === "foreign-source" ? "tsx" : "vibex"
  const suffix = key === "vibex-jsx" ? ".jsx" : ".js"

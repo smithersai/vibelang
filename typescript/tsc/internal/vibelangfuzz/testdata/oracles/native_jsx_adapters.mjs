@@ -77,7 +77,7 @@ if (area === "babel") {
   const { Generator, getConfig } = require("@tanstack/router-generator")
   const { planScope } = await import(pathToFileURL(join(root, ".smithers/flows/migrate/lib/onepass.mjs")))
   mkdirSync(join(root, ".cache"), { recursive: true })
-  const temp = mkdtempSync(join(root, ".cache/native-router-"))
+  const temp = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(root, ".cache/native-router-"))
   const put = (name, text) => { mkdirSync(dirname(join(temp, name)), { recursive: true }); writeFileSync(join(temp, name), text) }
   try {
     const stem = (mode & 2 ? "parent/" : "") + (mode & 1 ? "settings" : "welcome")
@@ -128,6 +128,6 @@ if (area === "babel") {
     }
     const after = await generate()
     assert.ok(after.imports.includes("./routes/kept"), "an unrelated authored route must remain selected")
-    console.log(JSON.stringify({ ok: JSON.stringify(before) === JSON.stringify(after), key, extension, before, after, nativeSelected, locatedDeferral: refusal?.reason ?? null, dependency: "@tanstack/router-generator@1.167.12" }))
+    console.log(JSON.stringify({ ok: JSON.stringify(before) === JSON.stringify(after), key, extension, before, after, nativeSelected, locatedDeferral: refusal?.reason ?? null }))
   } finally { rmSync(temp, { recursive: true, force: true }) }
 } else throw Error("unknown native adapter area")

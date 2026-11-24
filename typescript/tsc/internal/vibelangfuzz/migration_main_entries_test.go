@@ -51,7 +51,7 @@ func FuzzMigrationMainEntries(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_main_entries.mjs"), key, strconv.Itoa(int(mode&15)))
 		cmd.Dir = Root()
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("main-entry declaration comparison: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

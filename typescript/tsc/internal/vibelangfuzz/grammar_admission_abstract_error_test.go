@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"testing"
 )
 
@@ -38,11 +37,7 @@ func TestGrammarAdmissionAbstractErrorRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarAbstractErrorGaps {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
-			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
+			checkGrammarAdmission(t, w, "admission:abstract-error", source)
 		})
 	}
 	for _, source := range grammarAbstractErrorControls {

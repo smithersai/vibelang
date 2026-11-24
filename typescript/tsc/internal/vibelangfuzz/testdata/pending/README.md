@@ -42,7 +42,8 @@ that part of the specification yet. See `pending.go`.
   matches a `layer` declaration by its tokens, never the word in a comment or
   a string.
 - A line owned by `compiler` names the chapter or decision it breaks, or the
-  key whose line does. A crash or a hang needs no citation.
+  key whose line does. Include a public issue link when one exists. A crash
+  or a hang needs no specification citation.
 - A hang's reproduction (a reason that starts with `hang`) is skipped by its
   target. `TestPendingHangs` runs it in a child process with a deadline and
   fails as XPASS when it finishes. The merge gate requires this check through

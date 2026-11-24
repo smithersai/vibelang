@@ -1,2 +1,0 @@
-# Round 8 OPUS-2; independent native controls in all 24 signature/option combinations.
-# Native member signatures now follow TypeScript's noImplicitAny checks; every native-member feature passes.

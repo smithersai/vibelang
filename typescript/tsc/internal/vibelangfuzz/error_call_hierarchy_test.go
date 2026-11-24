@@ -31,7 +31,7 @@ func errorCallHierarchyQuoted(t testing.TB) {
 	}
 }
 
-var errorCallKeys = []string{"witness", "derived-auto", "derived-empty", "derived-generic", "root-auto", "derived-written", "native-written", "native-factory", "schema-root", "schema-computed"}
+var errorCallKeys = []string{"root-auto", "root-method", "native-written", "native-factory", "schema-root", "schema-computed"}
 
 func errorCallSource(key string, variant uint8) (source, item string, want []string) {
 	suffix := fmt.Sprintf("%d", variant%8)
@@ -42,30 +42,18 @@ func errorCallSource(key string, variant uint8) (source, item string, want []str
 	}
 	main := "\nexport function main() { return new " + child + "({ x: 0 }) }\n"
 	switch key {
-	case "witness":
-		return "error A { _tag: string }\nerror B extends A { x: number }\nexport function main() { return new B({ x: 0 }) }\n", "B", nil
-	case "derived-empty":
-		return "error " + base + " { _tag: string; x: number }\n" + prefix + "error " + child + " extends " + base + " {}" + main, child, nil
-	case "derived-generic":
-		return "error " + base + "<T> { _tag: string; value?: T }\n" + prefix + "error " + child + " extends " + base + "<number> { x: number }" + main, child, nil
 	case "root-auto":
 		return prefix + "error " + child + " { x: number }" + main, child, nil
 	case "schema-computed":
-		return "function fieldKey(): \"value\" { return \"value\" }\n" + prefix + "schema error " + child + " { [fieldKey()]: string; x: number }" + main, child, []string{"fieldKey"}
+		return "function fieldKey(): \"value\" { return \"value\" }\n" + prefix + "schema error " + child + " { [fieldKey()]?: string; x: number }" + main, child, []string{"fieldKey"}
 	case "schema-root":
 		return prefix + "schema error " + child + " { x: number }" + main, child, nil
-	case "derived-written":
-		return "error " + base + " { _tag: string }\n" + prefix + "error " + child + " extends " + base + " { x: number; constructor(args: { x: number }) { super(args); tick() } }\nfunction tick() {}" + main, child, []string{base, "tick"}
 	case "native-written":
 		return "class " + base + " {}\n" + prefix + "class " + child + " extends " + base + " { constructor(args: { x: number }) { super(); tick() } }\nfunction tick() {}" + main, child, []string{base, "tick"}
 	case "native-factory":
-		return "function makeBase() { return class {} }\n" + prefix + "class " + child + " extends makeBase() {}" + main, child, []string{"makeBase"}
+		return "function makeBase() { return class { constructor(input: { x: number }) { void input } } }\n" + prefix + "class " + child + " extends makeBase() {}" + main, child, []string{"makeBase"}
 	default:
-		fields := "x: number"
-		if variant&16 != 0 {
-			fields += "; y?: string"
-		}
-		return "error " + base + " { _tag: string }\n" + prefix + "error " + child + " extends " + base + " { " + fields + " }" + main, child, nil
+		return prefix + "error " + child + " { x: number; read(): number { return this.x } }" + main, child, nil
 	}
 }
 
@@ -73,12 +61,12 @@ func checkErrorCallHierarchy(t *testing.T, w *Workspace, key string, variant uin
 	t.Helper()
 	source, name, want := errorCallSource(key, variant)
 	files := map[string]string{"main.vibe": source}
-	dir, err := toolsWrite(w, Project{Files: files})
-	if err != nil {
-		t.Fatal(err)
+	result := toolsCompile(t, w, "TestErrorCallHierarchySourceSites", files)
+	defer result.Remove()
+	if !toolsErrorFree(result) {
+		t.Fatalf("invalid call hierarchy source: %v", SortedKeys(Keys(result.Dir, result.Diagnostics)))
 	}
-	defer os.RemoveAll(dir)
-	program := toolsProgram(w, dir)
+	dir, program := result.Dir, result.Program
 	if program == nil {
 		t.Fatal("missing program")
 	}

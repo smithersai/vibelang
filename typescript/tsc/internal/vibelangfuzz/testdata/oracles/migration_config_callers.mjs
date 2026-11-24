@@ -28,7 +28,7 @@ if ((key === "implicit-call" || key === "explicit-call" || key === "retained-con
 if (key === "script-only") source = "export async function warm(webRoot: string) { return { marker: \"script\" }; }\n"
 if (mode & 4) source = source.replaceAll("\n", "\r\n")
 mkdirSync(join(repo, ".cache"), { recursive: true })
-const root = mkdtempSync(join(repo, ".cache/config-caller-model-"))
+const root = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(repo, ".cache/config-caller-model-"))
 const put = (file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
 const sentinel = mode & 4 ? "false" : "true"
 const configText = fixture.config.replace('"true"', JSON.stringify(sentinel))

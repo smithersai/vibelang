@@ -2,11 +2,12 @@ package vibelangfuzz
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangfmt"
-	"strings"
-	"testing"
 )
 
 const formatModulePlacementQuote = "a top-level statement of a .vibe or .vibex file only; ModuleBody is TypeScript"
@@ -144,6 +145,11 @@ func FuzzFormatNamedModulePlacement(f *testing.F) {
 			return
 		}
 		ExpectPending(t, "FuzzFormatNamedModulePlacement", key)
+		if invalid {
+			ExpectPending(t, "FuzzFormatNamedModulePlacement", "refusal:"+key)
+		} else {
+			ExpectPending(t, "FuzzFormatNamedModulePlacement", "valid:"+key)
+		}
 		ExpectPending(t, "FuzzFormatNamedModulePlacement", specCorpusKey(t))
 	})
 }

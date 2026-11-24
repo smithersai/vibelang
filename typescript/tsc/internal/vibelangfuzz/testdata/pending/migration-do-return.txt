@@ -1,2 +1,0 @@
-# All outward-return admission witnesses pass their unchanged VIP-2/TC39 oracle.
-# Keep the keyed corpus as strict regression coverage.

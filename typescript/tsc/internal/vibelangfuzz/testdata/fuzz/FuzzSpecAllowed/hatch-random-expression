@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("hatch-random-expression\x00template:contracts\x00\x01")

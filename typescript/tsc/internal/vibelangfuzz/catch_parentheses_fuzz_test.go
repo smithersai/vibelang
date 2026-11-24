@@ -36,7 +36,7 @@ func TestCatchParenthesizedHandlersQuoted(t *testing.T) {
 // Admission and contextual typing come from the chapter's function-literal
 // grammar, not today's AST. Runtime Exit comparison stays in the existing
 // vip05.catch-parenthesized-arrow differential construct.
-// Appendix A: closed catch-handler suffixes — spec-rule: docs/design/src/900-appendices.md#0e6d4b246424a991
+// FuzzCatchPrecedence checks that a call or member suffix cannot attach.
 func FuzzCatchParenthesizedHandlers(f *testing.F) {
 	startShortBudget(f)
 	catchParenthesesChapter(f)
@@ -105,14 +105,7 @@ func FuzzCatchParenthesizedHandlers(f *testing.F) {
 			Gap(t, catchParenthesesTarget, "admit:"+key, "chapter 2 admits a parenthesized handler with its result context:\n%s\n%s", source(""), strings.Join(errors, "\n"))
 			return
 		}
-		suffixes := []string{"()", ".call(null)", "[0]"}
-		suffix := suffixes[(depth+delta)%len(suffixes)]
-		if errors := compile(source(suffix)); len(errors) == 0 {
-			Gap(t, catchParenthesesTarget, "suffix:"+key, "chapter 2 forbids a call/member suffix on the handler:\n%s", source(suffix))
-			return
-		}
 		ExpectPending(t, catchParenthesesTarget, "admit:"+key)
-		ExpectPending(t, catchParenthesesTarget, "suffix:"+key)
 		ExpectPending(t, catchParenthesesTarget, specCorpusKey(t))
 	})
 }

@@ -25,6 +25,7 @@ func TestFormatBlockHeaderRulesQuoted(t *testing.T) {
 }
 
 func TestFormatUnicodeLineSeparators(t *testing.T) {
+	w := NewWorkspace(t)
 	checkFormatBlockHeaderRulesQuoted(t)
 	host := toolsFormatter(t)
 	for _, newline := range []string{"\n", "\r", "\r\n", "\u2028", "\u2029"} {
@@ -41,8 +42,8 @@ func TestFormatUnicodeLineSeparators(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if err := vibelangfmt.SameProgram(source, once); err != nil {
-						t.Fatal(err)
+					if difference := formatCompilationDifference(t, w, "TestFormatUnicodeLineSeparators", source, once); difference != "" {
+						t.Fatal(difference)
 					}
 					twice, err := vibelangfmt.Format("unicode.vibe", once, host)
 					if err != nil || twice != once {

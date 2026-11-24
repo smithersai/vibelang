@@ -129,6 +129,7 @@ func FuzzFormatDoStatements(f *testing.F) {
 			}
 		}
 	}
+	w := NewWorkspace(f)
 	formatter := toolsFormatter(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		TestFormatDoStatementsQuoted(t)
@@ -166,6 +167,10 @@ func FuzzFormatDoStatements(f *testing.F) {
 		if err != nil {
 			Gap(t, "FuzzFormatDoStatements", "shape:"+form.key, "Chapter 7: %q; valid expression statement refused: %v\n%s", formatDoStatementsQuote, err, source)
 		}
+		if difference := formatCompilationDifference(t, w, "FuzzFormatDoStatements", source, once); difference != "" {
+			Gap(t, "FuzzFormatDoStatements", "program:"+form.key, "%s\n%s\n%s", difference, source, once)
+		}
+		ExpectPending(t, "FuzzFormatDoStatements", "program:"+form.key)
 		twice, err := vibelangfmt.Format("main.vibe", once, formatter)
 		if err != nil || once != twice {
 			Gap(t, "FuzzFormatDoStatements", "fixed-point:"+form.key, "Chapter 7 formatting is idempotent: %v\n%s\nthen:\n%s", err, once, twice)

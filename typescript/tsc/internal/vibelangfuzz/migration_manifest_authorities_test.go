@@ -50,7 +50,7 @@ func FuzzMigrationManifestAuthorities(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_manifest_authorities.mjs"), key, strconv.Itoa(int(mode&31)))
 		cmd.Dir = Root()
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("manifest authority model: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

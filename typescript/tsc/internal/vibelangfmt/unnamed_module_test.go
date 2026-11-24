@@ -59,18 +59,22 @@ func TestFormatUnnamedModuleBodyGuard(t *testing.T) {
 		t.Fatalf("harmless empty statements changed the recovered body pairing: %v", err)
 	}
 	changed := strings.Replace(source, "= 1", "= 2", 1)
-	if err := vibelangfmt.SameProgram(source, changed); err == nil {
-		t.Fatal("lost recovered module body change")
+	if err := vibelangfmt.SameProgram(source, changed); err == nil || !strings.Contains(err.Error(), "unnamed module:") || !strings.Contains(err.Error(), `"1" became "2"`) {
+		t.Fatalf("want unnamed module value change diagnostic, got %v", err)
 	}
-	if _, err := vibelangfmt.Format("main.vibe", source, func(text string) (string, error) { return strings.ReplaceAll(text, "= 1", "= 2"), nil }); err == nil {
-		t.Fatal("accepted changed module body")
+	if _, err := vibelangfmt.Format("main.vibe", source, func(text string) (string, error) { return strings.ReplaceAll(text, "= 1", "= 2"), nil }); err == nil || !strings.Contains(err.Error(), "unnamed module:") || !strings.Contains(err.Error(), `"1" became "2"`) {
+		t.Fatalf("want unnamed module value change diagnostic, got %v", err)
 	}
 }
 
 func TestFormatUnnamedModuleSyntaxErrors(t *testing.T) {
-	for _, source := range []string{"module { export const value = ( }", "module { export const value = 1"} {
-		if _, err := vibelangfmt.Format("main.vibe", source, func(text string) (string, error) { return text, nil }); err == nil {
-			t.Fatalf("accepted syntax error: %s", source)
+	for _, tc := range []struct{ source, diagnostic string }{
+		{"module { export const value = ( }", "Expression expected"},
+		{"module { export const value = 1", "'}' expected"},
+	} {
+		_, err := vibelangfmt.Format("main.vibe", tc.source, func(text string) (string, error) { return text, nil })
+		if err == nil || !strings.Contains(err.Error(), tc.diagnostic) {
+			t.Errorf("want %q for %s, got %v", tc.diagnostic, tc.source, err)
 		}
 	}
 }

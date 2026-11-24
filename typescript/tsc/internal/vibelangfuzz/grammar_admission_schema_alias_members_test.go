@@ -78,10 +78,7 @@ func TestGrammarAdmissionSchemaAliasMemberRegression(t *testing.T) {
 		"x = 1 < number ! string ! > ;",
 	} {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				result, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap; diagnostics=%v", result.Diagnostics)
-			}
+			checkGrammarAdmission(t, w, "admission:effect-type-trailing-bang", source)
 		})
 	}
 }

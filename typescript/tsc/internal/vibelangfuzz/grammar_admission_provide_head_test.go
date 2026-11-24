@@ -62,7 +62,7 @@ func TestGrammarAdmissionProvideIdentifier(t *testing.T) {
 			tokens := grammarLexSource(source)
 			raw := lab.read(lab.g, tokens, grammarParseMode{}).count
 			prose := lab.read(lab.g, tokens, grammarParseMode{prose: true, names: true}).count
-			t.Logf("PROVIDE_IDENTIFIER raw=%d prose=%d", raw, prose)
+
 			if raw == 0 {
 				t.Fatal("native identifier control has no raw grammar derivation")
 			}

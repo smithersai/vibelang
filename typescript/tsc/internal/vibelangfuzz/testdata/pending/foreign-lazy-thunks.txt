@@ -1,22 +1,23 @@
 # A thunk passed to sync or promise may not call a foreign function that may throw; the global and qualified wrappers agree.
-FuzzForeignLazyThunks promise/arrow/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks promise/block/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks promise/function/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks promise/local/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks Effect.promise/arrow/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks Effect.promise/block/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks Effect.promise/function/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks Effect.promise/local/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks sync/arrow/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks sync/block/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks sync/function/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks sync/local/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks Effect.sync/arrow/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks Effect.sync/block/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks Effect.sync/function/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks Effect.sync/local/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown; lane settled-vip4
-FuzzForeignLazyThunks sync/reference/untagged compiler VIP-4: the global sync admits a throwing foreign function value that Effect.sync rejects; lane settled-vip4
-FuzzForeignLazyThunks sync/reference/error compiler VIP-4: the global sync admits a throwing foreign function value that Effect.sync rejects; lane settled-vip4
-FuzzForeignLazyThunks sync/reference/unknown compiler VIP-4: the global sync admits a throwing foreign function value that Effect.sync rejects; lane settled-vip4
-FuzzForeignLazyThunks corpus:opencode-stat-sync-promise-arrow compiler VIP-4: minimized stat-sync Effect.promise arrow over an untagged foreign function is accepted; lane settled-vip4
-FuzzForeignLazyThunks witness:opencode-foreign-lazy-thunks compiler VIP-4: minimized foreign thunk witness accepts the three arrow forms; lane settled-vip4
+FuzzForeignLazyThunks promise/arrow/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks promise/block/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks promise/function/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks promise/local/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks Effect.promise/arrow/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks Effect.promise/block/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks Effect.promise/function/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks Effect.promise/local/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks sync/arrow/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks sync/block/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks sync/function/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks sync/local/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks Effect.sync/arrow/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks Effect.sync/block/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks Effect.sync/function/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks Effect.sync/local/untagged compiler VIP-4: a LazyArg thunk that calls an untagged foreign function is accepted, though the call may throw unknown
+FuzzForeignLazyThunks sync/reference/untagged compiler VIP-4: the global sync admits a throwing foreign function value that Effect.sync rejects
+FuzzForeignLazyThunks sync/reference/error compiler VIP-4: the global sync admits a throwing foreign function value that Effect.sync rejects
+FuzzForeignLazyThunks sync/reference/unknown compiler VIP-4: the global sync admits a throwing foreign function value that Effect.sync rejects
+FuzzForeignLazyThunks corpus:opencode-stat-sync-promise-arrow compiler VIP-4: minimized stat-sync Effect.promise arrow over an untagged foreign function is accepted
+FuzzForeignLazyThunks witness:opencode-foreign-lazy-thunks compiler VIP-4: minimized foreign thunk witness accepts the three arrow forms
+FuzzForeignLazyThunks Effect.sync/stored/untagged compiler Chapter 3 (VIP-4): storing the thunk must preserve rejection of an untagged foreign call under Effect.sync. See #650.

@@ -1,6 +1,6 @@
 # Static migration oracles retain the contract while the tooling is incomplete.
-FuzzMigrationThrowCallHome home:direct/0 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home; lane migfix-alchemy
-FuzzMigrationThrowCallHome home:direct/1 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home; lane migfix-alchemy
-FuzzMigrationThrowCallHome home:block/0 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home; lane migfix-alchemy
-FuzzMigrationThrowCallHome home:block/1 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home; lane migfix-alchemy
-FuzzMigrationThrowCallHome corpus:alchemy-workflow-encoding-call-home compiler VIP-40: minimized public decode factory has no call-based module-home plan; lane migfix-alchemy
+FuzzMigrationThrowCallHome home:direct/0 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home
+FuzzMigrationThrowCallHome home:direct/1 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home
+FuzzMigrationThrowCallHome home:block/0 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home
+FuzzMigrationThrowCallHome home:block/1 compiler VIP-40: known call-time JSON.parse needs a preserving whole-factory TypeScript module home
+FuzzMigrationThrowCallHome corpus:alchemy-workflow-encoding-call-home compiler VIP-40: minimized public decode factory has no call-based module-home plan

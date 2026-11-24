@@ -42,7 +42,7 @@ func failuresNominalLiteralKeyCases() []*failCase {
 			quote = "a `_tag` member in an `error` or `schema error` body, or a computed `schema error` key whose runtime domain cannot be proved to exclude `\"_tag\"`; use a literal key or a symbol"
 			member = "⟦" + member + "⟧"
 		}
-		cases = append(cases, &failCase{Name: "error-nominal-literal-key-" + row.name, Quote: quote, Owner: "impl-hunt-fail", VIP: 13, Host: "none", Decls: prelude + "declare const key: " + row.domain + "; export error Bad { id: string; " + member + " }", Code: code, OneDiagnostic: row.reserved})
+		cases = append(cases, &failCase{Name: "error-nominal-literal-key-" + row.name, Quote: quote, VIP: 13, Host: "none", Decls: prelude + "declare const key: " + row.domain + "; export error Bad { id: string; " + member + " }", Code: code, OneDiagnostic: row.reserved})
 	}
 	return cases
 }

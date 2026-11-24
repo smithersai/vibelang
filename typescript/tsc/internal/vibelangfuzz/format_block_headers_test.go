@@ -14,6 +14,7 @@ import (
 // Vary block kind, line endings, indentation, comment count and nesting.
 func FuzzFormatBlockHeaders(f *testing.F) {
 	startShortBudget(f)
+	w := NewWorkspace(f)
 	checkFormatBlockHeaderRulesQuoted(f)
 	keys := []string{"effect-block", "do-block", "do-line", "nested-effect"}
 	for _, key := range keys {
@@ -54,8 +55,8 @@ func FuzzFormatBlockHeaders(f *testing.F) {
 			if err != nil {
 				Gap(t, "FuzzFormatBlockHeaders", "block-header:"+key+":refusal", "%v\n%s", err, source)
 			}
-			if err := vibelangfmt.SameProgram(source, once); err != nil {
-				Gap(t, "FuzzFormatBlockHeaders", "block-header:"+key+":meaning", "%v\n%s\n%s", err, source, once)
+			if difference := formatCompilationDifference(t, w, "FuzzFormatBlockHeaders", source, once); difference != "" {
+				Gap(t, "FuzzFormatBlockHeaders", "block-header:"+key+":meaning", "%v\n%s\n%s", difference, source, once)
 			}
 			for _, comment := range []string{"/* header */", "/* second */", "// header", "/* inner */"} {
 				if strings.Contains(source, comment) && !strings.Contains(once, comment) {

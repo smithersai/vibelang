@@ -11,8 +11,8 @@ FuzzParse             feature:parse-span-CallExpression          compiler  D61: 
 FuzzParse             feature:estree-range-CallExpression        compiler  Chapter 28 Linting (D277): a schema error's extends clause converts to a CallExpression whose range ends before it starts
 
 # Current Appendix B registry/default gaps, each with a reduced witness.
-FuzzCompile ek:EK9204 compiler Appendix B: "warning: an old Effect `try`/`catch` statement has no expected errors". The retired `compilerOptions.vibelang.diagnostics` still raises it to error; lane del-rest.
-FuzzCompile corpus:default-EK9204 compiler Appendix B: reproduction of ek:EK9204; lane del-rest.
+FuzzCompile ek:EK9204 compiler Appendix B: "warning: an old Effect `try`/`catch` statement has no expected errors". The retired `compilerOptions.vibelang.diagnostics` still raises it to error.
+FuzzCompile corpus:default-EK9204 compiler Appendix B: reproduction of ek:EK9204.
 
 
 

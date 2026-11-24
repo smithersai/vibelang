@@ -71,7 +71,7 @@ func FuzzMigrationReferencePlan(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_reference_plan.mjs"))
 		cmd.Dir, cmd.Stdin = Root(), strings.NewReader(string(input))
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("reference oracle process: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

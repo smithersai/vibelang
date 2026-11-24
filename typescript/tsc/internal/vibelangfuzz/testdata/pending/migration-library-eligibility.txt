@@ -1,0 +1,2 @@
+FuzzMigrationLibraryEligibility context:worker-dom compiler Chapter 1: declaration comparison must report an incomplete result when Document is missing from the original WebWorker libraries. See #662.
+FuzzMigrationLibraryEligibility context:es-dom compiler Chapter 1: declaration comparison must report an incomplete result when Document is missing from the original ES2023 libraries. See #662.

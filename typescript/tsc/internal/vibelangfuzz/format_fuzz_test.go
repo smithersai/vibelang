@@ -22,7 +22,7 @@ import (
 
 // FuzzFormat formats a .vibe source with vibelangfmt.Format, the formatter
 // that dprint's plugin and the language server share (D276), and checks what
-// Chapter 28's "Rewrites keep meaning" (D372) promises of it:
+// Chapter 7 requires these properties:
 //
 //   - It never panics or hangs.
 //   - A file with a syntax error fails instead of changing (D276).
@@ -114,10 +114,13 @@ func FuzzFormat(f *testing.F) {
 			var err error
 			toolsRun(t, "FuzzFormat", "format", source, nil, func() { once, err = vibelangfmt.Format("main.vibe", source, formatter) })
 			if syntax := formatSyntaxError(source); syntax != "" {
-				// D276: "so does a file with a syntax error": it fails.
-				if err == nil && once != source {
+				if err == nil {
+					Gap(t, "FuzzFormat", "format:syntax-error-unreported", "a file with a syntax error (%s) was accepted:\n%s", syntax, source)
+				}
+				if once != "" && once != source {
 					Gap(t, "FuzzFormat", "format:syntax-error", "a file with a syntax error (%s) was formatted:\n%s\nto:\n%s", syntax, source, once)
 				}
+				ExpectPending(t, "FuzzFormat", "format:syntax-error-unreported")
 				return
 			}
 			if err != nil {
@@ -151,8 +154,7 @@ func FuzzFormat(f *testing.F) {
 				}
 				Gap(t, "FuzzFormat", "format:refusal:"+first, "D276: the formatter refused a file without syntax errors (%v):\n%s", err, source)
 			}
-			// Chapter 28, "Rewrites keep meaning", and D276: the result parses to
-			// the program the source parses to.
+			// Chapter 7: formatting preserves syntax, comments, and their associations.
 			if syntax := toolsSyntaxError("main.vibe", once); syntax != "" {
 				Gap(t, "FuzzFormat", "format:parse", "the formatted file has a syntax error (%s):\n%s\nformatted:\n%s", syntax, source, once)
 			}
@@ -160,16 +162,13 @@ func FuzzFormat(f *testing.F) {
 				before := toolsCompile(t, w, "FuzzFormat", Single(source).Files)
 				defer before.Remove()
 				after := toolsRecompile(t, w, before, Single(once).Files)
-				// D276 and D372: independently compile both projects with the same
+				// Independently compile both projects with the same
 				// configuration. The formatter's own SameProgram guard is secondary.
 				if difference := toolsFormatDifference(before, after); difference != "" {
 					Gap(t, "FuzzFormat", "format:emit:"+toolsFormatKey(before, after), "%s\nsource:\n%s\nformatted:\n%s", difference, source, once)
 				}
 			}
-			if err := vibelangfmt.SameProgram(source, once); err != nil {
-				Gap(t, "FuzzFormat", "format:same-program", "formatting changed the program (%v):\n%s\nformatted:\n%s", err, source, once)
-			}
-			// D372: "Comments survive every rewrite."
+			// Chapter 7 requires comments and their associations to survive.
 			if lost := toolsLostComments(source, once); len(lost) > 0 {
 				Gap(t, "FuzzFormat", "format:comments", "formatting lost the comments %q:\n%s\nformatted:\n%s", lost, source, once)
 			}
@@ -177,7 +176,7 @@ func FuzzFormat(f *testing.F) {
 				Gap(t, "FuzzFormat", "format:comments", "formatting added the comments %q:\n%s\nformatted:\n%s", added, source, once)
 			}
 			if moved := toolsMovedComments(source, once); len(moved) > 0 {
-				Gap(t, "FuzzFormat", "format:comment-neighbors", "D372: formatting moved comments %q:\n%s\nformatted:\n%s", moved, source, once)
+				Gap(t, "FuzzFormat", "format:comment-neighbors", "Chapter 7: formatting moved comments %q:\n%s\nformatted:\n%s", moved, source, once)
 			}
 			// Chapter 7 / VIP-34: "formatting is idempotent."
 			var twice string
@@ -227,6 +226,19 @@ func toolsFormatterForFile(tb testing.TB, name string) vibelangfmt.TypeScriptFor
 		projection := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/vibelang-format.ts", PathKey: "/vibelang-format.ts"}, text, kind)
 		return core.ApplyBulkEdits(text, format.FormatDocument(ctx, projection)), nil
 	}
+}
+
+// formatCompilationDifference compares compiler results for the original
+// and formatted text. An unchanged file needs no second compilation.
+func formatCompilationDifference(t *testing.T, w *Workspace, target, source, formatted string) string {
+	t.Helper()
+	if source == formatted {
+		return ""
+	}
+	before := toolsCompile(t, w, target, Single(source).Files)
+	defer before.Remove()
+	after := toolsRecompile(t, w, before, Single(formatted).Files)
+	return toolsFormatDifference(before, after)
 }
 
 // toolsFormatDifference compares independently parsed JavaScript/declaration

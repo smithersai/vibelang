@@ -33,7 +33,7 @@ func FuzzMigrationSidecarAvailability(f *testing.F) {
 		defer cancel()
 		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_sidecar_availability.mjs"), key, strconv.Itoa(int(mode&15)))
 		command.Dir = Root()
-		output, err := command.CombinedOutput()
+		output, err := runJSONOracle(t, command)
 		if err != nil {
 			t.Fatalf("sidecar availability model: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

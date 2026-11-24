@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -59,8 +58,8 @@ func TestGrammarAdmissionImportRelationalKeys(t *testing.T) {
 func TestGrammarAdmissionImportRelationalRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, c := range []struct {
-		source   string
-		mismatch bool
+		source  string
+		pending bool
 	}{
 		{"import < value;", true},
 		{"1\nimport < require(join)", true},
@@ -73,12 +72,12 @@ func TestGrammarAdmissionImportRelationalRegression(t *testing.T) {
 		{"const n = import;", false},
 	} {
 		t.Run(c.source, func(t *testing.T) {
-			result, err := w.Compile(context.Background(), Single(c.source))
-			if err != nil {
-				t.Fatal(err)
+			if c.pending {
+				checkGrammarAdmission(t, w, "admission:import-relational-recovery", c.source)
+				return
 			}
-			if got := grammarAdmissionVerdict(t, w, c.source); got != c.mismatch {
-				t.Fatalf("mismatch=%v,want %v; diagnostics=%v", got, c.mismatch, result.Diagnostics)
+			if grammarAdmissionVerdict(t, w, c.source) {
+				t.Fatalf("native syntax control is an admission gap: %s", c.source)
 			}
 		})
 	}

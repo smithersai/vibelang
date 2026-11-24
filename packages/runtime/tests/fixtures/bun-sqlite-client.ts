@@ -5,9 +5,13 @@
 // `fault` injects a database failure: a statement it answers true for fails
 // with a SqlError before it runs.
 import { Database } from "bun:sqlite"
-import { Effect, Layer, Semaphore, Stream } from "effect"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { Effect, Layer, ManagedRuntime, Semaphore, Stream } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { SqlClient, SqlError, Statement } from "effect/sql"
+import { Durable } from "vibelang-runtime/experimental"
 
 export const layer = (filename: string, options: { readonly fault?: ((sql: string) => boolean) | undefined } = {}) =>
   Layer.effect(
@@ -58,3 +62,47 @@ export const layer = (filename: string, options: { readonly fault?: ((sql: strin
       })
     })
   ).pipe(Layer.provide(Reactivity.layer))
+
+let scratch: string | undefined
+let files = 0
+/** A new database file in a temporary directory removed when the process exits. */
+export const databaseFile = () => {
+  if (scratch === undefined) {
+    const dir = mkdtempSync(join(tmpdir(), "durable-sqlite-"))
+    scratch = dir
+    process.on("exit", () => rmSync(dir, { recursive: true, force: true }))
+  }
+  return join(scratch, `runs-${++files}.db`)
+}
+
+/**
+ * The store an engine sees over a SQLite file, read through the engine's own
+ * `Durable.layerSql`. Each call opens its own connection, so two calls on one
+ * file are two engines' connections contending through SQLite's lock.
+ */
+export const sqliteStore = (filename: string): Promise<Durable.Store> =>
+  ManagedRuntime.make(Durable.layerSql.pipe(Layer.provide(layer(filename)))).runPromise(
+    Effect.map(Effect.service(Durable.Durable), (durable) => durable.internals.store)
+  )
+
+/**
+ * A place two engines share. `store` is the first engine's view; `another`
+ * gives a second engine its own view of the same runs: the same object for
+ * memory, a second connection to the same file for SQLite.
+ */
+export interface SharedStore {
+  readonly store: Durable.Store
+  readonly another: () => Promise<Durable.Store>
+}
+
+/** The stores engine-level tests run over: the in-memory store and SQLite. */
+export const storeFactories: ReadonlyArray<readonly [name: string, make: () => Promise<SharedStore>]> = [
+  ["memory", async () => {
+    const store = Durable.makeMemoryStore()
+    return { store, another: async () => store }
+  }],
+  ["SQLite", async () => {
+    const file = databaseFile()
+    return { store: await sqliteStore(file), another: () => sqliteStore(file) }
+  }]
+]

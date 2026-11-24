@@ -80,9 +80,25 @@ out=${CAMPAIGN_OUT:-$(mktemp -d "${TMPDIR:-/tmp}/vibelangfuzz-campaign.XXXXXX")}
 mkdir -p "$out"
 out=$(cd "$out" && pwd) # the workers run in the package's directory
 
+retired="FuzzSpecPrograms FuzzSpecVariants FuzzSpecRules FuzzSpecAllowed
+$(awk '$2 == "*" && $3 == "superseded" { print $1 }' "$here"/testdata/pending/*.txt)"
+is_retired() {
+	for name in $retired; do
+		[ "$name" != "$1" ] || return 0
+	done
+	return 1
+}
+
 targets=$*
 if [ -z "$targets" ]; then
-	targets=$(GOFLAGS= go test -list '^Fuzz' "$pkg" | grep '^Fuzz')
+	listed=$(GOFLAGS= go test -list '^Fuzz' "$pkg")
+	targets=$(printf '%s\n' "$listed" | grep '^Fuzz')
+	for name in $retired; do
+		case " $(printf '%s' "$targets" | tr '\n' ' ') " in
+			*" $name "*) ;;
+			*) targets="$targets $name" ;;
+		esac
+	done
 fi
 
 summary="$out/summary.txt"
@@ -91,6 +107,10 @@ failed=0
 names=""
 for spec in $targets; do
 	target=${spec%%=*}
+	if is_retired "$target"; then
+		echo "$target  retired" >> "$summary"
+		continue
+	fi
 	time=$duration
 	[ "$spec" != "$target" ] && time=${spec#*=}
 	seconds=$(duration_seconds "$time") || exit 2
@@ -131,13 +151,18 @@ for spec in $targets; do
 	} >> "$summary"
 done
 
-echo "== ordinary short seed CPU budgets" >&2
+if [ -z "$names" ]; then
+	cat "$summary"
+	exit "$failed"
+fi
+
+echo "== ordinary short seed CPU reports" >&2
 # Even a full-seed nightly reports the ordinary short selection separately.
 # -v preserves CPU logs from successful tests; count=1 avoids filesystem
 # input-log recording and result-cache rehashing.
 if ! VIBELANG_FUZZ_SEEDS= GOFLAGS= go test -short -count=1 -v -run "^($names)\$" "$pkg" > "$out/short-budget.log" 2>&1; then
  failed=1
- echo "short seed budget check failed; see $out/short-budget.log" >> "$summary"
+ echo "short seed check failed; see $out/short-budget.log" >> "$summary"
 fi
 echo "Short targets above 120 CPU-seconds:" >> "$summary"
 if ! grep 'short seed CPU above 120s budget:' "$out/short-budget.log" >> "$summary"; then

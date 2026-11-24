@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -69,18 +68,7 @@ func TestGrammarAdmissionForOfAsyncModuleRegression(t *testing.T) {
 		"let async: any; const xs = [1]; for (async of xs) {}",
 	} {
 		t.Run(source, func(t *testing.T) {
-			result, err := w.Compile(context.Background(), Single(source))
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, d := range result.Diagnostics {
-				if grammarAdmissionSyntaxDiagnostic(d) {
-					t.Fatalf("module head gained syntax rejection: %v", result.Diagnostics)
-				}
-			}
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("module async head lost its observed admission gap: %v", result.Diagnostics)
-			}
+			checkGrammarAdmission(t, w, "admission:for-of-async-module", source)
 		})
 	}
 }

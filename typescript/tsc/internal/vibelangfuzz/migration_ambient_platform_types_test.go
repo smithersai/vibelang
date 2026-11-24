@@ -42,7 +42,7 @@ func FuzzMigrationAmbientPlatformTypes(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_ambient_platform_types.mjs"), binary, key, strconv.Itoa(int(mode&7)))
 		cmd.Dir = Root()
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("ambient platform model: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

@@ -23,7 +23,7 @@ func checkExistingPlatformBody(t *testing.T, key string, mode uint8) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_existing_platform_body.mjs"), key, strconv.Itoa(int(mode&15)))
 	cmd.Dir = Root()
-	out, err := cmd.CombinedOutput()
+	out, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("platform body observation: %v\n%s", err, out)
 	}

@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // Chapter 1 reads the ! that completes A!! as one token, then rescans from
@@ -45,7 +47,9 @@ func FuzzEffectTypeSpacing(f *testing.F) {
 		key, index, keyed := strings.Cut(string(data), ":")
 		if at := slices.IndexFunc(effectTypeSpacingTails, func(e struct{ key, source string }) bool { return e.key == key }); keyed && at >= 0 {
 			tail = at
-			fmt.Sscan(index, &result)
+			if _, err := fmt.Sscan(index, &result); err != nil || result < 0 {
+				result = 0
+			}
 			result %= len(effectTypeSpacingResults)
 		} else if len(data) > 0 {
 			tail = int(data[0]) % len(effectTypeSpacingTails)
@@ -65,18 +69,19 @@ func FuzzEffectTypeSpacing(f *testing.F) {
 			defer r.Remove()
 			var codes []string
 			for _, d := range r.Diagnostics {
-				codes = append(codes, fmt.Sprintf("%s%d", d.Source(), d.Code()))
+				if d.Category() == diagnostics.CategoryError {
+					codes = append(codes, diagnosticKey(d))
+				}
 			}
-			return r.Outputs["out/main.js"] + "\n" + strings.Join(codes, " "), codes
+			return r.Outputs["out/main.js"], codes
 		}
 		spaced, spacedCodes := compile(" ")
-		tight, _ := compile("")
-		if spaced != tight {
-			Gap(t, "FuzzEffectTypeSpacing", "tight:"+form.key, "chapter 1: %s; %q compiles differently without the space:\nspaced:\n%s\ntight:\n%s", effectTypeSpacingQuote, fmt.Sprintf(form.source, typ, " "), spaced, tight)
-			return
+		if len(spacedCodes) != 0 || spaced == "" {
+			Gap(t, "FuzzEffectTypeSpacing", "spaced:"+form.key, "the spaced control %q did not compile cleanly: %v", fmt.Sprintf(form.source, typ, " "), spacedCodes)
 		}
-		if slices.ContainsFunc(spacedCodes, func(c string) bool { return strings.HasPrefix(c, "TS1") }) {
-			Gap(t, "FuzzEffectTypeSpacing", "spaced:"+form.key, "the spaced control %q has a syntax error: %v", fmt.Sprintf(form.source, typ, " "), spacedCodes)
+		tight, tightCodes := compile("")
+		if len(tightCodes) != 0 || spaced != tight {
+			Gap(t, "FuzzEffectTypeSpacing", "tight:"+form.key, "chapter 1: %s; %q compiles differently without the space:\nspaced:\n%s\ntight (%v):\n%s", effectTypeSpacingQuote, fmt.Sprintf(form.source, typ, " "), spaced, tightCodes, tight)
 			return
 		}
 		ExpectPending(t, "FuzzEffectTypeSpacing", "tight:"+form.key)

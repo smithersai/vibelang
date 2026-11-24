@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// The generator is structure-aware, as specgen's is: the fuzzer's bytes
+// The generator is structure-aware: the fuzzer's bytes
 // drive its choices, so every input is a valid program and coverage guidance
 // works on programs. An input chooses a focus construct and a swarm mask
 // (Groce et al., ISSTA 2012) of other constructs it may use. An exhausted

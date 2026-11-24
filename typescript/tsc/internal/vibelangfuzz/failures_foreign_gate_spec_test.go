@@ -31,11 +31,11 @@ func failuresForeignGateCases() []*failCase {
 			if bound != "never" {
 				body = "⟦" + body + "⟧"
 			}
-			cases = append(cases, &failCase{Name: "foreign-gate-" + shape.name + "-" + key, Quote: quote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Code: 403, Lib: shape.lib, Decls: shape.decls, Body: body})
-			cases = append(cases, &failCase{Name: "foreign-gate-wrapped-" + shape.name + "-" + key, Quote: quote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Lib: shape.lib, Decls: shape.decls, Body: "const value = try Effect.try(() => " + shape.call + ")"})
+			cases = append(cases, &failCase{Name: "foreign-gate-" + shape.name + "-" + key, Quote: quote, VIP: 4, Code: 403, Lib: shape.lib, Decls: shape.decls, Body: body})
+			cases = append(cases, &failCase{Name: "foreign-gate-wrapped-" + shape.name + "-" + key, Quote: quote, VIP: 4, Lib: shape.lib, Decls: shape.decls, Body: "const value = try Effect.try(() => " + shape.call + ")"})
 		}
 	}
-	cases = append(cases, &failCase{Name: "foreign-gate-overload-selected-never", Quote: quote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Lib: "/** @throws {RangeError} */\nexport declare function read(s: string): string\n/** @throws {never} */\nexport declare function read(n: number): number", Body: "read(1)"})
+	cases = append(cases, &failCase{Name: "foreign-gate-overload-selected-never", Quote: quote, VIP: 4, Lib: "/** @throws {RangeError} */\nexport declare function read(s: string): string\n/** @throws {never} */\nexport declare function read(n: number): number", Body: "read(1)"})
 
 	for _, bound := range []struct{ key, text string }{{"private", "Hidden"}, {"mixed-private", "RangeError | Hidden"}} {
 		tag := "/** @throws {" + bound.text + "} */"
@@ -45,8 +45,8 @@ func failuresForeignGateCases() []*failCase {
 		} {
 			lib := "declare class Hidden extends Error {}\n" + shape.lib
 			key := "foreign-gate-" + shape.name + "-" + bound.key
-			cases = append(cases, &failCase{Name: key, Quote: quote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Code: 403, Lib: lib, Body: "⟦read(s)⟧"})
-			cases = append(cases, &failCase{Name: key + "-wrapped", Quote: quote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Lib: lib, Body: "const value = try Effect.try(() => read(s))"})
+			cases = append(cases, &failCase{Name: key, Quote: quote, VIP: 4, Code: 403, Lib: lib, Body: "⟦read(s)⟧"})
+			cases = append(cases, &failCase{Name: key + "-wrapped", Quote: quote, VIP: 4, Lib: lib, Body: "const value = try Effect.try(() => read(s))"})
 		}
 	}
 
@@ -59,11 +59,11 @@ func failuresForeignGateCases() []*failCase {
 			{"member", "declare const holder: { read: " + typ + " }", "holder.read(s)"},
 		} {
 			key := "foreign-gate-dynamic-" + strings.ToLower(typ) + "-" + shape.name
-			cases = append(cases, &failCase{Name: key, Quote: dynamicQuote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Code: 403, Decls: shape.decls, Body: "⟦" + shape.call + "⟧"})
-			cases = append(cases, &failCase{Name: key + "-wrapped", Quote: dynamicQuote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Decls: shape.decls, Body: "const value = try Effect.try(() => " + shape.call + ")"})
+			cases = append(cases, &failCase{Name: key, Quote: dynamicQuote, VIP: 4, Code: 403, Decls: shape.decls, Body: "⟦" + shape.call + "⟧"})
+			cases = append(cases, &failCase{Name: key + "-wrapped", Quote: dynamicQuote, VIP: 4, Decls: shape.decls, Body: "const value = try Effect.try(() => " + shape.call + ")"})
 		}
 		key := "foreign-gate-dynamic-" + strings.ToLower(typ) + "-parameter"
-		cases = append(cases, &failCase{Name: key, Quote: dynamicQuote, VIP: 4, Owner: "conf-auto-foreign-call-throws-gate", Code: 403, Host: "none", Body: "export effect function probe(read: " + typ + ") { return ⟦read()⟧ }"})
+		cases = append(cases, &failCase{Name: key, Quote: dynamicQuote, VIP: 4, Code: 403, Host: "none", Body: "export effect function probe(read: " + typ + ") { return ⟦read()⟧ }"})
 	}
 	return cases
 }

@@ -37,7 +37,7 @@ func migrationFactoryModel(t *testing.T, area, key string, mode uint8) (bool, st
 	}
 	cmd := exec.CommandContext(ctx, "node", script, area, key, strconv.Itoa(int(encodedMode)))
 	cmd.Dir = Root()
-	output, err := cmd.CombinedOutput()
+	output, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("static migration model %s/%s/%d: %v; context=%v\n%s", area, key, encodedMode, err, ctx.Err(), output)
 	}

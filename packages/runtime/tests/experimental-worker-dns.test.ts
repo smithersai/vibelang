@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test"
+import { createServer, connect as connectTcp, type AddressInfo } from "node:net"
+import { Duplex } from "node:stream"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { FetchHttpClient } from "effect/http"
@@ -12,7 +14,7 @@ const fakeFetch = (status = 0): typeof fetch => (async (input: RequestInfo | URL
   const url = new URL(String(input))
   return Response.json({ Status: status, Answer: [
     { type: 2, data: "ns.example.test" }, { type: 1, data: "192.0.2.53" }, { type: 16, data: '"cached-value"' }
-  ].filter((record) => record.type === (url.searchParams.get("type") === "NS" ? 2 : 1)) })
+  ].filter((record) => record.type === ({ NS: 2, A: 1, TXT: 16 } as Record<string, number>)[url.searchParams.get("type") ?? ""]) })
 }) as typeof fetch
 
 const http = Layer.provide(FetchHttpClient.layer, Layer.succeed(FetchHttpClient.Fetch, fakeFetch()))
@@ -165,4 +167,67 @@ test("Worker reports a short TCP frame as typed InvalidData and closes it", asyn
   const failure = await Effect.runPromise(Effect.provide(Effect.flip(Effect.flatMap(Dns.Dns, (dns) => dns.resolveTxtAt("192.0.2.53", name))), layer))
   expect(failure.reason).toBe("InvalidData")
   expect(closed).toBe(1)
+})
+
+test("Worker discovery refuses TXT as Unsupported and never asks DoH for it", async () => {
+  const types: Array<string | null> = []
+  const recording = Layer.provide(FetchHttpClient.layer, Layer.succeed(FetchHttpClient.Fetch, (async (input: RequestInfo | URL) => {
+    types.push(new URL(String(input)).searchParams.get("type"))
+    return fakeFetch()(input)
+  }) as typeof fetch))
+  const layer = Layer.provide(ExperimentalWorkerDns.layerWith({ connect: () => socket(0x8400, 1, () => {}) }), recording)
+  const failure = await Effect.runPromise(Effect.provide(Effect.flip(Effect.flatMap(Dns.Dns, (dns) => dns.resolve(name, "TXT"))), layer))
+  expect(failure.reason).toBe("Unsupported")
+  expect(types).toEqual([])
+})
+
+// A real DNS-over-TCP exchange on loopback: the Worker layer's framing runs
+// against node:net sockets, not a fake stream, and the server checks the query.
+test("Worker framing speaks to a real TCP DNS server on loopback", async () => {
+  const seen: Array<{ recursionDesired: boolean; closedByClient: boolean }> = []
+  const server = createServer((peer) => {
+    let pending = Buffer.alloc(0)
+    const record = { recursionDesired: false, closedByClient: false }
+    seen.push(record)
+    peer.on("end", () => { record.closedByClient = true; peer.end() })
+    peer.on("error", () => {})
+    peer.on("data", (chunk) => {
+      pending = Buffer.concat([pending, chunk])
+      if (pending.length < 2 || pending.length < pending.readUInt16BE(0) + 2) return
+      const query = new Uint8Array(pending.subarray(2, pending.readUInt16BE(0) + 2))
+      record.recursionDesired = (query[2] & 0x01) !== 0
+      const body = answer(query, [{ type: 16, data: txt(["over-", "tcp"]) }], 0x8400)
+      const frame = Buffer.alloc(body.length + 2)
+      frame.writeUInt16BE(body.length, 0)
+      frame.set(body, 2)
+      // Two writes split inside the length prefix and inside the body.
+      peer.write(frame.subarray(0, 1))
+      setTimeout(() => peer.write(frame.subarray(1)), 5)
+    })
+  })
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+  const port = (server.address() as AddressInfo).port
+  const addresses: unknown[] = []
+  try {
+    const layer = withHttp(ExperimentalWorkerDns.layerWith({
+      connect: (address) => {
+        addresses.push(address)
+        const tcp = connectTcp(port, "127.0.0.1")
+        const web = Duplex.toWeb(tcp) as unknown as { readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array> }
+        return {
+          readable: web.readable,
+          writable: web.writable,
+          closed: new Promise((resolve) => tcp.once("close", resolve)),
+          close: async () => { tcp.end() }
+        }
+      }
+    }))
+    const result = await Effect.runPromise(Effect.provide(Effect.flatMap(Dns.Dns, (dns) => dns.resolveTxtAt("192.0.2.53", name)), layer))
+    expect(result).toEqual(["over-tcp"])
+    expect(addresses).toEqual([{ hostname: "192.0.2.53", port: 53 }])
+    for (let i = 0; i < 100 && !seen[0]?.closedByClient; i++) await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(seen).toEqual([{ recursionDesired: false, closedByClient: true }])
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+  }
 })

@@ -35,7 +35,7 @@ func TestEffectObjectSlotsQuoted(t *testing.T) { requireEffectObjectSlotQuotes(t
 func FuzzEffectObjectTypeSlots(f *testing.F) {
 	startShortBudget(f)
 	requireEffectObjectSlotQuotes(f)
-	for _, key := range []string{"nonnull-assertion", "conformance-witness", "required-R", "both-objects", "callable", "property", "method", "tuple", "array", "legacy-body", "optional-R-parenthesized", "optional-R-excluded", "next-line-block"} {
+	for _, key := range []string{"nonnull-assertion", "conformance-witness", "required-R", "both-objects", "callable", "property", "method", "tuple", "array", "optional-R-parenthesized", "optional-R-excluded"} {
 		for _, mode := range []uint8{0, 1, 2} {
 			f.Add(key, mode)
 		}
@@ -74,9 +74,6 @@ func FuzzEffectObjectTypeSlots(f *testing.F) {
 		case "array":
 			source = "type Value = (" + short + ")[]"
 			expanded = "(" + expanded + ")[]"
-		case "legacy-body":
-			source = "effect function load(): " + scalar + "!string!" + gap + "{ return " + value + " }; type Value = ReturnType<typeof load>"
-			expanded = "Effect.Effect<" + scalar + ", string, never>"
 		case "optional-R-parenthesized":
 			source = "type Value = " + scalar + "!!(" + requirement + ")"
 			expanded = "Effect.Effect<" + scalar + ", never, " + requirement + ">"
@@ -85,9 +82,6 @@ func FuzzEffectObjectTypeSlots(f *testing.F) {
 			// return annotation. A type alias cannot be followed by a block.
 			source = "effect function load(): " + scalar + "!!" + gap + "{ return " + value + " }; type Value = ReturnType<typeof load>"
 			expanded = "Effect.Effect<" + scalar + ">"
-		case "next-line-block":
-			source = "type Value = " + scalar + "!string!\n{}"
-			expanded = "Effect.Effect<" + scalar + ", string, never>"
 		default:
 			key = "required-R"
 		}

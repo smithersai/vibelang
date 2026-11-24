@@ -138,11 +138,12 @@ func FuzzGlobalLegacyMembers(f *testing.F) {
 			if name == "main.ts" {
 				want = 0
 			}
+			oracleKey := key + ":" + name
 			if got != want {
-				Gap(t, "FuzzGlobalLegacyMembers", key+":"+name, "Chapter 001: %s; %s; %s: got %d EK0107, want %d\n%s", globalLegacyMemberQuote, globalLegacyExemptionQuote, globalLegacyModuleQuote, got, want, source)
+				Gap(t, "FuzzGlobalLegacyMembers", oracleKey, "Chapter 001: %s; %s; %s: got %d EK0107, want %d\n%s", globalLegacyMemberQuote, globalLegacyExemptionQuote, globalLegacyModuleQuote, got, want, source)
 			}
+			ExpectPending(t, "FuzzGlobalLegacyMembers", oracleKey)
 		}
-		ExpectPending(t, "FuzzGlobalLegacyMembers", key)
 		ExpectPending(t, "FuzzGlobalLegacyMembers", specCorpusKey(t))
 	})
 }

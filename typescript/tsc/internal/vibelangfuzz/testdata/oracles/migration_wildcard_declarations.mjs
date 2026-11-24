@@ -7,7 +7,7 @@ import { compareDeclarations,recordDeclarationSurface } from "../../../../../../
 const ts=createRequire(join(process.cwd(),"packages/runtime/package.json"))("typescript")
 const [key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&15
 const fixture=JSON.parse(readFileSync(new URL("../corpus/alchemy-fixed-leaf-wildcard-declarations.json",import.meta.url),"utf8"))
-mkdirSync(".cache",{recursive:true});const root=mkdtempSync(join(process.cwd(),".cache/wildcard-declarations-"))
+mkdirSync(".cache",{recursive:true});const root=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(process.cwd(),".cache/wildcard-declarations-"))
 const put=(file,text)=>{mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text)}
 try {
  const prefix=mode&1?"lib/space δ/":"lib/",extension=mode&2?".d.mts":".d.ts"

@@ -11,7 +11,7 @@ const ts = require("typescript")
 const { compareDeclarations, recordDeclarationSurface } = await import(pathToFileURL(join(repo, ".smithers/flows/migrate/lib/declarations.mjs")))
 const corpus = JSON.parse(readFileSync(new URL("../corpus/t3code-original-self-projected-alias.json", import.meta.url), "utf8"))
 const input = JSON.parse(readFileSync(0, "utf8"))
-const root = mkdtempSync(join(tmpdir(), "declaration-alias-self-"))
+const root = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(tmpdir(), "declaration-alias-self-"))
 const put = (file, text) => { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, text) }
 const tree = directory => {
   const result = {}

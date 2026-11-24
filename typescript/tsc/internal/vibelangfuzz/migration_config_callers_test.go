@@ -50,7 +50,7 @@ func FuzzMigrationConfigCallers(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_config_callers.mjs"), key, strconv.Itoa(int(mode&15)))
 		cmd.Dir = Root()
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("native config caller transaction: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

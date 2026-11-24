@@ -2,9 +2,10 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 const forConstTarget = "FuzzForHeadConstDestructuring"
@@ -76,7 +77,7 @@ func FuzzForHeadConstDestructuring(f *testing.F) {
 					continue
 				}
 				if d.Code() != 2588 {
-					t.Fatalf("invalid witness %s: %s\\n%s", row.file, specDiagnosticText(d), row.source)
+					t.Fatalf("invalid witness %s: %s\n%s", row.file, specDiagnosticText(d), row.source)
 				}
 				count++
 			}
@@ -90,7 +91,7 @@ func FuzzForHeadConstDestructuring(f *testing.F) {
 					t.Fatalf("native const witness got %d, want %d", count, want)
 				}
 			} else if count != expected {
-				Gap(t, forConstTarget, fmt.Sprintf("%s/%d/%d/%t", selected, operation%3, home%3, constant), forConstQuote+"; native has %d TS2588, VibeLang has %d\\n%s", expected, count, source)
+				Gap(t, forConstTarget, fmt.Sprintf("%s/%d/%d/%t", selected, operation%3, home%3, constant), forConstQuote+"; native has %d TS2588, VibeLang has %d\n%s", expected, count, source)
 			}
 		}
 	})

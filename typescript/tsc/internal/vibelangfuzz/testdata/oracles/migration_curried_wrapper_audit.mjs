@@ -6,7 +6,7 @@ import { tmpdir } from "node:os"
 import { lostWrappers } from "../../../../../../.smithers/flows/migrate/lib/lost-wrapper.mjs"
 const ts=createRequire(join(process.cwd(),"packages/runtime/package.json"))("typescript")
 const input=JSON.parse(readFileSync(0,"utf8"))
-const root=mkdtempSync(join(tmpdir(),"curried-wrapper-audit-"))
+const root=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(tmpdir(),"curried-wrapper-audit-"))
 try {
  writeFileSync(join(root,"package.json"),'{"type":"module"}\n')
  symlinkSync(resolve("packages/runtime/node_modules"),join(root,"node_modules"),"dir")
@@ -19,5 +19,5 @@ try {
  const control='import * as Effect from "effect/Effect";\nexport const factory = () => Effect.succeed(1);\n'
  const negative=lostWrappers({ts,original:control,emitted:'export const factory = () => 1;\n'})
  const identity=lostWrappers({ts,original:control,emitted:control})
- console.log(JSON.stringify({...result,stockCodes:[],stockVersion:ts.version,negativeFlags:negative.flags.length,identityFlags:identity.flags.length,identityUnpaired:identity.unpaired.length}))
+ console.log(JSON.stringify({...result,stockVersion:ts.version,negativeFlags:negative.flags.length,identityFlags:identity.flags.length,identityUnpaired:identity.unpaired.length}))
 } finally {rmSync(root,{recursive:true,force:true})}

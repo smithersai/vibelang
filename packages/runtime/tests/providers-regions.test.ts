@@ -404,6 +404,10 @@ test("catch expressions are lazy, recover only expected causes, and keep handler
   }
   // A failure beside an interruption is recovered, as Effect.catch recovers it (D306).
   expect(Effect.runSync($catchExpression(() => Effect.failCause(Cause.combine(Cause.interrupt(123), Cause.fail("bad"))), e => Effect.succeed(`caught:${e}`)))).toBe("caught:bad")
+  // Interruptor ids may be negative; the failure beside one is recovered all the same.
+  for (const id of [-1, -900000000]) {
+    expect(Effect.runSync($catchExpression(() => Effect.failCause(Cause.combine(Cause.interrupt(id), Cause.fail("bad"))), e => Effect.succeed(`caught:${e}`)))).toBe("caught:bad")
+  }
   // A failure beside a defect passes as a defect (D305).
   const mixed = await Effect.runPromiseExit($catchExpression(() => Effect.failCause(Cause.combine(Cause.fail("bad"), Cause.die("defect"))), () => Effect.sync(() => ++caught)))
   expect(Exit.isFailure(mixed) && mixed.cause.reasons.map(r => r._tag === "Die" ? r.defect : r._tag)).toEqual(["bad", "defect"])

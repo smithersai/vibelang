@@ -110,10 +110,7 @@ func TestGrammarAdmissionParenthesizedEffectRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarParenthesizedTrailingTypes {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("recorded final-slot admission gap changed: %s", source)
-			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
+			checkGrammarAdmission(t, w, "admission:effect-type-trailing-bang", source)
 		})
 	}
 	// The original raw fuzz bytes must replay the same minimized program.

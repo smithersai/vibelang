@@ -127,7 +127,7 @@ func FuzzMigrationRunPhaseBoundaries(f *testing.F) {
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_run_phase_boundaries.mjs"))
 		cmd.Dir = Root()
 		cmd.Stdin = strings.NewReader(string(input))
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("static run-phase oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

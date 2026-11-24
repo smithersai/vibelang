@@ -25,8 +25,8 @@ func TestThrowCommaSourceRequiresParentheses(t *testing.T) {
 				if !rejected {
 					t.Fatal("ungrouped comma must report EK1010")
 				}
-				if _, failure := Parse(fileName, text); failure == nil {
-					t.Fatal("ESTree accepted an invalid throw-comma expression")
+				if _, failure := Parse(fileName, text); failure == nil || failure.Index != strings.Index(text, "throw ") || !strings.Contains(failure.Message, "can't be followed by ,") {
+					t.Fatalf("want throw-comma diagnostic at throw, got %v", failure)
 				}
 				text = strings.ReplaceAll(text, "throw e", "(throw e)")
 				program := parse(t, fileName, text)
@@ -61,8 +61,8 @@ func TestCryptoPropertyThrowGroupingProducesESTree(t *testing.T) {
 	if !rejected {
 		t.Fatal("minimized property must exercise EK1010")
 	}
-	if _, failure := Parse("main.vibe", text); failure == nil {
-		t.Fatal("invalid property must not produce an ESTree")
+	if _, failure := Parse("main.vibe", text); failure == nil || failure.Index != strings.Index(text, "throw ") || !strings.Contains(failure.Message, "can't be followed by ,") {
+		t.Fatalf("want throw-comma diagnostic at throw, got %v", failure)
 	}
 	text = strings.ReplaceAll(text, "throw badArgument()", "(throw badArgument())")
 	parse(t, "main.vibe", text)

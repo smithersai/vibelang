@@ -10,7 +10,7 @@ import { pathReadDeferrals } from "../../../../../../.smithers/flows/migrate/lib
 const [key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&15,root=process.cwd()
 const fixture=JSON.parse(readFileSync(new URL("../corpus/t3code-electron-sign-hook-filename.json",import.meta.url),"utf8"))
 mkdirSync(join(root,".cache"),{recursive:true})
-const temporary=mkdtempSync(join(root,".cache/hook-filenames-"))
+const temporary=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(root,".cache/hook-filenames-"))
 try {
  const folder=mode&1?"pkg/nested":"pkg",stem=mode&2?"signatureδ":"windows-jsign"
  const file=folder+"/scripts/lib/"+stem+".ts",caller=folder+"/scripts/build-desktop-artifact.ts"

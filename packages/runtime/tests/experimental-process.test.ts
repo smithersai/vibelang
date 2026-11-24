@@ -10,6 +10,7 @@ import { Process } from "vibelang-runtime/experimental"
 import { ExperimentalBunProcess, ExperimentalBunServices } from "vibelang-runtime/experimental/platform-bun"
 import { ExperimentalNodeProcess, ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 import { observe } from "./fixtures/process-scenarios.ts"
+import { spawnBounded } from "./subprocess"
 
 const facts = {
   pid: true,
@@ -54,8 +55,8 @@ test("Process: Bun's layer reads this process and signals real children", async 
 }, 30_000)
 
 test("Process: Node.js's layer reads this process and signals real children", () => {
-  const result = Bun.spawnSync(["node", "tests/fixtures/process-node.ts"], {
-    cwd: new URL("..", import.meta.url).pathname, stdout: "pipe", stderr: "pipe"
+  const result = spawnBounded(["node", "tests/fixtures/process-node.ts"], {
+    cwd: new URL("..", import.meta.url).pathname, timeout: 25_000
   })
   expect(result.stderr.toString()).toBe("")
   expect(result.exitCode).toBe(0)
@@ -206,18 +207,26 @@ test("Process: layerTest's observeSignals receives none", async () => {
 
 // The drive's oracle (foldkit-119): the original script exits 130 on SIGINT and 143 on SIGTERM, after READY, with
 // nothing on stderr. Standard runMain alone exits 130 for both.
-const runSignalled = async (runtime: string, signal: "SIGINT" | "SIGTERM") => {
+// A child that never prints READY is killed at readyMs, so it cannot outlive the test.
+const runSignalled = async (runtime: string, signal: "SIGINT" | "SIGTERM", readyMs = 10_000) => {
   const child = Bun.spawn([runtime, `${import.meta.dir}/fixtures/process-signals.ts`], { stdout: "pipe", stderr: "pipe" })
-  const reader = child.stdout.getReader()
-  let out = ""
-  while (!out.includes("READY")) {
-    const { done, value } = await reader.read()
-    if (done) break
-    out += new TextDecoder().decode(value)
+  const deadline = setTimeout(() => child.kill("SIGKILL"), readyMs)
+  try {
+    const reader = child.stdout.getReader()
+    let out = ""
+    while (!out.includes("READY")) {
+      const { done, value } = await reader.read()
+      if (done) break
+      out += new TextDecoder().decode(value)
+    }
+    if (!out.includes("READY")) throw new Error(`${runtime} did not print READY within ${readyMs} ms`)
+    child.kill(signal)
+    const code = await child.exited
+    return { code, out, err: await new Response(child.stderr).text() }
+  } finally {
+    clearTimeout(deadline)
+    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL")
   }
-  child.kill(signal)
-  const code = await child.exited
-  return { code, out, err: await new Response(child.stderr).text() }
 }
 
 for (const runtime of ["node", "bun"]) {
@@ -228,3 +237,16 @@ for (const runtime of ["node", "bun"]) {
     expect(await runSignalled(path, "SIGTERM")).toEqual({ code: 143, out: "READY\n", err: "" })
   }, 30000)
 }
+
+test("Process: a synchronous child that outlives its timeout fails by name instead of holding the suite", () => {
+  const started = performance.now()
+  expect(() => spawnBounded(["sleep", "30"], { timeout: 200 })).toThrow("child exceeded its 200 ms timeout")
+  expect(performance.now() - started).toBeLessThan(10_000)
+})
+
+test("Process: a child that never prints READY is killed when its wait ends", async () => {
+  const started = performance.now()
+  // 1 ms elapses before the fixture can print READY on any host.
+  await expect(runSignalled(process.execPath, "SIGTERM", 1)).rejects.toThrow("did not print READY within 1 ms")
+  expect(performance.now() - started).toBeLessThan(10_000)
+})

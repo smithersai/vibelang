@@ -49,13 +49,25 @@ func TestGrammarAdmissionModulePriorityKeys(t *testing.T) {
 
 func TestGrammarAdmissionModulePriorityRegression(t *testing.T) {
 	w := NewWorkspace(t)
-	// Check the minimized campaign witness explicitly. The remaining bodies
-	// exercise the same existing pending family with independent mutations.
+	// The redeclaration diagnostic is independent of the duplicate body's
+	// syntax. Corpus witnesses check admission of those bodies separately.
 	for _, body := range grammarModuleRedeclaredPriorityBodies {
 		source := "module twice {}\nmodule twice { " + body + " }"
 		t.Run(body, func(t *testing.T) {
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
+			checkGrammarModuleRedeclaration(t, w, source)
 		})
 	}
-	checkGrammarAdmission(t, w, grammarAdmissionMutationKey(grammarModuleRedeclaredPriorityWitness), grammarModuleRedeclaredPriorityWitness)
+	checkGrammarModuleRedeclaration(t, w, grammarModuleRedeclaredPriorityWitness)
+}
+
+func checkGrammarModuleRedeclaration(t *testing.T, w *Workspace, source string) {
+	t.Helper()
+	result := toolsCompile(t, w, "FuzzGrammarAdmission", Single(source).Files)
+	defer result.Remove()
+	for _, d := range result.Diagnostics {
+		if IsEK(d) && d.Code() == 4005 {
+			return
+		}
+	}
+	t.Fatalf("duplicate module is missing EK4005: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 }

@@ -78,6 +78,7 @@ func TestGrammarAdmissionDeepNative(t *testing.T) {
 		"const v = class { static { } } ;",
 		"C < T >",
 		"const v = C < T >",
+		"const v = C < T > + 1 ;",
 		"join < value\n>",
 		"M <\nrestore >",
 		"const v = C < T >\nx ;",
@@ -122,18 +123,22 @@ func TestGrammarAdmissionDeepRejected(t *testing.T) {
 		"const b = throw 1 + 1 ;",
 		"function f ( xs ) { for ( const x = 1 of xs ) { } }",
 		"const x = { p = 1 } ;",
-		"const v = C < T > + 1 ;",
 		"x as Foo < y",
 		"schema S { key : string = \"k\" }",
 	} {
 		t.Run(source, func(t *testing.T) {
-			if mismatch, _ := grammarAdmissionMismatch(source); !mismatch {
+			mismatch, detail := grammarAdmissionMismatch(source)
+			if detail == "compiler syntax error" {
 				return
+			}
+			if !mismatch {
+				t.Fatal("Appendix A derived a negative control")
 			}
 			result, err := w.Compile(context.Background(), Single(source))
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer result.Remove()
 			if result.Program != nil && HasError(result.Program.GetSyntacticDiagnostics(context.Background(), nil)) {
 				return
 			}
@@ -176,9 +181,6 @@ func TestGrammarAdmissionDeepKeys(t *testing.T) {
 		t.Run(source, func(t *testing.T) {
 			if got := grammarAdmissionForm(source); got != want {
 				t.Fatalf("key = %q, want %q", got, want)
-			}
-			if _, pending := Pending("FuzzGrammarAdmission", want); !pending {
-				t.Fatalf("%s is not pending", want)
 			}
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})

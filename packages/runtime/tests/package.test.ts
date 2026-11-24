@@ -4,6 +4,7 @@ import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writ
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { spawnBounded } from "./subprocess"
 
 const packageDir = fileURLToPath(new URL("..", import.meta.url))
 const effectDir = dirname(fileURLToPath(import.meta.resolve("effect/package.json")))
@@ -42,6 +43,7 @@ for (const kernelFirst of [false, true]) {
       writeFileSync(join(dir, "main.js"), imports.join("\n") + '\nconsole.log(Effect.runSync($bind(42)), typeof catchExpected)\n')
       for (const executable of ["node", process.execPath]) {
         const result = Bun.spawnSync([executable, "main.js"], { cwd: dir, timeout: 10_000 })
+        expect(result.exitedDueToTimeout ?? false).toBe(false)
         expect(result.stderr.toString()).toBe("")
         expect(result.exitCode).toBe(0)
         expect(result.stdout.toString().trim()).toBe("42 function")
@@ -69,7 +71,7 @@ for (const version of ["4.1.1", "4.1.0", "4.1.2", "3.99.0"]) {
         ["node", "--input-type=commonjs", "-e", 'const { Effect, $bind } = require("vibelang-runtime"); console.log(Effect.runSync($bind(42)))']
       ]
       for (const command of commands) {
-        const result = Bun.spawnSync(command, { cwd: dir, stdout: "pipe", stderr: "pipe" })
+        const result = spawnBounded(command, { cwd: dir, timeout: 10_000 })
         const output = result.stdout.toString() + result.stderr.toString()
         if (version === "4.1.1") {
           expect(result.exitCode).toBe(0)
@@ -85,7 +87,7 @@ for (const version of ["4.1.1", "4.1.0", "4.1.2", "3.99.0"]) {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
-  }, 30_000)
+  }, 60_000)
 }
 
 test("package: the ES-module and CommonJS guards pin the same Effect version", () => {
@@ -101,6 +103,7 @@ test("package: emitted declarations resolve and retain helper types", () => {
     cwd: packageDir, stdout: "pipe", stderr: "pipe", timeout: 120_000
   })
   expect(result.signalCode ?? null).toBeNull() // a killed tsc names its signal; a finished one has none
+  expect(result.exitedDueToTimeout ?? false).toBe(false)
   expect(result.stdout.toString() + result.stderr.toString()).toBe("")
   expect(result.exitCode).toBe(0)
 }, 150_000)
@@ -116,7 +119,7 @@ test("package: a missing Effect 3 export cannot hide the version mismatch", asyn
     const names = Object.keys(await import("effect")).filter((name) => name !== "Pull")
     writeFileSync(join(effect, "index.js"), "export { " + names.join(", ") + ' } from "./dist/index.js"\n')
     for (const command of [["node", "main.js"], [process.execPath, "main.js"]]) {
-      const result = Bun.spawnSync(command, { cwd: dir, stdout: "pipe", stderr: "pipe" })
+      const result = spawnBounded(command, { cwd: dir, timeout: 10_000 })
       const output = result.stdout.toString() + result.stderr.toString()
       expect(result.exitCode).not.toBe(0)
       expect(output).toContain("requires effect@4.1.1; found effect@3.19.0")
@@ -165,7 +168,7 @@ test("package: the version check does not resolve an incompatible Effect graph",
       exports: { "./package.json": "./package.json" }
     }))
     for (const command of [["node", "main.js"], [process.execPath, "main.js"]]) {
-      const result = Bun.spawnSync(command, { cwd: dir, stdout: "pipe", stderr: "pipe" })
+      const result = spawnBounded(command, { cwd: dir, timeout: 10_000 })
       const output = result.stdout.toString() + result.stderr.toString()
       expect(result.exitCode).not.toBe(0)
       expect(output).toContain("requires effect@4.1.1; found effect@3.19.0")
@@ -175,4 +178,4 @@ test("package: the version check does not resolve an incompatible Effect graph",
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
-})
+}, 30_000)

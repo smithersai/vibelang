@@ -2,12 +2,19 @@ import { expect, it } from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Cause from "effect/Cause"
-import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import fc from "fast-check"
 import { readFileSync } from "node:fs"
 
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-native-request-at-url.json", import.meta.url), "utf8"))
 const load = () => import("../src/experimental/Request.js")
+// The service under test is the shipped layer's, never a lambda of the test's
+// own: a property that built its service from `new Request(url, input)` would
+// compare the native constructor with itself.
+const shipped = async () => {
+  const api = await load()
+  const { layer } = await import("../src/experimental/platform-node/ExperimentalNodeRequest.js")
+  return Effect.runPromise(Effect.provide(api.Request, layer))
+}
 type Model = { url: string; method: "GET" | "POST"; body: "none" | "text" | "stream"; cache: RequestCache; credentials: RequestCredentials; redirect: RequestRedirect; used: boolean; aborted: boolean; afterAbort: boolean; tag: string }
 const base: Model = { url: "https://target.invalid/b", method: "POST", body: "text", cache: "no-store", credentials: "include", redirect: "manual", used: false, aborted: false, afterAbort: false, tag: "value" }
 async function frame(model: Model) {
@@ -51,7 +58,7 @@ it("defers the injected constructor and passes the exact source/URL", async () =
   expect(calls).toEqual([["https://target.invalid/b", input]])
 })
 it("preserves native body/headers/signal metadata and consumption behavior", async () => {
-  const api = await load(), requests = api.make({ atUrl: (url, input) => new Request(url, input) })
+  const requests = await shipped()
   const copy = async (url: string, input: Request) => { const result = await Effect.runPromiseExit(requests.atUrl(url, input)); return Exit.isSuccess(result) ? { value: result.value } : { error: Cause.squash(result.cause) } }
   for (const body of ["none", "text", "stream"] as const) for (const aborted of [false, true]) {
     const model = { ...base, body, aborted, afterAbort: !aborted }
@@ -69,14 +76,8 @@ it("provides an explicit fake without a host constructor", async () => {
   const program = Effect.flatMap(api.Request, requests => requests.atUrl("https://target.invalid/b", input))
   expect(await Effect.runPromise(Effect.provide(program, api.layerTest({ atUrl: () => Effect.succeed(input) })))).toBe(input)
 })
-it("rejects a structurally similar HTTP-model reconstruction", async () => {
-  const input = new Request("https://original.invalid/a", { cache: "no-store", credentials: "include", redirect: "manual", referrer: "https://referrer.invalid/", integrity: "sha256-example" })
-  const expected = new Request(base.url, input)
-  const reconstructed = await Effect.runPromise(HttpClientRequest.toWeb(HttpClientRequest.setUrl(HttpClientRequest.fromWeb(input), base.url), { signal: input.signal }))
-  expect([reconstructed.cache, reconstructed.credentials, reconstructed.redirect, reconstructed.referrer, reconstructed.integrity]).not.toEqual([expected.cache, expected.credentials, expected.redirect, expected.referrer, expected.integrity])
-})
 it("matches the native constructor across 500 keyed metadata/body/URL schedules", async () => {
-  const api = await load(), requests = api.make({ atUrl: (url, input) => new Request(url, input) })
+  const requests = await shipped()
   const copy = async (url: string, input: Request) => { const result = await Effect.runPromiseExit(requests.atUrl(url, input)); return Exit.isSuccess(result) ? { value: result.value } : { error: Cause.squash(result.cause) } }
   await fc.assert(fc.asyncProperty(fc.record({
     url: fc.constantFrom(...corpus.urls as Array<string>), method: fc.constantFrom("GET" as const, "POST" as const), body: fc.constantFrom("none" as const, "text" as const, "stream" as const),
@@ -95,6 +96,6 @@ it("uses all three platform providers with late constructor lookup in Node and B
     expect(result.error).toBeUndefined(); expect(result.status).toBe(0)
     const line = result.stdout.split("\n").find(line => line.startsWith("REQUEST-AT-URL "))
     expect(line).toBeDefined()
-    expect(JSON.parse(line!.slice("REQUEST-AT-URL ".length))).toEqual({ host: executable, layers: 3, lateConstructorLookup: true, metadata: true, followingSignal: true })
+    expect(JSON.parse(line!.slice("REQUEST-AT-URL ".length))).toEqual({ host: executable, layers: 3, lateConstructorLookup: true, metadata: true, body: true, headers: true, followingSignal: true })
   }
 }, 65000)

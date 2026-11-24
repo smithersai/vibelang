@@ -99,6 +99,7 @@ func FuzzGenericMatchCoverage(f *testing.F) {
 		if missing != want {
 			Gap(t, genericMatchTarget, oracleKey, "VIP-7 requires EK4701=%t, got %v\n%s", want, SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 		}
+		ExpectPending(t, genericMatchTarget, r.key+":other")
 		ExpectPending(t, genericMatchTarget, oracleKey)
 		ExpectPending(t, genericMatchTarget, specCorpusKey(t))
 	})

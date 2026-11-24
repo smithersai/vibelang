@@ -1,2 +1,0 @@
-import * as Ctx from "effect/Context"
-export class Database extends Ctx.Service<Database, { readonly value: string }>()("alchemy/Database") {}

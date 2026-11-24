@@ -9,7 +9,7 @@ const corpus = JSON.parse(readFileSync(join(root, "typescript/tsc/internal/vibel
 const [key, modeText] = process.argv.slice(2), mode = Number(modeText) & 1
 const options = { lib: ["lib.es5.d.ts"], types: [], strict: true, skipLibCheck: true, noEmit: true,
   target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext }
-const fixture = mkdtempSync(join(tmpdir(), "migration-ambient-origins-"))
+const fixture = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(tmpdir(), "migration-ambient-origins-"))
 const put = (file, text) => { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, text) }
 try {
   for (const [side, index] of [["before", 0], ["after", 1]]) {
@@ -34,7 +34,7 @@ try {
   const compared = compareApiIdentity(ts, join(fixture, "before"), join(fixture, "after"), { compilerOptions: options })
   const expected = !["type-change", "docs-change"].includes(key)
   const ok = compared.comparisonComplete && (expected ? compared.identical : !compared.identical)
-  console.log(JSON.stringify({ ok, expected, stockVersion: ts.version, stockDiagnostics: [], key, mode,
+  console.log(JSON.stringify({ ok, expected, stockVersion: ts.version, key, mode,
     identical: compared.identical, comparisonComplete: compared.comparisonComplete,
     nameDifferences: compared.nameDifferences, typeDifferences: compared.typeDifferences, docDifferences: compared.docDifferences,
     environmentDiagnostics: compared.environmentDiagnostics.map(({ diagnostic, blocking }) => ({ diagnostic, blocking })) }))

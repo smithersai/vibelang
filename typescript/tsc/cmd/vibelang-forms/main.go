@@ -75,6 +75,7 @@ func main() {
 	decisions := flag.String("decisions", "", "also write the decision snapshot here (see decisions.go)")
 	previous := flag.String("previous", "", "the committed decision snapshot: fail if a decision moved without an approval")
 	approved := flag.String("approved", "", "the approvals file for -previous")
+	previousApproved := flag.String("previous-approved", "", "exclude approvals already present in this baseline")
 	stats := flag.Bool("stats", false, "print counts and timing to stderr")
 	legacy := flag.String("legacy", "", "audit a project with the native compiler; require zero diagnostics, warnings included")
 	compiler := flag.String("compiler", "", "native compiler for -legacy (default packages/compiler/native/vibelang)")
@@ -126,6 +127,13 @@ func main() {
 			approvals, err := readLines(*approved)
 			if err != nil {
 				fail(err)
+			}
+			if *previousApproved != "" {
+				historical, err := readLines(*previousApproved)
+				if err != nil {
+					fail(err)
+				}
+				approvals = freshApprovals(historical, approvals)
 			}
 			if moved := unapprovedMoves(prev, lines, approvals); len(moved) > 0 {
 				fmt.Fprintf(os.Stderr, "vibelang-forms: %d decisions moved without an approval; add each line, with a reason after #, to %s:\n", len(moved), *approved)

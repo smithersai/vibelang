@@ -1,1 +1,0 @@
-# Observed in r3 batch-b2 before pending; rechecked by r4/check-six.sh. Owner migfix-foldkit.

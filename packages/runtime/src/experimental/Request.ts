@@ -3,7 +3,9 @@
  *
  * Effect's HTTP request model owns ordinary HTTP operations. This capability
  * preserves the native Request init fields and body/signal observations of
- * constructing a Request from a URL and an existing Request.
+ * constructing a Request from a URL and an existing Request, which a rebuild
+ * through `HttpClientRequest.fromWeb` and `toWeb` does not: that drops
+ * `cache`, `credentials`, `redirect`, `referrer` and `integrity`.
  *
  * @experimental
  * @since 0.0.11

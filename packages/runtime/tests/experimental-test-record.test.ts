@@ -182,6 +182,128 @@ test("Test.record refuses to write a call that holds a credential", async () => 
   }
 })
 
+// Each of record's eight credential rules, by the rule id the defect names.
+const credentials: ReadonlyArray<readonly [string, string]> = [
+  ["private-key-block", "-----BEGIN RSA PRIVATE KEY-----"],
+  ["jwt", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.c2lnbmF0dXJl"],
+  ["api-key", "sk-ant-api03-abcdefghijklmnop"],
+  ["github-token", `ghp_${"a1".repeat(18)}`],
+  ["github-fine-grained-token", `github_pat_${"B2".repeat(11)}`],
+  ["aws-access-key", "AKIAIOSFODNN7EXAMPLE"],
+  ["slack-token", "xoxb-1234567890-abcdefghij"],
+  ["google-api-key", `AIza${"C3d".repeat(12)}`]
+]
+
+const refusedRule = (exit: Exit.Exit<unknown, unknown>) => {
+  const error = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined
+  return error instanceof Test.CredentialInRecording ? error.rule : undefined
+}
+
+test.each(credentials)("Test.record refuses a call whose answer holds a %s and writes nothing", async (rule, secret) => {
+  const dir = scratch()
+  try {
+    const path = join(dir, "secret.json")
+    const exit = await recordIn(path, provider(() => `here it is: ${secret} done`, []), text("what is my key"))
+    expect(refusedRule(exit)).toBe(rule)
+    expect(Cause.pretty((exit as Exit.Failure<unknown, unknown>).cause)).not.toContain(secret)
+    expect(existsSync(path)).toBe(false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("Test.record refuses a call whose request holds a credential", async () => {
+  const dir = scratch()
+  try {
+    const path = join(dir, "secret.json")
+    const calls: Array<string> = []
+    const exit = await recordIn(path, provider(() => "fine", calls), text("my key is AKIAIOSFODNN7EXAMPLE, keep it"))
+    expect(refusedRule(exit)).toBe("aws-access-key")
+    expect(existsSync(path)).toBe(false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("Test.record refuses a streamed credential split across two deltas", async () => {
+  const dir = scratch()
+  try {
+    const path = join(dir, "split.json")
+    // Neither delta alone matches the api-key rule; only the joined text does.
+    const live = Layer.effect(
+      LanguageModel.LanguageModel,
+      LanguageModel.make({
+        generateText: () => Effect.die("unused"),
+        streamText: () =>
+          Stream.fromIterable([
+            { type: "text-start", id: "t" },
+            { type: "text-delta", id: "t", delta: "key: sk-ant-ap" },
+            { type: "text-delta", id: "t", delta: "i03abcdefghij" },
+            { type: "text-end", id: "t" }
+          ] as const)
+      })
+    )
+    const exit = await recordIn(path, live, Stream.runDrain(LanguageModel.streamText({ prompt: "stream my key" })))
+    expect(refusedRule(exit)).toBe("api-key")
+    expect(existsSync(path)).toBe(false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("Test.record writes a stream that fails with a typed AiError part way, and replays its parts then the failure", async () => {
+  const dir = scratch()
+  try {
+    const path = join(dir, "partial.json")
+    const failure = AiError.make({ module: "Provider", method: "streamText", reason: new AiError.RateLimitError({}) })
+    const live = Layer.effect(
+      LanguageModel.LanguageModel,
+      LanguageModel.make({
+        generateText: () => Effect.die("unused"),
+        streamText: () =>
+          Stream.concat(
+            Stream.fromIterable([{ type: "text-start", id: "t" }, { type: "text-delta", id: "t", delta: "half" }] as const),
+            Stream.fail(failure)
+          )
+      })
+    )
+    const program = Effect.gen(function*() {
+      const deltas: Array<string> = []
+      const exit = yield* Effect.exit(Stream.runForEach(LanguageModel.streamText({ prompt: "partial" }), (part) =>
+        Effect.sync(() => {
+          if (part.type === "text-delta") deltas.push(part.delta)
+        })))
+      const reason = Exit.isFailure(exit) ? (Cause.squash(exit.cause) as AiError.AiError).reason._tag : "succeeded"
+      return { deltas, reason }
+    })
+    expect(await recordIn(path, live, program)).toEqual(Exit.succeed({ deltas: ["half"], reason: "RateLimitError" }))
+    const written = JSON.parse(readFileSync(path, "utf8"))
+    expect(written.calls).toHaveLength(1)
+    expect(written.calls[0].stream.map((part: { type: string }) => part.type)).toEqual(["text-start", "text-delta"])
+    expect(written.calls[0].failure).toBeDefined()
+    expect(await replayFrom(path, program)).toEqual(Exit.succeed({ deltas: ["half"], reason: "RateLimitError" }))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("Test.record dies when the live layer fails to build at the first miss, and writes nothing", async () => {
+  const dir = scratch()
+  try {
+    const path = join(dir, "unbuilt.json")
+    const unbuildable = Layer.effect(LanguageModel.LanguageModel, Effect.fail("no key in CI"))
+    const exit = await Effect.runPromiseExit(Effect.provide(text("a miss"), Test.record(path, { live: unbuildable }).pipe(Layer.provide(NodeFileSystem.layer))))
+    expect(Exit.isFailure(exit)).toBe(true)
+    if (Exit.isFailure(exit)) {
+      expect(Cause.hasDies(exit.cause)).toBe(true)
+      expect(Cause.hasFails(exit.cause)).toBe(false)
+    }
+    expect(existsSync(path)).toBe(false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test("Test.record replays a tool call it recorded against the toolkit", async () => {
   const dir = scratch()
   try {

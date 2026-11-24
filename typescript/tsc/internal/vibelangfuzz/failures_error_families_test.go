@@ -37,7 +37,7 @@ func failuresErrorFamilyCases() []*failCase {
 				}
 				name := strings.ReplaceAll(form.prefix, " ", "-") + "-extends-native-" + tag.name + "-" + body.name
 				cases = append(cases, &failCase{
-					Name: name, Quote: quote, VIP: form.vip, Owner: "conf-auto-error-extends-admission", Host: "none", Code: 2117,
+					Name: name, Quote: quote, VIP: form.vip, Host: "none", Code: 2117,
 					Decls: "import { Data, Schema } from \"effect\"\n" + base + "\nexport " + form.prefix + " Child ⟦extends Base⟧ " + body.text + "\n",
 				})
 			}

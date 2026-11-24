@@ -6,9 +6,9 @@ import { dirname,join,relative,resolve } from "node:path"
 import { compareDeclarations,emitDeclarations,recordDeclarationSurface } from "../../../../../../.smithers/flows/migrate/lib/declarations.mjs"
 const dependencies=resolve(process.env.EXTERNAL_CONTEXT_DEPS??"packages/compiler/test/tools/node_modules")
 const require=createRequire(join(process.cwd(),"packages/runtime/package.json")),ts=require("typescript")
-const [key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&15
+const [key,rawMode,compiler]=process.argv.slice(2),mode=Number(rawMode)&15
 const fixture=JSON.parse(readFileSync(new URL("../corpus/t3code-external-callable-project-context.json",import.meta.url),"utf8"))
-mkdirSync(".cache",{recursive:true});const root=mkdtempSync(join(process.cwd(),".cache/external-callable-context-"))
+mkdirSync(".cache",{recursive:true});const root=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(process.cwd(),".cache/external-callable-context-"))
 const put=(file,text)=>{mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text)}
 try {
  const project=join(root,"apps/web"),manifest={name:"external-context-fixture",private:true,type:"module"}
@@ -21,7 +21,8 @@ try {
  let original=key==="unresolved"?'export declare function plugin(): MissingType;\n':key==="function-primitive"?'export declare function plugin(): number;\n':key==="constant-plugin"?'import type { Plugin } from "'+module+'";\nexport declare const plugin: Plugin;\n':fixture.declaration.replace('"vite-plus"',JSON.stringify(module))
  if(key==="changed-type")original=original.replace("(): Plugin","(): { plugin: Plugin; value: number }")
  const normal=text=>mode&4?text.replaceAll("\n","\r\n"):text
- const compiler=process.env.EXTERNAL_CONTEXT_COMPILER??join(process.cwd(),"packages/compiler/native/vibelang"),sides=[]
+ assert.ok(compiler, "the external callable oracle requires the compiler path")
+ const sides=[]
  for(const side of ["before","after"]){
   const text=side==="after"&&key==="changed-type"?original.replace("value: number","value: string"):side==="after"&&key==="changed-doc"?original.replace("export declare function","/** Changed exported prose. */\nexport declare function"):original
   put(file,normal(text));const outDir=join(root,side)

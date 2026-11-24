@@ -22,12 +22,9 @@ const consistencyTarget = "FuzzEditorConsistency"
 
 // FuzzEditorConsistency asks the language server for answers that must agree
 // with each other and with the program. The server is the fork's own
-// TypeScript server (Chapter 28, "The editor", D32), so its answers on a
-// .vibe file are TypeScript's answers on the file's Effect reading (SKILL.md:
-// "Read and write it as Effect code; that reading is never wrong"). FuzzEditor
-// checks that each answer is well formed; this target checks the relations
-// LSP 3.17, TypeScript's own semantics and Chapter 28's "Rewrites keep
-// meaning" (D372) require between answers:
+// TypeScript server (VIP-34). FuzzEditor checks that each answer is well
+// formed. This target checks the relations LSP 3.17 and TypeScript's own
+// semantics require between answers:
 //
 //   - References. Asking at a symbol's reference gives a set that holds that
 //     reference and the symbol's definition; asking at each other reference

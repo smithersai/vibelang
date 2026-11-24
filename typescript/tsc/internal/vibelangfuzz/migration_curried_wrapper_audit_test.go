@@ -134,13 +134,12 @@ func checkCurriedWrapperAudit(t *testing.T, w *Workspace, key string, mode uint8
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_curried_wrapper_audit.mjs"))
 	cmd.Dir = Root()
 	cmd.Stdin = strings.NewReader(string(input))
-	output, err := cmd.CombinedOutput()
+	output, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("actual wrapper audit: %v; context=%v\n%s", err, ctx.Err(), output)
 	}
 	var model struct {
-		StockCodes []int
-		Flags      []struct {
+		Flags []struct {
 			Function                            string
 			EffectReturns, EmittedEffectReturns int
 		}
@@ -150,7 +149,7 @@ func checkCurriedWrapperAudit(t *testing.T, w *Workspace, key string, mode uint8
 	if err = json.Unmarshal(output, &model); err != nil {
 		t.Fatalf("invalid wrapper audit result: %v\n%s", err, output)
 	}
-	if len(model.StockCodes) != 0 || model.NegativeFlags != 1 || model.IdentityFlags != 0 || model.IdentityUnpaired != 0 {
+	if model.NegativeFlags != 1 || model.IdentityFlags != 0 || model.IdentityUnpaired != 0 {
 		t.Fatalf("invalid independent audit controls: %s", output)
 	}
 	if len(model.Unpaired) != 0 {

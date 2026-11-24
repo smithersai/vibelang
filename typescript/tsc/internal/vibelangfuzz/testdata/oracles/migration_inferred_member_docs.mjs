@@ -29,7 +29,7 @@ const after = key === "reexport-all"
     : { "helper.ts": factory, "index.ts": 'import { make } from "./helper.js";\nexport { make } from "./helper.js";\n' + api + "export const pure = 1;\n" }
 const normalize = text => mode & 2 ? text.replaceAll("\n", "\r\n") : text
 mkdirSync(join(root, ".cache"), { recursive: true })
-const temp = mkdtempSync(join(root, ".cache/member-docs-"))
+const temp = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(root, ".cache/member-docs-"))
 function emit(name, files) {
   const pkg = join(temp, name), snapshot = join(temp, name + "-declarations")
   mkdirSync(pkg, { recursive: true }); mkdirSync(snapshot)
