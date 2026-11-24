@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -46,11 +45,12 @@ func FuzzMigrationConfigCallers(f *testing.F) {
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_config_callers.mjs"), key, strconv.Itoa(int(mode&15)))
 		cmd.Dir = Root()
 		output, err := runJSONOracle(t, cmd)
+		checkOracleContext(t, ctx)
 		if err != nil {
 			t.Fatalf("native config caller transaction: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

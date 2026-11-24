@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +18,7 @@ func TestMigrationExistingPlatformBodyQuoted(t *testing.T) {
 }
 func checkExistingPlatformBody(t *testing.T, key string, mode uint8) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), max(HangLimit, workerHangLimit))
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_existing_platform_body.mjs"), key, strconv.Itoa(int(mode&15)))
 	cmd.Dir = Root()

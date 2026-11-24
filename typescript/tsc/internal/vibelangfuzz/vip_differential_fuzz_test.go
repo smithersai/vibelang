@@ -329,8 +329,21 @@ func (g *vipGaps) add(key string, p *vipgen.Program, text string) {
 	}
 }
 
+// An Exit mismatch belongs to the focus probe, even when it has prerequisites.
+func vipOracleConstructs(key, focus string, used []string) []string {
+	order := []string{focus}
+	if strings.HasPrefix(key, "compile:") {
+		for _, k := range used {
+			if k != focus {
+				order = append(order, k)
+			}
+		}
+	}
+	return order
+}
+
 func (g *vipGaps) attribute(key string, p *vipgen.Program, text string) {
-	order := append([]string{p.Focus}, slices.DeleteFunc(p.UsedKeys(), func(k string) bool { return k == p.Focus })...)
+	order := vipOracleConstructs(key, p.Focus, p.UsedKeys())
 	for _, c := range order {
 		if _, ok := Pending(vipTarget, key+"/"+c); ok {
 			g.found = append(g.found, specGap{vipTarget, key + "/" + c, text})
@@ -568,6 +581,11 @@ func TestVIPConstructs(t *testing.T) {
 			}
 			run := env.run(t, p)
 			failures := run.failures()
+			entries, err := pendingEntries()
+			if err != nil {
+				t.Fatal(err)
+			}
+			checkVIPProbePending(t, entries, c.Key, failures)
 			if len(failures) == 0 {
 				ExpectPending(t, vipTarget, "feature:"+c.Key)
 				return
@@ -586,25 +604,43 @@ func TestVIPConstructs(t *testing.T) {
 				}
 			}
 			// A probe that compiles and whose every disagreement a gap's
-			// line lists, keyed <oracle>/<construct> by one of its
-			// constructs, is skipped too: the construct is lowered, and
-			// the line names what disagrees.
+			// line lists, keyed <oracle>/<construct> to the focus (or,
+			// for compile errors, a prerequisite), is skipped too.
 			var gaps []string
 			for _, key := range mapKeys(failures) {
-				i := slices.IndexFunc(order, func(k string) bool { _, ok := Pending(vipTarget, key+"/"+k); return ok })
+				owners := vipOracleConstructs(key, c.Key, order)
+				i := slices.IndexFunc(owners, func(k string) bool { _, ok := Pending(vipTarget, key+"/"+k); return ok })
 				if i < 0 {
 					gaps = nil
 					break
 				}
-				e, _ := Pending(vipTarget, key+"/"+order[i])
+				e, _ := Pending(vipTarget, key+"/"+owners[i])
 				usePending(e)
-				gaps = append(gaps, fmt.Sprintf("%s/%s (%s): %s", key, order[i], e.Owner, e.Reason))
+				gaps = append(gaps, fmt.Sprintf("%s/%s (%s): %s", key, owners[i], e.Owner, e.Reason))
 			}
 			if len(gaps) > 0 {
 				t.Skipf("pending %s\n%s", strings.Join(gaps, "; "), strings.Join(report, "\n"))
 			}
 			t.Errorf("the probe of %s fails, and no pending line lists it or what it requires:\n%s", c.Key, strings.Join(report, "\n"))
 		})
+	}
+}
+
+// Only judge Exit keys after the probe ran and all compared aspects matched.
+func checkVIPProbePending(t testing.TB, entries []PendingEntry, focusKey string, failures map[string]string) {
+	for _, entry := range entries {
+		if entry.Target != vipTarget {
+			continue
+		}
+		key, focus, ok := strings.Cut(entry.Key, "/")
+		if !ok || focus != focusKey {
+			continue
+		}
+		_, failed := failures[key]
+		if !failed && (strings.HasPrefix(key, "compile:") ||
+			(strings.HasPrefix(key, "exit:") && len(failures) == 0)) {
+			expectPending(t, entries, vipTarget, entry.Key)
+		}
 	}
 }
 
@@ -701,11 +737,10 @@ var (
 
 var _ = PendingCompanion(vipTarget, "TestVIPConstructs", "TestVIPCoverage")
 
-// TestVIPCoverage reads the accepted VIPs from docs/design/vips/README.md at
-// test time and logs each one that has no construct, no not-runtime line and
-// no "not generated" line, so an accepted VIP is never silently untested. It
-// also checks that each of the target's pending lines names a registered
-// construct, or a VIP the README accepts.
+var vipPendingIssue = regexp.MustCompile(`https://github\.com/smithersai/vibelang/issues/[0-9]+`)
+
+// TestVIPCoverage checks that pending coverage entries name accepted VIPs
+// or registered constructs.
 func TestVIPCoverage(t *testing.T) {
 	readme, err := os.ReadFile(filepath.Join(Root(), "docs/design/vips/README.md"))
 	if err != nil {
@@ -752,8 +787,8 @@ func TestVIPCoverage(t *testing.T) {
 			}
 		case "feature":
 			if c := vipgen.Lookup(name); c != nil {
-				if !productOwners[e.Owner] || !strings.Contains(e.Reason, fmt.Sprintf("VIP-%d:", c.VIP)) || !strings.Contains(e.Reason, "lane ") {
-					t.Errorf("%s: a pending construct's line is owned by compiler and names its VIP (VIP-%d:) and the lane that implements it", id, c.VIP)
+				if !productOwners[e.Owner] || !strings.Contains(e.Reason, fmt.Sprintf("VIP-%d:", c.VIP)) || !vipPendingIssue.MatchString(e.Reason) {
+					t.Errorf("%s: a pending construct's line is owned by compiler and names its VIP (VIP-%d:) and links to a public issue", id, c.VIP)
 				}
 				continue
 			}
@@ -784,13 +819,16 @@ func TestVIPCoverage(t *testing.T) {
 	if accepted[31] && covered[31] == "" {
 		covered[31] = "this target"
 	}
-	// A VIP accepted after this file was written is the target's debt until a
-	// line or a construct covers it. It is logged, not failed: a VIP lands as
-	// a document, and must not fail the next compiler change's gate.
+	// Preserve the outstanding coverage at the time this gate was added.
+	// Each newly accepted VIP needs a construct or an explicit coverage line.
+	grace := []int{38, 39, 40, 41, 42, 43, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73}
 	var uncovered []int
 	for _, n := range slices.Sorted(maps.Keys(accepted)) {
 		if covered[n] == "" {
 			uncovered = append(uncovered, n)
+			if !slices.Contains(grace, n) {
+				t.Errorf("VIP-%d needs a construct or an explicit pending coverage entry", n)
+			}
 		}
 	}
 	t.Logf("%d accepted VIPs; constructs not generated yet: %v; VIPs with no line yet: %v", len(accepted), debt, uncovered)

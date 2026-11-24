@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -23,12 +22,13 @@ func TestNativeJSXAdaptersQuoted(t *testing.T) {
 
 func nativeJSXAdapterModel(t *testing.T, area, key string, mode uint8) (bool, string, string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	script := filepath.Join(repoTestdata(), "oracles", "native_jsx_adapters.mjs")
 	cmd := exec.CommandContext(ctx, "node", script, area, key, strconv.Itoa(int(mode&7)))
 	cmd.Dir = Root()
 	output, err := runJSONOracle(t, cmd)
+	checkOracleContext(t, ctx)
 	if err != nil {
 		t.Fatalf("native adapter oracle %s/%s: %v; context=%v\n%s", area, key, err, ctx.Err(), output)
 	}

@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -122,12 +121,13 @@ func FuzzMigrationRunPhaseBoundaries(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_run_phase_boundaries.mjs"))
 		cmd.Dir = Root()
 		cmd.Stdin = strings.NewReader(string(input))
 		output, err := runJSONOracle(t, cmd)
+		checkOracleContext(t, ctx)
 		if err != nil {
 			t.Fatalf("static run-phase oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

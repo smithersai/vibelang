@@ -8,9 +8,14 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz/vipgen"
 )
 
+func TestVIPProjectEffectCopies(t *testing.T) {
+	checkVIPEffectCopies(t, []string{"vip18.project-effect-instance", "vip18.operation-project-effect-instance"})
+}
+
 // Reuse the VIP generators and comparison with separate physical Effect peers.
 // A shared installation would hide a helper's independent fiber allocator.
-func TestVIPProjectEffectCopies(t *testing.T) {
+func checkVIPEffectCopies(t *testing.T, keys []string) {
+	t.Helper()
 	env := newVIPEnv(t)
 	source, err := filepath.EvalSymlinks(filepath.Join(env.w.Dir, "node_modules/effect"))
 	if err != nil {
@@ -23,7 +28,7 @@ func TestVIPProjectEffectCopies(t *testing.T) {
 	if err := os.CopyFS(peer, os.DirFS(source)); err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"vip18.project-effect-instance", "vip18.operation-project-effect-instance"} {
+	for _, key := range keys {
 		t.Run(key, func(t *testing.T) {
 			program := vipgen.Probe(key)
 			failures := env.run(t, program).failures()

@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -29,12 +28,7 @@ func migrationDeclarationAliasDependencies(t testing.TB) {
 
 func checkMigrationDeclarationAlias(t *testing.T, binary, key string, shape uint8, controls bool) {
 	t.Helper()
-	// The strict controls compile seven more programs than one self-comparison.
-	limit := HangLimit
-	if controls {
-		limit *= 4
-	}
-	ctx, cancel := context.WithTimeout(t.Context(), limit)
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	input, err := json.Marshal(map[string]any{"key": key, "shape": shape, "compiler": binary, "controls": controls})
 	if err != nil {
@@ -43,6 +37,7 @@ func checkMigrationDeclarationAlias(t *testing.T, binary, key string, shape uint
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_declaration_alias.mjs"))
 	cmd.Dir, cmd.Stdin = Root(), strings.NewReader(string(input))
 	output, err := runJSONOracle(t, cmd)
+	checkOracleContext(t, ctx)
 	if err != nil {
 		t.Fatalf("declaration alias oracle: exit=%v context=%v\n%s", err, ctx.Err(), output)
 	}

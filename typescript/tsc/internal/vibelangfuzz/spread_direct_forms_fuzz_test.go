@@ -68,13 +68,7 @@ func FuzzSpreadDirectFormAdvisories(f *testing.F) {
 		if key == "provide-empty-trailing" {
 			api, origin, mode = "provide", "direct", 2
 		}
-		gapKey := key
-		if api == "provide" && mode == 2 {
-			gapKey = "provide-empty-trailing"
-		}
-		if api == "provide" && mode == 3 {
-			gapKey = "provide-empty-leading"
-		}
+		gapKey := fmt.Sprintf("%s:%s:%d", api, origin, mode)
 		prefix := "type Tagged={readonly _tag:\"Oops\"};service S{static readonly key=\"advisory/Optional\";value:number};"
 		ns := "Effect"
 		if origin == "namespace-alias" {
@@ -136,15 +130,13 @@ func FuzzSpreadDirectFormAdvisories(f *testing.F) {
 			code = 4835
 		}
 		count := 0
+		var providerError string
 		for _, d := range result.Diagnostics {
 			if d.Category() == diagnostics.CategoryError {
-				diagnosticKey := key
-				if d.Code() == 3207 {
-					diagnosticKey = gapKey
-				} else if strings.HasPrefix(key, "provide-empty-") {
-					diagnosticKey = key + ":unexpected-code"
+				if api != "provide" || mode < 2 || diagnosticKey(d) != "EK3207" || providerError != "" {
+					t.Fatalf("unexpected diagnostic: %s; source %s", d.String(), source)
 				}
-				Gap(t, "FuzzSpreadDirectFormAdvisories", diagnosticKey, "unexpected diagnostic: %s; source %s", d.String(), source)
+				providerError = d.String()
 			}
 			if IsEK(d) && d.Code() == code {
 				count++
@@ -155,7 +147,12 @@ func FuzzSpreadDirectFormAdvisories(f *testing.F) {
 			want = 0
 		}
 		if count != want {
-			Gap(t, "FuzzSpreadDirectFormAdvisories", gapKey, "want %d advisory, got %d; source %s", want, count, source)
+			Gap(t, "FuzzSpreadDirectFormAdvisories", gapKey+":advisory", "want %d advisory, got %d; source %s", want, count, source)
 		}
+		if providerError != "" {
+			Gap(t, "FuzzSpreadDirectFormAdvisories", gapKey, "unexpected provider diagnostic: %s; source %s", providerError, source)
+		}
+		ExpectPending(t, "FuzzSpreadDirectFormAdvisories", gapKey)
+		ExpectPending(t, "FuzzSpreadDirectFormAdvisories", specCorpusKey(t))
 	})
 }

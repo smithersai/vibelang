@@ -26,7 +26,9 @@ func FuzzSchemaLibraryImportAlias(f *testing.F) {
 	startShortBudget(f)
 	names := []string{"Date", "URL", "RegExp", "Uint8Array", "Error"}
 	for _, name := range names {
-		f.Add(name, uint8(0), uint8(0), false)
+		for spelling := range uint8(3) {
+			f.Add(name, spelling, uint8(0), false)
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, spelling, shape uint8, alias bool) {
@@ -59,6 +61,11 @@ func FuzzSchemaLibraryImportAlias(f *testing.F) {
 		if alias {
 			vibe = prefix + "export schema Example = " + field
 		}
+		nativeType := field
+		if !alias {
+			nativeType = "{ readonly value: " + field + " }"
+		}
+		vibe += schemaBindingTypeChecks(nativeType, "typeof Example.Type")
 		for _, row := range []struct{ file, source string }{{"main.ts", native}, {"main.vibe", vibe}} {
 			result, err := w.Compile(t.Context(), Project{Files: map[string]string{row.file: row.source}})
 			if err != nil {

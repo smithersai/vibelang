@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
@@ -31,7 +30,7 @@ func FuzzMigrationHookFilenames(f *testing.F) {
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_hook_filenames.mjs"), key, strconv.Itoa(int(mode&15)))
 		command.Dir = Root()

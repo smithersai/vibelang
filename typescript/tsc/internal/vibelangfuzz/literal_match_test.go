@@ -100,8 +100,11 @@ func TestCompileLargeLiteralMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Remove()
+	if len(c.Diagnostics) == 0 {
+		t.Fatal("wanted TS2563 for a 3,000-arm match")
+	}
 	for _, d := range c.Diagnostics {
-		if d.Code() != 2563 {
+		if diagnosticKey(d) != "TS2563" {
 			t.Errorf("unexpected diagnostic: %s", d.String())
 		}
 	}

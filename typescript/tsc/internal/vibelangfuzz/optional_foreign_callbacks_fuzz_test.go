@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const optionalEffectfulQuote = "For example, in Effect 4.1.1 this includes `Exit` values, `Config` programs, `error` instances, service keys and references"
+const optionalEffectfulQuote = "this includes `Exit` values, `Config` programs, `error` instances, service keys and references"
 
 func TestOptionalForeignCallbacksQuoted(t *testing.T) {
 	r4Quoted(t, "003-failures.md", foreignVariableQuote, foreignVariableAdmissionQuote, foreignVariableAliasQuote, optionalEffectfulQuote)

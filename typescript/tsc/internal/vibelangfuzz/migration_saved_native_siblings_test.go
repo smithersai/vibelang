@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -75,11 +74,12 @@ func FuzzMigrationSavedNativeSiblings(f *testing.F) {
 				key = savedNativeSiblingKeys[int(key[0])%len(savedNativeSiblingKeys)]
 			}
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_saved_native_siblings.mjs"), binary, key, strconv.Itoa(int(mode&15)))
 		cmd.Dir = Root()
 		output, err := runJSONOracle(t, cmd)
+		checkOracleContext(t, ctx)
 		if err != nil {
 			t.Fatalf("saved native sibling oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

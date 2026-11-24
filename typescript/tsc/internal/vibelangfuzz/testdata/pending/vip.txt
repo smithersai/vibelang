@@ -1,19 +1,10 @@
 # Pending lines of FuzzVIPDifferential (vip_differential_fuzz_test.go), the
 # differential test of VIP-31.
 #
-# One line per construct of vipgen the compiler does not implement yet,
-# that implements it. TestVIPConstructs runs every construct's probe, also
-# lands the construct deletes its line. Campaigns leave pending constructs out
-# unless VIBELANG_FUZZ_PENDING=1. A generated program's gaps are keyed
-# compile:<code>/<construct> and exit:<aspect>/<construct>. A construct's
-# plain form (key suffix -plain) stands in a plain program, so it is compared
-# before VIP-1's effect functions compile; one with no feature line is
-#
-# Plain programs (vipgen.Program.Plain): every construct's plain form
-# compiles today, and its Exit and events agree with the reference, but the
-# compiler still lowers a plain function as an effect function. Keyed
-# exit:called/<construct>, checked after the Exit and events, so these lines
-# never hide another disagreement.
+# Compile gaps can be attributed to prerequisites; Exit gaps belong to the
+# focus construct. TestVIPConstructs checks each construct's own pending keys.
+# Campaigns leave pending constructs out unless VIBELANG_FUZZ_PENDING=1.
+# Gap keys are compile:<code>/<construct> and exit:<aspect>/<construct>.
 #
 # Accepted VIPs no construct covers (TestVIPCoverage reads these). A
 # not-runtime line names a VIP with nothing to run. A feature line owned by

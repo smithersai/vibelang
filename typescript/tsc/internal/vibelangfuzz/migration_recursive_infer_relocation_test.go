@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +18,7 @@ func TestMigrationRecursiveInferRelocationQuoted(t *testing.T) {
 func checkRecursiveInferRelocation(t *testing.T, key string, mode uint8) {
 	t.Helper()
 	TestMigrationRecursiveInferRelocationQuoted(t)
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_recursive_infer_relocation.mjs"), key, strconv.Itoa(int(mode&15)))
 	command.Dir = Root()

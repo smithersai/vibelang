@@ -27,7 +27,17 @@ FuzzCompile corpus:default-EK9204 compiler Appendix B: reproduction of ek:EK9204
 
 
 
-FuzzSpreadDirectFormAdvisories provide-empty-leading compiler VIP-12: native provide validation mistakes physical spread slots for logical arguments; the empty tuple does not replace the layer
+FuzzSpreadDirectFormAdvisories provide:direct:3 compiler VIP-12: native provide validation mistakes physical spread slots for logical arguments; the empty tuple does not replace the layer
 FuzzSpreadDirectFormAdvisories corpus:provide-empty-leading compiler VIP-12: native provide validation mistakes physical spread slots for logical arguments; the empty tuple does not replace the layer
 FuzzCompile corpus:consumer-stripinternal compiler Chapter 1 declaration content and D366: feature:declaration-consumer-TS2693:Message, feature:declaration-consumer-TS2693:Code and feature:declaration-consumer-TS2693:N
 FuzzCompile corpus:order-emit-with-body-name upstream D266: feature:order:emit-first:+TS2304; an unresolved name in a native with body is reported only when emitting first
+FuzzTryCommaEffects retire-EK4616:legacy-arrow compiler #659: chapter 2 requires EK0502 for a non-Effect operand; the compiler still reports the retired hatch diagnostic
+FuzzTryCommaEffects retire-EK4616:legacy-function compiler #659: chapter 2 requires EK0502 for a non-Effect operand; the compiler still reports the retired hatch diagnostic
+FuzzTryCommaEffects retire-EK4616:legacy-async compiler #659: chapter 2 requires EK0502 for a non-Effect operand; the compiler still reports the retired hatch diagnostic
+FuzzTryGroupedEffects retire-EK4616:plain-arrow compiler #659: chapter 2 requires EK0502 for a non-Effect operand; the compiler still reports the retired hatch diagnostic
+FuzzTryGroupedEffects retire-EK4616:plain-function compiler #659: chapter 2 requires EK0502 for a non-Effect operand; the compiler still reports the retired hatch diagnostic
+FuzzTryGroupedEffects retire-EK4616:async-arrow compiler #659: chapter 2 requires EK0502 for a non-Effect operand; the compiler still reports the retired hatch diagnostic
+FuzzTryGroupedEffects retire-EK4616:effect-arrow compiler #659: chapter 2 requires EK0502 for a non-Effect operand; the compiler still reports the retired hatch diagnostic
+FuzzTryGroupedEffects retire-EK4616:effect-function compiler #659: chapter 2 requires EK0502 for a non-Effect operand; the compiler still reports the retired hatch diagnostic
+FuzzSpreadDirectFormAdvisories provide:namespace-alias:3 compiler #659 and VIP-12: native provide validation reports EK3207 for a leading empty spread before the layer
+FuzzSpreadDirectFormAdvisories provide:stored:3 compiler #659 and VIP-12: native provide validation reports EK3207 for a leading empty spread before the layer

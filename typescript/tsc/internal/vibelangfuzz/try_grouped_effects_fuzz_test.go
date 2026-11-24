@@ -47,11 +47,11 @@ func FuzzTryGroupedEffects(f *testing.F) {
 		{"do", "do { Effect.succeed(7) }", 0},
 		{"asserted", "(effect { return 7 }) as Effect.Effect<number>", 0},
 		{"satisfies", "(effect { return 7 }) satisfies Effect.Effect<number>", 0},
-		{"plain-arrow", "() => 7", 4616},
-		{"plain-function", "function () { return 7 }", 4616},
-		{"async-arrow", "async () => 7", 4616},
-		{"effect-arrow", "effect () => 7", 4616},
-		{"effect-function", "effect function () { return 7 }", 4616},
+		{"plain-arrow", "() => 7", 502},
+		{"plain-function", "function () { return 7 }", 502},
+		{"async-arrow", "async () => 7", 502},
+		{"effect-arrow", "effect () => 7", 502},
+		{"effect-function", "effect function () { return 7 }", 502},
 		{"factory-call", "(effect () => 7)()", 0},
 		{"body-type", "effect { const bad: number = 'wrong'; return bad }", 2322},
 		{"body-call", "effect { return id('wrong') }", 2345},
@@ -96,17 +96,24 @@ func FuzzTryGroupedEffects(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer r.Remove()
-		var codes []int32
+		var codes []string
 		for _, d := range r.Diagnostics {
 			if d.Category() == diagnostics.CategoryError {
-				codes = append(codes, d.Code())
+				codes = append(codes, diagnosticKey(d))
 			}
 		}
-		var want []int32
+		var want []string
 		if row.code != 0 {
-			want = []int32{row.code}
+			source := "TS"
+			if row.code == 502 {
+				source = "EK"
+			}
+			want = []string{fmt.Sprintf("%s%04d", source, row.code)}
 		}
 		slices.Sort(codes)
+		if row.code == 502 && slices.Equal(codes, []string{"EK4616"}) {
+			Gap(t, "FuzzTryGroupedEffects", "retire-EK4616:"+row.key, "chapter 2 requires EK0502 for a non-Effect operand; got %v\n%s", codes, source)
+		}
 		if !slices.Equal(codes, want) {
 			quote := groupedTryQuotes[0]
 			if row.key == "do" {
@@ -114,7 +121,8 @@ func FuzzTryGroupedEffects(f *testing.F) {
 			}
 			Gap(t, groupedTryTarget, row.key, "%s; want exact error codes %v, got %v\n%s", quote, want, Keys(r.Dir, r.Diagnostics), source)
 		}
-		ExpectPending(t, groupedTryTarget, row.key)
+		ExpectPending(t, "FuzzTryGroupedEffects", "retire-EK4616:"+row.key)
+		ExpectPending(t, "FuzzTryGroupedEffects", row.key)
 		ExpectPending(t, groupedTryTarget, specCorpusKey(t))
 	})
 }

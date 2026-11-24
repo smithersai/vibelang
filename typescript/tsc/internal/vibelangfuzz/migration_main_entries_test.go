@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -47,11 +46,12 @@ func FuzzMigrationMainEntries(f *testing.F) {
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_main_entries.mjs"), key, strconv.Itoa(int(mode&15)))
 		cmd.Dir = Root()
 		output, err := runJSONOracle(t, cmd)
+		checkOracleContext(t, ctx)
 		if err != nil {
 			t.Fatalf("main-entry declaration comparison: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

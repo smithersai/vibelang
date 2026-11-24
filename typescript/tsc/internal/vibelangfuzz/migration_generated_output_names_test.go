@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
@@ -36,12 +35,13 @@ func FuzzMigrationGeneratedOutputNames(f *testing.F) {
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		script := filepath.Join(repoTestdata(), "oracles", "migration_generated_output_names.mjs")
 		cmd := exec.CommandContext(ctx, "node", script, key, strconv.Itoa(int(mode&7)))
 		cmd.Dir = Root()
 		output, err := runJSONOracle(t, cmd)
+		checkOracleContext(t, ctx)
 		if err != nil {
 			t.Fatalf("generated-output oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

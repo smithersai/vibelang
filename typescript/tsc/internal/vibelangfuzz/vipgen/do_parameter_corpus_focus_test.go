@@ -14,7 +14,7 @@ func TestDoParameterNamedCorpusFocus(t *testing.T) {
 	for _, home := range []string{"function", "arrow", "method"} {
 		for _, form := range []string{"direct", "nested"} {
 			t.Run(home+"/"+form, func(t *testing.T) {
-				name := "r15-do-parameter-" + home + "-" + form
+				name := "do-parameter-" + home + "-" + form
 				data, err := os.ReadFile(filepath.Join("..", "testdata", "fuzz", "FuzzVIPDifferential", name))
 				if err != nil {
 					t.Fatal(err)

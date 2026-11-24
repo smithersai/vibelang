@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-const nativeValueBoundaryQuote = "Synchronous defect bridges use \x60Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))\x60."
+const nativeValueBoundaryQuote = "For `EK0403`, an explicit synchronous defect bridge is `try Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`."
 
 func TestNativeValueDefectBoundaryQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("../../../.smithers/flows/migrate/rules.md"), nativeValueBoundaryQuote) {
+	if !strings.Contains(SpecText("003-failures.md"), nativeValueBoundaryQuote) {
 		t.Fatal(nativeValueBoundaryQuote)
 	}
 }

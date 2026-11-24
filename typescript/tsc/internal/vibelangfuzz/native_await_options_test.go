@@ -312,6 +312,7 @@ func TestNativeAwaitOptionsTypeScriptCompatibility(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer result.Remove()
 			if got := nativeAwaitOptionCodes(result); !reflect.DeepEqual(got, test.codes) {
 				t.Fatalf("native TypeScript path changed: got %v want %v", got, test.codes)
 			}

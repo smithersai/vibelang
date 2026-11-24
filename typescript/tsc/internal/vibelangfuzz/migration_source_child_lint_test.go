@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
@@ -15,7 +14,7 @@ const migrationSourceChildLintQuote = "Existing tools work."
 
 func TestMigrationSourceChildLintQuoted(t *testing.T) {
 	r4Quoted(t, "../vips/0034-compiler-and-tooling.md", migrationSourceChildLintQuote)
-	r4Quoted(t, "007-tooling.md", migrationWrittenGeneratorQuote)
+	r4Quoted(t, "007-tooling.md", "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.")
 }
 
 // The fixture records the unchanged target's two style requirements. Check
@@ -40,11 +39,12 @@ func FuzzMigrationSourceChildLint(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_source_child_lint.mjs"))
 		cmd.Dir, cmd.Stdin = Root(), strings.NewReader(string(input))
 		output, err := runJSONOracle(t, cmd)
+		checkOracleContext(t, ctx)
 		if err != nil {
 			t.Fatalf("source-child lint oracle process: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

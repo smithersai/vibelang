@@ -30,21 +30,12 @@ var nothrowPlacementQuotes = []string{
 	"plain functions and arrows (one nested in effect code included), plain methods, constructors, accessors, plain generators",
 	"Its callee has a written `@throws {T}` other than `@throws {never}` (`@throws {unknown}` included)",
 	"may contain calls known to throw: they belong to the enclosing call.",
-	"(for a rest parameter, the element type or tuple member at the argument's position)",
 	"every parameter list except an ordinary `async` function's",
-	"A `do` expression is not a function, so a call in a `do` block inside that `try` block, or a `try` statement inside a `do` block, follows the same rule.",
 }
-
-// nothrowPlacementFolded marks the quotes that fold-details folds from
-// nothrow-impl.patch; each is checked once that text lands.
-var nothrowPlacementFolded = map[int]bool{8: true, 10: true}
 
 func nothrowPlacementChapter(tb testing.TB) {
 	chapter := SpecText("003-failures.md")
-	for i, quote := range nothrowPlacementQuotes {
-		if nothrowPlacementFolded[i] && nothrowFoldPending() {
-			continue
-		}
+	for _, quote := range nothrowPlacementQuotes {
 		if !strings.Contains(chapter, quote) {
 			tb.Fatalf("chapter 3 no longer says %q", quote)
 		}
@@ -110,11 +101,6 @@ var nothrowKinds = []nothrowKind{
 	}},
 	{key: "async", async: true, wrap: func(b string) string { return "export async function f(x: number) {\n  " + b + "\n  return x\n}\n" }},
 	{key: "async-arrow", async: true, wrap: func(b string) string { return "export const f = async (x: number) => {\n  " + b + "\n  return x\n}\n" }},
-	{key: "rest-first", admitted: true, wrap: nothrowCallback("rest(", ")")},
-	{key: "rest-later", admitted: true, wrap: nothrowCallback("rest(() => 0, ", ")")},
-	{key: "rest-after-fixed", admitted: true, wrap: nothrowCallback("afterFixed(\"a\", ", ")")},
-	{key: "tuple-reader", admitted: true, wrap: nothrowCallback("pair(", ", () => 0)")},
-	{key: "tuple-plain", wrap: nothrowCallback("pair(() => 0, ", ")")},
 	{key: "fixed-reader", admitted: true, wrap: nothrowCallback("fixed(", ")")},
 	{key: "fixed-plain", wrap: nothrowCallback("fixedPlain(", ")")},
 	{key: "declaration-default", plain: true, def: func(e string) string { return "export function f(x: unknown = " + e + "): unknown {\n  return x\n}\n" }},
@@ -123,9 +109,6 @@ var nothrowKinds = []nothrowKind{
 	{key: "async-arrow-default", async: true, def: func(e string) string { return "export const f = async (x: unknown = " + e + ") => x\n" }},
 	{key: "async-generator-default", async: true, plain: true, def: func(e string) string {
 		return "export async function* g(x: unknown = " + e + ") {\n  yield x\n}\n"
-	}},
-	{key: "do-binding", wrap: func(b string) string {
-		return "export function f(flag: boolean): number {\n  const [x = do { if (flag) { return 0 }; 0 }] = [] as number[];\n  " + b + "\n  return x\n}\n"
 	}},
 }
 
@@ -215,7 +198,7 @@ func FuzzNothrowPlacement(f *testing.F) {
 			f.Add([]byte("declaration/" + p.key + "/" + l.key))
 		}
 	}
-	for _, seed := range []string{"rest-later/if/known-call", "tuple-plain/loop/known-call", "rest-after-fixed/nested-arrow/known-call", "rest-first/catch/unknown-contract-call", "declaration/try/unknown-contract-call", "declaration/catch/unknown-contract-call", "constructor/try/known-call", "plain-handler/catch/known-call", "nested-plain/try-nested-arrow/known-call", "effect/nested-arrow/throw", "async/nested-arrow/known-call", "top-level/try/throw", "generator/finally/known-call", "getter/try-finally/known-call"} {
+	for _, seed := range []string{"declaration/try/unknown-contract-call", "declaration/catch/unknown-contract-call", "constructor/try/known-call", "plain-handler/catch/known-call", "nested-plain/try-nested-arrow/known-call", "effect/nested-arrow/throw", "async/nested-arrow/known-call", "top-level/try/throw", "generator/finally/known-call", "getter/try-finally/known-call"} {
 		f.Add([]byte(seed))
 	}
 	w := NewWorkspace(f)

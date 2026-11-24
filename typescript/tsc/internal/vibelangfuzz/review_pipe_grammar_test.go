@@ -74,8 +74,8 @@ func FuzzReviewPipeGrammar(f *testing.F) {
 				t.Fatal("pipe grammar has no program")
 			}
 			key := "reject:" + form
-			if invalid && !HasError(result.Diagnostics) {
-				Gap(t, reviewPipeTarget, key, "ASTRA-2/OPUS-2: Chapter 2 %q and pinned pipe covering rules require rejecting the unparenthesized conditional test; accepted %s", reviewPipeChapterQuote, source)
+			if invalid && !slices.Contains(r3Errors(result.Diagnostics), "EK2301") {
+				Gap(t, reviewPipeTarget, key, "Chapter 2 %q requires EK2301 for the unparenthesized conditional; got %v\n%s", reviewPipeChapterQuote, r3Errors(result.Diagnostics), source)
 			} else if !invalid && HasError(result.Diagnostics) {
 				Gap(t, reviewPipeTarget, "control:"+form, "explicit pipe repair must compile, got %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 			}

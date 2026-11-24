@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -46,11 +45,12 @@ func FuzzMigrationManifestAuthorities(f *testing.F) {
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_manifest_authorities.mjs"), key, strconv.Itoa(int(mode&31)))
 		cmd.Dir = Root()
 		output, err := runJSONOracle(t, cmd)
+		checkOracleContext(t, ctx)
 		if err != nil {
 			t.Fatalf("manifest authority model: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

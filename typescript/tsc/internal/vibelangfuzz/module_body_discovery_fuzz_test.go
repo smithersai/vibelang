@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -193,11 +192,12 @@ func TestModuleBodyDiscoveryStockControls(t *testing.T) {
 				if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(input.config), 0600); err != nil {
 					t.Fatal(err)
 				}
-				ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+				ctx, cancel := newOracleContext(t)
 				defer cancel()
 				cmd := exec.CommandContext(ctx, stock, "-p", "tsconfig.json", "--listFilesOnly", "--pretty", "false")
 				cmd.Dir = dir
 				output, err := cmd.CombinedOutput()
+				checkOracleContext(t, ctx)
 				if key == "files/present" {
 					exit, ok := err.(*exec.ExitError)
 					if !ok || exit.ExitCode() != 1 || strings.Count(string(output), "error TS5055:") != 1 {

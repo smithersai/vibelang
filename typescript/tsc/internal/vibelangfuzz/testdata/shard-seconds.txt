@@ -187,7 +187,6 @@
 7 FuzzSchemaWrittenType
 7 FuzzServiceRunHead
 7 FuzzSidecarEmitParity
-7 FuzzTrustedClassVisibilityWitness
 7 FuzzTryAllSettledShapes
 7 FuzzTryOperationOperandDomain
 7 FuzzTrySubtypeShapes

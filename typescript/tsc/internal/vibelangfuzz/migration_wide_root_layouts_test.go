@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -47,7 +46,7 @@ func FuzzMigrationWideRootLayouts(f *testing.F) {
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_wide_root_layouts.mjs"), key, strconv.Itoa(int(mode&15)), compiler)
 		command.Dir = Root()

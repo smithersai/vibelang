@@ -80,6 +80,9 @@ func FuzzMigrationDataDeclarations(f *testing.F) {
 			}
 			defer result.Remove()
 			if HasError(result.Diagnostics) {
+				if name == "main.ts" {
+					t.Fatalf("invalid TypeScript counterpart: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
+				}
 				Gap(t, migrationDataDeclarationsTarget, fmt.Sprintf("admission:%s:%d", key, i), "Chapter6: %q; counterpart must compile: %v\n%s", migrationDataDeclarationsQuote, SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 			}
 			declarations := map[string]string{}

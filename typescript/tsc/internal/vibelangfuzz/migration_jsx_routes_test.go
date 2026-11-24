@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -103,12 +102,13 @@ func FuzzMigrationJSXRoutes(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_jsx_routes.mjs"))
 		cmd.Dir = Root()
 		cmd.Stdin = strings.NewReader(string(input))
 		output, err := runJSONOracle(t, cmd)
+		checkOracleContext(t, ctx)
 		if err != nil {
 			t.Fatalf("route oracle process: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

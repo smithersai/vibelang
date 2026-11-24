@@ -101,7 +101,11 @@ func FuzzMigrationDefaultPrograms(f *testing.F) {
 			gapKey += fmt.Sprintf(":%x", sha256.Sum256([]byte(body)))
 		}
 
-		dir := emitDeclarationIdentityStock(t, w, tsc, Project{Files: map[string]string{"main.ts": original, "package.json": `{"type":"module"}`}})
+		emitStock := emitDeclarationIdentityStock
+		if known {
+			emitStock = emitRequiredStockDeclaration
+		}
+		dir := emitStock(t, w, tsc, Project{Files: map[string]string{"main.ts": original, "package.json": `{"type":"module"}`}})
 		defer os.RemoveAll(dir)
 		var result *Result
 		var err error

@@ -24,8 +24,8 @@ var plainHandlerThrowQuotes = []string{
 }
 
 type plainHandlerWrapper struct {
-	key, open, close             string
-	catches, boundary, plainOnly bool
+	key, open, close    string
+	boundary, plainOnly bool
 }
 
 var plainHandlerWrappers = []plainHandlerWrapper{
@@ -34,7 +34,7 @@ var plainHandlerWrappers = []plainHandlerWrapper{
 	{key: "label", open: "out: { ", close: " }"},
 	{key: "switch", open: "switch (e) { case \"x\": { ", close: " } }"},
 	{key: "loop", open: "for (const c of e) { ", close: " }"},
-	{key: "try", open: "try { ", close: " } catch { }", catches: true, plainOnly: true},
+	{key: "try", open: "try { ", close: " } catch { }", plainOnly: true},
 	{key: "catch", open: "try { } catch { ", close: " }", plainOnly: true},
 	{key: "finally", open: "try { } finally { ", close: " }", plainOnly: true},
 	{key: "arrow", open: "const g = () => { ", close: " }", boundary: true},
@@ -150,14 +150,7 @@ func FuzzPlainHandlerThrow(f *testing.F) {
 			return
 		}
 		want := !effect || nested
-		// A throw in a function nested in a handler has its own key: until
-		// VIP-1 makes unannotated functions plain (core-land), this compiler
-		// infers such a function to be an Effect (old D500), whose throw is
-		// Effect.fail, so the nested shapes wait for that flip.
-		missing := "missing:EK0401"
-		if nested {
-			missing = "missing:EK0401:nested"
-		}
+		const missing = "missing:EK0401"
 		switch {
 		case want && !rejected:
 			Gap(t, "FuzzPlainHandlerThrow", missing, "chapter 2: %s; no EK0401 for %s:\n%s", plainHandlerThrowQuotes[0], shape, source)

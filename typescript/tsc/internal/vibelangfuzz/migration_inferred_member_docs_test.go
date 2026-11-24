@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
@@ -26,12 +25,13 @@ func checkInferredMemberDocs(t *testing.T, target, key string, mode uint8, keys 
 			key = keys[int(key[0])%len(keys)]
 		}
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	script := filepath.Join(repoTestdata(), "oracles", "migration_inferred_member_docs.mjs")
 	cmd := exec.CommandContext(ctx, "node", script, key, strconv.Itoa(int(mode&7)))
 	cmd.Dir = Root()
 	output, err := runJSONOracle(t, cmd)
+	checkOracleContext(t, ctx)
 	if err != nil {
 		t.Fatalf("member documentation oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 	}
