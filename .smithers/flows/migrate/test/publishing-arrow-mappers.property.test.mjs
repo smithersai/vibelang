@@ -46,7 +46,7 @@ function check(input) {
 test("shared pack oracle quotes Chapter 7 output paths",()=>assert.ok(readFileSync(new URL("../../../../docs/design/src/007-tooling.md",import.meta.url),"utf8").includes(rule)))
 test("opencode: shared pack's arrow mappers accept migrated nested import targets",()=>check(corpus.input))
 test("property: arrow publication mappers preserve native public export/import contracts",async()=>{
- await checkProperty(fc,{name:"opencode-shared-pack-arrow-imports",rule,command:"node --test test/publishing-arrow-mappers.property.test.mjs",arbitrary:fc.record({form:fc.constantFrom("expression","block","function"),extension:fc.constantFrom("ts","tsx"),stem:fc.constantFrom("index","nested/slide-text","space name","雪"),types:fc.constantFrom("./dist/","./dist/types/"),legacy:fc.boolean(),javascript:fc.boolean(),wrapped:fc.boolean()}),check,numRuns:160,generatorVersion:1,regressions:new URL("./corpus/",import.meta.url)})
+ await checkProperty(fc,{name:"opencode-shared-pack-arrow-imports",rule,command:"node --test .smithers/flows/migrate/test/publishing-arrow-mappers.property.test.mjs",arbitrary:fc.record({form:fc.constantFrom("expression","block","function"),extension:fc.constantFrom("ts","tsx"),stem:fc.constantFrom("index","nested/slide-text","space name","雪"),types:fc.constantFrom("./dist/","./dist/types/"),legacy:fc.boolean(),javascript:fc.boolean(),wrapped:fc.boolean()}),check,numRuns:160,generatorVersion:1,regressions:new URL("./corpus/",import.meta.url)})
 })
 test("a shadowed or reassigned arrow mapper is not trusted",()=>{
  const input=corpus.input

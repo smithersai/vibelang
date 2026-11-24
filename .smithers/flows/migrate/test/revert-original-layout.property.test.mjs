@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync} from 'node:fs'
 import {createRequire} from 'node:module'
@@ -50,7 +51,10 @@ async function returned({count=3,mirror=corpus.sidecarDir,explicit=false}) {
    assert.equal(readFileSync(join(target,`${mirror}/src/value${i}.d.vibe.ts`),'utf8'),'// authored declaration from a different output layout\n')
    assert.ok(existsSync(join(target,r.to+'.unrelated.d.ts')))
   }
-  assert.ok(globalThis.__revertLayoutCreates<=1,`one stable project required ${globalThis.__revertLayoutCreates} layout programs`)
+  // Only an inferred common root needs a program (sidecarRootLayout). Exactly
+  // one then: zero would mean revertMany no longer builds the layout program
+  // with the target's TypeScript, and this counter no longer measures it.
+  assert.equal(globalThis.__revertLayoutCreates,explicit?0:1,`one stable project required ${globalThis.__revertLayoutCreates} layout programs`)
  } finally {rmSync(home,{recursive:true,force:true});delete globalThis.__revertLayoutCreates}
 }
 test('revert removes the original inferred-root output and preserves another layout',()=>returned({count:3}))

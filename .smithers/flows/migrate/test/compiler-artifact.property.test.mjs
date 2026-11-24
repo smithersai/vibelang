@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import { execFileSync } from "node:child_process"
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"

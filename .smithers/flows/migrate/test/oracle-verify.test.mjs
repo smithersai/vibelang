@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // verify against the stock compiler's oracle (oracle.mjs): a published
 // package whose batch is identical to the native baseline still fails when
 // the batch migrates a module whose native declaration the oracle does not

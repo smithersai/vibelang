@@ -12,7 +12,9 @@ const put=(root,file,text)=>{const path=join(root,file);mkdirSync(dirname(path),
 
 // Stock TypeScript accepts each source only under its project's own option, so
 // the comparison program has to check declarations under that option too.
-function compare({before,after=before,legacyBefore=false,options:extra={},...controls}){
+// `stock` lists the codes stock TypeScript reports on the original project; the
+// snapshot is still emitted (noEmitOnError is off) so the comparison sees it.
+function compare({before,after=before,legacyBefore=false,options:extra={},stock=[],...controls}){
  const root=mkdtempSync(join(tmpdir(),"recorded-checker-options-"))
  try{
   const snapshots=[]
@@ -25,7 +27,7 @@ function compare({before,after=before,legacyBefore=false,options:extra={},...con
    put(pkg,"tsconfig.json",{compilerOptions:options,files:["index.ts"]})
    const parsed=ts.getParsedCommandLineOfConfigFile(join(pkg,"tsconfig.json"),{}, {...ts.sys,onUnRecoverableConfigFileDiagnostic:d=>{throw Error(String(d.code))}})
    const program=ts.createProgram(parsed.fileNames,{...parsed.options,noEmit:false,emitDeclarationOnly:true,outDir:snapshot})
-   assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>d.code),[],"the original project is valid stock TypeScript")
+   assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>d.code),stock,"stock TypeScript's diagnostics on the original project")
    assert.equal(program.emit().emitSkipped,false)
    recordDeclarationSurface(ts,snapshot,pkg,[{tsconfig:"tsconfig.json",prefix:"."}])
    if(side==="before"&&legacyBefore){
@@ -65,7 +67,10 @@ test("a global from the project's lib compares complete and identical (drive-t3c
 
 test("a name no selected library declares stays refused",()=>{
  const missing="export type Missing = NoSuchGlobalAnywhere;\n"
- assert.throws(()=>compare({before:missing,options:{lib:["ES2023","WebWorker"]}}),/2304|valid stock TypeScript/)
+ const result=compare({before:missing,options:{lib:["ES2023","WebWorker"]},stock:[2304]})
+ assert.equal(result.identical,false)
+ assert.equal(result.comparisonComplete,false)
+ assert.ok(result.environmentDiagnostics.some(d=>d.blocking&&/NoSuchGlobalAnywhere/.test(d.diagnostic)),JSON.stringify(result.environmentDiagnostics))
 })
 
 test("a worker heap list reaches the comparison: one too small to run fails it, never reads as identical",()=>{
@@ -94,6 +99,7 @@ test("an option compareDeclarations does not know is refused, not dropped",()=>{
 })
 
 test("profiled stage records stream while the comparison runs",async()=>{
+ const marker="COMPARISON RETURNED "
  const script=`
 import {createRequire} from "node:module"
 import {mkdirSync,mkdtempSync,writeFileSync} from "node:fs"
@@ -103,12 +109,16 @@ import {compareDeclarations} from ${JSON.stringify(new URL("../lib/declarations.
 const ts=createRequire(${JSON.stringify(new URL("../../../../docs/tools/package.json",import.meta.url).href)})("typescript")
 const root=mkdtempSync(join(tmpdir(),"api-profile-"))
 for(const side of ["a","b"]){mkdirSync(join(root,side));writeFileSync(join(root,side,"index.d.ts"),"export declare const n: number\\n");writeFileSync(join(root,side,"package.json"),'{"name":"p","types":"./index.d.ts"}')}
-compareDeclarations(ts,join(root,"a"),join(root,"b"),{canonical:true,profile:true})
+const result=compareDeclarations(ts,join(root,"a"),join(root,"b"),{canonical:true,profile:true})
+console.error(${JSON.stringify(marker)}+JSON.stringify(result.identical))
 `
  const child=spawn(process.execPath,["--input-type=module","-e",script],{stdio:["ignore","ignore","pipe"]})
- let first,text=""
- child.stderr.on("data",data=>{first??=performance.now();text+=data})
- const closed=await new Promise(done=>child.on("close",()=>done(performance.now())))
- assert.match(text,/"stage"/)
- assert.ok(closed-first>100,"the first record arrived "+(closed-first)+" ms before the worker's parent exited")
+ let text=""
+ child.stderr.on("data",data=>{text+=data})
+ const code=await new Promise(done=>child.on("close",done))
+ assert.equal(code,0,text)
+ const lines=text.split("\n"),end=lines.indexOf(marker+"true")
+ assert.ok(end>0,"the comparison returned identical after its records: "+text)
+ assert.ok(lines.slice(0,end).some(line=>/"stage"/.test(line)),"a stage record precedes the comparison's return: "+text)
+ assert.ok(!lines.slice(end+1).some(line=>/"stage"/.test(line)),"no stage record is held back until after the return: "+text)
 })

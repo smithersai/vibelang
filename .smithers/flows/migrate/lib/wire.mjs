@@ -164,9 +164,11 @@ export function replaceTsc(scripts = {}) {
   return next
 }
 
-// tsc in command position: at the start, or after a separator, alone or run
-// through a package runner (bunx, npx, pnpm exec, bun x, yarn).
-const tscCommand = /(^|[\s;&|(`}])((?:bunx|npx|pnpm\s+exec|bun\s+x|yarn)\s+)?tsc(?=\s|$|`)/g
+// tsc in command position: the first word of the template, of a line, or of a
+// command after &&, ||, ;, | or (, alone or run through a package runner
+// (bunx, npx, pnpm exec, bun x, bun run, bun, yarn). tsc as an argument, as in
+// `echo tsc` or `rm -rf dist tsc`, stays.
+const tscCommand = /(^`|[\n;&|(])([ \t]*(?:(?:bunx|npx|pnpm[ \t]+exec|bun[ \t]+x|bun[ \t]+run|bun|yarn)[ \t]+)?)tsc(?=[\s;&|)`]|$)/g
 
 /**
  * A build script's text with each `tsc` its Bun shell runs (`$\`bunx tsc

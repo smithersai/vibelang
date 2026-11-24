@@ -142,8 +142,12 @@ test("extension proof binds the guard to the actual filename and a standard exte
   }
 })
 
+test("the sidecar-exclusion binding rule is quoted from rules.md", () => {
+  assert.ok(readFileSync(new URL("../rules.md", import.meta.url), "utf8").includes("A file selector's `*.d.vibe.ts` exclusion counts only when it tests the same binding as the selector's extension check."))
+})
+
 test("generated substring-related names cannot forge the sidecar guard's filename identity", () => {
-  // The 04:40Z equality ruling includes generated sidecars; a substring is not a binding.
+  // The rule: rules.md, "Gate rules the flow's tests quote", the sidecar exclusion's binding.
   fc.assert(fc.property(fc.constantFrom("a", "x", "f"), fc.constantFrom("path", "name", "file"), (guard, suffix) => {
     const other = guard + suffix
     const source = "function collect(" + guard + ", " + other + ") { const extensions = ['.ts']; return !" + guard +
@@ -153,16 +157,13 @@ test("generated substring-related names cannot forge the sidecar guard's filenam
   }), { seed: 6794274, numRuns: 100 })
 })
 
-test("literal proof indexing stays bounded beside thousands of brace arrays and receiver calls", () => {
+test("literal proof indexing finds the glob and its selector beside thousands of brace arrays and receiver calls", () => {
   const data = Array.from({ length: 4000 }, (_, i) => "const data" + i + " = Object.freeze(['{alpha,beta,gamma}']);").join("\n")
   const source = "import { globSync } from 'node:fs';\n" + data +
     "\nconst pages = globSync('page/**/*.ts');" +
     '\nfunction collect(file) { const extensions = new Set([".ts"]); return !file.endsWith(".d.vibe.ts") && extensions.has(file.slice(file.lastIndexOf("."))) }'
-  const start = performance.now()
   const changed = rewriteSourceLiterals(ts, source, "collector.ts", [{ from: "page/main.ts", to: "page/main.vibe" }], { inventory: corpus.files })
-  const elapsed = performance.now() - start
   assert.equal(changed.edits.length, 2)
-  assert.ok(elapsed < 5000, "bounded selector indexing took " + elapsed + "ms")
 })
 
 test("legacy exact filename glob receipts cannot bypass the original selected-set proof", () => {

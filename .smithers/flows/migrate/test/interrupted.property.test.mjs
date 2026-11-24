@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
@@ -252,7 +253,7 @@ test("durable preparation preserves tsconfig aliases through every interrupted w
 test("foldkit-74: one-pass rename replays every durable prefix and bulk-reverts original bytes",async()=>{
   const { onePassStep } = await import("../lib/onepass.mjs")
   const { revertMany } = await import("../lib/steps.mjs")
-  await fc.assert(fc.asyncProperty(fc.nat(20),async cut=>{
+  await fc.assert(fc.asyncProperty(fc.nat(20),fc.constantFrom(".vibe",".ts"),async(cut,spelling)=>{
     const f=await fixture()
     try {
       const files=corpus.batch
@@ -264,10 +265,10 @@ test("foldkit-74: one-pass rename replays every durable prefix and bulk-reverts 
       const result=await onePassStep("rename",{run:f.run})
       assert.equal(result.renameComplete,true)
       assert.deepEqual(await onePassStep("rename",{run:f.run}),result)
-      await revertMany({run:f.run,files:files.map(file=>({file:file.replace(/\\.ts$/,".vibe"),reason:"interruption control"}))})
+      await revertMany({run:f.run,files:files.map(file=>({file:file.replace(/\.ts$/,spelling),reason:"interruption control"}))})
       for(const file of files) assert.equal(readFileSync(join(f.target,file),"utf8"),corpus.files[file])
     }finally{rmSync(f.root,{recursive:true,force:true})}
-  }),{numRuns:8,seed:740011})
+  }),{numRuns:8,seed:740011,examples:[[0,".vibe"],[0,".ts"]]})
 })
 
 // 8e01612ea773 on the journal: a literal Vite build input that names a renamed

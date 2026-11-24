@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // Will, 2026-11-02 / VIP-30: declaration spelling follows the TypeScript twin.
 // Setup must remove the retired setting instead of inferring a package style.
 import assert from "node:assert/strict"

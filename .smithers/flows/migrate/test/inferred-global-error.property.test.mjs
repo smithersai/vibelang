@@ -42,8 +42,12 @@ const originalForms = {
 }
 const head = "import { Effect } from 'effect'\nconst MESSAGE = 'bad'\nconst cause = 1\n"
 
+test("the inferred Error rule is quoted from rules.md", () => {
+  assert.ok(readFileSync(new URL("../rules.md", import.meta.url), "utf8").includes("A private function the original only inferred needs no written channel: the gate accepts a `new Error` with the same message that the same function failed with, through `Effect.fail`, a `try` `catch` or `mapError`, as many times as the original did."))
+})
+
 test("the same new Error in the same function is preserved, whichever failure form the original wrote", native, async () => {
-  // Foldkit ruling 18:45Z: "preserving a published Error contract is required, so the flow must not reject it."
+  // The rule: rules.md, "Keep the contract", on a private function the original only inferred.
   await fc.assert(fc.asyncProperty(message, fc.constantFrom(...Object.keys(originalForms)), fc.constantFrom("const", "function"), async (m, form, shape) => {
     const before = head + `const load = () => ${originalForms[form](m)}\nexport const work = load\n`
     const after = shape === "const"

@@ -48,7 +48,7 @@ test("opencode sdk nested imports keep their dist paths", () => check(corpus.inp
 test("opencode sdk legacy paired-sidecar imports keep their dist paths", () => check({ ...corpus.input, shape: "legacy" }))
 test("property: sdk nested imports preserve native publication policy", async () => {
   await checkProperty(fc, {
-    name: "sdk-conditional-imports", rule, command: "node --test test/publishing-imports.property.test.mjs",
+    name: "sdk-conditional-imports", rule, command: "node --test .smithers/flows/migrate/test/publishing-imports.property.test.mjs",
     arbitrary: fc.record({
       name: fc.constantFrom("database/v1-migration.noop", "nested/skill", "index", "service"),
       package: fc.constantFrom("core", "plugin", "sdk"),

@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // Rerunning setup on a repository an earlier release set up (Smithers, 76
 // tsconfigs): the earlier setup wrote `"moduleSuffixes": ["", ".d.vibe"]`. A
 // TypeScript twin has no such option, and Bun warns on it ("moduleSuffixes is

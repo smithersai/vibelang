@@ -100,25 +100,54 @@ test("opencode-47: a build script that only runs tsc runs vibelang, and its pack
 
 // Generated build scripts: tsc in command position in $ templates (alone,
 // through a runner, after a separator, beside an interpolation), and decoys
-// that must stay: tsconfig words, tscx, tsc in an ordinary string, a comment,
-// an interpolated value, another tag.
+// that must stay: tsc as an argument (echo, rm, npm i, bun add), tsconfig
+// words, tscx, tsc in an ordinary string, a comment, another tag.
 const runner = fc.constantFrom("", "bunx ", "npx ", "pnpm exec ", "bun x ", "bun ", "yarn ")
 const flags = fc.constantFrom("", " --emitDeclarationOnly", " -p tsconfig.build.json", " -b")
 const command = fc.tuple(runner, flags).map(([r, f]) => `${r}tsc${f}`)
+// The expected text comes from a shell-word model, not from the rewriter's
+// pattern: a command starts the template or follows &&, ||, ;, | or (; after a
+// package runner's words, its first word is the program it runs.
+const runners = [["bunx"], ["npx"], ["pnpm", "exec"], ["bun", "x"], ["bun", "run"], ["bun"], ["yarn"]]
+function runVibeLang(body) {
+  let start = true, words = []
+  return body.split(/(\s+|&&|\|\||[;|()])/).map((token) => {
+    if (token === "" || /^\s+$/.test(token)) return token
+    if (["&&", "||", ";", "|", "("].includes(token)) { start = true; words = []; return token }
+    if (!start) return token
+    if (token === "tsc") { start = false; return "vibelang" }
+    words.push(token)
+    start = runners.some((r) => words.every((w, i) => r[i] === w))
+    return token
+  }).join("")
+}
+const shell = (body) => [`await $\`${body}\``, `await $\`${runVibeLang(body)}\``]
+const other = (line) => [line, line]
 const site = fc.constantFrom(
-  (c) => [`await $\`${c}\``, true],
-  (c) => [`await $\`rm -rf dist && ${c}\``, true],
-  (c) => [`await $\`${c} --outDir \${out}\``, true],
-  (c) => [`const x = "${c}"`, false],
-  (c) => [`// ${c}`, false],
-  (c) => [`await sh\`${c}\``, false],
-  (c) => [`await $\`echo tsconfig.json tscx\``, false]
+  (c) => shell(c),
+  (c) => shell(`rm -rf dist && ${c}`),
+  (c) => shell(`${c} --outDir \${out}`),
+  (c) => shell(`echo ${c}`),
+  () => shell("rm -rf dist tsc"),
+  () => shell("npm i -D tsc"),
+  () => shell("bun add -d tsc"),
+  (c) => other(`const x = "${c}"`),
+  (c) => other(`// ${c}`),
+  (c) => other(`await sh\`${c}\``),
+  () => shell("echo tsconfig.json tscx")
 )
+test("shell-word model: tsc is rewritten only as a command's program", () => {
+  assert.equal(runVibeLang("bunx tsc -b"), "bunx vibelang -b")
+  assert.equal(runVibeLang("rm -rf dist && bun x tsc"), "rm -rf dist && bun x vibelang")
+  assert.equal(runVibeLang("echo tsc"), "echo tsc")
+  assert.equal(runVibeLang("bun add -d tsc"), "bun add -d tsc")
+  assert.equal(runVibeLang("npm i -D tsc"), "npm i -D tsc")
+})
 test("tsc-in-scripts: only tsc in command position of a $ template becomes vibelang", () => {
   fc.assert(fc.property(fc.array(fc.tuple(command, site), { minLength: 1, maxLength: 5 }), (lines) => {
     const built = lines.map(([c, s]) => s(c))
     const text = 'import { $ } from "bun"\nconst out = "dist"\n' + built.map(([line]) => line).join("\n") + "\n"
-    const expected = 'import { $ } from "bun"\nconst out = "dist"\n' + built.map(([line, changes], i) => changes ? line.replace(/((?:bunx|npx|pnpm exec|bun x|bun|yarn) )?tsc(?=[\s`])/, "$1vibelang") : line).join("\n") + "\n"
+    const expected = 'import { $ } from "bun"\nconst out = "dist"\n' + built.map(([, after]) => after).join("\n") + "\n"
     const result = replaceTscInScript(text, ts)
     assert.equal(result, expected)
     assert.equal(replaceTscInScript(result, ts), result)

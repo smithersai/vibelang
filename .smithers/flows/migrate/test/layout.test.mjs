@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // A step's result literal lists one property per line. Lanes add result fields
 // often, and two lanes adding fields to a one-line literal edit the same line:
 // 5 of 7 merge-queue conflict rejections on lib/steps.mjs from 2026-11-01

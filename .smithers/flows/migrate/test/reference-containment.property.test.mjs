@@ -1,11 +1,11 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { createRequire, syncBuiltinESMExports } from "node:module"
+import { createRequire } from "node:module"
 import path, { dirname, join, relative, resolve, sep, isAbsolute } from "node:path"
 import { tmpdir } from "node:os"
 import { test } from "node:test"
-import { compileFunction } from "node:vm"
-import { referenceRefreshPlan, refreshProjectReferences } from "../lib/reference-outputs.mjs"
+import { containment, referenceRefreshPlan, refreshProjectReferences } from "../lib/reference-outputs.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
@@ -24,27 +24,38 @@ function fixture(count = 1) {
   return { root, ts, configs: ["tsconfig.json"], changed: ["leaf/src/f0.ts"], tracked,
     cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
+// Every path operation the containment index makes, counted. A quadratic
+// containment check (each output against each source) needs a path operation
+// per pair, so the count grows with the square of the source count.
+function countedContainment(paths, platform) {
+  const counter = { calls: 0 }
+  const counted = Object.fromEntries(["resolve", "dirname", "relative", "isAbsolute"].map(name =>
+    [name, (...args) => { counter.calls++; return paths[name](...args) }]))
+  return { counter, ...containment({ ...counted, sep: paths.sep }, platform) }
+}
 test("opencode reference-output containment grows with the source count rather than its square", t => {
   const samples = []
   for (const count of corpus.sizes) {
-    const f = fixture(count), original = path.relative
-    let comparisons = 0
-    try {
-      path.relative = (...args) => { comparisons++; return original(...args) }
-      syncBuiltinESMExports()
-      const plan = referenceRefreshPlan(f)
-      samples.push({ count, comparisons })
-      assert.equal(plan.outputs.length, 2 * count)
-    } finally {
-      path.relative = original
-      syncBuiltinESMExports()
-      f.cleanup()
-    }
+    const f = fixture(count)
+    try { assert.equal(referenceRefreshPlan(f).outputs.length, 2 * count) } finally { f.cleanup() }
+    // The plan's own shape: every source protects its directory, and each
+    // output is checked against the sources, then reduced to the outermost.
+    const { counter, descendantIndex, outermostOutputs } = countedContainment(path, process.platform)
+    const root = resolve(tmpdir(), "reference-containment-growth")
+    const sources = Array.from({ length: count }, (_, i) => join(root, "leaf/src/f" + i + ".ts"))
+    const outputs = sources.flatMap((_, i) => [join(root, "leaf/out/f" + i + ".js"), join(root, "leaf/out/f" + i + ".d.ts")])
+    const containsSource = descendantIndex(sources)
+    assert.deepEqual(outputs.filter(containsSource), [])
+    assert.equal(outermostOutputs(outputs).length, 2 * count)
+    samples.push({ count, calls: counter.calls })
   }
   t.diagnostic(JSON.stringify(samples))
   for (let i = 1; i < samples.length; i++) {
-    assert.ok(samples[i].comparisons <= samples[i - 1].comparisons * 2.6 + 100,
-      "doubling input must not quadruple containment comparisons: " + JSON.stringify(samples))
+    const growth = samples[i].count / samples[i - 1].count
+    assert.ok(samples[i].calls >= samples[i - 1].calls * growth * 0.9,
+      "containment work grows with its input; a count that does not measures nothing: " + JSON.stringify(samples))
+    assert.ok(samples[i].calls <= samples[i - 1].calls * growth * 1.3,
+      "doubling input must not quadruple containment path operations: " + JSON.stringify(samples))
   }
 })
 const inside = (parent, child) => {
@@ -104,18 +115,10 @@ test("reference planning records its stage before computing outputs and retains 
   } finally { f.cleanup() }
 })
 
-// Exercise the actual private indexes against Windows' exhaustive path oracle,
-// including case aliases, on hosts whose filesystem uses different path rules.
+// Windows' path rules, including case aliases, on any host.
 test("Windows containment indexes preserve native case and separator boundaries", () => {
-  const source = readFileSync(new URL("../lib/reference-outputs.mjs", import.meta.url), "utf8")
-  const ast = ts.createSourceFile("reference-outputs.mjs", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
-  const names = new Set(["pathKey", "descendantIndex", "outermostOutputs"])
-  const declarations = ast.statements.filter(node => ts.isFunctionDeclaration(node) && names.has(node.name?.text) ||
-    ts.isVariableStatement(node) && node.declarationList.declarations.some(item => names.has(item.name.getText(ast))))
-  assert.equal(declarations.length, 3)
-  const code = declarations.map(node => node.getFullText(ast)).join("\n") + "\nreturn { descendantIndex, outermostOutputs }"
   const api = path.win32
-  const indexes = compileFunction(code, ["resolve", "dirname", "sep", "process"])(api.resolve, api.dirname, api.sep, { platform: "win32" })
+  const indexes = containment(api, "win32")
   const base = "Z:" + api.sep + "fixture"
   const paths = ["build", "Build", "BUILD/a.js", "build/deep/b.d.ts", "build2/a.js", "build.extra/a.js", "build/deep/../c.js", "../outside/a.js"]
   const nativeInside = (parent, child) => {

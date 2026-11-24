@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // The whole setup step, through its receipt: a package bin Node runs with no
 // VibeLang loader keeps what it reaches TypeScript, and setup.json says which.
 import assert from "node:assert/strict"

@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { mkdtempSync, readFileSync, rmSync } from "node:fs"

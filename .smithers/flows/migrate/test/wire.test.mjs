@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -19,8 +20,8 @@ test("package.json edits: VibeLang packages and tsc in scripts", () => {
   assert.equal(added.dependencies["vibelang-runtime"], "file:/t/r.tgz")
   assert.deepEqual(Object.keys(added.devDependencies), ["effect", "vitest", "vibelang"])
   assert.equal(pkg.dependencies["vibelang-runtime"], undefined)
-  assert.deepEqual(replaceTsc({ build: "pnpm run clean && tsc -b tsconfig.build.json", typecheck: "tsc -p tsconfig.json --noEmit", test: "vitest run", other: "tscx" }), {
-    build: "pnpm run clean && vibelang -b tsconfig.build.json", typecheck: "vibelang -p tsconfig.json --noEmit", test: "vitest run", other: "tscx"
+  assert.deepEqual(replaceTsc({ build: "pnpm run clean && tsc -b tsconfig.build.json", typecheck: "tsc -p tsconfig.json --noEmit", test: "vitest run", other: "tscx", echo: "echo tsc", install: "npm i -D tsc", clean: "rimraf dist tsc" }), {
+    build: "pnpm run clean && vibelang -b tsconfig.build.json", typecheck: "vibelang -p tsconfig.json --noEmit", test: "vitest run", other: "tscx", echo: "echo tsc", install: "npm i -D tsc", clean: "rimraf dist tsc"
   })
 })
 

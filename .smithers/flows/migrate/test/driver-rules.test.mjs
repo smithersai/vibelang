@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync, chmodSync } from "node:fs"
 import { dirname, join } from "node:path"

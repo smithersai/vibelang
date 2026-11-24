@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"

@@ -186,3 +186,8 @@ Ambient APIs keep native TypeScript declarations. A custom `schema` or `data` cr
 Preserve eager factory calls, argument evaluation and closure state shared by repeated runs. Never rewrite an existing foreign file when creating a new platform boundary. Preserve run phase, captures, receiver and public types. Keep nested pipeline edits when an outer pipeline captures its receiver and stages.
 
 Synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`.
+
+## Gate rules the flow's tests quote
+
+- The style gate exempts the tag advisory `EK4804` only when the written failure type is the global `Error` that the original declared for the same function. Another error type on either side, `never`, no written type, a declaration or import that shadows `Error`, or a changed `new Error(...)` keeps the warning.
+- A file selector's `*.d.vibe.ts` exclusion counts only when it tests the same binding as the selector's extension check. A binding whose name merely contains the guarded one, such as `apath` beside `a`, is a different value, and the codemod leaves the selector as written.

@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"

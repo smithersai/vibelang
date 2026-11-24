@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // Decided detail 272, through setup's own wiring: a repository laid out with
 // Smithers' embedded esbuild calls (the corpus) keeps every test, fixture and
 // helper only tests import byte for byte, while its scripts and sources get

@@ -3,8 +3,8 @@
 // shipped before. A build that selects sources by `.ts` (a `**/*.ts` entry
 // glob, an endsWith(".ts") walk) drops a renamed module and still exits 0, so
 // neither the build's exit code nor the text check proves the package whole.
-import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs"
-import { join, posix } from "node:path"
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { dirname, join, posix } from "node:path"
 
 const strings = (value, out = []) => {
   if (typeof value === "string") out.push(value)
@@ -52,17 +52,31 @@ function listFiles(root, dir, out) {
  * Runs `build` with every output directory moved aside, then lists what it
  * wrote. A directory the build did not recreate is moved back and named in
  * `notBuilt`: it came from something other than this build and is not compared.
+ * `dist-aside/moves.json` records the moves before any is made, so a call
+ * after a killed build first puts back what that build left aside.
  */
 export async function cleanBuildList({ t, dirs, scratch, build }) {
-  const aside = join(scratch, "dist-aside")
+  const aside = join(scratch, "dist-aside"), manifest = join(aside, "moves.json")
+  // A manifest cut short by the kill was written before any move: nothing to put back.
+  let recorded = null
+  try { recorded = JSON.parse(readFileSync(manifest, "utf8")) } catch {}
+  for (const { dir, index } of recorded?.moves ?? []) {
+    const from = join(aside, String(index)), to = join(recorded.t, dir)
+    if (existsSync(from) && !existsSync(to)) { mkdirSync(dirname(to), { recursive: true }); move(from, to) }
+  }
   rmSync(aside, { recursive: true, force: true })
-  const moved = []
-  for (const [i, dir] of dirs.entries()) {
+  const moves = dirs.flatMap((dir, index) => {
     const path = join(t, dir)
-    if (!existsSync(path) || !lstatSync(path).isDirectory()) continue
+    return existsSync(path) && lstatSync(path).isDirectory() ? [{ dir, index }] : []
+  })
+  if (moves.length) {
     mkdirSync(aside, { recursive: true })
-    move(path, join(aside, String(i)))
-    moved.push({ dir, from: join(aside, String(i)) })
+    writeFileSync(manifest, JSON.stringify({ t, moves }) + "\n")
+  }
+  const moved = []
+  for (const { dir, index } of moves) {
+    move(join(t, dir), join(aside, String(index)))
+    moved.push({ dir, from: join(aside, String(index)) })
   }
   const restore = () => {
     const notBuilt = []
@@ -88,7 +102,10 @@ function move(from, to) {
   }
 }
 
-const HASH = /-[A-Za-z0-9_-]{8}(?=\.(?:[cm]?js|d\.[cm]?ts)(?:\.map)?$)/
+// A bundler's chunk hash: eight characters after a dash, with a digit or a
+// capital letter (tsdown's AbCd1234, esbuild's 5ZHGHPQK), so a name such as
+// api-identity.js or use-callback.js is not taken for one.
+const HASH = /-(?=[A-Za-z0-9_-]{0,7}[A-Z0-9])[A-Za-z0-9_-]{8}(?=\.(?:[cm]?js|d\.[cm]?ts)(?:\.map)?$)/
 
 const stem = path => posix.basename(path).replace(/(?:\.d)?\.(?:[cm]?[jt]sx?|vibex?|map)(?:\.map)?$/, "")
 
@@ -106,11 +123,20 @@ export function compareDistLists(baseline, candidate, renames = []) {
   const lost = baseline.files.filter(file => !after.has(file))
   const renamedSources = [], refusals = [], rehashed = []
   // A bundler's hashed chunk (tsdown's name-AbCd1234.js) changes its hash with its input: pair it by name.
+  // A file named after a renamed module is that module's output, never a chunk.
+  const renamedStems = new Set(renames.map(r => stem(r.from)))
+  const keyOf = file => renamedStems.has(stem(file)) ? file : file.replace(HASH, "")
   const unhashed = new Map()
-  for (const file of candidate.files) if (!before.has(file)) { const key = file.replace(HASH, ""); if (key !== file) unhashed.set(key, [...(unhashed.get(key) ?? []), file]) }
+  for (const file of candidate.files) if (!before.has(file)) { const key = keyOf(file); if (key !== file) unhashed.set(key, [...(unhashed.get(key) ?? []), file]) }
+  // Every exact-name pair first, so a sibling pairing cannot take a chunk another lost file's name matches.
+  const unpaired = []
   for (const file of lost) {
-    const key = file.replace(HASH, "")
-    if (key !== file && unhashed.get(key)?.length) { rehashed.push({ from: file, to: unhashed.get(key).shift() }); continue }
+    const key = keyOf(file)
+    if (key !== file && unhashed.get(key)?.length) rehashed.push({ from: file, to: unhashed.get(key).shift() })
+    else unpaired.push(file)
+  }
+  for (const file of unpaired) {
+    const key = keyOf(file)
     // A chunk the bundler renamed (rolldown names a chunk by a module it holds): another new chunk in its directory.
     const sibling = key !== file && [...unhashed].find(([k, files]) => files.length && posix.dirname(k) === posix.dirname(key) && /\.[cm]?js$/.test(k) === /\.[cm]?js$/.test(key))
     if (sibling) { rehashed.push({ from: file, to: sibling[1].shift(), renamed: true }); continue }

@@ -806,8 +806,11 @@ the baseline has too under `baselineFailures`. None of these fails the batch. `r
 The check never passes silently. It costs the most of any gate, so it runs last and
 only when every other check passed; otherwise `packLoad.state` is `not-run` with the
 reason. It also says so for a one-pass run, a baseline from before this check, a run
-with no published package, and a batch with no file in a published package. A batch
-checks only the published packages holding its files, and `notInBatch` lists the rest.
+with no published package, and a batch with no file in a published package; these
+have nothing to compare and pass. A baseline whose pack check failed at setup, or a
+candidate that could not be packed, is `not-run` too, and `checks.packLoad` is false:
+fix the failure and rerun setup. A batch checks only the published packages holding
+its files, and `notInBatch` lists the rest.
 
 Cost, measured on alchemy's `packages/aws` (7,281 specifiers, so batched) on one
 4-vCPU box:

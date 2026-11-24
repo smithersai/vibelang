@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync,existsSync,renameSync} from "node:fs"
 import {join,dirname} from "node:path"
@@ -134,12 +135,15 @@ test("property: hidden declarations remain physical through native import forms 
    }finally{f.dispose()}
   }})
 })
-const bunHelp=spawnSync("bun",["check","--help"],{encoding:"utf8"})
-const nativeBun=bunHelp.status===0&&(bunHelp.stdout+bunHelp.stderr).includes("--no-script")&&(bunHelp.stdout+bunHelp.stderr).includes("--threads")
-test("native Bun checker: setup wires the foreign hidden declaration without changing the command",{skip:!nativeBun&&!process.env.VIBELANG_BUN_NATIVE_CHECK_REQUIRE},async()=>{
- assert.ok(nativeBun,"Bun with native check is required for this qualification")
+// The Bun that docs/tools/package.json pins, not whichever Bun the host has.
+const bun=fileURLToPath(new URL("../../../../docs/tools/node_modules/bun/bin/bun.exe",import.meta.url))
+test("native Bun checker: setup wires the foreign hidden declaration without changing the command",async()=>{
+ const bunHelp=spawnSync(bun,["check","--help"],{encoding:"utf8"})
+ assert.equal(bunHelp.status,0,bun+" check --help\n"+bunHelp.stdout+bunHelp.stderr)
+ assert.match(bunHelp.stdout+bunHelp.stderr,/--no-script/,"the pinned Bun's checker has no --no-script")
+ assert.match(bunHelp.stdout+bunHelp.stderr,/--threads/,"the pinned Bun's checker has no --threads")
  const f=fixture()
- const run=()=>spawnSync("bun",["check","--no-script","--threads","4","-p","consumer/tsconfig.json"],{cwd:f.root,encoding:"utf8",timeout:60000})
+ const run=()=>spawnSync(bun,["check","--no-script","--threads","4","-p","consumer/tsconfig.json"],{cwd:f.root,encoding:"utf8",timeout:60000})
  try{
   f.put("ai/src/schema/options.ts",corpus.source)
   f.put("ai/src/cache-policy.ts",corpus.nativeImporter.replaceAll("./schema/options.vibe","./schema/options.ts"))
@@ -222,8 +226,7 @@ test("native import-equals types keep their literal module edge",()=>{
  assert.deepEqual(sourceTypeEdges(source,"file.cts",ts).map(edge=>edge.specifier),["./options.vibe"])
 })
 const nativeCompiler=process.env.VIBELANG_BINARY??fileURLToPath(new URL("../../../../packages/compiler/native/vibelang",import.meta.url))
-test("a migrated importer retains and restores its native-parsed type edges",{skip:!existsSync(nativeCompiler)&&!process.env.VIBELANG_SOURCE_ROUTE_RUNTIME_REQUIRE},()=>{
- assert.ok(existsSync(nativeCompiler))
+test("a migrated importer retains and restores its native-parsed type edges",{skip:!existsSync(nativeCompiler)&&"build the compiler first"},()=>{
  for(const code of [
   'import type {CachePolicyObject} from "./schema/options.vibe"; export type X = CachePolicyObject;\n',
   'export type X = import("./schema/options.vibe").CachePolicyObject;\n',

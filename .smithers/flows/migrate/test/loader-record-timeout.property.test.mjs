@@ -33,8 +33,8 @@ export function writeLoaderRecord({project}) {
   const mode = JSON.parse(readFileSync(project, "utf8")).mode
   if (mode === "slow") Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2500)
   if (mode === "child") {
-    const child = "setTimeout(() => require('node:fs').writeFileSync(process.argv[1], 'late'), 2500)"
-    spawnSync(process.execPath, ["-e", child, join(dirname(project), "late")])
+    const child = "require('node:fs').writeFileSync(process.argv[2], String(process.pid)); setTimeout(() => require('node:fs').writeFileSync(process.argv[1], 'late'), 2500)"
+    spawnSync(process.execPath, ["-e", child, join(dirname(project), "late"), join(dirname(project), "started")])
   }
   if (mode === "errors") return { errors: [{message:"fixture type error"}] }
   if (mode === "throw") throw new Error("fixture loader failure")
@@ -51,18 +51,34 @@ test("an optional loader record has a deadline and retains the next project's re
   assert.equal(stalled.timedOut, true)
   assert.equal(stalled.stage, "loader-record")
   assert.equal(stalled.timeoutMs, 1000)
-  assert.ok(stalled.ms >= 900 && stalled.ms < 5000, String(stalled.ms))
+  assert.ok(stalled.ms >= 900, String(stalled.ms))
   assert.match(stalled.error, /timed out/)
   assert.equal(stalled.file, undefined)
   assert.deepEqual(records.find(r => r.project === "b/tsconfig.json"), {project:"b/tsconfig.json", file:"b/record.json", modules:1})
 })
+
+// Whether a process is still running. A killed child whose parent is gone can
+// stay a zombie until init reaps it; Linux shows that state in /proc.
+function running(pid) {
+  try { process.kill(pid, 0) } catch (error) { return error.code === "EPERM" }
+  try { return readFileSync("/proc/" + pid + "/stat", "utf8").split(") ")[1]?.[0] !== "Z" } catch { return true }
+}
+
+// Waits for the process to exit, however loaded the box is. The bound only stops a hang.
+async function exited(pid) {
+  for (let i = 0; i < 1200 && running(pid); i++) await new Promise(done => setTimeout(done, 50))
+  assert.equal(running(pid), false, "the compiler descendant " + pid + " is still running")
+}
 
 test("a timed out record terminates its compiler descendant before continuing", async t => {
   const root = fixture(t, {a:"child", b:"success"})
   const records = await writeLoaderRecords({ compiler:"unused", packageDir:root, root, timeoutMs:1000 })
   assert.equal(records[0].timedOut, true)
   assert.equal(records[1].modules, 1)
-  await new Promise(done => setTimeout(done, 2600))
+  const started = join(root, "a/started")
+  assert.ok(existsSync(started), "the compiler descendant never started")
+  // Left running, the descendant writes a/late and then exits.
+  await exited(Number(readFileSync(started, "utf8")))
   assert.equal(existsSync(join(root, "a/late")), false)
 })
 

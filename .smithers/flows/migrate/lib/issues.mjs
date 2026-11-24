@@ -27,6 +27,3 @@ export function validateIssue(entry) {
 export function readIssues(path) {
   return readJsonl(path).map((entry, index) => ({ line: index + 1, entry, problems: validateIssue(entry) }))
 }
-
-/** The entries of one kind, optionally of one batch. */
-export const ofKind = (issues, kind, batch) => issues.filter((i) => i.entry.kind === kind && (batch === undefined || i.entry.batch === batch)).map((i) => i.entry)

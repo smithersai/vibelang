@@ -13,7 +13,6 @@ const require=createRequire(new URL("../../../../packages/runtime/package.json",
 const fc=require("fast-check")
 const api=join(repo,"packages/runtime/node_modules/typescript")
 const corpus=JSON.parse(readFileSync(new URL("./corpus/t3code-typescript-api-selection.json",import.meta.url),"utf8"))
-const native=join(repo,"packages/ts-mapper/test/.cache/typescript-"+corpus.nativeVersion+"/node_modules/typescript")
 
 function inspect(kinds) {
   const root=mkdtempSync(join(tmpdir(),"migrate-ts-api-"))
@@ -25,7 +24,12 @@ function inspect(kinds) {
       if(kind==="missing") {
         mkdirSync(target)
         writeFileSync(join(target,"package.json"),'{"name":"typescript","main":"missing.cjs"}\n')
-      } else symlinkSync(kind==="api"?api:native,target)
+      } else if(kind==="native") {
+        // A native CLI package: it loads, and exports no compiler API.
+        mkdirSync(target)
+        writeFileSync(join(target,"package.json"),JSON.stringify({name:"typescript",version:corpus.reportedVersion,main:"cli.cjs"})+"\n")
+        writeFileSync(join(target,"cli.cjs"),"module.exports = { version: "+JSON.stringify(corpus.reportedVersion)+" }\n")
+      } else symlinkSync(api,target)
       return dir
     })
     if(kinds.includes("api")) {
@@ -46,7 +50,6 @@ function inspect(kinds) {
 }
 
 test("t3code: a native TypeScript installation needs a separate compiler API for migration preparation",()=>{
-  assert.equal(JSON.parse(readFileSync(join(native,"package.json"),"utf8")).version,corpus.nativeVersion)
   for(const order of corpus.orders)inspect(order)
 })
 test("TypeScript API discovery covers CLI-only packages, missing modules and fallback positions",()=>{

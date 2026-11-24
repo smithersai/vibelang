@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -147,7 +148,7 @@ test("formatter targets exclude tests and fixtures even when mechanical import e
     writeFileSync(join(f.target,file),c.text)
     const result=await codemod({run:f.run,batch:"01"})
     assert.ok(!result.formatted.files.includes(file))
-    const output=readFileSync(join(f.target,file),"utf8")
-    assert.ok(output===c.text || output===c.text.replace('.ts"','.vibe"'))
+    // The codemod renames a test's explicit ./x.ts import like any importer's; the formatter leaves the rest of the file as written.
+    assert.equal(readFileSync(join(f.target,file),"utf8"),c.text.replace('.ts"','.vibe"'))
   }finally{f.cleanup()}
 })

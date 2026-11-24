@@ -25,7 +25,7 @@ test("opencode: a Vite app wires workers started by a workspace dependency",()=>
  } finally {remove(root)}
 })
 test("property: worker discovery follows local dependency cycles and excludes unrelated/protected trees",async()=>{
- await checkProperty(fc,{name:"opencode-worker-workspaces",rule,command:"node --test test/worker-workspaces.property.test.mjs",arbitrary:fc.record({depth:fc.integer({min:1,max:5}),cycle:fc.boolean(),field:fc.constantFrom("dependencies","devDependencies","peerDependencies","optionalDependencies"),kind:fc.constantFrom("worker","shared","query"),spec:fc.constantFrom("workspace:*","file:../local","link:../local","*"),protected:fc.constantFrom("test","tests","__tests__","fixtures","templates")}),numRuns:80,generatorVersion:1,regressions:new URL("./corpus/",import.meta.url),check:input=>{
+ await checkProperty(fc,{name:"opencode-worker-workspaces",rule,command:"node --test .smithers/flows/migrate/test/worker-workspaces.property.test.mjs",arbitrary:fc.record({depth:fc.integer({min:1,max:5}),cycle:fc.boolean(),field:fc.constantFrom("dependencies","devDependencies","peerDependencies","optionalDependencies"),kind:fc.constantFrom("worker","shared","query"),spec:fc.constantFrom("workspace:*","file:../local","link:../local","*"),protected:fc.constantFrom("test","tests","__tests__","fixtures","templates")}),numRuns:80,generatorVersion:1,regressions:new URL("./corpus/",import.meta.url),check:input=>{
   const {root,dir}=fixture(input)
   try {
    assert.equal(startsWorkers(root,"packages/app"),true)

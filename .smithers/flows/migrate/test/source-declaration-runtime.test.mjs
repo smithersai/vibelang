@@ -1,7 +1,8 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import {cpSync,existsSync,mkdirSync,mkdtempSync,readFileSync,rmSync,symlinkSync,writeFileSync} from "node:fs"
 import {createRequire} from "node:module"
-import {dirname,join} from "node:path"
+import {delimiter,dirname,join} from "node:path"
 import {tmpdir} from "node:os"
 import {fileURLToPath} from "node:url"
 import {spawnSync} from "node:child_process"
@@ -12,16 +13,22 @@ import {compareDeclarations} from "../lib/declarations.mjs"
 const repo=fileURLToPath(new URL("../../../../",import.meta.url))
 const runtime=join(repo,"packages/runtime"),compiler=process.env.VIBELANG_BINARY??join(repo,"packages/compiler/native/vibelang")
 const require=createRequire(join(runtime,"package.json")),ts=require("typescript")
-const bunHelp=spawnSync("bun",["check","--help"],{encoding:"utf8"})
-const nativeBun=bunHelp.status===0&&(bunHelp.stdout+bunHelp.stderr).includes("--threads")
-const available=existsSync(compiler)&&nativeBun
-test("source routes preserve Node/Bun module identity and normal packed declarations",{skip:!available&&!process.env.VIBELANG_SOURCE_ROUTE_RUNTIME_REQUIRE,timeout:240000},async()=>{
- assert.ok(available,"native compiler and Bun native checker are required")
+// The Bun that docs/tools/package.json pins, not whichever Bun the host has.
+const bun=join(repo,"docs/tools/node_modules/bun/bin/bun.exe")
+test("source routes preserve Node/Bun module identity and normal packed declarations",{skip:!existsSync(compiler)&&"build the compiler first",timeout:240000},async()=>{
+ const bunHelp=spawnSync(bun,["check","--help"],{encoding:"utf8"})
+ assert.equal(bunHelp.status,0,bun+" check --help\n"+bunHelp.stdout+bunHelp.stderr)
+ assert.match(bunHelp.stdout+bunHelp.stderr,/--threads/,"the pinned Bun has no native checker")
  const root=mkdtempSync(join(tmpdir(),"opencode-source-route-runtime-")),commands=[]
- const proof=join(repo,".cache/bun101/runtime-proof")
+ // Receipts stay under the temporary root and go with it.
+ const proof=join(root,"proof")
+ // Package scripts call bun by name, so put the pinned Bun first on PATH.
+ const bunBin=join(root,"bun-bin")
+ mkdirSync(bunBin)
+ symlinkSync(bun,join(bunBin,"bun"),"file")
  const put=(path,text)=>{mkdirSync(dirname(join(root,path)),{recursive:true});writeFileSync(join(root,path),text)}
  const json=(path,value)=>put(path,JSON.stringify(value,null,2)+"\n")
- const env={...process.env,VIBELANG_BINARY:compiler,VIBELANG_RUNTIME:runtime,VIBELANG_PROJECT:"",VIBELANG_CACHE_DIR:join(root,"cache")}
+ const env={...process.env,PATH:bunBin+delimiter+process.env.PATH,VIBELANG_BINARY:compiler,VIBELANG_RUNTIME:runtime,VIBELANG_PROJECT:"",VIBELANG_CACHE_DIR:join(root,"cache")}
  const run=(stage,command,args,cwd=root,expected=0)=>{
   const result=spawnSync(command,args,{cwd,env,encoding:"utf8",timeout:120000,maxBuffer:16<<20})
   commands.push({stage,exit:result.status,stdout:result.stdout?.slice(-3000),stderr:result.stderr?.slice(-3000)})

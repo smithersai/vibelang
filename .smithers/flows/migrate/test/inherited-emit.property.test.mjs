@@ -12,8 +12,11 @@ test("t3code Mobile zero-source audit: inherited original errors do not add an e
   assert.ok(emitErrorsIn(corpus.current.diagnostics, corpus.files, { code: corpus.current.code }).length, "missing original evidence is not a waiver")
 })
 
-// Coordinator 09:47Z ruling: "a converted program fails only on emit diagnostics the original's program doesn't have."
-// Count diagnostics by source identity, code, message and notes; locations can move during conversion.
+test("the inherited-emit rule is quoted from the README", () => {
+  assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes("A nonzero exit is inherited only when its error diagnostics all occur in that original receipt, counting duplicates and comparing source identity, code, message and notes. Locations may move when a source changes extension."))
+})
+
+// The rule: README.md, an emit exit is inherited only when the original receipt has every error diagnostic.
 test("inherited emit diagnostics preserve counts and reject every new diagnostic neighbourhood", () => {
   const diagnostic = fc.record({
     file: fc.constantFrom(null, "main.ts", "other.ts"), category: fc.constant("error"),

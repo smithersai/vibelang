@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // The pack check (migrate-flow:pack-install-and-load): a dist-list diff passes
 // a package that does not install or load outside its workspace, so each
 // published package is packed, installed in an empty directory and imported
@@ -12,7 +13,7 @@ import { recordDeclarationSurface } from "../lib/declarations.mjs"
 import { packRepository } from "../lib/pack-policy.mjs"
 import { compareDistLists } from "../lib/dist-list.mjs"
 import * as Jj from "../lib/jj.mjs"
-import { comparePackLoads, exportSpecifiers, packLoadSnapshot, verifyPackLoad } from "../lib/pack-load.mjs"
+import { comparePackLoads, exportSpecifiers, packLoadBaseline, packLoadSnapshot, verifyPackLoad } from "../lib/pack-load.mjs"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
 import { must, quote, slug, writeJson } from "../lib/util.mjs"
 
@@ -107,8 +108,8 @@ test("pack check: export * from \"./x.vibe\" under Bun is refused for Bun alone;
   assert.deepEqual(baseline.packages["packages/a"].bun.a.names, [corpus.bun.name])
   const diff = comparePackLoads(baseline, candidate)
   assert.deepEqual([...new Set(diff.refusals.map(r => r.runtime))], ["bun"])
-  assert.ok(["load-failed", "load-names-lost"].includes(diff.refusals[0].kind), diff.refusals[0].kind)
-  assert.equal(diff.refusals[0].specifier, "a")
+  // The repository's Bun reads Errors.vibe as a module with no exports, so the name is lost rather than the load failing.
+  assert.deepEqual(diff.refusals.map(r => [r.kind, r.runtime, r.specifier, r.names]), [["load-names-lost", "bun", "a", [corpus.bun.name]]])
   assert.equal(diff.ok, false)
   assert.equal(compareDistLists({ state: "complete", files: ["packages/a/dist/index.js"] }, { state: "complete", files: ["packages/a/dist/index.js"] }).ok, true, "the dist list reads clean")
   // alchemy's fix: a package holding .vibe publishes no bun condition, so Bun takes dist.
@@ -166,12 +167,13 @@ test("pack check: an entry that stops loading under Node, a lost name and a lost
   assert.deepEqual(diff.namesGained.map(g => [g.specifier, g.names]).sort(), [["a", ["gained"]], ["a", ["gained"]]])
 }))
 
-test("pack check: a crash and a hang mark only their own entry, and the rest still load in a fresh process", { timeout: 120_000 }, inTemp("pack-hang-", async root => {
+// The limit is far above a cold process's start, so a loaded box cannot turn ok into HANG.
+test("pack check: a crash and a hang mark only their own entry, and the rest still load in a fresh process", { timeout: 300_000 }, inTemp("pack-hang-", async root => {
   const pkg = { manifest: { exports: { "./crash": "./dist/crash.js", "./hang": "./dist/hang.js", "./ok": "./dist/ok.js", "./sibling": "./dist/sibling.js", "./setter": "./dist/setter.js" }, files: ["dist"] },
     files: { "dist/crash.js": "process.exit(3)\n", "dist/hang.js": "await new Promise(() => setInterval(() => {}, 1000))\n", "dist/ok.js": "export const ok = 1\n",
       "dist/setter.js": "globalThis.__set = 1\nexport const setter = 1\n", "dist/sibling.js": "if (!globalThis.__set) throw new Error('needs setter first')\nexport const sibling = 1\n" } }
   const fixture = await repo(root, { a: pkg })
-  const snap = await snapshot(fixture, root, "candidate", { tune: { processMs: 4000, hangRetryFactor: 1 } })
+  const snap = await snapshot(fixture, root, "candidate", { tune: { processMs: 10_000, hangRetryFactor: 1 } })
   const { node, batching } = snap.packages["packages/a"]
   assert.match(node["a/crash"].err, /CRASH status=3/)
   assert.match(node["a/hang"].err, /HANG/)
@@ -179,23 +181,27 @@ test("pack check: a crash and a hang mark only their own entry, and the rest sti
   assert.match(node["a/sibling"].err, /needs setter first/, "under the size limit each entry gets its own process, so no entry passes on a sibling's side effect")
   assert.deepEqual(batching.node, { entries: 5, perProcess: 1 })
   // Over the limit entries share a process, and the receipt says how many: a failure reruns alone.
-  const large = await snapshot(fixture, root, "large", { tune: { processMs: 4000, hangRetryFactor: 1, aloneUpTo: 1, nodeBatch: 2, bunBatch: 2 } })
+  const large = await snapshot(fixture, root, "large", { tune: { processMs: 10_000, hangRetryFactor: 1, aloneUpTo: 1, nodeBatch: 2, bunBatch: 2 } })
   assert.equal(large.packages["packages/a"].batching.node.perProcess, 2)
   assert.match(large.packages["packages/a"].node["a/crash"].err, /CRASH status=3/)
   assert.deepEqual(large.packages["packages/a"].node["a/ok"].names, ["ok"])
 }))
 
-test("pack check: an entry past the hang limit reruns alone with a longer limit, so a slow load is reported and only a real hang is refused", { timeout: 120_000 }, inTemp("pack-slow-", async root => {
+test("pack check: an entry past the hang limit reruns alone with a longer limit, so a slow load is reported and only a real hang is refused", { timeout: 300_000 }, inTemp("pack-slow-", async root => {
   // alchemy's aws: `.` and `index` load about 7,000 modules and passed 240 s on one 4-vCPU box but not on two others.
+  // The slow entry sleeps 2.5 limits: past the first, well inside the retry's 4. ok's limit is far above a cold start.
+  const processMs = 6000
   const pkg = { manifest: { exports: { "./slow": "./dist/slow.js", "./hang": "./dist/hang.js", "./ok": "./dist/ok.js" }, files: ["dist"] },
-    files: { "dist/slow.js": "await new Promise(done => setTimeout(done, 2500))\nexport const slow = 1\n", "dist/hang.js": "await new Promise(() => setInterval(() => {}, 1000))\n", "dist/ok.js": "export const ok = 1\n" } }
+    files: { "dist/slow.js": `await new Promise(done => setTimeout(done, ${2.5 * processMs}))\nexport const slow = 1\n`, "dist/hang.js": "await new Promise(() => setInterval(() => {}, 1000))\n", "dist/ok.js": "export const ok = 1\n" } }
   const fixture = await repo(root, { a: pkg })
-  const snap = await snapshot(fixture, root, "candidate", { tune: { processMs: 1000, hangRetryFactor: 6 } })
-  const { node } = snap.packages["packages/a"]
-  assert.deepEqual(node["a/slow"].names, ["slow"])
-  assert.ok(node["a/slow"].slowMs >= 2000, "the load's own time is in the receipt")
-  assert.match(node["a/hang"].err, /^HANG 6s/, "a real hang fails at the longer limit")
-  assert.ok(node["a/ok"].ms < 1000)
+  const snap = await snapshot(fixture, root, "candidate", { tune: { processMs, hangRetryFactor: 4 } })
+  for (const runtime of ["node", "bun"]) {
+    const loads = snap.packages["packages/a"][runtime]
+    assert.deepEqual([loads["a/ok"].names, loads["a/ok"].slowMs], [["ok"], undefined], runtime + ": ok loads on the first pass")
+    assert.deepEqual(loads["a/slow"].names, ["slow"], runtime)
+    assert.ok(loads["a/slow"].slowMs > processMs, runtime + ": the rerun's own time, past the first limit, is in the receipt")
+    assert.match(loads["a/hang"].err, /^HANG 24s/, runtime + ": a real hang fails at the longer limit")
+  }
   const baseline = structuredClone(snap)
   for (const runtime of ["node", "bun"]) { baseline.packages["packages/a"][runtime]["a/slow"] = { names: ["slow"], ms: 5 }; baseline.packages["packages/a"][runtime]["a/hang"] = { names: [], ms: 5 } }
   const diff = comparePackLoads(baseline, snap)
@@ -245,10 +251,19 @@ test("pack check: only published packages run, a private one is listed, and none
   const snap = await snapshot(fixture, root, "baseline")
   assert.equal(snap.state, "not-run")
   assert.match(snap.reason, /no published package/)
-  assert.equal(comparePackLoads(snap, snap).state, "not-run")
-  assert.equal(comparePackLoads(undefined, snap).state, "not-run")
-  assert.equal(comparePackLoads(undefined, snap).ok, true)
+  assert.deepEqual([comparePackLoads(snap, snap).state, comparePackLoads(snap, snap).ok], ["not-run", true], "no published package: nothing to check")
+  assert.deepEqual([comparePackLoads(undefined, snap).state, comparePackLoads(undefined, snap).ok], ["not-run", true], "a baseline from before this check")
 }))
+
+// #638: a setup whose packing failed must not pass every later batch.
+test("comparePackLoads: a failed baseline and a candidate that was not packed fail; they compared nothing", () => {
+  const complete = { state: "complete", packages: {} }
+  const failed = { state: "not-run", reason: "the baseline's pack check failed: spawn npm ENOENT" }
+  assert.deepEqual([comparePackLoads(failed, complete).state, comparePackLoads(failed, complete).ok], ["not-run", false])
+  assert.match(comparePackLoads(failed, complete).reason, /^the baseline's pack check failed: spawn npm ENOENT; fix it and rerun setup/)
+  assert.deepEqual([comparePackLoads(complete, { state: "not-run" }).state, comparePackLoads(complete, { state: "not-run" }).ok], ["not-run", false])
+  assert.equal(comparePackLoads(complete, undefined).ok, false)
+})
 
 test("verifyPackLoad: packs only the batch's packages, lists the others, and never reads as a pass it did not make", { timeout: 120_000 }, inTemp("pack-verify-", async root => {
   const fixture = await repo(root, { a: redisShape(), b: redisShape() })
@@ -273,6 +288,14 @@ test("verifyPackLoad: packs only the batch's packages, lists the others, and nev
   assert.match(noBaseline.reason, /baseline/)
   const onePass = await verifyPackLoad({ ...args, built: false, files: [] })
   assert.match(onePass.reason, /one-pass/)
+  // A setup whose packing threw (here: no package.json at the target) writes a receipt every batch then fails on.
+  const failedLogs = join(root, "failed-logs")
+  const failed = await packLoadBaseline({ config: { ...fixture.config, target: join(root, "absent") }, logs: failedLogs, env: fixture.env })
+  assert.equal(failed.state, "not-run")
+  assert.match(failed.reason, /^the baseline's pack check failed: ENOENT/)
+  assert.deepEqual(JSON.parse(readFileSync(join(failedLogs, "baseline-pack-load.json"), "utf8")), failed)
+  const regressed = await verifyPackLoad({ ...args, baselinePath: join(failedLogs, "baseline-pack-load.json"), files: ["packages/a/dist/index.js"] })
+  assert.deepEqual([regressed.state, regressed.ok], ["not-run", false])
 }))
 
 test("pack check: a prepack script that rewrites a tracked file is reported", { timeout: 120_000 }, inTemp("pack-dirty-", async root => {
@@ -338,6 +361,14 @@ test("verify: a pack regression fails checks.packLoad, named in verify.json; a f
     writeFileSync(join(target, "dist/main.js"), "export const value = 1\n")
     const passed = await verify({ run, batch: "01" })
     assert.deepEqual([passed.packLoad.state, passed.packLoad.refusals, passed.checks.packLoad, passed.ok], ["complete", [], true, true], JSON.stringify(passed.checks))
+    // #638: the receipt of a setup whose packing failed, and a batch that breaks the pack, fail the gate.
+    const receipt = join(p.baseline, "logs", "baseline-pack-load.json"), complete = readFileSync(receipt, "utf8")
+    writeJson(receipt, { state: "not-run", reason: "the baseline's pack check failed: spawn npm ENOENT" })
+    writeFileSync(join(target, "dist/main.js"), "bootstrap()\nexport const value = 1\n")
+    const unpacked = await verify({ run, batch: "01" })
+    assert.deepEqual([unpacked.packLoad.state, unpacked.checks.packLoad, unpacked.ok], ["not-run", false, false], JSON.stringify(unpacked.checks))
+    assert.match(unpacked.packLoad.reason, /spawn npm ENOENT/)
+    writeFileSync(receipt, complete); writeFileSync(join(target, "dist/main.js"), "export const value = 1\n")
     writeJson(p.config, { ...config, test: { ...config.test, command: "exit 1" } })
     const failing = await verify({ run, batch: "01" })
     assert.equal(failing.packLoad.state, "not-run")

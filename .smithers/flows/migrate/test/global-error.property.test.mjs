@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import { execFileSync } from "node:child_process"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -65,8 +66,12 @@ async function decide(before, after, ds = [advisory(after)], beforeName = "main.
   return preservedGlobalErrors(old, current, after, ds)
 }
 
+test("the written Error rule is quoted from rules.md", () => {
+  assert.ok(readFileSync(new URL("../rules.md", import.meta.url), "utf8").includes("The style gate exempts the tag advisory `EK4804` only when the written failure type is the global `Error` that the original declared for the same function."))
+})
+
 test("global Error preservation follows function names, explicit channels and source positions", native, async () => {
-  // Accepted foldkit ruling: "exempt the tag-advisory EK4804 ... when the written failure type is the global Error that the original declared".
+  // The rule: rules.md, "Gate rules the flow's tests quote", the EK4804 exemption.
   await fc.assert(fc.asyncProperty(
     fc.constantFrom("Error", "TypeError", "never", "unknown"),
     fc.constantFrom("Error", "TypeError", "never", "unknown"),

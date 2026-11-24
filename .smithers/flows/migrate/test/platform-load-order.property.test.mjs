@@ -196,3 +196,48 @@ test("statements run in their written order after either split", async () => {
   ] })
   assert.ok(split > 100, `only ${split} modules split`)
 })
+
+// Issue 646, evidence B and C: an effect above a host-reading initializer.
+// Before the order rule, both splits moved the initializer into the sibling or
+// the body, so it ran first: B logged ["options", "first"] and C logged
+// ["resolved undefined", "configured"].
+const evidence = {
+  B: `export const log: string[] = []
+export const first = (log.push("first"), 1)
+const options = { token: process.env.HOME, second: (log.push("options"), 1) }
+export const read = () => options
+export const k = 1
+`,
+  C: `import { join } from "node:path"
+export const log: string[] = []
+const settings: { root?: string } = {}
+settings.root = "/etc"
+log.push("configured")
+const resolved = (log.push("resolved " + settings.root), join(String(settings.root), "corpus"))
+export const corpusDir = (): string => resolved
+export const label = "labels"
+`,
+}
+
+// Loads m.js from files, JavaScript or TypeScript, and returns the log it exports.
+async function logOf(files) {
+  const root = mkdtempSync(join(tmpdir(), "migrate-platform-load-order-log-"))
+  try {
+    writeFileSync(join(root, "package.json"), `{ "type": "module" }\n`)
+    for (const [name, text] of Object.entries(files)) writeFileSync(join(root, name), emit(text))
+    return (await import(pathToFileURL(join(root, "m.js")).href)).log
+  } finally { rmSync(root, { recursive: true, force: true }) }
+}
+
+test("issue 646 evidence B and C: an effect above a host-reading initializer still runs first", async () => {
+  const written = { B: ["first", "options"], C: ["configured", "resolved /etc"] }
+  for (const [key, text] of Object.entries(evidence)) {
+    assert.deepEqual(await logOf({ "m.js": text }), written[key], key)
+    const options = { globals: ["process"] }
+    const sibling = splitPlatform(text, "src/m.ts", ts, options)
+    assert.match(sibling.refused, /runs while the module loads, after .*, and in m\.platform\.ts it would run first$/, key)
+    const body = splitPlatformToModule(text, "src/m.ts", ts, options)
+    assert.ok(body && !body.refused, `${key}: ${body?.refused}`)
+    assert.deepEqual(await logOf(bodyFiles(body.module)), written[key], `${key}\n${body.module}`)
+  }
+})

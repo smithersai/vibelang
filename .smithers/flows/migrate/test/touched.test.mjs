@@ -82,11 +82,11 @@ test("property: generated own changes are never foreign, and generated foreign o
         importEdits: states.flatMap((state, i) => state === 3 ? [{ file: stem(i) + ".ts" }] : []),
         refEdits: states.flatMap((state, i) => state === 3 ? [{ file: "config/reference" + i + ".json" }] : []),
         exportEdits: manifest ? [{ manifest: "package.json" }] : [],
-        platform: { splits: files.filter(f => f.migrated).map(f => ({ platform: f.path.replace(/\\.vibe$/, ".platform.ts") })) }
+        platform: { splits: files.filter(f => f.migrated).map(f => ({ platform: f.path.replace(/\.vibe$/, ".platform.ts") })) }
       }
       const own = [
         ...files.map(f => f.migrated ? { status: "R", path: f.path, from: f.planned } : { status: "M", path: f.path }),
-        ...files.filter(f => f.migrated).map(f => ({ status: "A", path: f.path.replace(/\\.vibe$/, ".d.vibe.ts") })),
+        ...files.filter(f => f.migrated).map(f => ({ status: "A", path: f.path.replace(/\.vibe$/, ".d.vibe.ts") })),
         ...codemod.platform.splits.map(s => ({ status: "A", path: s.platform })),
         ...codemod.importEdits.map(e => ({ status: "M", path: e.file })),
         ...codemod.refEdits.map(e => ({ status: "M", path: e.file })),
@@ -96,6 +96,10 @@ test("property: generated own changes are never foreign, and generated foreign o
         ...states.map((_, i) => ({ status: "M", path: stem(i) + ".test.ts" })),
         ...states.flatMap((state, i) => state === 0 || state === 4 ? [{ status: "M", path: stem(i) + (state === 4 ? ".vibe" : ".ts") }] : []),
         { status: "M", path: "packages/other/package.json" },
+        // The sidecar and platform sibling of a module the batch does not own.
+        { status: "A", path: stem(states.length) + ".d.vibe.ts" },
+        { status: "A", path: stem(states.length) + ".platform.ts" },
+        ...states.flatMap((state, i) => state === 0 ? [{ status: "A", path: stem(i) + ".d.vibe.ts" }] : []),
         ...(files.length ? [{ status: "R", path: files[0].path, from: "foreign.ts" }] : [])
       ]
       assert.deepEqual(foreignChanges([...own, ...foreign], { files, codemod }), foreign)

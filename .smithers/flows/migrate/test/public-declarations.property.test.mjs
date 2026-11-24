@@ -4,7 +4,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { compare, check } from "./public-declarations-oracle.mjs"
+import { compare, check, forms } from "./public-declarations-oracle.mjs"
 import { assertParallelProperty } from "../../../../scripts/testing/parallel-property.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
@@ -27,7 +27,7 @@ test("foldkit-28: a private adapter declaration is admitted without weakening th
 
 test("public declaration graph: imports, exports, import types, require and references expose transitive additions", async () => {
   await assertParallelProperty(fc, {
-    arbitraries: [fc.array(fc.nat(4), { minLength: 1, maxLength: 8 }), fc.boolean(), fc.constantFrom(".d.ts", ".d.mts", ".d.cts")],
+    arbitraries: [fc.array(fc.nat(forms.length - 1), { minLength: 1, maxLength: 8 }), fc.boolean(), fc.constantFrom(".d.ts", ".d.mts", ".d.cts")],
     oracle: check, module: new URL("./public-declarations-oracle.mjs", import.meta.url),
     seed: 280028, numRuns: 200
   })

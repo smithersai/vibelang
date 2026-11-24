@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // opencode:loader-records:later-export-routing-invalidates. The emit step
 // (emitMigratedJs) emits and routes every migrated package, then writes each
 // package's loader record, then checks every record against the final tree.

@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -6,7 +7,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { applyState, prepareState, saveState } from "../lib/codemod-state.mjs"
-const { codemod, importers, makeConfig, paths, revert } = await import(process.env.VIBE_FLOW_STEPS ?? new URL("../lib/steps.mjs", import.meta.url))
+import { codemod, importers, makeConfig, paths, revert } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, readJson, writeJson } from "../lib/util.mjs"
 

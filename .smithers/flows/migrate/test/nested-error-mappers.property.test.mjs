@@ -3,9 +3,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
-const implementation = process.env.MIGRATE_MAPPER_MODULE
-  ? await import(process.env.MIGRATE_MAPPER_MODULE) : await import("../lib/preserved-errors.mjs")
-const { parseStyleTree, preservedGlobalErrors } = implementation
+import { parseStyleTree, preservedGlobalErrors } from "../lib/preserved-errors.mjs"
 const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-chart-map-nested-mapper.json", import.meta.url)))
 const compiler = process.env.VIBELANG_COMPILER ?? fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url))
@@ -54,8 +52,12 @@ test("nested mapper proof refuses changed, mutable, shadowed, unrelated and non-
   }
 })
 
+test("the written Error rule is quoted from rules.md", () => {
+  assert.ok(readFileSync(new URL("../rules.md", import.meta.url), "utf8").includes("The style gate exempts the tag advisory `EK4804` only when the written failure type is the global `Error` that the original declared for the same function."))
+})
+
 test("generated nested acquire/block and mapper identity variations obey the original Error-channel ruling", native, async () => {
-  // 18:45Z ruling: "when the written failure type is the global Error that the original declared".
+  // The rule: rules.md, "Gate rules the flow's tests quote", the EK4804 exemption.
   await fc.assert(fc.asyncProperty(fc.integer({ min: 0, max: 3 }), fc.boolean(), fc.constantFrom("Chart", "Map"),
     async (depth, changed, name) => {
       const before = corpus.before.replaceAll("Chart", name)

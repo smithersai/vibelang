@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -139,20 +140,48 @@ test("alchemy-62: verify fails a batch that marks a plain function effect", nati
   }
 })
 
-test("alchemy-62: a module the compiler cannot parse is listed unchecked; a failing compiler fails the run-phase gate", native, () => {
+const plainOriginal = () => ({ path: "main.ts", text: "export const x = 1\n" })
+
+test("alchemy-62: a module the compiler cannot parse is listed unchecked, never blocking", native, () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-run-phase-"))
   try {
     writeFileSync(join(root, "main.vibe"), "export const x = (\n")
-    const unparsable = runPhaseCheck({ compiler, ts, target: root, files: ["main.vibe"], original: () => ({ path: "main.ts", text: "export const x = 1\n" }) })
+    const unparsable = runPhaseCheck({ compiler, ts, target: root, files: ["main.vibe"], original: plainOriginal })
     assert.equal(unparsable.blocking.length, 0)
     assert.equal(unparsable.failed.length, 0)
     assert.equal(unparsable.unchecked.length, 1)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
 
+// Stand-in compilers, run as `<compiler> --estree <file>`: Node scripts, so the
+// test needs no native build and no /bin/false (macOS has /usr/bin/false).
+function stubCompiler(root, name, body) {
+  const file = join(root, name)
+  writeFileSync(file, "#!" + process.execPath + "\n" + body + "\n", { mode: 0o755 })
+  return file
+}
+
+test("alchemy-62: a parse error the compiler reports is listed unchecked, never failed", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-run-phase-"))
+  try {
     writeFileSync(join(root, "main.vibe"), "export const x = 1\n")
-    for (const broken of ["/bin/false", "/nonexistent/vibelang"]) {
-      const crashed = runPhaseCheck({ compiler: broken, ts, target: root, files: ["main.vibe"], original: () => ({ path: "main.ts", text: "export const x = 1\n" }) })
-      assert.equal(crashed.unchecked.length, 0, broken)
+    const parser = stubCompiler(root, "parse-error", "process.stdout.write(JSON.stringify({ error: { message: 'Expression expected.' } }))")
+    const result = runPhaseCheck({ compiler: parser, ts, target: root, files: ["main.vibe"], original: plainOriginal })
+    assert.deepEqual(result.failed, [])
+    assert.equal(result.unchecked.length, 1)
+    assert.match(result.unchecked[0].reason, /does not parse: Expression expected/)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("alchemy-62: a compiler that exits non-zero or cannot start fails the run-phase gate, never unchecked", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-run-phase-"))
+  try {
+    writeFileSync(join(root, "main.vibe"), "export const x = 1\n")
+    for (const broken of [stubCompiler(root, "exit-1", "process.exit(1)"), stubCompiler(root, "bad-json", "process.stdout.write('not json')"), join(root, "missing-vibelang")]) {
+      const crashed = runPhaseCheck({ compiler: broken, ts, target: root, files: ["main.vibe"], original: plainOriginal })
+      assert.deepEqual(crashed.unchecked, [], broken)
       assert.equal(crashed.failed.length, 1, broken)
+      assert.match(crashed.failed[0].reason, /vibelang --estree failed|JSON/, broken)
     }
   } finally { rmSync(root, { recursive: true, force: true }) }
 })

@@ -49,7 +49,7 @@ function property(input) {
 
 test("opencode-50: the untouched TypeScript export is routed beside its migrated dependency", () => property({ name: "app-node", extension: "ts", nested: true, kind: "bare" }))
 test("property: native export conditions retain their types, branches and revert shape", async () => {
-  await checkProperty(fc, { name: "mixed-native-exports", rule, command: "node --test test/emitted-exports.property.test.mjs", arbitrary: fc.record({
+  await checkProperty(fc, { name: "mixed-native-exports", rule, command: "node --test .smithers/flows/migrate/test/emitted-exports.property.test.mjs", arbitrary: fc.record({
     name: fc.constantFrom("entry", "app-node", "a..b", "ü"), extension: fc.constantFrom("ts", "tsx", "mts", "cts", "js"), nested: fc.boolean(), kind: fc.constantFrom("bare", "condition", "array", "pattern")
   }), check: property, numRuns: 100, regressions: corpusDir })
 })
@@ -119,7 +119,7 @@ for (const extension of ["ts", "tsx", "mts", "js"]) {
 
 test("property: mixed native runtime follows each compiler output", async () => {
   await checkProperty(fc, {
-    name: "mixed-native-runtime", rule, command: "node --test test/emitted-exports.property.test.mjs",
+    name: "mixed-native-runtime", rule, command: "node --test .smithers/flows/migrate/test/emitted-exports.property.test.mjs",
     arbitrary: fc.record({ extension: fc.constantFrom("ts", "tsx", "mts", "js") }),
     check: input => mixedGraph(input.extension, input.jsx ?? "react-jsx"), numRuns: 4, regressions: corpusDir
   })

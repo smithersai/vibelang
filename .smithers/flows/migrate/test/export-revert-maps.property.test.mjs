@@ -5,7 +5,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-const { restoreExports } = await import(process.env.REVERT_CODEMOD_UNDER_TEST || new URL("../lib/codemod.mjs", import.meta.url))
+import { restoreExports } from "../lib/codemod.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-removed-import-map.json", import.meta.url), "utf8"))

@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
@@ -120,17 +121,26 @@ test("three-package one-pass checks every project, reverts the root cause, and k
 })
 
 test("settle refuses global, new TS, crash and exhausted-round failures", async () => {
-  for (const failure of ["global", "ts", "crash", "limit"]) {
+  // [failure, the replacement compiler's output, remaining codes, remaining files]. None names a live module, so none is reverted.
+  const cases = [
+    ["global", "error TS9998: global failure", ["TS9998"], [null]],
+    ["ts", "src/unrelated.ts(1,1): error TS9998: unrelated", ["TS9998"], ["app/src/unrelated.ts", "consumer/src/unrelated.ts", "core/src/unrelated.ts"]],
+    ["crash", "panic: bad compiler", ["CRASH"], [null]],
+    ["limit", null, ["EK1002", "TS2322"], ["app/src/index.vibe", "core/src/index.vibe"]]
+  ]
+  for (const [failure, output, codes, files] of cases) {
     const f = await fixture()
     try {
       await onePassStep("plan", { run: f.run, scope: f.scope })
       await onePassStep("rename", { run: f.run })
-      if (failure !== "limit") {
-        writeProbeAwareCompiler(f.compiler, `#!/usr/bin/env node\nconsole.log(${JSON.stringify(failure === "global" ? "error TS9998: global failure" : failure === "ts" ? "src/unrelated.ts(1,1): error TS9998: unrelated" : "panic: bad compiler")}); process.exitCode = 1\n`, { mode: 0o755 })
-      }
+      if (output) writeProbeAwareCompiler(f.compiler, `#!/usr/bin/env node\nconsole.log(${JSON.stringify(output)}); process.exitCode = 1\n`, { mode: 0o755 })
       const out = await onePassStep("settle", { run: f.run, rounds: 1 })
       assert.equal(out.settled, false, failure)
-      assert.ok(out.remaining.length, failure)
+      assert.deepEqual([...new Set(out.remaining.map(d => d.code))].sort(), codes, failure)
+      assert.deepEqual([...new Set(out.remaining.map(d => d.file))].sort(), files, failure)
+      if (failure === "crash") assert.ok(out.remaining.every(d => /^the compiler did not finish \(exit 1, log [^)]+\):\npanic: bad compiler$/.test(d.message)), failure)
+      assert.deepEqual(out.causes, {}, failure)
+      for (const module of ["core/src/index.vibe", "app/src/index.vibe"]) assert.ok(existsSync(join(f.target, module)), failure + ": " + module + " is not reverted")
     } finally { rmSync(f.root, { recursive: true, force: true }) }
   }
 })
@@ -140,11 +150,11 @@ test("bulk revert validates every request before mutation and never silently ski
   try {
     await onePassStep("plan", { run: f.run, scope: f.scope })
     await onePassStep("rename", { run: f.run })
-    await assert.rejects(revertMany({ run: f.run, batch: "01", files: [{ file: "core/src/index.vibe", reason: "bad" }, { file: "missing.vibe", reason: "bad" }] }), /missing/)
+    await assert.rejects(revertMany({ run: f.run, batch: "01", files: [{ file: "core/src/index.vibe", reason: "bad" }, { file: "missing.vibe", reason: "bad" }] }), /^Error: missing \.vibe module \(already reverted\?\): missing\.vibe$/)
     assert.ok(existsSync(join(f.target, "core/src/index.vibe")))
     await revertMany({ run: f.run, batch: "01", files: ["core/src/index.vibe", "app/src/index.vibe"], reason: "bad" })
     assert.equal(text(f.target, "app/src/index.ts"), 'import { value } from "../../core/src/index.js"\nexport const result = value\n')
-    await assert.rejects(revertMany({ run: f.run, batch: "01", files: ["core/src/index.vibe"], reason: "again" }), /not.*vibe|missing|already/)
+    await assert.rejects(revertMany({ run: f.run, batch: "01", files: ["core/src/index.vibe"], reason: "again" }), /^Error: missing \.vibe module \(already reverted\?\): core\/src\/index\.vibe$/)
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 

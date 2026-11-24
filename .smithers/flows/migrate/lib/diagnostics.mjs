@@ -78,6 +78,20 @@ export function styleProblems(diagnostics, files) {
 }
 
 /**
+ * What refuses a batch in verify, from compile's result: every error in a
+ * migrated module, even one the setup baseline already had, every error new
+ * against that baseline, and the migrated modules' style problems.
+ */
+export function batchRefusals(compiled, migrated) {
+  const own = new Set(migrated)
+  return {
+    batchErrors: compiled.diagnostics.filter((d) => own.has(d.file) && d.category === "error"),
+    newErrors: compiled.newErrors,
+    style: compiled.style.filter((d) => own.has(d.file))
+  }
+}
+
+/**
  * Module provenance for the warnings a module keeps. No diagnostic code
  * allow-list: imported Effect and future warning codes have the same contract.
  * See README.md, "Warning exceptions", for the persisted record shape.

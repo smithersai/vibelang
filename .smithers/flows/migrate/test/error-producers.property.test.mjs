@@ -25,8 +25,12 @@ for (const c of corpus.cases) test("foldkit-29 explicit producer: " + c.name, na
   assert.deepEqual(styleProblems([result.diagnostic], ["main.vibe"], result.accepted), [])
 })
 
+test("the written Error rule is quoted from rules.md", () => {
+  assert.ok(readFileSync(new URL("../rules.md", import.meta.url), "utf8").includes("The style gate exempts the tag advisory `EK4804` only when the written failure type is the global `Error` that the original declared for the same function."))
+})
+
 test("written Error producers retain only matching original call contracts", native, async () => {
-  // Accepted 18:45Z ruling: "when the written failure type is the global Error that the original declared".
+  // The rule: rules.md, "Gate rules the flow's tests quote", the EK4804 exemption.
   await fc.assert(fc.asyncProperty(fc.constantFrom(...corpus.cases), fc.constantFrom("Error", "TypeError", "never"), fc.constantFrom("Error", "TypeError", "never"), fc.constantFrom("load", "request", "register"), fc.boolean(), async (c, oldChannel, newChannel, name, shadowed) => {
     const before = c.before.replaceAll("load", name).replaceAll("Error", oldChannel)
     let after = c.after.replaceAll("load", name).replaceAll("Error", newChannel)

@@ -1,10 +1,11 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { parseArgs, many, one } from "../lib/args.mjs"
-import { readIssues, validateIssue, ofKind } from "../lib/issues.mjs"
+import { readIssues, validateIssue } from "../lib/issues.mjs"
 import { buildInventory, isTestFile } from "../lib/inventory.mjs"
 import { formatExistingVibe, formatRecorded, formatVibe, makeConfig, nextStep, paths, record, verify, vibeDprintConfig } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -67,7 +68,8 @@ test("issue entries need their kind's fields", () => {
   try {
     writeFileSync(join(run, "issues.jsonl"), '{"kind":"idiom","batch":"01","lesson":"l"}\n\n{"kind":"idiom","batch":"02","lesson":"m"}\n')
     const issues = readIssues(join(run, "issues.jsonl"))
-    assert.deepEqual(ofKind(issues, "idiom", "02"), [{ kind: "idiom", batch: "02", lesson: "m" }])
+    assert.deepEqual(issues.map((i) => i.entry), [{ kind: "idiom", batch: "01", lesson: "l" }, { kind: "idiom", batch: "02", lesson: "m" }])
+    assert.deepEqual(issues.map((i) => i.problems), [[], []])
     writeFileSync(join(run, "issues.jsonl"), "not json\n")
     assert.throws(() => readIssues(join(run, "issues.jsonl")), /:1: not JSON/)
   } finally {

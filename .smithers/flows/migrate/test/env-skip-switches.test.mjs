@@ -13,9 +13,6 @@ const unprovisioned = {
   VIBELANG_UNUSED_ORACLE_NODE_MODULES: "an Oxlint install outside the tree",
   VIBELANG_VITE_ORACLE_MODULES: "a Vite install outside the tree",
   VIBELANG_LEGACY_BINARY: "a compiler built before the inference flip",
-  POST_FLIP_NATIVE: "a second native compiler with the post-flip model",
-  VIBELANG_BUN_NATIVE_CHECK_REQUIRE: "forces the test where the native Bun probe would skip it",
-  VIBELANG_SOURCE_ROUTE_RUNTIME_REQUIRE: "forces the test where the runtime probe would skip it",
 }
 
 /** The environment variables a test file's skip conditions read, directly or through a constant with no fallback. */

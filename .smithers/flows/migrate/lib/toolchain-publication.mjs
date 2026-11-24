@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
+import { manifestText } from "./package-json-format.mjs"
 import { tarballFiles } from "./upgrade.mjs"
 import { writeJson } from "./util.mjs"
 
@@ -87,7 +88,9 @@ export function prepareToolchainPublication({ target, manifests, manager, specsF
   const original = file => existsSync(join(target, file)) ? readFileSync(join(target, file), "utf8") : ""
   const read = file => pending.get(file) ?? original(file)
   const json = file => JSON.parse(read(file))
-  const put = (file, pkg) => pending.set(file, JSON.stringify(pkg, null, 2) + "\n")
+  // The receipt is setup's own file; an author's manifest keeps its layout and
+  // changes only in the values setup moves, as repinVibeLang's edits do.
+  const put = (file, pkg) => pending.set(file, file === receiptPath ? JSON.stringify(pkg, null, 2) + "\n" : manifestText(read(file) || undefined, pkg))
   const rootSpecs = specsFor(".")
   const old = existsSync(join(target, receiptPath)) ? json(receiptPath) : null
   if (old && old.manager !== manager) throw new Error("Reconcile the managed toolchain publication pins before changing package managers")
@@ -209,7 +212,7 @@ export function prepareToolchainPublication({ target, manifests, manager, specsF
   put(receiptPath, receipt)
   const changed = [...pending].filter(([file, text]) => original(file) !== text)
   for (const [file, text] of changed) {
-    if (file.endsWith(".json")) writeJson(join(target, file), JSON.parse(text))
+    if (file === receiptPath) writeJson(join(target, file), JSON.parse(text))
     else writeFileSync(join(target, file), text)
   }
   return { changed: changed.map(([file]) => file), versions, releaseRequired: receipt.releaseRequired }

@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // The migrate flow is being rewritten in VibeLang, one module at a time.
 // conversion.json lists the modules that are .vibe files, one per line, so the
 // count is in the repository and two conversions landing together do not edit

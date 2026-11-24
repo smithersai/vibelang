@@ -100,34 +100,57 @@ test("plain helpers keep declarations under the tested compiler model", { skip }
   }), { seed: 1746, numRuns: 40 })
 })
 
-test("t3code schema helper: unmodified C1 fails, preserving plain passes with identical declarations", { skip }, async () => {
+// One schema-helper case per compiler model. The legacy model needs a compiler
+// from before VIP-1's flip, such as the pinned VibeLang 0.0.11.
+const legacy = process.env.VIBELANG_LEGACY_BINARY
+const legacySkip = skip || (!legacy && "set VIBELANG_LEGACY_BINARY to a compiler from before VIP-1's flip")
+
+function schemaProject() {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-pure-schema-factory.json", import.meta.url), "utf8"))
   const root = mkdtempSync(join(tmpdir(), "plain-schema-native-"))
+  symlinkSync(modules, join(root, "node_modules"))
+  writeFileSync(join(root, "package.json"), '{"type":"module"}')
+  writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: options, include: ["*.ts", "*.vibe"] }))
+  writeFileSync(join(root, "m.ts"), corpus.before)
+  const expected = declarationsOf(root, "m.ts")
+  rmSync(join(root, "out"), { recursive: true, force: true })
+  return { root, source: corpus.before, expected }
+}
+
+test("t3code schema helper: a compiler that keeps functions plain compiles unmodified C1, and the pass writes nothing", { skip }, async () => {
+  const { root, source, expected } = schemaProject()
   try {
-    symlinkSync(modules, join(root, "node_modules"))
-    writeFileSync(join(root, "package.json"), '{"type":"module"}')
-    writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: options, include: ["*.ts", "*.vibe"] }))
-    writeFileSync(join(root, "m.ts"), corpus.before)
-    const expected = declarationsOf(root, "m.ts")
-    rmSync(join(root, "out"), { recursive: true, force: true })
-    const flipped = await toolchainKeepsFunctionsPlain({ compiler: native, modules, dir: join(root, "probe") })
+    assert.equal(await toolchainKeepsFunctionsPlain({ compiler: native, modules, dir: join(root, "probe") }), true)
+    markPlainFunctions(ts, root, ["m.ts"], ["tsconfig.json"], { flipped: true })
+    assert.equal(readFileSync(join(root, "m.ts"), "utf8"), source)
     renameSync(join(root, "m.ts"), join(root, "m.vibe"))
-    const before = spawnSync(native, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
-    console.log("SCHEMA_BEFORE_MODEL=" + (flipped ? "plain-by-syntax" : "legacy-inference") + " STATUS=" + before.status)
-    if (flipped) assert.equal(before.status, 0, before.stdout + before.stderr)
-    else { assert.notEqual(before.status, 0); assert.match(before.stdout + before.stderr, /Effect/) }
-    renameSync(join(root, "m.vibe"), join(root, "m.ts"))
-    markPlainFunctions(ts, root, ["m.ts"], ["tsconfig.json"], { flipped })
-    renameSync(join(root, "m.ts"), join(root, "m.vibe"))
-    execFileSync(native, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
+    const compiled = spawnSync(native, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
+    assert.equal(compiled.status, 0, compiled.stdout + compiled.stderr)
     assert.equal(canonicalize(ts, readFileSync(join(root, "out/m.d.ts"), "utf8")), canonicalize(ts, expected))
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
-test("the same pass probes both actual native compiler models", { skip: skip || (!process.env.POST_FLIP_NATIVE && "set POST_FLIP_NATIVE") }, async () => {
+test("t3code schema helper: a legacy compiler fails unmodified C1, and preserving plain passes with identical declarations", { skip: legacySkip }, async () => {
+  const { root, expected } = schemaProject()
+  try {
+    assert.equal(await toolchainKeepsFunctionsPlain({ compiler: legacy, modules, dir: join(root, "probe") }), false)
+    renameSync(join(root, "m.ts"), join(root, "m.vibe"))
+    const before = spawnSync(legacy, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
+    assert.notEqual(before.status, 0)
+    assert.match(before.stdout + before.stderr, /Effect/)
+    renameSync(join(root, "m.vibe"), join(root, "m.ts"))
+    rmSync(join(root, "out"), { recursive: true, force: true })
+    markPlainFunctions(ts, root, ["m.ts"], ["tsconfig.json"], { flipped: false })
+    renameSync(join(root, "m.ts"), join(root, "m.vibe"))
+    execFileSync(legacy, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
+    assert.equal(canonicalize(ts, readFileSync(join(root, "out/m.d.ts"), "utf8")), canonicalize(ts, expected))
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("the same pass probes both actual native compiler models", { skip: legacySkip }, async () => {
   const root = mkdtempSync(join(tmpdir(), "plain-model-pair-"))
   try {
-    assert.equal(await toolchainKeepsFunctionsPlain({ compiler: native, modules, dir: root }), false)
-    assert.equal(await toolchainKeepsFunctionsPlain({ compiler: process.env.POST_FLIP_NATIVE, modules, dir: root }), true)
+    assert.equal(await toolchainKeepsFunctionsPlain({ compiler: legacy, modules, dir: root }), false)
+    assert.equal(await toolchainKeepsFunctionsPlain({ compiler: native, modules, dir: root }), true)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })

@@ -188,6 +188,11 @@ Preserve eager factory calls, argument evaluation and closure state shared by re
 
 Synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`.
 
+## Gate rules the flow's tests quote
+
+- The style gate exempts the tag advisory `EK4804` only when the written failure type is the global `Error` that the original declared for the same function. Another error type on either side, `never`, no written type, a declaration or import that shadows `Error`, or a changed `new Error(...)` keeps the warning.
+- A file selector's `*.d.vibe.ts` exclusion counts only when it tests the same binding as the selector's extension check. A binding whose name merely contains the guarded one, such as `apath` beside `a`, is a different value, and the codemod leaves the selector as written.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.
@@ -755,17 +760,13 @@ export function encoded(text: string) {
 
 ### Platform globals and their replacements
 
-Console replacement advice includes `try`: `Console.log(message)` builds a logging Effect, and `try Console.log(message)` runs it in effect code. If implicit Effect modules are disabled, import `Console` from `effect` first.
+The table below matches the compiler's `EK4402` advice: Effect APIs first, then VibeLang's experimental services, then an escape to TypeScript. In effect code, obtain services with `try` before calling members (e.g. `try (try FileSystem.FileSystem).readFileString(path)`), and run returned Effects with an outer `try` (`Console` needs no layer; `Stream`/`Sink` builders like `FileSystem.stream` stay values; `Socket.makeWebSocket(url)` needs `NodeSocket.layerWebSocketConstructor` or `BrowserSocket.layerWebSocketConstructor`).
 
-Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. The compiler's `EK4402` advice names these APIs; the guide runs Effect values with `try` and explains where native behavior needs a TypeScript adapter. In effect code, `try` runs an Effect value. Get a service first, then call its members. In effect code, write a `console` call as Effect's `Console`, which needs no layer: `console.error("failed:", name)` becomes `try Console.error("failed:", name)`.
+Key semantic differences to keep in mind:
+- **Path & URLs:** Obtain `Path` with `try Path.Path`; `join`/`sep` are pure, while `fromFileUrl`/`toFileUrl` return Effects (run with `try` before `dirname`). Build a URL from `import.meta.url` with `try orDie(Effect.try(() => new URL(import.meta.url)))`.
+- **Random integers:** `crypto.randomInt(min, max)` excludes `max`; pass `{ halfOpen: true }` to `SecureRandom.intBetween` to match that half-open range (keep native calls in `.ts` if you need Node's strict argument validation).
+- **Hardware concurrency:** Read browser `navigator.hardwareConcurrency` in a `.ts` adapter; `try (try Experimental.Process.Process).availableParallelism` reports Node/Bun cores only.
 
-FileSystem advice gets the implementation with `try FileSystem.FileSystem` before calling a member. Run a returned Effect with `try`, as in `try (try FileSystem.FileSystem).readFileString(path)`. The module `FileSystem` supplies the service key; its methods belong to the retrieved implementation. Replacement advice runs methods that return Effects with an outer `try`. The `stream`, `sink` and `watch` methods construct `Stream` or `Sink` values; consume those values with their ordinary APIs.
-
-WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provide `NodeSocket.layerWebSocketConstructor` or `BrowserSocket.layerWebSocketConstructor` for its `Socket.WebSocketConstructor` requirement. A `layerWebSocket(url)` provides `Socket.Socket`; retrieve that service with `try Socket.Socket`.
-
-`crypto.randomInt(min, max)` excludes `max`. Its replacement hint sets `halfOpen: true` explicitly. For valid native integer bounds, set `halfOpen: true` on the `SecureRandom.SecureRandom` service’s `intBetween` method to retain that range. The Effect method includes both bounds by default and rounds fractional bounds; keep a native call in a `.ts` adapter when its argument validation is required.
-
-Browser hardware concurrency is read through a `navigator.hardwareConcurrency` adapter in TypeScript. A Node or Bun program can instead run `try (try Experimental.Process.Process).availableParallelism` after providing its process layer; this service member does not report the browser’s count.
 
 | Global | Use instead |
 | --- | --- |
@@ -900,54 +901,10 @@ Browser hardware concurrency is read through a `navigator.hardwareConcurrency` a
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 
-`process.hrtime()` returns a `[seconds, nanoseconds]` tuple; `process.hrtime.bigint()` returns a `bigint`. To measure elapsed time, capture `const startNanos = try Clock.monotonicTimeNanos`, then use `Duration.toHrTime((try Clock.monotonicTimeNanos) - startNanos)` for a tuple or subtract the readings directly for a `bigint`. Use readings from the same injected clock: its arbitrary origin need not match native `hrtime`, so do not subtract a saved native tuple from it.
+### Key notes on replacements
 
-Node's `crypto.hash(algorithm, bytes)` returns lowercase hex by default, so its replacement uses `digestHex`. For `"buffer"` output, use `digest` to keep bytes. Select the matching digest algorithm and encode text input with `TextEncoder` before hashing.
-
-The `EK4402` replacement examples obtain `SecureRandom.SecureRandom` with `try` before calling its methods. The `randomBytes` method returns new bytes; it does not fill an existing array.
-
-For storage diagnostics, `KeyValueStore` names a namespace. Obtain `KeyValueStore.KeyValueStore` with `try`, then run the Effect returned by its `get(key)` method.
-
-For byte I/O, first obtain `Stdio.Stdio` with `try`. Its `stdout()` and `stderr()` methods return sinks, and its `stdin` property is a stream. Its `args` property is an Effect: use `try (try Stdio.Stdio).args`, without calling `args`. `args` omits the executable and script entries; on Node it matches `process.argv.slice(2)`. Read the full array in a `.ts` adapter when needed. The platform diagnostic's replacement examples use these service members.
-
-`Clock.monotonicTimeNanos` is for elapsed intervals: record `startNanos` from that clock before work and subtract it afterward. Its arbitrary origin can differ from `performance.now()` on Node. A native timestamp, including one combined with `performance.timeOrigin`, belongs in a `.ts` adapter. Subtract the `bigint` readings before converting the difference to milliseconds: `Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6`. This keeps an injected clock's origin out of the interval.
-
-The terminal diagnostic examples obtain `Terminal.Terminal` with `try` and run its `readLine` Effect property to read a line.
-
-Digest diagnostic examples obtain `Digest.Digest` with `try`, then run its `digest(Digest.sha256, bytes)` method. This hashes the bytes in one operation.
-
-For `os.tmpdir()`, use `try (try Experimental.Process.Process).temporaryDirectory`. It queries the native temporary directory without creating a directory or file.
-
-MAC diagnostic examples obtain `Mac.Mac` with `try`, then run its `sign(key, data)` method. Build an HMAC key with `try Mac.key(Mac.hmacSha256, bytes)` before signing the data.
-
-Signature diagnostic examples obtain `Signature.Signature` with `try` before signing, verifying or generating a key pair. Building keys from bytes also runs an Effect: use `try Signature.privateKey(Signature.ed25519, bytes)` or `try Signature.publicKey(Signature.ed25519, bytes)`.
-
-Authenticated-encryption diagnostic examples obtain `Aead.Aead` with `try` before running `encrypt` or `decrypt`. Build a key with `try Aead.key(Aead.aes256Gcm, bytes)`, then pass that key, the bytes and `{ nonce }` to the service method.
-
-Environment diagnostic examples run `Config.String("NAME")` directly with `try`. A config value is an Effect; it is not called again as a function.
-
-Every service example in platform advice obtains the injected service first, then reads or calls its member: `try (try Geolocation.Geolocation).getCurrentPosition()`, `try (try Permissions.Permissions).query("geolocation")`, `try (try UserDirectories.UserDirectories).home`, and for the experimental services `try (try Experimental.Process.Process).pid`, `try (try Experimental.FileSystem.FileSystem).access(path, { executable: true })` and `try (try Experimental.Locks.Locks).hold(name)`. A module is a namespace, not a service, so `Experimental.Process.pid()` names no function.
-
-Timer-cancellation advice uses `try Fiber.interrupt(fiber)`. The public `Fiber` module function returns an Effect; `try` runs it.
-
-Timer advice runs a delay with `try sleep("1 second")`. Repetition runs in the background with `fork effect { try repeat(program, Schedule.spaced("1 second")) }`; keep its fiber when it needs interruption. Constructing either Effect alone starts no timer.
-
-Clipboard advice first obtains the injected `Clipboard.Clipboard` service. Its `readString` member is an Effect value: `try (try Clipboard.Clipboard).readString` reads the text.
-
-The `versions` member of the `Experimental.Process.Process` service supplies a map of component versions, matching `process.versions`. The `process.version` diagnostic shows the string expression `"v" + (try (try Experimental.Process.Process).versions).node` for Node. On Node, `process.version` is the `node` entry with a leading `v`; selecting that entry alone omits the prefix. Keep a runtime-specific version read in a `.ts` adapter when it does not follow Node’s spelling.
-
-A numeric return value from `main` does not set the exit status:
-`effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
-fail for exit 1, or interrupt for exit 130.
-
-`globalThis` is available only as the object of a statically named member access: `.name`, `?.name`, a string-literal key or a template key without substitutions. Copying the object, destructuring it, passing or spreading it, using it with `in` or value-level `typeof`, or reading a nonliteral key reports `EK0107`; move that code to a `.ts` file. A repeated `globalThis.globalThis` also has to be a static member's object. Type queries and local bindings with the name `globalThis` keep their TypeScript meaning. Static access still follows the platform and dynamic-code rules. An internal import alias such as `import g = globalThis.globalThis` also copies the object and reports `EK0107`. An alias of a static member, such as `import U = globalThis.globalThis.URL`, retains that member's rules.
-
-Type-only import aliases keep TypeScript's native diagnostics, including `TS1392` when the internal alias form does not support `import type`.
-
-`globalThis.eval` and `globalThis.Function` follow the same `EK0107` rule as the bare names. The `Function` exemptions also apply: `x instanceof globalThis.Function` and `globalThis.Function.prototype` are allowed. An import alias of either global, such as `import E = globalThis.eval`, is a value reference and reports `EK0107` as well.
-
-Native `import.source(...)` and `import.defer(...)` calls retain TypeScript's option and argument checks during service checking; their callees are import syntax rather than service-key values.
-
-Invalid meta-property names such as `import.x` keep TypeScript's `TS17012` syntax diagnostic. An incomplete `import.source` or `import.defer` keeps the native `TS1005` syntax diagnostic.
-
-`import.meta` follows TypeScript. Members are checked against the program's `ImportMeta` declarations. Enable `vite/client` for Vite's `glob`, `env` and `hot`, or `@types/node` for Node metadata such as `dirname`. An undeclared member gets TypeScript's ordinary diagnostic, not `EK4402`. Aliases, destructuring, computed access, arguments and spreads keep their ordinary meaning.
+- **Services vs. namespaces:** Modules like `SecureRandom`, `KeyValueStore`, `Stdio`, `Terminal`, `Digest`, `Mac`, `Signature`, `Aead`, `Clipboard`, `Geolocation`, `Permissions`, `UserDirectories`, and `Experimental.*` are namespaces, not services. Obtain the service first (`try (try Service.Service).member(...)`); Effect-valued properties (`(try Stdio.Stdio).args`, `(try Terminal.Terminal).readLine`, `(try Clipboard.Clipboard).readString`, `Config.String("NAME")`, `(try Experimental.Process.Process).pid`) are run with `try` without extra `()`.
+- **Clocks & elapsed time:** `Clock.monotonicTimeNanos` has an arbitrary origin — subtract readings from the same clock before converting (`Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6` or `Duration.toHrTime(...)`). Keep native timestamps paired with `performance.timeOrigin` in a `.ts` adapter.
+- **Crypto & bytes:** `SecureRandom.randomBytes` allocates new bytes. `Digest.digestHex` matches Node's default hex output (`digest` returns bytes). Build keys with `try Mac.key(...)`, `try Signature.privateKey(...)` / `publicKey(...)`, and `try Aead.key(...)` before passing them to the service.
+- **Process metadata & exit codes:** `(try Stdio.Stdio).args` returns user arguments (`process.argv.slice(2)`); `try (try Experimental.Process.Process).temporaryDirectory` queries `os.tmpdir()` without creating a directory; `try (try Experimental.Process.Process).versions` returns a map of component versions (`"v" + versions.node` on Node). A numeric return value from `main` does not set the exit status: `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 under `NodeRuntime.runMain`. Return normally for exit 0, fail for exit 1, or interrupt for exit 130.
+- **`globalThis` and `import.meta`:** `globalThis` is allowed only as the receiver of a static member access (`.name`, `?.name`, literal/non-interpolated template key, or repeated `globalThis.globalThis.*`). Copying, destructuring, spreading, `in`, value-level `typeof`, non-literal keys, or `import g = globalThis.globalThis` report `EK0107`; `globalThis.eval` and `globalThis.Function` follow the same `EK0107` rule (keeping `instanceof globalThis.Function` and `globalThis.Function.prototype`). `import.meta` follows TypeScript's `ImportMeta` declarations (`vite/client` or `@types/node`), and `import.source(...)` / `import.defer(...)` retain TypeScript's own checks.

@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -13,7 +14,6 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-ignored-source-rename.json", import.meta.url), "utf8"))
 const contract = readFileSync(new URL("../README.md", import.meta.url), "utf8")
-const raw = process.env.VIBELANG_IGNORED_RENAMES_RAW === "1"
 // Fixture repositories live outside the source tree: //packages:compiler-test
 // keys every file under the flow, and a jj workspace would snapshot them.
 const fixtures = mkdtempSync(join(tmpdir(), "ignored-rename-fixtures-"))
@@ -46,15 +46,6 @@ function missingRecordedTarget(tracked, recorded, to, source) {
   assert.equal(recorded, source, "record must preserve every source byte")
   return false
 }
-
-test("pending guards reject path-only error matches and changed recorded bytes", () => {
-  const root = "/scratch/ignored-rename/case"
-  assert.equal(refusalReason(new Error("ENOENT: no such file " + root + "/src/lib/a.ts"), root, "src/lib/a.ts", "src/lib/a.vibe"), false)
-  assert.equal(refusalReason(new Error("Cannot rename an ignored target: " + root + "/src/lib/a.vibe"), root, "src/lib/a.ts", "src/lib/a.vibe"), true)
-  assert.equal(missingRecordedTarget([], null, "a.vibe", "same"), true)
-  assert.throws(() => missingRecordedTarget(["a.vibe"], "changed", "a.vibe", "same"), /preserve every source byte/)
-  assert.throws(() => missingRecordedTarget([], "same", "a.vibe", "same"), /tracked set must agree/)
-})
 
 async function inspect(input) {
   const root = mkdtempSync(join(fixtures, "case-"))
@@ -115,12 +106,7 @@ async function inspect(input) {
 
 async function check(input) {
   const result = await inspect(input)
-  if (input.ignored && corpus.knownFailure && !raw) {
-    assert.ok(result.issues.length > 0, "XPASS " + corpus.knownFailure.key + ": remove the retired knownFailure")
-    assert.deepEqual(result.issues, corpus.knownFailure.issues, "only the exact recorded omission and ignored restore residue are pending")
-  } else {
-    assert.deepEqual(result.issues, [], "record and revert preserve a renamed source: " + JSON.stringify(input))
-  }
+  assert.deepEqual(result.issues, [], "record and revert preserve a renamed source: " + JSON.stringify(input))
 }
 
 test("alchemy-45: a tracked source in an ignored directory is recorded and restored safely", async () => {

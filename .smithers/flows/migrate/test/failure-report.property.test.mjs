@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -43,7 +44,11 @@ async function check(input) {
   } finally {rmSync(run,{recursive:true,force:true})}
 }
 test("foldkit: an unchanged failing baseline is labelled as failing, with its names",async()=>check(corpus))
+test("the matching-baseline rule is quoted from the README", () => {
+  assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes("A prepared original failure may remain unchanged under the accepted baseline comparison, but it is labelled as failing, retains its actual command exit and assertion failure names, and is never presented as a green package."))
+})
+
 test("matching baseline reports retain actual command and assertion failures",async()=>{
-  // Accepted prerequisite ruling: "do not ... report a delta-only comparison as a green package".
+  // The rule: README.md, a matching baseline is labelled as failing, never green.
   await fc.assert(fc.asyncProperty(fc.constantFrom(0,1,2,128),fc.integer({min:0,max:12}),fc.uniqueArray(fc.stringMatching(/^[a-z][a-z0-9 ]{0,12}$/),{minLength:0,maxLength:5}),async(code,passed,failedNames)=>check({code,passed,failedNames})),{seed:272097,numRuns:200})
 })

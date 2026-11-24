@@ -1,43 +1,54 @@
 import { existsSync, realpathSync, rmSync } from "node:fs"
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
+import * as nodePath from "node:path"
+import { dirname, join, relative, resolve, sep } from "node:path"
 import { assertFinished } from "./diagnostics.mjs"
 import { quote, run, writeJson } from "./util.mjs"
 
-const inside = (parent, child) => {
-  const path = relative(parent, child)
-  return path === "" || path !== ".." && !path.startsWith(".." + sep) && !isAbsolute(path)
-}
-// Match the native path implementation's case rules and separator boundaries.
-const pathKey = path => process.platform === "win32" ? resolve(path).toLowerCase() : resolve(path)
-
-function descendantIndex(paths) {
-  const keys = new Set(paths.map(pathKey)), sorted = [...keys].sort()
-  return parent => {
-    const key = pathKey(parent)
-    if (keys.has(key)) return true
-    const prefix = key.endsWith(sep) ? key : key + sep
-    let low = 0, high = sorted.length
-    while (low < high) {
-      const middle = (low + high) >>> 1
-      if (sorted[middle] < prefix) low = middle + 1
-      else high = middle
-    }
-    return sorted[low]?.startsWith(prefix) ?? false
+/**
+ * Path containment under one platform's rules: `paths` is node:path, or
+ * path.win32 or path.posix, and `platform` decides case folding. A key per
+ * path and a sorted index keep containment linear in the number of paths.
+ */
+export function containment(paths = nodePath, platform = process.platform) {
+  const { dirname, isAbsolute, relative, resolve, sep } = paths
+  const inside = (parent, child) => {
+    const path = relative(parent, child)
+    return path === "" || path !== ".." && !path.startsWith(".." + sep) && !isAbsolute(path)
   }
-}
+  // Match the native path implementation's case rules and separator boundaries.
+  const pathKey = path => platform === "win32" ? resolve(path).toLowerCase() : resolve(path)
 
-function outermostOutputs(paths) {
-  const counts = new Map()
-  for (const path of paths) counts.set(pathKey(path), (counts.get(pathKey(path)) ?? 0) + 1)
-  return paths.filter(path => {
-    // Distinct spellings of the same native path covered one another before.
-    if (counts.get(pathKey(path)) > 1) return false
-    for (let child = path, parent = dirname(child); parent !== child; child = parent, parent = dirname(child)) {
-      if (counts.has(pathKey(parent))) return false
+  function descendantIndex(paths) {
+    const keys = new Set(paths.map(pathKey)), sorted = [...keys].sort()
+    return parent => {
+      const key = pathKey(parent)
+      if (keys.has(key)) return true
+      const prefix = key.endsWith(sep) ? key : key + sep
+      let low = 0, high = sorted.length
+      while (low < high) {
+        const middle = (low + high) >>> 1
+        if (sorted[middle] < prefix) low = middle + 1
+        else high = middle
+      }
+      return sorted[low]?.startsWith(prefix) ?? false
     }
-    return true
-  })
+  }
+
+  function outermostOutputs(paths) {
+    const counts = new Map()
+    for (const path of paths) counts.set(pathKey(path), (counts.get(pathKey(path)) ?? 0) + 1)
+    return paths.filter(path => {
+      // Distinct spellings of the same native path covered one another before.
+      if (counts.get(pathKey(path)) > 1) return false
+      for (let child = path, parent = dirname(child); parent !== child; child = parent, parent = dirname(child)) {
+        if (counts.has(pathKey(parent))) return false
+      }
+      return true
+    })
+  }
+  return { inside, descendantIndex, outermostOutputs }
 }
+const { inside, descendantIndex, outermostOutputs } = containment()
 
 const extra = ts => [{ extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred },
   { extension: ".vibex", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }]

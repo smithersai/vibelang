@@ -97,7 +97,7 @@ test("property: serialized checkpoints preserve the complete selected route resu
       assert.deepEqual(actual, expected)
       assert.deepEqual(manifests(f), result)
     } finally { rmSync(f.root, { recursive: true, force: true }) }
-  }), { examples: [[corpus.input.inherited, corpus.input.inferred, corpus.input.source, corpus.input.directory]], seed: corpus.seed, numRuns: Number(process.env.FC_RUNS || 64) })
+  }), { examples: [[corpus.input.inherited, corpus.input.inferred, corpus.input.source, corpus.input.directory]], seed: corpus.seed, numRuns: 64 })
 })
 
 test("layout plans contain portable paths for the owning package", t => {

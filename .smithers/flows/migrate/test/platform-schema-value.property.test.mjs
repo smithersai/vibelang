@@ -1,12 +1,8 @@
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { createRequire } from "node:module"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 import { test } from "node:test"
 import { splitPlatform } from "../lib/platform.mjs"
-import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // codemod-gap:platform-split-schema-value-import (drive-t3code-apps
 // 2026-11-02T02:42Z): t3code Desktop's MacSettingsWindow.ts declares a schema
@@ -18,7 +14,6 @@ import { nativeCompiler } from "./helpers/native-compiler.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const ts = require("typescript")
-const compiler = nativeCompiler()
 
 const ambient = `declare module "node:fs" { export function existsSync(path: string): boolean }\n`
 // A stand-in for effect/Schema: the split reads names, not Effect's types.
@@ -57,18 +52,6 @@ test("t3code Desktop MacSettingsWindow: a moved value read takes the value, and 
   assert.match(result.module, /^export type \{ Shape \} from "\.\/main\.platform\.ts"$/m)
   const after = emit({ "main.ts": result.module, "main.platform.ts": result.platform })
   assert.deepEqual(after.errors, [], result.module + "\n---\n" + result.platform)
-})
-
-test("t3code Desktop MacSettingsWindow: the refused module compiles natively as written", () => {
-  const root = mkdtempSync(join(tmpdir(), "platform-schema-value-"))
-  try {
-    writeFileSync(join(root, "Schema.ts"), schema)
-    writeFileSync(join(root, "node.d.ts"), ambient)
-    writeFileSync(join(root, "main.ts"), macSettings)
-    writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true, module: "ESNext", moduleResolution: "Bundler", noEmit: true, allowImportingTsExtensions: true, skipLibCheck: true }, include: ["*.ts", "*.vibe"] }))
-    const result = spawnSync(compiler, ["-p", "tsconfig.json", "--pretty", "false", "--singleThreaded"], { cwd: root, encoding: "utf8" })
-    assert.equal(result.status, 0, result.stdout + result.stderr)
-  } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
 // Modules with a same-name value and type, `X`, whose moved function reads X

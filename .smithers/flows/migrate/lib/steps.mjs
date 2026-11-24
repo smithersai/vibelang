@@ -34,7 +34,7 @@ import { followLintRenames } from "./lint-paths.mjs"
 import { platformCausesOf, splitBatchPlatform, throwingCausesOf } from "./platform.mjs"
 import { restoreBuildEntrypoints } from "./build-entrypoints.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
-import { check, newErrors, styleProblems, summarize, warningExceptions } from "./diagnostics.mjs"
+import { batchRefusals, check, newErrors, styleProblems, summarize, warningExceptions } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
 import { runPhaseCheck } from "./run-phase.mjs"
 import { emittedPathOf, lostWrapperCheck, readAllowList } from "./lost-wrapper.mjs"
@@ -2133,10 +2133,9 @@ export async function verify(options) {
   }
   const after = await foreignBatchChanges(t, await Jj.changedPaths(t), { files, codemod, testDiff, sidecar: batchSidecarLocator(config) })
   const foreign = [...new Map([...before, ...after].map(c => [c.path, c])).values()]
-  const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")
+  const { batchErrors, style } = batchRefusals(checked, migrated)
   const runPhase = runPhaseCheck({ compiler, ts, target: t, files: migrated, original: file => originalSourceOf(p, thePlan, file) })
   const lostWrappers = await checkLostWrappers({ config, p, plan: thePlan, batch: b, migrated, emittedJs, ts, logs })
-  const style = checked.style.filter((d) => migrated.includes(d.file))
   // Paths held as data: nothing above runs the line that opens one (alchemy's DevWatchProvider).
   // The dist-list diff: a build that selects sources by .ts drops a converted module and still exits 0.
   const renamed = (thePlan?.batches ?? []).slice(0, Number(b)).flatMap((_, i) => readJsonIf(p.codemod(batchName(i)))?.renames ?? [])

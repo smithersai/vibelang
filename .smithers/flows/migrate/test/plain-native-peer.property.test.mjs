@@ -20,7 +20,9 @@ const require = createRequire(new URL("package.json", runtime))
 const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-plain-native-peer.json", import.meta.url), "utf8"))
 // The legacy marks are for a compiler before VIP-1's flip, such as the
-// pinned VibeLang 0.0.11; a flipped compiler rejects every `infer _` (TS1338).
+// pinned VibeLang 0.0.11. A flipped compiler accepts `infer _` and infers the
+// return type, so these marks stay valid input. The compile test below needs a
+// legacy compiler, where the marks decide which functions stay plain.
 const compiler = process.env.VIBELANG_LEGACY_BINARY
 
 function project(files) {
