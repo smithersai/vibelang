@@ -1364,7 +1364,7 @@ const targets = {
   ),
   "syntax-error-matcher-registration": goVibelang(
     "Error matcher registrations survive parser and printer round trips",
-    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=3m -run \"^(TestSyntaxRoundTripGoldens|FuzzVibeLangParsePrint)$\" ./internal/vibelang",
+    "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=3m -run \"^(TestSyntaxRoundTripGoldens|TestSyntaxRoundTripSources|FuzzVibeLangParsePrint)$\" ./internal/vibelang",
     [],
     "5m"
   ),

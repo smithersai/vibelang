@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestServiceDefaultRefusesUnhandledTypeReads(t *testing.T) {
+func TestServiceDefaultWarningWithTypeReads(t *testing.T) {
 	for _, read := range []string{
 		"type K = \"default\"; export type Value = (typeof Flags)[K];",
 		"export type Value = (typeof Flags)[(\"default\")];",

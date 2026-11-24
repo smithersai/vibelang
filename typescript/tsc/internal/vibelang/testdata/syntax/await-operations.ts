@@ -1,1 +1,0 @@
-function f() { const all = $awaitAll([read(), (() => { let $do1; $do1 = 2; return $do1; })()]); const settled = $awaitAllSettled({ one: read() }); const race = $awaitRace([read()]); return $awaitAny([read()]); }

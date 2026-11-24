@@ -3,7 +3,6 @@ package vibelang
 import (
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
@@ -19,8 +18,10 @@ func TestConfiguredAwaitWarningInLanguageServer(t *testing.T) {
 		{"off", 0},
 	} {
 		t.Run(test.category, func(t *testing.T) {
-			program, file, _, converters := editorProgram(t, "import type { Fiber } from \"effect\"\nexport async function wait(fiber: Fiber.Fiber<number>) { return await fiber }")
-			program.Options().VibeLang = &core.VibeLangOptions{Severities: map[string]string{"EK4609": test.category}}
+			config := `{"compilerOptions":{"module":"NodeNext","strict":true,"skipLibCheck":true},"vibe":{"severities":{"EK4609":"` + test.category + `"}},"files":["main.vibe"]}`
+			source := `import type { Fiber } from "effect"
+export async function wait(fiber: Fiber.Fiber<number>) { return await fiber }`
+			program, file, _, converters := editorProgramConfig(t, source, editorPackageJSON, editorPackages, config)
 			found := false
 			diagnostics := append(program.GetSemanticDiagnostics(t.Context(), file), program.GetSuggestionDiagnostics(t.Context(), file)...)
 			for _, d := range diagnostics {

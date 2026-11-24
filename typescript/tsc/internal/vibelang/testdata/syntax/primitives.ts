@@ -1,7 +1,14 @@
-function f() { {
-    $uninterruptibleBlock();
+function poll(work: Effect.Effect<number, never, never>) {
     {
-        $restoreBlock();
-        read();
+        $uninterruptibleBlock();
+        $try(work);
+        {
+            $restoreBlock();
+            $try(work);
+        }
     }
-} ; return (() => { throw new Error("gone"); })(); }
+    {
+        $interruptibleBlock();
+        $try(work);
+    }
+}

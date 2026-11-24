@@ -1,16 +1,25 @@
-function f() { return $catchExpression(() => read(), (e) => 0); }
-function g() { try {
-    return read();
-}
-catch ($caught) {
-    if ($isFailure<Gone>($caught)) {
-        const e = $caught;
-        return e.id;
+class Gone extends TaggedError("Gone")<{
+    readonly id: string;
+}> {
+    static {
+        $schemaErrorMatcher(this, "Gone", true);
     }
-    else
-        throw $caught;
 }
-finally {
-    const exit = $exit();
-    write(exit);
-} }
+class Busy extends TaggedError("Busy")<{}> {
+    static {
+        $schemaErrorMatcher(this, "Busy", true);
+    }
+}
+function recover(job: Effect.Effect<string, (Gone | Busy), never>) {
+    const fallback = $catchExpression(() => job, () => "guest");
+    const tag = $catchExpression(() => job, (e) => e._tag);
+    return $catchExpression(() => job, (e) => (() => {
+        const $match1 = e;
+        {
+            if ($is(Gone, $match1)) {
+                return e.id;
+            }
+        }
+        return (() => { throw e; })();
+    })());
+}

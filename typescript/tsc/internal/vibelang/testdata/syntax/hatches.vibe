@@ -1,1 +1,0 @@
-function f() { const a = sync((n) => n + 1, read()); const b = read(); const c = $try(program); return callback((resume) => resume(a + b + c)); }

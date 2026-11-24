@@ -14,25 +14,80 @@ import (
 
 // The upstream parser test package requires Microsoft's omitted test corpus.
 // Keep the VibeLang-specific corpus here so it also runs in released checkouts.
-// These cases pin syntax from D154, D176-D196, D223, D225 and D229-D232.
+// The inputs are also the seeds for FuzzVibeLangParsePrint.
 var syntaxRoundTripCases = []struct{ name, source string }{
-	{"declarations", `error Gone { readonly id: string }
+	{"declarations", `error Gone { id: string }
+schema error Invalid { reason: string }
+schema Role = "admin" | "member"
+schema Ticket { id: string; label?: string; role: Role }
+data Delivery { Waiting; Sent { tracking: string } }`},
+	{"contracts", `error Gone
 service Users { find(id: string): string!Gone }
-schema Ticket { id: string; count: number }`},
-	{"contracts", `function read(id: string): string!Gone!Users { return Users.find(id) }
+effect function read(id: string): string!Gone!Users { return try (try Users).find(id) }
 type Program = number!!
 type Errors = string!Gone
 type Requirements = boolean!!Users`},
 	{"pipe", `function f(n: number) { return n |> % % 2 |> (% ? 1 : 0) }
 function g(n: number) { return n |> (% + (2 |> % * 3)) }`},
-	{"fibers", `function f(items: number[]) { const task = fork read(); const value = join task; const all = join [task]; for concurrent(2) (const item of items) write(item); return { value, all } }`},
-	{"await-operations", `function f() { const all = await.all [read(), do { 2 }]; const settled = await.allSettled { one: read() }; const race = await.race [read()]; return await.any [read()] }`},
-	{"hatches", `function f() { const a = sync((n) => n + 1, read()); const b = try read(); const c = try program; return callback((resume) => resume(a + b + c)) }`},
-	{"blocks", `function f() { const value = do { const x = read(); x + 1 }; return Effect.retry(effect { return value }, { times: 2 }) }`},
-	{"catches", `function f() { return read() catch (e) => 0 }
-function g() { try { return read() } catch (e: Gone) { return e.id } finally (exit) { write(exit) } }`},
-	{"primitives", `function f() { uninterruptible { restore { read() } }; return throw new Error("gone") }`},
-	{"match", `function f(value: unknown) { return match (value) { when 1: "one"; when String and let text: text; default: "other"; } }`},
+	{"fibers", `effect function run(job: number!!, scope: Scope.Scope) {
+  const child = fork job
+  const owned = fork.in(scope) job
+  const scopedChild = fork.scoped job
+  const detached = fork.detached job
+  return join child
+}`},
+	{"try-operations", `effect function run(left: number!!, right: number!string) {
+  const both = try.all [left, right]
+  const settled = try.allSettled [left, right]
+  const first = try.race [left, right]
+  const success = try.any [left, right]
+  return { both, settled, first, success }
+}`},
+	{"hatches", `effect function parse(raw: string) {
+  const n = try Effect.try({ try: () => JSON.parse(raw), catch: (e) => String(e) })
+  const doubled = try sync(() => n * 2)
+  const value = try promise(() => Promise.resolve(doubled))
+  return try tryPromise({ try: () => Promise.resolve(value), catch: (e) => String(e) })
+}`},
+	{"blocks", `const increment = effect (x: number) => x + 1
+export effect function main() {
+  const value = do { const x = 2; x + 1 }
+  return try withSpan(effect { return try increment(value) }, "increment")
+}
+await runPromise(main())`},
+	{"catches", `error Gone { id: string }
+error Busy
+effect function recover(job: string!(Gone | Busy)) {
+  const fallback = job catch () => "guest"
+  const tag = job catch (e) => e._tag
+  return job catch effect (e) => match (e) { when Gone: e.id; default: throw e; }
+}`},
+	{"primitives", `effect function poll(work: number!!) {
+  uninterruptible { try work; restore { try work } }
+  interruptible { try work }
+}`},
+	{"match", `function f(value: unknown) { return match (value) { when 1: "one"; when String and let text: text; default: "other"; } }
+effect function result(job: number!string) {
+  return match (try exit(job)) { when Exit.Success(let n): n; when Exit.Failure(let cause): 0; }
+}`},
+	{"providers", `service Users { find(id: string): string!! }
+const users = { effect find(id: string) { return id } }
+const live = Layer.effect(Users, effect { return users })
+const fallback = Layer.succeed(Users, users)
+effect function read() {
+  provide live, Users = users { return try (try Users).find("1") }
+}`},
+	{"streams", `effect function* ticks() { yield 1; try sleep("1 second"); yield 2 }
+effect function consume() {
+  for try (const x of ticks()) { if (x === 2) break }
+  for concurrent(2) (const x of [1, 2]) { try log(x) }
+}`},
+	{"resources", `effect function use() {
+  return try scoped(effect {
+    const resource = try acquireRelease(succeed(1), () => log("closed"))
+    return try ensuring(onExit(succeed(resource), (exit) => log(exit._tag)), log("done"))
+  })
+}`},
 }
 
 func printSyntax(file *ast.SourceFile) string {
@@ -46,7 +101,7 @@ func checkSyntaxRoundTrip(t *testing.T, source string) string {
 		t.Fatalf("VibeLang syntax rejected: %v\n%s", file.Diagnostics(), source)
 	}
 	printed := printSyntax(file)
-	// Some forms (pipes and try hatches) remain language syntax until the
+	// Some forms (such as pipes) remain language syntax until the
 	// compiler transform. Reparse as VibeLang, as editor changes would be.
 	reparsed := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, printed, core.ScriptKindTS)
 	if len(reparsed.Diagnostics()) != 0 {
@@ -101,7 +156,7 @@ func TestSyntaxRoundTripGoldens(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := checkSyntaxRoundTrip(t, tc.source)
 			extension := ".ts"
-			if tc.name == "pipe" || tc.name == "hatches" {
+			if tc.name == "pipe" {
 				extension = ".vibe"
 			}
 			golden := filepath.Join("testdata", "syntax", tc.name+extension)
@@ -119,6 +174,18 @@ func TestSyntaxRoundTripGoldens(t *testing.T) {
 			}
 			if got != string(want) {
 				t.Fatalf("syntax golden differs:\ngot:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}
+
+// The parser also accepts retired forms for diagnostic recovery. Only seed
+// the golden corpus with examples that compile as user-written VibeLang.
+func TestSyntaxRoundTripSources(t *testing.T) {
+	for _, tc := range syntaxRoundTripCases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, d := range errorsOf(t, tc.source) {
+				t.Errorf("%s%d: %s", d.Source(), d.Code(), d.String())
 			}
 		})
 	}

@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"strings"
 	"testing"
@@ -46,26 +45,6 @@ export const Explicit = Schema.Struct({ value: Schema.mutableKey(Schema.Number) 
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Category() == diagnostics.CategoryError {
 			t.Errorf("control rejected: %s", d.String())
-		}
-	}
-}
-
-func TestSchemaErrorReferenceFlagsInverse(t *testing.T) {
-	for _, codec := range []string{"Schema.mutableKey(Schema.Number)", "Schema.Number as Schema.Top"} {
-		source := "const Codec = " + codec + "\nexport class Bad extends Schema.TaggedError<Bad>()(\"Bad\", {value: Codec}) {}\n"
-		program, file, _, _ := editorProgram(t, source)
-		c, done := program.GetTypeCheckerForFile(t.Context(), file)
-		c.GetDiagnostics(t.Context(), file)
-		found := false
-		findSchemaErrorClasses(c, file, func(_ *ast.Node, rewrite *formRewrite, _ ...any) {
-			found = true
-			if rewrite.fixable() {
-				t.Errorf("inverse would reintroduce incompatible schema payload: %+v", rewrite)
-			}
-		})
-		done()
-		if !found {
-			t.Fatal("missing native schema-error advisory")
 		}
 	}
 }

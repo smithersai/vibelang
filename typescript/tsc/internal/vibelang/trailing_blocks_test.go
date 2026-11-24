@@ -40,10 +40,6 @@ func emittedJS(t *testing.T, program *compiler.Program) map[string]string {
 	return out
 }
 
-// A comment between the call and its block has no place in the rewrite, so
-// EK1101 stays and the source comment remains intact.
-// Chapter 007 / interargument comment refusal and dual compatibility: docs/design/src/007-tooling.md#c3c81017075e1310
-
 // A dual block that D188 placed elsewhere keeps its own error and fix
 // (dual_block_migration.go), with no EK1101 beside it.
 // Chapter 007 / interargument comment refusal and dual compatibility: docs/design/src/007-tooling.md#c3c81017075e1310
