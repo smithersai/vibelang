@@ -6,7 +6,7 @@ const { vibePath } = await import(pathToFileURL(resolve(".smithers/flows/migrate
 const { planScope } = await import(pathToFileURL(resolve(".smithers/flows/migrate/lib/onepass.mjs")).href)
 const { file, source = "export const value = 1\n" } = JSON.parse(readFileSync(0, "utf8"))
 mkdirSync(".cache", { recursive: true })
-const root = mkdtempSync(resolve(".cache/migration-route-"))
+const root = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? resolve(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : resolve(".cache/migration-route-"))
 const control = "__migration_control.ts"
 const put = (name, text) => { mkdirSync(dirname(join(root, name)), { recursive: true }); writeFileSync(join(root, name), text) }
 function snapshot(directory = root, prefix = "") {

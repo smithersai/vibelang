@@ -1,3 +1,0 @@
-import { NodeRuntime } from "@effect/platform-node"
-const program = effect { return 1 }
-export const result = program.pipe(NodeRuntime.runMain)

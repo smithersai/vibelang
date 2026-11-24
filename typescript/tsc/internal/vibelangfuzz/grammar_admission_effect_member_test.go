@@ -26,6 +26,7 @@ func grammarAdmissionVerdict(t *testing.T, w *Workspace, source string) bool {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer result.Remove()
 	if result.Program != nil && HasError(result.Program.GetSyntacticDiagnostics(context.Background(), nil)) {
 		return false
 	}

@@ -1,0 +1,5 @@
+FuzzConcurrentHeadContinues rule:source-block-const compiler Chapter 2: an item continue targeting an enclosing labeled block must report EK1905. See #645.
+FuzzConcurrentHeadContinues rule:source-block-let compiler Chapter 2: an item continue targeting an enclosing labeled block must report EK1905. See #645.
+FuzzConcurrentHeadContinues rule:source-block-pattern compiler Chapter 2: an item continue targeting an enclosing labeled block must report EK1905. See #645.
+FuzzConcurrentHeadContinues rule:source-block-tempname compiler Chapter 2: an item continue targeting an enclosing labeled block must report EK1905. See #645.
+FuzzConcurrentHeadContinues rule:source-block-bounded compiler Chapter 2: an item continue targeting an enclosing labeled block must report EK1905. See #645.

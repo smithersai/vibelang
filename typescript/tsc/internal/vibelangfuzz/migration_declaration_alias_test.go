@@ -42,7 +42,7 @@ func checkMigrationDeclarationAlias(t *testing.T, binary, key string, shape uint
 	}
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_declaration_alias.mjs"))
 	cmd.Dir, cmd.Stdin = Root(), strings.NewReader(string(input))
-	output, err := cmd.CombinedOutput()
+	output, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("declaration alias oracle: exit=%v context=%v\n%s", err, ctx.Err(), output)
 	}
@@ -66,6 +66,9 @@ func checkMigrationDeclarationAlias(t *testing.T, binary, key string, shape uint
 	expectedControls := 0
 	if controls {
 		expectedControls = 6
+		if !result.StockSelf.ComparisonComplete || !result.StockSelf.Identical {
+			t.Fatalf("stock TypeScript snapshot changed under self-comparison: %s", output)
+		}
 	}
 	if len(result.Controls) != expectedControls {
 		t.Fatalf("missing strict declaration controls: %s", output)

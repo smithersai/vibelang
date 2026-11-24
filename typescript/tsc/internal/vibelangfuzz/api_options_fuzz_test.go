@@ -58,9 +58,13 @@ func FuzzAPIOptions(f *testing.F) {
 		}
 		got, diagnostics := raw.Finalize(tspath.RootedDirectoryPath("/project"))
 		want := config.CompilerOptions().VibeLang
+		wantGlobals, wantModules := core.TSFalse, core.TSTrue
+		if enabled {
+			wantGlobals, wantModules = core.TSTrue, core.TSFalse
+		}
 		if len(diagnostics) != 0 || got.VibeLang == nil ||
 			!reflect.DeepEqual(got.VibeLang.Severities, want.Severities) ||
-			got.VibeLang.EffectGlobals != want.EffectGlobals || got.VibeLang.EffectModules != want.EffectModules ||
+			got.VibeLang.EffectGlobals != wantGlobals || got.VibeLang.EffectModules != wantModules ||
 			got.VibeLang.SidecarDir != "/project/.vibe/decl" || got.Strict != core.TSTrue ||
 			got.NoEmitOnError != core.TSTrue || want.Severities[code] != severity {
 			Gap(t, "FuzzAPIOptions", key, "VIP-30 effective options lost at API boundary: wire=%s got=%+v diagnostics=%v", encoded, got.VibeLang, diagnostics)

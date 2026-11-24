@@ -35,7 +35,7 @@ func checkRecordProtectedLayout(t *testing.T, key string, mode uint8) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_record_protected_layout.mjs"), key, strconv.Itoa(int(mode&15)))
 	cmd.Dir = Root()
-	output, err := cmd.CombinedOutput()
+	output, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("record layout fixture: %v; context=%v\n%s", err, ctx.Err(), output)
 	}

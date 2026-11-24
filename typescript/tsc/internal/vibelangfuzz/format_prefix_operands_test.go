@@ -66,6 +66,7 @@ func FuzzFormatPrefixOperands(f *testing.F) {
 			f.Add(prefix, operator.key, uint8(0x2d))
 		}
 	}
+	w := NewWorkspace(f)
 	formatter := toolsFormatter(f)
 	f.Fuzz(func(t *testing.T, prefix, key string, mode uint8) {
 		if prefix != "try" && prefix != "fork" && prefix != "join" {
@@ -97,6 +98,11 @@ func FuzzFormatPrefixOperands(f *testing.F) {
 			Gap(t, "FuzzFormatPrefixOperands", "refusal:"+prefix+":"+operator.key, "the formatter refused a valid prefix operand: %v\n%s", err, source)
 			return
 		}
+		programKey := "program:" + prefix + ":" + operator.key
+		if difference := formatCompilationDifference(t, w, "FuzzFormatPrefixOperands", source, once); difference != "" {
+			Gap(t, "FuzzFormatPrefixOperands", programKey, "%s\n%s\n%s", difference, source, once)
+		}
+		ExpectPending(t, "FuzzFormatPrefixOperands", programKey)
 		twinOnce, err := vibelangfmt.Format("main.vibe", twin, formatter)
 		if err != nil {
 			Gap(t, "FuzzFormatPrefixOperands", "refusal:await:"+operator.key, "the formatter refused the await twin: %v\n%s", err, twin)

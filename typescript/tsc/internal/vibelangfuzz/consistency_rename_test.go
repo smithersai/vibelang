@@ -98,8 +98,7 @@ func (e *consistencyEdited) inside(s consistencySpan) bool {
 
 // consistencySpelled reports whether a project spells a name as a string
 // literal. A rename to a fresh name changes such a program's meaning by the
-// specification's design: an error's tag is its bare class name (SKILL.md
-// rule 8, D278), so `catchTag("NotFound")` or `_tag === "NotFound"` stops
+// specification's design: an error's tag is its bare class name (Chapter 3 and VIP-13), so `catchTag("NotFound")` or `_tag === "NotFound"` stops
 // matching a renamed `error NotFound`, where the Effect reading's
 // Data.TaggedError("NotFound") keeps its tag. Such a rename's diagnostics
 // are not compared.
@@ -187,10 +186,8 @@ func consistencyCountDiff(before, after map[string]int, removedOnly bool) ([]str
 // LSP 3.17's textDocument/rename computes "a workspace-wide rename of a
 // symbol". A rename to a name no file contains changes which name the
 // symbol has and nothing else: under TypeScript's semantics on the Effect
-// reading (D32) it keeps the program, and Chapter 28 ("Rewrites keep
-// meaning", D372) requires that every automatic change, "a refactor applied
-// without a choice" among them, keeps the program's meaning, and checks that
-// it "reports no new error". So:
+// reading it preserves ordinary bindings. VIP-34 keeps TypeScript's existing
+// editor tools available. Check these relations:
 //
 //   - Each edit replaces a reference of the symbol.
 //   - The renamed program reports the same diagnostics by file, code and
@@ -210,7 +207,7 @@ func consistencyCountDiff(before, after map[string]int, removedOnly bool) ([]str
 // A rename of a merged symbol (consistencySymbol.merged) edits every
 // declaration while its references are one meaning's, so only its
 // diagnostics are compared. Left out are a project with a syntax error, since
-// D372 speaks of programs and a parser's recovery may read the renamed text
+// recovery may read the renamed text
 // another way; a symbol a declaration file declares, which describes code
 // outside the program that a rename does not change; and `main`, whose name
 // makes a function the program's entry (SKILL.md's Forms, D312).
@@ -253,7 +250,7 @@ func (c *consistency) checkRename(probe consistencyProbe, refs map[consistencySp
 	after := toolsCompile(c.t, c.w, consistencyTarget, edited.files)
 	defer after.Remove()
 	if diff, code := consistencyRenameDiagnosticDiff(consistencyDiagnosticCounts(p.r, nil), consistencyModuleFilesRenamed(consistencyDiagnosticCounts(after, nil), old, name)); len(diff) > 0 && !consistencySpelled(p.files, old) && !consistencyImplicitTag(probe.declaration) {
-		Gap(c.t, consistencyTarget, key+":diagnostics:"+code, "D372: the rename at %s changes the diagnostics:\n%s\n%s\nrenamed:\n%s", c.where, strings.Join(diff, "\n"), c.archive, Archive(edited.files))
+		Gap(c.t, consistencyTarget, key+":diagnostics:"+code, "the rename at %s changes the diagnostics:\n%s\n%s\nrenamed:\n%s", c.where, strings.Join(diff, "\n"), c.archive, Archive(edited.files))
 	}
 	if after.SourceFile(c.main) == nil || probe.merged() {
 		return
@@ -343,9 +340,7 @@ func (c *consistency) organizeImports(p *consistencyProject) ([]*lsproto.TextEdi
 }
 
 // checkOrganizeImports applies the main file's "Organize Imports" and checks
-// it as Chapter 28's "Rewrites keep meaning" (D372) checks every automatic
-// change: the file still parses, the program "reports no new error", and
-// "Applying a fix or the formatter a second time changes nothing". Removing
+// that the file still parses, adds no errors, and reaches a fixed point. Removing
 // an unused import removes the diagnostics reported at it, such as an unused
 // declaration's, so only the diagnostics outside the rewritten imports must
 // stay, by file, code and category. A project with a syntax error is left
@@ -371,7 +366,7 @@ func (c *consistency) checkOrganizeImports() {
 	}
 	if toolsSyntaxError(c.main, before) == "" {
 		if syntax := toolsSyntaxError(c.main, after); syntax != "" {
-			Gap(c.t, consistencyTarget, "consistency:organize-imports:parse", "D372: %s leaves a syntax error (%s)\n%s\norganized:\n%s", c.where, syntax, c.archive, after)
+			Gap(c.t, consistencyTarget, "consistency:organize-imports:parse", "%s leaves a syntax error (%s)\n%s\norganized:\n%s", c.where, syntax, c.archive, after)
 			return
 		}
 	}
@@ -381,7 +376,7 @@ func (c *consistency) checkOrganizeImports() {
 	defer organized.Remove()
 	if added := toolsAddedErrors(p.r, organized); len(added) > 0 {
 		code := strings.Fields(added[0][strings.Index(added[0], ": ")+2:])[0]
-		Gap(c.t, consistencyTarget, "consistency:organize-imports:error:"+code, "D372: %s adds errors: %s\n%s\norganized:\n%s", c.where, strings.Join(added, "\n"), c.archive, after)
+		Gap(c.t, consistencyTarget, "consistency:organize-imports:error:"+code, "%s adds errors: %s\n%s\norganized:\n%s", c.where, strings.Join(added, "\n"), c.archive, after)
 	}
 	main := p.r.SourceFile(c.main)
 	outside := func(d *ast.Diagnostic) bool {
@@ -390,7 +385,7 @@ func (c *consistency) checkOrganizeImports() {
 		})
 	}
 	if diff, code := consistencyCountDiff(consistencyDiagnosticCounts(p.r, outside), consistencyDiagnosticCounts(organized, nil), true); len(diff) > 0 {
-		Gap(c.t, consistencyTarget, "consistency:organize-imports:removed:"+code, "D372: %s removes diagnostics outside the imports it rewrites:\n%s\n%s\norganized:\n%s", c.where, strings.Join(diff, "\n"), c.archive, after)
+		Gap(c.t, consistencyTarget, "consistency:organize-imports:removed:"+code, "%s removes diagnostics outside the imports it rewrites:\n%s\n%s\norganized:\n%s", c.where, strings.Join(diff, "\n"), c.archive, after)
 	}
 	if organized.SourceFile(c.main) == nil {
 		return
@@ -404,11 +399,11 @@ func (c *consistency) checkOrganizeImports() {
 	if again, _, err := toolsApply(after, second); err != nil {
 		Gap(c.t, consistencyTarget, "consistency:organize-imports:edits", "LSP 3.17: %s: %v\n%s\norganized:\n%s", c.where, err, c.archive, after)
 	} else if again != after {
-		Gap(c.t, consistencyTarget, "consistency:organize-imports:idempotent", "D372: %s changes the file again\n%s\norganized once:\n%s\ntwice:\n%s", c.where, c.archive, after, again)
+		Gap(c.t, consistencyTarget, "consistency:organize-imports:idempotent", "%s changes the file again\n%s\norganized once:\n%s\ntwice:\n%s", c.where, c.archive, after, again)
 	}
 }
 
-// TestConsistencyThisParameter pins why the D372 alpha-rename oracle cannot
+// TestConsistencyThisParameter pins why the alpha-rename oracle cannot
 // include an erased `this` receiver. Upstream's fourslash TestRenameThis
 // permits the rename. Stock TypeScript 7.1.0-beta's language service also
 // renames both occurrences below, making f.call(1) report TS2554 because f

@@ -2,12 +2,8 @@ package vibelangfuzz
 
 import "strings"
 
-// VIP-4 and VIP-5, amended 2026-10-31 (Will: "Plain functions are not allowed
-// to throw I have said this about 15 times", and "If you throw in vibelang
-// itself in a sync function that's an error"): synchronous VibeLang code
-// outside effect code never throws, and only callables declared in `.ts`,
-// `.d.ts` and JavaScript carry thrown types. These are the chapter's words;
-// TestFailuresSpecQuotes checks each one is still there.
+// Chapter 3 and VIP-4 describe where synchronous failures are admitted.
+
 var nothrowQ = struct{ plainRow, asyncRow, constructs, throwStmt, knownCall, literal, tryStmt, step1, step2, async, propagate, effectfulBody, effectfulBodyShort, directRow, noInference, section, instance, static, thunks, nested, service, where, tag, tagTs, handler, overload, method, tsRow, declThrows, noRethrows string }{
 	plainRow:           "| any other `.vibe` code | a compile error, `EK0401` ([Plain code never throws](#plain-code-never-throws)) |",
 	asyncRow:           "| an `async` function, arrow or method, its parameter list included, an `async` generator's body, or an `async match` | JavaScript's `throw`: the returned Promise rejects with `e` |",
@@ -69,13 +65,12 @@ func foreignFixtures(cases []*failCase) []*failCase {
 }
 
 // failuresNoThrowCases checks "Plain code never throws" construct by
-// construct, and the `try` block exception for calls (spec agent correction,
-// 2026-10-31: a known-throwing call can't leave a `try` block that has a
-// `catch` clause; a `throw` statement is always the error).
+// construct. A known-throwing call may run in a `try` with a `catch` clause;
+// an explicit throw is an error in plain VibeLang code.
 func failuresNoThrowCases() []*failCase {
 	var cases []*failCase
 	add := func(c *failCase) {
-		c.Owner, c.VIP = "nothrow-impl", 4
+		c.VIP = 4
 		cases = append(cases, c)
 	}
 	const parse = "/** @throws {Error} */\nexport declare function parse(s: string): string\n"

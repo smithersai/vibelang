@@ -107,11 +107,11 @@ func FuzzConcurrentHeadContinues(f *testing.F) {
 		{"native-local", "(1)", "(1)", "local: for (const y of [1]) { continue local }", 0},
 		{"do-value", "(1)", "(1)", "const value = do { 1 }; void value", 0},
 		{"do-array", "(1)", "(1)", "const value = do { [1] }; void value", 0},
-		{"source-block-const", "(1)", "(1)", "source: { const value = 1; for concurrent (const n of [1]) { continue source } }", 1107},
-		{"source-block-let", "(1)", "(1)", "source: { let value = 1; for concurrent (const n of [1]) { continue source } }", 1107},
-		{"source-block-pattern", "(1)", "(1)", "source: { const { value } = { value: 1 }; for concurrent (const n of [1]) { continue source } }", 1107},
-		{"source-block-tempname", "(1)", "(1)", "source: { const $concurrentLimit1 = 1; for concurrent (const n of [1]) { continue source } }", 1107},
-		{"source-block-bounded", "(1)", "(1)", "source: { const value = 1; for concurrent(1) (const n of [1]) { continue source } }", 1107},
+		{"source-block-const", "(1)", "(1)", "source: { const value = 1; for concurrent (const n of [1]) { continue source } }", 1905},
+		{"source-block-let", "(1)", "(1)", "source: { let value = 1; for concurrent (const n of [1]) { continue source } }", 1905},
+		{"source-block-pattern", "(1)", "(1)", "source: { const { value } = { value: 1 }; for concurrent (const n of [1]) { continue source } }", 1905},
+		{"source-block-tempname", "(1)", "(1)", "source: { const $concurrentLimit1 = 1; for concurrent (const n of [1]) { continue source } }", 1905},
+		{"source-block-bounded", "(1)", "(1)", "source: { const value = 1; for concurrent(1) (const n of [1]) { continue source } }", 1905},
 		{"source-block-head-break", "(1)", "(1)", "source: { const value = 1; for concurrent (const n of do { if (value === 1) break source; [1] }) { void n } }", 0},
 		{"source-block-head-break-bounded", "(1)", "(1)", "source: { const value = 1; for concurrent(1) (const n of do { if (value === 1) break source; [1] }) { void n } }", 0},
 		{"source-block-self-loop", "(1)", "(1)", "source: { const limit = 1; items: for concurrent(limit) (const n of [1]) { continue items } }", 0},
@@ -130,14 +130,17 @@ func FuzzConcurrentHeadContinues(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer r.Remove()
-		errors := 0
+		errors, matching := 0, 0
 		for _, d := range r.Diagnostics {
 			if d.Category() == diagnostics.CategoryError {
 				errors++
+				if IsEK(d) && d.Code() == shape.code {
+					matching++
+				}
 			}
 		}
 		key := "rule:" + shape.key
-		if shape.code == 0 && errors != 0 || shape.code != 0 && (errors != 1 || countCode(r.Diagnostics, shape.code) != 1) {
+		if shape.code == 0 && errors != 0 || shape.code != 0 && (errors != 1 || matching != 1) {
 			Gap(t, "FuzzConcurrentHeadContinues", key, "%s; want diagnostic %d, got %v\n%s", concurrentJumpQuote, shape.code, Keys(r.Dir, r.Diagnostics), source)
 		}
 		ExpectPending(t, "FuzzConcurrentHeadContinues", key)

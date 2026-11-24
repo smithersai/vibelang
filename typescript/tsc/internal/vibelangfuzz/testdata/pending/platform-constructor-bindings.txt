@@ -1,2 +1,0 @@
-# VIP-33 resolved host-binding gaps; foldkit-104 corrected the duplicate source id.
-# Resolved host-library constructors are banned in capture, new and instanceof positions; every feature passes.

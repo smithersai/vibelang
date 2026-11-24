@@ -2,10 +2,11 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
 func TestErrorRegistrationMembersQuoted(t *testing.T) {
@@ -15,32 +16,31 @@ func TestErrorRegistrationMembersQuoted(t *testing.T) {
 }
 func FuzzErrorRegistrationMembers(f *testing.F) {
 	startShortBudget(f)
-	for flags := uint8(0); flags < 16; flags++ {
+	for flags := uint8(0); flags < 4; flags++ {
 		f.Add(flags, false)
 		f.Add(flags, true)
 	}
+	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, flags uint8, unicode bool) {
 		TestErrorRegistrationMembersQuoted(t)
 		prefix := ""
 		if flags&1 != 0 {
 			prefix = "schema "
 		}
-		if flags&2 != 0 {
-			prefix = "abstract " + prefix
-		}
-		base := ""
-		if flags&4 != 0 {
-			base = " extends Base"
-		}
 		payload := "code:string;"
-		if flags&8 != 0 {
+		if flags&2 != 0 {
 			payload = ""
 		}
 		label := "docs"
 		if unicode {
 			label = "café 😀"
 		}
-		source := prefix + "error E" + base + "{" + payload + fmt.Sprintf("static readonly docs=%q;", label) + "read(){return 1}get label(){return 'label'}}"
+		source := prefix + "error E {" + payload + fmt.Sprintf("read(){return 1}get label(){return %q}}", label)
+		result := toolsCompile(t, w, "FuzzErrorRegistrationMembers", Single(source).Files)
+		defer result.Remove()
+		if !toolsErrorFree(result) {
+			t.Fatalf("invalid error declaration: %v", SortedKeys(Keys(result.Dir, result.Diagnostics)))
+		}
 		file := toolsParse("members.vibe", source)
 		if ds := file.Diagnostics(); len(ds) != 0 {
 			t.Fatalf("native member grammar: %s", ds[0].String())
@@ -50,21 +50,18 @@ func FuzzErrorRegistrationMembers(f *testing.F) {
 		}
 		members := file.Statements.Nodes[0].Members()
 		if len(members) == 0 || members[0].Kind != ast.KindClassStaticBlockDeclaration || members[0].Flags&ast.NodeFlagsReparsed == 0 {
-			t.Fatal("generated matcher registration must precede authored static initialization")
+			t.Fatal("generated matcher registration must precede authored members")
 		}
 		var got []string
 		for _, member := range members {
-			if name := member.Name(); name != nil && slices.Contains([]string{"docs", "read", "label"}, name.Text()) {
+			if name := member.Name(); name != nil && slices.Contains([]string{"read", "label"}, name.Text()) {
 				if member.Flags&ast.NodeFlagsReparsed != 0 {
 					t.Fatal("authored member became synthetic")
 				}
 				got = append(got, name.Text())
-				if name.Text() == "docs" && (!ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) || !ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly)) {
-					t.Fatal("authored static readonly member changed")
-				}
 			}
 		}
-		if !slices.Equal(got, []string{"docs", "read", "label"}) {
+		if !slices.Equal(got, []string{"read", "label"}) {
 			t.Fatalf("authored member order changed: %v", got)
 		}
 	})

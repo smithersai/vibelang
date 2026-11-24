@@ -13,7 +13,7 @@ const compiler = join(repo, "packages/compiler")
 const require = createRequire(join(compiler, "package.json"))
 const prettier = require("prettier")
 const [key = "create", rawMode = "0"] = process.argv.slice(2), mode = Number(rawMode) & 15
-const outer = mkdtempSync(join(tmpdir(), "record-packing-format-")), target = join(outer, "repo"), run = join(outer, "run")
+const outer = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(tmpdir(), "record-packing-format-")), target = join(outer, "repo"), run = join(outer, "run")
 const corpus = JSON.parse(readFileSync(new URL("../corpus/opencode-record-packing-format.json", import.meta.url), "utf8"))
 const stages = []
 const receipt = ".vibelang/pack-policy.json"

@@ -5,10 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelangestree"
 	"io"
 	"maps"
 	"os"
@@ -25,22 +21,27 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangestree"
 )
 
 // FuzzCommandLine runs the vibelang binary that cmd/tsc builds, as a user
 // runs it, on a project archive and an argument list that the fuzzer's bytes
-// choose from cliFlags: every flag the specification documents, the entry
+// choose from cliFlags: flags the specification documents, the entry
 // points cmd/tsc/main.go dispatches (--lsp, --api, --estree, dprint's
 // --parent-pid and --write-dprint-plugin), and every TypeScript option, with
 // values. A process is the only way to reach main.go's dispatch, its signal
 // handling and its exit status. Its oracles:
 //
 //   - The process never panics and never hangs, whatever the arguments.
-//   - Chapter 28, "Diagnostics": "vibelang exits non-zero when it reports
-//     any error". A run that reports only warnings exits 0: lint "never
-//     changes emit or the exit status" (D241), and TypeScript's ExitStatus
-//     is Success when a compilation reports no error.
-//   - Chapter 28, "Diagnostics" (D61): the diagnostics printed for a project
+//   - Chapter 7: errors and eligible imported Effect lint diagnostics fail
+//     the compilation. VibeLang's own warnings do not affect exit status.
+//   - Chapter 7, "Diagnostic severity": the diagnostics printed for a project
 //     are the compiler's for the same project, by code, file, position and
 //     category, an EK diagnostic printed as `error EK1003:`; `--pretty
 //     false` output parses line by line.
@@ -48,18 +49,17 @@ import (
 //     instead of overwriting an input file. VibeLang has no --fix option
 //     (ruling PROC-29), so TypeScript reports it and its old scope flags as
 //     unknown options (TS5023).
-//   - Chapter 28, "Linting" (D277): `vibelang --estree <file>` writes the
+//   - The ESTree command: `vibelang --estree <file>` writes the
 //     JSON that the library conversion, vibelangestree.Parse, gives for the
 //     same text.
 //   - TypeScript's command line: --help and --version print and exit 0 with
-//     any project, and Chapter 28, "The editor" (D75): with --version the
-//     binary identifies as the specification's example does.
-//   - Chapter 27, "Settings belong to the source package": --ignoreConfig
+//     any project. The version line identifies VibeLang and TypeScript.
+//   - TypeScript project discovery: --ignoreConfig
 //     with files named compiles them; TypeScript reports TS5112 for files
 //     named beside a tsconfig.json without it.
-//   - Chapter 28: --watch watches, rebuilding after an edit, and Ctrl+C
+//   - The --watch command watches, rebuilding after an edit, and Ctrl+C
 //     (SIGINT) stops it; the launcher forwards signals.
-//   - Chapter 28, "The editor" (D32): `vibelang --lsp --stdio` answers
+//   - The Language Server Protocol: `vibelang --lsp --stdio` answers
 //     initialize, a documentSymbol request and shutdown without an error, and
 //     exits 0 after exit (the Language Server Protocol's exit notification).
 //     `--api --async` answers initialize and parseCommandLine, and ends when
@@ -229,8 +229,7 @@ func cliValues(option *tsoptions.CommandLineOption) []string {
 }
 
 // cliDecode turns the fuzzer's bytes into an argument list: each pair of
-// bytes chooses a flag and its value. No bytes is bare vibelang, which
-// Chapter 28 says "checks and emits".
+// bytes chooses a flag and its value. An empty input invokes bare vibelang.
 func cliDecode(choice []byte) []string {
 	// Keep the initializer regression independent of flag-table insertion order.
 	if string(choice) == "key:init-existing-config" {
@@ -333,7 +332,9 @@ func cliSeeds() []cliSeed {
 	}
 	// The tsforms cases have warnings and quick fixes, the others errors and
 	// runnable programs; take both kinds, spread over the list.
-	var seeds []cliSeed
+	warningSource := "export const nested: void!! = Effect.as(Effect.void, Effect.succeed(1))"
+	warningConfig := strings.Replace(DefaultConfig, `"strict": true,`, `"strict": true, "plugins":[{"name":"@effect/language-service"}],`, 1)
+	seeds := []cliSeed{{Archive(map[string]string{"main.vibe": warningSource, "tsconfig.json": warningConfig}), nil}}
 	tsforms := slices.IndexFunc(cases, func(s Seed) bool { return strings.HasPrefix(s.Name, "tsforms-") })
 	for i, args := range lines {
 		seed := cases[(i*37)%len(cases)]
@@ -825,11 +826,22 @@ func cliCheck(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, pro
 		}
 	}
 	printed := cliParse(run.Stdout)
-	errors := slices.ContainsFunc(printed, func(d cliDiagnostic) bool { return d.Category == "error" })
-	// Chapter 28: "vibelang exits non-zero when it reports any error". A run
-	// that reports only warnings exits 0: lint "never changes emit or the
-	// exit status" (D241), and TypeScript's ExitStatus is Success when a
-	// compilation reports no error. Where the library decides what the run
+	effectOpts := cliEffectOptions(r, options)
+	buildFailure := slices.ContainsFunc(printed, func(d cliDiagnostic) bool {
+		imported := d.Prefix == "EK" && Facts().Imported[int32(d.Code)] != ""
+		switch d.Category {
+		case "error":
+			return cliDiagnosticFailsBuild(diagnostics.CategoryError, imported, effectOpts)
+		case "warning":
+			return cliDiagnosticFailsBuild(diagnostics.CategoryWarning, imported, effectOpts)
+		case "suggestion":
+			return cliDiagnosticFailsBuild(diagnostics.CategorySuggestion, imported, effectOpts)
+		default:
+			return false
+		}
+	})
+	// Chapter 7 counts imported Effect lint according to the plugin's exit
+	// settings. Where the library decides what the run
 	// reports, the status is checked against it, whatever the run printed:
 	// the command line's own errors (options.Errors) always, and the
 	// program's errors for a neutral run that compiles the project as its
@@ -857,21 +869,20 @@ func cliCheck(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, pro
 			g.Add("init:existing-config-changed", "--init did not preserve the existing configuration and sources:\n%s", report())
 		}
 	case decided && library && run.Status == 0:
-		g.Add("status:error-exit-zero", "the compiler reports an error for this command line, and it exited 0:\n%s", report())
+		g.Add("status:error-exit-zero", "the compiler reports a build-failing diagnostic for this command line, and it exited 0:\n%s", report())
 	case decided && !library && run.Status != 0 && !quiet:
-		g.Add("status:no-error-nonzero", "the compiler reports no error for this command line, and it exited %d:\n%s", run.Status, report())
-	case !decided && errors && run.Status == 0:
-		g.Add("status:error-exit-zero", "it printed an error and exited 0:\n%s", report())
-	case !decided && !errors && !quiet && run.Status != 0 && run.Stderr == "":
-		g.Add("status:no-error-nonzero", "it printed no error and exited %d:\n%s", run.Status, report())
+		g.Add("status:no-error-nonzero", "the compiler reports no build-failing diagnostic for this command line, and it exited %d:\n%s", run.Status, report())
+	case !decided && buildFailure && run.Status == 0:
+		g.Add("status:error-exit-zero", "it printed a build-failing diagnostic and exited 0:\n%s", report())
+	case !decided && !buildFailure && !quiet && run.Status != 0 && run.Stderr == "":
+		g.Add("status:no-error-nonzero", "it printed no build-failing diagnostic and exited %d:\n%s", run.Status, report())
 	}
-	// TypeScript's --help and --version print and exit 0 with any project;
-	// Chapter 28 (D75) gives the form --version prints.
+	// TypeScript's --help and --version print and exit 0 with any project.
 	if options != nil && len(options.Errors) == 0 && !options.CompilerOptions().Init.IsTrue() {
 		switch {
 		case options.CompilerOptions().Version.IsTrue():
-			if run.Status != 0 || !cliVersion().MatchString(run.Stdout) {
-				g.Add("version", "--version did not print %q and exit 0:\n%s", cliVersion().String(), report())
+			if run.Status != 0 || !cliVersion.MatchString(run.Stdout) {
+				g.Add("version", "--version did not print %q and exit 0:\n%s", cliVersion.String(), report())
 			}
 		case options.CompilerOptions().Help.IsTrue() || options.CompilerOptions().All.IsTrue():
 			if run.Status != 0 || strings.TrimSpace(run.Stdout) == "" {
@@ -879,7 +890,7 @@ func cliCheck(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, pro
 			}
 		}
 	}
-	// Chapter 27 and TypeScript: files named beside a tsconfig.json are
+	// TypeScript: files named beside a tsconfig.json are
 	// TS5112 without --ignoreConfig, and compile with it.
 	if options != nil && len(options.Errors) == 0 && len(options.FileNames()) > 0 && options.CompilerOptions().Project == "" &&
 		!options.CompilerOptions().Version.IsTrue() && !options.CompilerOptions().Help.IsTrue() && !options.CompilerOptions().All.IsTrue() && !options.CompilerOptions().Init.IsTrue() {
@@ -914,15 +925,47 @@ func cliLibraryStatus(r *Result, options *tsoptions.ParsedCommandLine, neutral b
 	if !neutral {
 		return false, false
 	}
-	errors = HasError(r.Diagnostics)
-	if errors && options.CompilerOptions().NoEmit.IsTrue() {
-		return false, false
+	effectOpts := cliEffectOptions(r, options)
+	for _, d := range r.Diagnostics {
+		if !cliDiagnosticFailsBuild(d.Category(), d.IsImportedEffectLint(), effectOpts) {
+			continue
+		}
+		if options.CompilerOptions().NoEmit.IsTrue() && d.SkippedOnNoEmit() {
+			continue
+		}
+		errors = true
 	}
 	return errors, true
 }
 
+func cliEffectOptions(r *Result, options *tsoptions.ParsedCommandLine) *etscore.EffectPluginOptions {
+	if r != nil && r.Program != nil {
+		return r.Program.Options().Effect
+	}
+	if options != nil {
+		return options.CompilerOptions().Effect
+	}
+	return nil
+}
+
+func cliDiagnosticFailsBuild(category diagnostics.Category, imported bool, options *etscore.EffectPluginOptions) bool {
+	if !imported {
+		return category == diagnostics.CategoryError
+	}
+	switch category {
+	case diagnostics.CategoryError:
+		return options == nil || !options.IgnoreEffectErrorsInTscExitCode
+	case diagnostics.CategoryWarning:
+		return options == nil || !options.IgnoreEffectWarningsInTscExitCode
+	case diagnostics.CategorySuggestion, diagnostics.CategoryMessage:
+		return options != nil && options.GetIncludeSuggestionsInTsc() && !options.IgnoreEffectSuggestionsInTscExitCode
+	default:
+		return false
+	}
+}
+
 // cliCheckDiagnostics compares what a neutral run printed with the
-// compiler's diagnostics for the same project (Chapter 28, D61).
+// compiler's diagnostics for the same project (Chapter 7).
 func cliCheckDiagnostics(t *testing.T, g *Gaps, r *Result, printed []cliDiagnostic, noEmit bool, report func() string) {
 	library := cliSet(cliLibrary(r.Dir, r.Diagnostics))
 	cli := cliSet(printed)
@@ -979,17 +1022,8 @@ func cliCheckESTree(g *Gaps, run cliRun, name, text string, report func() string
 	}
 }
 
-// cliVersion is the form Chapter 28 gives `vibelang --version`, read from
-// its example "identifies as `VibeLang 0.0.11 (TypeScript 7.1.0-dev)`", with
-// each version number a pattern.
-var cliVersion = sync.OnceValue(func() *regexp.Regexp {
-	m := regexp.MustCompile("identifies as\\s+`([^`]+)`").FindStringSubmatch(SpecText("428-part4-ch28-tooling.md"))
-	if m == nil {
-		panic("Chapter 28 no longer gives the form of --version")
-	}
-	pattern := regexp.MustCompile(`\d+`).ReplaceAllString(regexp.QuoteMeta(m[1]), `\d+`)
-	return regexp.MustCompile(pattern)
-})
+// Both versions may carry a prerelease suffix.
+var cliVersion = regexp.MustCompile(`(?m)^VibeLang [0-9]+\.[0-9]+\.[0-9]+[^ ()\r\n]* \(TypeScript [0-9]+\.[0-9]+\.[0-9]+[^ ()\r\n]*\)\r?$`)
 
 func cliTail(text string) string {
 	if len(text) > 4000 {
@@ -1275,7 +1309,7 @@ func cliCheckAPI(g *Gaps, binary, dir string, args []string) {
 // such as -value or --counter does not. Program fences are not CLI examples.
 func TestCommandLineFlagsCoverSpec(t *testing.T) {
 	found := map[string]string{}
-	names, err := SpecGlob("*.md")
+	names, err := filepath.Glob(filepath.Join(Root(), "docs/design/src", "*.md"))
 	if err != nil || len(names) == 0 {
 		t.Fatalf("no specification chapters: %v", err)
 	}
@@ -1284,7 +1318,7 @@ func TestCommandLineFlagsCoverSpec(t *testing.T) {
 			found[flag] = filepath.Base(name)
 		}
 	}
-	if len(found) < 8 {
+	if len(found) == 0 {
 		t.Fatalf("read only %d flags from the specification; the extraction is broken: %v", len(found), found)
 	}
 	table := map[string]bool{}

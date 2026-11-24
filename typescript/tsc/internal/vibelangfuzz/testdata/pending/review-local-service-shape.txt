@@ -1,2 +1,0 @@
-# VIP-9 own-member hook, local no-namespace visibility and private alias hygiene.
-# Native controls run first; every corpus input retains XPASS checking.

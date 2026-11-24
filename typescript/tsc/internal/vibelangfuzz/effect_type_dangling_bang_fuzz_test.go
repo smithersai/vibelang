@@ -38,6 +38,9 @@ var danglingBangForms = map[string]struct {
 	"newline-slot":               {"declare const loaded: User!NotFound\nexport const b: User!\n  NotFound = loaded", 1},
 	"newline-end":                {"declare const loaded: User!!\nexport const b: User!\nexport const c = loaded", 1},
 	"equals":                     {"declare const loaded: User!!\nexport const e: User! = loaded", 1},
+	"error-then-bang":            {"export type T = User!NotFound!", 1},
+	"error-then-bang-block":      {"export type T = User!NotFound!\n{}", 1},
+	"error-then-bang-return":     {"export effect function f(): number!NotFound! { return 1 }", 1},
 	"alias":                      {"export type T = string!", 1},
 	"return-newline":             {"export effect function f(): number!\n{ return 1 }", 1},
 	"double-bang-newline":        {"declare const loaded: User!!\nexport const ok: User!!\n  = loaded", 0},
@@ -98,8 +101,12 @@ func FuzzEffectTypeDanglingBang(f *testing.F) {
 		if form.want == 0 && typeExpected != 0 {
 			Gap(t, "FuzzEffectTypeDanglingBang", "bang:"+key, "%s; got %d TS1110 on a valid shorthand\n%s\n%v", danglingBangQuotes[0], typeExpected, source, result.Diagnostics)
 		}
+		g := Gaps{Target: "FuzzEffectTypeDanglingBang", Input: source}
 		if count != form.want {
-			Gap(t, "FuzzEffectTypeDanglingBang", "bang:"+key, "%s; got %d TS17019, want %d\n%s\n%v", danglingBangQuotes[0], count, form.want, source, result.Diagnostics)
+			g.Add("bang:"+key, "%s; got %d TS17019, want %d\n%s\n%v", danglingBangQuotes[0], count, form.want, source, result.Diagnostics)
+		} else {
+			ExpectPending(t, g.Target, "bang:"+key)
 		}
+		g.Finish(t)
 	})
 }

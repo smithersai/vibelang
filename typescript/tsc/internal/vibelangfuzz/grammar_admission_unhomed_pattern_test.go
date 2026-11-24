@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"slices"
 	"strconv"
 	"strings"
@@ -165,11 +164,6 @@ func TestGrammarAdmissionUnhomedPatternRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarUnhomedPatternGaps {
 		t.Run(source, func(t *testing.T) {
-			wantGap := slices.Contains(grammarUnhomedPatternBindingGaps, source)
-			if got := grammarAdmissionVerdict(t, w, source); got != wantGap {
-				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("admission gap=%v want %v: %v", got, wantGap, r.Diagnostics)
-			}
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}

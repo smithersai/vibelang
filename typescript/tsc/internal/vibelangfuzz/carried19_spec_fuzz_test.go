@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 func TestCarriedSourceThrowsTagsQuoted(t *testing.T) {
@@ -47,8 +49,16 @@ func FuzzCarriedSourceThrowsTags(f *testing.F) {
 		}
 		defer result.Remove()
 		g := &Gaps{Target: "FuzzCarriedSourceThrowsTags"}
-		if countCode(result.Diagnostics, 406) != 1 {
+		var codes []string
+		for _, d := range result.Diagnostics {
+			if d.Category() == diagnostics.CategoryError {
+				codes = append(codes, diagnosticKey(d))
+			}
+		}
+		if !slices.Equal(codes, []string{"EK0406"}) {
 			g.Add("feature:"+key, "VIP-4 requires EK0406 for this source operation; got %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), programs[key])
+		} else {
+			ExpectPending(t, g.Target, "feature:"+key)
 		}
 		g.FinishInput(t, specCorpusKey(t))
 	})

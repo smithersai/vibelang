@@ -1,1 +1,0 @@
-# Uppercase local object receivers resolve to their declarations; the legacy service-call heuristic no longer fires (EK9203).

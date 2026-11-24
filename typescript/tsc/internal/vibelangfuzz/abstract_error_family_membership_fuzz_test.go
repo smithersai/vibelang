@@ -55,7 +55,7 @@ func FuzzAbstractErrorFamilyMembership(f *testing.F) {
 				t.Fatalf("invalid family observation: %+v", outcome)
 			}
 			instance := kind%6 < 3
-			if got[0] != got[1] || got[2] != instance || got[3] != instance {
+			if got[0] != instance || got[1] != instance || got[2] != instance || got[3] != instance {
 				t.Fatalf("legacy matcher differs from native family: kind=%d alias=%d got=%v", kind%6, alias%3, got)
 			}
 		})

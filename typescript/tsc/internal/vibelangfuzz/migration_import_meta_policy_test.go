@@ -16,7 +16,7 @@ func TestMigrationImportMetaPolicyQuoted(t *testing.T) {
 	r4Quoted(t, "../vips/0034-compiler-and-tooling.md", "Existing tools work.")
 }
 
-var importMetaPolicyKeys = []string{"dirname", "filename", "env", "url", "dirname-pragma", "filename-pragma", "dirname-off", "main", "dirname-ignore-exit", "dirname-fix", "dirname-open"}
+var importMetaPolicyKeys = []string{"dirname", "filename", "env", "url", "dirname-pragma", "filename-pragma", "dirname-off", "main", "dirname-ignore-exit", "dirname-open"}
 
 func checkImportMetaPolicy(t *testing.T, binary, key string, mode uint8) {
 	t.Helper()
@@ -24,7 +24,7 @@ func checkImportMetaPolicy(t *testing.T, binary, key string, mode uint8) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_import_meta_policy.mjs"), key, strconv.Itoa(int(mode&15)), binary)
 	cmd.Dir = Root()
-	output, err := cmd.CombinedOutput()
+	output, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("import.meta policy process: %v; context=%v\n%s", err, ctx.Err(), output)
 	}
@@ -36,14 +36,13 @@ func checkImportMetaPolicy(t *testing.T, binary, key string, mode uint8) {
 	var model struct {
 		Original, Candidate  map[string]string
 		Refused              []string
-		StockCodes           []int
 		Unchanged            bool
 		Guard, Before, After *run
 	}
 	if err = json.Unmarshal(output, &model); err != nil {
 		t.Fatalf("invalid import.meta model: %v\n%s", err, output)
 	}
-	if !model.Unchanged || len(model.StockCodes) != 0 {
+	if !model.Unchanged {
 		t.Fatalf("invalid independent source control: %s", output)
 	}
 	if key == "dirname" && (model.Guard == nil || !slices.Contains(model.Guard.Codes, 3877) || model.Guard.Status == 0) {

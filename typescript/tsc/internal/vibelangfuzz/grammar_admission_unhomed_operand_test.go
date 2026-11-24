@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"strings"
 	"testing"
 )
@@ -66,11 +65,7 @@ func TestGrammarAdmissionUnhomedOperandRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range append(grammarUnhomedOperandSources(), grammarUnhomedOperandWitness) {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes lost syntax: %v", r.Diagnostics)
-			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
+			checkGrammarAdmission(t, w, "admission:unhomed-pattern-subject", source)
 		})
 	}
 }

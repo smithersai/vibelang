@@ -2,9 +2,10 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelangfmt"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangfmt"
 )
 
 func TestFormatterModuleRefusalsQuoted(t *testing.T) {
@@ -76,8 +77,8 @@ func FuzzFormatterModuleRefusals(f *testing.F) {
 			Gap(t, "FuzzFormatterModuleRefusals", "valid:"+key, "calls=%d error=%v\n%s\n%s", calls, err, source, once)
 			return
 		}
-		if err := vibelangfmt.SameProgram(source, once); err != nil {
-			Gap(t, "FuzzFormatterModuleRefusals", "program:"+key, "%v\n%s\n%s", err, source, once)
+		if difference := formatCompilationDifference(t, w, "FuzzFormatterModuleRefusals", source, once); difference != "" {
+			Gap(t, "FuzzFormatterModuleRefusals", "program:"+key, "%v\n%s\n%s", difference, source, once)
 		}
 		if key == "nameless" {
 			config := strings.Replace(DefaultConfig, `"target": "ES2022"`, `"target": "ES2022", "jsx": "preserve"`, 1)

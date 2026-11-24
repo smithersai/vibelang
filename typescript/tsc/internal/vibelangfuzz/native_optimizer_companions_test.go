@@ -40,7 +40,7 @@ func FuzzNativeOptimizerCompanions(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "native_optimizer_companions.mjs"), key, strconv.Itoa(int(mode&31)))
 		cmd.Dir = Root()
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("optimizer companion hooks: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

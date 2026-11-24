@@ -1,2 +1,2 @@
-FuzzFailuresSpec feature:coverage-service-assignment compiler VIP-9 / VIP-4: non-Effect service member is rejected with EK9205 before the shape's default-never foreign implementation admission can be checked; rule docs/design/src/005-services.md#4c0d571572bbc638; lane cov-ch001-005
-FuzzFailuresSpec corpus:cov-ch005-service-throw-admission compiler VIP-9 / VIP-4: feature:coverage-service-assignment; lane cov-ch001-005
+FuzzFailuresSpec feature:coverage-service-assignment compiler VIP-9 / VIP-4: non-Effect service member is rejected with EK9205 before the shape's default-never foreign implementation admission can be checked; rule docs/design/src/005-services.md#4c0d571572bbc638
+FuzzFailuresSpec corpus:cov-ch005-service-throw-admission compiler VIP-9 / VIP-4: feature:coverage-service-assignment

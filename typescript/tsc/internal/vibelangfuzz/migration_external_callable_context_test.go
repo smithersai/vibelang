@@ -18,6 +18,7 @@ func FuzzMigrationExternalCallableContext(f *testing.F) {
 	startShortBudget(f)
 	keys := []string{"function-plugin", "constant-plugin", "function-primitive", "function-vite", "changed-type", "changed-doc", "unresolved"}
 	f.Add("function-primitive", uint8(0))
+	compiler := cliBuild(f, f.TempDir())
 	f.Fuzz(func(t *testing.T, key string, mode uint8) {
 		location := "internal"
 		if mode&1 != 0 {
@@ -33,9 +34,9 @@ func FuzzMigrationExternalCallableContext(f *testing.F) {
 		}
 		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
 		defer cancel()
-		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_external_callable_context.mjs"), key, strconv.Itoa(int(mode&15)))
+		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_external_callable_context.mjs"), key, strconv.Itoa(int(mode&15)), compiler)
 		command.Dir = Root()
-		output, err := command.CombinedOutput()
+		output, err := runJSONOracle(t, command)
 		if err != nil {
 			t.Fatalf("external callable context model: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

@@ -36,6 +36,7 @@ func TestFormatForHeadsQuoted(t *testing.T) { requireFormatForHeadQuotes(t) }
 // Binding runtime semantics remain in the VIP-7 differential target.
 func FuzzFormatForHeads(f *testing.F) {
 	startShortBudget(f)
+	w := NewWorkspace(f)
 	requireFormatForHeadQuotes(f)
 	for _, key := range []string{"init", "test", "update", "declaration", "of", "in"} {
 		f.Add(key, uint8(0))
@@ -90,8 +91,8 @@ func FuzzFormatForHeads(f *testing.F) {
 		if err != nil {
 			Gap(t, "FuzzFormatForHeads", "for-head:"+key, "valid for-head pattern refused: %v\n%s", err, source)
 		}
-		if err := vibelangfmt.SameProgram(source, once); err != nil {
-			Gap(t, "FuzzFormatForHeads", "program:"+key, "%v\n%s\n%s", err, source, once)
+		if difference := formatCompilationDifference(t, w, "FuzzFormatForHeads", source, once); difference != "" {
+			Gap(t, "FuzzFormatForHeads", "program:"+key, "%v\n%s\n%s", difference, source, once)
 		}
 		twice, err := vibelangfmt.Format("main.vibe", once, host)
 		if err != nil || twice != once {

@@ -29,4 +29,4 @@ assert.deepEqual(errors.map(d=>d.code),[],errors.map(d=>ts.flattenDiagnosticMess
 const result=splitPlatformToModule(source,file,ts,{globals:["window"]})
 if(key!=="shadow")assert.ok(result&&!result.refused,result?.refused??"expected a module-body split")
 else assert.equal(result,null)
-console.log(JSON.stringify({key,mode,file,source,ambient,candidate:result?.module??source,split:result?.name??null,stockCodes:[]}))
+console.log(JSON.stringify({key,mode,file,source,ambient,candidate:result?.module??source,split:result?.name??null}))

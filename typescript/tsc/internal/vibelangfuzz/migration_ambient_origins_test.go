@@ -45,7 +45,7 @@ func FuzzMigrationAmbientOrigins(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_ambient_origins.mjs"), key, strconv.Itoa(int(mode&1)))
 		cmd.Dir = Root()
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("static ambient-origin oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

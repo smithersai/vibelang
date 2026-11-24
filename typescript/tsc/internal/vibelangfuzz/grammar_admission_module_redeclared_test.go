@@ -81,7 +81,7 @@ func TestGrammarAdmissionModuleRedeclaredRegression(t *testing.T) {
 	}
 	for _, source := range grammarModuleRedeclaredGaps {
 		t.Run(source, func(t *testing.T) {
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
+			checkGrammarModuleRedeclaration(t, w, source)
 		})
 	}
 }

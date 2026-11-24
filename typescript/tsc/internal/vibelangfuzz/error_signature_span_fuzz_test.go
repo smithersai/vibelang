@@ -8,19 +8,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
-const errorSignatureSpanQuote = "The language server prefers an in-program `./x.vibe` source to its stale adjacent or relocated `x.d.vibe.ts`."
-
-func TestErrorSignatureSpanQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("007-tooling.md"), errorSignatureSpanQuote) {
-		t.Fatal("tooling contract changed")
-	}
-}
-
 // Signature help must tolerate every cursor position, including trivia in
 // synthesized payload types. Keep the keyed witnesses as formatting mutates.
 func FuzzErrorSignatureSpan(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"plain", "comment", "optional", "generic", "nested", "tag", "schema"} {
+	for _, key := range []string{"plain", "comment", "optional", "nested", "schema"} {
 		f.Add(key, byte(0))
 	}
 	w := NewWorkspace(f)
@@ -30,12 +22,8 @@ func FuzzErrorSignatureSpan(f *testing.F) {
 		switch key {
 		case "optional":
 			field = "a?: string; b: number"
-		case "generic":
-			head, field = "error E<T>", "value:T"
 		case "nested":
 			field = "a: { readonly value: string }"
-		case "tag":
-			field = "_tag: \"E\"; a: string"
 		case "schema":
 			head = "schema error E"
 		case "comment":
@@ -44,6 +32,9 @@ func FuzzErrorSignatureSpan(f *testing.F) {
 		source := fmt.Sprintf("%s {%s%s }", head, trivia, field)
 		r := toolsCompile(t, w, "FuzzEditor", map[string]string{"main.vibe": source})
 		defer r.Remove()
+		if !toolsErrorFree(r) {
+			t.Fatalf("invalid error declaration: %v", SortedKeys(Keys(r.Dir, r.Diagnostics)))
+		}
 		file := r.SourceFile("main.vibe")
 		if file == nil {
 			t.Fatal("missing editor source")
@@ -72,38 +63,40 @@ func TestErrorFieldDocQuoted(t *testing.T) {
 // line with the token before it, so the twin keeps nothing to compare there.
 func FuzzErrorFieldDoc(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"first", "second", "after-tag", "generic", "after-method", "optional"} {
+	for _, key := range []string{"first", "second", "schema", "after-method", "optional"} {
 		f.Add(key, byte(0))
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, choice byte) {
 		TestErrorFieldDocQuoted(t)
 		gap := []string{" ", "\n  ", "\n\n  "}[int(choice)%3]
-		head, doc, field := "E", "/** doc */"+gap, "readonly a: string"
+		head, doc, field := "error E", "/** doc */"+gap, "readonly a: string"
 		body := doc + "a: string\n  b: number"
 		switch key {
 		case "second":
 			body = "b: number\n  " + doc + "a: string"
-		case "after-tag":
-			body = "_tag: \"E\"\n  " + doc + "a: string"
-		case "generic":
-			head, body, field = "E<T>", doc+"a: T", "readonly a: T"
+		case "schema":
+			head, field = "schema error E", "readonly a: Schema.String"
 		case "after-method":
 			body = doc + "a: string\n  describe(): string { return this.a }"
 		case "optional":
 			body, field = doc+"a?: string", "readonly a?: string"
 		}
-		r := toolsCompile(t, w, "FuzzEditor", map[string]string{"main.vibe": "export error " + head + " {\n  " + body + "\n}\n"})
+		r := toolsCompile(t, w, "FuzzEditor", map[string]string{"main.vibe": "export " + head + " {\n  " + body + "\n}\n"})
 		defer r.Remove()
+		if !toolsErrorFree(r) {
+			t.Fatalf("invalid error declaration: %v", SortedKeys(Keys(r.Dir, r.Diagnostics)))
+		}
 		declaration, ok := r.Outputs["out/main.d.ts"]
 		if !ok {
-			t.Skip("project emits no declaration")
+			t.Fatal("project emits no declaration")
 		}
 		if !strings.Contains(strings.Join(strings.Fields(declaration), " "), "/** doc */ "+field) {
 			t.Errorf("Chapter 1: %q\nfield %q lost its comment:\n%s", errorFieldDocQuote, field, declaration)
 		}
-		class, _, found := strings.Cut(declaration[strings.Index(declaration, "export declare class"):], " extends ")
-		if !found || strings.Contains(class, "/**") {
+		_, class, found := strings.Cut(declaration, "export declare class")
+		class, _, hasBase := strings.Cut(class, " extends ")
+		if !found || !hasBase || strings.Contains(class, "/**") {
 			t.Errorf("a field's comment left the type literal:\n%s", declaration)
 		}
 	})

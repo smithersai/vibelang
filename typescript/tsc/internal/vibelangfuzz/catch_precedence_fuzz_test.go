@@ -1,10 +1,11 @@
 package vibelangfuzz
 
 import (
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // The oracle is Appendix A's grammar, not the current compiler's parse.
@@ -105,9 +106,11 @@ func FuzzCatchPrecedence(f *testing.F) {
 		file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
 		ds := file.Diagnostics()
 		if nonliteral {
+			// EK0509 is a checker diagnostic. Here we check only that the
+			// parser does not mistake a nonliteral handler for a suffix.
 			for _, d := range ds {
 				if d.Source() == "EK" && d.Code() == 512 {
-					Gap(t, "FuzzCatchPrecedence", key, "Appendix B assigns nonliteral handlers EK0509; a generated arrow is not a source function literal: %v", ds)
+					Gap(t, "FuzzCatchPrecedence", key, "a nonliteral handler was diagnosed as a closed handler suffix: %v", ds)
 				}
 			}
 		} else if want {

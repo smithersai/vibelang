@@ -7,7 +7,7 @@ import vibelang from "../../../../../../packages/vite/src/index.js"
 const root = process.cwd(), [key, rawMode] = process.argv.slice(2), mode = Number(rawMode) & 31
 const fixture = JSON.parse(readFileSync(join(root, "typescript/tsc/internal/vibelangfuzz/testdata/corpus/t3code-optimizer-jsx-companion.json"), "utf8"))
 mkdirSync(join(root, ".cache"), { recursive: true })
-const temporary = mkdtempSync(join(root, ".cache/optimizer-companion-"))
+const temporary = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(root, ".cache/optimizer-companion-"))
 const put = (file, text) => { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, text) }
 try {
  const extension = key === "foreign-source" ? ".tsx" : key === "js-companion" && !(mode & 16) ? ".vibe" : ".vibex"

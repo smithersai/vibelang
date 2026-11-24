@@ -31,7 +31,7 @@ if (key === "type-change") afterFiles[afterLeaf] = parent.replace(": " + valueTy
 if (key === "doc-change") afterFiles[afterLeaf] = parent.replace("Stable value.", "Changed value.")
 if (key === "mts-collision") beforeFiles[afterLeaf] = "export declare const collision: boolean;\n"
 mkdirSync(join(repo, ".cache"), { recursive: true })
-const root = mkdtempSync(join(repo, ".cache/main-entry-model-"))
+const root = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(repo, ".cache/main-entry-model-"))
 const put = (file, text) => { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, mode & 8 ? text.replaceAll("\n", "\r\n") : text) }
 function snapshot(side, files, source, leaf, internals) {
  const dir = join(root, side), stored = Object.keys(files).sort()

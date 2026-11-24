@@ -37,12 +37,12 @@ func TestBudgetLogProbe(t *testing.T) {
 		return
 	}
 	limit := time.Hour
-	if mode == "fail" {
+	if mode == "above-threshold" {
 		limit = time.Nanosecond
 	}
 	for _, name := range []string{"first", "second"} {
 		t.Run(name, func(t *testing.T) {
-			enforceFuzzBudget(t, limit)
+			reportFuzzCPU(t, limit)
 			var x uint64
 			for i := range 100000 {
 				x = x*1664525 + uint64(i)
@@ -90,7 +90,7 @@ func checkBudgetLog(t *testing.T, data []byte, limit time.Duration, copies int) 
 }
 
 func TestShortBudgetLog(t *testing.T) {
-	for _, mode := range []string{"pass", "fail", "unset", "empty", "unwritable", "write-error"} {
+	for _, mode := range []string{"pass", "above-threshold", "unset", "empty", "unwritable", "write-error"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := t.TempDir()
 			path := filepath.Join(dir, "budget log.tsv")
@@ -112,11 +112,7 @@ func TestShortBudgetLog(t *testing.T) {
 				cmd.Args = append(cmd.Args, "-test.v")
 			}
 			out, err := cmd.CombinedOutput()
-			if mode == "fail" {
-				if err == nil || !strings.Contains(string(out), "short seed CPU budget exceeded") {
-					t.Fatalf("probe must fail its budget: %v: %s", err, out)
-				}
-			} else if err != nil {
+			if err != nil {
 				t.Fatalf("probe: %v: %s", err, out)
 			}
 			if mode == "unset" || mode == "empty" || mode == "unwritable" || mode == "write-error" {
@@ -137,7 +133,7 @@ func TestShortBudgetLog(t *testing.T) {
 				t.Fatal(err)
 			}
 			limit := time.Hour
-			if mode == "fail" {
+			if mode == "above-threshold" {
 				limit = time.Nanosecond
 			}
 			checkBudgetLog(t, data, limit, 1)

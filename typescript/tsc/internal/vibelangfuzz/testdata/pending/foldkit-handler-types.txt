@@ -1,1 +1,0 @@
-# Chapter 28: every automatic change keeps the program (D291, D372); VIP-27 safe quick fixes.

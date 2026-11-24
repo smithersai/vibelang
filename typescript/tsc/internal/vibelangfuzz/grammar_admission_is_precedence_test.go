@@ -34,8 +34,8 @@ func TestGrammarAdmissionIsPrefixPrecedenceKeys(t *testing.T) {
 func TestGrammarAdmissionIsPrefixPrecedenceRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, c := range []struct {
-		source   string
-		mismatch bool
+		source  string
+		pending bool
 	}{
 		{"const b = x is > 1 + 1; ;", true},
 		{"const b = x is > -1 + 1;", true},
@@ -49,8 +49,12 @@ func TestGrammarAdmissionIsPrefixPrecedenceRegression(t *testing.T) {
 		{"const b = x is > 1 | 2 + 3;", false},
 	} {
 		t.Run(c.source, func(t *testing.T) {
-			if got := grammarAdmissionVerdict(t, w, c.source); got != c.mismatch {
-				t.Fatalf("admission mismatch=%v, want %v: %s", got, c.mismatch, c.source)
+			if c.pending {
+				checkGrammarAdmission(t, w, "admission:is-operand-precedence", c.source)
+				return
+			}
+			if grammarAdmissionVerdict(t, w, c.source) {
+				t.Fatalf("native syntax control is an admission gap: %s", c.source)
 			}
 		})
 	}

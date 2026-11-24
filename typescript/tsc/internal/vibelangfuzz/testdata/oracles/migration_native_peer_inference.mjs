@@ -6,9 +6,9 @@ import { dirname,join } from "node:path"
 import { spawnSync } from "node:child_process"
 import { applyPlainEdits,markPlainFunctions,plainEdits } from "../../../../../../.smithers/flows/migrate/lib/plain.mjs"
 const ts=createRequire(join(process.cwd(),"packages/runtime/package.json"))("typescript")
-const [key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&15
+const [key,rawMode,compiler]=process.argv.slice(2),mode=Number(rawMode)&15
 const fixture=JSON.parse(readFileSync(new URL("../corpus/alchemy-native-peer-effect-factory.json",import.meta.url),"utf8"))
-mkdirSync(".cache",{recursive:true});const root=mkdtempSync(join(process.cwd(),".cache/native-peer-inference-"))
+mkdirSync(".cache",{recursive:true});const root=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(process.cwd(),".cache/native-peer-inference-"))
 const put=(f,t)=>{mkdirSync(dirname(f),{recursive:true});writeFileSync(f,t)}
 try {
  const modern=key.startsWith("modern"),native=!key.startsWith("ts-"),signature=key.endsWith("sidecar"),effect=key.includes("effect")
@@ -31,7 +31,7 @@ try {
  const peerFile=join(candidate,stem+(native?".vibe":".ts"));put(peerFile,normal(peer));caller=caller.replaceAll(stem+".ts",stem+(native?".vibe":".ts"));put(join(candidate,"main.ts"),normal(caller))
  const config={compilerOptions:{target:"ES2022",module:"NodeNext",moduleResolution:"NodeNext",strict:true,skipLibCheck:true,types:[],lib:["ES2022"],allowArbitraryExtensions:true,allowImportingTsExtensions:true,noEmit:true},files:["main.ts"]};put(join(candidate,"tsconfig.json"),JSON.stringify(config))
  const nativeControls=[];let sidecarOrigin=null
- const compiler=join(process.cwd(),"packages/compiler/native/vibelang")
+ assert.ok(compiler, "the native peer oracle requires the compiler path")
  if(native&&mode===0){
   const check=spawnSync(compiler,["-p",join(candidate,"tsconfig.json"),"--singleThreaded","--pretty","false"],{encoding:"utf8",timeout:120000,env:process.env});assert.equal(check.status,0,JSON.stringify({key,stdout:check.stdout,stderr:check.stderr,error:check.error?.message}));nativeControls.push({code:check.status,mode:"noEmit"})
  }

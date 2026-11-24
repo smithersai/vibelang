@@ -20,6 +20,7 @@ func FuzzMigrationNativePeerInference(f *testing.F) {
 	for _, key := range []string{"ts-value", "vibe-effect-sidecar", "modern-effect"} {
 		f.Add(key, uint8(15))
 	}
+	compiler := cliBuild(f, f.TempDir())
 	f.Fuzz(func(t *testing.T, key string, mode uint8) {
 		TestMigrationNativePeerInferenceQuoted(t)
 		if !slices.Contains(keys, key) {
@@ -31,9 +32,9 @@ func FuzzMigrationNativePeerInference(f *testing.F) {
 		}
 		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
 		defer cancel()
-		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_native_peer_inference.mjs"), key, strconv.Itoa(int(mode&15)))
+		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_native_peer_inference.mjs"), key, strconv.Itoa(int(mode&15)), compiler)
 		command.Dir = Root()
-		output, err := command.CombinedOutput()
+		output, err := runJSONOracle(t, command)
 		if err != nil {
 			t.Fatalf("native peer inference model: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

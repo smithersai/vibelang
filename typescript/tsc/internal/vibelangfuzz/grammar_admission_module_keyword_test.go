@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -64,17 +63,7 @@ func TestGrammarAdmissionModuleSpecifierKeywordRegression(t *testing.T) {
 		"export * from static;",
 	} {
 		t.Run(source, func(t *testing.T) {
-			result, err := w.Compile(context.Background(), Single(source))
-			if err != nil {
-				t.Fatal(err)
-			}
-			missing := false
-			for _, d := range result.Diagnostics {
-				missing = missing || IsEK(d) && d.Code() == 4006
-			}
-			if !missing || !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("reserved module specifier must retain the observed gap; diagnostics=%v", result.Diagnostics)
-			}
+			checkGrammarAdmission(t, w, "admission:module-specifier-keyword", source)
 		})
 	}
 	for _, source := range []string{

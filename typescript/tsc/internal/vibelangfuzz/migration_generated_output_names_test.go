@@ -41,7 +41,7 @@ func FuzzMigrationGeneratedOutputNames(f *testing.F) {
 		script := filepath.Join(repoTestdata(), "oracles", "migration_generated_output_names.mjs")
 		cmd := exec.CommandContext(ctx, "node", script, key, strconv.Itoa(int(mode&7)))
 		cmd.Dir = Root()
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("generated-output oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

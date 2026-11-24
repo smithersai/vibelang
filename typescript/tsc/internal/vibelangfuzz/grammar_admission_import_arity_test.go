@@ -1,11 +1,8 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 func TestGrammarAdmissionImportArityQuoted(t *testing.T) {
@@ -95,22 +92,7 @@ func TestGrammarAdmissionImportArityRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range []string{"import();", "import(a,b,c);", "import(a,b,c,);", "function s(specifier: string) { return import.source() }", "import.source(a,b,c);"} {
 		t.Run(source, func(t *testing.T) {
-			result, err := w.Compile(context.Background(), Single(source))
-			if err != nil {
-				t.Fatal(err)
-			}
-			found := false
-			for _, d := range result.Diagnostics {
-				if d.Source() == "" && d.Code() == 1450 {
-					found = true
-					if d.Category() != diagnostics.CategoryMessage || grammarAdmissionSyntaxDiagnostic(d) || d.AffectsBuild() {
-						t.Fatalf("expected message-only native arity recovery: %s", d.String())
-					}
-				}
-			}
-			if !found || !grammarAdmissionVerdict(t, w, source) {
-				t.Fatal("message-only ImportCall arity must remain an admission gap")
-			}
+			checkGrammarAdmission(t, w, "admission:dynamic-import-arity", source)
 		})
 	}
 	for _, source := range []string{"import(...a);", "import<string>(a);"} {

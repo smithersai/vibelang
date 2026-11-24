@@ -1,3 +1,0 @@
-# casts, satisfies and parentheses around a plain function's value must not change its kind; observed on main a10800db69ec.
-
-# T3Code mapped callbacks; native controls validated independently.

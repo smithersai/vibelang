@@ -1,5 +1,0 @@
-# Gaps between the specification and the vibelang command line that
-# FuzzCommandLine found. A crash or hang is keyed crash or hang:<stage>; its
-# minimal reproduction is also listed by corpus file, so that it fails as
-# XPASS once fixed.
-# <target> <key> <owner> <what is missing, with the decision it breaks>

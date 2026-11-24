@@ -88,9 +88,7 @@ func TestGrammarAdmissionModuleRequireRegression(t *testing.T) {
 					t.Error("EK4006 is a name error, not syntax rejection")
 				}
 			}
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("undefined identifier require must remain an admission gap: %s", source)
-			}
+			checkGrammarAdmission(t, w, "admission:module-require-identifier", source)
 		})
 	}
 }

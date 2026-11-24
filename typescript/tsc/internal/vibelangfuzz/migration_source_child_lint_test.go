@@ -44,7 +44,7 @@ func FuzzMigrationSourceChildLint(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_source_child_lint.mjs"))
 		cmd.Dir, cmd.Stdin = Root(), strings.NewReader(string(input))
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("source-child lint oracle process: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

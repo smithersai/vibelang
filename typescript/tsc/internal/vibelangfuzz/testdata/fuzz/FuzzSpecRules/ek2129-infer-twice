@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("ek:EK2129/infer-twice\x00template:minimal\x00")

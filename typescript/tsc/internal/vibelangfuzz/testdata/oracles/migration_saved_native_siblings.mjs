@@ -11,7 +11,7 @@ const [compiler, key, rawMode] = process.argv.slice(2)
 const mode = Number(rawMode) & 15
 const fixture = JSON.parse(readFileSync(new URL("../corpus/t3code-saved-native-sibling.json", import.meta.url), "utf8"))
 mkdirSync(".cache", { recursive: true })
-const root = mkdtempSync(join(process.cwd(), ".cache/saved-native-sibling-"))
+const root = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(process.cwd(), ".cache/saved-native-sibling-"))
 const put = (file, text) => { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, text) }
 const authored = new Map()
 const source = (file, text) => { const bytes = mode & 1 ? text.replaceAll("\n", "\r\n") : text; put(file, bytes); authored.set(file, bytes) }
@@ -98,7 +98,6 @@ try {
   console.log(JSON.stringify({
     key: layoutKey, mode, ok, knownGap,
     unchanged: original === JSON.stringify(hashes()),
-    nativeNoEmit: 0, stockNoEmit: 0,
     beforeEmit: before, afterEmit: after,
     complete, identical, reason: comparison.incompleteReason ?? null,
     names: comparison.nameDifferences, types: comparison.typeDifferences,

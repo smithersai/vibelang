@@ -12,7 +12,7 @@ const root=process.cwd(), [key,rawMode]=process.argv.slice(2),mode=Number(rawMod
 const ts=createRequire(join(root,"docs/tools/package.json"))("typescript")
 const fixture=JSON.parse(readFileSync(join(root,"typescript/tsc/internal/vibelangfuzz/testdata/corpus/t3code-script-generated-map-authority.json"),"utf8"))
 mkdirSync(join(root,".cache"),{recursive:true})
-const temporary=mkdtempSync(join(root,".cache/manifest-authority-"))
+const temporary=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(root,".cache/manifest-authority-"))
 const put=(file,text)=>{mkdirSync(dirname(join(temporary,file)),{recursive:true});writeFileSync(join(temporary,file),text)}
 try {
  const dir=mode&2?"packages/nested":"packages/app",manifest=dir+"/package.json"

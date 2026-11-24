@@ -22,7 +22,7 @@ func failuresFieldCommaCases() []*failCase {
 			{"trailing", "id: string,", "id: \"x\"", "value.id", "string"},
 		} {
 			cases = append(cases, &failCase{
-				Name: form.name + "-payload-comma-" + c.name, Chapter: "900-appendices.md", Quote: quote, VIP: form.vip, Owner: "impl-hunt-fail", Host: "none",
+				Name: form.name + "-payload-comma-" + c.name, Chapter: "900-appendices.md", Quote: quote, VIP: form.vip, Host: "none",
 				Decls: "export " + form.syntax + " Entry { " + c.body + " }\nconst value = new Entry({ " + c.args + " })\nexport const checked: " + c.typ + " = " + c.read + "\n",
 			})
 		}

@@ -23,6 +23,7 @@ var formatDeclarationKeys = []string{"data", "schema", "error", "schema-error"}
 // Chapter 7 (VIP-34): "An unparsable file is reported and left unchanged; formatting is idempotent."
 func FuzzFormatDeclarationLayout(f *testing.F) {
 	startShortBudget(f)
+	w := NewWorkspace(f)
 	for _, key := range formatDeclarationKeys {
 		for _, layout := range []uint8{0, 1, 2, 7, 15, 31, 63, 255} {
 			f.Add(key, layout)
@@ -58,8 +59,8 @@ func FuzzFormatDeclarationLayout(f *testing.F) {
 			if err != nil {
 				Gap(t, "FuzzFormatDeclarationLayout", "format:declaration:"+key+":refusal", "valid %s declaration refused: %v\n%s", key, err, source)
 			}
-			if err := vibelangfmt.SameProgram(source, once); err != nil {
-				Gap(t, "FuzzFormatDeclarationLayout", "format:declaration:"+key+":meaning", "%v\n%s\n%s", err, source, once)
+			if difference := formatCompilationDifference(t, w, "FuzzFormatDeclarationLayout", source, once); difference != "" {
+				Gap(t, "FuzzFormatDeclarationLayout", "format:declaration:"+key+":meaning", "%v\n%s\n%s", difference, source, once)
 			}
 			twice, err := vibelangfmt.Format("layout.vibe", once, formatter)
 			if err != nil || twice != once {

@@ -33,8 +33,10 @@ func FuzzConfigDiagnosticSpans(f *testing.F) {
 	configSpansQuoted(f)
 	keys := []string{"effectGlobals", "effectModules", "severities", "severity-entry"}
 	for _, key := range keys {
-		for _, data := range [][]byte{{0}, {1, 2, 3}, {255, 254, 253}} {
-			f.Add(key, data)
+		for value := byte(0); value < 4; value++ {
+			for file := byte(0); file < 3; file++ {
+				f.Add(key, []byte{0, value, file, value + file})
+			}
 		}
 	}
 	f.Fuzz(func(t *testing.T, key string, data []byte) {

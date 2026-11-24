@@ -71,6 +71,7 @@ func formatNamedModuleBodySyntaxSource(source string) string {
 }
 
 func TestFormatNamedModuleBodySyntax(t *testing.T) {
+	w := NewWorkspace(t)
 	formatter := toolsFormatter(t)
 	for _, row := range formatNamedModuleBodyRows {
 		for variant := byte(0); variant < 4; variant++ {
@@ -90,8 +91,8 @@ func TestFormatNamedModuleBodySyntax(t *testing.T) {
 				if err != nil {
 					t.Fatalf("refused valid native body: %v; %s", err, source)
 				}
-				if err := vibelangfmt.SameProgram(source, once); err != nil {
-					t.Fatal(err)
+				if difference := formatCompilationDifference(t, w, "TestFormatNamedModuleBodySyntax", source, once); difference != "" {
+					t.Fatal(difference)
 				}
 			})
 		}

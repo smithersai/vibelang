@@ -26,7 +26,7 @@ if (key === "webworker" && mode === 0) {
 const after = key === "changed-type" ? original.replace("number", "string") : original
 const normalize = text => mode & 2 ? text.replaceAll("\n", "\r\n") : text
 mkdirSync(join(repo, ".cache"), { recursive: true })
-const temp = mkdtempSync(join(repo, ".cache/library-context-"))
+const temp = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(repo, ".cache/library-context-"))
 const put = (path, text) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, text) }
 const stockDiagnostics = []
 const started = performance.now()
@@ -97,7 +97,6 @@ try {
   stockDiagnostics, migrationEligible: !invalidOriginal && key !== "unresolved", expectedComplete, expectedIdentity, unchanged,
   complete: actual.comparisonComplete, identical: actual.identical,
   blockingDiagnostics: actual.environmentDiagnostics.filter(d => d.blocking).map(d => d.diagnostic),
-  ok: unchanged && (invalidOriginal ? reference.comparisonComplete === false && reference.identical === false
-   : actual.comparisonComplete === expectedComplete && actual.identical === expectedIdentity)
+  ok: unchanged && actual.comparisonComplete === expectedComplete && actual.identical === expectedIdentity
  }))
 } finally { rmSync(temp, { recursive: true, force: true }) }

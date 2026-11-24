@@ -79,7 +79,7 @@ func FuzzMigrationSavedNativeSiblings(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_saved_native_siblings.mjs"), binary, key, strconv.Itoa(int(mode&15)))
 		cmd.Dir = Root()
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("saved native sibling oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

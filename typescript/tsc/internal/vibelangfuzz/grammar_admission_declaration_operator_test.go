@@ -48,9 +48,6 @@ func TestGrammarAdmissionDeclarationOperatorRegression(t *testing.T) {
 		"const b\n= schema as\nschema is 1 + 1 ;",
 	} {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("known precedence witness stopped exposing its mismatch: %q", source)
-			}
 			checkGrammarAdmission(t, w, "admission:is-operand-precedence", source)
 		})
 	}

@@ -2,10 +2,11 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 const explicitThisRethrowsTarget = "FuzzExplicitThisRethrows"
@@ -157,7 +158,7 @@ func TestExplicitThisRethrowsVariants(t *testing.T) {
 	assertExplicitThisRethrowsRules(t)
 	w := NewWorkspace(t)
 	for _, key := range explicitThisRethrowsKeys() {
-		for _, choice := range []uint8{1, 2, 4, 8, 15} {
+		for _, choice := range []uint8{1, 2, 4, 16, 15} {
 			t.Run(fmt.Sprintf("%s/%d", key, choice), func(t *testing.T) { checkExplicitThisRethrows(t, w, key, choice) })
 		}
 	}

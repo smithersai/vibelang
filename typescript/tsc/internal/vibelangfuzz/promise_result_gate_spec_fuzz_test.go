@@ -28,13 +28,13 @@ func promiseResultGateCases() []*failCase {
 		{"tag", "export async function read(_parts: TemplateStringsArray) { return 1 }", "read`one`"},
 		{"overloaded-tag", "function read(p: TemplateStringsArray): Promise<number>;\nfunction read(p: number): number;\nfunction read(p: TemplateStringsArray | number): Promise<number> | number { return typeof p === \"number\" ? p : Promise.resolve(1) }", "read`one`"},
 	} {
-		cases = append(cases, &failCase{Name: "promise-gate-" + result.key, Chapter: failuresChapter, Quote: promiseGateFormsQuote, VIP: 4, Owner: "compiler", Decls: result.decl, Body: "const held = ⟦" + result.expression + "⟧", Code: 404})
+		cases = append(cases, &failCase{Name: "promise-gate-" + result.key, Chapter: failuresChapter, Quote: promiseGateFormsQuote, VIP: 4, Decls: result.decl, Body: "const held = ⟦" + result.expression + "⟧", Code: 404})
 	}
 	for _, kind := range []string{"any", "unknown", "never", "{ then: number }"} {
 		key := strings.NewReplacer("{ then: number }", "noncallable-then").Replace(kind)
-		cases = append(cases, &failCase{Name: "promise-gate-excluded-" + key, Chapter: failuresChapter, Quote: promiseGateQuote, VIP: 4, Owner: "compiler", Decls: "export declare function read(): " + kind, Body: "const held = read()"})
+		cases = append(cases, &failCase{Name: "promise-gate-excluded-" + key, Chapter: failuresChapter, Quote: promiseGateQuote, VIP: 4, Decls: "export declare function read(): " + kind, Body: "const held = read()"})
 	}
-	cases = append(cases, &failCase{Name: "promise-gate-effect-success-data", Chapter: failuresChapter, Quote: promiseGateFormsQuote, VIP: 4, Owner: "compiler", Decls: "declare const p: Promise<number>", Body: "const held = try Effect.succeed(p)"})
+	cases = append(cases, &failCase{Name: "promise-gate-effect-success-data", Chapter: failuresChapter, Quote: promiseGateFormsQuote, VIP: 4, Decls: "declare const p: Promise<number>", Body: "const held = try Effect.succeed(p)"})
 	for _, data := range []struct{ key, declaration, expression string }{
 		{"resolve", "", "Promise.resolve(7)"},
 		{"constructor", "", "new Promise<number>((resolve) => resolve(7))"},
@@ -42,7 +42,7 @@ func promiseResultGateCases() []*failCase {
 		{"object-method", "const object = { read(): Promise<number> { return Promise.resolve(7) } }", "object.read()"},
 		{"arrow-property", "const object = { read: (): Promise<number> => Promise.resolve(7) }", "object.read()"},
 	} {
-		cases = append(cases, &failCase{Name: "promise-gate-sync-data-" + data.key, Chapter: "002-running.md", Quote: promiseDataBridgeQuote, VIP: 4, Owner: "compiler", Decls: data.declaration, Body: "const held = try Effect.orDie(Effect.try({ try: () => " + data.expression + ", catch: (e) => e }))"})
+		cases = append(cases, &failCase{Name: "promise-gate-sync-data-" + data.key, Chapter: "002-running.md", Quote: promiseDataBridgeQuote, VIP: 4, Decls: data.declaration, Body: "const held = try Effect.orDie(Effect.try({ try: () => " + data.expression + ", catch: (e) => e }))"})
 	}
 	return cases
 }

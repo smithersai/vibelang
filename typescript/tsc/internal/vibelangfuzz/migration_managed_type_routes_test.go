@@ -45,7 +45,7 @@ func checkManagedTypeRoutes(t *testing.T, binary, key string, mode uint8) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_managed_type_routes.mjs"), key, strconv.Itoa(int(mode&15)), binary)
 	cmd.Dir = Root()
-	out, err := cmd.CombinedOutput()
+	out, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("managed route observation: %v; context=%v\n%s", err, ctx.Err(), out)
 	}

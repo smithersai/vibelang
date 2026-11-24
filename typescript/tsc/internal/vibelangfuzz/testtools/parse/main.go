@@ -6,13 +6,15 @@ import (
 	"bufio"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz/specgen"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz/vipgen"
 )
 
 type request struct {
@@ -111,6 +113,26 @@ func parse(source string) result {
 	return r
 }
 
+// generatedSources keeps TypeScript siblings out of the .vibe parser oracle.
+func generatedSources(data []byte) []string {
+	program := vipgen.Generate(data, nil)
+	if program == nil {
+		return nil
+	}
+	sources := []string{vipgen.PrintVibe(program)}
+	names := make([]string, 0, len(program.Files))
+	for name := range program.Files {
+		if strings.EqualFold(filepath.Ext(name), ".vibe") {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	for _, name := range names {
+		sources = append(sources, program.Files[name])
+	}
+	return sources
+}
+
 func main() {
 	input := bufio.NewScanner(os.Stdin)
 	input.Buffer(make([]byte, 4096), 8<<20)
@@ -125,15 +147,7 @@ func main() {
 			for i, b := range *q.Generate {
 				data[i] = byte(b)
 			}
-			files := specgen.PrintVibeFiles(specgen.Generate(data, nil), specgen.VibeOptions{}, "main.vibe")
-			names := make([]string, 0, len(files))
-			for name := range files {
-				names = append(names, name)
-			}
-			slices.Sort(names)
-			for _, name := range names {
-				q.Sources = append(q.Sources, files[name])
-			}
+			q.Sources = append(q.Sources, generatedSources(data)...)
 		}
 		results := []result{}
 		for _, source := range q.Sources {

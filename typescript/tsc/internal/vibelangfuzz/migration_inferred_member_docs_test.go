@@ -31,7 +31,7 @@ func checkInferredMemberDocs(t *testing.T, target, key string, mode uint8, keys 
 	script := filepath.Join(repoTestdata(), "oracles", "migration_inferred_member_docs.mjs")
 	cmd := exec.CommandContext(ctx, "node", script, key, strconv.Itoa(int(mode&7)))
 	cmd.Dir = Root()
-	output, err := cmd.CombinedOutput()
+	output, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("member documentation oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 	}

@@ -2,10 +2,11 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 const foreignValidationContract = "a type without `@throws` admits only `never`"
@@ -73,33 +74,36 @@ func FuzzForeignValidationBridges(f *testing.F) {
 		}
 		foreign := "let fail=false\nexport function setFailure(value: boolean){fail=value}\nexport function check(): string {if(fail) throw new Error(\"validation\");return \"ok\"}\n"
 		for _, wrapped := range []bool{false, true} {
-			expression := "sync((run: () => string) => run(), " + name + ")"
+			expression := "Effect.sync(() => consume(" + name + "))"
 			if wrapped {
 				expression = "Effect.orDie(Effect.try({ try: () => " + name + "(), catch: error => error }))"
 			}
-			source := imported + "export effect function main(): string!! { return try " + expression + " }\n"
+			source := "import { consume } from \"./consume.js\"\n" + imported + "export effect function main(): string!! { return try " + expression + " }\n"
 			if variant&1 != 0 {
 				source = strings.ReplaceAll(source, "\n", "\r\n")
 			}
 			if variant&2 != 0 {
 				source = "// keep validation comment 🧪\n" + source
 			}
-			result := toolsCompile(t, w, "FuzzForeignValidationBridges", map[string]string{"main.vibe": source, "foreign.ts": foreign})
+			result := toolsCompile(t, w, "FuzzForeignValidationBridges", map[string]string{
+				"main.vibe": source, "foreign.ts": foreign,
+				"consume.d.ts": "/** @throws {never} */\nexport declare function consume(fn: () => string): string",
+			})
 			defer result.Remove()
 			probeKey := fmt.Sprintf("feature:%s:%t:%d", key, wrapped, variant&3)
-			found := false
+			found := 0
 			for _, d := range result.Diagnostics {
 				if d.Category() != diagnostics.CategoryError {
 					continue
 				}
 				if !wrapped && IsEK(d) && d.Code() == 402 {
-					found = true
+					found++
 					continue
 				}
 				Gap(t, "FuzzForeignValidationBridges", probeKey, "Chapter 3: unexpected diagnostic: %s\n%s", d.String(), source)
 			}
-			if !wrapped && !found {
-				Gap(t, "FuzzForeignValidationBridges", probeKey, "Chapter 3: %q; throwing foreign function accepted by a no-throw parameter", foreignValidationContract)
+			if !wrapped && found != 1 {
+				Gap(t, "FuzzForeignValidationBridges", probeKey, "Chapter 3: %q; want exactly one EK0402 for a throwing argument, got %d", foreignValidationContract, found)
 			}
 			ExpectPending(t, "FuzzForeignValidationBridges", probeKey)
 		}

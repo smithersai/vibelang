@@ -33,14 +33,13 @@ func checkMigrationLibraryContext(t *testing.T, target, key string, mode uint8, 
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_library_context.mjs"), key, strconv.Itoa(int(mode&31)))
 	cmd.Dir = Root()
-	output, err := cmd.CombinedOutput()
+	output, err := runJSONOracle(t, cmd)
 	if err != nil {
 		t.Fatalf("library-context oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 	}
 	var result struct {
-		OK, Unchanged       bool
-		StockDiagnostics    []int
-		Complete, Identical bool
+		OK, Unchanged, Complete, Identical bool
+		BlockingDiagnostics                []string
 	}
 	if err := json.Unmarshal(output, &result); err != nil {
 		t.Fatalf("invalid library-context receipt: %v\n%s", err, output)
@@ -50,6 +49,9 @@ func checkMigrationLibraryContext(t *testing.T, target, key string, mode uint8, 
 	}
 	gapKey := "context:" + key
 	if !result.OK {
+		if target == "FuzzMigrationLibraryEligibility" && (!result.Complete || !result.Identical || len(result.BlockingDiagnostics) != 0) {
+			t.Fatalf("unexpected invalid-original verdict: %s", output)
+		}
 		Gap(t, target, gapKey, "Chapter 1 %q: retain the original TypeScript library context, and reject unavailable names rather than treating them as equal; %s", migrationLibraryContextQuote, output)
 	}
 	ExpectPending(t, target, gapKey)

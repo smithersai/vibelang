@@ -40,7 +40,7 @@ func FuzzNativeModuleCompanions(f *testing.F) {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", "--no-warnings", "--experimental-vm-modules", filepath.Join(repoTestdata(), "oracles", "native_module_companions.mjs"), key, strconv.Itoa(int(mode&31)))
 		cmd.Dir = Root()
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("module companion hooks: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

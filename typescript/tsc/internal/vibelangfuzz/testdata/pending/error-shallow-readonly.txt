@@ -1,1 +1,0 @@
-# VIP-13/29 shallow readonly is enforced; all keyed corpus files remain.

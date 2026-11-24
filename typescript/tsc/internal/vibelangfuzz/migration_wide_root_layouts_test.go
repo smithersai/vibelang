@@ -35,7 +35,9 @@ func FuzzMigrationWideRootLayouts(f *testing.F) {
 	startShortBudget(f)
 	keys := []string{"transitive-generated", "transitive-ordinary", "native-transitive", "included", "local-root", "changed-type", "missing-file"}
 	f.Add("transitive-generated", uint8(9))
+	f.Add("native-transitive", uint8(9))
 	f.Add("missing-file", uint8(6))
+	compiler := cliBuild(f, f.TempDir())
 	f.Fuzz(func(t *testing.T, key string, mode uint8) {
 		TestMigrationWideRootLayoutsQuoted(t)
 		if !slices.Contains(keys, key) {
@@ -45,16 +47,11 @@ func FuzzMigrationWideRootLayouts(f *testing.F) {
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
-		if key == "native-transitive" {
-			if _, err := os.Stat(filepath.Join(Root(), "packages/compiler/native/vibelang")); err != nil {
-				Missing(t, "native-transitive needs the native compiler: run sh scripts/build-vibelang.sh")
-			}
-		}
 		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
 		defer cancel()
-		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_wide_root_layouts.mjs"), key, strconv.Itoa(int(mode&15)))
+		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_wide_root_layouts.mjs"), key, strconv.Itoa(int(mode&15)), compiler)
 		command.Dir = Root()
-		output, err := command.CombinedOutput()
+		output, err := runJSONOracle(t, command)
 		if err != nil {
 			t.Fatalf("wide-root layout model: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

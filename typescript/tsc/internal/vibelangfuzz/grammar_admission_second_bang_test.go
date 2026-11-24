@@ -121,10 +121,7 @@ func TestGrammarAdmissionSecondBangRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarSecondBangSources {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("recorded second-bang admission gap changed: %s", source)
-			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
+			checkGrammarAdmission(t, w, "admission:effect-type-line-break", source)
 		})
 	}
 }

@@ -8,12 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestDeclarationIdentityScopedWorkerCPUCharged(t *testing.T) {
 	if os.Getenv("VIBELANG_DECLARATION_BUDGET_PROBE") == "1" {
-		enforceFuzzBudget(t, time.Nanosecond)
+		reportFuzzCPU(t, 0)
 		registerDeclarationIdentityScope(t)
 		dirs := []string{t.TempDir(), t.TempDir()}
 		for _, dir := range dirs {
@@ -29,7 +28,7 @@ func TestDeclarationIdentityScopedWorkerCPUCharged(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.v", "-test.run=^TestDeclarationIdentityScopedWorkerCPUCharged$")
 	cmd.Env = append(os.Environ(), "VIBELANG_DECLARATION_BUDGET_PROBE=1")
 	out, err := cmd.CombinedOutput()
-	if err == nil || !strings.Contains(string(out), "short seed CPU budget exceeded") {
-		t.Fatalf("persistent worker CPU escaped the unchanged guard: %v\n%s", err, out)
+	if err != nil || !strings.Contains(string(out), "short seed CPU above 0s budget:") {
+		t.Fatalf("missing CPU report for persistent worker: %v\n%s", err, out)
 	}
 }

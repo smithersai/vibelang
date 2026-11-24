@@ -79,6 +79,7 @@ func TestGrammarAdmissionRegExpSyntaxDiagnostics(t *testing.T) {
 }
 
 func TestGrammarAdmissionRegExpSyntaxRegression(t *testing.T) {
+	grammarRequireRegExpNode(t)
 	TestGrammarAdmissionRegExpSyntaxQuoted(t)
 	w := NewWorkspace(t)
 	for _, tc := range grammarRegExpRejections {

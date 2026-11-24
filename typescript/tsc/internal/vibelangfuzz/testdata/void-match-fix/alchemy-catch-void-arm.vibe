@@ -1,8 +1,0 @@
-error NF { id: string }
-declare const op: () => string!NF
-export const b = effect () => {
-  op() catch effect (e) => match (e) {
-    when { _tag: "NF" }: try Effect.void;
-    default: throw e;
-  }
-}

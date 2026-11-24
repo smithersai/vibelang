@@ -11,6 +11,7 @@ import (
 // backend as well as the public dprint regressions; they format label trivia
 // differently. FuzzFormat keeps the nine keyed neighbourhood witnesses.
 func TestEmptyStatementTypeScriptFormattingFixedPoint(t *testing.T) {
+	w := NewWorkspace(t)
 	formatter := toolsFormatter(t)
 	comments := []string{"/** documentation */", "/** @internal */", "/** @throws {Error} */"}
 	gaps := []string{" ", "   ", "\n"}
@@ -28,8 +29,8 @@ func TestEmptyStatementTypeScriptFormattingFixedPoint(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if err := vibelangfmt.SameProgram(source, once); err != nil {
-						t.Fatal(err)
+					if difference := formatCompilationDifference(t, w, "TestEmptyStatementTypeScriptFormattingFixedPoint", source, once); difference != "" {
+						t.Fatal(difference)
 					}
 					twice, err := vibelangfmt.Format("main.vibe", once, formatter)
 					if err != nil {

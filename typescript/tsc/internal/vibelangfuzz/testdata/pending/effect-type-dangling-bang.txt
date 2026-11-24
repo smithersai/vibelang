@@ -1,0 +1,3 @@
+FuzzEffectTypeDanglingBang bang:error-then-bang compiler Appendix A: a bare second bang after a written error slot must report TS17019. See #644.
+FuzzEffectTypeDanglingBang bang:error-then-bang-block compiler Appendix A: a bare second bang after a written error slot must report TS17019. See #644.
+FuzzEffectTypeDanglingBang bang:error-then-bang-return compiler Appendix A: a bare second bang after a written error slot must report TS17019. See #644.

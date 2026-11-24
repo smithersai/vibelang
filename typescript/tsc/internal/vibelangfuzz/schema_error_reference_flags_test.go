@@ -23,7 +23,7 @@ func failuresSchemaErrorReferenceCases() []*failCase {
 			{"implicit", "value: ⟦Codec⟧"},
 			{"readonly", "readonly value: ⟦Codec⟧"},
 		} {
-			cases = append(cases, &failCase{Name: "schema-error-reference-" + codec.name + "-" + field.name, Chapter: "006-data.md", Quote: quote, VIP: 29, Owner: "impl-hunt-fail", Host: "none", Code: 2109,
+			cases = append(cases, &failCase{Name: "schema-error-reference-" + codec.name + "-" + field.name, Chapter: "006-data.md", Quote: quote, VIP: 29, Host: "none", Code: 2109,
 				Decls: codec.decl + "\nexport schema error Bad { " + field.text + " }"})
 		}
 	}

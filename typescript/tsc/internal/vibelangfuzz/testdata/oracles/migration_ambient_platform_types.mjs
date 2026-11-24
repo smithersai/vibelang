@@ -8,7 +8,7 @@ import { compareDeclarations,recordDeclarationSurface } from "../../../../../../
 const ts=createRequire(join(process.cwd(),"packages/runtime/package.json"))("typescript")
 const fixture=JSON.parse(readFileSync(new URL("../corpus/t3code-ambient-platform-type-alias.json",import.meta.url),"utf8"))
 const [binary,key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&7
-mkdirSync(".cache",{recursive:true});const root=mkdtempSync(join(process.cwd(),".cache/ambient-platform-types-"))
+mkdirSync(".cache",{recursive:true});const root=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(process.cwd(),".cache/ambient-platform-types-"))
 const put=(file,text)=>{mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text)}
 try {
  const prefix=mode&4?"nested/":"",normal=text=>(mode&1?text.replaceAll("State","GateState"):text).replaceAll("\n",mode&2?"\r\n":"\n")

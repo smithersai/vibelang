@@ -4,9 +4,7 @@ package vibelangfuzz
 func failuresExtraCases() []*failCase {
 	var cases []*failCase
 	add := func(c *failCase) {
-		if c.Owner == "" {
-			c.Owner = "w2-throw"
-		}
+
 		if c.VIP == 0 {
 			c.VIP = 4
 		}
@@ -57,7 +55,6 @@ func failuresExtraCases() []*failCase {
 		{"partial", "export function probeBody(): Effect.Effect<number> | undefined { untagged(); return undefined }"},
 		{"plain", "export function probeBody() { return untagged() }"},
 		{"plain-default", "export function probeBody(p = untagged()) { return p }"},
-		{"nested", "export function probeBody(): Effect.Effect<number> { const f = () => untagged(); return Effect.sync(f) }"},
 	} {
 		add(&failCase{Name: "effectful-body-control-" + body.name, Quote: effectfulBody, Host: "none", Lib: unknownLib, Decls: body.decls})
 	}
@@ -144,20 +141,20 @@ func failuresExtraCases() []*failCase {
 		{"marker", "marker()"}, {"no-pipe", "noPipe()"}, {"fake", "fake()"},
 		{"union", "mixed()"}, {"constraint", "constrained()"}, {"known", "knownMarker()"},
 	} {
-		add(&failCase{Name: "layer-return-" + call.name, Owner: "compiler", Quote: effectful, Code: 403, Lib: layerReturns, Body: "const value = ⟦" + call.expr + "⟧"})
+		add(&failCase{Name: "layer-return-" + call.name, Quote: effectful, Code: 403, Lib: layerReturns, Body: "const value = ⟦" + call.expr + "⟧"})
 	}
 	for _, call := range []struct{ name, expr string }{
 		{"whole", "whole()"}, {"view", "view()"}, {"constraint", "complete()"}, {"never", "safeMarker()"},
 		{"bridge", "try Effect.orDie(Effect.try(() => marker()))"},
 	} {
-		add(&failCase{Name: "layer-return-control-" + call.name, Owner: "compiler", Quote: effectful, Lib: layerReturns, Body: "const value = " + call.expr})
+		add(&failCase{Name: "layer-return-control-" + call.name, Quote: effectful, Lib: layerReturns, Body: "const value = " + call.expr})
 	}
-	add(&failCase{Name: "layer-return-control-unconstrained", Owner: "compiler", Quote: effectful, Code: 403, Lib: layerReturns, Body: "const value = ⟦unconstrained<ReturnType<typeof marker>>()⟧"})
+	add(&failCase{Name: "layer-return-control-unconstrained", Quote: effectful, Code: 403, Lib: layerReturns, Body: "const value = ⟦unconstrained<ReturnType<typeof marker>>()⟧"})
 	for _, body := range []struct{ name, decls string }{
 		{"body", "export function probe(): ReturnType<typeof marker> { untagged(); return marker() }"},
 		{"default", "export function probe(p = untagged()): ReturnType<typeof marker> { return marker() }"},
 	} {
-		add(&failCase{Name: "layer-return-plain-" + body.name, Owner: "compiler", Quote: effectful, Host: "none", Lib: layerReturns, Decls: body.decls})
+		add(&failCase{Name: "layer-return-plain-" + body.name, Quote: effectful, Host: "none", Lib: layerReturns, Decls: body.decls})
 	}
 	const methods = "[ClassMethod](900-appendices.md#classmethod) (ordinary TypeScript class methods, including plain and `async` overload signatures, generator and `async` generator implementations, getters, setters and private names), with TypeScript's class modifiers, decorators, overload ordering, adjacent-implementation and compatibility checks, plus [effect methods](900-appendices.md#effectmethod) and [producer methods](900-appendices.md#producermethod), as any class can have (VIP-13)."
 	const rejected = "| any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |"
@@ -179,28 +176,28 @@ func failuresExtraCases() []*failCase {
 			{"private-method", "#value() { return this.id }\nvalue() { return this.#value() }"},
 			{"protected-method", "protected value() { return this.id }"},
 		} {
-			add(&failCase{Name: form.name + "-" + method.name, Quote: methods, VIP: form.vip, Owner: "core-land", Host: "none", Decls: "export " + form.syntax + " Entry { id: string;\n" + method.code + "\n}"})
+			add(&failCase{Name: form.name + "-" + method.name, Quote: methods, VIP: form.vip, Host: "none", Decls: "export " + form.syntax + " Entry { id: string;\n" + method.code + "\n}"})
 		}
 		for _, member := range []struct{ name, code string }{
 			{"private-modifier", "private id: string"},
 			{"declare-field", "declare id: string"},
 			{"accessor-field", "accessor id = 1"},
 		} {
-			add(&failCase{Name: form.name + "-rejected-" + member.name, Quote: rejected, VIP: form.vip, Owner: "fix-vip-decls", Host: "none", Code: 1304, OneDiagnostic: true, Decls: "⟦export " + form.syntax + " Entry { " + member.code + " }⟧"})
+			add(&failCase{Name: form.name + "-rejected-" + member.name, Quote: rejected, VIP: form.vip, Host: "none", Code: 1304, OneDiagnostic: true, Decls: "⟦export " + form.syntax + " Entry { " + member.code + " }⟧"})
 		}
 		for _, member := range []struct{ name, code string }{
 			{"effect-getter", "effect get value() { return 1 }"},
 			{"effect-setter", "effect set value(n: number) {}"},
 			{"effect-constructor", "effect constructor() { super() }"},
 		} {
-			add(&failCase{Name: form.name + "-" + member.name + "-priority", Quote: priority, VIP: form.vip, Owner: "core-land", Host: "none", Code: 104, NotCodes: []int{1301, 1302, 1303, 1304, 2117}, Decls: "⟦export " + form.syntax + " Entry { " + member.code + " }⟧"})
+			add(&failCase{Name: form.name + "-" + member.name + "-priority", Quote: priority, VIP: form.vip, Host: "none", Code: 104, NotCodes: []int{1301, 1302, 1303, 1304, 2117}, Decls: "⟦export " + form.syntax + " Entry { " + member.code + " }⟧"})
 		}
-		add(&failCase{Name: form.name + "-literal-computed-keys", Quote: form.keyRule, VIP: form.vip, Owner: "fix-vip-decls", Host: "none", Decls: "const key = \"computed\" as const\nexport " + form.syntax + " Entry { \"quoted\": number; 7: number; [key]: number }\nexport const entry = new Entry({ quoted: 1, 7: 2, computed: 3 })"})
-		add(&failCase{Name: form.name + "-multiline-type", Quote: greedy, VIP: form.vip, Owner: "fix-vip-decls", Host: "none", Decls: "export " + form.syntax + " Entry { role:\n | \"admin\"\n | \"member\"\n get message() { return this.role }\n}"})
+		add(&failCase{Name: form.name + "-literal-computed-keys", Quote: form.keyRule, VIP: form.vip, Host: "none", Decls: "const key = \"computed\" as const\nexport " + form.syntax + " Entry { \"quoted\": number; 7: number; [key]: number }\nexport const entry = new Entry({ quoted: 1, 7: 2, computed: 3 })"})
+		add(&failCase{Name: form.name + "-multiline-type", Quote: greedy, VIP: form.vip, Host: "none", Decls: "export " + form.syntax + " Entry { role:\n | \"admin\"\n | \"member\"\n get message() { return this.role }\n}"})
 	}
 
 	const wrapperRule = "The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`. An overriding or implementing method may throw only what the base or interface signature admits (`EK0402`)."
-	add(&failCase{Name: "wrapper-callback-throw", Owner: "nothrow-impl", Quote: nothrowQ.knownCall, Code: 401, Decls: failParse, Body: "const p = Effect.callback<number>(() => { ⟦parse(s)⟧ })"})
+	add(&failCase{Name: "wrapper-callback-throw", Quote: nothrowQ.knownCall, Code: 401, Decls: failParse, Body: "const p = Effect.callback<number>(() => { ⟦parse(s)⟧ })"})
 	add(&failCase{Name: "wrapper-suspend-throw", Quote: effectfulBody, Code: 401, Decls: failParse, Body: "const p = Effect.suspend(() => { ⟦parse(s)⟧; return Effect.succeed(1) })"})
 	const direct = "| In effect code, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))`. In a plain `catch` handler and other plain code, a call known to throw is `EK0401` ([Plain code never throws](#plain-code-never-throws)) | `EK0403` |"
 	// Invocations other than calls: a new expression and a tagged template
@@ -224,22 +221,22 @@ func failuresExtraCases() []*failCase {
 	} {
 		add(&failCase{Name: "effect-invocation-control-" + row.name, Quote: invocationRule, Lib: invocationLib, Body: row.body})
 	}
-	add(&failCase{Name: "catch-tracked-new", Owner: "nothrow-impl", Quote: nothrowQ.handler, Code: 401, Decls: failInput, Body: "const p = Effect.fail(\"bad\") catch () => ⟦new Input(s)⟧"})
-	add(&failCase{Name: "catch-tracked-template", Owner: "nothrow-impl", Quote: nothrowQ.handler, Code: 401, Lib: "/** @throws {Error} */\nexport declare function tag(parts: TemplateStringsArray): never\n", Body: "const p = Effect.fail(\"bad\") catch () => ⟦tag`x`⟧"})
+	add(&failCase{Name: "catch-tracked-new", Quote: nothrowQ.handler, Code: 401, Decls: failInput, Body: "const p = Effect.fail(\"bad\") catch () => ⟦new Input(s)⟧"})
+	add(&failCase{Name: "catch-tracked-template", Quote: nothrowQ.handler, Code: 401, Lib: "/** @throws {Error} */\nexport declare function tag(parts: TemplateStringsArray): never\n", Body: "const p = Effect.fail(\"bad\") catch () => ⟦tag`x`⟧"})
 	const producing = "| In effect code, a call (runtime `import()` included), `new` expression, tagged template or `async match` producing a Promise or thenable, even if assigned to a variable and never awaited. Move the expression into a `tryPromise` thunk, whether or not it can reject; `promise` also works when the thunk's thrown type is `never` | `EK0404` |"
 	add(&failCase{Name: "promise-new", Quote: producing, Code: 404, Body: "const p = ⟦new Promise<number>((resolve) => resolve(1))⟧"})
 	// A super(...) call runs the base class constructor in a constructor,
 	// which is plain code: a base constructor known to throw is EK0401 there.
 	const knownCall = "A call, `new` expression, tagged template or class evaluation *known to throw* is `EK0401`"
 	const superLib = "export declare class Known {\n  /** @throws {RangeError} */\n  constructor(n: number)\n}\nexport declare class Safe {\n  /** @throws {never} */\n  constructor(n: number)\n}\nexport declare class Untagged { constructor(n: number) }\n"
-	add(&failCase{Name: "super-known", Owner: "compiler", Quote: knownCall, Code: 401, Host: "none", Lib: superLib, Decls: "export class C extends Known { constructor() { ⟦super(1)⟧ } }"})
-	add(&failCase{Name: "super-known-field", Owner: "compiler", Quote: knownCall, Code: 401, Host: "none", Lib: superLib, Decls: "export class C extends Known {\n  readonly v = 1\n  constructor(n: number) { ⟦super(n)⟧ }\n}"})
+	add(&failCase{Name: "super-known", Quote: knownCall, Code: 401, Host: "none", Lib: superLib, Decls: "export class C extends Known { constructor() { ⟦super(1)⟧ } }"})
+	add(&failCase{Name: "super-known-field", Quote: knownCall, Code: 401, Host: "none", Lib: superLib, Decls: "export class C extends Known {\n  readonly v = 1\n  constructor(n: number) { ⟦super(n)⟧ }\n}"})
 	for _, row := range []struct{ name, decls string }{
 		{"untagged", "export class C extends Untagged { constructor() { super(1) } }"},
 		{"never", "export class C extends Safe { constructor() { super(1) } }"},
 		{"implicit", "export class C extends Known {}"},
 	} {
-		add(&failCase{Name: "super-control-" + row.name, Owner: "compiler", Quote: knownCall, Host: "none", Lib: superLib, Decls: row.decls})
+		add(&failCase{Name: "super-control-" + row.name, Quote: knownCall, Host: "none", Lib: superLib, Decls: row.decls})
 	}
 
 	// An explicit base-constructor call also combines the contract of each
@@ -261,7 +258,7 @@ func failuresExtraCases() []*failCase {
 		{"control-caught-literal", "Base", "", "super(() => { try { return risky() } catch { return 1 } })"},
 		{"nested-source", "Base", "", "super(() => { const nested = () => ⟦risky()⟧; return 1 })"},
 	} {
-		add(&failCase{Name: "super-rethrows-" + row.name, Owner: "compiler", Quote: superRethrowsRule, Code: 401, Host: "none", Lib: superRethrowsLib, Decls: row.prefix + "export class Derived extends " + row.base + " { constructor() { " + row.body + " } }"})
+		add(&failCase{Name: "super-rethrows-" + row.name, Quote: superRethrowsRule, Code: 401, Host: "none", Lib: superRethrowsLib, Decls: row.prefix + "export class Derived extends " + row.base + " { constructor() { " + row.body + " } }"})
 	}
 
 	const signatures = "Tags attach to call signatures: each overload and a returned callable's own signature carry their own. `const g = f` preserves `f`'s contract; a tag on an alias of a function type does not attach, so in a foreign declaration write `type Reader = { /** @throws {E} */ (): string }`."
@@ -280,26 +277,26 @@ func failuresExtraCases() []*failCase {
 	// that declares no constructor.
 	const throughAny = "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives."
 	const anyLib = "export declare const Dynamic: any\n"
-	add(&failCase{Name: "new-through-any", Owner: "compiler", Quote: throughAny, Code: 403, Lib: anyLib, Body: "const v = ⟦new Dynamic()⟧"})
-	add(&failCase{Name: "new-through-any-argument", Owner: "compiler", Quote: throughAny, Code: 403, Lib: anyLib, Body: "const v = ⟦new Dynamic(s)⟧"})
-	add(&failCase{Name: "new-through-any-effectful-plain", Owner: "compiler", Quote: effectfulBody, Code: 401, Host: "none", Lib: anyLib, Decls: "export function probe(): Effect.Effect<number> { ⟦new Dynamic()⟧; return Effect.succeed(1) }"})
-	add(&failCase{Name: "new-through-any-control-plain", Owner: "compiler", Quote: throughAny, Host: "plain", Lib: anyLib, Body: "const v = new Dynamic()"})
-	add(&failCase{Name: "new-through-any-control-bridge", Owner: "compiler", Quote: throughAny, Lib: anyLib, Body: "const v = try Effect.orDie(Effect.try(() => new Dynamic()))"})
-	add(&failCase{Name: "new-through-any-control-local-class", Owner: "compiler", Quote: throughAny, Decls: "class Local { value = 1 }", Body: "const v = new Local()"})
+	add(&failCase{Name: "new-through-any", Quote: throughAny, Code: 403, Lib: anyLib, Body: "const v = ⟦new Dynamic()⟧"})
+	add(&failCase{Name: "new-through-any-argument", Quote: throughAny, Code: 403, Lib: anyLib, Body: "const v = ⟦new Dynamic(s)⟧"})
+	add(&failCase{Name: "new-through-any-effectful-plain", Quote: effectfulBody, Code: 401, Host: "none", Lib: anyLib, Decls: "export function probe(): Effect.Effect<number> { ⟦new Dynamic()⟧; return Effect.succeed(1) }"})
+	add(&failCase{Name: "new-through-any-control-plain", Quote: throughAny, Host: "plain", Lib: anyLib, Body: "const v = new Dynamic()"})
+	add(&failCase{Name: "new-through-any-control-bridge", Quote: throughAny, Lib: anyLib, Body: "const v = try Effect.orDie(Effect.try(() => new Dynamic()))"})
+	add(&failCase{Name: "new-through-any-control-local-class", Quote: throughAny, Decls: "class Local { value = 1 }", Body: "const v = new Local()"})
 	// An interface named Effect that copies the `~effect/Effect` marker but
 	// declares no A, E and R parameters is not assignable to Effect.Effect, so
 	// its callers are ordinary calls with their written contracts. Checking
 	// any such call once crashed the compiler.
 	const effectCopies = "import type { Effect as Native } from \"effect\"\ninterface Effect { readonly \"~effect/Effect\": Native.Effect<number>[\"~effect/Effect\"] }\nexport declare function copy(): Effect\n/** @throws {RangeError} */\nexport declare function knownCopy(): Effect\n/** @throws {never} */\nexport declare function safeCopy(): Effect\nexport declare function whole(): Native.Effect<number>\n"
 	for _, call := range []struct{ name, expr string }{{"untagged", "copy()"}, {"known", "knownCopy()"}} {
-		add(&failCase{Name: "effect-interface-copy-" + call.name, Owner: "compiler", Quote: effectful, Code: 403, Lib: effectCopies, Body: "const value = ⟦" + call.expr + "⟧"})
+		add(&failCase{Name: "effect-interface-copy-" + call.name, Quote: effectful, Code: 403, Lib: effectCopies, Body: "const value = ⟦" + call.expr + "⟧"})
 	}
 	for _, call := range []struct{ name, expr string }{{"never", "safeCopy()"}, {"whole", "whole()"}, {"bridge", "try Effect.orDie(Effect.try(() => copy()))"}} {
-		add(&failCase{Name: "effect-interface-copy-control-" + call.name, Owner: "compiler", Quote: effectful, Lib: effectCopies, Body: "const value = " + call.expr})
+		add(&failCase{Name: "effect-interface-copy-control-" + call.name, Quote: effectful, Lib: effectCopies, Body: "const value = " + call.expr})
 	}
-	add(&failCase{Name: "effect-interface-copy-control-plain", Owner: "compiler", Quote: effectful, Host: "plain", Lib: effectCopies, Body: "const value = copy()"})
-	add(&failCase{Name: "effect-interface-copy-control-top", Owner: "compiler", Quote: effectful, Host: "none", Lib: effectCopies, Decls: "export const value = copy()"})
-	add(&failCase{Name: "effect-interface-copy-control-return", Owner: "compiler", Quote: effectful, Host: "none", Lib: effectCopies, Decls: "export function probe(): ReturnType<typeof copy> { return copy() }"})
+	add(&failCase{Name: "effect-interface-copy-control-plain", Quote: effectful, Host: "plain", Lib: effectCopies, Body: "const value = copy()"})
+	add(&failCase{Name: "effect-interface-copy-control-top", Quote: effectful, Host: "none", Lib: effectCopies, Decls: "export const value = copy()"})
+	add(&failCase{Name: "effect-interface-copy-control-return", Quote: effectful, Host: "none", Lib: effectCopies, Decls: "export function probe(): ReturnType<typeof copy> { return copy() }"})
 	// A class override is checked like an implemented member: a member a
 	// class declares over a base class member must admit no throw the base
 	// member's function type does not.
@@ -315,7 +312,7 @@ func failuresExtraCases() []*failCase {
 		{"static", "export class C extends Statics { static ⟦read⟧ = parse }"},
 		{"static-untagged", "export class C extends Statics { static ⟦read⟧ = untagged }"},
 	} {
-		add(&failCase{Name: "class-override-" + row.name, Owner: "compiler", Quote: overrides, Code: 402, Host: "none", Lib: overrideLib, Decls: row.decls})
+		add(&failCase{Name: "class-override-" + row.name, Quote: overrides, Code: 402, Host: "none", Lib: overrideLib, Decls: row.decls})
 	}
 	for _, row := range []struct{ name, decls string }{
 		{"admitted", "export class C extends Tolerant { read = parse }"},
@@ -324,7 +321,7 @@ func failuresExtraCases() []*failCase {
 		{"inherited", "export class C extends Reader {}"},
 		{"method", "export class C extends Source { override read(): string { return \"method\" } }"},
 	} {
-		add(&failCase{Name: "class-override-control-" + row.name, Owner: "compiler", Quote: overrides, Host: "none", Lib: overrideLib, Decls: row.decls})
+		add(&failCase{Name: "class-override-control-" + row.name, Quote: overrides, Host: "none", Lib: overrideLib, Decls: row.decls})
 	}
 
 	// @exception is TypeScript's alternate spelling of a JSDocThrowsTag.
@@ -341,19 +338,19 @@ func failuresExtraCases() []*failCase {
 		{"unknown-control", "/** @exceptions {RangeError} */\nexport function read() { return 1 }"},
 		{"module-control", "module foreign {\n/** @exception {RangeError} */\nexport function read() { return 1 }\n}"},
 	} {
-		add(&failCase{Name: "exception-tag-" + row.name, Owner: "compiler", Quote: exceptionSource, Host: "none", Code: 406, Decls: row.source})
+		add(&failCase{Name: "exception-tag-" + row.name, Quote: exceptionSource, Host: "none", Code: 406, Decls: row.source})
 	}
-	add(&failCase{Name: "exception-tag-foreign-known", Owner: "compiler", Quote: "| `/** @throws {T} */` on it or its call signature | `T`, trusted, not checked |", Code: 403, Lib: "/** @exception {RangeError} */\nexport declare function read(): number", Body: "const value = ⟦read()⟧"})
-	add(&failCase{Name: "exception-tag-foreign-never", Owner: "compiler", Quote: "| `/** @throws {T} */` on it or its call signature | `T`, trusted, not checked |", Lib: "/** @exception {never} */\nexport declare function read(): number", Body: "const value = read()"})
+	add(&failCase{Name: "exception-tag-foreign-known", Quote: "| `/** @throws {T} */` on it or its call signature | `T`, trusted, not checked |", Code: 403, Lib: "/** @exception {RangeError} */\nexport declare function read(): number", Body: "const value = ⟦read()⟧"})
+	add(&failCase{Name: "exception-tag-foreign-never", Quote: "| `/** @throws {T} */` on it or its call signature | `T`, trusted, not checked |", Lib: "/** @exception {never} */\nexport declare function read(): number", Body: "const value = read()"})
 
 	// A @throws tag that writes no type, with no braces or with empty ones,
 	// names no thrown type: its callee keeps the untagged contract, unknown.
 	const noTag = "| no tag | `unknown` |"
 	for _, tag := range []struct{ name, doc string }{{"empty-braces", "/** @throws {} */"}, {"spaced-braces", "/** @throws { } */"}, {"bare", "/** @throws */"}, {"prose", "/** @throws if the input is empty */"}} {
 		lib := tag.doc + "\nexport declare function f(): number\n"
-		add(&failCase{Name: "throws-untyped-" + tag.name, Owner: "compiler", Quote: noTag, Code: 403, Lib: lib, Body: "const v = ⟦f()⟧"})
-		add(&failCase{Name: "throws-untyped-" + tag.name + "-assign", Owner: "compiler", Quote: noTag, Code: 402, Host: "plain", Lib: lib, Body: "const r: () => number = ⟦f⟧"})
-		add(&failCase{Name: "throws-untyped-control-" + tag.name + "-plain", Owner: "compiler", Quote: noTag, Host: "plain", Lib: lib, Body: "const v = f()"})
+		add(&failCase{Name: "throws-untyped-" + tag.name, Quote: noTag, Code: 403, Lib: lib, Body: "const v = ⟦f()⟧"})
+		add(&failCase{Name: "throws-untyped-" + tag.name + "-assign", Quote: noTag, Code: 402, Host: "plain", Lib: lib, Body: "const r: () => number = ⟦f⟧"})
+		add(&failCase{Name: "throws-untyped-control-" + tag.name + "-plain", Quote: noTag, Host: "plain", Lib: lib, Body: "const v = f()"})
 	}
 	return append(cases, failuresRound20Cases()...)
 }

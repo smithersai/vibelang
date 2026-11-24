@@ -158,9 +158,9 @@ func TestSuperseded(t *testing.T) {
 
 var registryKey = regexp.MustCompile(`^registry:EK(38\d{2,}|\d{4})$`)
 
-var ekKey = regexp.MustCompile(`^ek:EK(38\d{2,}|\d{4})(/.+)?$`)
+var ekKey = regexp.MustCompile(`^ek:EK(38\d{2,}|\d{4})(?:/.+)?$`)
 
-// deadKey rejects codes absent from the current registry and missing injections.
+// deadKey rejects codes absent from the current registry.
 func deadKey(e PendingEntry) string {
 	if m := registryKey.FindStringSubmatch(e.Key); m != nil {
 		code, _ := strconv.Atoi(m[1])
@@ -175,14 +175,6 @@ func deadKey(e PendingEntry) string {
 	}
 	if code, _ := strconv.Atoi(m[1]); !SpecHasCode(int32(code)) {
 		return "the current specification never registers EK" + m[1]
-	}
-	if m[2] != "" && e.Target == rulesTarget {
-		for _, inj := range ruleInjections {
-			if inj.Key() == e.Key {
-				return ""
-			}
-		}
-		return "no injection has this key"
 	}
 	return ""
 }

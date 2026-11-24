@@ -14,9 +14,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-func grammarRequireRegExpNode(t *testing.T) {
+var grammarRegExpNode = sync.OnceValues(func() (string, error) { return exec.LookPath("node") })
+
+func grammarRequireRegExpNode(t testing.TB) {
 	t.Helper()
-	if _, err := exec.LookPath("node"); err != nil {
+	if _, err := grammarRegExpNode(); err != nil {
 		if os.Getenv("VIBELANG_FUZZ_REQUIRE") == "1" {
 			t.Fatal("native RegExp lexical checks require Node.js")
 		}
@@ -76,7 +78,7 @@ func grammarRegExpLiteralSyntax(literal string) bool {
 	if known {
 		return valid
 	}
-	node, err := exec.LookPath("node")
+	node, err := grammarRegExpNode()
 	if err != nil {
 		return false
 	}

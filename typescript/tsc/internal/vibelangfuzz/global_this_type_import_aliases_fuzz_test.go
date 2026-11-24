@@ -87,12 +87,13 @@ func FuzzGlobalThisTypeImportAliases(f *testing.F) {
 			if ext == "ts" {
 				want = row.NativeCodes
 			}
+			oracleKey := row.Key + ":" + ext
 			if !slices.Equal(codes, want) {
-				Gap(t, globalThisTypeImportAliasesTarget, row.Key+":"+ext, "%s; want %v, got %v; source=%s", globalThisTypeImportAliasesQuote, want, codes, source)
+				Gap(t, globalThisTypeImportAliasesTarget, oracleKey, "%s; want %v, got %v; source=%s", globalThisTypeImportAliasesQuote, want, codes, source)
 				return
 			}
+			ExpectPending(t, globalThisTypeImportAliasesTarget, oracleKey)
 		}
-		ExpectPending(t, globalThisTypeImportAliasesTarget, row.Key)
 		ExpectPending(t, globalThisTypeImportAliasesTarget, specCorpusKey(t))
 	})
 }

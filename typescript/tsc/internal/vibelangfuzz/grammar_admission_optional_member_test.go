@@ -100,10 +100,7 @@ func TestGrammarAdmissionOptionalClassMember(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarOptionalEffectClasses {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("the recorded optional-member derivation gap changed: %s", source)
-			}
-			checkGrammarAdmission(t, w, "admission:effect-optional-class-member", source)
+			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 }

@@ -11,7 +11,7 @@ let input = ""
 for await (const chunk of process.stdin) input += chunk
 const { key, mode } = JSON.parse(input)
 mkdirSync(join(root, ".cache"), { recursive: true })
-const temp = mkdtempSync(join(root, ".cache/reference-plan-"))
+const temp = mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(root, ".cache/reference-plan-"))
 const saved = new Map()
 const put = (name, value) => {
   const text = typeof value === "string" ? value : JSON.stringify(value)

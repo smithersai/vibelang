@@ -93,7 +93,7 @@ func FuzzMigrationReturnedIIFE(f *testing.F) {
 		cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_returned_iife.mjs"))
 		cmd.Dir = Root()
 		cmd.Stdin = strings.NewReader(string(input))
-		output, err := cmd.CombinedOutput()
+		output, err := runJSONOracle(t, cmd)
 		if err != nil {
 			t.Fatalf("static returned-IIFE oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 		}

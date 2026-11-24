@@ -20,8 +20,8 @@ func TestGrammarAdmissionNameContextQuoted(t *testing.T) {
 
 // Names and formal parameters intentionally use different contexts. A nested
 // plain callable resets the surrounding Effect context; expression names always
-// use their own Effect context. These are derivation checks, not compiler flags.
-func checkGrammarDeclarationNameContext(t *testing.T, data []byte) {
+// use their own Effect context.
+func checkGrammarDeclarationNameContext(t *testing.T, w *Workspace, data []byte) {
 	t.Helper()
 	if len(data) == 0 {
 		return
@@ -55,29 +55,23 @@ func checkGrammarDeclarationNameContext(t *testing.T, data []byte) {
 	if got != want {
 		t.Fatalf("Appendix A derivation=%v, want %v: %s", got, want, source)
 	}
+	checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 }
 
 func TestGrammarAdmissionDeclarationNameContext(t *testing.T) {
+	w := NewWorkspace(t)
 	for name := byte(0); name < 2; name++ {
 		for producer := byte(0); producer < 2; producer++ {
 			for context := byte(0); context < 3; context++ {
 				for expression := byte(0); expression < 2; expression++ {
 					for parameter := byte(0); parameter < 2; parameter++ {
 						input := []byte{name, producer, context, expression, parameter}
-						t.Run(fmt.Sprint(input), func(t *testing.T) { checkGrammarDeclarationNameContext(t, input) })
+						t.Run(fmt.Sprint(input), func(t *testing.T) { checkGrammarDeclarationNameContext(t, w, input) })
 					}
 				}
 			}
 		}
 	}
-}
-
-func FuzzGrammarDeclarationNameContext(f *testing.F) {
-	startShortBudget(f)
-	f.Add([]byte{0, 0, 0, 0, 0})
-	f.Add([]byte{1, 1, 2, 0, 0})
-	f.Add([]byte{0, 1, 1, 1, 1})
-	f.Fuzz(func(t *testing.T, data []byte) { checkGrammarDeclarationNameContext(t, data) })
 }
 
 // Overload signatures inherit the declaration context too, but their parameters

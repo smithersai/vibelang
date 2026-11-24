@@ -7,7 +7,7 @@ import { compareDeclarations,recordDeclarationSurface } from "../../../../../../
 const ts=createRequire(join(process.cwd(),"packages/runtime/package.json"))("typescript")
 const fixture=JSON.parse(readFileSync(new URL("../corpus/smithers-recursive-infer-relocation.json",import.meta.url),"utf8"))
 const [key,rawMode]=process.argv.slice(2),mode=Number(rawMode)&15
-mkdirSync(".cache",{recursive:true});const root=mkdtempSync(join(process.cwd(),".cache/recursive-infer-"))
+mkdirSync(".cache",{recursive:true});const root=mkdtempSync(process.env.VIBELANG_ORACLE_SCRATCH ? join(process.env.VIBELANG_ORACLE_SCRATCH, "fixture-") : join(process.cwd(),".cache/recursive-infer-"))
 const put=(file,text)=>{mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text)}
 try {
  const prefix=mode&4?"nested/":""

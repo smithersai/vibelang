@@ -1,2 +1,0 @@
-# VIP-33 Chapter 5 quoted platform-binding rule. Observed on main's compiler sources via r4/platform-cli-receipt.json; Go replay must recheck every key and catch XPASS.
-# Owner routing follows existing claims platform-wrapper-ban (d-platform) and EK4403:legacy-rule (del-rest).

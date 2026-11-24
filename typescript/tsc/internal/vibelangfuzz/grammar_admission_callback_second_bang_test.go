@@ -63,10 +63,7 @@ func TestGrammarAdmissionCallbackSecondBangRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarCallbackSecondBangSources {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("callback witness no longer exposes lost line-terminator rejection: %s", source)
-			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
+			checkGrammarAdmission(t, w, "admission:effect-type-line-break", source)
 		})
 	}
 }

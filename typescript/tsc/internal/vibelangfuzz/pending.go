@@ -18,7 +18,7 @@ import (
 // holds the lines of one area, one gap per line:
 //
 //	# target          key                   owner  what is missing
-//	FuzzSpecPrograms  feature:await.race    compiler     D123: await.race is not lowered
+//	FuzzVIPDifferential feature:vip01.effect-function compiler VIP-1: effect function is not lowered
 //	FuzzCompile       corpus:3f2a9c1e0b7d   emitter     D267: emitted JS imports node:util
 //
 // The key is "feature:<name>" for a generator feature, "ek:<EK code>" for a
