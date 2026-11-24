@@ -1,6 +1,8 @@
 package parser_test
 
 import (
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -8,6 +10,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
+// Handlers are an open proposal, outside the first release: control and
+// handle report EK3501, and the parser recovers them. This pins the recovery.
 // Recovery of a retired handle clause keeps resume calls navigable. The
 // arguments the parser adds stand where the written arguments start, so every
 // argument of `resume(1)` and `resume()` follows the callee: a language
@@ -18,14 +22,12 @@ func TestRetiredClauseResumeArgumentsFollowTheirCallee(t *testing.T) {
 	t.Parallel()
 	source := "control Ask { ask(): number!! }\n\neffect function run() {\n  try {\n    return try Ask.ask()\n  } handle Ask.ask() {\n    if (false) { try resume() }\n    return try resume(1)\n  }\n}\n"
 	file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
-	retired := 0
+	var retired []string
 	for _, d := range file.Diagnostics() {
-		if d.Source() == "EK" && d.Code() == 3501 {
-			retired++
-		}
+		retired = append(retired, fmt.Sprintf("%s%04d %s", d.Source(), d.Code(), source[d.Pos():d.End()]))
 	}
-	if retired != 2 {
-		t.Fatalf("want EK3501 for control and handle, got %v", file.Diagnostics())
+	if want := []string{"EK3501 control", "EK3501 handle"}; !slices.Equal(retired, want) {
+		t.Fatalf("retired handler diagnostics: got %v, want %v", retired, want)
 	}
 	var calls []*ast.Node
 	var visit func(*ast.Node) bool

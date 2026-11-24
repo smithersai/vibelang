@@ -22,14 +22,8 @@ func TestRetiredSelectEditorTokens(t *testing.T) {
 		"function f() {}\nexport function main() { select { case const n = (f()): return n; default: return f() } }",
 	} {
 		file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
-		retired := 0
-		for _, d := range file.Diagnostics() {
-			if d.Source() == "EK" && d.Code() == 4607 && d.Pos() == strings.Index(source, "select") {
-				retired++
-			}
-		}
-		if retired != 1 {
-			t.Fatalf("want EK4607 at select, got %v", file.Diagnostics())
+		if ds := file.Diagnostics(); len(ds) != 1 || ds[0].Source() != "EK" || ds[0].Code() != 4607 || source[ds[0].Pos():ds[0].End()] != "select" {
+			t.Fatalf("retired select: want only EK4607 at select, got %v", ds)
 		}
 		var written []*ast.Node
 		var visit func(*ast.Node) bool

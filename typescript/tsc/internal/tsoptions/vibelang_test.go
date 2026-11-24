@@ -4,6 +4,7 @@ package tsoptions_test
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -42,7 +43,7 @@ func TestVibeLangConfigRoundTrip(t *testing.T) {
 				policies = append(policies, fmt.Sprintf("%q:%q", code, category))
 				want.Diagnostics[code] = category
 			}
-			config := vibeConfig(t, `{"compilerOptions":{"vibelang":{"trustedPackages":["@smthrs/*","exact-package"],"diagnostics":{`+strings.Join(policies, ",")+`}}},"files":["main.vibe"]}`, "{}")
+			config := vibeConfig(t, `{"compilerOptions":{"vibelang":{"diagnostics":{`+strings.Join(policies, ",")+`}}},"files":["main.vibe"]}`, "{}")
 			if len(config.Errors) != 0 || !reflect.DeepEqual(config.CompilerOptions().VibeLang, want) {
 				t.Fatalf("accepted settings changed: %+v; errors %v", config.CompilerOptions().VibeLang, config.Errors)
 			}
@@ -151,17 +152,18 @@ func TestVibeLangNonAdjustableDiagnostic(t *testing.T) {
 // ignore. Settings there are validated as in compilerOptions and inherited
 // through extends (D275).
 func TestVibeLangTopLevelSettings(t *testing.T) {
-	inherited := vibeConfig(t, `{"extends":"./base.json","files":["main.vibe"]}`, `{"compilerOptions":{"strict":true},"vibelang":{"trustedPackages":["@smthrs/*"]}}`)
-	if len(inherited.Errors) != 0 || inherited.CompilerOptions().VibeLang == nil || len(inherited.CompilerOptions().VibeLang.TrustedPackages) != 0 {
-		t.Fatalf("extends did not carry top-level settings: %+v; errors %v", inherited.CompilerOptions().VibeLang, inherited.Errors)
+	inherited := vibeConfig(t, `{"extends":"./base.json","files":["main.vibe"]}`, `{"compilerOptions":{"strict":true},"vibelang":{"diagnostics":{"EK4801":"off"}}}`)
+	if options := inherited.CompilerOptions().VibeLang; len(inherited.Errors) != 0 || options == nil || !maps.Equal(options.Diagnostics, map[string]string{"EK4801": "off"}) {
+		t.Fatalf("extends did not carry top-level settings: %+v; errors %v", options, inherited.Errors)
 	}
-	own := vibeConfig(t, `{"vibelang":{"trustedPackages":["other"]},"files":["main.vibe"]}`, "{}")
-	if len(own.Errors) != 0 || own.CompilerOptions().VibeLang == nil || len(own.CompilerOptions().VibeLang.TrustedPackages) != 0 {
-		t.Fatalf("top-level settings without compilerOptions: %+v; errors %v", own.CompilerOptions().VibeLang, own.Errors)
+	own := vibeConfig(t, `{"vibelang":{"diagnostics":{"EK4801":"warning"}},"files":["main.vibe"]}`, "{}")
+	if options := own.CompilerOptions().VibeLang; len(own.Errors) != 0 || options == nil || !maps.Equal(options.Diagnostics, map[string]string{"EK4801": "warning"}) {
+		t.Fatalf("top-level settings without compilerOptions: %+v; errors %v", options, own.Errors)
 	}
-	invalid := vibeConfig(t, `{"compilerOptions":{},"vibelang":{"trustedPackage":["zod"]},"files":["main.vibe"]}`, "{}")
-	if len(invalid.Errors) == 0 {
-		t.Fatal("an unknown top-level vibelang key was accepted")
+	text := `{"compilerOptions":{},"vibelang":{"trustedPackage":["zod"]},"files":["main.vibe"]}`
+	invalid := vibeConfig(t, text, "{}")
+	if len(invalid.Errors) != 1 || invalid.Errors[0].Code() != 5023 || text[invalid.Errors[0].Pos():invalid.Errors[0].End()] != `"trustedPackage"` {
+		t.Fatalf("an unknown top-level vibelang key needs TS5023 at its name: %v", invalid.Errors)
 	}
 }
 

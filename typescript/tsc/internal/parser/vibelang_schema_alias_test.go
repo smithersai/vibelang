@@ -80,11 +80,10 @@ func TestSchemaAliasLeavesOtherSpellings(t *testing.T) {
 	}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if parser.IsSchemaAliasDeclaration(node) || (node.Kind == ast.KindTypeAliasDeclaration && node.Flags&ast.NodeFlagsReparsed != 0) {
-			t.Errorf("TypeScript built a schema alias node at %d", node.Pos())
+		if parser.IsSchemaAliasDeclaration(node) || node.Flags&ast.NodeFlagsReparsed != 0 {
+			t.Errorf("TypeScript built a schema alias node: %s at %d", node.Kind, node.Pos())
 		}
-		node.ForEachChild(visit)
-		return false
+		return node.ForEachChild(visit)
 	}
 	ts.AsNode().ForEachChild(visit)
 }

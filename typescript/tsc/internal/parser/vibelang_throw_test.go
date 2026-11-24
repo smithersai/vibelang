@@ -1,12 +1,39 @@
 package parser_test
 
 import (
+	"fmt"
+	"strings"
+	"testing"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
-	"strings"
-	"testing"
 )
+
+// wantThrowLookahead requires file to report exactly one EK1010, VIP-41's
+// throw lookahead error, not TypeScript's TS1010, spanning the throw
+// expression throwText and naming token, the punctuator after it.
+func wantThrowLookahead(t *testing.T, source string, file *ast.SourceFile, throwText, token string) {
+	t.Helper()
+	var d *ast.Diagnostic
+	for _, each := range file.Diagnostics() {
+		if each.Code() == parser.VibeLangThrowLookaheadCode {
+			if each.Source() != "EK" || d != nil {
+				t.Fatalf("%q: want exactly one EK1010, got %v", source, file.Diagnostics())
+			}
+			d = each
+		}
+	}
+	if d == nil {
+		t.Fatalf("%q: want EK1010, got %v", source, file.Diagnostics())
+	}
+	if got := source[d.Pos():d.End()]; got != throwText {
+		t.Fatalf("%q: EK1010 spans %q, want %q", source, got, throwText)
+	}
+	if !strings.Contains(d.String(), "can't be followed by "+token+":") {
+		t.Fatalf("%q: EK1010 does not name %s: %s", source, token, d.String())
+	}
+}
 
 // VIP-41's oracle is the pinned proposal, not TypeScript's implementation.
 // Examples are from the upstream explainer; remaining rows exercise each
@@ -82,23 +109,34 @@ func TestTC39ThrowExpressions(t *testing.T) {
 			source := strings.Replace(place, "%s", " "+op+tail, 1)
 			t.Run(source, func(t *testing.T) {
 				file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
-				requireThrowLookahead(t, source, file)
+				wantThrowLookahead(t, source, file, "throw e", op)
 			})
 		}
 	}
-	for _, source := range []string{
-		"f(throw e\n+f());", "const x = [throw e, b];",
-		"const x = { value: throw e, next: b };",
-		"const x = throw e, y = b;",
-		"const x = throw e => e;",
-		"function* f() { return throw yield e; }",
-		"const x = new throw e;",
-		"(throw a ? b : c);", "(throw a, b);", "(throw a && b);", "(throw a || b);",
+	// Rows the proposal rejects: EK1010 at the throw expression when a
+	// forbidden punctuator follows it, else the native diagnostic.
+	for _, tc := range []struct{ source, throw, token, native string }{
+		{"f(throw e\n+f());", "throw e", "+", ""},
+		{"const x = [throw e, b];", "throw e", ",", ""},
+		{"const x = { value: throw e, next: b };", "throw e", ",", ""},
+		{"const x = throw e, y = b;", "throw e", ",", ""},
+		{"(throw a ? b : c);", "throw a", "?", ""},
+		{"(throw a, b);", "throw a", ",", ""},
+		{"(throw a && b);", "throw a", "&&", ""},
+		{"(throw a || b);", "throw a", "||", ""},
+		{"const x = throw e => e;", "", "", "TS1005 =>"},
+		{"function* f() { return throw yield e; }", "", "", "TS1109 yield"},
+		{"const x = new throw e;", "", "", "TS1109 throw"},
 	} {
-		t.Run(source, func(t *testing.T) {
-			file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
-			if len(file.Diagnostics()) == 0 {
-				t.Fatalf("proposal rejects %q", source)
+		t.Run(tc.source, func(t *testing.T) {
+			file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, tc.source)
+			if tc.native == "" {
+				wantThrowLookahead(t, tc.source, file, tc.throw, tc.token)
+				return
+			}
+			ds := file.Diagnostics()
+			if len(ds) != 1 || ds[0].Source() != "" || fmt.Sprintf("TS%d %s", ds[0].Code(), tc.source[ds[0].Pos():ds[0].End()]) != tc.native {
+				t.Fatalf("proposal rejects %q: want only %s, got %v", tc.source, tc.native, ds)
 			}
 		})
 	}
@@ -164,12 +202,18 @@ func TestTC39ThrowClassASI(t *testing.T) {
 		"const x = throw e\n*f();",
 		"class C { method() { const x = throw e\n*f(); } }",
 		"class C { value = f(throw e\n*f()); }",
-		"class C { value = throw e *method() {} }",
 	} {
 		file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
-		requireThrowLookahead(t, source, file)
+		wantThrowLookahead(t, source, file, "throw e", "*")
 	}
-	file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, "class C { value = throw e\n*() {} }")
+	// Without a line break the field cannot end, so the rest of the class
+	// keeps its native errors after the EK1010.
+	source := "class C { value = throw e *method() {} }"
+	file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+	if ds := file.Diagnostics(); len(ds) == 0 || ds[0].Source() != "EK" || ds[0].Code() != parser.VibeLangThrowLookaheadCode || source[ds[0].Pos():ds[0].End()] != "throw e" {
+		t.Fatalf("proposal lookahead rejects %q: want EK1010 at throw e first, got %v", source, ds)
+	}
+	file, _ = parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, "class C { value = throw e\n*() {} }")
 	if len(file.Diagnostics()) == 0 {
 		t.Fatal("malformed generator method needs its native diagnostic")
 	}
@@ -246,22 +290,5 @@ func TestTC39ThrowMissingOperand(t *testing.T) {
 				})
 			}
 		}
-	}
-}
-
-func requireThrowLookahead(t *testing.T, source string, file *ast.SourceFile) {
-	t.Helper()
-	start := strings.Index(source, "throw ")
-	count := 0
-	for _, d := range file.Diagnostics() {
-		if d.Source() == "EK" && d.Code() == 1010 {
-			count++
-			if d.Pos() != start || d.End() != start+len("throw e") {
-				t.Errorf("EK1010 span = [%d,%d), want throw expression at %d", d.Pos(), d.End(), start)
-			}
-		}
-	}
-	if count != 1 {
-		t.Fatalf("want one EK1010 for %q, got %v", source, file.Diagnostics())
 	}
 }

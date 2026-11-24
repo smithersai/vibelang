@@ -21,6 +21,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+	"maps"
 	"reflect"
 	"strings"
 	"testing"
@@ -111,7 +112,9 @@ func TestVibeSeveritiesExtendsArrayAndSiblings(t *testing.T) {
 		"/p/sibling.json":  `{"extends":"./a.json","files":["main.vibe"]}`,
 		"/p/main.vibe":     "export const n=1",
 	}, tspath.CaseSensitive)
-	var cache tsoptions.ExtendedConfigCache
+	// A shared cache hands the sibling the same parsed a.json the array merge
+	// read, so a merge that wrote into the base's map would show here.
+	cache := &memoCache{}
 	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/p/tsconfig.json", &core.CompilerOptions{}, nil, fs, cache)
 	if len(errors) != 0 || len(parsed.Errors) != 0 {
 		t.Fatalf("%v %v", errors, parsed.Errors)
@@ -120,7 +123,10 @@ func TestVibeSeveritiesExtendsArrayAndSiblings(t *testing.T) {
 	if !reflect.DeepEqual(parsed.CompilerOptions().VibeLang.Severities, want) {
 		t.Fatalf("array merge: %+v", parsed.CompilerOptions().VibeLang)
 	}
-	sibling, _ := tsoptions.GetParsedCommandLineOfConfigFile("/p/sibling.json", &core.CompilerOptions{}, nil, fs, cache)
+	sibling, errors := tsoptions.GetParsedCommandLineOfConfigFile("/p/sibling.json", &core.CompilerOptions{}, nil, fs, cache)
+	if len(errors) != 0 || len(sibling.Errors) != 0 || sibling.CompilerOptions().VibeLang == nil {
+		t.Fatalf("sibling: %v %v %+v", errors, sibling.Errors, sibling.CompilerOptions().VibeLang)
+	}
 	if got := sibling.CompilerOptions().VibeLang.Severities; got["EK4609"] != "off" || len(got) != 2 {
 		t.Fatalf("base mutated: %v", got)
 	}
@@ -128,16 +134,16 @@ func TestVibeSeveritiesExtendsArrayAndSiblings(t *testing.T) {
 
 // Chapter 007 / legacy options preserve whole-section inheritance: docs/design/src/007-tooling.md#de3fe9aa3ec27c8b
 func TestVibeSeveritiesLegacyCoexistence(t *testing.T) {
-	base := `{"vibelang":{"trustedPackages":["example"]},"vibe":{"severities":{"EK4610":"warning"}}}`
+	base := `{"vibelang":{"diagnostics":{"EK4801":"off"}},"vibe":{"severities":{"EK4610":"warning"}}}`
 	for _, test := range []struct {
 		override string
-		trusted  []string
+		legacy   map[string]string
 	}{
-		{`"vibe":{"severities":{"EK4609":"off"}}`, nil},
+		{`"vibe":{"severities":{"EK4609":"off"}}`, map[string]string{"EK4801": "off"}},
 		{`"compilerOptions":{"vibelang":{}}`, nil},
 		{`"compilerOptions":{"vibelang":null}`, nil},
 		{`"vibelang":null`, nil},
-		{`"vibelang":{"trustedPackages":["other"]},"vibe":{"severities":{"EK4609":"off"}}`, nil},
+		{`"vibelang":{"diagnostics":{"EK4801":"warning"}},"vibe":{"severities":{"EK4609":"off"}}`, map[string]string{"EK4801": "warning"}},
 	} {
 		t.Run(test.override, func(t *testing.T) {
 			config := vibeConfig(t, `{"extends":"./base.json",`+test.override+`,"files":["main.vibe"]}`, base)
@@ -145,7 +151,7 @@ func TestVibeSeveritiesLegacyCoexistence(t *testing.T) {
 				t.Fatal(config.Errors)
 			}
 			options := config.CompilerOptions().VibeLang
-			if options == nil || !reflect.DeepEqual(options.TrustedPackages, test.trusted) || options.Severities["EK4610"] != "warning" {
+			if options == nil || !maps.Equal(options.Diagnostics, test.legacy) || options.Severities["EK4610"] != "warning" {
 				t.Fatalf("lost independent sections: %+v", options)
 			}
 			shown, err := json.Marshal(tsoptions.ConvertToTSConfig(config, "/project/tsconfig.json"))
@@ -174,10 +180,8 @@ func TestVibeLegacyDiagnosticsNullClears(t *testing.T) {
 	} {
 		t.Run(test.override, func(t *testing.T) {
 			config := vibeConfig(t, `{"extends":"./base.json",`+test.override+`"files":["main.vibe"]}`, base)
-			for _, d := range config.Errors {
-				if d.Source() != "EK" {
-					t.Fatalf("legacy section rejected: %s", d.String())
-				}
+			if len(config.Errors) != 0 {
+				t.Fatalf("legacy section rejected: %v", config.Errors)
 			}
 			options := config.CompilerOptions().VibeLang
 			got := ""

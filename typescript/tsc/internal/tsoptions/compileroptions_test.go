@@ -76,7 +76,6 @@ func TestGeneratedCompilerOptionParsingAndClone(t *testing.T) {
 				codes.Set("EK4406", "warning")
 				settings := &collections.OrderedMap[string, any]{}
 				settings.Set("diagnostics", codes)
-				settings.Set("trustedPackages", []any{"@smthrs/*"})
 				input, expected = settings, &core.VibeLangOptions{Diagnostics: map[string]string{"EK4406": "warning"}}
 			case field.Type == reflect.TypeFor[core.Tristate]():
 				input, expected = true, core.TSTrue
