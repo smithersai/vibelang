@@ -58,3 +58,11 @@ test("cold factory guidance retains direct calls, throw contracts and the error-
     expect(coldFactoryGuidance(skill.replaceAll(term, "[omitted]"))).toBe(false)
   }
 })
+
+test("the essentials and the starter's AGENTS.md say a plain handler's throw is EK0401, not a defect (#575)", () => {
+  for (const path of ["docs/user/llms-essentials.md", "templates/app/AGENTS.md"]) {
+    const text = read(path)
+    expect({ path, ek0401: text.includes("A plain handler with `throw` reports `EK0401`") }).toEqual({ path, ek0401: true })
+    expect({ path, defects: text.includes("plain handlers throw defects") }).toEqual({ path, defects: false })
+  }
+})
