@@ -124,6 +124,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Editing a source file while a cold loader validated a committed loader record could store the stale output in the compile cache under the new file's hash. The cache snapshot is now taken before record validation, so concurrent edits are not cached.
 
+- `@typescript-eslint/consistent-type-imports` reported an import that a schema field names, such as `Held` in `schema File { source: Held }`, as used only as a type, and its fix to `import type` failed to compile with `TS1361`. `vibelang/eslint` now reports that import as a value import.
+
 - Rejected service member headers could add misleading implicit return type, overload, or duplicate implementation errors. Each rejected member now reports its service rule, while ordinary nested classes and interfaces keep their native errors.
 
 - Constructing a service key could hide unknown names and type errors in its arguments. Those errors now appear alongside `EK3003`.

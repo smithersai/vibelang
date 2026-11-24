@@ -103,8 +103,8 @@ function tryLoad(require) {
     try {
       const scope = from.resolve("@typescript-eslint/scope-manager")
       const keys = from.resolve("@typescript-eslint/visitor-keys")
-      const { analyze, Visitor } = from(scope)
-      return { analyze, Visitor, visitorKeys: from(keys).visitorKeys }
+      const { analyze, Reference, Visitor } = from(scope)
+      return { analyze, Reference, Visitor, visitorKeys: from(keys).visitorKeys }
     } catch {
       return undefined
     }
@@ -157,7 +157,7 @@ export function parseForESLint(code, options = {}) {
   const ast = parseESTree(code, options.filePath ?? "file.vibe")
   finish(ast, code)
   ast.sourceType = options.sourceType ?? "module"
-  const { analyze, Visitor, visitorKeys: typescriptKeys } = typescriptEslint(options.filePath)
+  const { analyze, Reference, Visitor, visitorKeys: typescriptKeys } = typescriptEslint(options.filePath)
   const visitorKeys = { ...typescriptKeys, ...jsxVisitorKeys, ...jsdocVisitorKeys, ...vibeVisitorKeys }
   const scopeManager = withModuleScopes(Visitor, () => analyze(ast, {
     childVisitorKeys: visitorKeys,
@@ -169,7 +169,7 @@ export function parseForESLint(code, options = {}) {
   }))
   hideSynthesized(scopeManager)
   hideSynthesizedReads(scopeManager)
-  markSchemaReads(scopeManager)
+  markSchemaReads(ast, scopeManager, Reference)
   // As @typescript-eslint/parser reports for a file outside any TypeScript
   // program: a rule that needs type information says so instead of crashing.
   const services = {
@@ -257,19 +257,53 @@ function hideSynthesizedReads(scopeManager) {
   }
 }
 
-// markSchemaReads marks used each variable a schema reads. The tree writes a
-// schema field's type reference as typeof Name, whose first name carries
-// schemaValue (vibelangestree), since the schema's Schema.Struct reads the
-// value Name; typescript-eslint counts typeof in a type as a type use, so
-// without it no-unused-vars reports the codec that schema Locale { names:
-// Names } reads in const Names = Schema.Tuple(…). It is what a rule's
-// markVariableAsUsed does.
-function markSchemaReads(scopeManager) {
-  for (const scope of scopeManager.scopes) {
-    for (const reference of scope.references) {
-      if (reference.identifier.schemaValue === true && reference.resolved) reference.resolved.eslintUsed = true
+// markSchemaReads gives each variable a schema reads a value read outside
+// any type. The tree writes a schema field's type reference as typeof Name,
+// whose first name carries schemaValue (vibelangestree), since the schema's
+// Schema.Struct reads the value Name; typescript-eslint counts typeof in a
+// type as a type use. Without the read, no-unused-vars reports the codec that
+// schema Locale { names: Names } reads in const Names = Schema.Tuple(…), and
+// consistent-type-imports asks for import type on a codec the file imports,
+// which the compiler then rejects (TS1361). The read's identifier is a copy
+// of the written name whose parent is the node that holds the schema, its
+// declarator or a schema error's field, where Schema.Struct reads the value.
+// Only the variable lists the read: scopes' reference lists keep the written
+// name alone, so no-undef and no-use-before-define see each name once.
+function markSchemaReads(ast, scopeManager, Reference) {
+  const reads = scopeManager.scopes.flatMap((scope) =>
+    scope.references.filter((reference) => reference.identifier.schemaValue === true && reference.resolved))
+  if (reads.length === 0) return
+  const holders = schemaHolders(ast)
+  for (const reference of reads) {
+    const identifier = { ...reference.identifier, parent: holders.get(reference.identifier) }
+    const read = new Reference(identifier, reference.from, REFERENCE_READ)
+    read.resolved = reference.resolved
+    reference.resolved.references.push(read)
+  }
+}
+
+// ReferenceFlag.Read, which @typescript-eslint/scope-manager does not export.
+const REFERENCE_READ = 1
+
+// schemaHolders maps each name that carries schemaValue to the nearest node
+// above it that is neither a type nor a name: the declarator of schema Name
+// { … } or schema Name = …, or the field of schema error Name { … }.
+function schemaHolders(ast) {
+  const holders = new Map()
+  const visit = (node, holder) => {
+    if (Array.isArray(node)) {
+      for (const item of node) if (item !== null && typeof item === "object") visit(item, holder)
+      return
+    }
+    if (node.schemaValue === true) holders.set(node, holder)
+    const below = typeof node.type === "string" && !node.type.startsWith("TS") && node.type !== "Identifier" ? node : holder
+    for (const [key, value] of Object.entries(node)) {
+      if (key === "range" || key === "loc" || value === null || typeof value !== "object") continue
+      visit(value, below)
     }
   }
+  visit(ast, ast)
+  return holders
 }
 
 /** Parses a .vibe file to its ESTree Program. */
