@@ -11,7 +11,8 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
-import { Activity, DurableClock, DurableDeferred, WorkflowEngine } from "effect/workflow"
+import { Activity, DurableClock, DurableDeferred, type Workflow, WorkflowEngine } from "effect/workflow"
+import { engineWorkflow, isDeclaredWorkflow, tagStepSchemas } from "../../durable.js"
 // The public types live in Durable.ts, so a program's own declarations can
 // name them through the package's exports.
 import type { Signal, Waiting, WaitReason } from "../Durable.js"
@@ -102,19 +103,25 @@ export const sleep = (
   duration: Duration.Input,
   options?: { readonly name?: string | undefined }
 ): Effect.Effect<void, never, WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance> =>
-  Effect.suspend(() => {
-    const millis = Duration.toMillis(Duration.fromInputUnsafe(duration))
-    return park("Durable.sleep", options?.name, (now) => now + Math.max(0, millis))
-  })
+  tagStepSchemas(
+    Effect.suspend(() => {
+      const millis = Duration.toMillis(Duration.fromInputUnsafe(duration))
+      return park("Durable.sleep", options?.name, (now) => now + Math.max(0, millis))
+    }),
+    { success: Schema.Void, error: Schema.Never }
+  )
 
 export const until = (
   instant: Date | number,
   options?: { readonly name?: string | undefined }
 ): Effect.Effect<void, never, WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance> =>
-  Effect.suspend(() => {
-    const at = typeof instant === "number" ? instant : instant.getTime()
-    return park("Durable.until", options?.name, () => at)
-  })
+  tagStepSchemas(
+    Effect.suspend(() => {
+      const at = typeof instant === "number" ? instant : instant.getTime()
+      return park("Durable.until", options?.name, () => at)
+    }),
+    { success: Schema.Void, error: Schema.Never }
+  )
 
 /** The durable deferred of one wait point of a signal. */
 export const signalDeferred = <S extends Schema.Top>(name: string, schema: S, point?: string) =>
@@ -127,26 +134,30 @@ export const signal = <const Name extends string, S extends Schema.Top>(name: Na
   name,
   schema,
   wait: (point) =>
-    Effect.gen(function*() {
-      const deferred = signalDeferred(name, schema, point)
-      yield* announce(
-        `${deferred.name}/wait`,
-        { reason: "event", name: point === undefined ? name : `${name}#${point}`, deferred: deferred.name, closedBy: [deferred.name] },
-        Schema.Void,
-        Effect.void
-      )
-      return yield* DurableDeferred.await(deferred)
-    }) as ReturnType<Signal<Name, S>["wait"]>,
+    tagStepSchemas(
+      Effect.gen(function*() {
+        const deferred = signalDeferred(name, schema, point)
+        yield* announce(
+          `${deferred.name}/wait`,
+          { reason: "event", name: point === undefined ? name : `${name}#${point}`, deferred: deferred.name, closedBy: [deferred.name] },
+          Schema.Void,
+          Effect.void
+        )
+        return yield* DurableDeferred.await(deferred)
+      }) as ReturnType<Signal<Name, S>["wait"]>,
+      { success: schema, error: Schema.Never }
+    ),
   send: (W, run, value, point) =>
     Effect.gen(function*() {
+      const workflow: Workflow.Any = isDeclaredWorkflow(W) ? yield* engineWorkflow(W) : (W as Workflow.Any)
       const deferred = signalDeferred(name, schema, point)
       yield* DurableDeferred.succeed(deferred, {
-        token: DurableDeferred.tokenFromExecutionId(deferred, { workflow: W, executionId: run }),
+        token: DurableDeferred.tokenFromExecutionId(deferred, { workflow, executionId: run }),
         value
       })
       // An engine that has not loaded the run, such as one started after a
       // crash, loads it here, so the delivery wakes it.
-      yield* (yield* WorkflowEngine.WorkflowEngine).resume(W, run)
+      yield* (yield* WorkflowEngine.WorkflowEngine).resume(workflow, run)
     }) as ReturnType<Signal<Name, S>["send"]>
 })
 

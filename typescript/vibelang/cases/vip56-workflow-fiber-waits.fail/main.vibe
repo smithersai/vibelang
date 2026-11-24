@@ -1,0 +1,31 @@
+// expect: EK5504
+// VIP-56: fiber waits and timeouts in a workflow body are refused with EK5504
+// naming Experimental.Durable.sleep or try.race with it, including through
+// aliases; a local function named sleep gains no wait meaning.
+task Step {
+  effect call(id: string): string!never { return id }
+}
+
+const snooze = sleep
+const bound = timeout
+
+workflow FiberWaits {
+  effect call(id: string) {
+    try sleep("1 second")
+    try Effect.sleep("1 second")
+    try Effect.delay(Step(id), "1 second")
+    try snooze("1 second")
+    try timeout(Step(id), "5 seconds")
+    try bound(Step(id), "5 seconds")
+    try Step(id).pipe(Effect.timeout("5 seconds"))
+    try (Step(id) |> timeout(%, "5 seconds"))
+    return try.race [Step(id), sleep("1 second")]
+  }
+}
+
+workflow ShadowedSleep {
+  effect call(id: string) {
+    const sleep = effect (d: string) => d
+    return try sleep(id)
+  }
+}

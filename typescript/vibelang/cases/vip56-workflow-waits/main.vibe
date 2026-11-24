@@ -1,0 +1,129 @@
+// expect-result: {"released":"build-42:ok","held":"held","paid":"ord-1:99","timedOut":"cancel:ord-2","stamp":{"isDate":true,"time":5,"text":"stamped"},"discriminatedDate":1234,"journalHasRace":true}
+// VIP-56 end-to-end: durable waits inside declared `workflow` bodies —
+// Human.confirm, Durable.sleep, Durable.until, aliased waits, signal.wait(),
+// try.race lowered to Experimental.Durable.raceSteps (including arm-tagged
+// disambiguation of Schema.String vs aliased Schema.Date), and declared
+// workflows passed directly to Human.answer, signal.send, and Durable.spawn.
+schema Paid { amount: number }
+schema Stamp { at: Date; text: string }
+
+export const paid = Experimental.Durable.signal("paid", Paid)
+export const stamp = Experimental.Durable.signal("stamp", Stamp)
+export const rawStr = Experimental.Durable.signal("rawStr", Schema.String)
+export const arrivedAt = Experimental.Durable.signal("arrivedAt", Schema.Date)
+const receiveDate = arrivedAt.wait
+const pause = Experimental.Durable.sleep
+
+task Deploy {
+  static readonly tier = "irreversible"
+  static readonly idempotencyKey = (build: string) => `deploy:${build}`
+  effect call(build: string): string!never {
+    return `${build}:ok`
+  }
+}
+
+task Ship {
+  effect call(order: string, amount: number): string!never {
+    return `${order}:${amount}`
+  }
+}
+
+task Cancel {
+  effect call(order: string): string!never {
+    return `cancel:${order}`
+  }
+}
+
+export workflow Release {
+  effect call(build: string) {
+    const approved = try Experimental.Human.confirm("ship", `Ship ${build}?`, { timeout: "6 hours" })
+    if (!approved) return "held"
+    try pause("10 millis")
+    return try Deploy(build)
+  }
+}
+
+export workflow Checkout {
+  effect call(order: string) {
+    const payment = try.race [paid.wait(), Experimental.Durable.sleep("5 seconds")]
+    return payment ? try Ship(order, payment.amount) : try Cancel(order)
+  }
+}
+
+export workflow FastTimeout {
+  effect call(order: string) {
+    const payment = try.race [paid.wait("late"), Experimental.Durable.sleep("15 millis")]
+    return payment ? try Ship(order, payment.amount) : try Cancel(order)
+  }
+}
+
+export workflow Stamped {
+  effect call(id: string) {
+    const got = try.race [stamp.wait(), Experimental.Durable.sleep("5 seconds")]
+    return got ? { isDate: got.at instanceof Date, time: got.at.getTime(), text: got.text } : { isDate: false, time: -1, text: id }
+  }
+}
+
+export workflow SameEncoding {
+  effect call(id: string) {
+    const got = try.race [rawStr.wait(), receiveDate()]
+    return typeof got === "string" ? -1 : got.getTime()
+  }
+}
+
+effect function parkedOn(run: string, reason: "timer" | "event" | "approval") {
+  while (true) {
+    const waits = try Experimental.Durable.waiting(run)
+    const found = waits.find((wait) => wait.reason === reason)
+    if (found !== undefined) return found
+    try Effect.sleep("2 millis")
+  }
+}
+
+export effect function main() {
+  const layers = Layer.mergeAll(Release.layer, Checkout.layer, FastTimeout.layer, Stamped.layer, SameEncoding.layer)
+  provide Layer.provideMerge(layers, Experimental.Durable.memory) {
+    const rel = try Experimental.Durable.spawn(Release, { build: "build-42" })
+    try parkedOn(rel.id, "approval")
+    try Experimental.Human.answer(Release, rel.id, "ship", true)
+    const released = try rel.result
+
+    const rel2 = try Experimental.Durable.spawn(Release, { build: "build-43" })
+    try parkedOn(rel2.id, "approval")
+    try Experimental.Human.answer(Release, rel2.id, "ship", false)
+    const held = try rel2.result
+
+    const chk = try Experimental.Durable.spawn(Checkout, { order: "ord-1" })
+    try parkedOn(chk.id, "event")
+    try paid.send(Checkout, chk.id, { amount: 99 })
+    const paidResult = try chk.result
+
+    const entries = try Stream.runCollect(Experimental.Durable.history(chk.id))
+    const journalHasRace = Array.from(entries).some((e) => {
+      const p = e.payload as { readonly name?: string }
+      return e.eventType === "DeferredDone" && typeof p.name === "string" && p.name.startsWith("raceAll/try.race/")
+    })
+
+    const timedOut = try FastTimeout("ord-2")
+
+    const st = try Experimental.Durable.spawn(Stamped, { id: "s1" })
+    try parkedOn(st.id, "event")
+    try stamp.send(Stamped, st.id, { at: new Date(5), text: "stamped" })
+    const stampResult = try st.result
+
+    const same = try Experimental.Durable.spawn(SameEncoding, { id: "d1" })
+    try parkedOn(same.id, "event")
+    try arrivedAt.send(SameEncoding, same.id, new Date(1234))
+    const discriminatedDate = try same.result
+
+    return {
+      released,
+      held,
+      paid: paidResult,
+      timedOut,
+      stamp: stampResult,
+      discriminatedDate,
+      journalHasRace
+    }
+  }
+}

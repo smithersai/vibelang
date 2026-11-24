@@ -1,0 +1,80 @@
+// expect-result: {"bounded":"quick b1|timed out|unpaid|quick b1|quick bare b1","failed":"failed: no f1","paid":"paid 7","rounds":"round 3","roundRaces":3}
+// VIP-56: try.race and try.any in a workflow declaration are recorded races
+// via Experimental.Durable.raceSteps. A timer bounds a step, a failure ends
+// try.race at once, try.any waits for a success, unannotated workflows replay
+// cleanly, and each handoff round races fresh.
+schema Paid { amount: number }
+export const paid = Experimental.Durable.signal("paid", Paid)
+
+task Quick { effect call(id: string): string!never { return `quick ${id}` } }
+task Slow { effect call(id: string): string!never { return try Effect.never } }
+task Broken { effect call(id: string): string!string { throw `no ${id}` } }
+
+export workflow Bare {
+  effect call(id: string) { return try Quick(`bare ${id}`) }
+}
+
+export workflow Bounded {
+  effect call(id: string): string!string {
+    const quick = try.race [Quick(id), Experimental.Durable.sleep("10 seconds")]
+    const slow = try.race [Slow(id), Experimental.Durable.sleep("20 millis")]
+    const payment = try.race [paid.wait(), Experimental.Durable.sleep("20 millis")]
+    const anyRes = try.any [Broken(id), Quick(id)]
+    const bare = try.race [Bare(id), Experimental.Durable.sleep("10 seconds")]
+    return `${quick ?? "timed out"}|${slow ?? "timed out"}|${payment ? payment.amount : "unpaid"}|${anyRes}|${bare ?? "timed out"}`
+  }
+}
+
+export workflow Fails {
+  effect call(id: string): string!string {
+    const result = try.race [Broken(id), Experimental.Durable.sleep("10 seconds")]
+    return result ?? "timed out"
+  }
+}
+
+export workflow Checkout {
+  effect call(order: string): string!never {
+    const payment = try.race [paid.wait(), Experimental.Durable.sleep("1 day")]
+    return payment ? `paid ${payment.amount}` : `cancelled ${order}`
+  }
+}
+
+export workflow Poll {
+  static readonly maxRounds = 5
+  effect call(id: string, round: number): string!never {
+    const payment = try.race [paid.wait("never"), Experimental.Durable.sleep("5 millis")]
+    if (!payment && round < 3) return Poll.to(id, round + 1)
+    return `round ${round}`
+  }
+}
+
+effect function parkedOn(run: string, reason: "timer" | "event" | "approval") {
+  while (true) {
+    const waits = try Experimental.Durable.waiting(run)
+    if (waits.some((wait) => wait.reason === reason)) return
+    try Effect.sleep("2 millis")
+  }
+}
+
+export effect function main() {
+  const layers = Layer.mergeAll(Bounded.layer, Fails.layer, Checkout.layer, Poll.layer)
+  provide Layer.provideMerge(layers, Experimental.Durable.memory) {
+    const bounded = try Bounded("b1")
+    const failed = Fails("f1") catch (error) => `failed: ${error}`
+
+    const checkout = try Experimental.Durable.spawn(Checkout, { order: "o1" })
+    try parkedOn(checkout.id, "event")
+    try checkout.send(paid, { amount: 7 })
+    const paidResult = try checkout.result
+
+    const poll = try Experimental.Durable.spawn(Poll, { id: "p1", round: 1 })
+    const rounds = try poll.result
+    const entries = try Stream.runCollect(Experimental.Durable.history(poll.id))
+    const roundRaces = Array.from(entries).filter((entry) => {
+      const payload = entry.payload as { readonly name?: string }
+      return entry.eventType === "DeferredDone" && typeof payload.name === "string" && payload.name.startsWith("raceAll/try.race/")
+    }).length
+
+    return { bounded, failed, paid: paidResult, rounds, roundRaces }
+  }
+}

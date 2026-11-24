@@ -471,12 +471,22 @@ func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 		call = tx.nativeTryAllCall(node)
 	} else if name == "try.race" || name == "try.any" {
 		f := tx.Factory()
-		method := "raceAllFirst"
-		if name == "try.any" {
-			method = "raceAll"
+		args := []*ast.Node{tx.Visitor().VisitNode(node.Arguments()[0])}
+		var namespace *ast.IdentifierNode
+		var method string
+		switch {
+		case isWorkflowBody(effectCodeOwner(node)):
+			namespace, method = tx.moduleNamespace("vibelang-runtime/experimental/Durable"), "raceSteps"
+			if name == "try.any" {
+				args = append(args, f.NewKeywordExpression(ast.KindTrueKeyword))
+			}
+		case name == "try.any":
+			namespace, method = tx.effectName(), "raceAll"
+		default:
+			namespace, method = tx.effectName(), "raceAllFirst"
 		}
-		callee := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier(method), ast.NodeFlagsNone)
-		call = f.UpdateCallExpression(node.AsCallExpression(), callee, node.QuestionDotToken(), nil, f.NewNodeList([]*ast.Node{tx.Visitor().VisitNode(node.Arguments()[0])}), node.Flags)
+		callee := f.NewPropertyAccessExpression(namespace, nil, f.NewIdentifier(method), ast.NodeFlagsNone)
+		call = f.UpdateCallExpression(node.AsCallExpression(), callee, node.QuestionDotToken(), nil, f.NewNodeList(args), node.Flags)
 	} else if isNativeFork(node) {
 		f := tx.Factory()
 		fork := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("forkChild"), ast.NodeFlagsNone)

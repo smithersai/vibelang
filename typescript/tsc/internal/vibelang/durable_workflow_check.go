@@ -10,8 +10,11 @@ import (
 // else is pure. These checks refuse the forms the plan cannot hold.
 
 var (
-	// EK5504: try on something that is not a durable call in a workflow body. {0} is the operand.
-	EK5504 = message(5504, errorCategory, "In a workflow, try runs a durable step: a task, a workflow, W.child(…), or try.all, try.race or try.any over those. {0} is not one; move this work into a task.")
+	// EK5504: try on something that is not a durable call or wait in a workflow body. {0} is the operand.
+	EK5504 = message(5504, errorCategory, "In a workflow, try runs a durable step or wait: a task, a workflow, W.child(…), Experimental.Durable.sleep or until, a signal's wait(), Experimental.Human, or try.all, try.race or try.any over those. {0} is not one; move this work into a task.")
+	// EK5504 variants for fiber waits and timeouts in a workflow body (VIP-56, workflow-try).
+	ek5504FiberSleep   = EK5504.With("{0} holds a fiber and vanishes on a restart, so it cannot run in a workflow. Use Experimental.Durable.sleep instead.")
+	ek5504FiberTimeout = EK5504.With("{0} holds a fiber and vanishes on a restart, so it cannot run in a workflow. Bound a step with try.race [step, Experimental.Durable.sleep(…)], or set static readonly deadline on the workflow.")
 	// EK5505: a workflow body reads the clock, randomness or a module-level let. {0} is the read.
 	EK5505 = message(5505, errorCategory, "A workflow's plan is decided before it runs, so its body reads no clock, randomness or module-level let: {0}. Move the read into a task and use its result.")
 	// EK5506: a loop or a reassignment in a workflow body. {0} is the workflow.
@@ -58,6 +61,25 @@ func isDurableCall(c *checker.Checker, node *ast.Node) bool {
 		return true
 	}
 	return ast.IsPropertyAccessExpression(callee) && callee.Name().Text() == "child" && isDurableValue(c, callee.Expression(), "Workflow")
+}
+
+// isDurableStepOrWait reports whether node is a durable step (task, workflow,
+// W.child), a recognized VIP-56 durable wait, or Experimental.Durable.race.
+func isDurableStepOrWait(c *checker.Checker, node *ast.Node) bool {
+	return isDurableCall(c, node) || isDurableWaitCall(c, node) || isDurableRaceCall(c, node)
+}
+
+// reportWorkflowTry reports EK5504 at node, using the targeted fiber-wait
+// message when node is a fiber sleep, delay, or timeout (VIP-56).
+func reportWorkflowTry(c *checker.Checker, file *ast.SourceFile, node *ast.Node) {
+	switch fiberWaitKindOf(c, node) {
+	case fiberWaitSleep:
+		report(c, node, ek5504FiberSleep, nodeText(file, node))
+	case fiberWaitTimeout:
+		report(c, node, ek5504FiberTimeout, nodeText(file, node))
+	default:
+		report(c, node, EK5504, nodeText(file, node))
+	}
 }
 
 // tryOperationElements returns the elements of try.all [ … ], try.race and
@@ -174,13 +196,15 @@ func checkWorkflowBody(c *checker.Checker, file *ast.SourceFile, fn *ast.Node) {
 		if operand := triedOperand(node); operand != nil && effectCodeOwner(node) == fn {
 			if elements := tryOperationElements(operand); elements != nil {
 				for _, element := range elements {
-					if !isDurableCall(c, element) {
-						report(c, element, EK5504, nodeText(file, element))
+					if !isDurableStepOrWait(c, element) {
+						reportWorkflowTry(c, file, element)
+					} else if isDurableCall(c, element) && reaches(c, element, self, map[*ast.Node]bool{}) {
+						report(c, element, EK5507, name, entityText(ast.SkipParentheses(element).Expression()))
 					}
 				}
-			} else if !isDurableCall(c, operand) {
-				report(c, operand, EK5504, nodeText(file, operand))
-			} else if reaches(c, operand, self, map[*ast.Node]bool{}) {
+			} else if !isDurableStepOrWait(c, operand) {
+				reportWorkflowTry(c, file, operand)
+			} else if isDurableCall(c, operand) && reaches(c, operand, self, map[*ast.Node]bool{}) {
 				report(c, operand, EK5507, name, entityText(ast.SkipParentheses(operand).Expression()))
 			}
 		}

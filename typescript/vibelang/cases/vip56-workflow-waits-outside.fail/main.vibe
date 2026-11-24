@@ -1,0 +1,43 @@
+// expect: EK5601
+// VIP-56: durable waits (Durable.sleep, Durable.until, signal.wait(),
+// Human.{confirm,ask,select,json}) are refused outside workflow bodies
+// including through aliases, while local functions named sleep or wait are not.
+schema Paid { amount: number }
+export const paid = Experimental.Durable.signal("paid", Paid)
+
+const pause = Experimental.Durable.sleep
+const { until: waitUntil } = Experimental.Durable
+const { wait } = paid
+const askQ = Experimental.Human.ask
+
+effect function sleep(d: string) {
+  return d
+}
+
+const localGate = {
+  wait: () => Effect.succeed(42)
+}
+
+export effect function outside() {
+  try Experimental.Durable.sleep("1 second")
+  try Experimental.Durable.until(1000)
+  try paid.wait()
+  try Experimental.Human.confirm("ship", "Ship?")
+  try Experimental.Human.ask("why", "Why?")
+  try Experimental.Human.select("env", "Env?", ["a", "b"])
+  try Experimental.Human.json("paid", "Paid?", Paid)
+  try pause("1 second")
+  try waitUntil(1000)
+  try wait()
+  try askQ("why2", "Why?")
+  const a = try sleep("1 second")
+  const b = try localGate.wait()
+  return `${a}:${b}`
+}
+
+task WaitInTask {
+  effect call(id: string): string!never {
+    try Experimental.Durable.sleep("1 second")
+    return id
+  }
+}
