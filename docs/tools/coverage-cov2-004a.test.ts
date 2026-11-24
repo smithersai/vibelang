@@ -50,8 +50,6 @@ test.todo("Chapter 004 / docs/design/src/004-match.md#479cfcc63d56554d / if-head
 // Chapter 004: EK0705 rejects unbraced statement-body is bindings for every if/else/loop/label form; rule-evidence: docs/design/src/004-match.md#dd17190e2e5680df
 test.todo("Chapter 004 / docs/design/src/004-match.md#dd17190e2e5680df / EK0705 rejects unbraced statement-body is bindings for every if/else/loop/label form")
 
-// Chapter 004: the EK0705 editor action and CLI --fix wrap the owning statement body in braces; rule-evidence: docs/design/src/004-match.md#be0cbf2d645b9852
-test.todo("Chapter 004 / docs/design/src/004-match.md#be0cbf2d645b9852 / the EK0705 editor action and CLI --fix wrap the owning statement body in braces")
 
 // Chapter 004: else-if binding uses the enclosing home's scope and requires braces around an unbraced else body; rule-evidence: docs/design/src/004-match.md#3db8070047219592
 test.todo("Chapter 004 / docs/design/src/004-match.md#3db8070047219592 / else-if binding uses the enclosing home's scope and requires braces around an unbraced else body")

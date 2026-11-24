@@ -49,8 +49,6 @@ test.todo("Chapter 006: Generic schema rejection: schema type parameters report 
 // docs/design/src/006-data.md#7584cc4a155d5bbd — Chapter 006: Missing ordinary schema body.
 test.todo("Chapter 006: Missing ordinary schema body: a recognized schema header without a body or admitted alias reports EK1503 [docs/design/src/006-data.md#7584cc4a155d5bbd]")
 
-// docs/design/src/006-data.md#6e8ec2a99e04896a — Chapter 006: Schema separator fix.
-test.todo("Chapter 006: Schema separator fix: EK1504 inserts a semicolon between same-line fields without changing their types [docs/design/src/006-data.md#6e8ec2a99e04896a]")
 
 // docs/design/src/006-data.md#065b820ccbdd3365 — Chapter 006: Schema non-field members.
 test.todo("Chapter 006: Schema non-field members: methods and index signatures in an ordinary schema body report EK1505 [docs/design/src/006-data.md#065b820ccbdd3365]")
@@ -82,8 +80,6 @@ test.todo("Chapter 006: Reserved variant rename: the quick fix picks fresh Is or
 // docs/design/src/006-data.md#c8b54ab40c6af010 — Chapter 006: Data payload lowering.
 test.todo("Chapter 006: Data payload lowering: payload members form a TS type literal under Data.TaggedEnum with the native type checks [docs/design/src/006-data.md#c8b54ab40c6af010]")
 
-// docs/design/src/006-data.md#ea443c51c12274ce — Chapter 006: Repeated computed data fields.
-test.todo("Chapter 006: Repeated computed data fields: equal types compile and incompatible declarations retain TS2717 [docs/design/src/006-data.md#ea443c51c12274ce]")
 
 // docs/design/src/006-data.md#c9f2fa38b458ee5c — Chapter 006: Data constructor thrown contract.
 test.todo("Chapter 006: Data constructor thrown contract: generated constructors advertise @throws {never} even across a foreign-callable boundary [docs/design/src/006-data.md#c9f2fa38b458ee5c]")
@@ -118,8 +114,6 @@ test.todo("Chapter 006: Default data export: export default data reports EK1603 
 // docs/design/src/006-data.md#33496cc289ad627c — Chapter 006: Missing data body.
 test.todo("Chapter 006: Missing data body: a recognized data header without a variant body reports EK1604 [docs/design/src/006-data.md#33496cc289ad627c]")
 
-// docs/design/src/006-data.md#84ccc9cac1986b3f — Chapter 006: Data separator fixes.
-test.todo("Chapter 006: Data separator fixes: adjacent variants or payload fields report EK1605 and inserting semicolons preserves the declaration [docs/design/src/006-data.md#84ccc9cac1986b3f]")
 
 // docs/design/src/006-data.md#6b249e32c56f8549 — Chapter 006: Malformed data member fix.
 test.todo("Chapter 006: Malformed data member fix: argument-list variants and payload methods report EK1606 with a field-form repair [docs/design/src/006-data.md#6b249e32c56f8549]")

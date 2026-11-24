@@ -6,7 +6,7 @@ import fc from "fast-check"
 import { censusSection } from "../../scripts/grammar-census.mjs"
 import * as portable from "./spec-normative"
 import { vipRegistryFromSources } from "./spec-rules.mjs"
-import { exclusions, parseCSV, census, normalize, parseSnapshot, reports, rules, totals, type Sources } from "./coverage-census"
+import { exclusions, parseCSV, census, normalize, parseSnapshot, reports, rules, staleCitations, totals, type Sources } from "./coverage-census"
 
 const chapter = "docs/design/src/001-functions.md"
 const vip = "docs/design/vips/0001-functions.md"
@@ -56,6 +56,22 @@ describe("source coverage census", () => {
     expect(totals(await census(sources)).covered).toBe(0)
     sources.set(witness, "// rule-evidence: " + id + "\neffect function load() { return 1 }")
     expect(totals(await census(sources)).covered).toBe(1)
+  })
+  test("header citations and prose assertions do not establish executable coverage", async () => {
+    const sources = fixture(quote), id = rules(sources)[0].id
+    sources.set("docs/tools/example.test.ts",
+      "// rule-evidence: " + id + "\nimport { test } from 'bun:test'\n" +
+      "test('header', () => { assert.equal(runEffect(), 1) })\n" +
+      "// rule-evidence: " + id + "\n" +
+      "test('prose', () => { assert.ok(chapter.includes(" + JSON.stringify(quote) + ")) })")
+    expect(totals(await census(sources)).covered).toBe(0)
+  })
+  test("stale todos name their test and expired rule", () => {
+    const sources = fixture(quote), id = chapter + "#0000000000000000"
+    sources.set("docs/tools/example.test.ts", 'test.todo("' + id + '")')
+    expect(staleCitations(sources)).toEqual([
+      { id, test: "docs/tools/example.test.ts:1", reason: "rule no longer exists" }
+    ])
   })
   test("expected generated output and testdata are excluded", async () => {
     const sources = fixture(quote)
@@ -197,7 +213,7 @@ test("Vitest sibling declarations and comments inside strings do not leak pendin
     'import { test } from "vitest";\ntest.todo(' + JSON.stringify(quote) +
     ');\ntest("The `async` form must return a Promise.", () => { const example = "test.todo(fake)"; });')
   const t = totals(await census(sources))
-  expect(t.passing).toBe(1)
+  expect(t.passing).toBe(0)
   expect(t.pending).toBe(1)
 })
 test("VIP short rule-name tags need the matching VIP, without requiring punctuation", async () => {
@@ -315,7 +331,7 @@ test("schema membership advice has executable evidence without a duplicate pendi
   const appendix = "docs/design/src/900-appendices.md"
   const oracle = "typescript/tsc/internal/vibelang/schema_membership_advice_test.go"
   const sources: Sources = new Map([appendix, oracle].map(path => [path, readFileSync(new URL("../../" + path, import.meta.url), "utf8")]))
-  for (const file of readdirSync(import.meta.dir).filter(name => name.endsWith("-pending.test.ts")))
+  for (const file of readdirSync(import.meta.dir).filter(name => /\.test\.(?:ts|mjs)$/.test(name)))
     sources.set("docs/tools/" + file, readFileSync(new URL(file, import.meta.url), "utf8"))
   const row = (await census(sources)).find(row => row.text.startsWith("Use `Schema.is`;"))
   expect(row).toBeDefined()

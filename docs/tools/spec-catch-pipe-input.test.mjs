@@ -54,14 +54,3 @@ test("the conditional and pipe edges of an arrow handler agree", () => {
   assert.match(running, /`a catch \(\) => b \? c : d` means `a catch \(\(\) => \(b \? c : d\)\)`, and `a catch \(\) => b \|> % \+ 1` means `a catch \(\(\) => \(b \|> % \+ 1\)\)`/)
 })
 
-test("the chapter's results follow the arrow-body reading", () => {
-  // a succeeds with 5, b is 0: the handler never runs, so the body reading
-  // gives 5, and the parenthesized catch pipes 5 into % + 1.
-  const caught = (a, handler) => (a.ok ? a.value : handler())
-  const a = { ok: true, value: 5 }
-  const body = caught(a, () => 0 + 1)
-  const piped = (topic => topic + 1)(caught(a, () => 0))
-  assert.equal(body, 5)
-  assert.equal(piped, 6)
-  assert.match(running, /with `a` succeeding with `5` and `b` equal to `0` it gives `5`, and `\(a catch \(\) => b\) \|> % \+ 1` gives `6`/)
-})

@@ -1,5 +1,5 @@
 import { assertRecordedPublication, assertReleaseHistory } from "./release-history.mjs"
-import { assertReleasePublication, assertReleaseContrast } from "./release-publication-checks.mjs"
+import { assertReleasePublication, assertReleaseContrast, finalPublication } from "./release-publication-checks.mjs"
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -11,14 +11,6 @@ import { releaseDocsProblems, renderReleasePage } from "./release-docs.mjs"
 
 // A compiler-version candidate may stay unreleased until npm publication.
 const releaseVersion = release => release.split("\n")[0].replace(/ \(unreleased\)$/, "")
-
-// A finalized release stays guarded when the queue runs ordinary docs checks.
-function finalPublication() {
-  if (process.env.VIBELANG_RELEASE_NOTES_FINAL) return true
-  const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
-  const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
-  return notes.split(/^## /m).slice(1).some(release => release.split("\n")[0] === version)
-}
 
 // Development headings may lead package versions for the next unreleased section.
 
@@ -270,7 +262,6 @@ test("the 0.0.10 release owns the Effect 4.0.6 migration and upgrade instruction
   ]) assert.ok(current.includes(text), text + " belongs in " + version)
 })
 
-// Chapter 900: EK2118 diagnostic - spec-rule: docs/design/src/900-appendices.md#d8b2013ff11f8c1b
 test("the 0.0.11 release retains its upgrade instructions", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   const version = "0.0.11"

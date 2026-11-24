@@ -7,6 +7,7 @@ import { defaultCompiler, extract, linkModules } from "./check-snippets"
 import { blockDeadline, runTestLimit } from "./run-snippets"
 
 const homepage = readFileSync(join(import.meta.dir, "../../site/src/pages/index.mdx"), "utf8")
+const outputClaim = /Both programs print `([^`]+)`/.exec(homepage)?.[1]
 
 // Execute the displayed source without a synthetic entry call. Such a call
 // would hide a copyable example that constructs an Effect but never runs it.
@@ -35,7 +36,8 @@ for (const language of ["vibe", "ts"] as const) {
   const example = extract(homepage).find(block => block.language === language && block.source.includes("interface User {"))
   test("the homepage " + language + " greeting executes when copied", async () => {
     expect(example).toBeDefined()
-    await greeting(example!.source, language, "Hello, Ada")
+    expect(outputClaim).toBeDefined()
+    await greeting(example!.source, language, outputClaim!)
   }, runTestLimit)
 
   test("the homepage " + language + " greeting runs once across generated user names", async () => {

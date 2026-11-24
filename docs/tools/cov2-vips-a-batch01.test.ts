@@ -135,11 +135,9 @@ test.todo("VIP-3 Effect shorthand line boundary: **Amended 2026-10-30: a line br
 // VIP-3: postfix type newline diagnostics
 test.todo("VIP-3 postfix type newline diagnostics: TypeScript stops its postfix type operators at a preceding line break, and a slot has no closing token, so `now(): number!!` then `later(): number!!` stay two members and a `!` with no slot on its line is TS17019.")
 
-// rule-evidence: docs/design/vips/0003-effect-type-shorthand.md#26cd1ca9d30326dc
 // VIP-3: omitted slot migration warning
 test.todo("VIP-3 omitted slot migration warning: **Amended 2026-10-30: migration warning.** The transitional compiler reports `EK4853` when `--fix` can preserve requirements that the retired omitted-slot rule inferred by writing them explicitly.")
 
-// rule-evidence: docs/design/vips/0003-effect-type-shorthand.md#e64fec7c8711deec
 // VIP-3: position sensitive migration rewrite
 test.todo("VIP-3 position sensitive migration rewrite: The quick fix and `--fix` write `A!E!R` where it means the same type in that position without new parentheses, and `Effect.Effect<A, E, R>` through the real `Effect` namespace binding everywhere else: `Effect<number>` becomes `number!!`, while `Effect<A | B, E>`, `Effect<A, E>[]` and an `extends` or `implements` heritage element get the qualified form.")
 

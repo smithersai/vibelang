@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { join } from "node:path"
 import test from "node:test"
 import { repository } from "./spec-rules.mjs"
-import { examples, verdict } from "./spec-examples.mjs"
+import { diagnostics, examples, verdict } from "./spec-examples.mjs"
 
 function compile(source, fn) {
   mkdirSync(join(repository, ".cache"), { recursive: true })
@@ -19,10 +19,11 @@ function compile(source, fn) {
     fn(spawnSync(join(repository, "packages/compiler/native/vibelang"), ["--pretty", "false", "-p", join(dir, "tsconfig.json")], { cwd: dir, encoding: "utf8", timeout: 120000 }))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
-test("r7 ASTRA-4: linter rejects catch guest through the actual compiler and accepts the literal handler", { timeout: 150000 }, () => {
+test("the compiler rejects a value catch handler and accepts a literal handler", { timeout: 150000 }, () => {
   const broken = 'import { Effect } from "effect"; effect function load() { const guest = 0; return Effect.fail(1) catch guest }\n'
   compile(broken, result => {
-    assert.ok(verdict({ source: broken, expected: [] }, result).some(f => f.severity === "error" && f.message.includes("EK0509")), result.stdout + result.stderr)
+    assert.notEqual(result.status, 0)
+    assert.ok(diagnostics(result.stdout + result.stderr).some(d => d.category === "error" && d.code === "EK0509"), result.stdout + result.stderr)
   })
   const fixed = broken.replace("catch guest", "catch () => guest")
   compile(fixed, result => assert.equal(result.status, 0, result.stdout + result.stderr))

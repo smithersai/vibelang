@@ -1,6 +1,5 @@
 import { test } from "node:test"
 
-// Evidence for the final rounds 35-36 specification cut and Will's EK4802 ruling.
 // These are explicit pending compiler obligations, not claims of executed
 // compiler coverage. The historical base has no exact inherited citations for
 // these rules. spec-002-simplification.test.mjs carries the one inherited test.

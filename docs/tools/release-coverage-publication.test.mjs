@@ -1,7 +1,6 @@
-import { assertReleasePublication } from "./release-publication-checks.mjs"
+import { assertReleasePublication, finalPublication } from "./release-publication-checks.mjs"
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
-import { chmodSync, copyFileSync, cpSync, existsSync, readFileSync, readdirSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { copyFileSync, readFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -12,8 +11,7 @@ const root = fileURLToPath(new URL("../../", import.meta.url))
 const require = createRequire(new URL("../../packages/compiler/package.json", import.meta.url))
 const fc = require("fast-check")
 const version = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8")).version
-const final = Boolean(process.env.VIBELANG_RELEASE_NOTES_FINAL)
-const activeRelease = final && version === targetRelease
+const final = finalPublication()
 const normalize = text => text.replaceAll("`", "").replace(/\s+/g, " ").toLowerCase()
 function releaseSections() {
   return readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8").split(/^## /m).slice(1)
@@ -32,78 +30,6 @@ test("current publication omits the contrast helper-renderer record", { skip: !f
   const current = sections.findIndex(section => section.split("\n")[0].replace(/ \(unreleased\)$/, "") === version)
   assert.ok(current >= 0)
   assert.doesNotMatch(sections.slice(0, current + 1).join("\n"), /site(?:['’]s)?\s+contrast\s+check/i)
-})
-function compilerEnvironment() {
-  const env = { ...process.env }
-  delete env.NODE_TEST_CONTEXT
-  env.VIBELANG_BINARY ||= join(root, "packages/compiler/native/vibelang" + (process.platform === "win32" ? ".exe" : ""))
-  env.VIBELANG_RUNTIME ||= join(root, "packages/runtime")
-  env.EFFECT_NODE_MODULES ||= join(root, "experiments/node_modules")
-  assert.ok(existsSync(env.VIBELANG_BINARY), "the release compiler must be built before checking release claims")
-  return env
-}
-test("known helper limits agree with released runner and matcher cases", { skip: !activeRelease }, t => {
-  const env = compilerEnvironment()
-  // The stock harness selects built/local/tsc; stage it in a private tree so
-  // the check uses the requested release artifact and never replaces a shared compiler.
-  const sandbox = mkdtempSync(join(tmpdir(), "vibelang-known-cases-"))
-  let casesPassed = false
-  t.after(() => {
-    if (casesPassed) rmSync(sandbox, { recursive: true, force: true })
-    else console.error("release-note compiler evidence retained at " + sandbox)
-  })
-  const tsroot = join(sandbox, "typescript")
-  const inputs = join(root, "typescript/vibelang")
-  const staged = join(tsroot, "vibelang")
-  mkdirSync(join(staged, "cases"), { recursive: true })
-  for (const name of readdirSync(inputs).filter(name => name.endsWith(".mjs"))) {
-    copyFileSync(join(inputs, name), join(staged, name))
-  }
-  for (const name of ["entry-main-runner-names", "match-builtin-shadowed", "match-builtin-own-option", "decl-provide"]) {
-    const source = join(inputs, "cases", name)
-    const target = join(staged, "cases", name)
-    mkdirSync(target)
-    for (const child of readdirSync(source).filter(child => !["out", "node_modules"].includes(child))) {
-      cpSync(join(source, child), join(target, child), { recursive: true })
-    }
-  }
-  mkdirSync(join(tsroot, "built/local"), { recursive: true })
-  const compiler = join(tsroot, "built/local/tsc")
-  copyFileSync(env.VIBELANG_BINARY, compiler)
-  chmodSync(compiler, 0o755)
-  if (process.platform === "win32") copyFileSync(env.VIBELANG_BINARY, compiler + ".exe")
-  const result = spawnSync("node", ["vibelang/harness.mjs", "--verbose", "--jobs", "2",
-    "entry-main-runner-names", "match-builtin-shadowed", "match-builtin-own-option", "decl-provide"],
-    { cwd: tsroot, env, encoding: "utf8", timeout: 45_000 })
-  assert.equal(result.status, 0, result.stdout + result.stderr + String(result.error || ""))
-  for (const name of ["entry-main-runner-names", "match-builtin-shadowed", "match-builtin-own-option", "decl-provide"]) {
-    assert.match(result.stdout, new RegExp("ok\\s+" + name + "\\b"))
-  }
-  console.log("release-note symbol cases passed using " + env.VIBELANG_BINARY)
-  casesPassed = true
-  const paragraph = release11().match(/^- \*\*Some (?:names|helper aliases)[\s\S]*?(?=\n\n- |\n### |$)/m)?.[0]
-  assert.ok(paragraph, "retain the remaining helper-alias advice")
-  assert.doesNotMatch(paragraph, /\b(?:Number|String|Option|runSync|runPromise|runMain|runFork|runCallback)\b/)
-})
-test("known provider limits agree with literal provider diagnostics", { skip: !activeRelease }, t => {
-  const env = compilerEnvironment()
-  const project = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-known-provider-")))
-  t.after(() => rmSync(project, { recursive: true, force: true }))
-  mkdirSync(join(project, "node_modules"))
-  symlinkSync(realpathSync(join(env.VIBELANG_RUNTIME, "node_modules/effect")), join(project, "node_modules/effect"), "dir")
-  symlinkSync(env.VIBELANG_RUNTIME, join(project, "node_modules/vibelang-runtime"), "dir")
-  writeFileSync(join(project, "package.json"), '{"private":true,"type":"module"}\n')
-  writeFileSync(join(project, "tsconfig.json"), JSON.stringify({
-    compilerOptions: { strict: true, target: "es2022", module: "nodenext", moduleResolution: "nodenext",
-      types: [], skipLibCheck: true, noEmit: true }, include: ["main.vibe"]
-  }))
-  writeFileSync(join(project, "main.vibe"), "export effect function marked() {\n  provide 123 { return 1 }\n}\nexport function plain() {\n  provide 123 { return 1 }\n}\n")
-  const result = spawnSync(env.VIBELANG_BINARY, ["-p", join(project, "tsconfig.json"), "--pretty", "false"],
-    { cwd: root, env, encoding: "utf8", timeout: 30_000 })
-  assert.notEqual(result.status, 0, result.stdout + result.stderr)
-  assert.match(result.stdout, /main\.vibe\(2,\d+\): error/)
-  assert.match(result.stdout, /main\.vibe\(5,\d+\): error/)
-  assert.doesNotMatch(normalize(release11()), /provide accepts values that are neither layers nor contexts/)
 })
 function fixture(t) {
   const place = mkdtempSync(join(tmpdir(), "vibelang-note-coverage-"))

@@ -100,7 +100,7 @@ function exits(program) {
   return JSON.parse(result.stdout.trim().split("\n").at(-1))
 }
 
-test("the advisory example's TypeScript reference ends with the VibeLang demo's Exit", () => {
+test("the advisory TypeScript reference and handwritten translation produce the same Exit", () => {
   const text = tooling()
   const source = block(text, "effect function demo(", "vibe es")
   const reference = block(text, "function demo(e: Effect.Effect<")
@@ -115,7 +115,7 @@ test("the advisory example's TypeScript reference ends with the VibeLang demo's 
 })
 
  
-test("generated entry-point controls run a provided Effect once with the documented runner", () => {
+test("Effect.runPromise runs the reference Effect once", () => {
   const row=read("docs/user/src/vibelang-features/diagnostic-code-map.md").split("\n").find(line=>line.startsWith("| `EK3205` |"))
   assert.ok(row)
   const runner=/with `(runPromise)`/.exec(row)?.[1]

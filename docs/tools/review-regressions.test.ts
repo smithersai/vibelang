@@ -15,8 +15,7 @@ import { extract } from "./check-snippets"
 
 test("the HTTP client guide checks a request, JSON body read, and client layer together", () => {
   const blocks = extract(read("docs/user/src/platform/105-introduction.md"))
-  // A block waiting for the compiler's VIP forms counts; it compiles once its pending line goes.
-  expect(blocks.some(block => (!block.fragment || block.pending) && !block.gap && !block.expected.length &&
+  expect(blocks.some(block => !block.fragment && !block.gap && !block.expected.length &&
     /HttpClient\.get\(/.test(block.source) && /try response\.json\b/.test(block.source) &&
     /provide FetchHttpClient\.layer/.test(block.source))).toBe(true)
 })

@@ -30,8 +30,8 @@ test("Exit output checks keep narrowing for varied payloads", async () => {
   await fc.assert(fc.asyncProperty(fc.integer(), fc.string(), fc.string(), async (value, failure, defect) => {
     const block = example()
     block.source = block.source.replaceAll("Exit.succeed(12)", "Exit.succeed(" + value + ")")
-      .replace('"write rejected"', JSON.stringify(failure))
-      .replace('"release failed"', JSON.stringify(defect))
+      .replace('"write rejected"', () => JSON.stringify(failure))
+      .replace('"release failed"', () => JSON.stringify(defect))
     const result = await observe(block)
     expect(result.status, result.execution?.stdout).toBe("ok")
   }), { seed: 7702, numRuns: 8 })

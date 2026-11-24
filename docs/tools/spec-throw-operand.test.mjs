@@ -5,10 +5,7 @@ import { test } from "node:test"
 import ts from "typescript"
 import { read } from "./spec-witness.mjs"
 
-// Throw expressions follow the TC39 throw-expressions proposal (decided detail
-// 284; Will, 2026-11-02: "Refer to tc39 spec for answer"). Loop round 4 had
-// pinned the opposite (no throw operand anywhere); loop round 15 ASTRA-1 found
-// VIP-39 row 4 still saying `x ?? throw <E/>` "is not VibeLang". The rule now:
+// VIP-41 adopts the TC39 throw-expression proposal.
 // a chapter or VIP may write a throw expression only where it cites the
 // proposal (VIP-41 or the pinned TC39 repository), so an operand-position
 // `throw` never appears as an unexplained form. The scan covers the operand
@@ -65,7 +62,7 @@ test("VIP-39 row 4 admits the throw expression and keeps throw placement", () =>
   assert.ok(row.includes("its operand is a `UnaryExpression`, so `<` starts JSX there too"))
   assert.ok(row.includes("It is allowed where a throw statement is"))
   assert.ok(row.includes("`EK0401`"))
-  assert.ok(!row.includes("not VibeLang"), "the round-4 prohibition is superseded by decided detail 284")
+  assert.ok(!row.includes("not VibeLang"), "VIP-41 admits throw expressions in operand position")
   assert.ok(!row.includes("x ?? do { throw <E/> }"), "the do-block rewrite is no longer required")
 })
 

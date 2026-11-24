@@ -106,14 +106,8 @@ test.todo("Chapter 007: Effect version diagnostic: resolving Effect 4.0.3 report
 // docs/design/src/007-tooling.md#27fd72cc9ce887f5 — Chapter 007: Language-check confinement.
 test.todo("Chapter 007: Language-check confinement: VibeLang-specific checks do not leak into ordinary TypeScript files [docs/design/src/007-tooling.md#27fd72cc9ce887f5]")
 
-// docs/design/src/007-tooling.md#68984669f80eafc0 — Chapter 007: Safe import removal.
-test.todo("Chapter 007: Safe import removal: --fix retains imports whenever removal changes public names, bidirectional types, or documentation in any scope [docs/design/src/007-tooling.md#68984669f80eafc0]")
 
-// docs/design/src/007-tooling.md#1f8e68ac273369fd — Chapter 007: Import identity normalization.
-test.todo("Chapter 007: Import identity normalization: harmless formatting and ordering permit removal while inferred imports retain the same public type [docs/design/src/007-tooling.md#1f8e68ac273369fd]")
 
-// docs/design/src/007-tooling.md#87fb7c250d47357e — Chapter 007: Unused import cleanup.
-test.todo("Chapter 007: Unused import cleanup: noUnusedLocals removes source-unused imports after fixes so TS6133 is not introduced [docs/design/src/007-tooling.md#87fb7c250d47357e]")
 
 // docs/design/src/008-runtime.md#d90f0bc7225bb431 — Chapter 008: Pinned runtime semantics.
 test.todo("Chapter 008: Pinned runtime semantics: failure, defect, interruption, finalizer trace, and ordered Cause combinations match Effect 4.1.1 [docs/design/src/008-runtime.md#d90f0bc7225bb431]")

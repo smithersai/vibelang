@@ -62,7 +62,7 @@ const everyAbrupt = (c) => c.type !== "normal"
 
 for (const kind of ["return", "break", "continue"]) {
   for (const [name, close] of Object.entries(closers)) {
-    test(`a ${kind} out of an arm matches for...of when return() ${name}`, () => {
+    test(`the FinishMatch reference model for ${kind} agrees with for...of when return() ${name}`, () => {
       const pending = { type: kind, value: 7 }
       assert.deepEqual(shape(finishMatch(pending, [source(close)], onlyThrows)), shape(forOf(kind, close)))
     })
@@ -76,7 +76,7 @@ test("the draft's literal step would turn a return into a throw, which is why it
   assert.match(read("docs/design/vips/tc39-pattern-matching/README.md"), /\| `FinishMatch`, its error list \|/)
 })
 
-test("a throw with a closing error aggregates, in draft order", () => {
+test("the FinishMatch reference model aggregates throws in draft order", () => {
   const { value } = finishMatch({ type: "throw", value: "arm" }, [source(closers.throws)], onlyThrows)
   assert.ok(value instanceof AggregateError)
   assert.deepEqual(value.errors, ["arm", "close"])

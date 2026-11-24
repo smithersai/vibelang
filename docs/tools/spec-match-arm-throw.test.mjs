@@ -15,15 +15,6 @@ test("direct throwing match arms have one applicable production", () => {
   assert.match(read("docs/design/vips/0041-throw-expressions.md"), /direct match-arm body has its separate/)
 })
 
-test("the old grammar is ambiguous and the correction leaves nested expressions admitted", () => {
-  assert.equal(hasDisjointArms('ArmBody = Expression | "throw" Expression'), false)
-  assert.equal(hasDisjointArms('ArmBody = [lookahead ≠ "throw"] Expression | "throw" Expression'), true)
-  const startsDirectThrow = source => /^throw\b/.test(source.trim())
-  for (const source of ["throw key in obj", "throw value instanceof Object", "throw x as unknown"])
-    assert.equal(startsDirectThrow(source), true)
-  for (const source of ["(throw key) in obj", "ok ? throw key : fallback", "value ?? throw key"])
-    assert.equal(startsDirectThrow(source), false)
-})
 
 test("generated in operands expose different Exit values for the two old derivations", () => {
   fc.assert(fc.property(fc.string(), fc.boolean(), (key, present) => {

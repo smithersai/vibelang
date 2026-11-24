@@ -43,17 +43,14 @@ test.todo("Chapter 003: contextual throwing thunk — Effect.try, Effect.tryProm
 // Spec: TypeScript's `try { } catch { }` statement stays allowed.
 test.todo("Chapter 003: plain try catch statement — A plain function containing try { JSON.parse(s) } catch { return fallback } compiles and catches; a direct throw remains EK0401.")
 
-// rule-evidence: docs/design/src/003-failures.md#d503e5408127de1c
 // Chapter 003: ordered no-throw repairs
 // Spec: Quick fixes, in order: make the function `effect`, so `throw` is `Effect.fail` and a call known to throw runs with `try Effect.try(() => …)`; make it `effect` and write `return try die(e)`; or move the code to a `.ts` file.
 test.todo("Chapter 003: ordered no-throw repairs — Inspect ordered code actions for a known throwing call and throw statement; apply effect/fail, effect/die and .ts move and recheck.")
 
-// rule-evidence: docs/design/src/003-failures.md#1628b5a8ea97853e
 // Chapter 003: nonconvertible no-throw repairs
 // Spec: Code that can't be `effect` (constructors, accessors, plain generators, initializers, `static` blocks, parameter lists, the top level) gets only the `.ts` fix.
 test.todo("Chapter 003: nonconvertible no-throw repairs — Constructors, accessors, plain generators, initializers, static blocks, parameter defaults and module top level offer only a preserving .ts move.")
 
-// rule-evidence: docs/design/src/003-failures.md#9d62386869e6b8a8
 // Chapter 003: plain handler repairs
 // Spec: A plain handler gets `x catch effect (e) => { throw e }` and `x catch effect (e) => { return try die(e) }`.
 test.todo("Chapter 003: plain handler repairs — Apply both catch effect repairs to a plain handler throw; compare typed failure versus defect Exit.")
@@ -68,7 +65,6 @@ test.todo("Chapter 003: unary throw expressions — Check nullish, conditional f
 // Spec: A statement starting with `throw` is still a throw statement.
 test.todo("Chapter 003: throw statement distinction — A statement-leading throw consumes the full expression; its newline restriction remains TS1142.")
 
-// rule-evidence: docs/design/src/003-failures.md#4db27e3928c438d7
 // Chapter 003: invalid throw followers
 // Spec: A token in [ThrowExpressionInvalidPunctuator](900-appendices.md#throwexpressioninvalidpunctuator) immediately after the operand is an error (`EK1010`).
 test.todo("Chapter 003: invalid throw followers — Each ThrowExpressionInvalidPunctuator after a unary operand reports EK1010 with the operand span.")
@@ -78,7 +74,6 @@ test.todo("Chapter 003: invalid throw followers — Each ThrowExpressionInvalidP
 // Spec: Parenthesize the operand to throw a compound value, `value ?? throw (a + b)`, or parenthesize the throw before another operator, `(throw error) + b`.
 test.todo("Chapter 003: parenthesized throw operands — throw (a + b) and (throw error) + b avoid EK1010 and retain different operand extents.")
 
-// rule-evidence: docs/design/src/003-failures.md#297d90c6b514fa45
 // Chapter 003: comma throw boundary
 // Spec: Commas count: `f(throw error, b)` is invalid; `f((throw error), b)` parses.
 test.todo("Chapter 003: comma throw boundary — f(throw error, b) reports EK1010; f((throw error), b) parses with no EK1010.")

@@ -66,7 +66,6 @@ test.todo("Chapter 900: Effect block return yield and jump boundaries — The br
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: top-level Effect block — So `const p = effect { return 1 }` parses at module top level.")
 
-// rule-evidence: docs/design/src/900-appendices.md#257b4dc751da2877 — Chapter 900: async Effect block repair
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: async Effect block repair — The block quick fix is to remove `async`, retaining `effect { B }`; `async { B }` is not admitted.")
 

@@ -1,3 +1,4 @@
+import { finalPublication } from "./release-publication-checks.mjs"
 // User release requirement: publication notes list user-visible fixes, not
 // internal CI timing, build-host or fuzz bookkeeping.
 import assert from "node:assert/strict"
@@ -16,7 +17,7 @@ function unpublished() {
   return releases.slice(0, candidate + 1).join("\n").replace(/\s+/g, " ").toLowerCase()
 }
 for (const phrase of privatePhrases) test("publication omits build-host and CI records: " + phrase, {
-  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+  skip: !finalPublication()
 }, () => assert.equal(unpublished().includes(phrase.toLowerCase()), false, phrase))
 
 test("the phrase list matches records only, not public fixes that mention hosts or checks", () => {

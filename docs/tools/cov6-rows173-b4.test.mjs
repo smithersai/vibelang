@@ -1,7 +1,5 @@
 import { test } from "node:test"
 
-// Chapter 900: pending witness for EK4820 diagnostic - spec-rule: docs/design/src/900-appendices.md#60023ff767b4f2b5
-test.todo('rule-evidence: docs/design/src/900-appendices.md#60023ff767b4f2b5 | Chapter 900: pending witness for EK4820 diagnostic | present | | interim `EK4820` | error: legacy compiler compatibility — an editor requests the historical return repair for `yield*` of an Effect that never succeeds.')
 
 // Chapter 004: pending witness for per the proxy ruling of 2026 - spec-rule: docs/design/vips/0004-throw.md#80ede5107f580416
 test.todo("rule-evidence: docs/design/vips/0004-throw.md#80ede5107f580416 | Chapter 004: pending witness for per the proxy ruling of 2026 | present | Per the proxy ruling of 2026-11-04, the inline catch mapper provably cannot throw; an unannotated imported `identity` may throw `unknown` and cannot satisfy the catch callback's `never` contract.")
@@ -16,8 +14,6 @@ test.todo('rule-evidence: docs/design/src/900-appendices.md#1a789ca38d7aa2c7 | C
 
 // Chapter 900: pending witness for ordinary return types retain typescript s - spec-rule: docs/design/src/900-appendices.md#0b5f327a4e2bf482
 
-// Chapter 900: pending witness for read the implementation with try service - spec-rule: docs/design/src/900-appendices.md#1a8e3f92dcfc8c49
-test.todo('rule-evidence: docs/design/src/900-appendices.md#1a8e3f92dcfc8c49 | Chapter 900: pending witness for read the implementation with try service | present | Read the implementation with `try Service`, then select its member.')
 
 // Chapter 900: pending witness for | interim \`EK4819\` | error: legacy compiler compatibility - spec-rule: docs/design/src/900-appendices.md#8883ec3ff2a18963
 

@@ -37,7 +37,7 @@ const stay = (log.length = 0, [typeof lowered(false), [...log]])
 console.log(JSON.stringify({ jump, stay }))
 `
 
-test("the hand lowering records the prefix once and builds nothing on a jump", () => {
+test("the reference lowering records the prefix once and builds nothing on a jump", () => {
   const out = run(reference)
   assert.equal(out.status, 0, out.stderr)
   assert.deepEqual(JSON.parse(out.stdout), { jump: [7, ["tag", "a", "b"]], stay: ["object", ["tag", "a", "b", "v", "z", "build"]] })

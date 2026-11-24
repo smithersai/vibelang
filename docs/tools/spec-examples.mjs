@@ -1,5 +1,5 @@
-// VIP fences are compiler inputs. Schematic examples remain visible warnings;
-// they never excuse a removed catch-handler spelling (r7 ASTRA-4).
+// VIP fences are compiler inputs. Explicit fragments can leave fixture gaps;
+// they never excuse a removed catch-handler spelling.
 import ts from "typescript"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -20,8 +20,7 @@ export function examples(text) {
     expected: expectations(m[3]).flatMap(x => x.codes),
     expectations: expectations(m[3]),
     fragment: /\/\/\s*fragment(?:\s*:|\s*$)/m.test(m[3]),
-    gap: m[3].match(/\/\/\s*compiler-gap:\s*([^\n]+)/)?.[1],
-    schematic: /…|\b(?:function|class)\s+\w+[^\n]*\{\s*\.\.\./.test(m[3])
+    gap: m[3].match(/\/\/\s*compiler-gap:\s*([^\n]+)/)?.[1]
   }))
 }
 export function diagnostics(output) {
@@ -58,21 +57,14 @@ export function verdict(example, result) {
   const gapCodes = example.gap?.match(/(?:TS|EK)\d+/g) ?? []
   for (const code of gapCodes) if (!codes.has(code))
     findings.push({ severity: "error", message: "stale compiler-gap marker: " + code + " is no longer reported" })
-  const mixedComparison = /\/\/.*(?:exactly.*Effect TS|Effect TS)/i.test(example.source) && example.language === "vibe"
-  const missingFixture = rows.some(d => /^(?:TS2304|TS2307|TS2552|TS18004|TS2503|TS7026|TS7006|TS7031)$/.test(d.code))
-  const missingContext = /^(?:const \w+ = )?(?:try |fork |fork\.|join |provide )/m.test(example.source)
-  const fixtureGap = example.fragment || example.schematic || (example.gap && !gapCodes.length) || mixedComparison || missingFixture || missingContext
+  const missingFixture = /^(?:TS2304|TS2307|TS2552|TS18004|TS2503|TS7026|TS7006|TS7031)$/
   for (const d of rows) {
     if (example.expected.includes(d.code) || d.category === "warning") continue
-    const sourceLine = example.source.split("\n")[d.line - 1] ?? ""
-    // Inline negative examples must state the code; prose saying only "error"
-    // is debt, not a successful negative test.
-    const marked = /\/\/.*\b(?:error|invalid|illegal|forbidden|rejected)\b/i.test(sourceLine)
-    const incomplete = fixtureGap || gapCodes.includes(d.code) || /^(?:EK0501|EK1701)$/.test(d.code)
-    findings.push({ severity: d.code === "EK0509" && !marked ? "error" : marked || incomplete ? "warning" : "error", message: d.code + ": " + d.message })
+    const incomplete = d.file !== "<config>" &&
+      (example.fragment || gapCodes.includes(d.code) || missingFixture.test(d.code))
+    findings.push({ severity: d.code !== "EK0509" && incomplete ? "warning" : "error", message: d.code + ": " + d.message })
   }
   if (gapCodes.some(code => codes.has(code))) findings.push({ severity: "warning", message: "published prerequisite pending: " + example.gap })
-  if (fixtureGap) findings.push({ severity: "warning", message: "example is not validated as a complete program: " + (example.gap ?? (mixedComparison ? "mixed counterpart" : example.schematic ? "ellipsis" : missingContext ? "enclosing Effect context" : "missing fixture bindings")) })
   return findings
 }
 export function lintExamples(root, compiler = process.env.VIBELANG_COMPILER ?? join(root, "packages/compiler/native/vibelang")) {

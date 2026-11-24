@@ -1,4 +1,13 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+
+// A finalized release stays guarded when the queue runs ordinary docs checks.
+export function finalPublication(root = new URL("../../", import.meta.url), env = process.env) {
+  if (env.VIBELANG_RELEASE_NOTES_FINAL) return true
+  const version = JSON.parse(readFileSync(new URL("packages/compiler/package.json", root), "utf8")).version
+  const notes = readFileSync(new URL("docs/user/src/setup/release-notes.md", root), "utf8")
+  return notes.split(/^## /m).slice(1).some(release => release.split("\n")[0] === version)
+}
 
 const releaseVersion = release => release.split("\n")[0].replace(/ \(unreleased\)$/, "")
 
@@ -24,7 +33,7 @@ export function assertReleasePublication(notes, version) {
     const fixes = release.split(/^### Bugs fixed since .+$/m)[1]?.split(/^### /m)[0]
     assert.ok(fixes, "every unpublished section needs a bug list")
     return fixes
-  }).join("\n")
+  })
   const publicationNotes = releases.slice(0, candidate + 1).flatMap(release =>
     release.match(/^- .*(?:\n(?!\n|[-*] |#{1,6} ).+)*/gm) ?? []
   ).join("\n")
@@ -42,14 +51,14 @@ export function assertReleasePublication(notes, version) {
   assertEntriesExclude(publicationNotes, /editor\s+smoke\s+validation|compiler\s+fuzz\s+validation|schema\s+regression\s+check/i)
   assertEntriesExclude(publicationNotes, /migration\s+oracle\s+regression\s+tests|(?:compiler|pin)\s+regression\s+suite|compiler[\u0027\u2019]s\s+keyword\s+coverage\s+check|CI[- ]health\s+reports|declaration[- ]oracle\s+tests|snippet\s+tools[\u0027\u2019]\s+pending[- ]output\s+test\s+fixtures|narrow\s+hosted\s+CI\s+checks/i)
   assertEntriesExclude(publicationNotes, /contributor\s+(?:checks|queue)|contribution\s+guide|publication\s+checks|release\s+rehearsals|release-history\s+checks|documentation\s+check|reference\s+check|Appendix\s+diagnostic\s+replay|fixtures\s+now\s+(?:load|initialize)/i)
-  const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
-  assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
-  // Preserve these shipped fixes in their owning release, even while preparing a newer one.
-  const previous = releases.find(release => releaseVersion(release) === "0.0.11")
-  const previousBugs = previous?.split(/^### Bugs fixed since .+$/m)[1]?.split(/^### /m)[0]
-  const previousBullets = previousBugs?.split("\n").filter(line => line.startsWith("- ")) ?? []
-  if (previous) for (const symptom of ["Editor parsing rejected `for try` `Stream` loops", "A tool that reads a `.vibe` file through the TypeScript mapper", "compiler output with Windows line endings"]) {
-    assert.equal(previousBullets.filter(line => line.includes(symptom)).length, 1, "retain the user fix once: " + symptom)
+  const entries = text => (text.match(/^- .*(?:\n[ \t]+\S.*)*/gm) ?? [])
+    .map(entry => entry.slice(2).replaceAll("`", "").replace(/\s+/g, " ").trim().toLowerCase())
+  const historical = releases.slice(candidate + 1).flatMap(release =>
+    entries(release.split(/^### Bugs fixed since .+$/m)[1]?.split(/^### /m)[0] ?? ""))
+  const seen = new Set(historical)
+  for (const entry of bugs.flatMap(entries)) {
+    assert.ok(!seen.has(entry), "each user-facing fix appears once: " + entry)
+    seen.add(entry)
   }
 }
 

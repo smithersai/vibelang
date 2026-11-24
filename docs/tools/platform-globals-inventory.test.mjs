@@ -8,19 +8,12 @@ import { chapter, read } from "./spec-witness.mjs"
 const inventory = () => JSON.parse(readFileSync(join(root, artifactPath), "utf8"))
 const pinned = existsSync(join(root, "docs/tools/node_modules/@types/node"))
 
-// docs/design/src/900-appendices.md#ccd7c79f00222642 — Chapter 900: platform inventory pins native declarations.
-// docs/design/src/900-appendices.md#08db07864af89197 — Chapter 900: platform inventory pins native declarations.
 // rule-evidence: docs/design/vips/0033-platform-stdlib.md#c6e052446ac444ba
 // VIP-33: generated platform inventory.
 test("the inventory is current for the pinned libs and @types/node", { skip: !pinned, timeout: 120_000 }, () => {
   assert.equal(readFileSync(join(root, artifactPath), "utf8"), serialize(generate()), "run node docs/tools/platform-globals.mjs --write")
 })
 
-// docs/design/src/900-appendices.md#713d98a95c1ccf4a — Chapter 900: derived platform names, pure allowlist and accidental window names.
-// docs/design/src/900-appendices.md#15c1b5097c90e47d — Chapter 900: derived platform names, pure allowlist and accidental window names.
-// docs/design/src/900-appendices.md#59ccf55703ac36d9 — Chapter 900: derived platform names, pure allowlist and accidental window names.
-// docs/design/src/900-appendices.md#8aad4d6fa0fb8a42 — Chapter 900: derived platform names, pure allowlist and accidental window names.
-// docs/design/src/900-appendices.md#8a6774628a8c16f9 — Chapter 900: derived platform names, pure allowlist and accidental window names.
 test("the banned set follows the rule", () => {
   const { banned } = inventory()
   for (const name of ["fetch", "process", "Buffer", "console", "setTimeout", "history", "requestAnimationFrame", "FileReader", "WebAssembly", "name", "open"]) {
@@ -31,7 +24,6 @@ test("the banned set follows the rule", () => {
   }
 })
 
-// docs/design/src/900-appendices.md#cf80e89c02cbd17e — Chapter 900: host-reaching allowlisted members stay banned.
 // rule-evidence: docs/design/vips/0033-platform-stdlib.md#42f414bbb61d5184
 // VIP-33: complete platform member classification.
 test("every member of an allowlisted global is classified, and the banned ones have reasons", () => {
@@ -61,4 +53,3 @@ test("chapter 5 and the inventory agree", () => {
 
 // VIP-33 pinned platform inventory classifies every member of the closed allowlist; rule: docs/design/vips/0033-platform-stdlib.md#42f414bbb61d5184
 
-// VIP-33 pinned platform inventory classifies every member of the closed allowlist; rule: docs/design/vips/0033-platform-stdlib.md#1223b50541cd256f

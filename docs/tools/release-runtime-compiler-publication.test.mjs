@@ -1,3 +1,4 @@
+import { finalPublication } from "./release-publication-checks.mjs"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
@@ -15,7 +16,7 @@ function unpublished() {
 }
 
 test("publication omits the runtime stock-TypeScript test budget record", {
-  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+  skip: !finalPublication()
 }, () => assert.equal(internalRecord(unpublished()), false, "remove the internal stock-TypeScript checks row"))
 
 test("the publication guard recognizes test records across typography and wrapping", () => {

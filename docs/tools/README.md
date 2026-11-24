@@ -60,8 +60,8 @@ Use a header comment before the code:
 - `// types: node` opts that page project into Node ambient declarations; the
   default is `"types": []`, matching the starter. Document the declaration
   package and tsconfig prerequisite beside any example that needs it.
-- `// fragment` opts out of classification for incomplete syntax or a prose
-  sketch. The compiler still checks the block.
+- `// fragment` excludes an incomplete syntax example or prose sketch from the
+  compiler program. Use a complete example to check expected diagnostics.
 - `// compiler-gap: <reason>` keeps the intended language example while the
   compiler disagrees. Record the page, first code line, diagnostics, and rule
   in `docs/user/compiler-gaps.md`. A marker becomes stale when the block
@@ -460,7 +460,9 @@ Run `bun docs/tools/coverage-census.ts`, or the Smithers target
 `main@github` snapshot. Use `--revision <revision>` to pin another snapshot
 and `--out <directory>` to change the output directory (default:
 `.cache/coverage-census` in the checkout). The script writes `CENSUS.md`,
-`CENSUS.csv`, `PERCENT` and `REVISION`. CSV starts with
+`CENSUS.csv`, `PERCENT`, `REVISION`, and `STALE-CITATIONS`. The command exits
+with status 1 when an ID has disappeared or a pending citation has passing
+evidence. Each finding identifies the test and rule. CSV starts with
 `rule,test,missing` and includes chapter, line, sentence, confidence, evidence
 kind and reason. A rule's ID is its source path and the first 16 hexadecimal
 digits of the SHA-256 of its normalized sentence; line wrapping and insertions
@@ -480,7 +482,10 @@ and comments naming a chapter or VIP plus a short rule name count
 as evidence. For example, `// Chapter 1: effect function` links sentences or
 sections containing `effect function`; a chapter alone links nothing. These
 links are also counted separately as `tag-linked` so rewording a sentence
-does not discard a surviving rule name.
+does not discard a surviving rule name. In JavaScript and TypeScript tests,
+passing citations must be attached to the test and share a code or form
+with its body. Quotes used only in text assertions provide no executable
+evidence.
 
 The census retains Appendix A's generated grammar admission region in the
 rule total, even though the entry evidence gate omits that metadata. A complete

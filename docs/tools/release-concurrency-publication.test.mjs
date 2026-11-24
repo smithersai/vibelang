@@ -1,3 +1,4 @@
+import { finalPublication } from "./release-publication-checks.mjs"
 // Publication notes retain user-visible fixes and omit validation-only records.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
@@ -40,7 +41,7 @@ function fixture(t) {
   }
 }
 test("publication notes omit internal concurrency coverage records", {
-  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+  skip: !finalPublication()
 }, () => {
   const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
   const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version

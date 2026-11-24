@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { defaultCompiler } from "./check-snippets"
@@ -9,7 +9,7 @@ const compiler = defaultCompiler()
 
 // The 0.0.1 compiler exits 0 but suppresses emit on warnings when
 // noEmitOnError is true. The second project must emit its own entry anyway.
-test.skipIf(!existsSync(compiler))("isolates run-mode output across projects when the second has a warning", async () => {
+test("isolates run-mode output across projects when the second has a warning", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-isolation-test-"))
   try {
     // The second block expects its EK9204 warning, which would otherwise fail it.

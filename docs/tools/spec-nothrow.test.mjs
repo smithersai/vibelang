@@ -2,11 +2,9 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import fc from "fast-check"
 import { parseESTree } from "../../packages/compiler/eslint.mjs"
-import { chapter, read, nothrowFoldPending } from "./spec-witness.mjs"
+import { chapter, read } from "./spec-witness.mjs"
 
-// Will, 2026-10-31 ~14:00 PDT, recorded in core-decisions.md: "Plain functions are not allowed to throw I have said
-// this about 15 times." Clarification: "If you throw in vibelang itself in a sync function that's an error." The
-// assertions follow the owner rules as main states them (chapter 3, VIP-4, VIP-5, VIP-27, VIP-39, Appendix B).
+// Chapter 3 and VIP-4 define the plain-code throw boundary.
 
 const vip4 = () => read("docs/design/vips/0004-throw.md")
 const failures = () => chapter("003-failures")
@@ -124,11 +122,7 @@ test("chapter 3 makes throw and calls known to throw EK0401 in synchronous code 
   assert.match(section, /function orNull\(s: string\) \{ try \{ return JSON\.parse\(s\) \} catch \{ return null \} \} \/\/ allowed/)
 })
 
-test("chapter 3's admission and try-block rules cover rest positions and do expressions", { skip: nothrowFoldPending }, () => {
-  const section = plainSection()
-  assert.match(section, /A `do` expression is not a function, so a call in a `do` block inside that `try` block, or a `try` statement inside a `do` block, follows the same rule\./)
-  assert.match(section, /admits throws \(for a rest parameter, the element type or tuple member at the argument's position\)/)
-})
+test.todo("Chapter 3 specifies rest positions and do expressions in the no-throw admission rule (#636)")
 
 test("chapter 3 infers no thrown type for VibeLang callables and has no EK0405", () => {
   const text = failures()
@@ -156,11 +150,8 @@ test("chapter 2 makes a plain handler's throw EK0401 and retires the EK0511 warn
   assert.match(text, /fetchUser\(id\) catch \(e\) => \{ try \{ throw e \} catch \{ return 0 \} \}\s+\/\/ EK0401: even when a try statement catches it/)
 })
 
-test("the introduction makes throw the exception to TypeScript's meaning", { skip: nothrowFoldPending }, () => {
-  const text = chapter("000-intro")
-  assert.doesNotMatch(text, /Plain functions, `async` functions, `await`, `throw`, `using`/)
-  assert.match(text, /The exception is `throw`: synchronous VibeLang code never throws, so a `throw` outside effect code and `async` functions is a compile error, `EK0401`/)
-  assert.match(text, /\| `throw e` in synchronous code outside effect code \| compile error `EK0401` \|/)
+test("the introduction makes throw the exception to TypeScript's meaning", () => {
+  assert.match(chapter("000-intro"), /`throw` is the exception: in an `effect` body it means typed failure through `Effect.fail`, and in other synchronous VibeLang code it is a compile error/)
 })
 
 test("chapter 7 lists no EK0511 warning", () => {

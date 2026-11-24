@@ -42,10 +42,6 @@ test.todo("signed zero does not cover both zeros — docs/design/src/004-match.m
 // Chapter 004: inherited matcher uses instanceof
 test.todo("inherited matcher uses instanceof — docs/design/src/004-match.md#a3cb5536212d6352 — A static matcher inherited from a superclass is not an own matcher: for `class B extends A {}`, `when B:` tests `s instanceof B`.")
 
-// rule-evidence: docs/design/src/004-match.md#3d80eda342f5e0fc
-// Chapter 004: error and schema error tag matcher
-test.todo("error and schema error tag matcher — docs/design/src/004-match.md#3d80eda342f5e0fc — An `error` class ([Failures](003-failures.md#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`.")
-
 // rule-evidence: docs/design/src/004-match.md#0843ffd98a584991
 // Chapter 004: error matcher singleton subject identity
 test.todo("error matcher singleton subject identity — docs/design/src/004-match.md#0843ffd98a584991 — It returns `[subject]` on a match and `false` otherwise; `when NotFound(let e):` binds that subject.")
@@ -77,10 +73,6 @@ test.todo("generated matcher declaration inventory — docs/design/src/004-match
 // rule-evidence: docs/design/src/004-match.md#10930b741e9327c6
 // Chapter 004: nonmatcher declarations EK0702
 test.todo("nonmatcher declarations EK0702 — docs/design/src/004-match.md#10930b741e9327c6 — A class pattern whose expression resolves to a `data` declaration or variant constructor, a `schema` declaration or a directly constructed `Context.Reference` is `EK0702`: under the draft such a function would be called with the subject and match almost anything.")
-
-// rule-evidence: docs/design/src/004-match.md#f952844e774f9e70
-// Chapter 004: variant and schema quick fixes
-test.todo("variant and schema quick fixes — docs/design/src/004-match.md#f952844e774f9e70 — The quick fix for a variant writes `when { _tag: \"Sent\" }:`; for a schema, test `Schema.is(Address)(x)` in a guard.")
 
 // rule-evidence: docs/design/src/004-match.md#57c0454695b5cd0a
 // Chapter 004: service matcher EK3004
@@ -126,10 +118,6 @@ test.todo("static-signature dispatch receiver preservation — docs/design/src/0
 // Chapter 004: call-only predicate and iterable result contracts
 test.todo("call-only predicate and iterable result contracts — docs/design/src/004-match.md#59bd25c991f8b61e — A bare call-only pattern requires a return type assignable to `boolean`; an extractor requires `Iterable<unknown> | false`.")
 
-// rule-evidence: docs/design/src/004-match.md#673faa003e9abfa0
-// Chapter 004: invalid signature EK0702 and guard quick fix
-test.todo("invalid signature EK0702 and guard quick fix — docs/design/src/004-match.md#673faa003e9abfa0 — Other return types, and callees with neither signature (`any`, `unknown`, `Function`, non-callable objects), are `EK0702`; quick fix: test the call in a guard.")
-
 // rule-evidence: docs/design/src/004-match.md#7cebe0ba71ff3a4f
 // Chapter 004: Function EK0107 guard repair
 test.todo("Function EK0107 guard repair — docs/design/src/004-match.md#7cebe0ba71ff3a4f — The global `Function` still reports `EK0107`; use a `typeof` guard.")
@@ -137,10 +125,6 @@ test.todo("Function EK0107 guard repair — docs/design/src/004-match.md#7cebe0b
 // rule-evidence: docs/design/src/004-match.md#3b168055d2037a98
 // Chapter 004: ordinary class extractor EK0704 all arities
 test.todo("ordinary class extractor EK0704 all arities — docs/design/src/004-match.md#3b168055d2037a98 — An ordinary-class extractor without an own matcher is `EK0704`, with any argument count, including `()`.")
-
-// rule-evidence: docs/design/src/004-match.md#a13137dc3992d053
-// Chapter 004: ordinary class extractor quick fixes
-test.todo("ordinary class extractor quick fixes — docs/design/src/004-match.md#a13137dc3992d053 — Quick fixes: `when C:`; or, when the arguments bind the constructor’s parameter properties, `when C and { p1: let a, p2: let b }:`.")
 
 // rule-evidence: docs/design/src/004-match.md#00bfbbbb7fc3d628
 // Chapter 004: any-erased constructor extractor TypeError
