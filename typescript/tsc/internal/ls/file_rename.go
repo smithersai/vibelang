@@ -297,7 +297,36 @@ func (l *LanguageService) getUpdatedImportSpecifier(
 			OverrideImportMode: program.GetModeForUsageLocation(sourceFile, importLiteral),
 		},
 	)
-	return updated.AsString()
+	return writtenVibeSpecifier(program, sourceFile, importLiteral, updated, target.newFileName, userPreferences).AsString()
+}
+
+// writtenVibeSpecifier gives a specifier that names a .vibe or .vibex module
+// the ending a written import takes: ./c.js or ./c where the old specifier
+// had that ending, as its TypeScript twin gets. Specifier generation keeps
+// the VibeLang suffix for the declaration emitter, and ./c.vibe in source is
+// TS5097 without allowImportingTsExtensions. An import that already writes
+// the VibeLang suffix keeps it.
+func writtenVibeSpecifier(
+	program *compiler.Program,
+	sourceFile *ast.SourceFile,
+	importLiteral *ast.StringLiteralLike,
+	specifier tspath.ModuleSpecifier,
+	toFileName tspath.RootedFilePath,
+	userPreferences modulespecifiers.UserPreferences,
+) tspath.ModuleSpecifier {
+	old := importLiteral.Text()
+	if _, vibe := tspath.ToModuleSpecifier(old).RewriteVibeExtension(); vibe {
+		return specifier
+	}
+	endings := modulespecifiers.GetAllowedEndingsInPreferredOrder(
+		userPreferences,
+		program,
+		program.Options(),
+		sourceFile,
+		old,
+		program.GetModeForUsageLocation(sourceFile, importLiteral),
+	)
+	return modulespecifiers.ProcessVibeImportEnding(specifier, toFileName, endings, program.Options(), program)
 }
 
 func getSourceFileToImport(
@@ -322,7 +351,7 @@ func getSourceFileToImport(
 func getUpdatedImportSpecifierFromMovedSourceFiles(program *compiler.Program, sourceFile *ast.SourceFile, importLiteral *ast.StringLiteralLike, movedFiles []movedFile, importingSourceFileName tspath.RootedFilePath, userPreferences modulespecifiers.UserPreferences) string {
 	resolutionMode := program.GetModeForUsageLocation(sourceFile, importLiteral)
 	for _, candidate := range movedFiles {
-		oldSpecifier := modulespecifiers.UpdateModuleSpecifier(
+		oldSpecifier := writtenVibeSpecifier(program, sourceFile, importLiteral, modulespecifiers.UpdateModuleSpecifier(
 			program.Options(),
 			program,
 			sourceFile,
@@ -333,12 +362,12 @@ func getUpdatedImportSpecifierFromMovedSourceFiles(program *compiler.Program, so
 			modulespecifiers.ModuleSpecifierOptions{
 				OverrideImportMode: resolutionMode,
 			},
-		)
+		), candidate.sourceFile.FileName(), userPreferences)
 		if oldSpecifier.AsString() != importLiteral.Text() {
 			continue
 		}
 
-		return modulespecifiers.UpdateModuleSpecifier(
+		return writtenVibeSpecifier(program, sourceFile, importLiteral, modulespecifiers.UpdateModuleSpecifier(
 			program.Options(),
 			program,
 			sourceFile,
@@ -349,7 +378,7 @@ func getUpdatedImportSpecifierFromMovedSourceFiles(program *compiler.Program, so
 			modulespecifiers.ModuleSpecifierOptions{
 				OverrideImportMode: resolutionMode,
 			},
-		).AsString()
+		), candidate.newFileName, userPreferences).AsString()
 	}
 	return ""
 }
