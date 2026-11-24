@@ -45,8 +45,9 @@ async function fixture(t, name) {
 async function edit(file, from, to, watcher, write = writeFile) {
   const source = await readFile(file, "utf8")
   assert.ok(source.includes(from), `${file} has no ${from}`)
-  await write(file, source.replace(from, to))
-  watcher?.log(`edit ${file.split("/").at(-1)}: ${from} -> ${to}`)
+  const text = source.replace(from, to)
+  if (watcher) return watcher.save(file, text, `edit ${file.split("/").at(-1)}: ${from} -> ${to}`, write)
+  await write(file, text)
 }
 
 // Replaces a file in one step, as an editor's save does. esbuild reads
@@ -107,12 +108,19 @@ function watchBundle(bundler, root, env = {}) {
   errors.on("line", (line) => log(`stderr: ${line}`))
   const events = []
   let wake = () => {}
+  // A save the watcher has not reacted to yet. A bundler that has not re-armed
+  // its watcher after a build misses a save; webpack before 5.112.0 does
+  // (webpack/webpack#22646). Until a rebuild starts, next() repeats the save.
+  let unseen
+  const seen = () => { unseen = undefined }
+  errors.on("line", (line) => { if (/^\S+ \+\d+ms (?:start|change)\b/.test(line)) seen() })
   const output = createInterface({ input: child.stdout })
   output.on("line", (line) => {
     if (!line.startsWith("{")) return
     const event = JSON.parse(line)
     log(event.ok ? "build ok" : `build failed: ${event.message.split("\n")[0]}`)
     events.push(event)
+    seen()
     wake()
   })
   return {
@@ -125,6 +133,11 @@ function watchBundle(bundler, root, env = {}) {
           const event = events.shift()
           if (await check(event)) return event
         }
+        if (unseen && Date.now() - unseen.at > 2000) {
+          log(`no rebuild started; save again: ${unseen.what}`)
+          unseen.at = Date.now()
+          await unseen.write()
+        }
         await new Promise((accept) => {
           const timer = setTimeout(accept, 250)
           wake = () => { clearTimeout(timer); accept() }
@@ -133,6 +146,12 @@ function watchBundle(bundler, root, env = {}) {
       assert.fail(`${bundler} --watch: no build ${what} within 60s\n${history.join("\n")}`)
     },
     log,
+    // Writes a file as a save does. The save stands until the bundler starts a rebuild.
+    async save(file, text, what, write = writeFile) {
+      unseen = { what, at: Date.now(), write: () => write(file, text) }
+      await write(file, text)
+      log(what)
+    },
     // Stops the bundler and any compile it started before the fixture is removed.
     async close() {
       await stopGroup(child)
@@ -147,33 +166,24 @@ function watchBundle(bundler, root, env = {}) {
 // Edits a .vibe source, a type-only .ts import, and the tsconfig under a
 // running watcher, and waits for the rebuild each edit causes.
 async function watchEdits(bundler, root, watcher) {
-  // Each edit waits for the bundler to re-arm its watcher after a build.
-  // webpack before 5.112.0 misses a save made as a build finishes
-  // (webpack/webpack#22646); that race is webpack's, not the plugin's.
-  const settle = (ms = 500) => new Promise((accept) => setTimeout(accept, ms))
   await watcher.next("success", (event) => event.ok)
   assert.ok(await printsEventually(bundler, root, expected))
-  await settle(1000)
 
   await edit(join(root, "src/shop.vibe"), 'receipt("ordered"', 'receipt("booked"', watcher)
   await watcher.next("with the .vibe edit", (event) => event.ok && printsEventually(bundler, root, "booked 2 tea"))
 
   // order.ts is a type-only import: only the compiler reads it.
   const order = join(root, "src/order.ts")
-  await settle()
   await edit(order, "quantity: number", "quantity: string", watcher)
   const failed = await watcher.next("failure after the .ts edit", (event) => !event.ok)
   assert.match(failed.message, new RegExp(`${escape(join(root, "src/shop.vibe"))}:\\d+:\\d+ - error TS\\d+`))
-  await settle()
   await edit(order, "quantity: string", "quantity: number", watcher)
   await watcher.next("success after the .ts fix", (event) => event.ok)
 
   const tsconfig = join(root, "tsconfig.json")
-  await settle()
   await edit(tsconfig, '"types": []', '"types": ["missing-types"]', watcher, replaceFile)
   const broken = await watcher.next("failure after the tsconfig edit", (event) => !event.ok)
   assert.match(broken.message, /error TS2688: Cannot find type definition file for 'missing-types'/)
-  await settle()
   await edit(tsconfig, '"types": ["missing-types"]', '"types": []', watcher, replaceFile)
   await watcher.next("success after the tsconfig fix", (event) => event.ok && printsEventually(bundler, root, "booked 2 tea"))
 }
@@ -382,14 +392,11 @@ Bun.build = (options) => { unlinkSync(${JSON.stringify(asset)}); return build(op
           const watcher = watchBundle(bundler, root)
           try {
             await watcher.next("initial success", (event) => event.ok)
-            await new Promise((accept) => setTimeout(accept, 500))
-            await writeFile(source, `import { value as missing } from "${specifier}"\nexport const value = missing\n`)
+            await watcher.save(source, `import { value as missing } from "${specifier}"\nexport const value = missing\n`, "import a missing source")
             await watcher.next("missing import diagnostic", (event) => !event.ok && /TS2307|TS6263/.test(event.message))
-            await new Promise((accept) => setTimeout(accept, 500))
             const missing = join(root, "src", target)
             await mkdir(resolve(missing, ".."), { recursive: true })
-            await writeFile(missing, 'export const value = "restored"\n')
-            watcher.log(`created missing relative source ${target}`)
+            await watcher.save(missing, 'export const value = "restored"\n', `created missing relative source ${target}`)
             await watcher.next("success after source creation", (event) => event.ok && printsEventually(bundler, root, "restored"))
           } finally {
             await watcher.close()
@@ -405,7 +412,6 @@ Bun.build = (options) => { unlinkSync(${JSON.stringify(asset)}); return build(op
       })
       try {
         await watcher.next("success", (event) => event.ok)
-        await new Promise((accept) => setTimeout(accept, 1000))
         // The rebuild's compiler reads "booked"; the save to "sold" lands before its output is used.
         await edit(join(root, "src/shop.vibe"), 'receipt("ordered"', 'receipt("booked"', watcher)
         await watcher.next("with the save made during the compile", (event) => event.ok && printsEventually(bundler, root, "sold 2 tea"))

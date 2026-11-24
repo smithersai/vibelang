@@ -53,13 +53,30 @@ describe("vibelang-unplugin/deferred", () => {
     })
   }
 
-  it("starts nothing until awaited, then resolves to the bundler's plugin", async () => {
-    const { deferred } = await import("vibelang-unplugin/deferred")
-    const pending = deferred("rollup")
-    assert.equal(Object.prototype.toString.call(pending), "[object Promise]")
-    const plugin = await pending
-    assert.equal(plugin.name, "vibelang")
-    assert.equal(await pending.finally(() => {}), plugin)
+  it("starts nothing until awaited, then resolves to the bundler's plugin", () => {
+    // A fresh process records every module it loads, so a load before the await shows.
+    const probe = `
+      import { registerHooks } from "node:module"
+      const loaded = []
+      registerHooks({ load(url, context, next) { loaded.push(url); return next(url, context) } })
+      const plugin = (url) => /\\/unplugin\\/src\\/(?!deferred\\.js$)/.test(url)
+      const { deferred } = await import("vibelang-unplugin/deferred")
+      const pending = deferred("rollup")
+      await new Promise((accept) => setTimeout(accept, 100))
+      const before = loaded.filter(plugin)
+      const tag = Object.prototype.toString.call(pending)
+      const resolved = await pending
+      const same = (await pending.finally(() => {})) === resolved
+      console.log(JSON.stringify({ before, after: loaded.filter(plugin).length, tag, name: resolved.name, same }))
+    `
+    const run = spawnSync(process.execPath, ["--no-warnings", "--input-type=module", "-e", probe], { cwd: here, encoding: "utf8" })
+    assert.equal(run.status, 0, run.stderr)
+    const result = JSON.parse(run.stdout.trim().split("\n").at(-1))
+    assert.deepEqual(result.before, [], "deferred() loaded plugin modules before it was awaited")
+    assert.ok(result.after > 0, "awaiting deferred() loaded no plugin module")
+    assert.equal(result.tag, "[object Promise]")
+    assert.equal(result.name, "vibelang")
+    assert.equal(result.same, true)
   })
 
   it("refuses a bundler that does not await plugins", async () => {

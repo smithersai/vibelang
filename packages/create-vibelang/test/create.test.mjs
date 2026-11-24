@@ -41,7 +41,7 @@ test("copies the starter app and pins the VibeLang packages to its own version",
 })
 
 // Every turn of a coding agent in a new app loads AGENTS.md, so it carries
-// the docs' Essentials verbatim and stays small (CEO a-yrntzv).
+// the docs' Essentials verbatim and stays small.
 test("the starter's AGENTS.md carries the docs' Essentials and stays under 2 KB", () => {
   const agents = readFileSync(new URL("../../../templates/app/AGENTS.md", import.meta.url), "utf8")
   const essentials = readFileSync(new URL("../../../docs/user/llms-essentials.md", import.meta.url), "utf8")
@@ -215,7 +215,7 @@ test("the packaged template restores dotfiles and excludes generated artifacts",
 })
 
 
-test("new apps start at 0.0.0 and their README describes an installed starter", (t) => {
+test("new apps start at version 0.0.0", (t) => {
   const directory = scratch(t)
   const result = run(directory, "app", "--no-install")
   assert.equal(result.status, 0, result.stderr)
