@@ -438,13 +438,28 @@ func withoutKeywords(segments []spanmap.Segment, keywords []keyword) []spanmap.S
 	if len(keywords) == 0 {
 		return segments
 	}
+	// keywords are sorted by start, but a keyword can hold another, so ends
+	// are not. reach[i] is the furthest end of keywords[:i+1]: every keyword
+	// before the first reach past a segment's start ends at or before it and
+	// leaves the segment alone. Segments need not be in original order.
+	reach := make([]int, len(keywords))
+	for i, k := range keywords {
+		reach[i] = k.at + len(k.with)
+		if i > 0 {
+			reach[i] = max(reach[i], reach[i-1])
+		}
+	}
 	var out []spanmap.Segment
 	for _, segment := range segments {
 		if segment.Kind != spanmap.KindVerbatim {
 			out = append(out, segment)
 			continue
 		}
-		for _, k := range keywords {
+		first, _ := slices.BinarySearch(reach, int(segment.OriginalStart)+1)
+		for _, k := range keywords[first:] {
+			if core.TextPos(k.at) >= segment.OriginalEnd {
+				break // sorted by start: no later keyword reaches the segment
+			}
 			// An edit can begin inside a keyword's replacement, as a program's
 			// does after the ( written over effect, so clip to the segment.
 			start, end := max(core.TextPos(k.at), segment.OriginalStart), min(core.TextPos(k.at+len(k.with)), segment.OriginalEnd)

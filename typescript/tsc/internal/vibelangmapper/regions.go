@@ -94,7 +94,7 @@ func newEffectEnv() env {
 
 // regionEnv returns the env of one block of region r, inside the code of e.
 func regionEnv(r *region, e env) env {
-	return env{effect: true, frame: &frame{region: r}, continuation: e.continuation, voidFail: e.voidFail, producer: e.producer}
+	return env{effect: true, frame: &frame{region: r}, voidFail: e.voidFail, producer: e.producer}
 }
 
 // lands reports whether j lands in f, so that f can jump itself instead of
@@ -596,127 +596,6 @@ func scannerText(node *ast.Node) string {
 	return text[scanner.SkipTrivia(text, node.Pos()):node.End()]
 }
 
-// handleStatement lowers a handle statement (D132) in an Effect body to the
-// runtime's handle, one call per control, the first control innermost:
-//
-//	try { B } handle Approval.approve(request) { C }
-//	const $c = yield* handle($gen(function* () { B }), Approval, { approve: (request, $k) => $gen(function* () { C }) })
-//
-// The block and the clauses are blocks of one region: a return, break, or
-// continue in either leaves the statement through a completion record. In a
-// clause, the parser passes the continuation to resume, resumeWith, and
-// abandon, and a resume in tail position returns the runtime's tail-resume
-// request (D18).
-func (p *projector) handleStatement(node *ast.Node, e env) {
-	groups, ok := handleClauses(node)
-	body := node.AsTryStatement().TryBlock
-	if !ok || p.tokenStart(body) >= len(p.text) || p.text[p.tokenStart(body)] != '{' {
-		p.unprojected(node)
-		return
-	}
-	r := &region{tail: isTailRegion(node, e), labeled: node.Parent != nil && node.Parent.Kind == ast.KindLabeledStatement}
-	name := p.freshCompletion()
-	k := p.freshWord("$k")
-	var closers []func()
-	normal, closer := p.regionBlock(body, body.Statements(), r, e)
-	closers = append(closers, closer)
-	type clauseBraces struct{ open, close int }
-	braces := map[*ast.Node]clauseBraces{}
-	for _, group := range groups {
-		for _, clause := range group.clauses {
-			open := p.clauseBodyBrace(clause)
-			closing := clause.block.End() - 1
-			if open < 0 || p.text[closing] != '}' {
-				p.unprojected(node)
-				return
-			}
-			braces[clause.block] = clauseBraces{open, closing}
-			ce := regionEnv(r, e)
-			ce.continuation = k
-			p.visitList(clause.body, ce)
-			clauseNormal := canCompleteNormally(clause.body)
-			normal = normal || clauseNormal
-			closers = append(closers, func() {
-				if clauseNormal && len(r.jumps) > 0 && !r.tail {
-					p.plan.markText(editRecord, partWhole, closing, closing, "; return "+helperRef("$end")+" ")
-				}
-			})
-		}
-	}
-	for _, closer := range closers {
-		closer()
-	}
-	open := openRegion(r, name) + strings.Repeat(helperRef("handle")+"(", len(groups))
-	p.plan.markText(editRegion, partOpen, p.tokenStart(node), p.tokenStart(body), open+p.generatorOpen(body))
-	p.plan.markText(editRegion, partMiddle, body.End(), body.End(), p.generatorClose(body))
-	for g, group := range groups {
-		for i, clause := range group.clauses {
-			handleKeyword := p.tokenStart(clause.block)
-			operation := clause.operation
-			control, member := operation.Expression(), operation.Name()
-			if i == 0 {
-				// , Approval, { approve: (request, $k) => ...
-				p.plan.markText(editRegion, partMiddle, handleKeyword, p.tokenStart(control), ", ")
-				p.visit(control, env{})
-				p.plan.markText(editRegion, partMiddle, control.End(), p.tokenStart(member), ", { ")
-			} else {
-				p.plan.markText(editRegion, partMiddle, handleKeyword, p.tokenStart(member), ", ")
-			}
-			b := braces[clause.block]
-			var params []*ast.Node
-			for _, parameter := range clause.parameters {
-				if parameter.Kind == ast.KindBindingElement && parameter.Flags&ast.NodeFlagsReparsed == 0 {
-					params = append(params, parameter)
-				}
-			}
-			if len(params) == 0 {
-				p.plan.markText(editRegion, partMiddle, member.End(), b.open, ": ("+k+") => "+p.generatorOpen(clause.block))
-			} else {
-				p.plan.markText(editRegion, partMiddle, member.End(), p.tokenStart(params[0]), ": (")
-				for _, parameter := range params {
-					p.visit(parameter, env{})
-				}
-				padding := p.omittedClauseBindings(control, member, len(params))
-				p.plan.markText(editRegion, partMiddle, params[len(params)-1].End(), b.open, padding+", "+k+") => "+p.generatorOpen(clause.block))
-			}
-			separator := p.generatorClose(clause.block)
-			if i == len(group.clauses)-1 {
-				separator += " })"
-			}
-			p.plan.markText(editRegion, closeUnless(g < len(groups)-1 || i < len(group.clauses)-1), b.close+1, b.close+1, separator)
-		}
-	}
-	end := node.End()
-	p.plan.markText(editDispatch, partWhole, end, end, p.dispatch(r, name, normal, e))
-}
-
-// clauseBodyBrace returns the position of the { that opens a handle
-// clause's own block, after its parameter list, or -1.
-func (p *projector) clauseBodyBrace(clause handleClause) int {
-	pos := clause.operation.End()
-	if n := len(clause.parameters); n > 0 && clause.parameters[n-1].Flags&ast.NodeFlagsReparsed == 0 {
-		pos = clause.parameters[n-1].End()
-	}
-	depth := 0
-	for i := scanner.SkipTrivia(p.text, pos); i < len(p.text); i = scanner.SkipTrivia(p.text, i+1) {
-		switch p.text[i] {
-		case '(':
-			depth++
-		case ')':
-			depth--
-		case '{':
-			if depth <= 0 {
-				return i
-			}
-		default:
-			if depth <= 0 {
-				return -1
-			}
-		}
-	}
-	return -1
-}
-
 // freshWord returns name, or name with a numeric suffix, that no word of
 // the file spells, for a synthesized local such as a clause's continuation.
 func (p *projector) freshWord(name string) string {
@@ -728,64 +607,6 @@ func (p *projector) freshWord(name string) string {
 			return candidate
 		}
 	}
-}
-
-// isContinuationArgument reports whether node is the continuation the parser
-// passes to resume, resumeWith, or abandon in a handle clause.
-func isContinuationArgument(node *ast.Node) bool {
-	return node.Kind == ast.KindIdentifier && node.Flags&ast.NodeFlagsReparsed != 0 && node.Text() == "$k"
-}
-
-// resumeCall lowers the arguments of resume, resumeWith, or abandon in a
-// handle clause: the parser's continuation becomes the clause's, and resume()
-// passes undefined, as the parser writes it.
-func (p *projector) continuationArguments(call *ast.Node, e env) {
-	arguments := call.Arguments()
-	open := scanner.SkipTrivia(p.text, call.Expression().End())
-	if call.TypeArgumentList() != nil {
-		open = scanner.SkipTrivia(p.text, call.TypeArgumentList().End()+1)
-	}
-	var written []*ast.Node
-	for _, argument := range arguments[1:] {
-		if argument.Flags&ast.NodeFlagsReparsed == 0 {
-			written = append(written, argument)
-		}
-	}
-	text := e.continuation
-	switch {
-	case len(written) > 0:
-		text += ", "
-	case len(arguments) > 1:
-		text += ", undefined"
-	}
-	p.plan.insert(open+1, text)
-	for _, argument := range written {
-		p.visit(argument, e)
-	}
-}
-
-// isTailResume reports whether node is the return the parser writes for a
-// resume or resumeWith in tail position of a handle clause.
-func isTailResume(node *ast.Node) bool {
-	if node.Kind != ast.KindReturnStatement || node.Flags&ast.NodeFlagsVibeLang == 0 || node.Expression() == nil {
-		return false
-	}
-	call := node.Expression()
-	return call.Kind == ast.KindCallExpression && len(call.Arguments()) > 0 && isContinuationArgument(call.Arguments()[0])
-}
-
-// tailResume lowers a tail resume to the tail-resume request it returns:
-// `resume(v)` becomes `return $tailResume($k, v)`.
-func (p *projector) tailResume(node *ast.Node, e env) {
-	call := node.Expression()
-	callee := call.Expression()
-	helper := "$tailResume"
-	if callee.Text() == "resumeWith" {
-		helper = "$tailResumeWith"
-	}
-	p.plan.insert(p.tokenStart(node), "return ")
-	p.plan.replace(p.tokenStart(callee), callee.End(), helperRef(helper))
-	p.continuationArguments(call, e)
 }
 
 // maskWord returns the interruption block's word, uninterruptible, restore,
@@ -857,12 +678,6 @@ func (p *projector) scopeBlock(node *ast.Node, e env) {
 	opening := p.plan.reserve(editScopeRegion, partOpen, start, start)
 	statements := node.Statements()
 	p.visitList(statements, regionEnv(r, e))
-	// A tail resume also leaves the cleanup region. Dispatch its completion
-	// alongside explicit returns and loop jumps: discarding it invents a
-	// clause fallthrough, while an unconditional return would skip a jump.
-	if e.continuation != "" && endsInTailResume(node) {
-		r.add(jump{kind: ast.KindReturnStatement})
-	}
 	normal := canCompleteNormally(statements)
 	if normal && len(r.jumps) > 0 && !r.tail {
 		p.plan.markText(editRecord, partWhole, closing, closing, "; return "+helperRef("$end")+" ")
@@ -994,52 +809,4 @@ func isRegionTransparent(fn *ast.Node) bool {
 	}
 	callee := parent.Expression()
 	return ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$catchExpression"
-}
-
-// endsInTailResume reports that the last path through a cleanup block resumes.
-// Earlier returns and loop jumps are collected by its region; the final resume
-// must leave that region too, after the resumed continuation and cleanup run.
-func endsInTailResume(node *ast.Node) bool {
-	if isTailResume(node) {
-		return true
-	}
-	switch node.Kind {
-	case ast.KindBlock:
-		statements := node.Statements()
-		return len(statements) > 0 && endsInTailResume(statements[len(statements)-1])
-	case ast.KindIfStatement:
-		s := node.AsIfStatement()
-		return s.ElseStatement != nil && endsInTailResume(s.ThenStatement) && endsInTailResume(s.ElseStatement)
-	}
-	return false
-}
-
-// omittedClauseBindings keeps the continuation after every argument of a
-// locally declared operation. Only a fixed written arity can supply padding;
-// imported and variadic operations keep the executable's last-argument rule.
-func (p *projector) omittedClauseBindings(control, member *ast.Node, bound int) string {
-	resolver, ok := p.forms.(*Resolver)
-	if !ok || !ast.IsIdentifier(control) {
-		return ""
-	}
-	service := resolver.serviceClassOf(control)
-	if service == nil {
-		return ""
-	}
-	for _, method := range service.Members() {
-		if !ast.IsMethodDeclaration(method) || method.Name() == nil || method.Name().Text() != member.Text() {
-			continue
-		}
-		for _, parameter := range method.Parameters() {
-			if parameter.AsParameterDeclaration().DotDotDotToken != nil {
-				return ""
-			}
-		}
-		padding := ""
-		for n := bound; n < len(method.Parameters()); n++ {
-			padding += ", " + p.freshWord("$ignored"+strconv.Itoa(n))
-		}
-		return padding
-	}
-	return ""
 }

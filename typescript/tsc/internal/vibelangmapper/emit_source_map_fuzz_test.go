@@ -29,54 +29,92 @@ func FuzzEmitSourceMap(f *testing.F) {
 		if !utf8.ValidString(text) {
 			t.Skip("Emit reads text the compiler has decoded")
 		}
-		js, sourceMap, diagnostics := Emit(text, testContext)
-		if sourceMap == "" || len(diagnostics) != 0 {
+		if !checkEmitSourceMap(t, text) {
 			t.Skip("no map to read")
-		}
-		var m struct {
-			Version        int       `json:"version"`
-			File           string    `json:"file"`
-			Sources        []string  `json:"sources"`
-			SourcesContent []*string `json:"sourcesContent"`
-			Mappings       string    `json:"mappings"`
-		}
-		if err := json.Unmarshal([]byte(sourceMap), &m); err != nil || m.Version != 3 {
-			t.Fatalf("Shape: not a version 3 map (%v): %.200s", err, sourceMap)
-		}
-		if len(m.Sources) != 1 || !strings.HasSuffix(m.File, ".js") {
-			t.Fatalf("Shape: sources %q, file %q", m.Sources, m.File)
-		}
-		if len(m.SourcesContent) != 1 || m.SourcesContent[0] == nil || *m.SourcesContent[0] != text {
-			t.Fatal("Content: the map does not hold the text")
-		}
-		generated, source := utf16LineLengths(js), utf16LineLengths(text)
-		lastLine, lastColumn := -1, -1
-		decoder := sourcemap.DecodeMappings(m.Mappings)
-		for mapping := range decoder.Values() {
-			line, column := mapping.GeneratedLine, int(mapping.GeneratedCharacter)
-			if line < lastLine || line == lastLine && column < lastColumn {
-				t.Fatalf("Order: segment %d:%d follows %d:%d", line, column, lastLine, lastColumn)
-			}
-			lastLine, lastColumn = line, column
-			if line >= len(generated) || column > generated[line] {
-				t.Fatalf("Range: segment at generated %d:%d is outside the file", line, column)
-			}
-			if mapping.IsSourceMapping() && (mapping.SourceLine >= len(source) || int(mapping.SourceCharacter) > source[mapping.SourceLine]) {
-				t.Fatalf("Range: segment at generated %d:%d names source %d:%d, outside the text", line, column, mapping.SourceLine, mapping.SourceCharacter)
-			}
-		}
-		if err := decoder.Error(); err != nil {
-			t.Fatalf("Shape: the mappings do not decode: %v", err)
 		}
 	})
 }
 
-// emitSourceMapSeeds takes a spread of the acceptance cases. A map's rules do
-// not depend on which case holds a form, so a sample covers them.
+// emitSourceMapSeedFloor is the share, in percent, of the seeds that must
+// emit a map without diagnostics. Below it the fuzz target would skip most
+// seeds and pass without reading a map (#597).
+const emitSourceMapSeedFloor = 75
+
+// TestEmitSourceMapSeeds runs FuzzEmitSourceMap's checks on its seeds and
+// fails when too few of them reach the checks.
+func TestEmitSourceMapSeeds(t *testing.T) {
+	seeds := emitSourceMapSeeds(t)
+	checked := 0
+	for _, seed := range seeds {
+		if checkEmitSourceMap(t, seed) {
+			checked++
+		}
+	}
+	t.Logf("%d of %d seeds emit a map", checked, len(seeds))
+	if checked*100 < emitSourceMapSeedFloor*len(seeds) {
+		t.Fatalf("only %d of %d seeds emit a map without diagnostics; the floor is %d%%", checked, len(seeds), emitSourceMapSeedFloor)
+	}
+}
+
+// checkEmitSourceMap checks Emit's map of text and reports whether there was
+// one to check: Emit returns none when it diagnoses text.
+func checkEmitSourceMap(t *testing.T, text string) bool {
+	t.Helper()
+	js, sourceMap, diagnostics := Emit(text, testContext)
+	if sourceMap == "" || len(diagnostics) != 0 {
+		return false
+	}
+	var m struct {
+		Version        int       `json:"version"`
+		File           string    `json:"file"`
+		Sources        []string  `json:"sources"`
+		SourcesContent []*string `json:"sourcesContent"`
+		Mappings       string    `json:"mappings"`
+	}
+	if err := json.Unmarshal([]byte(sourceMap), &m); err != nil || m.Version != 3 {
+		t.Fatalf("Shape: not a version 3 map (%v): %.200s", err, sourceMap)
+	}
+	if len(m.Sources) != 1 || !strings.HasSuffix(m.File, ".js") {
+		t.Fatalf("Shape: sources %q, file %q", m.Sources, m.File)
+	}
+	if len(m.SourcesContent) != 1 || m.SourcesContent[0] == nil || *m.SourcesContent[0] != text {
+		t.Fatal("Content: the map does not hold the text")
+	}
+	generated, source := utf16LineLengths(js), utf16LineLengths(text)
+	lastLine, lastColumn := -1, -1
+	decoder := sourcemap.DecodeMappings(m.Mappings)
+	for mapping := range decoder.Values() {
+		line, column := mapping.GeneratedLine, int(mapping.GeneratedCharacter)
+		if line < lastLine || line == lastLine && column < lastColumn {
+			t.Fatalf("Order: segment %d:%d follows %d:%d", line, column, lastLine, lastColumn)
+		}
+		lastLine, lastColumn = line, column
+		if line >= len(generated) || column > generated[line] {
+			t.Fatalf("Range: segment at generated %d:%d is outside the file", line, column)
+		}
+		if mapping.IsSourceMapping() && (mapping.SourceLine >= len(source) || int(mapping.SourceCharacter) > source[mapping.SourceLine]) {
+			t.Fatalf("Range: segment at generated %d:%d names source %d:%d, outside the text", line, column, mapping.SourceLine, mapping.SourceCharacter)
+		}
+	}
+	if err := decoder.Error(); err != nil {
+		t.Fatalf("Shape: the mappings do not decode: %v", err)
+	}
+	return true
+}
+
+// emitSourceMapSeeds takes a spread of the acceptance cases that compile. A
+// map's rules do not depend on which case holds a form, so a sample covers
+// them. A .fail case is diagnosed, so Emit returns no map for it.
 func emitSourceMapSeeds(tb testing.TB) []string {
-	names, err := filepath.Glob(filepath.Join("..", "..", "..", "vibelang", "cases", "*", "main.vibe"))
+	all, err := filepath.Glob(filepath.Join("..", "..", "..", "vibelang", "cases", "*", "main.vibe"))
 	if err != nil {
 		tb.Fatal(err)
+	}
+	var names []string
+	for _, name := range all {
+		if !strings.HasSuffix(filepath.Dir(name), ".fail") {
+			names = append(names, name)
+		}
 	}
 	slices.Sort(names)
 	step := 16

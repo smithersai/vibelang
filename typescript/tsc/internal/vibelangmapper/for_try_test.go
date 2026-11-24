@@ -47,6 +47,7 @@ func TestForTryBindingDefaults(t *testing.T) {
 }
 
 func TestForTryOwnLabels(t *testing.T) {
+	var emitted []string
 	for _, source := range []string{
 		`effect function main(rows: Stream.Stream<number>) { again: for try (const x of rows) { if (x === 1) continue again; break again } }`,
 		`effect function main(rows: Stream.Stream<number>) { outer: inner: for try (const x of rows) { if (x === 1) continue outer; break inner } }`,
@@ -58,11 +59,16 @@ func TestForTryOwnLabels(t *testing.T) {
 		assertParses(t, e.Text)
 		js, _, diagnostics := Emit(source, testContext)
 		assert.Equal(t, len(diagnostics), 0, "%v", diagnostics)
-		if node, err := exec.LookPath("node"); err == nil {
-			cmd := exec.Command(node, "--check", "--input-type=module")
-			cmd.Stdin = strings.NewReader(js)
-			output, err := cmd.CombinedOutput()
-			assert.NilError(t, err, "%s\n%s", output, js)
-		}
+		emitted = append(emitted, js)
+	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is unavailable, so the emitted JavaScript's syntax is unchecked")
+	}
+	for _, js := range emitted {
+		cmd := exec.Command(node, "--check", "--input-type=module")
+		cmd.Stdin = strings.NewReader(js)
+		output, err := cmd.CombinedOutput()
+		assert.NilError(t, err, "%s\n%s", output, js)
 	}
 }

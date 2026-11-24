@@ -1,6 +1,8 @@
 package vibelangmapper
 
 import (
+	"cmp"
+	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -93,12 +95,13 @@ func (p *projector) purity() []FunctionPurity {
 	var functions []*ast.Node
 	index := map[string]int{}
 	declarations := p.purityDeclarations()
+	edits := p.purityEdits()
 	for _, statement := range p.file.Statements.Nodes {
 		if !isProjectedFunction(statement) || statement.Name() == nil || ast.HasSyntacticModifier(statement, ast.ModifierFlagsAmbient) {
 			continue
 		}
 		name := statement.Name().Text()
-		if declarations[name] != 1 || !p.hasEffectBody(statement) {
+		if declarations[name] != 1 || !p.hasEffectBody(statement, edits) {
 			continue
 		}
 		index[name] = len(functions)
@@ -134,7 +137,7 @@ func (p *projector) purity() []FunctionPurity {
 	for changed := true; changed; {
 		changed = false
 		for i, fn := range functions {
-			if pure[i] && (p.bodyObstacle(fn, callee) != obstacleNone || !p.plainEdits(fn)) {
+			if pure[i] && (p.bodyObstacle(fn, callee) != obstacleNone || !p.plainEdits(fn, edits)) {
 				pure[i], changed = false, true
 			}
 		}
@@ -177,30 +180,49 @@ func (p *projector) purityDeclarations() map[string]int {
 // hasEffectBody reports whether the plan lowers fn's body as an Effect
 // function's: an Effect body edit right after its brace, or a contract
 // (D57) that closes after it.
-func (p *projector) hasEffectBody(fn *ast.Node) bool {
+func (p *projector) hasEffectBody(fn *ast.Node, edits purityEdits) bool {
 	if p.forms.(*Resolver).isFactory(fn) {
 		return false
 	}
 	body := fn.Body()
-	open, end := p.tokenStart(body)+1, body.End()
+	return edits.effectBodyOpens[p.tokenStart(body)+1] || edits.contractCloses[body.End()]
+}
+
+// purityEdits indexes the plan's edits by position for hasEffectBody and
+// plainEdits, which purity asks about every function, so one projection
+// reads the edit list once rather than once per function.
+type purityEdits struct {
+	effectBodyOpens map[int]bool
+	contractCloses  map[int]bool
+	byPos           []edit // sorted by pos
+}
+
+func (p *projector) purityEdits() purityEdits {
+	index := purityEdits{effectBodyOpens: map[int]bool{}, contractCloses: map[int]bool{}}
 	for _, e := range p.plan.edits {
-		if e.kind == editEffectBody && e.part == partOpen && e.pos == open || e.kind == editContract && e.part == partClose && e.pos == end {
-			return true
+		switch {
+		case e.kind == editEffectBody && e.part == partOpen:
+			index.effectBodyOpens[e.pos] = true
+		case e.kind == editContract && e.part == partClose:
+			index.contractCloses[e.pos] = true
 		}
 	}
-	return false
+	index.byPos = slices.Clone(p.plan.edits)
+	slices.SortStableFunc(index.byPos, func(a, b edit) int { return cmp.Compare(a.pos, b.pos) })
+	return index
 }
 
 // plainEdits reports whether every edit in fn's body, other than its own
 // Effect body's, is a call that runs or syntax, so the plan lowers no form
 // in it some other way. Nested functions count: their own Effect bodies
 // make the body not provably pure, as the executable rendering decides.
-func (p *projector) plainEdits(fn *ast.Node) bool {
+func (p *projector) plainEdits(fn *ast.Node, edits purityEdits) bool {
 	body := fn.Body()
 	lo, hi := p.tokenStart(body)+1, body.End()-1
-	for _, e := range p.plan.edits {
-		if e.pos < lo || e.pos > hi {
-			continue
+	first, _ := slices.BinarySearchFunc(edits.byPos, lo, func(e edit, pos int) int { return cmp.Compare(e.pos, pos) })
+	for _, e := range edits.byPos[first:] {
+		if e.pos > hi {
+			break
 		}
 		if e.kind == editEffectBody && (e.pos == lo && e.part == partOpen || e.pos == hi && e.part == partClose) {
 			continue // fn's own body

@@ -176,16 +176,3 @@ func (p *projector) checkLayerSetup(n *ast.Node) {
 		}
 	}
 }
-
-// syntaxTaggedErrorClass recognizes the legacy TaggedError class shape.
-func syntaxTaggedErrorClass(n *ast.Node) bool {
-	if !ast.IsClassLike(n) {
-		return false
-	}
-	h := ast.GetClassExtendsHeritageElement(n)
-	if h == nil || !ast.IsCallExpression(h.Expression()) {
-		return false
-	}
-	callee := h.Expression().Expression()
-	return ast.IsIdentifier(callee) && callee.Text() == "TaggedError" || ast.IsPropertyAccessExpression(callee) && callee.Name().Text() == "TaggedError"
-}
