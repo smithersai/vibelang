@@ -124,12 +124,37 @@ func (p *projector) errorHead(node *ast.Node) (int, int, bool) {
 }
 
 // errorBodyOpen returns the position after an error declaration's opening
-// brace, or -1 when it has no body.
+// brace, or -1 when it has no body. The heritage clauses before the body
+// can hold braces of their own, as in `extends Base<{ id: string }>`: the
+// body's brace is the first one outside every type argument list,
+// parenthesis and string.
 func (p *projector) errorBodyOpen(node *ast.Node, after int) int {
+	angles, parens := 0, 0
 	at := scanner.SkipTrivia(p.text, after)
 	for at < node.End() {
-		if p.text[at] == '{' {
-			return at + 1
+		switch c := p.text[at]; c {
+		case '<':
+			angles++
+		case '>':
+			if angles > 0 && p.text[at-1] != '=' { // => is an arrow
+				angles--
+			}
+		case '(':
+			parens++
+		case ')':
+			if parens > 0 {
+				parens--
+			}
+		case '"', '\'', '`':
+			for at++; at < node.End() && p.text[at] != c; at++ {
+				if p.text[at] == '\\' {
+					at++
+				}
+			}
+		case '{':
+			if angles == 0 && parens == 0 {
+				return at + 1
+			}
 		}
 		at = scanner.SkipTrivia(p.text, at+1)
 	}
@@ -144,32 +169,54 @@ func (p *projector) errorField(name *ast.Node) {
 		// A class field cannot use constructor as an identifier. The
 		// computed spelling keeps the same payload key in virtual TypeScript.
 		prefix := "declare readonly "
-		if start, ok := p.keywordBefore(name, "mutable"); ok {
+		if start, ok := p.fieldModifier(name, "mutable"); ok {
 			p.plan.replace(start, start+len("mutable"), "declare")
 			prefix = ""
-		} else if start, ok := p.keywordBefore(name, "readonly"); ok {
+		} else if start, ok := p.fieldModifier(name, "readonly"); ok {
 			p.plan.insert(start, "declare ")
 			prefix = ""
 		}
 		p.plan.replace(nameStart, name.End(), prefix+"[\"constructor\"]")
 		return
 	}
-	if start, ok := p.keywordBefore(name, "mutable"); ok {
+	if start, ok := p.fieldModifier(name, "mutable"); ok {
 		p.plan.replace(start, start+len("mutable"), "declare")
 		return
 	}
-	if start, ok := p.keywordBefore(name, "readonly"); ok {
+	if start, ok := p.fieldModifier(name, "readonly"); ok {
 		p.plan.insert(start, "declare ")
 		return
 	}
 	p.plan.insert(nameStart, "declare readonly ")
 }
 
+// fieldModifier returns the start of word when it is the modifier written
+// before the field whose name is name. Like keywordBefore it reads the token
+// that ends where the name's trivia starts, but that token must be a whole
+// word inside the field's own span: the type of the field before it, such as
+// Immutable, also ends there.
+func (p *projector) fieldModifier(name *ast.Node, word string) (int, bool) {
+	start, ok := p.keywordBefore(name, word)
+	if !ok {
+		return 0, false
+	}
+	if start > 0 && scanner.IsIdentifierPart(rune(p.text[start-1])) {
+		return 0, false
+	}
+	// A written field's span holds its modifiers; a schema error's field is
+	// an object literal property the parser built from the name on.
+	if member := name.Parent; member != nil && (ast.IsPropertySignatureDeclaration(member) || ast.IsPropertyDeclaration(member)) &&
+		member.Flags&ast.NodeFlagsReparsed == 0 && start < member.Pos() {
+		return 0, false
+	}
+	return start, true
+}
+
 // fieldText returns a field's text for a type literal: readonly unless
 // mutable, its name, its question mark, and its type.
 func (p *projector) fieldText(name *ast.Node, postfix *ast.Node, typeNode *ast.Node) string {
 	text := ""
-	if _, ok := p.keywordBefore(name, "mutable"); !ok {
+	if _, ok := p.fieldModifier(name, "mutable"); !ok {
 		text = "readonly "
 	}
 	text += p.text[p.tokenStart(name):name.End()]

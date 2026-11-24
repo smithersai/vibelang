@@ -43,18 +43,24 @@ func Emit(text string, ctx FileContext) (js string, sourceMap string, diagnostic
 	if exec == "" && len(text) > 0 {
 		return "", "", diagnostics
 	}
-	stem := strings.TrimSuffix(path.Base(ctx.FileName), ".vibe")
+	base := path.Base(ctx.FileName)
+	stem := strings.TrimSuffix(base, tspath.VibeLangSourceExtension(base))
 	if stem == "" || stem == "." || stem == "/" {
 		stem = "module"
 	}
+	options := &core.CompilerOptions{
+		Target:                          core.ScriptTargetES2022,
+		Module:                          core.ModuleKindESNext,
+		SourceMap:                       core.TSTrue,
+		RewriteRelativeImportExtensions: core.TSTrue,
+	}
+	if executable.Extension == ".tsx" {
+		// A .vibex file renders as TSX (VIP-39), and its JSX stays JSX.
+		options.Jsx = core.JsxEmitPreserve
+	}
 	output := transpile.TranspileModule(context.Background(), exec, transpile.Options{
-		CompilerOptions: &core.CompilerOptions{
-			Target:                          core.ScriptTargetES2022,
-			Module:                          core.ModuleKindESNext,
-			SourceMap:                       core.TSTrue,
-			RewriteRelativeImportExtensions: core.TSTrue,
-		},
-		FileName:          "/" + stem + ".ts",
+		CompilerOptions:   options,
+		FileName:          "/" + stem + executable.Extension,
 		ReportDiagnostics: true,
 	})
 	if output == nil {

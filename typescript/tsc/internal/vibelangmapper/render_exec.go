@@ -345,13 +345,13 @@ var prologueHelpers = map[string]bool{
 }
 
 // d151Names are the Effect functions a .vibe file calls without the
-// Effect. prefix (prelude.d.ts), imported from effect/Effect.
-var d151Names = setOf(`all die exit forEach interrupt yieldNow log logDebug logError logInfo logWarning race repeat retry sleep timeout withSpan`)
+// Effect. prefix (names.go), imported from effect/Effect.
+var d151Names = setOf(d151List)
 
-// runtimePreludeNames are the runtime's prelude names (prelude.d.ts),
-// imported from vibelang-runtime.
-var runtimePreludeNames = setOf(`TaggedError Control pipe wire fork handle resume resumeWith abandon sync callback Resume runPromise
-	runFork runSync runCallback detach forkIn uninterruptible restore interruptible customMatcher`)
+// runtimePreludeNames are the runtime's prelude names (names.go) and the
+// runtime exports synthesized text names (Control and the handler
+// functions), imported from vibelang-runtime.
+var runtimePreludeNames = setOf(runtimePreludeList + ` Control handle resume resumeWith abandon`)
 
 func setOf(list string) map[string]bool {
 	set := map[string]bool{}
@@ -403,6 +403,10 @@ func (r *execRendering) prefix() string {
 			specifier += " as " + local
 		}
 		byModule[source.module] = append(byModule[source.module], specifier)
+	}
+	for name := range r.names.effectGlobals {
+		// VIP-6: an export of effect/Effect is a global of a .vibe file.
+		byModule["effect/Effect"] = append(byModule["effect/Effect"], name)
 	}
 	modules := make([]string, 0, len(byModule))
 	for module := range byModule {

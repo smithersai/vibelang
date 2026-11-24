@@ -288,7 +288,11 @@ func vipKeywords(file *ast.SourceFile, text string, lint bool) []keyword {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if node.Flags&ast.NodeFlagsVibeLangTry != 0 {
-			keywords = append(keywords, keyword{scanner.SkipTrivia(text, node.Pos()), "   "})
+			at := scanner.SkipTrivia(text, node.Pos())
+			keywords = append(keywords, keyword{at, "   "})
+			if gap, ok := restrictedTryGap(text, at); ok {
+				keywords = append(keywords, gap)
+			}
 		}
 		if node.Flags&ast.NodeFlagsVibeLangEffect != 0 && ast.IsFunctionLike(node) {
 			at := node.Pos()
@@ -298,9 +302,10 @@ func vipKeywords(file *ast.SourceFile, text string, lint bool) []keyword {
 			at = scanner.SkipTrivia(text, at)
 			if strings.HasPrefix(text[at:], "effect") {
 				with := "      "
-				// Removing effect exposes a generator method's star to the previous
-				// class field's initializer. Keep the member boundary during reparse.
-				if node.Kind == ast.KindMethodDeclaration && ast.IsClassLike(node.Parent) && node.BodyData().AsteriskToken != nil && (node.Modifiers() == nil || len(node.Modifiers().Nodes) == 0) {
+				// Removing effect exposes a generator method's star, or a
+				// computed name's bracket, to the previous class field's
+				// initializer. Keep the member boundary during reparse.
+				if node.Kind == ast.KindMethodDeclaration && ast.IsClassLike(node.Parent) && (node.BodyData().AsteriskToken != nil || ast.IsComputedPropertyName(node.Name())) && (node.Modifiers() == nil || len(node.Modifiers().Nodes) == 0) {
 					with = ";     "
 				}
 				if body := node.Body(); ast.IsArrowFunction(node) && body != nil && ast.IsBlock(body) && len(node.Parameters()) == 0 && scanner.SkipTrivia(text, at+len("effect")) == scanner.SkipTrivia(text, body.Pos()) {
@@ -347,6 +352,34 @@ func vipKeywords(file *ast.SourceFile, text string, lint bool) []keyword {
 	file.AsNode().ForEachChild(visit)
 	slices.SortFunc(keywords, func(a, b keyword) int { return cmp.Compare(a.at, b.at) }) // withoutKeywords walks them in order
 	return keywords
+}
+
+// restrictedTryGap returns a keyword that writes the line breaks between the
+// try at at and its operand as tabs, when try follows return, throw or
+// yield on its line. Blanked to spaces, try would leave that keyword at the
+// end of its line, where automatic semicolon insertion ends the statement
+// before the operand; the native compiler reads the operand on the next
+// line. A comment in the gap keeps its line break, and the gap, as written.
+func restrictedTryGap(text string, at int) (keyword, bool) {
+	end := at + len("try")
+	if !strings.HasPrefix(text[at:], "try") || end >= len(text) {
+		return keyword{}, false
+	}
+	operand := scanner.SkipTrivia(text, end)
+	gap := text[end:operand]
+	if !strings.ContainsAny(gap, "\r\n") || strings.Trim(gap, " \t\r\n") != "" {
+		return keyword{}, false
+	}
+	before := strings.TrimRight(text[:at], " \t")
+	for _, word := range []string{"return", "throw", "yield"} {
+		start := len(before) - len(word)
+		if strings.HasSuffix(before, word) && (start == 0 || !scanner.IsIdentifierPart(rune(before[start-1]))) {
+			// Tabs, which no other keyword writes, so readers of the
+			// keywords that match their spaces pass this one by.
+			return keyword{end, strings.Repeat("\t", len(gap))}, true
+		}
+	}
+	return keyword{}, false
 }
 
 // continuationFollows reports whether a block's end at end is followed, past a

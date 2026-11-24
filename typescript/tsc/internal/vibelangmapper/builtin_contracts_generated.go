@@ -3,8 +3,6 @@
 package vibelangmapper
 
 var builtinContracts = map[string]string{
-	"Headers.append":                             "TypeError",
-	"Headers.set":                                "TypeError",
 	"Intl.Collator.supportedLocalesOf":           "RangeError",
 	"Intl.DateTimeFormat.supportedLocalesOf":     "RangeError",
 	"Intl.DisplayNames.supportedLocalesOf":       "RangeError",
@@ -17,10 +15,22 @@ var builtinContracts = map[string]string{
 	"Intl.getCanonicalLocales":                   "RangeError",
 	"Intl.supportedValuesOf":                     "RangeError",
 	"JSON.parse":                                 "SyntaxError",
-	"TextDecoder.decode":                         "TypeError",
+	"JSON.stringify":                             "TypeError",
+	"Temporal.Duration.from":                     "RangeError",
+	"Temporal.Instant.from":                      "RangeError",
+	"Temporal.PlainDate.from":                    "RangeError",
+	"Temporal.PlainDateTime.from":                "RangeError",
+	"Temporal.PlainMonthDay.from":                "RangeError",
+	"Temporal.PlainTime.from":                    "RangeError",
+	"Temporal.PlainYearMonth.from":               "RangeError",
+	"Temporal.ZonedDateTime.from":                "RangeError",
+	"Uint8Array.fromBase64":                      "SyntaxError",
+	"Uint8Array.fromHex":                         "SyntaxError",
 	"atob":                                       "DOMException",
 	"btoa":                                       "DOMException",
 	"decodeURI":                                  "URIError",
 	"decodeURIComponent":                         "URIError",
+	"encodeURI":                                  "URIError",
+	"encodeURIComponent":                         "URIError",
 	"structuredClone":                            "DOMException",
 }

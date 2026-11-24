@@ -7,7 +7,9 @@
 // keeps each member that throws exactly one class and that source code calls
 // by name: "JSON.parse", "Intl.NumberFormat.supportedLocalesOf". It drops
 // constructor call signatures ("BigIntConstructor()"), unions, never and
-// unknown.
+// unknown, and instance methods ("Headers.set", "Number.toFixed"): the table
+// keys both kinds by interface name, and source code calls an instance
+// method on a value, never by the interface's name.
 //
 // go run gen_builtin_contracts.go [-o output]
 package main
@@ -53,6 +55,9 @@ func main() {
 				continue
 			}
 			parts := strings.Split(key, ".")
+			if !staticMember(parts) {
+				continue
+			}
 			for i := range parts {
 				parts[i] = strings.TrimSuffix(parts[i], "Constructor")
 			}
@@ -81,4 +86,30 @@ func main() {
 	if err := os.WriteFile(*output, data, 0644); err != nil {
 		panic(err)
 	}
+}
+
+// globalObjects are the globals whose own type declares their members, so a
+// member's key names a static call: JSON.parse, Intl.getCanonicalLocales.
+var globalObjects = map[string]bool{"Atomics": true, "Intl": true, "JSON": true, "Math": true, "Reflect": true}
+
+// staticMember reports whether the member that key's parts name is called by
+// that name in source: a global function, a member of a constructor's
+// interface (NumberConstructor.isInteger is Number.isInteger) or of a global
+// object, or supportedLocalesOf, which every Intl service constructor
+// declares in the type literal of its variable (ECMA-402). Any other member
+// belongs to an interface of instances, such as Headers or TextDecoder.
+func staticMember(parts []string) bool {
+	if len(parts) == 1 {
+		return true
+	}
+	owner := parts[len(parts)-2]
+	switch {
+	case strings.HasSuffix(owner, "Constructor"):
+		return true
+	case len(parts) == 2 && globalObjects[owner]:
+		return true
+	case parts[0] == "Intl" && len(parts) == 3 && parts[2] == "supportedLocalesOf":
+		return true
+	}
+	return false
 }

@@ -383,7 +383,12 @@ func (p *projector) visit(node *ast.Node, e env) {
 		// f(n: number): infer _ { ... } is a plain function whose return type
 		// TypeScript infers from its body; TypeScript has no infer annotation
 		// outside a conditional type (TS1338), so the annotation goes.
-		p.plan.replace(p.colonBefore(node), node.End(), "")
+		colon := p.colonBefore(node)
+		if colon < 0 {
+			p.unprojected(node)
+			return
+		}
+		p.plan.replace(colon, node.End(), "")
 		return
 	case isEffectType(node):
 		p.effectType(node, false /*slotsOnly*/)
@@ -887,15 +892,15 @@ func isWrittenEffectReference(t *ast.Node) bool {
 }
 
 // colonBefore returns the position of the : that introduces annotation, or -1.
+// Comments may stand between the two: the colon is the last one before the
+// annotation from which only trivia leads to it, and it ends the annotation's
+// leading trivia.
 func (p *projector) colonBefore(annotation *ast.Node) int {
-	for i := p.tokenStart(annotation) - 1; i >= 0; i-- {
-		switch p.text[i] {
-		case ':':
+	start := p.tokenStart(annotation)
+	for i := start - 1; i >= 0 && i >= annotation.Pos()-1; i-- {
+		if p.text[i] == ':' && scanner.SkipTrivia(p.text, i+1) == start {
 			return i
-		case ' ', '\t', '\n', '\r':
-			continue
 		}
-		return -1
 	}
 	return -1
 }
