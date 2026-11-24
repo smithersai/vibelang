@@ -113,6 +113,7 @@
     "project.d.mts",
     "emit.mjs",
     "emit.d.mts",
+    "eval.mjs",
     "metro.cjs",
     "metro.d.cts",
     "babel.cjs",

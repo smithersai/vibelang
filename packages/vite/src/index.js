@@ -31,6 +31,23 @@ function sourceConditionConfig(config) {
 
 const cleanId = (id) => id.split("?")[0]
 
+// VIP-59: an eval file (*.eval.vibe, *.eval.vibex) is run by `vibelang eval`
+// and never bundled into an application. An eval file may be an entry, and
+// may import another eval file; any other importer is refused. The pattern
+// also matches a served .vibex.jsx id and a module declaration's output.
+const isEvalId = (id) => /\.eval\.vibex?(?:\.[^/\\]*)?$/.test(cleanId(id))
+function refuseEvalImport(resolved, source, importer) {
+  if (!importer || isEvalId(importer)) return resolved
+  const original = cleanId(source)
+  const id = typeof resolved === "string" ? resolved : resolved?.id ??
+    // An import the host resolves itself, such as ./greet.eval.vibe by its full name.
+    (isAbsolute(original) ? original : original.startsWith(".") ? resolve(dirname(cleanId(importer)), original) : undefined)
+  if (id === undefined || !isEvalId(id)) return resolved
+  throw new Error(`vibelang: ${cleanId(importer)} imports the eval file ${cleanId(id)}. ` +
+    "An eval file (*.eval.vibe, *.eval.vibex) is run by `vibelang eval` and is never bundled into an application (VIP-59). " +
+    "Move the code both files need into a module that is not an eval file, and import that.")
+}
+
 // Emitted relative imports are URLs; bundler hooks resolve filesystem names.
 // Decode once so a literal percent sequence retains its filename spelling.
 function outputPath(source, importer, written) {
@@ -479,6 +496,61 @@ export default function vibelang(options = {}) {
     return [...updates]
   }
 
+  function resolveSource(source, importer, resolveOptions) {
+    const original = cleanId(source)
+    // A worker entry this plugin emitted, by its module's absolute path.
+    if (workerEntryPlatform(source) && isAbsolute(original) && isCompiled(original) && existsSync(original)) return slash(source)
+    const query = source.slice(original.length)
+    const file = outputPath(original, importer, writtenOutput)
+    const serve = target => slash(isModuleId(source) ? servedId(target) : target) + query
+    if (isModuleId(source) && /\.vibex(?:\.jsx)?$/.test(file) && (isAbsolute(file) || file.startsWith("."))) {
+      const candidates = isAbsolute(file) ? [file, ...(root ? [resolve(root, "." + file)] : [])] :
+        importer ? [resolve(dirname(cleanId(importer)), file)] : []
+      for (const target of candidates) {
+        if (jsxSource(target)) return slash(target) + query
+        if (target.endsWith(".vibex") && existsSync(target)) return serve(target)
+      }
+    }
+    if (!importer) return
+    if (!source.startsWith(".")) {
+      if (isCompiled(cleanId(importer))) {
+        const target = aliasImport(projectConfig(sourceFile(cleanId(importer))), file)
+        if (target !== undefined) return serve(target)
+      }
+      // A package's exports can name JSX source even when its import is bare.
+      if (this.resolve) return this.resolve(source, importerOnDisk(importer), { ...resolveOptions, skipSelf: true }).then(resolved => {
+        if (resolved && isModuleId(source) && cleanId(resolved.id).endsWith(".vibex")) return { ...resolved, id: servedId(cleanId(resolved.id)) + resolved.id.slice(cleanId(resolved.id).length) }
+        return resolved
+      })
+      return
+    }
+    const relative = () => {
+      const vibe = extensionlessVibe(dirname(cleanId(importer)), file)
+      if (vibe !== undefined) return serve(vibe)
+      // Emitted imports keep the original source in Vite's module graph.
+      if (!/\.jsx?$/.test(file)) return
+      const target = resolve(dirname(cleanId(importer)), file)
+      if (existsSync(target)) {
+        if (isCompiled(cleanId(importer)) && /%[\da-f]{2}/i.test(original)) {
+          debug(`relative existing file: original=${original}, selected=${file}, target=${target}`)
+        }
+        return file !== original ? this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true }) : undefined
+      }
+      if (isModuleOutput(target)) return slash(target) + query
+      const stem = target.replace(/\.jsx?$/, "")
+      for (const extension of file.endsWith(".jsx") ? [".vibex"] : [".vibe", ".vibex"]) {
+        const source = stem + extension
+        if (existsSync(source)) return serve(source)
+      }
+      if (file !== original) return this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true })
+    }
+    // Plugins after this one see a compiled module's written TypeScript
+    // import, ./dep.ts rather than its emitted ./dep.js, as for a .ts twin.
+    const written = writtenNames.get(sourceFile(cleanId(importer)))?.get(original)
+    if (written === undefined || !this.resolve) return relative()
+    return this.resolve(written + query, importer, { ...resolveOptions, skipSelf: true }).then(resolved => resolved ?? relative())
+  }
+
   return {
     name: "vibelang",
     enforce: "pre",
@@ -534,58 +606,10 @@ export default function vibelang(options = {}) {
       })
     },
     resolveId(source, importer, resolveOptions) {
-      const original = cleanId(source)
-      // A worker entry this plugin emitted, by its module's absolute path.
-      if (workerEntryPlatform(source) && isAbsolute(original) && isCompiled(original) && existsSync(original)) return slash(source)
-      const query = source.slice(original.length)
-      const file = outputPath(original, importer, writtenOutput)
-      const serve = target => slash(isModuleId(source) ? servedId(target) : target) + query
-      if (isModuleId(source) && /\.vibex(?:\.jsx)?$/.test(file) && (isAbsolute(file) || file.startsWith("."))) {
-        const candidates = isAbsolute(file) ? [file, ...(root ? [resolve(root, "." + file)] : [])] :
-          importer ? [resolve(dirname(cleanId(importer)), file)] : []
-        for (const target of candidates) {
-          if (jsxSource(target)) return slash(target) + query
-          if (target.endsWith(".vibex") && existsSync(target)) return serve(target)
-        }
-      }
-      if (!importer) return
-      if (!source.startsWith(".")) {
-        if (isCompiled(cleanId(importer))) {
-          const target = aliasImport(projectConfig(sourceFile(cleanId(importer))), file)
-          if (target !== undefined) return serve(target)
-        }
-        // A package's exports can name JSX source even when its import is bare.
-        if (this.resolve) return this.resolve(source, importerOnDisk(importer), { ...resolveOptions, skipSelf: true }).then(resolved => {
-          if (resolved && isModuleId(source) && cleanId(resolved.id).endsWith(".vibex")) return { ...resolved, id: servedId(cleanId(resolved.id)) + resolved.id.slice(cleanId(resolved.id).length) }
-          return resolved
-        })
-        return
-      }
-      const relative = () => {
-        const vibe = extensionlessVibe(dirname(cleanId(importer)), file)
-        if (vibe !== undefined) return serve(vibe)
-        // Emitted imports keep the original source in Vite's module graph.
-        if (!/\.jsx?$/.test(file)) return
-        const target = resolve(dirname(cleanId(importer)), file)
-        if (existsSync(target)) {
-          if (isCompiled(cleanId(importer)) && /%[\da-f]{2}/i.test(original)) {
-            debug(`relative existing file: original=${original}, selected=${file}, target=${target}`)
-          }
-          return file !== original ? this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true }) : undefined
-        }
-        if (isModuleOutput(target)) return slash(target) + query
-        const stem = target.replace(/\.jsx?$/, "")
-        for (const extension of file.endsWith(".jsx") ? [".vibex"] : [".vibe", ".vibex"]) {
-          const source = stem + extension
-          if (existsSync(source)) return serve(source)
-        }
-        if (file !== original) return this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true })
-      }
-      // Plugins after this one see a compiled module's written TypeScript
-      // import, ./dep.ts rather than its emitted ./dep.js, as for a .ts twin.
-      const written = writtenNames.get(sourceFile(cleanId(importer)))?.get(original)
-      if (written === undefined || !this.resolve) return relative()
-      return this.resolve(written + query, importer, { ...resolveOptions, skipSelf: true }).then(resolved => resolved ?? relative())
+      const resolved = resolveSource.call(this, source, importer, resolveOptions)
+      return typeof resolved?.then === "function"
+        ? resolved.then(result => refuseEvalImport(result, source, importer))
+        : refuseEvalImport(resolved, source, importer)
     },
     // Source modules and module declarations share the owning project compile.
     async load(id, loadOptions) {

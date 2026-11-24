@@ -1,6 +1,6 @@
 # VIP-59: Eval declarations: a file kind and a function, no syntax
 
-**Status:** accepted by Will, 2026-11-23 (toolchain/CLI — `*.eval.vibe` file kind, `vibelang eval`, bundler refusal; no grammar changes). Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". Implementation queued.
+**Status:** accepted by Will, 2026-11-23 (toolchain/CLI — `*.eval.vibe` file kind, `vibelang eval`, bundler refusal; no grammar changes). Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". Implemented: `vibelang eval` with `--list`, `--live`, `--update` and `--trials` in the `vibelang` package (`packages/compiler/eval.mjs`), and the refusal of eval-file imports in `vibelang-vite` and `vibelang-unplugin`. See [Implementation](#implementation).
 
 ## Will's words
 > Ok so give me a list of [the reference engine's] features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
@@ -181,6 +181,32 @@ In the reference engine a case's `input` is `unknown`, so the executor casts it.
 1. **Command or Vitest?** `vibelang eval` is a new command. The alternative runs evals as a Vitest project with a reporter. Recommendation: the command, because exit code `5` and `--update` have no Vitest equivalent.
 2. **Where baselines and recordings live.** Beside the eval file, or in one directory. Recommendation: beside the file, so a review shows the score change next to the code change.
 3. **Trials.** Declared on the suite, chosen per run with `--trials`, or both? Recommendation: both, and the flag wins. Replaying one recorded answer many times measures replay, so `--trials` above 1 requires `--live`.
+
+## Implementation
+
+`vibelang eval [--list] [--live] [--update] [--trials N] [path...]` is `packages/compiler/eval.mjs`. It imports each eval file through the Node loader (`vibelang/register`) and runs its suites with the runtime's `Experimental.Eval` and `Experimental.Test`, resolved from the eval file so the suite and the runner share one copy of the runtime and of `effect`.
+
+```text
+ src/greet.eval.vibe             the suites
+ src/greet.eval.baseline.json    committed scores; written only by --update
+ src/greet.eval.recording.json   model calls; written only by --live
+```
+
+The rules above left these choices to the implementation. Will has not reviewed them.
+
+- **Paths.** A path argument is an eval file or a directory searched for eval files. The default is the working directory. `node_modules`, `dist`, `build`, `coverage` and directories whose name starts with `.` are skipped.
+- **Recording.** One recording per eval file, `greet.eval.recording.json`, in the format `Experimental.Test.record` writes. Its suites share it; a recorded call is claimed once.
+- **Live model.** Under `--live`, a call with no recording goes to the eval file's `live` export, a `LanguageModel` layer such as `export const live = Experimental.Model.use("anthropic:…")`. A file with no `live` export fails the case that called a model. A suite that calls no model needs none.
+- **Several suites.** A file with one suite stores the baseline `Experimental.Eval.write` prints. A file with several stores `{"suites":[…],"version":1}`, one such baseline per suite. Two suites of one name in a file are refused.
+- **`--update`.** The baseline is rewritten only when no case of the file failed, went undecided or had an inconclusive scorer. The run is then graded against the baseline it wrote, so the suite's `gate` thresholds still decide the exit code.
+- **No baseline.** A run with no baseline file exits `1` and names `--update`. It writes nothing.
+- **Exit codes.** `0`, `1` and `5` as above; `1` outranks `5` across suites and files. An eval file that does not compile or exports no suite is `5`, and so is a run that finds no eval file. A wrong command line, including `--trials` above 1 without `--live`, is `2` and runs nothing. `--list` with no eval file is `0`.
+- **Bundlers.** The plugins refuse at resolution: an import that resolves to an eval file from an importer that is not an eval file throws, in a build and in a dev server. An eval file may be an entry and may import another eval file. The name test also covers a served `x.eval.vibex.jsx` id and a module declaration's output.
+
+Not done here:
+
+- **Rule 4, the target's tag.** `--list` prints it. The runtime's baseline record is keyed by suite, case, scorer and step key; adding the tag is a change to `Experimental.Eval`, which [std-eval](0069-std-eval.md) owns.
+- **Decision models.** The default run replaces `LanguageModel` only. A `DecisionModel` a target needs is not provided.
 
 ## Depends on
 
