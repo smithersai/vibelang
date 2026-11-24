@@ -1,0 +1,33 @@
+// expect: TS2322
+// VIP-58: invalid tier/capabilities/effects fail type checking, and tasks
+// requiring HttpClient or ChildProcessSpawner without a tier warn EK5801.
+
+task BadTier {
+  static readonly tier = "bogus"
+  effect call(id: string): string!never { return id }
+}
+
+task BadCaps {
+  static readonly capabilities = ["bogus:op:/workspace/**"]
+  effect call(id: string): string!never { return id }
+}
+
+task BadEffects {
+  static readonly effects = { writes: ["nope:op:/x"] }
+  effect call(id: string): string!never { return id }
+}
+
+task UnmarkedHttp {
+  effect call(url: string): string!string {
+    const client = try HttpClient.HttpClient
+    const res = try mapError(client.get(url), (e) => e.message)
+    return try mapError(res.text, (e) => e.message)
+  }
+}
+
+task UnmarkedProcess {
+  effect call(arg: string): string!string {
+    const spawner = try ChildProcessSpawner.ChildProcessSpawner
+    return try mapError(spawner.string(ChildProcess.make("echo", [arg])), (e) => e.message)
+  }
+}

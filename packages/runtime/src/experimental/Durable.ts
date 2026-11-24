@@ -44,6 +44,14 @@ import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type { SqlClient } from "effect/sql"
 import { Activity, DurableDeferred, Workflow, WorkflowEngine } from "effect/workflow"
+import {
+  engineLaunch,
+  isDeclaredWorkflow,
+  type DurableSchemas,
+  type Workflow as DeclaredWorkflow,
+  type WorkflowPlan
+} from "../durable.js"
+import * as Capability from "./Capability.js"
 import * as canonical from "./internal/canonical.js"
 import * as engineInternal from "./internal/durableEngine.js"
 import * as sqlStore from "./internal/durableSql.js"
@@ -289,7 +297,7 @@ export interface RetryPolicy {
  * @category models
  * @since 0.0.13
  */
-export type Tier = "sealed" | "compensable" | "irreversible"
+export type Tier = Capability.Tier
 
 /**
  * The options of {@link task}.
@@ -302,6 +310,10 @@ export interface TaskOptions<Payload extends Schema.Struct.Fields, Success exten
   readonly success?: Success | undefined
   readonly error?: Error | undefined
   readonly tier?: Tier | undefined
+  /** Capability ceiling for this task: omitted inherits the caller's; `[]` denies every guarded operation (VIP-58). */
+  readonly capabilities?: ReadonlyArray<Capability.Pattern | Capability.PatternText> | undefined
+  /** Declared effect envelope for this task (VIP-55, VIP-58). */
+  readonly effects?: Capability.EffectEnvelope | undefined
   readonly retryPolicy?: RetryPolicy | undefined
   /** Bound each attempt. A timed-out attempt is a defect, which the journal records. */
   readonly attemptTimeoutMs?: number | undefined
@@ -520,7 +532,17 @@ export const task = <
       Layer.effect(
         Handler,
         Effect.map(Effect.context<R>(), (context) => ({
-          run: (payload: P) => Effect.provideContext(handler(payload), context)
+          run: (payload: P) =>
+            Effect.flatMap(Capability.ceiling, (callerCeiling) => {
+              let inner: Effect.Effect<Success["Type"], Error["Type"], R> = handler(payload)
+              for (const group of callerCeiling) {
+                inner = Capability.attenuate(group)(inner)
+              }
+              if (options.capabilities !== undefined) {
+                inner = Capability.attenuate(options.capabilities)(inner)
+              }
+              return Effect.provideContext(inner, context)
+            })
         }))
       )
   })
@@ -1056,15 +1078,44 @@ export type PlanChanged = engineInternal.PlanChanged
  * @category runs
  * @since 0.0.13
  */
-export const plan = <W extends AnyWorkflow>(
+export function plan<P extends ReadonlyArray<unknown>, A, E, S extends DurableSchemas, R>(
+  W: DeclaredWorkflow<P, A, E, S, R>,
+  ...args: P
+): Effect.Effect<{ readonly plan: WorkflowPlan; readonly digest: string | null }>
+export function plan<W extends AnyWorkflow>(
   W: W,
   payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>
-): Effect.Effect<{ readonly plan: unknown; readonly digest: string | null }> =>
-  Effect.gen(function*() {
-    const snapshot = engineInternal.decodePayload(W, engineInternal.encodePayload(W, W.payloadSchema.make(payload) as object))
-    const build = Context.get(W.annotations, engineInternal.PlanOf)
-    return { plan: build === undefined ? null : build(snapshot), digest: yield* engineInternal.planDigest(W, snapshot) }
+): Effect.Effect<{ readonly plan: unknown; readonly digest: string | null }>
+export function plan(
+  W: AnyWorkflow | DeclaredWorkflow<ReadonlyArray<any>, unknown, unknown>,
+  ...rest: ReadonlyArray<unknown>
+): Effect.Effect<{ readonly plan: unknown; readonly digest: string | null }> {
+  if (isDeclaredWorkflow(W)) {
+    return Effect.flatMap(engineLaunch(W, rest), ({ workflow, payload }) =>
+      Effect.gen(function*() {
+        const snapshot = engineInternal.decodePayload(
+          workflow,
+          engineInternal.encodePayload(workflow, workflow.payloadSchema.make(payload) as object)
+        )
+        const build = Context.get(workflow.annotations, engineInternal.PlanOf)
+        return {
+          plan: build === undefined ? W.plan : build(snapshot),
+          digest: yield* engineInternal.planDigest(workflow, snapshot)
+        }
+      })
+    )
+  }
+  const workflow = W as AnyWorkflow
+  const payload = rest[0]
+  return Effect.gen(function*() {
+    const snapshot = engineInternal.decodePayload(
+      workflow,
+      engineInternal.encodePayload(workflow, workflow.payloadSchema.make(payload) as object)
+    )
+    const build = Context.get(workflow.annotations, engineInternal.PlanOf)
+    return { plan: build === undefined ? null : build(snapshot), digest: yield* engineInternal.planDigest(workflow, snapshot) }
   })
+}
 
 /**
  * A plan whose steps are listed as `nodes`, each with a `key`.

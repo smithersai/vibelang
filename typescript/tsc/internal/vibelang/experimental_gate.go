@@ -15,8 +15,9 @@ import (
 // feature in vibe.experimental. The parse never changes, so the formatter and
 // the language server read the same tree with or without the opt-in; the
 // gate is this one checker diagnostic, reported once per file at the first
-// gated use. Without the opt-in the durable checks (EK5502 to EK5509 and the
-// boundary EK2109) do not run, so a well-formed file gets EK3013 alone.
+// gated use. Without the opt-in the durable checks (EK5502 to EK5509, the
+// boundary EK2109, and VIP-58's EK5801) do not run, so a well-formed file gets
+// EK3013 alone.
 //
 // A module use is gated by what it resolves to, not by its spelling: any
 // member access, qualified name, element access or destructured property that

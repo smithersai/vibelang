@@ -1,0 +1,6 @@
+export task Read {
+  static readonly tier = "compensable"
+  static readonly capabilities = ["fs:read:/workspace/**"]
+  static readonly effects = { reads: ["/workspace/**"], writes: [], mode: "hermetic", onConflict: "fail" }
+  effect call(): number!never { return 1 }
+}
