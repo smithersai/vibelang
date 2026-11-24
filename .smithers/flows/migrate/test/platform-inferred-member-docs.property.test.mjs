@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { compareApiIdentity } from "../../../../scripts/api-identity.mjs"
 import { nativeCompiler } from "./helpers/native-compiler.mjs"
+import { splitPlatform, splitPlatformToModule } from "../lib/platform.mjs"
 
-const { splitPlatform, splitPlatformToModule } = await import(process.env.PLATFORM_DOCS_UNDER_TEST ?? "../lib/platform.mjs")
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
 const modules = fileURLToPath(new URL("../../../../packages/runtime/node_modules", import.meta.url))

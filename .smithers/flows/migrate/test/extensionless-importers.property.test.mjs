@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { renameBatch, rewriteImports, rewriteSpecifier } from "../lib/codemod.mjs"
 import { parseImports } from "../lib/imports.mjs"
-const repo = process.env.VIBELANG_FLOW_REPO ?? fileURLToPath(new URL("../../../../", import.meta.url))
+const repo = fileURLToPath(new URL("../../../../", import.meta.url))
 const fc = createRequire(join(repo, "packages/runtime/package.json"))("fast-check")
 const ts = createRequire(join(repo, "docs/tools/package.json"))("typescript")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-extensionless-ts-importer.json", import.meta.url)))

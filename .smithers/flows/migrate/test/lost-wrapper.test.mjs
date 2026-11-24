@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // The lost-wrapper check: a converted function that hands back fewer Effect
 // values than its original, which types, declarations and the wrapper-gain
 // audit all pass. The shapes are Smithers' (agent/plugin Plugins,

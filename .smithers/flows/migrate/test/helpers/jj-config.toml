@@ -1,0 +1,13 @@
+# The jj user configuration of every migrate test fixture. helpers/jj-config.mjs
+# points JJ_CONFIG here, so the operator's own settings (auto-tracking, the
+# new-file size limit, signing) cannot change what a fixture commits.
+[user]
+name = "test"
+email = "test@localhost"
+
+[snapshot]
+auto-track = "all()"
+max-new-file-size = "16MiB"
+
+[ui]
+paginate = "never"

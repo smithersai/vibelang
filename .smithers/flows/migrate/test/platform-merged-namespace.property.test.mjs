@@ -78,7 +78,8 @@ test("namespaces with runtime initialization refuse a partial split", () => {
   })
   assert.equal(files["src/index.ts"], source)
   assert.equal(result.splits.length, 0)
-  assert.ok(result.refused.length)
+  // The namespace's runtime initializer is the cause, not any other refusal.
+  assert.deepEqual(result.refused, ["src/index.ts: export namespace Asset { runs in order among the module's statements, so it cannot move to a module body"])
 })
 
 test("an unrelated namespace without host or throwing code is unchanged", () => {

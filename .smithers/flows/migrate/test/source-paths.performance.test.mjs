@@ -1,5 +1,4 @@
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
@@ -10,26 +9,23 @@ const ts = require("typescript"), fc = require("fast-check")
 const rewriteSourceLiterals = (ts, text, file, renames, options = {}) => rewriteActual(ts, text, file, renames, { inventory: renames.map(r => r.from), ...options })
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-selector-brace-literals.json", import.meta.url)))
 
-test("foldkit-94: thousands of brace literals finish within five seconds", () => {
-  const worker = String.raw`
-    import { createRequire } from "node:module";
-    import { readFileSync } from "node:fs";
-    import { rewriteSourceLiterals } from ${JSON.stringify(new URL("../lib/source-paths.mjs", import.meta.url).href)};
-    const require = createRequire(${JSON.stringify(new URL("../../../../packages/runtime/package.json", import.meta.url).href)});
-    const ts = require("typescript");
-    const c = JSON.parse(readFileSync(new URL(${JSON.stringify(new URL("./corpus/foldkit-selector-brace-literals.json", import.meta.url).href)})));
-    const text = Array.from({length:c.count}, (_,i) => "const value" + i + " = " + JSON.stringify(i % 2 ? c.data : c.longPath) + ";").join("\n")
-      + "\nconst selected = import.meta.glob(" + JSON.stringify(c.glob) + ");";
-    const start = performance.now();
-    const result = rewriteSourceLiterals(ts, text, "collector.ts", c.renames, { inventory: c.renames.map(r => r.from) });
-    console.log(JSON.stringify({ms:performance.now()-start, edits:result.edits.length}));
-  `
-  const result = spawnSync(process.execPath, ["--input-type=module", "-e", worker], { encoding:"utf8", timeout:5000 })
-  assert.equal(result.error, undefined, "brace corpus exceeded five seconds: " + result.error)
-  assert.equal(result.status, 0, result.stderr)
-  const receipt = JSON.parse(result.stdout)
-  assert.equal(receipt.edits, 1)
-  assert.ok(receipt.ms < 5000)
+// foldkit-94: thousands of brace literals must not compile a matcher per
+// literal. Count compilations, not seconds, so a loaded host cannot fail it:
+// compiledSelector stores each compiled pattern once, so set calls count them.
+test("foldkit-94: thousands of brace literals compile each selector once and never compile data", () => {
+  const text = Array.from({ length: corpus.count }, (_, i) => "const value" + i + " = " + JSON.stringify(i % 2 ? corpus.data : corpus.longPath) + ";").join("\n")
+    + "\nconst selected = import.meta.glob(" + JSON.stringify(corpus.glob) + ");"
+  const compiled = []
+  const cache = new Map()
+  const set = cache.set.bind(cache)
+  cache.set = (pattern, matcher) => { compiled.push(pattern); return set(pattern, matcher) }
+  const result = rewriteSourceLiterals(ts, text, "collector.ts", corpus.renames, { matcherCache: cache })
+  assert.equal(result.edits.length, 1)
+  assert.equal(new Set(compiled).size, compiled.length, "a pattern compiled twice: " + compiled.join(" "))
+  assert.ok(compiled.includes(corpus.glob) && compiled.includes(corpus.longPath), compiled.join(" "))
+  assert.ok(!compiled.includes(corpus.data), "a data literal was compiled as a selector")
+  // The glob, its rewritten form for the edit's proof, and the long path.
+  assert.ok(compiled.length <= 3, compiled.join(" "))
 })
 
 test("foldkit-94: repeated path globs compile once; data and long literals never compile", () => {

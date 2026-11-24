@@ -13,8 +13,7 @@ const repo = fileURLToPath(new URL("../../../../", import.meta.url))
 const require = createRequire(join(repo, "packages/runtime/package.json"))
 const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-node-source-hooks.json", import.meta.url), "utf8"))
-const mainControl = process.env.VIBELANG_HOOK_MAIN_CONTROL
-const setup = mainControl ? (await import(mainControl)).wireDeveloperTools : wireDeveloperTools
+const setup = wireDeveloperTools
 
 test("alchemy: the existing setup API registers native hooks last, after the Oxc loader", () => {
   const root = mkdtempSync(join(tmpdir(), "alchemy-node-hooks-"))

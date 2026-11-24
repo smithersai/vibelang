@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"
 import { createRequire } from "node:module"
 import { test } from "node:test"
+import { candidates } from "../lib/plan.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
-const { candidates } = await import(process.env.SIDECAR_PLAN_UNDER_TEST || new URL("../lib/plan.mjs", import.meta.url))
 
 test("property: named paths, TypeScript enumerations and test-owned bundles independently retain source identities", () => {
   // Chapter 7 and detail 272 retain modules named by tools, selected by their TypeScript filename, or reached by a test-owned bundle.

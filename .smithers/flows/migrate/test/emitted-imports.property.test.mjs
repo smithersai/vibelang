@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -7,7 +8,7 @@ import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { planEmittedImports, applyEmittedImports } from "../lib/emitted-imports.mjs"
-import { wireEmittedProjects, makeConfig } from "../lib/steps.mjs"
+import { wireEmittedProjects } from "../lib/steps.mjs"
 import { rewriteExports } from "../lib/codemod.mjs"
 import { loadTypeScript } from "../lib/declarations.mjs"
 
@@ -77,14 +78,18 @@ test("emitted import setup selects exact source identities, leaving tests, type 
 })
 
 test("emitted imports refuse unbuilt projects, nonemitting projects, aliases that collide and output outside the package", () => {
-  for (const change of [
-    f => { const pkg = JSON.parse(readFileSync(join(f.root, "package.json"))); pkg.scripts.build = "rolldown src/entry.ts"; put(f.root, "package.json", JSON.stringify(pkg)) },
-    f => { const cfg = JSON.parse(readFileSync(join(f.root, "tsconfig.json"))); cfg.compilerOptions.noEmit = true; put(f.root, "tsconfig.json", JSON.stringify(cfg)) },
-    f => { const pkg = JSON.parse(readFileSync(join(f.root, "package.json"))); pkg.imports = { "#vibelang/emitted/src/rule": "./unrelated.js" }; put(f.root, "package.json", JSON.stringify(pkg)) },
-    f => { const cfg = JSON.parse(readFileSync(join(f.root, "tsconfig.json"))); cfg.compilerOptions.outDir = "../outside"; put(f.root, "tsconfig.json", JSON.stringify(cfg)) }
+  for (const [change, refusal] of [
+    [f => { const pkg = JSON.parse(readFileSync(join(f.root, "package.json"))); pkg.scripts.build = "rolldown src/entry.ts"; put(f.root, "package.json", JSON.stringify(pkg)) },
+      /tsconfig\.json: the package's existing build or prepare must already compile this project/],
+    [f => { const cfg = JSON.parse(readFileSync(join(f.root, "tsconfig.json"))); cfg.compilerOptions.noEmit = true; put(f.root, "tsconfig.json", JSON.stringify(cfg)) },
+      /tsconfig\.json: needs an error-free project that emits individual JavaScript files into outDir/],
+    [f => { const pkg = JSON.parse(readFileSync(join(f.root, "package.json"))); pkg.imports = { "#vibelang/emitted/src/rule": "./unrelated.js" }; put(f.root, "package.json", JSON.stringify(pkg)) },
+      /package\.json: conflicting emitted import #vibelang\/emitted\/src\/rule/],
+    [f => { const cfg = JSON.parse(readFileSync(join(f.root, "tsconfig.json"))); cfg.compilerOptions.outDir = "../outside"; put(f.root, "tsconfig.json", JSON.stringify(cfg)) },
+      /src\/rule\.vibe: emitted JavaScript must be private output within its package/]
   ]) {
     const f = fixture()
-    try { change(f); assert.throws(() => plan(f)) } finally { f.cleanup() }
+    try { change(f); assert.throws(() => plan(f), refusal) } finally { f.cleanup() }
   }
 })
 
@@ -206,10 +211,15 @@ test("setup rolls back product aliases when an exported type changes", async () 
 
 test("the standalone flow persists explicitly selected emitted projects", () => {
   const f = fixture({ native: false })
+  const run = mkdtempSync(join(tmpdir(), "foldkit-emitted-run-"))
   try {
-    const config = makeConfig({ target: f.root, test: "unchanged", vibelangVersion: "0.0.11", emittedProjects: ["tsconfig.json"] })
-    assert.deepEqual(config.emittedProjects, ["tsconfig.json"])
-  } finally { f.cleanup() }
+    // upgrade-effect writes the run's config before it touches the target's
+    // history; whatever stops it later, the config holds the selection.
+    spawnSync(process.execPath, [fileURLToPath(new URL("../step.mjs", import.meta.url)), "upgrade-effect", "--run", run, "--target", f.root,
+      "--test", "unchanged", "--vibelang-version", "0.0.11", "--emitted-project", "tsconfig.json", "--emitted-project", "tsconfig.build.json"],
+    { encoding: "utf8", timeout: 60000 })
+    assert.deepEqual(JSON.parse(readFileSync(join(run, "config.json"), "utf8")).emittedProjects, ["tsconfig.json", "tsconfig.build.json"])
+  } finally { f.cleanup(); rmSync(run, { recursive: true, force: true }) }
 })
 
 test("emitted aliases refuse compiler command overrides of the configured output layout", () => {

@@ -5,8 +5,10 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
+import { pathToFileURL } from "node:url"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
 import { splitBatchPlatform, splitPlatform, splitPlatformToModule } from "../lib/platform.mjs"
+import { materialize } from "./helpers/host-operations-oracle.mjs"
 import { nativeCompiler } from "./helpers/native-compiler.mjs"
 
 // migrate:opencode:vip40-platform-conversion: the sibling split refuses a module
@@ -388,22 +390,53 @@ test("corpus: an ordered statement that reads the host stays in place, its host 
   }
 })
 
-test("property: the module's own statements keep their order, with only host operations replaced", () => {
+// Loads each file in a fresh directory and returns the log the entry exports.
+let loads = 0
+async function logOf(root, files, entry) {
+  const dir = join(root, String(loads++))
+  mkdirSync(dir)
+  for (const [name, text] of Object.entries(files)) {
+    const js = ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText
+    writeFileSync(join(dir, name), js.replaceAll('"./x.platform.ts"', '"./x.platform.mjs"'))
+  }
+  return (await import(pathToFileURL(join(dir, entry)).href)).log
+}
+
+// Neighbourhood: one to six statements, each a constant, a host-guarded
+// branch, a host-reading or effectful const initializer, a stored function or
+// a plain effect, in any order. Each effect logs its index. Loaded as written
+// and loaded after either split, the module logs the same sequence, or the
+// split refuses. An effect above a host-reading initializer is the case a
+// split that moves the initializer ahead of the module's statements breaks.
+test("property: the module's own statements keep their order, with only host operations replaced", async () => {
   const statements = {
     value: (i) => `export const v${i} = "m${i}"`,
-    env: (i) => `if (process.env.F${i}) { process.env.G${i} = "m${i}" }`,
+    env: (i) => `if (process.env.F${i} === undefined) { log.push("m${i}") }`,
     argv: (i) => `export const a${i} = [process.argv, "m${i}"]`,
+    argvEffect: (i) => `export const r${i} = [process.argv.length, log.push("m${i}")]`,
+    effect: (i) => `log.push("m${i}")`,
+    effectInit: (i) => `export const e${i} = (log.push("m${i}"), 1)`,
     fn: (i) => `export const f${i} = (n: number) => n + "m${i}".length`,
   }
-  fc.assert(fc.property(fc.array(fc.constantFrom(...Object.keys(statements)), { minLength: 1, maxLength: 6 }), (keys) => {
-    if (!keys.includes("env") || !keys.some((k) => k === "value" || k === "fn")) return
-    const lines = keys.map((k, i) => statements[k](i))
-    const result = split(lines.join("\n") + "\n", { globals: ["process"] })
-    assert.equal(result.refused, undefined, lines.join("\n"))
-    const out = result.module
-    const bodyEnd = out.indexOf("\n}\n")
-    const at = lines.map((_, i) => out.indexOf(`"m${i}"`))
-    for (let i = 0; i < at.length; i++) assert.ok(at[i] > bodyEnd, out)
-    for (let i = 1; i < at.length; i++) assert.ok(at[i - 1] < at[i], out)
-  }), { seed: 4009, numRuns: 120 })
+  const root = mkdtempSync(join(tmpdir(), "platform-module-order-"))
+  let sibling = 0, body = 0
+  try {
+    await fc.assert(fc.asyncProperty(fc.array(fc.constantFrom(...Object.keys(statements)), { minLength: 1, maxLength: 6 }), async (keys) => {
+      const text = ["export const log: string[] = []", ...keys.map((k, i) => statements[k](i))].join("\n") + "\n"
+      const written = await logOf(root, { "x.mjs": text }, "x.mjs")
+      const options = { globals: ["process"] }
+      const moduled = split(text, options)
+      if (moduled && !moduled.refused) {
+        body++
+        const { body: inner, module } = materialize(moduled.module)
+        assert.deepEqual(await logOf(root, { "x.mjs": module, "x.vibe.platform.mjs": inner }, "x.mjs"), written, text + "\n---\n" + moduled.module)
+      }
+      const sided = splitPlatform(text, "src/x.ts", ts, options)
+      if (sided && !sided.refused) {
+        sibling++
+        assert.deepEqual(await logOf(root, { "x.mjs": sided.module, "x.platform.mjs": sided.platform }, "x.mjs"), written, text + "\n---\n" + sided.module + "\n---\n" + sided.platform)
+      }
+    }), { seed: 4009, numRuns: 120, examples: [[["effect", "argvEffect", "fn"]], [["effectInit", "argv", "value"]], [["env", "argvEffect"]]] })
+  } finally { rmSync(root, { recursive: true, force: true }) }
+  assert.ok(body > 60 && sibling > 10, `only ${body} body and ${sibling} sibling splits ran`)
 })

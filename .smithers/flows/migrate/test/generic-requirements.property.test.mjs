@@ -46,7 +46,7 @@ function check(input) {
 }
 test("property: T3code generic span requirements survive the declaration gate", async () => {
   await checkProperty(fc, {name:"MigrationGenericRequirements",rule,
-    command:"node --test packages/compiler/test/migrate-generic-requirements.property.test.mjs",
+    command:"node --test .smithers/flows/migrate/test/generic-requirements.property.test.mjs",
     regressions:new URL("./corpus/",import.meta.url),numRuns:6,
     arbitrary:fc.record({suffix:fc.integer({min:0,max:1000}).map(String),exports:fc.integer({min:1,max:2})}),check});
 });

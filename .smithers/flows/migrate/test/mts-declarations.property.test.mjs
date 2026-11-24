@@ -22,9 +22,16 @@ test("foldkit mts: a renamed module's identical published declaration keeps its 
   assert.equal(result.publicSurface.rootsChanged, false)
 })
 
+test("the .mts rules are quoted from the README", () => {
+  const text = readFileSync(new URL("../README.md", import.meta.url), "utf8")
+  for (const quote of [
+    "`.mts` requires its nearest `package.json` to declare `type: \"module\"` so the renamed `.vibe` emits ESM.",
+    "For a migrated `.mts` module, declaration identity pairs a removed `x.d.mts` with its new `x.d.ts`, recorded under `renamed`."
+  ]) assert.ok(text.includes(quote), quote)
+})
+
 test("mts pairing preserves API identity across paths and harmless printing changes", async () => {
-  // Accepted .mts migration ruling: ".vibe, which emits .js, must emit ESM there".
-  // The published entrypoint keeps its types across the declaration extension change.
+  // The rules: README.md, on .mts modules emitting ESM and their paired declarations.
   await assertParallelProperty(fc, {
     arbitraries: [fc.array(fc.stringMatching(/^[a-z][a-z0-9_-]{0,10}$/), { minLength: 1, maxLength: 4 }), fc.constantFrom("", "// changed comment\n", "type", "quote")],
     oracle: check, module: new URL("./mts-declarations-oracle.mjs", import.meta.url),

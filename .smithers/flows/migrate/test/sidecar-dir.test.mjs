@@ -139,9 +139,10 @@ test("the plan keeps a module an enumeration lists as .ts, with the reason", () 
 // The Smithers-shaped fixture on a built compiler: a folder holds a .ts
 // module and .vibe modules, and a test imports every *.ts but *.d.ts in it.
 const native = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
-const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
-const missing = [native, effect].find((path) => !existsSync(path))
-test("a Smithers-shaped test that imports every *.ts but *.d.ts passes with the setting setup writes", { skip: missing && `build the compiler first; missing ${missing}` }, (t) => {
+// The runtime's own Effect, which the migrate-test target installs from packages/runtime/bun.lock.
+const effect = join(repo, "packages/runtime/node_modules/effect")
+test("a Smithers-shaped test that imports every *.ts but *.d.ts passes with the setting setup writes", { skip: !existsSync(native) && `build the compiler first; missing ${native}` }, (t) => {
+  assert.ok(existsSync(effect), "install packages/runtime first; missing " + effect)
   const run = (setting) => {
     const root = realpathSync(mkdtempSync(join(tmpdir(), "migrate-sidecar-dir-")))
     t.after(() => rmSync(root, { recursive: true, force: true }))

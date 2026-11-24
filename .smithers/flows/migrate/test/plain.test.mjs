@@ -137,9 +137,10 @@ test("callbacks of one signature, or whose chosen overload takes an Effect, stay
   assert.equal(mark(source).text, source)
 })
 
-// Decided detail 269: after VIP-1's flip `: infer _` means nothing and
-// TypeScript rejects it, so on a flipped toolchain the pass writes none; a
-// plain generator also keeps its unwritten return type.
+// Decided detail 269: after VIP-1's flip `: infer _` means nothing (the
+// compiler still accepts it and infers the return type), so on a flipped
+// toolchain the pass writes none; a plain generator also keeps its unwritten
+// return type.
 test("on a toolchain that keeps functions plain, the pass writes no return annotation", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-plain-flipped-"))
   try {

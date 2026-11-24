@@ -1,6 +1,7 @@
 // foldkit-107: `.oxlintrc.effect.json` turned a rule off for x.ts, the rename
 // made it x.vibe, and the override stopped matching. Each test here asks the
 // question the ruling asks: is what was silenced on x.ts silenced on x.vibe?
+import "./helpers/jj-config.mjs"
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"

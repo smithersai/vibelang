@@ -368,8 +368,11 @@ function compareRuntime({ runtime, base, head, dir, name, headEntries, refuse, o
  */
 export function comparePackLoads(baseline, candidate) {
   if (!baseline) return { state: "not-run", ok: true, reason: "the baseline has no pack results: its setup ran before this check; rerun setup to compare packs" }
-  if (baseline.state !== "complete") return { state: "not-run", ok: true, reason: baseline.reason ?? "the baseline's pack check did not finish" }
-  if (!candidate || candidate.state !== "complete") return { state: "not-run", ok: true, reason: candidate?.reason ?? "the candidate was not packed" }
+  // Only the no-published-package receipt is not-run with a `private` list: it has nothing to check.
+  // A baseline whose packing failed has packages it could not compare, and fails every batch until setup reruns.
+  if (baseline.state !== "complete") return { state: "not-run", ok: Array.isArray(baseline.private),
+    reason: Array.isArray(baseline.private) ? baseline.reason : (baseline.reason ?? "the baseline's pack check did not finish") + "; fix it and rerun setup, or no batch's packs can be compared" }
+  if (!candidate || candidate.state !== "complete") return { state: "not-run", ok: false, reason: (candidate?.reason ?? "the candidate was not packed") + "; the batch's packs were not compared" }
   const refusals = []
   const out = { unverified: [], namesGained: [], slowLoads: [], baselineFailures: [], newPackages: [] }
   const summaries = {}
@@ -441,7 +444,7 @@ export async function verifyPackLoad({ config, baselinePath, logs, files, built,
   return { ...comparePackLoads(baseline, candidate), notInBatch: dirs.filter(dir => !touched.includes(dir)) }
 }
 
-/** The baseline a run's batches compare with. Setup keeps going without one: `verify` then reports not-run. */
+/** The baseline a run's batches compare with. Setup keeps going without one: `verify` then reports not-run and fails the batch. */
 export async function packLoadBaseline({ config, logs, env, tune }) {
   try { return await packLoadSnapshot({ config, logs, phase: "baseline", env, tune }) }
   catch (error) {

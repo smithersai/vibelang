@@ -4,8 +4,7 @@ import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, globSync, rmSync }
 import { tmpdir } from "node:os"
 import { join, dirname } from "node:path"
 import { test } from "node:test"
-const { rewriteSourceLiterals } = process.env.SOURCE_SELECTORS_MODULE
-  ? await import(process.env.SOURCE_SELECTORS_MODULE) : await import("../lib/source-paths.mjs")
+import { rewriteSourceLiterals } from "../lib/source-paths.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
 const sample = JSON.parse(readFileSync(new URL("./corpus/foldkit-docpage-existing-sidecar.json", import.meta.url)))

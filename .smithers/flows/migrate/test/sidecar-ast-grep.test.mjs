@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // Detail 268's opencode-34 addendum: the fixed .d.<ext>.ts name is required
 // by stock TypeScript, so moving declarations must also stop tool double scans.
 import assert from "node:assert/strict"
@@ -66,5 +67,5 @@ test("ast-grep/lint scans the same concrete modules once after setup relocates s
       compile()
       assert.deepEqual(scan(), expected, "directory mode alone preserves the concrete source findings")
     } finally { rmSync(root, { recursive: true, force: true }) }
-  }), { examples: [[corpus.input.directory, corpus.input.name, corpus.input.quoted]], seed: 340268, numRuns: Number(process.env.FC_AST_RUNS || 6) })
+  }), { examples: [[corpus.input.directory, corpus.input.name, corpus.input.quoted]], seed: 340268, numRuns: 6 })
 })

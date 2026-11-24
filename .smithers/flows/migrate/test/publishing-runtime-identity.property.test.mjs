@@ -70,7 +70,7 @@ test("opencode: native layer nodes retain their private symbol across publicatio
 test("property: published routed modules retain symbol, class and closure identity", async () => {
   await checkProperty(fc, {
     name: "published-runtime-singleton", rule,
-    command: "node --test test/publishing-runtime-identity.property.test.mjs",
+    command: "node --test .smithers/flows/migrate/test/publishing-runtime-identity.property.test.mjs",
     arbitrary: fc.record({
       stem: fc.constantFrom("index", "effect/layer-node", "nested/state", "space name", "雪"),
       extension: fc.constantFrom("ts", "vibe"), kind: fc.constantFrom("symbol", "class", "cell"),

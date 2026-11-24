@@ -56,7 +56,7 @@ function property({ name = corpus.name, nested = false, authored = false, condit
 }
 test("Smithers generated throwing-body subpaths stay private in source and publication maps", () => property())
 test("property: private output ownership survives conditions, authored entries and restore", async () => {
-  await checkProperty(fc, { name: "private-module-wildcards", rule, command: "node --test test/private-module-exports.property.test.mjs", arbitrary: fc.record({ name: fc.constantFrom("Route", "CommandTree", "A_B", "ü", "mixed-name"), nested: fc.boolean(), authored: fc.boolean(), condition: fc.boolean(), extension: fc.constantFrom("vibe", "vibex"), outputExtension: fc.constantFrom("js", "jsx") }), check: property, numRuns: 100, regressions: new URL("./corpus/", import.meta.url) })
+  await checkProperty(fc, { name: "private-module-wildcards", rule, command: "node --test .smithers/flows/migrate/test/private-module-exports.property.test.mjs", arbitrary: fc.record({ name: fc.constantFrom("Route", "CommandTree", "A_B", "ü", "mixed-name"), nested: fc.boolean(), authored: fc.boolean(), condition: fc.boolean(), extension: fc.constantFrom("vibe", "vibex"), outputExtension: fc.constantFrom("js", "jsx") }), check: property, numRuns: 100, regressions: new URL("./corpus/", import.meta.url) })
 })
 
 test("native emitted companions run through their owner but reject package subpath imports", async () => {

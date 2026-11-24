@@ -41,7 +41,7 @@ test("legacy emitted receipts seed durable packing ownership without dropping jo
  assert.equal(withPackingScope(undefined,[]),undefined)
 })
 test("property: exact packing ownership survives arbitrary phase histories and journal reloads",async()=>{
- await checkProperty(fc,{name:"packing-phase-scope",rule,command:"node --test test/packing-scope.property.test.mjs",
+ await checkProperty(fc,{name:"packing-phase-scope",rule,command:"node --test .smithers/flows/migrate/test/packing-scope.property.test.mjs",
   arbitrary:fc.array(fc.record({stage:fc.constantFrom("codemod","verify","record","restore"),ids:fc.uniqueArray(fc.integer({min:0,max:4}),{maxLength:5})}),{minLength:1,maxLength:20}),
   check:trace,numRuns:200,regressions:new URL("./corpus/",import.meta.url)})
 })
@@ -58,7 +58,7 @@ test("t3code: recorded private import-map ownership survives verification restar
 test("property: manifest-only routing receipts never authorize neighboring files", async () => {
  await checkProperty(fc, {
   name: "packing-manifest-scope", rule: manifestCorpus.quote,
-  command: "node --test test/packing-scope.property.test.mjs",
+  command: "node --test .smithers/flows/migrate/test/packing-scope.property.test.mjs",
   arbitrary: fc.array(fc.record({
    stage: fc.constantFrom("codemod", "verify", "record", "restore"),
    ids: fc.uniqueArray(fc.integer({ min: 0, max: 4 }), { maxLength: 5 })

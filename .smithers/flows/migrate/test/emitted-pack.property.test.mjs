@@ -96,7 +96,7 @@ for(const packer of ["npm","bun"])test("opencode: installed "+packer+" tarball r
 for(const files of [false,true])for(const ignore of ["git","npm","nested"])for(const packer of ["npm","bun"])
  test("packing matrix "+JSON.stringify({files,ignore,packer}),()=>fixture({files,ignore,packer}))
 test("property: package allowlists and nested ignores retain only public emitted files",async()=>{
- await checkProperty(fc,{name:"opencode-emitted-pack",rule,command:"node --test test/emitted-pack.property.test.mjs",arbitrary:fc.record({files:fc.boolean(),ignore:fc.constantFrom("git","npm","nested"),packer:fc.constantFrom("npm","bun"),stem:fc.constantFrom("index","entry space","雪","a..b"),locale:fc.constantFrom("C","C.UTF-8")}),check:fixture,numRuns:40,generatorVersion:2,regressions:new URL("./corpus/",import.meta.url)})
+ await checkProperty(fc,{name:"opencode-emitted-pack",rule,command:"node --test .smithers/flows/migrate/test/emitted-pack.property.test.mjs",arbitrary:fc.record({files:fc.boolean(),ignore:fc.constantFrom("git","npm","nested"),packer:fc.constantFrom("npm","bun"),stem:fc.constantFrom("index","entry space","雪","a..b"),locale:fc.constantFrom("C","C.UTF-8")}),check:fixture,numRuns:40,generatorVersion:2,regressions:new URL("./corpus/",import.meta.url)})
 })
 
 test("packing restore preserves authored allowlist entries and concurrent ignore edits across re-emits",()=>{

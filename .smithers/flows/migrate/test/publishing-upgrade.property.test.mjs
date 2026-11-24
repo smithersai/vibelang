@@ -38,7 +38,7 @@ function check({stem,condition,legacy,javascript,extension,migrated=true}) {
 test('publication upgrade oracle quotes Chapter 7',()=>assert.ok(readFileSync(new URL('../../../../docs/design/src/007-tooling.md',import.meta.url),'utf8').includes(rule)))
 test('opencode: an old generated packer upgrades nested import conditions',()=>check({stem:'leaf',condition:'node',legacy:false,javascript:false,extension:'ts'}))
 test('property: already-expanded publication helpers upgrade without changing native policy',async()=>{
- await checkProperty(fc,{name:'opencode-owned-packer-upgrade',rule,command:'node --test test/publishing-upgrade.property.test.mjs',arbitrary:fc.record({stem:fc.constantFrom('leaf','nested/index','space name','雪'),condition:fc.constantFrom('node','bun','default','development'),legacy:fc.boolean(),javascript:fc.boolean(),migrated:fc.boolean(),extension:fc.constantFrom('ts','tsx')}),check,numRuns:160,generatorVersion:1,regressions:new URL('./corpus/',import.meta.url)})
+ await checkProperty(fc,{name:'opencode-owned-packer-upgrade',rule,command:'node --test .smithers/flows/migrate/test/publishing-upgrade.property.test.mjs',arbitrary:fc.record({stem:fc.constantFrom('leaf','nested/index','space name','雪'),condition:fc.constantFrom('node','bun','default','development'),legacy:fc.boolean(),javascript:fc.boolean(),migrated:fc.boolean(),extension:fc.constantFrom('ts','tsx')}),check,numRuns:160,generatorVersion:1,regressions:new URL('./corpus/',import.meta.url)})
 })
 
 test('already-expanded unsupported or shadowed publication helpers remain unchanged',()=>{

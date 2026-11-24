@@ -4,10 +4,10 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join, posix } from "node:path"
 import { test } from "node:test"
+import { rewriteExports, restoreExports } from "../lib/codemod.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
-const { rewriteExports, restoreExports } = await import(process.env.SIDECAR_CODEMOD_UNDER_TEST || new URL("../lib/codemod.mjs", import.meta.url))
 
 test("property: relocated package exports round-trip native ts and mts filenames", () => {
   // VIP-27: "A package build also writes ordinary .d.ts files to its output directory."

@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import { assertPropertySlice } from "../../../../scripts/testing/property-slice.mjs"
 import assert from "node:assert/strict"
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -92,14 +93,19 @@ test("the stock gate accepts matching declarations", async () => {
 })
 
 test("a missing, failed or legacy stock oracle cannot certify a published migration", async () => {
-  for (const options of [{ stock: false }, { stockExit: 2, identical: true }, { legacy: true, identical: true }]) await fixture(async ({ run, p }) => {
+  const reasons = new Map([
+    [{ stock: false }, /^no tsc, tsgo or tsrs is installed for it$/],
+    [{ stockExit: 2, identical: true }, /^tsrs failed while emitting the original declarations \(exit 2\)$/],
+    [{ legacy: true, identical: true }, /^setup recorded no stock compiler oracle; start a fresh setup before migrating this module$/]
+  ])
+  for (const [options, reason] of reasons) await fixture(async ({ run, p }) => {
     if (options.legacy) rmSync(join(p.baseline, "declaration-oracle.json"))
     const result = await verify({ run, batch: "01" })
     assert.equal(result.ok, false)
     assert.equal(result.checks.declarations, true)
     assert.equal(result.checks.declarationOracle, false)
     assert.equal(result.declarationOracle.unproven.length, 1)
-    assert.match(result.declarationOracle.unproven[0].reason, /no .*installed|failed|no stock compiler oracle|did not finish/)
+    assert.match(result.declarationOracle.unproven[0].reason, reason)
   }, options)
 })
 

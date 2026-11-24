@@ -46,7 +46,7 @@ test("opencode-47: the earlier paired-sidecar export also keeps its dist paths",
 
 test("property: publication helpers preserve installed export contracts", async () => {
   await checkProperty(fc, {
-    name: "published-migrated-entry", rule, command: "node --test test/publishing.property.test.mjs",
+    name: "published-migrated-entry", rule, command: "node --test .smithers/flows/migrate/test/publishing.property.test.mjs",
     arbitrary: fc.record({ name: fc.constantFrom("index", "codemode", "skill", "service"), nested: fc.boolean(), extension: fc.constantFrom("ts", "tsx"), shape: fc.constantFrom("legacy", "emitted") }),
     check, numRuns: 100, regressions: new URL("./corpus/", import.meta.url)
   })

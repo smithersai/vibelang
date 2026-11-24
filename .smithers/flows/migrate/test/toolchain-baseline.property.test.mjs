@@ -1,15 +1,14 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import { pathToFileURL } from "node:url"
 import { after, before, test } from "node:test"
 import * as Jj from "../lib/jj.mjs"
 import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import { must } from "../lib/util.mjs"
-const steps = await import(process.env.MIGRATE_BASELINE_STEPS
-  ? pathToFileURL(process.env.MIGRATE_BASELINE_STEPS) : new URL("../lib/steps.mjs", import.meta.url))
+import * as steps from "../lib/steps.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-toolchain-collection-regression.json", import.meta.url)))
@@ -141,8 +140,12 @@ test("foldkit-104: generated baseline reports retain new failures, missing tests
       const diagnostic = { category: "error", code: "EK4402", file: "src/main.vibe", line: 1, column: 1, message: "platform code", notes: [] }
       put(join(p.baseline, "upstream-checks.json"), { ".": { compiler: "old", code: input.oldError ? 2 : 0, diagnostics: input.oldError ? [diagnostic] : [] } })
       put(join(p.baseline, "upgraded-checks.json"), { ".": { compiler: "new", code: input.newError ? 2 : 0, diagnostics: input.newError ? [diagnostic] : [] } })
-      const refused = (!input.missing && input.newFailed && !input.oldFailed) ||
-        (input.missing && !input.oldFailed) || (input.beforeCode === 0 && input.afterCode !== 0) || (input.newError && !input.oldError)
+      // A nonzero exit after the switch is explained only by a test that still
+      // fails, or by a baseline that exited nonzero with no test failing.
+      const failsAfter = !input.missing && input.newFailed
+      const unexplainedExit = input.afterCode !== 0 && (input.beforeCode === 0 || (input.oldFailed && !failsAfter))
+      const refused = (failsAfter && !input.oldFailed) ||
+        (input.missing && !input.oldFailed) || unexplainedExit || (input.newError && !input.oldError)
       if (refused) assert.throws(() => assertBaselineSafe(p), failure)
       else assert.equal(assertBaselineSafe(p).state, "accepted")
     }), { seed: 1044402, numRuns: 250 })

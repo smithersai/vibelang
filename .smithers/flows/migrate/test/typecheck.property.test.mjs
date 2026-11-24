@@ -45,7 +45,9 @@ test("compiler rewiring preserves the shell's project arguments and command orde
         assert.equal(replaceTsc({ typecheck: wired }).typecheck, wired)
       }
     ), { seed: 47047, numRuns: 75 })
-    assert.deepEqual(replaceTsc({ other: "tscx && tsrs-helper && my-tsgo" }), { other: "tscx && tsrs-helper && my-tsgo" })
+    // tsc as an argument is a file or package name, not the compiler.
+    const decoys = { other: "tscx && tsrs-helper && my-tsgo", echo: "echo tsc", install: "npm i -D tsc", clean: "rimraf dist tsc && node build.js" }
+    assert.deepEqual(replaceTsc(decoys), decoys)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

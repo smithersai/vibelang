@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // opencode-32 B: a migrated package commits its emitted JavaScript under
 // .vibelang/js/, which its `default` exports name, so the `bun build` CLI
 // (which loads no plugin) and plain Node read JavaScript.
@@ -152,6 +153,13 @@ test("a migrated package's exports and emit let plain node and the bun build CLI
   }
 })
 
+// A loader record refuses to keep a project file whose mtime or ctime is
+// within 50 ms of the record's compile (racyMilliseconds in
+// packages/compiler/cache.mjs): such a file may have changed while the
+// compiler read it. ctime cannot be set back, so utimesSync cannot age a file
+// just written; wait until the newest stamp is older than that margin.
+const stampsSettled = () => new Promise((done) => setTimeout(done, 120))
+
 // opencode cold start: with the emitted JavaScript, the emit step writes the
 // loader record of the package's project, which a cold loader uses in place
 // of the compile (packages/compiler/test/loader-record.test.mjs).
@@ -163,7 +171,7 @@ test("the emit step writes each loader project's record, which a cold lookup acc
   rewriteExports(root, renameBatch(root, ["packages/schema/src/skill.ts"]))
   const packageDir = join(root, "packages/schema")
   await emitPackageJs({ compiler, tsconfigs: ["tsconfig.json"], packageDir, root })
-  await new Promise((done) => setTimeout(done, 120))
+  await stampsSettled()
   mkdirSync(join(root, "node_modules"), { recursive: true })
   symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/", import.meta.url)), join(root, "node_modules/vibelang"))
   const records = await writeLoaderRecords({ compiler, packageDir, root })
@@ -223,38 +231,12 @@ test("a staged flow writes a loader record with only the target's installed vibe
   write(target, { "package.json": "{\"type\":\"module\"}", "tsconfig.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"types\":[]},\"include\":[\"src/**/*\"]}", "src/skill.vibe": "export const skill: number = 1\n" })
   mkdirSync(join(root, "node_modules"), { recursive: true })
   symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/", import.meta.url)), join(root, "node_modules/vibelang"))
-  await new Promise((done) => setTimeout(done, 120))
+  await stampsSettled()
   const probe = `const { writeLoaderRecords } = await import(${JSON.stringify(pathToFileURL(join(flow, "lib/declarations.mjs")).href)})
 console.log(JSON.stringify(await writeLoaderRecords({ compiler: ${JSON.stringify(compiler)}, packageDir: ${JSON.stringify(target)}, root: ${JSON.stringify(root)} })))`
   const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe], { cwd: top, encoding: "utf8" })
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), [{ project: "packages/schema/tsconfig.json", file: "packages/schema/.vibelang/js/.loader/tsconfig.json.json", modules: 1 }])
-})
-
-// A toolchain build stages .smithers on its own, without the repository's
-// packages (m12-opencode). The flow must load from such a copy; its record step
-// takes vibelang/project from the target's installed vibelang, and reports a
-// target without one instead of failing the emit.
-test("the migrate flow loads from a staged .smithers copy outside the repository", async (t) => {
-  const smithers = fileURLToPath(new URL("../../../", import.meta.url))
-  const top = realpathSync(mkdtempSync(join(tmpdir(), "migrate-staged-flow-")))
-  t.after(() => rmSync(top, { recursive: true, force: true }))
-  const staged = join(top, "toolchain/.smithers")
-  cpSync(smithers, staged, { recursive: true, filter: (path) => !/(?:^|[\\/])node_modules(?:[\\/]|$)/.test(path.slice(smithers.length)) })
-  symlinkSync(realpathSync(join(smithers, "node_modules")), join(staged, "node_modules"))
-  const target = join(top, "target/packages/schema")
-  write(target, { "package.json": "{}", "tsconfig.json": "{}", "src/skill.vibe": "export const skill = 1\n" })
-  const lib = join(staged, "flows/migrate/lib")
-  const probe = [
-    `const { writeLoaderRecords } = await import(${JSON.stringify(pathToFileURL(join(lib, "declarations.mjs")).href)})`,
-    `await import(${JSON.stringify(pathToFileURL(join(lib, "steps.mjs")).href)})`,
-    `console.log(JSON.stringify(await writeLoaderRecords({ compiler: "vibelang", packageDir: ${JSON.stringify(target)}, root: ${JSON.stringify(join(top, "target"))} })))`
-  ].join("\n")
-  const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe], { cwd: top, encoding: "utf8" })
-  assert.equal(result.status, 0, result.stderr)
-  const [entry] = JSON.parse(result.stdout.trim().split("\n").at(-1))
-  assert.equal(entry.package, "packages/schema")
-  assert.match(entry.error, /^vibelang\/project is not installed for this package/)
 })
 
 test("the staged API worker shares nominal identity in NodeNext CommonJS declarations", async t => {

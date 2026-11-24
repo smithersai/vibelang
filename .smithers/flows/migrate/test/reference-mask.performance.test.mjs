@@ -15,30 +15,48 @@ const put = (root, file, source) => {
   writeFileSync(join(root, file), source)
 }
 
-test("Alchemy generated service comments complete source-path inspection within ten seconds", () => {
+// The defect: the scan copied the whole module for each documentation
+// comment, so its work grew with the square of the module. Count the
+// characters the scan copies out of strings at two module sizes, in a child
+// process so the counting cannot leak into other tests.
+test("Alchemy generated service comments: source-path inspection copies text in proportion to the module", () => {
   const worker = `
     import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
     import { tmpdir } from "node:os";
     import { join } from "node:path";
     import { pathReadDeferrals } from ${JSON.stringify(new URL("../lib/references.mjs", import.meta.url).href)};
     const corpus = JSON.parse(readFileSync(new URL(${JSON.stringify(corpusURL.href)}), "utf8"));
-    const root = mkdtempSync(join(tmpdir(), "reference-mask-scale-"));
-    try {
-      writeFileSync(join(root, "package.json"), '{"name":"sample"}');
-      writeFileSync(join(root, "entry.ts"), "export const value = 1");
-      const item = corpus.comment + "\\n/** " + corpus.padding.repeat(3) + "*/\\n" + corpus.code + "\\n";
-      writeFileSync(join(root, "generated.ts"), item.repeat(corpus.repeat));
-      const started = performance.now();
-      const found = pathReadDeferrals(root, ["entry.ts"], ["generated.ts"]);
-      console.log(JSON.stringify({ ms: performance.now() - started, found }));
-    } finally { rmSync(root, { recursive: true, force: true }); }
+    let copied = 0;
+    for (const name of ["slice", "substring", "substr"]) {
+      const original = String.prototype[name];
+      String.prototype[name] = function (...args) { const part = original.apply(this, args); copied += part.length; return part };
+    }
+    const item = corpus.comment + "\\n/** " + corpus.padding.repeat(3) + "*/\\n" + corpus.code + "\\n";
+    const receipts = [];
+    for (const repeat of [Math.ceil(corpus.repeat / 8), corpus.repeat]) {
+      const root = mkdtempSync(join(tmpdir(), "reference-mask-scale-"));
+      try {
+        writeFileSync(join(root, "package.json"), '{"name":"sample"}');
+        writeFileSync(join(root, "entry.ts"), "export const value = 1");
+        const source = item.repeat(repeat);
+        writeFileSync(join(root, "generated.ts"), source);
+        copied = 0;
+        const found = pathReadDeferrals(root, ["entry.ts"], ["generated.ts"]);
+        receipts.push({ length: source.length, copied, found });
+      } finally { rmSync(root, { recursive: true, force: true }); }
+    }
+    console.log(JSON.stringify(receipts));
   `
-  const result = spawnSync(process.execPath, ["--input-type=module", "-e", worker], { encoding: "utf8", timeout: 10000 })
-  assert.equal(result.error, undefined, "source-path scan exceeded ten seconds: " + result.error)
+  // The timeout only stops a hung scan; the assertion is on copied text.
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", worker], { encoding: "utf8", timeout: 120000 })
+  assert.equal(result.error, undefined, "source-path scan did not finish: " + result.error)
   assert.equal(result.status, 0, result.stderr)
-  const receipt = JSON.parse(result.stdout)
-  assert.deepEqual(receipt.found, [])
-  assert.ok(receipt.ms < 10000)
+  const [small, large] = JSON.parse(result.stdout)
+  assert.deepEqual(small.found, [])
+  assert.deepEqual(large.found, [])
+  const growth = large.length / small.length
+  assert.ok(large.copied <= small.copied * growth * 1.5 + large.length,
+    "copied text must grow with the module, not its square: " + JSON.stringify({ small: small.copied, large: large.copied, growth }))
 })
 
 test("comment and quoted-token mutations preserve runtime and bundle source protections", () => {

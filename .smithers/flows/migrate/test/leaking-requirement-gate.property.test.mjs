@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { checkProperty } from "../../../../scripts/testing/property.mjs";
 import { SpecPath } from "../../../../scripts/testing/spec-path.mjs";
+import { parseDiagnostics, styleProblems } from "../lib/diagnostics.mjs";
 
 // alchemy-42: alchemy's demos `Links` service declares RuntimeContext on every
 // member. `vibelang --fix` converts the class to a service declaration, and
@@ -16,8 +17,6 @@ import { SpecPath } from "../../../../scripts/testing/spec-path.mjs";
 const repo = fileURLToPath(new URL("../../../../", import.meta.url));
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url));
 const fc = require("fast-check");
-const implementation = process.env.LEAKING_REQUIREMENT_GATE_UNDER_TEST || new URL("../lib/diagnostics.mjs", import.meta.url).href;
-const { parseDiagnostics, styleProblems } = await import(implementation);
 const literal = JSON.parse(readFileSync(new URL("./corpus/alchemy-links-leaking-requirement.json", import.meta.url), "utf8"));
 const rule = "A service whose members all need one requirement keeps it: EK4809 is design advice, and its member contracts are the published declaration verify holds to the TypeScript's, so verify accepts the warning.";
 const native = process.env.VIBELANG_BINARY || [join(repo, "packages/compiler/native/vibelang"), join(repo, "typescript/built/local/tsc")].find(existsSync);
@@ -65,7 +64,7 @@ function check(input) {
 test("property: EK4809 warnings pass, an EK4809 error and every other style finding stay", async () => {
   await checkProperty(fc, {
     name: "MigrationLeakingRequirementGate", rule,
-    command: "node --test packages/compiler/test/migrate-leaking-requirement.property.test.mjs",
+    command: "node --test .smithers/flows/migrate/test/leaking-requirement-gate.property.test.mjs",
     regressions: new URL("./corpus/", import.meta.url), numRuns: 120,
     arbitrary: fc.record({
       name: fc.integer({ min: 0, max: 50 }), directory: fc.integer({ min: 0, max: 5 }), line: fc.integer({ min: 1, max: 400 }),

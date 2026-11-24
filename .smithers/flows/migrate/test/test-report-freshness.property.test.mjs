@@ -68,16 +68,25 @@ test("test comparison cannot discard a process failure behind unchanged assertio
     code: fc.constantFrom(0, 1, 2, 17),
     cases: fc.array(fc.tuple(status, status), { minLength: 1, maxLength: 12 }),
   }), ({ baselineCode, code, cases }) => {
+    // The oracle is the rule, case by case, not compareTests restated: every
+    // case keeps its meaning. A case that passed still passes, a case fails
+    // now only if it failed before, and a nonzero exit is explained by a case
+    // that still fails or by a baseline that exited nonzero with none failing.
+    const kept = cases.every(([before, after]) =>
+      (before !== "passed" || after === "passed") && (after !== "failed" || before === "failed"))
+    const failsAfter = cases.some(([, after]) => after === "failed")
+    const failedBefore = cases.some(([before]) => before === "failed")
+    const exitExplained = code === 0 || (baselineCode !== 0 && (failsAfter || !failedBefore))
+    // A report that lost every case is a missing report, not a pass.
+    const reportKept = cases.every(([before]) => before === "absent") || cases.some(([, after]) => after !== "absent")
     const tests = index => Object.fromEntries(cases.flatMap((pair, i) => pair[index] === "absent" ? [] : [["case "+i, pair[index]]]))
-    const before = tests(0), after = tests(1)
-    const beforeFailed = Object.values(before).some((value) => value === "failed")
-    const afterFailed = Object.values(after).some((value) => value === "failed")
-    const unexplainedExit = code !== 0 && (baselineCode === 0 || (beforeFailed && !afterFailed))
-    const emptyAfterNonEmpty = Object.keys(before).length > 0 && Object.keys(after).length === 0
-    const expected = !unexplainedExit
-      && !emptyAfterNonEmpty
-      && !Object.entries(after).some(([name, value]) => value === "failed" && before[name] !== "failed")
-      && !Object.entries(before).some(([name, value]) => value === "passed" && (!(name in after) || (after[name] !== "passed" && after[name] !== "failed")))
-    assert.equal(compareTests({ code: baselineCode, tests: before }, { code, tests: after }).ok, expected)
+    assert.equal(compareTests({ code: baselineCode, tests: tests(0) }, { code, tests: tests(1) }).ok, kept && exitExplained && reportKept)
   }), { seed: 215329, numRuns: 1000, endOnFailure: true })
+})
+
+test("the two filed comparison defects fail: a passing case that becomes skipped, and a candidate with no report", () => {
+  assert.equal(compareTests({ code: 0, tests: { a: "passed" } }, { code: 0, tests: { a: "skipped" } }).ok, false)
+  assert.equal(compareTests({ code: 1, tests: { a: "failed", b: "passed" } }, { code: 1, tests: null }).ok, false)
+  assert.equal(compareTests({ code: 1, tests: { a: "failed" } }, { code: 1, tests: null }).ok, false)
+  assert.equal(compareTests({ code: 1, tests: null }, { code: 1, tests: null }).ok, true)
 })

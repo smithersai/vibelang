@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 // verify must refuse a batch whose candidate regresses the target's own tests,
 // read through a real runner's per-test report, not a hand-built map.
 import assert from "node:assert/strict"

@@ -51,7 +51,7 @@ test("property: setup roots and package types agree with the native effective si
       assert.equal(resolve(root, "lib", target), join(directory, "src/x.d.vibe.ts"))
       assert.equal(addSidecarDir(after, ts, sidecarDirectory, config), after)
     } finally { rmSync(root, { recursive: true, force: true }) }
-  }), { seed: 271268, numRuns: Number(process.env.FC_RUNS || 20) })
+  }), { seed: 271268, numRuns: 20 })
 })
 
 test("property: setup cleanup matches native mode-switch cleanup and protects selected outputs", { timeout: 600000 }, () => {
@@ -92,5 +92,5 @@ test("property: setup cleanup matches native mode-switch cleanup and protects se
       assert.deepEqual(removeSupersededSidecars(join(root, "setup"), Object.keys(files), ["tsconfig.json"], ts), [])
       assert.equal(new Set(removed).size, removed.length)
     } finally { rmSync(root, { recursive: true, force: true }) }
-  }), { examples: [[corpus.input]], seed: 268507, numRuns: Number(process.env.FC_RUNS || 30) })
+  }), { examples: [[corpus.input]], seed: 268507, numRuns: 30 })
 })

@@ -8,12 +8,11 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { checkProperty } from "../../../../scripts/testing/property.mjs";
 import { SpecPath } from "../../../../scripts/testing/spec-path.mjs";
+import { parseDiagnostics, styleProblems } from "../lib/diagnostics.mjs";
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url));
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url));
 const fc = require("fast-check");
-const implementation = process.env.SCHEMA_GATE_UNDER_TEST || new URL("../lib/diagnostics.mjs", import.meta.url).href;
-const { parseDiagnostics, styleProblems } = await import(implementation);
 const literal = JSON.parse(readFileSync(new URL("./corpus/t3code-schema-constructor-gate.json", import.meta.url), "utf8"));
 const rule = "A `Schema.TaggedError` class stays a class when it has";
 const native = process.env.VIBELANG_BINARY || [join(repo, "packages/compiler/native/vibelang"), join(repo, "typescript/built/local/tsc")].find(existsSync);
@@ -69,7 +68,7 @@ function check(input) {
 test("property: retained schema constructors keep class, file, category and batch scope", async () => {
   await checkProperty(fc, {
     name: "MigrationSchemaConstructorGate", rule,
-    command: "node --test packages/compiler/test/migrate-schema-constructor.property.test.mjs",
+    command: "node --test .smithers/flows/migrate/test/schema-constructor-gate.property.test.mjs",
     regressions: new URL("./corpus/", import.meta.url), numRuns: 120,
     arbitrary: fc.record({
       name: fc.integer({ min: 0, max: 50 }), directory: fc.integer({ min: 0, max: 5 }),

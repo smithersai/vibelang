@@ -54,7 +54,7 @@ function scenario({entry=corpus.entry,field='exports',form='self',condition=fals
 }
 test('native wildcard oracle quotes Chapter 7',()=>assert.ok(readFileSync(new URL('../../../../docs/design/src/007-tooling.md',import.meta.url),'utf8').includes(rule)))
 test('opencode: native session-legacy wildcard resolves its emitted self-export under Node',()=>scenario())
-test('property: public native JS edges route without changing source fallback or types',async()=>checkProperty(fc,{name:'opencode-native-wildcard-js-edge',rule,command:'node --test test/native-wildcard.property.test.mjs',numRuns:80,generatorVersion:1,regressions:new URL('./corpus/',import.meta.url),arbitrary:fc.record({entry:fc.constantFrom('session-legacy','nested/legacy','space name','雪'),field:fc.constantFrom('exports','imports'),form:fc.constantFrom('self','export','import'),condition:fc.boolean()}),check:scenario}))
+test('property: public native JS edges route without changing source fallback or types',async()=>checkProperty(fc,{name:'opencode-native-wildcard-js-edge',rule,command:'node --test .smithers/flows/migrate/test/native-wildcard.property.test.mjs',numRuns:80,generatorVersion:1,regressions:new URL('./corpus/',import.meta.url),arbitrary:fc.record({entry:fc.constantFrom('session-legacy','nested/legacy','space name','雪'),field:fc.constantFrom('exports','imports'),form:fc.constantFrom('self','export','import'),condition:fc.boolean()}),check:scenario}))
 
 test('native edges outside the selected runtime export remain source-only',()=>{
  for(const mode of ['type-only','ts-edge','existing-js','shadowed-exact','shadowed-pattern','private']) {

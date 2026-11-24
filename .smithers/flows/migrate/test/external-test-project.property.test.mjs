@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -120,15 +121,21 @@ test("foldkit MCP: actual setup records the external test-project bridge without
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 
-test("setup parses each project once across a large external test directory", () => {
+// Parsing scales with configurations, not test files: the count of project
+// parses is the same for 15 and for 150 external test files.
+function parsesWith(extra) {
   const f = fixture()
   try {
-    for (let i = 0; i < 150; i++) f.put("test/extra" + i + ".test.ts", "export const checked = 1\\n")
+    for (let i = 0; i < extra; i++) f.put("test/extra" + i + ".test.ts", "export const checked = 1\\n")
     let parses = 0
     const api = { ...ts, parseJsonConfigFileContent(...args) { parses++; return ts.parseJsonConfigFileContent(...args) } }
     const result = wireTestProjects({ ...f, ts: api })
     assert.deepEqual(result.changed, ["test/tsconfig.json"])
-    assert.equal(result.projects[0].files.length, 151)
-    assert.ok(parses <= 4, "project parsing must scale with configurations, not test files; got " + parses)
+    assert.equal(result.projects[0].files.length, extra + 1)
+    return parses
   } finally { rmSync(f.root, { recursive: true, force: true }) }
+}
+
+test("setup's project parsing does not grow with the external test directory", () => {
+  assert.equal(parsesWith(150), parsesWith(15))
 })

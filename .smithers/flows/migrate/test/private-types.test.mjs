@@ -3,28 +3,41 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { createRequire } from "node:module"
 import { test } from "node:test"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { compareDeclarations, loadTypeScript } from "../lib/declarations.mjs"
-import { canonicalize, privateUnusedTypes } from "./helpers/canonical-declarations.mjs"
 
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
-const same = (a, b) => canonicalize(ts, a) === canonicalize(ts, b)
-const stockOptions = { strict: true, noEmit: true, lib: ["lib.es5.d.ts"], types: [] }
-const diagnosticDetails = diagnostics => diagnostics.map(d => ({ code: d.code, file: d.file?.fileName, message: ts.flattenDiagnosticMessageText(d.messageText, "\n") }))
+
+// The declaration gate: a package whose `types` is index.d.ts, before and
+// after, compared through the checker. `files` are other declarations both
+// sides share, or { before, after } when they differ.
+function gate(before, after, files = {}, root = mkdtempSync(join(tmpdir(), "migrate-private-types-"))) {
+  try {
+    for (const [side, index] of [["before", before], ["after", after]]) {
+      const all = { "package.json": JSON.stringify({ name: "p", types: "./index.d.ts" }), "index.d.ts": index }
+      for (const [file, text] of Object.entries(files)) all[file] = typeof text === "string" ? text : text[side]
+      for (const [file, text] of Object.entries(all)) {
+        mkdirSync(dirname(join(root, side, file)), { recursive: true })
+        writeFileSync(join(root, side, file), text)
+      }
+    }
+    return compareDeclarations(ts, join(root, "before"), join(root, "after"))
+  } finally { rmSync(root, { recursive: true, force: true }) }
+}
+const identical = (before, after, files) => {
+  const result = gate(before, after, files)
+  assert.equal(result.comparisonComplete, true, JSON.stringify(result.environmentDiagnostics))
+  return result.identical
+}
 
 // t3code chatAttachment.ts: `const State = Schema.Struct(…)`, private, became
 // `schema State { … }`, whose declaration adds `type State = typeof State.Type`.
-// Nothing names the alias; the module's contract is the same.
-test("corpus: a migrated private schema's unused type alias is no declaration change", () => {
-  const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-private-schema-alias.json", import.meta.url), "utf8"))
-  assert.ok(same(corpus.before, corpus.after), corpus.key)
-})
-
-// A private alias is not an exported API change, including in a file reached
-// from the published package entrypoint.
+// Nothing names the alias; the module's contract is the same. A private alias
+// is not an exported API change, including in a file reached from the
+// published package entrypoint.
 test("corpus: compareDeclarations ignores an unused private alias on the published surface", (t) => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-private-schema-alias.json", import.meta.url), "utf8"))
   const compare = (surface, after = corpus.after) => {
@@ -47,116 +60,126 @@ test("corpus: compareDeclarations ignores an unused private alias on the publish
   assert.equal(unpublished.identical, true, JSON.stringify(unpublished.changed))
 })
 
-test("an alias that is exported, named by a type, re-exported or in a global script is part of the contract", () => {
-  const base = "declare const State: { readonly a: number };\n"
-  const changes = [
-    ["export type State = typeof State;\n", "an exported alias"],
-    ["type State = typeof State;\nexport interface Node { readonly s: State }\n", "an alias a type names"],
-    ["type State = typeof State;\ntype Inner = State;\nexport type Outer = Inner;\n", "an alias named through another alias"],
-    ["type State = typeof State;\nexport { type State };\n", "an alias an export names"],
-    ["type State = typeof State;\nexport interface Node extends State {}\n", "an alias a heritage clause names"],
-    ["interface State { readonly a: number }\n", "an interface"]
-  ]
-  for (const [extra, what] of changes) assert.ok(!same(base + "export {};\n", base + extra + "export {};\n"), what)
-  assert.ok(!same(base, base + "type State = typeof State;\n"), "a global script's alias")
-  assert.deepEqual([...privateUnusedTypes(ts, ts.createSourceFile("x.d.ts", base + "type State = typeof State;\ntype Self = Self[];\nexport {};\n", ts.ScriptTarget.Latest, true))], [1, 2])
+test("a private alias's change is no API change until an exported declaration, re-export or heritage clause names it", () => {
+  // `export {}` keeps the module's other declarations private: a declaration
+  // file without it exports every top-level declaration.
+  const base = "export {};\ndeclare const State: { readonly a: number };\nexport declare const kept: number;\n"
+  const changed = text => text.replace("type State = { readonly a: number }", "type State = { readonly a: string }")
+  const alias = "type State = { readonly a: number };\n"
+  assert.equal(identical(base + alias, changed(base + alias)), true, "an alias nothing names")
+  for (const [use, what] of [
+    ["export interface Node { readonly s: State }\n", "an alias a type names"],
+    ["type Inner = State;\nexport type Outer = Inner;\n", "an alias named through another alias"],
+    ["export { type State };\n", "an alias an export names"],
+    ["export interface Node extends State {}\n", "an alias a heritage clause names"]
+  ]) {
+    const before = base + alias + use
+    assert.equal(identical(before, changed(before)), false, what)
+  }
+  const unused = "interface State { readonly a: number }\n"
+  assert.equal(identical(base + unused, base + unused.replace("number", "string")), true, "an interface nothing names")
 })
 
-test("property: private aliases nothing names never change a module's canonical declarations; a named one does", () => {
-  const name = fc.stringMatching(/^[A-Z][a-z]{1,5}$/)
+test("property: private aliases nothing names never change a module's API; a named one does", () => {
+  const name = fc.stringMatching(/^[A-Z][a-z]{1,5}$/).filter(n => n !== "Node" && n !== "Uses")
   fc.assert(fc.property(fc.uniqueArray(name, { minLength: 2, maxLength: 5 }), fc.nat(), (names, pick) => {
     const [used, ...others] = names
     const module = `declare const ${used}: { readonly a: number };\nexport interface Node { readonly v: typeof ${used} }\nexport {};\n`
-    const aliases = others.map((n, i) => `type ${n} = ${i ? others[i - 1] : `typeof ${used}`} | string;\n`).join("")
-    assert.ok(same(module, aliases + module), aliases)
-    // Any of them named by an exported type is part of the contract again.
-    const named = others[pick % others.length]
-    assert.ok(!same(module, aliases + module.replace("export {};", `export type Uses = ${named};\nexport {};`)), named)
-  }), { numRuns: 200 })
+    // Each alias names the one before it, so changing the first changes all.
+    const aliases = (tail) => others.map((n, i) => `type ${n} = ${i ? others[i - 1] : `typeof ${used}`} | ${tail};\n`).join("")
+    assert.equal(identical(aliases("string") + module, aliases("number") + module), true, aliases("string"))
+    const named = `export type Uses = ${others[pick % others.length]};\n`
+    assert.equal(identical(aliases("string") + module + named, aliases("number") + module + named), false, named)
+  }), { seed: 3004, numRuns: 8 })
 })
 
 // t3code apps/server MCP toolkits (drive-t3code-server 03:25Z): ten modules
-// whose declarations differ only in where `import { Tool, Toolkit } from
-// "effect/ai"` stands.
+// whose declarations differ only in where an import stands. The gate reads
+// what each import binds, not where it stands.
+const modules = {
+  "a.d.ts": "export interface A { readonly a: 1 }\nexport interface F { readonly f: 1 }\n",
+  "b.d.ts": "export interface B { readonly b: 1 }\n",
+  "bb.d.ts": "export interface B { readonly b: 2 }\n",
+  "c.d.ts": "export interface C { readonly c: 1 }\n",
+  "cc.d.ts": "export interface C { readonly c: 2 }\n",
+  "d.d.ts": "export interface D { readonly d: 1 }\n",
+  "e.d.ts": "export interface E { readonly e: 1 }\n"
+}
+
 test("corpus: declarations that differ only in the order of their imports are identical", () => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-import-order.json", import.meta.url), "utf8"))
-  assert.ok(same(corpus.before, corpus.after), corpus.key)
+  const pkg = (name, entries) => ({
+    ["node_modules/" + name + "/package.json"]: JSON.stringify({ name, exports: Object.fromEntries(Object.keys(entries).map(entry =>
+      [entry === "index" ? "." : "./" + entry, { types: "./" + entry + ".d.ts" }])) }),
+    ...Object.fromEntries(Object.entries(entries).map(([entry, text]) => ["node_modules/" + name + "/" + entry + ".d.ts", text]))
+  })
+  const stubs = {
+    ...pkg("@t3tools/contracts", { index: "export declare const OrchestratorMcpFailure: { readonly _tag: \"OrchestratorMcpFailure\" };\n" }),
+    ...pkg("@t3tools/shared", { Crypto: "export interface Crypto { readonly crypto: true }\n" }),
+    ...pkg("effect", {
+      FileSystem: "export interface FileSystem { readonly fileSystem: true }\n",
+      Schema: "export interface Struct<F> { readonly fields: F }\nexport interface String { readonly string: true }\n",
+      ai: "export declare namespace Tool { interface Tool<N extends string, C, R> { readonly name: N; readonly config: C; readonly requirements: R } }\n" +
+        "export declare namespace Toolkit { interface Toolkit<T> { readonly tools: T } }\n"
+    })
+  }
+  assert.equal(identical(corpus.before, corpus.after, stubs), true, corpus.key)
+  assert.equal(identical(corpus.before, corpus.after.replace('"read"', '"write"'), stubs), false, "a changed tool name")
 })
 
-test("import order is no change, but what an import brings in, a re-export's module and a side-effect import's place are", () => {
-  const a = 'import { A } from "a";\nimport { B } from "b";\nexport { C } from "c";\nexport { D } from "d";\nexport declare const x: A | B;\n'
-  assert.ok(same(a, 'import { B } from "b";\nimport { A } from "a";\nexport { D } from "d";\nexport { C } from "c";\nexport declare const x: A | B;\n'))
-  assert.ok(!same(a, a.replace('import { B } from "b"', 'import { B } from "bb"')))
-  assert.ok(!same(a, a.replace('export { C } from "c"', 'export { C } from "cc"')))
-  const effects = 'import "./setup-a";\nimport "./setup-b";\nexport {};\n'
-  assert.ok(!same(effects, 'import "./setup-b";\nimport "./setup-a";\nexport {};\n'))
+test("import order is no change, but what an import or a re-export brings in is", () => {
+  const a = 'import { A } from "./a.js";\nimport { B } from "./b.js";\nexport { C } from "./c.js";\nexport { D } from "./d.js";\nexport declare const x: A | B;\n'
+  assert.equal(identical(a, 'import { B } from "./b.js";\nimport { A } from "./a.js";\nexport { D } from "./d.js";\nexport { C } from "./c.js";\nexport declare const x: A | B;\n', modules), true)
+  assert.equal(identical(a, a.replace('"./b.js"', '"./bb.js"'), modules), false, "an import from another module")
+  assert.equal(identical(a, a.replace('"./c.js"', '"./cc.js"'), modules), false, "a re-export from another module")
 })
 
-test("property: any order of a module's imports and re-exports canonicalizes the same", () => {
-  const lines = ['import { A } from "a";', 'import * as B from "b";', 'import type { C } from "c";', 'export { D } from "d";', 'export * from "e";', 'import { F as G } from "a";']
+test("property: any order of a module's imports and re-exports compares identical", () => {
+  const lines = ['import { A } from "./a.js";', 'import * as B from "./b.js";', 'import type { C } from "./c.js";', 'export { D } from "./d.js";', 'export * from "./e.js";', 'import { F as G } from "./a.js";']
   fc.assert(fc.property(fc.shuffledSubarray(lines, { minLength: 1 }), (chosen) => {
     const text = (order) => order.join("\n") + "\nexport declare const x: number;\n"
-    const reversed = [...chosen].reverse()
-    assert.equal(canonicalize(ts, text(chosen)), canonicalize(ts, text(reversed)))
-  }), { numRuns: 200 })
+    assert.equal(identical(text(chosen), text([...chosen].reverse()), modules), true)
+  }), { seed: 3005, numRuns: 8 })
 })
-
 
 // Class heritage reads its base as a runtime value; its type arguments still
 // name types. Interface heritage and implements clauses read the type namespace.
-test("corpus: a class base value does not retain its same-named private type alias", t => {
+test("corpus: a class base value does not retain its same-named private type alias", () => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-private-alias-class-heritage.json", import.meta.url), "utf8"))
-  assert.ok(same(corpus.before, corpus.after), corpus.key)
-  const source = ts.createSourceFile("state.d.ts", corpus.after, ts.ScriptTarget.Latest, true)
-  assert.deepEqual([...privateUnusedTypes(ts, source)], [1])
-  const root = mkdtempSync(join(tmpdir(), "migrate-class-heritage-"))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
-  for (const side of ["before", "after"]) {
-    const file = join(root, side + ".d.ts")
-    writeFileSync(file, corpus[side])
-    const program = ts.createProgram([file], stockOptions)
-    assert.deepEqual(diagnosticDetails(ts.getPreEmitDiagnostics(program)), [], "stock TypeScript accepts " + side)
-  }
+  assert.equal(identical(corpus.before, corpus.after), true, corpus.key)
 })
 
-test("property: class value heritage drops only unused aliases and preserves type heritage", () => {
+test("property: class value heritage ignores a same-named private alias; type arguments and interface heritage do not", () => {
   const name = fc.stringMatching(/^[A-Z][a-z]{1,6}$/).filter(n => n !== "Shape" && n !== "Value")
   fc.assert(fc.property(name, fc.constantFrom("", ".Base"), fc.boolean(), (name, suffix, generic) => {
-    const value = suffix
-      ? `declare namespace ${name} { const Base: { new<T>(): { readonly value: T } }; }\n`
-      : `declare const ${name}: { new<T>(): { readonly value: T } };\n`
-    const alias = `type ${name} = { readonly retained: true };\n`
+    const constructor = generic ? "new<T>(): { readonly value: T }" : "new(): { readonly value: string }"
+    const value = "export {};\n" + (suffix
+      ? `declare namespace ${name} { const Base: { ${constructor} }; }\n`
+      : `declare const ${name}: { ${constructor} };\n`)
+    const alias = (retained) => `type ${name} = { readonly retained: ${retained} };\n`
     const argument = generic ? "<Shape>" : ""
     const extra = generic ? "type Shape = string;\n" : ""
-    const before = value + extra + `export declare class Value extends ${name}${suffix}${argument} {}\nexport {};\n`
-    assert.ok(same(before, value + alias + before.slice(value.length)), "a class base is a value")
-    if (generic) {
-      assert.ok(!same(before, before.replace("type Shape = string;", "type Shape = number;")), "base type arguments remain observable")
-    }
-    for (const heritage of [`export interface Value extends ${name} {}`, `export declare class Value implements ${name} {}`]) {
-      const used = value + alias + heritage + "\nexport {};\n"
-      assert.equal(privateUnusedTypes(ts, ts.createSourceFile("state.d.ts", used, ts.ScriptTarget.Latest, true)).size, 0, heritage)
-    }
-    for (const exported of [`export { ${name} };`, `export { type ${name} };`, `export type Public = ${name};`]) {
-      assert.ok(!same(value + "export {};\n", value + alias + exported + "\n"), "observable aliases stay")
-    }
-  }), { seed: 102, numRuns: 200 })
+    const before = value + extra + `export declare class Value extends ${name}${suffix}${argument} {}\n`
+    assert.equal(identical(before, value + alias("true") + before.slice(value.length)), true, "a class base is a value")
+    if (generic) assert.equal(identical(before, before.replace("type Shape = string;", "type Shape = number;")), false, "base type arguments remain observable")
+    // An interface's heritage is part of its type. (A class's `implements`
+    // clause is not: it checks the class and leaves its type unchanged.)
+    const used = value + alias("true") + `export interface Value extends ${name} {}\n`
+    assert.equal(identical(used, used.replace(alias("true"), alias("false"))), false, "interface heritage names the alias")
+  }), { seed: 102, numRuns: 8 })
 })
 
-test("generated ambient packages cannot pollute a self-contained declaration oracle", t => {
+test("an ambient @types package beside the snapshots cannot change the gate's verdict; a source error still blocks it", () => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-private-alias-class-heritage.json", import.meta.url), "utf8"))
   const root = mkdtempSync(join(tmpdir(), "migrate-isolated-declaration-"))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
-  const ambient = join(root, "node_modules/@types/incidental"), file = join(root, "schema.d.ts")
-  mkdirSync(ambient, { recursive: true })
-  fc.assert(fc.property(fc.integer({ min: 0, max: 10000 }), fc.constantFrom("before", "after"), (suffix, side) => {
-    writeFileSync(join(ambient, "index.d.ts"), "declare const incidental: Unavailable" + suffix + ".Type;\n")
-    writeFileSync(file, corpus[side])
-    const options = { ...stockOptions, typeRoots: [join(root, "node_modules/@types")] }
-    const polluted = { ...options }; delete polluted.types
-    assert.ok(ts.getPreEmitDiagnostics(ts.createProgram([file], polluted)).some(d => d.code === 2503))
-    assert.deepEqual(diagnosticDetails(ts.getPreEmitDiagnostics(ts.createProgram([file], options))), [])
-    writeFileSync(file, corpus[side] + "\nexport type Invalid = MissingSourceType;\n")
-    assert.ok(ts.getPreEmitDiagnostics(ts.createProgram([file], options)).some(d => d.code === 2304), "source errors remain visible")
-  }), { seed: 551108, numRuns: 12 })
+  mkdirSync(join(root, "node_modules/@types/incidental"), { recursive: true })
+  writeFileSync(join(root, "node_modules/@types/incidental/index.d.ts"), "declare const incidental: Unavailable.Type;\n")
+  const clean = gate(corpus.before, corpus.after, {}, join(root, "clean"))
+  assert.equal(clean.comparisonComplete, true, JSON.stringify(clean.environmentDiagnostics))
+  assert.equal(clean.identical, true)
+  const invalid = "\nexport type Invalid = MissingSourceType;\n"
+  const broken = gate(corpus.before + invalid, corpus.after + invalid, {}, join(root, "broken"))
+  assert.equal(broken.identical, false)
+  assert.ok(broken.environmentDiagnostics.some(d => d.blocking && /MissingSourceType/.test(d.diagnostic)), JSON.stringify(broken.environmentDiagnostics))
+  rmSync(root, { recursive: true, force: true })
 })

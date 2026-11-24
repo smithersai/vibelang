@@ -1,14 +1,16 @@
+import "./helpers/jj-config.mjs"
 import { bindCompilerArtifact } from "../lib/toolchain.mjs"
 // The dist-list diff (migrate-flow:paths-to-converted-files): a build that
 // selects sources by `.ts` drops a renamed module from dist and exits 0.
 import assert from "node:assert/strict"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { prepareBuilds } from "../lib/builds.mjs"
-import { compareDistLists, outputDirs } from "../lib/dist-list.mjs"
+import { cleanBuildList, compareDistLists, outputDirs } from "../lib/dist-list.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
@@ -155,6 +157,46 @@ test("compareDistLists: a hashed bundler chunk pairs by name; a lost chunk with 
   const renamed = compareDistLists({ state: "complete", files: ["w/index-workers-jVknflMe.mjs"] }, { state: "complete", files: ["w/dist-C5YBph1v.mjs"] })
   assert.deepEqual([renamed.ok, renamed.rehashed], [true, [{ from: "w/index-workers-jVknflMe.mjs", to: "w/dist-C5YBph1v.mjs", renamed: true }]])
   assert.equal(compareDistLists({ state: "complete", files: ["w/a-jVknflMe.mjs"] }, { state: "complete", files: ["v/dist-C5YBph1v.mjs"] }).ok, false, "a chunk in another directory does not pair")
+})
+
+// #508: api-identity.js ends in a dash and eight letters, as a chunk does; it is the renamed module's output.
+test("compareDistLists: a lost module output whose name looks hashed is refused for its module, not paired with a chunk", () => {
+  const renames = [{ from: "src/api-identity.ts", to: "src/api-identity.vibe" }]
+  const baseline = { state: "complete", files: ["dist/api-identity.js", "dist/chunk-AAAAAAAA.js", "dist/index.js"] }
+  const withExtra = compareDistLists(baseline, { state: "complete", files: ["dist/chunk-BBBBBBBB.js", "dist/extra-CCCCCCCC.js", "dist/index.js"] }, renames)
+  assert.deepEqual([withExtra.ok, withExtra.refusals.map(r => [r.kind, r.file, r.modules])], [false, [["dist-missing", "dist/api-identity.js", ["src/api-identity.ts"]]]])
+  assert.deepEqual(withExtra.rehashed, [{ from: "dist/chunk-AAAAAAAA.js", to: "dist/chunk-BBBBBBBB.js" }])
+  assert.deepEqual(withExtra.extras, ["dist/extra-CCCCCCCC.js"])
+  const alone = compareDistLists(baseline, { state: "complete", files: ["dist/chunk-BBBBBBBB.js", "dist/index.js"] }, renames)
+  assert.deepEqual(alone.refusals.map(r => [r.kind, r.file, r.modules]), [["dist-missing", "dist/api-identity.js", ["src/api-identity.ts"]]])
+  assert.deepEqual(alone.rehashed, [{ from: "dist/chunk-AAAAAAAA.js", to: "dist/chunk-BBBBBBBB.js" }], "the chunk pairs by its exact name")
+})
+
+test("compareDistLists: only a suffix with a digit or a capital is a hash", () => {
+  const words = compareDistLists({ state: "complete", files: ["p/dist/error-handling.js", "p/dist/use-callback.js"] }, { state: "complete", files: ["p/dist/chunk-Bq3x9ZzA.js"] })
+  assert.deepEqual([words.refusals.map(r => r.file), words.rehashed], [["p/dist/error-handling.js", "p/dist/use-callback.js"], []])
+  // esbuild's hash is upper-case base32 and can hold no digit.
+  const esbuild = compareDistLists({ state: "complete", files: ["p/dist/chunk-5ZHGHPQK.js"] }, { state: "complete", files: ["p/dist/chunk-ABCDEFGH.js"] })
+  assert.deepEqual([esbuild.ok, esbuild.rehashed], [true, [{ from: "p/dist/chunk-5ZHGHPQK.js", to: "p/dist/chunk-ABCDEFGH.js" }]])
+})
+
+// #508: a process killed during the build leaves the moved directories in dist-aside; the next call puts them back.
+test("cleanBuildList: after a build killed mid-run, the next call restores what it moved aside", async () => {
+  const root = mkdtempSync(join(tmpdir(), "dist-list-killed-"))
+  try {
+    const t = join(root, "repo"), logs = join(root, "logs")
+    mkdirSync(join(t, "pkg/vendor"), { recursive: true }); writeFileSync(join(t, "pkg/vendor/blob.bin"), "vendored\n")
+    const lib = new URL("../lib/dist-list.mjs", import.meta.url).href
+    const killed = spawnSync(process.execPath, ["--input-type=module", "-e",
+      `import { cleanBuildList } from ${JSON.stringify(lib)}; await cleanBuildList({ t: ${JSON.stringify(t)}, dirs: ["pkg/vendor"], scratch: ${JSON.stringify(logs)}, build: async () => process.exit(137) })`], { encoding: "utf8" })
+    assert.equal(killed.status, 137, killed.stderr)
+    assert.equal(existsSync(join(t, "pkg/vendor")), false, "the killed build left the directory aside")
+    assert.equal(readFileSync(join(logs, "dist-aside/0/blob.bin"), "utf8"), "vendored\n")
+    const listed = await cleanBuildList({ t, dirs: ["pkg/vendor"], scratch: logs, build: async () => {} })
+    assert.deepEqual(listed.notBuilt, ["pkg/vendor"])
+    assert.equal(readFileSync(join(t, "pkg/vendor/blob.bin"), "utf8"), "vendored\n")
+    assert.equal(existsSync(join(logs, "dist-aside")), false)
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
 // Property: every file the baseline lists is either in the candidate, a

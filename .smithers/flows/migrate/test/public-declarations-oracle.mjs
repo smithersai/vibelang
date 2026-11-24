@@ -24,12 +24,15 @@ export function compare(before, after, manifest) {
 }
 
 
-const forms = [
+// The JavaScript specifier p names the declaration file a reference reads.
+const declarationOf = p => p.replace(/\.([cm]?)js$/, (_, kind) => ".d." + kind + "ts")
+export const forms = [
   p => `export * from "${p}";\n`,
   p => `import type { Item as Inner } from "${p}"; export type Item = Inner;\n`,
   p => `export type Item = import("${p}").Item;\n`,
   p => `import type * as X from "${p}"; export type Item = X.Item;\n`,
-  p => `export type Item = import("${p}").Item;\n`
+  p => `import X = require("${p}"); export type Item = X.Item;\n`,
+  p => `/// <reference path="${declarationOf(p)}" />\nexport interface Item {}\n`
 ]
 
 export function check(edges, exposed, ext) {

@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -24,8 +25,11 @@ test("foldkit-27: record formats a real jj rename destination", async () => {
     assert.deepEqual(changed, [{ status: "R", path: "main.vibe", from: "main.ts" }])
     assert.ok(changed.every(f => existsSync(join(root, f.path))))
     mkdirSync(join(root, "node_modules/.bin"), { recursive: true })
+    // A stand-in formatter that drops a leading blank line, in Node so it runs
+    // the same with GNU and BSD tools.
     writeFileSync(join(root, "node_modules/.bin/vibelang-format"),
-      '#!/bin/sh\nshift\nfor f in "$@"; do sed -i "1{/^$/d;}" "$f"; done\n', { mode: 0o755 })
+      "#!" + process.execPath + "\nconst fs = require('node:fs')\n" +
+      "for (const f of process.argv.slice(3)) fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(/^\\n/, ''))\n", { mode: 0o755 })
     const formatted = await formatRecorded({ target: root, packages: [] }, changed.map(f => f.path), root)
     assert.deepEqual(formatted.files, ["main.vibe"])
     assert.equal(readFileSync(join(root, "main.vibe"), "utf8"), "export const a = 1\n")

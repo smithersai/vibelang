@@ -1,3 +1,4 @@
+import "./helpers/jj-config.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -342,7 +343,7 @@ test("upgrade-effect moves a repository VibeLang set up to this run's VibeLang i
     assert.deepEqual(readFileSync(join(target, compiler.slice(5))), readFileSync(join(toolchain, "vibelang-0.0.11.tgz")))
     // Effect and VibeLang move together in the upgrade's commit, and each file keeps its formatting.
     // rule-evidence: docs/design/vips/0032-effect-version.md#5896fc765c34f201 | **Amended 2026-10-29: repos that already use VibeLang.** The published `vibelang-runtime` enforces its exact Effect pin, so the Effect upgrade lands together with the VibeLang release pinned to the new Effect, not before it (found while upgrading Smithers).
-    assert.equal(readFileSync(join(target, "packages/core/package.json"), "utf8"), JSON.stringify({ ...JSON.parse(core), dependencies: { effect: "4.0.6", "vibelang-runtime": "0.0.11" } }, null, 2) + "\n")
+    assert.equal(readFileSync(join(target, "packages/core/package.json"), "utf8"), core.replace('"4.0.5"', '"4.0.6"').replace(`"file:../../.vibelang-toolchain/vibelang-runtime-0.0.11-${old}.tgz"`, '"0.0.11"'))
     assert.deepEqual(result.vibelang, ["package.json", "packages/core/package.json"])
     const { stdout } = await must(`jj diff --summary -r ${result.jj.commit}`, { cwd: target })
     const files = stdout.trim().split("\n")
