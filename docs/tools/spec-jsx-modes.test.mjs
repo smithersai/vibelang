@@ -4,7 +4,7 @@ import ts from "typescript"
 import fc from "fast-check"
 import { read } from "./spec-witness.mjs"
 
-// Loop round 4, OPUS-3: VIP-39's "try inside JSX" bullet sorts the jsx modes
+// VIP-39's "try inside JSX" bullet sorts the jsx modes
 // into those TypeScript transforms and those that keep the element in the
 // output for a framework's compiler. TypeScript decides which is which, so the
 // test emits one element under every JsxEmit value and compares.

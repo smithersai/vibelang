@@ -2,8 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { read, run } from "./spec-witness.mjs"
 
-// Loop round 4, OPUS-5 (decided detail 198 with VIP-39's transparent
-// containers): a `do` that jumps out of a JSX element is evaluated after
+// Under VIP-39, a `do` that jumps out of a JSX element is evaluated after
 // everything to its left in the element, once each, and never moves alone.
 const vip = read("docs/design/vips/0039-vibex.md")
 

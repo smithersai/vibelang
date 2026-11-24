@@ -24,7 +24,7 @@ function declaration(source) {
   return result.outputText
 }
 
-test("ASTRA-5: native TypeScript distinguishes an unannotated and contract-complete add twin", () => {
+test("native TypeScript distinguishes an unannotated and contract-complete add twin", () => {
   const source = "export function add(a: number, b: number): number { return a + b }"
   const raw = declaration(source)
   const tagged = declaration("/** @throws {never} */\n" + source)
@@ -33,7 +33,7 @@ test("ASTRA-5: native TypeScript distinguishes an unannotated and contract-compl
   assert.equal(tagged.replace(/\/\*\* @throws \{never\} \*\/\s*/, ""), raw)
 })
 
-test("ASTRA-5: tsc preserves explicit never contracts and documentation across signature forms", () => {
+test("tsc preserves explicit never contracts and documentation across signature forms", () => {
   const summary = fc.array(fc.constantFrom(..."abcdefghijklmnopqrstuvwxyz "), { minLength: 1, maxLength: 40 }).map(chars => chars.join(""))
   fc.assert(fc.property(summary, fc.boolean(), fc.constantFrom("function", "async", "async-arrow", "const", "call", "method", "constructor", "overloads"), (description, deprecated, form) => {
     const doc = `/** ${description}\n${deprecated ? " * @deprecated Use the replacement.\n" : ""} * @throws {never}\n */\n`

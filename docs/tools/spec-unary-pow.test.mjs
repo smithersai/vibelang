@@ -2,10 +2,10 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { chapter } from "./spec-witness.mjs"
 
-// Loop round 1, ASTRA-10: decided detail 212 allocates EK0510 to an
+// EK0510 reports an
 // unparenthesized unary execution expression on the left of `**`. Chapter 2's
 // try rules and Appendix B state it, in code order.
-// Loop round 4, OPUS-7: Appendix A gives every execution head a UnaryExpression
+// Appendix A gives every execution head a UnaryExpression
 // operand (Await operations, Fork and join), so the rule names all ten.
 const heads = "`try`, `try.all`, `try.race`, `try.any`, `try.allSettled`, `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join`"
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")

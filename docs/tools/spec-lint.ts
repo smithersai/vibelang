@@ -80,7 +80,7 @@ function tableAfter(text: string, marker: string): string[][] | undefined {
   return rows.slice(2)
 }
 
-// Relative-specifier resolution (round 14 OPUS-1). Chapter 7 copies VIP-39's
+// Relative-specifier resolution. Chapter 7 copies VIP-39's
 // resolution table, which lists every relative specifier ending VibeLang
 // changes. A sentence elsewhere saying `./x.ts` resolves to `x.vibe` adds a
 // row the table does not have, so the table must stay VIP-39's, and every
@@ -100,7 +100,7 @@ const vipTable = "Resolution treats `.vibex` as `.vibe`'s `.tsx`:"
 
 const resolutionClaims: Rule = {
   name: "resolution-claims",
-  finding: "r14 OPUS-1: 007 said `./x.ts` resolves to `x.vibe`, a row neither resolution table has",
+  finding: "007 said `./x.ts` resolves to `x.vibe`, a row neither resolution table has",
   check(spec) {
     const out: Violation[] = []
     const chapter = spec.get("src/007-tooling.md") ?? "", vip = spec.get("vips/0039-vibex.md") ?? ""
@@ -122,7 +122,7 @@ const resolutionClaims: Rule = {
   }
 }
 
-// Configuration keys (round 14 OPUS-3). Chapter 7 named a second path,
+// Configuration keys. Chapter 7 named a second path,
 // `compilerOptions.vibelang.declarationImportStyle`, two sibling keys,
 // `trustedPackages` and `tracing`, and a TypeScript code, `TS6046`, for a
 // VibeLang option, none with a VIP behind it. A configuration path a chapter
@@ -132,7 +132,7 @@ const resolutionClaims: Rule = {
 // Registry parsing in spec-rules.mjs owns option paths.
 const configKeys: Rule = {
   name: "config-keys",
-  finding: "r14 OPUS-3: 007 named `compilerOptions.vibelang.declarationImportStyle`, `trustedPackages`, `tracing` and `TS6046` with no VIP",
+  finding: "007 named `compilerOptions.vibelang.declarationImportStyle`, `trustedPackages`, `tracing` and `TS6046` with no VIP",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of chapters(spec)) {
@@ -155,7 +155,7 @@ const configKeys: Rule = {
 // once VIP-30 retires it, reject live-option claims in every chapter/VIP.
 const importStyleScope: Rule = {
   name: "declaration-import-style-scope",
-  finding: "r14 OPUS-3/5 and r15 OPUS-2: declaration spelling must follow its published VIP contract",
+  finding: "declaration spelling must follow its published VIP contract",
   check(spec) {
     const out: Violation[] = []
     const retired = /There is no `declarationImportStyle` setting/.test(spec.get("vips/0030-config-files.md") ?? "")
@@ -186,7 +186,7 @@ const importStyleScope: Rule = {
   }
 }
 
-// The import a declaration adds (round 14 OPUS-4). 001's Content bullet and
+// The import a declaration adds. 001's Content bullet and
 // its worked example wrote `import type { Effect, Stream } from "effect"`;
 // the Specifiers bullet beside it wrote `import { Effect } from "effect"`, and
 // VIP-27 holds declarations to the bytes the Effect TypeScript twin's
@@ -194,7 +194,7 @@ const importStyleScope: Rule = {
 // Declaration output section every `import … from "effect"` takes one form.
 const declarationImportForm: Rule = {
   name: "declaration-import-form",
-  finding: "r14 OPUS-4: 001:482 and 001:565 wrote `import type { Effect, Stream }`, 001:483 `import { Effect }`, for the same added import",
+  finding: "001:482 and 001:565 wrote `import type { Effect, Stream }`, 001:483 `import { Effect }`, for the same added import",
   check(spec) {
     const text = spec.get("src/001-functions.md") ?? ""
     const start = text.indexOf("\n## Declaration output\n")
@@ -209,19 +209,18 @@ const declarationImportForm: Rule = {
   }
 }
 
-// Retired forms in VIP and chapter examples (rows 45 and 46 of round 14's
-// open table). A VIP's opening example is the first program a reader copies,
+// Retired forms in VIP and chapter examples. A VIP's opening example is the first program a reader copies,
 // and two still used forms an accepted source has removed. Each check names
 // the source that removed its form.
 const retired: { form: string; pattern: RegExp; source: string }[] = [
   { form: "the value handler `x catch guest`", pattern: /\bcatch\s+(?!effect\b|async\b|\(|<)[A-Za-z_$][\w$]*\s*(?:\/\/.*)?$/,
     source: "VIP-5, amended 2026-10-29: `x catch () => guest` replaces the value form `x catch guest`, which is removed" },
   { form: "the bare type `Effect<A, E, R>`", pattern: /(?<![\w.$])Effect</,
-    source: "decided detail 260: a bare `Effect<A, E, R>` type is not a VibeLang form; write `A!E!R` or `Effect.Effect<A, E, R>`" },
+    source: "VIP-3, amended 2026-11-01: a bare `Effect<A, E, R>` type is not a VibeLang form; write `A!E!R` or `Effect.Effect<A, E, R>`" },
 ]
 const retiredForms: Rule = {
   name: "retired-forms",
-  finding: "r7 ASTRA-4 (row 46): VIP-5's Decision example used the removed value handler `catch guest`; r7 OPUS-6 (row 45): VIP-1's written-type example used bare `Effect<A, E, R>`",
+  finding: "VIP-5's Decision example used the removed value handler `catch guest`; VIP-1's written-type example used bare `Effect<A, E, R>`",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
@@ -237,8 +236,7 @@ const retiredForms: Rule = {
   }
 }
 
-// Platform packages in examples (row 36 of round 14's open table, round 6
-// OPUS-4). VIP-33's Decision example used `NodeServices` with no import and
+// Platform packages in examples. VIP-33's Decision example used `NodeServices` with no import and
 // provided it at the top level, outside effect code; VIP-26's used
 // `NodeRuntime` with no import. Chapter 5: `NodeServices` is "a platform
 // package: imported, not in scope" (VIP-14 puts only Effect's modules in
@@ -248,7 +246,7 @@ const retiredForms: Rule = {
 const platformValue = /\b((?:Node|Bun|Browser)(?:Services|Runtime|Context|HttpServer|HttpClient|FileSystem|Path|Terminal|Worker))\b/g
 const platformImports: Rule = {
   name: "platform-imports",
-  finding: "r6 OPUS-4 (row 36): VIP-33 used `NodeServices` unimported in a top-level `provide`; VIP-26 used `NodeRuntime` unimported",
+  finding: "VIP-33 used `NodeServices` unimported in a top-level `provide`; VIP-26 used `NodeRuntime` unimported",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
@@ -265,15 +263,14 @@ const platformImports: Rule = {
   }
 }
 
-// Counterparts keep native declarations (row 51 of round 14's open table,
-// round 9 ASTRA-2). VIP-8's example kept `using f = openFile(p)`, which
+// Counterparts keep native declarations. VIP-8's example kept `using f = openFile(p)`, which
 // "keeps exactly TypeScript's meaning", but its `// Effect TS` counterpart
 // dropped it, so the counterpart neither acquires nor disposes the file. In a
 // code block with an `// Effect TS` counterpart, every `using` declaration of
 // the VibeLang half appears in the counterpart.
 const counterpartUsing: Rule = {
   name: "counterpart-using",
-  finding: "r9 ASTRA-2 (row 51): VIP-8's Effect TS counterpart dropped the source's `using f = openFile(p)`",
+  finding: "VIP-8's Effect TS counterpart dropped the source's `using f = openFile(p)`",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of spec) {
@@ -293,16 +290,14 @@ const counterpartUsing: Rule = {
   }
 }
 
-// Output collisions follow output paths (row 39 of round 14's open table,
-// round 6 ASTRA-5). VIP-39 said `App.vibe` beside `App.vibex` "write the same
+// Output collisions follow output paths. VIP-39 said `App.vibe` beside `App.vibex` "write the same
 // output and get TypeScript's TS5055/TS5056" unconditionally; under
 // `"jsx": "preserve"` with declarations off they write `App.js` and
-// `App.jsx`. Decided detail 265: "report native output-collision diagnostics
-// only where the selected inputs really share a written path". A sentence
+// `App.jsx`. A sentence
 // giving a same-stem pair `TS5055` or `TS5056` states that condition.
 const collisionConditional: Rule = {
   name: "collision-conditional",
-  finding: "r6 ASTRA-5 (row 39): VIP-39 gave every `.vibe`/`.vibex` same-stem pair TS5055/TS5056",
+  finding: "VIP-39 gave every `.vibe`/`.vibex` same-stem pair TS5055/TS5056",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of spec) {
@@ -323,7 +318,7 @@ const falsified: { claim: RegExp; ruling: string }[] = [
 ]
 const rulingClaims: Rule = {
   name: "ruling-claims",
-  finding: "r9 OPUS-2 (row 50): VIP-25's denial reason contradicts the 2026-10-31 amendment to VIP-4",
+  finding: "VIP-25's denial reason contradicts the 2026-10-31 amendment to VIP-4",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of spec) {
@@ -339,7 +334,7 @@ const rulingClaims: Rule = {
   }
 }
 
-// Compiler gaps are not language rules (round 15 OPUS-1). Compiler commit
+// Compiler gaps are not language rules. Compiler commit
 // 65542e8d8ca3 listed `EK0204`, "an outward source completion cannot yet
 // cross a generated function boundary", among Appendix B's normative rules,
 // and the do-expression snapshot's README said "VibeLang rejects" a
@@ -349,7 +344,7 @@ const rulingClaims: Rule = {
 const compilerGapWords = /\b(?:compiler (?:implementation )?limitation|implementation limitation|compiler gap|cannot yet|not a TC39 early error)\b/i
 const compilerGaps: Rule = {
   name: "compiler-gaps-not-rules",
-  finding: "r15 OPUS-1: Appendix B's normative table listed the compiler gap EK0204 as a rule",
+  finding: "Appendix B's normative table listed the compiler gap EK0204 as a rule",
   check(spec) {
     const file = "src/900-appendices.md"
     const text = spec.get(file) ?? ""
@@ -367,13 +362,13 @@ const compilerGaps: Rule = {
   }
 }
 
-// R29 ASTRA-1: a module body's extracted twin must remain a module even
+// A module body's extracted twin must remain a module even
 // under legacy moduleDetection. Annotated twins are executable examples,
 // not a prose phrase check; ordinary illustrative script snippets are exempt.
 // The separately published VIP fix adds the first annotated twin.
 const moduleExtractionTwins: Rule = {
   name: "module-extraction-twins",
-  finding: "r29 ASTRA-1/2: extracted bodies must preserve module scope and TypeScript source kind",
+  finding: "extracted bodies must preserve module scope and TypeScript source kind",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of spec) {
@@ -384,7 +379,7 @@ const moduleExtractionTwins: Rule = {
           block[2]!, ts.ScriptTarget.Latest, true,
           block[1] === "tsx" ? ts.ScriptKind.TSX : ts.ScriptKind.TS
         )
-        // R29 ASTRA-2: the same body tokens can be valid TSX and invalid TS,
+        // The same body tokens can be valid TSX and invalid TS,
         // or vice versa. A twin must parse under its documented file kind.
         const parsed = ts.transpileModule(block[2]!, {
           fileName: source.fileName,
@@ -410,7 +405,7 @@ const moduleExtractionTwins: Rule = {
 }
 
 // A relative link into docs/design names a file that exists and a heading or
-// <a id> in it. Round 16: Appendix C linked `0025-inline-modules-denied, superseded
+// <a id> in it. Appendix C linked `0025-inline-modules-denied, superseded
 // by VIP-40.md`, and 004 linked a 003 heading the simplify pass had removed.
 const anchorSlug = (heading: string) =>
   heading.replace(/`/g, "").trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s/g, "-")
@@ -427,7 +422,7 @@ const anchorsOf = (text: string) => {
 }
 const specLinks: Rule = {
   name: "spec-links",
-  finding: "r16 OPUS-6, OPUS-7: a chapter links a VIP file or heading that does not exist",
+  finding: "a chapter links a VIP file or heading that does not exist",
   check(spec) {
     const out: Violation[] = []
     const anchors = new Map([...spec].map(([file, text]) => [file, anchorsOf(text)]))
@@ -569,13 +564,12 @@ const kinds: Record<string, string[]> = {
 }
 // A repair or migration that compares declarations compares API identity
 // (001-functions.md, "API identity": "Every rule that requires declarations to
-// match, the codemods and migration included, means this"), never bytes. r18
-// ASTRA-1 found it in import cleanup and r19 OPUS-2 in two codemods. Protecting
+// match, the codemods and migration included, means this"), never bytes. Protecting
 // an input file's bytes (TS5055) is a different rule and does not match.
 const declarationBytes = /\bdeclaration(?:'s)?\s+bytes\s+(?:differ|change)\b|\bchanges?\s+(?:the\s+)?(?:emitted\s+)?declaration(?:'s)?\s+bytes\b|\bdeclaration\s+(?:stays|is)\s+the\s+same\s+bytes\b|\bis\s+the\s+same\s+bytes\s+without\b/i
 const declarationIdentity: Rule = {
   name: "declaration-bytes",
-  finding: "r19 OPUS-2: codemods refuse a rewrite whose declaration bytes differ, against API identity",
+  finding: "codemods refuse a rewrite whose declaration bytes differ, against API identity",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
@@ -590,13 +584,13 @@ const declarationIdentity: Rule = {
 
 rules.push(declarationIdentity)
 
-// A positional fallback must name a row that falls back (r18 OPUS-2). 005's
+// A positional fallback must name a row that falls back. 005's
 // service table ended with EK0905, a declaration rule, under "The last row
 // applies only when no other row applies". The sentence holds only when the
 // table's last row begins "any".
 const fallbackRow: Rule = {
   name: "fallback-row",
-  finding: "r18 OPUS-2: 005:297 called the last row the fallback; the table ends with EK0905, and the general member row is above it",
+  finding: "005:297 called the last row the fallback; the table ends with EK0905, and the general member row is above it",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of chapters(spec)) {
@@ -612,14 +606,14 @@ const fallbackRow: Rule = {
   }
 }
 
-// Chapter codes need a row (round 20 OPUS-5, round 19 OPUS-6). Appendix B:
+// Chapter codes need a row. Appendix B:
 // "Every diagnostic has an `EK` code" with its row. A code a chapter's prose
 // names must have an Appendix B row, or Appendix B must state it retired, not
 // reused or still printed. Code blocks are skipped: legacy severity maps quote
 // old codes such as `EK4801` as config data.
 const codeRows: Rule = {
   name: "chapter-codes",
-  finding: "r20 OPUS-5: transitional `EK1023` is named in chapter 7 and Appendix B but has no row",
+  finding: "transitional `EK1023` is named in chapter 7 and Appendix B but has no row",
   check(spec) {
     const appendix = spec.get("src/900-appendices.md") ?? ""
     const rows = new Set([...appendix.matchAll(/^\| (?:interim )?`(EK\d{4})`/gm)].map(m => m[1]!))
@@ -642,12 +636,12 @@ const codeRows: Rule = {
 
 rules.push(codeRows)
 
-// A rule stated twice (r18 OPUS-1). VIP-40 says a plain call of a function
+// A rule stated twice. VIP-40 says a plain call of a function
 // whose throwing is unknown stays an ordinary call; chapter 3's section on
 // plain code has to say the same, because 000:3 makes the VIP win.
 const plainUnknownCall: Rule = {
   name: "plain-unknown-call",
-  finding: "r18 OPUS-1: 003:45 listed an untagged foreign call as known to throw, against VIP-40's item 4",
+  finding: "003:45 listed an untagged foreign call as known to throw, against VIP-40's item 4",
   check(spec) {
     const vip = spec.get("vips/0040-module-declarations.md") ?? ""
     if (!/whose throwing is unknown, stays an ordinary call/.test(vip)) return []
@@ -665,7 +659,7 @@ rules.push(fallbackRow, plainUnknownCall)
 // diagnostics so appending a declaration-wide check cannot silently change them.
 const diagnosticPriority: Rule = {
   name: "diagnostic-priority",
-  finding: "r17 ASTRA-1: last-row fallback prose suppressed the newly appended ambient error",
+  finding: "last-row fallback prose suppressed the newly appended ambient error",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of chapters(spec)) {
@@ -690,7 +684,7 @@ kinds.tables!.push("diagnostic-priority")
 // variant when exposing each body to TypeScript tools, not only on extraction.
 const moduleProjectionKind: Rule = {
   name: "module-projection-kind",
-  finding: "PREVIEW-23: VIP-40's mapper instruction still projected every body as .ts after its JSX extraction correction",
+  finding: "VIP-40's mapper instruction still projected every body as .ts after its JSX extraction correction",
   check(spec) {
     const file = "vips/0040-module-declarations.md", text = spec.get(file)
     if (text === undefined) return []
@@ -705,10 +699,10 @@ rules.push(moduleProjectionKind)
 kinds.copies!.push("module-projection-kind")
 
 // A compiler-gap marker says an example passes once VIP-N is implemented, so
-// it can name only a VIP that will be (round 17 OPUS-6: 008 waited on denied VIP-8).
+// it can name only a VIP that will be implemented.
 const gapMarkerAuthority: Rule = {
   name: "gap-marker-authority",
-  finding: "r17 OPUS-6: `// compiler-gap: pending VIP-8` in 008 names a denied VIP, which is never implemented",
+  finding: "`// compiler-gap: pending VIP-8` in 008 names a denied VIP, which is never implemented",
   check(spec) {
     const out: Violation[] = []
     const accepted = new Set(acceptedVips(spec).map(([file]) => Number(file.match(/^vips\/(\d{4})-/)![1])))
@@ -726,11 +720,10 @@ const gapMarkerAuthority: Rule = {
 }
 
 // ECMAScript inserts no semicolon before a line that can continue the last
-// one, so an example written as two statements parses as one (round 17 OPUS-3:
-// a `<T>x` assertion after `() => 7` in 002 read as `7 < T`).
+// one, so an example written as two statements parses as one. A `<T>x` assertion after `() => 7` in chapter 2 read as `7 < T`.
 const continuationLine: Rule = {
   name: "statement-continuation",
-  finding: "r17 OPUS-3: 002's `catch () => 7` then a line starting `<Effect.Effect<...>>try` is one expression, not two statements",
+  finding: "002's `catch () => 7` then a line starting `<Effect.Effect<...>>try` is one expression, not two statements",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of chapters(spec)) {

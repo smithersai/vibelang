@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { Cause, Effect } from "effect"
 import { chapter } from "./spec-witness.mjs"
 
-// Loop round 1, OPUS-4: chapter 2's catch rule, checked against pinned Effect
+// Chapter 2's catch rule, checked against pinned Effect
 // over generated Causes rather than one witness. Rule (quoted below): `h` runs
 // only when the Cause holds no defect; a Cause with both a failure and a
 // defect passes through with its failures re-raised as defects.

@@ -4,9 +4,9 @@ import assert from "node:assert/strict";
 import { checkDeclarationPreservation, checkTree } from "./spec-declaration-preservation.mjs";
 import { fileURLToPath } from "node:url";
 
-// Frozen witness: r18 main 0dce9379c561, 007-tooling.md:431.
+// Frozen witness: commit 0dce9379c561, 007-tooling.md:431.
 const defect = "In every scope, `--fix` keeps an import from Effect when removing it changes the declaration. The declaration stays the same bytes: an import goes only where the module's declaration is the same bytes without it.";
-test("r18 import cleanup contradicts VIP-27 API identity", () => {
+test("byte-for-byte import cleanup contradicts VIP-27 API identity", () => {
   assert.equal(checkDeclarationPreservation(defect).length, 1);
 });
 test("all design prose follows the API identity contract", () => {

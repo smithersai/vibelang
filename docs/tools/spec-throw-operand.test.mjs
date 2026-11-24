@@ -36,7 +36,7 @@ test("a chapter or VIP writes a throw expression only beside the TC39 proposal i
   assert.deepEqual(hits, [])
 })
 
-// Neighbourhood of the round-15 witness: every operand position crossed with
+// Exercise every operand position with
 // operand shapes, in a fence and in a prose span, with and without the
 // citation. Only the uncited variants may be flagged; a throw statement never is.
 test("the throw-operand check flags every uncited operand position and nothing else", () => {

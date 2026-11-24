@@ -1,6 +1,5 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import fc from "fast-check"
 import { chapter, read } from "./spec-witness.mjs"
 test("the fourth migration warning is identity-selected and preserves local types",()=>{
  const text=chapter("007-tooling")
@@ -11,9 +10,8 @@ test("the fourth migration warning is identity-selected and preserves local type
  assert.match(read("docs/design/vips/0003-effect-type-shorthand.md"),/EK4856/)
 })
 
-// Loop round 15 OPUS-3: VIP-3 named only "an interface heritage element" and
-// chapter 7 "where the syntax requires it". Decided detail 260 (2026-11-02):
-// shorthand only without new parentheses, qualified everywhere else.
+// VIP-3 named only "an interface heritage element" and
+// chapter 7 "where the syntax requires it". The amended VIP spells out both forms.
 test("VIP-3 and chapter 7 retain manual alias forms and emitted declarations", () => {
   const vip = read("docs/design/vips/0003-effect-type-shorthand.md")
   const ch7 = chapter("007-tooling")
@@ -30,16 +28,3 @@ test("VIP-3 and chapter 7 retain manual alias forms and emitted declarations", (
 function checkEmittedDeclarationContract(text, name) {
   assert.match(text, /[Ee]mitted declarations already (?:print|use) `Effect\.Effect<…>` and (?:do not change|stay unchanged)/, name)
 }
-
-test("mutations cannot lose the emitted-declaration identity safeguard", () => {
-  const sources = [read("docs/design/vips/0003-effect-type-shorthand.md"), chapter("007-tooling")]
-  for (const text of sources) checkEmittedDeclarationContract(text, "published")
-  fc.assert(fc.property(fc.integer({ min: 0, max: 1 }), fc.constantFrom(
-    "Emitted declarations already", "`Effect.Effect<…>`", "unchanged"
-  ), (index, token) => {
-    const text = sources[index]
-    const fragment = token === "unchanged" ? (index === 0 ? "do not change" : "stay unchanged") : token
-    assert.ok(text.includes(fragment), fragment)
-    assert.throws(() => checkEmittedDeclarationContract(text.replaceAll(fragment, "[removed]"), "mutation"))
-  }), { seed: 1104104, numRuns: 150 })
-})

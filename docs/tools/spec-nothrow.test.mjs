@@ -69,7 +69,7 @@ export function plainThrows(fence) {
 
 const fences = (text) => [...text.matchAll(/```vibe es\n([\s\S]*?)```/g)].map(m => m[1])
 
-test("plainThrows tells a module body and effect code from a plain function (PREVIEW-17)", () => {
+test("plainThrows tells a module body and effect code from a plain function", () => {
   const moduleBody = "module parse {\n  export function port(raw: string) {\n    const n = Number(raw)\n    if (n < 1) throw new RangeError(`bad port: ${raw}`)\n    return n\n  }\n}\nconst p = parse.port(\"80\")"
   assert.deepEqual(plainThrows(moduleBody), [])
   const plainFunction = "export function port(raw: string) {\n  const n = Number(raw)\n  if (n < 1) throw new RangeError(`bad port: ${raw}`)\n  return n\n}"
@@ -83,7 +83,7 @@ test("plainThrows tells a module body and effect code from a plain function (PRE
 
 test("VIP-4 records plain functions never throw", () => {
   const text = vip4()
-  assert.match(text, /\*\*Amended 2026-10-31: plain functions never throw \(Will\)\.\*\*/)
+  assert.match(text, /\*\*Amended 2026-10-31: plain functions never throw\b/)
   assert.match(text, /`throw` in an `async` function rejects its Promise, as in TypeScript\./)
   assert.match(text, /`throw` in any other `\.vibe` code, or a call known to throw there outside the `try` block of a `try`\/`catch` statement, is `EK0401`\./)
   assert.match(text, /A `\.vibe` callable throws `never`: nothing is inferred from a body, and a written `@throws` or `@rethrows` in a `\.vibe` file is `EK0406`\./)
@@ -197,13 +197,13 @@ test("Appendix E's .vibe examples carry no @throws or @rethrows outside a module
 })
 
 // localDefinitionThrows reads only VIP-27's first example, the local VibeLang definition and its declaration. A
-// foreign alias elsewhere in the VIP keeps its contract as written (PREVIEW-16).
+// foreign alias elsewhere in the VIP keeps its contract as written.
 export function localDefinitionThrows(vip27) {
   const example = vip27.slice(vip27.indexOf("```"), vip27.indexOf("```", vip27.indexOf("```") + 3) + 3)
   return [...example.matchAll(/@throws \{(?!never\})[^}]*\}|\bthrow\s/g)].map(m => m[0])
 }
 
-test("localDefinitionThrows ignores a foreign alias's preserved contract (PREVIEW-16)", () => {
+test("localDefinitionThrows ignores a foreign alias's preserved contract", () => {
   const fixture = "```vibe es\n// load.vibe\nexport function add(a: number, b: number) { return a + b }\n\n// load.d.vibe.ts\n/** @throws {never} */\nexport declare function add(a: number, b: number): number\n```\n\n## Details\n\nAn imported foreign contract as written:\n\n```ts\nexport declare const parse: { /** @throws {BadInput} */ (s: string): string }\n```\n"
   assert.deepEqual(localDefinitionThrows(fixture), [])
   assert.deepEqual(localDefinitionThrows(fixture.replace("/** @throws {never} */", "/** @throws {BadInput} */")), ["@throws {BadInput}"])
@@ -269,7 +269,7 @@ test("user docs, the cheat sheet and SKILL.md say plain VibeLang code never thro
   assertPublishedNoThrowNote(read("docs/user/src/setup/release-notes.md"))
 })
 
-test("plainThrows recognizes effect only as a modifier (PREVIEW-18)", () => {
+test("plainThrows recognizes effect only as a modifier", () => {
   for (const code of [
     "function f(effect: number) { throw effect }",
     "function f() { const effect = 1; throw effect }",
@@ -295,7 +295,7 @@ test("plainThrows recognizes effect only as a modifier (PREVIEW-18)", () => {
   ]) assert.deepEqual(plainThrows(code), [], code)
 })
 
-test("plainThrows is invariant under parameter renaming (PREVIEW-18)", () => {
+test("plainThrows is invariant under parameter renaming", () => {
   fc.assert(fc.property(fc.integer(), fc.integer({ min: 0, max: 4 }), (n, indent) => {
     const body = " ".repeat(indent)
     const ordinary = `function f(value: number) {${body}throw value + ${n}}`
@@ -305,7 +305,7 @@ test("plainThrows is invariant under parameter renaming (PREVIEW-18)", () => {
   }), { seed: 8818, numRuns: 100 })
 })
 
-test("plainThrows is invariant under nested-function line layout (PREVIEW-18)", () => {
+test("plainThrows is invariant under nested-function line layout", () => {
   fc.assert(fc.property(fc.integer(), fc.integer({ min: 0, max: 4 }), (n, indent) => {
     const pad = " ".repeat(indent)
     const inline = `effect function f() {
@@ -348,7 +348,7 @@ test("plainThrows keeps regex literals opaque in the native parser", () => {
   }), { seed: 8818, numRuns: 100 })
 })
 
-test("plainThrows preserves async defaults containing do expressions (PREVIEW-19)", () => {
+test("plainThrows preserves async defaults containing do expressions", () => {
   fc.assert(fc.property(fc.integer(), fc.integer({ min: 0, max: 4 }), (n, indent) => {
     const pad = " ".repeat(indent)
     const source = `export async function f(flag: boolean, x = do {\n${pad}if (flag) throw ${n};\n${pad}0\n}) { return x }`
@@ -378,7 +378,7 @@ test("plainThrows refuses an invalid parse instead of trusting a recovered tree"
   assert.throws(() => plainThrows("function f( { throw 1 }"), SyntaxError)
 })
 
-test("plainThrows ignores typed-catch fallback rethrows regardless of unrelated source (PREVIEW-21)", () => {
+test("plainThrows ignores typed-catch fallback rethrows regardless of unrelated source", () => {
   fc.assert(fc.property(fc.integer(), fc.constantFrom(" ", "\n  "), (value, layout) => {
     const source = `error Tagged {}\ndeclare function g(): unknown;\nfunction f() { try { g() } catch (e: Tagged) {${layout}} }`
     assert.deepEqual(plainThrows(source), [])
@@ -393,7 +393,7 @@ test("plainThrows checks source throw expressions as well as statements", () => 
   assert.deepEqual(plainThrows("async function f(x: number | undefined) { return x ?? throw 1 }"), [])
 })
 
-test("plainThrows keeps field decorators in the enclosing source context (PREVIEW-20)", () => {
+test("plainThrows keeps field decorators in the enclosing source context", () => {
   fc.assert(fc.property(fc.constantFrom("async", "effect"), fc.integer(), fc.constantFrom("value", "other"), fc.constantFrom(" ", "\n  "), (modifier, value, field, layout) => {
     const source = `export ${modifier} function f(flag: boolean) { class C { @(${layout}do { if (flag) throw ${value}; ((_value: undefined, _context: ClassFieldDecoratorContext) => {}) }) ${field} = 0 }; return C }`
     assert.deepEqual(plainThrows(source), [])

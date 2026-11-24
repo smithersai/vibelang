@@ -17,7 +17,7 @@ function fixture(fn) {
 }
 const chapter = "docs/design/src/007-tooling.md", appendix = "docs/design/src/900-appendices.md"
 
-test("r27 OPUS-4: an Appendix B code outside its VIP's block needs a stated exception", () => fixture((root, edit) => {
+test("an Appendix B code outside its VIP's block needs a stated exception", () => fixture((root, edit) => {
   assert.deepEqual(codeBlockFindings(read(root, appendix)), [])
   edit(appendix, s => s.replace(/ Transitional, migration and removal codes keep.*?VIP-9, amended\)\./, ""))
   const missing = lintTables(root).map(f => f.message.split(" ")[0])
@@ -26,23 +26,23 @@ test("r27 OPUS-4: an Appendix B code outside its VIP's block needs a stated exce
   assert.ok(lintTables(root).some(f => f.message.startsWith("EK4499 is outside the block")))
   assert.deepEqual(codeBlockFindings("## Appendix B. Diagnostics\n\nKept: `EK3001` to `EK3005`.\n\n| Code |\n| `EK3004` | x | 7, 9 | y |\n| `EK1902` | x | 19 | y |\n"), [])
 }))
-test("r14 OPUS-4: an undocumented EK assignment is named with source location", () => fixture((root, edit) => {
+test("an undocumented EK assignment is named with source location", () => fixture((root, edit) => {
   edit(chapter, s => s + "\nNew rule: `EK9999`.\n")
   assert.ok(lintRegistry(root).some(f => f.message.includes("EK9999") && f.path === chapter && f.line > 1))
 }))
-test("r14 OPUS-3: legacy option paths cannot silently gain authority", () => fixture((root, edit) => {
+test("legacy option paths cannot silently gain authority", () => fixture((root, edit) => {
   edit(chapter, s => s + "\n`compilerOptions.vibelang.madeUp`\n")
   assert.ok(lintRegistry(root).some(f => f.message.startsWith("compilerOptions.vibelang.madeUp")))
 }))
-test("r14 OPUS-1: reordered resolution candidates fail the generated copy contract", () => fixture((root, edit) => {
+test("reordered resolution candidates fail the generated copy contract", () => fixture((root, edit) => {
   edit(chapter, s => s.replace("`App.ts`, `App.tsx`, `App.vibe`", "`App.vibe`, `App.ts`, `App.tsx`"))
   for (const check of [lintCopies]) assert.ok(check(root).some(f => f.message.includes("resolution")))
 }))
-test("r2 OPUS-2 / ASTRA-2: EK0801 cannot use denied VIP-8 as authority", () => fixture((root, edit) => {
+test("EK0801 cannot use denied VIP-8 as authority", () => fixture((root, edit) => {
   edit(appendix, s => s.split("\n").map(line => line.startsWith("| `EK0801`") ? line.replace(/ \| [\d, ]+ \|/, " | 8 |") : line).join("\n"))
   assert.ok(lintAuthority(root).some(f => f.message.includes("EK0801") && f.message.includes("VIP-8")))
 }))
-test("r7 ASTRA-4: a removed catch guest example fails even inside schematic code", () => {
+test("a removed catch guest example fails even inside schematic code", () => {
   const example = examples("```ts\neffect function f() { const g = fetchUser(id) catch guest }\n```\n")[0]
   const result = { status: 1, stdout: "main.vibe(1,50): error EK0509: A catch handler must be a function literal.\n", stderr: "" }
   assert.ok(verdict(example, result).some(f => f.severity === "error" && f.message.includes("EK0509")))
@@ -118,21 +118,21 @@ test("fast-check: adding an undecided config key never changes the accepted key 
   }), { seed: 1430, numRuns: 30 })
 }))
 
-test("r14 OPUS-1: current chapter resolution is byte-identical to VIP-39", () => {
+test("current chapter resolution is byte-identical to VIP-39", () => {
   assert.deepEqual(lintCopies(repository), [])
 })
 
-test("r14 OPUS-2: current denied-VIP repair table includes the effect-function argument", () => {
+test("current denied-VIP repair table includes the effect-function argument", () => {
   assert.deepEqual(lintTables(repository).filter(f => f.message.includes("VIP-11")), [])
 })
 
-test("r7 ASTRA-4: VIP-5's current decision example contains no removed value handler", () => {
+test("VIP-5's current decision example contains no removed value handler", () => {
   const source = examples(read(repository, "docs/design/vips/0005-try-runs-effects.md"))[0].source
   assert.deepEqual(removedHandlers(source), [])
   assert.ok(source.includes("catch () => guest"))
 })
 
-test("r2 OPUS-2 / ASTRA-2: current resource warning cites an accepted public amendment", () => {
+test("current resource warning cites an accepted public amendment", () => {
   assert.deepEqual(lintAuthority(repository), [])
   const vip = read(repository, "docs/design/vips/0034-compiler-and-tooling.md")
   assert.ok(vip.includes("default warning `EK0801`"))
@@ -146,7 +146,7 @@ function assertNoObsoleteConfigOptions(text) {
       if (line.includes(obsolete)) assert.ok(/\b(?:retired|ignored)\b/.test(line), obsolete + " is not a supported config option: " + line)
 }
 
-test("r14 ASTRA-1 / OPUS-3: declaration spelling scope follows landed VIP-27 and VIP-30", () => {
+test("declaration spelling scope follows landed VIP-27 and VIP-30", () => {
   // 565522ee2518 retired both declaration-import configuration paths: spelling follows TypeScript.
   const tooling = read(repository, chapter)
   for (const word of ["declarationImportStyle", "sidecars", ".vibex"]) assert.ok(tooling.includes(word), word)
@@ -157,7 +157,7 @@ test("r14 ASTRA-1 / OPUS-3: declaration spelling scope follows landed VIP-27 and
   assert.ok(!lintRegistry(repository).some(f => f.message.includes("declarationImportStyle")))
 })
 
-test("r14 OPUS-3: registry rejects the real second path and unapproved sibling keys", () => fixture((root, edit) => {
+test("registry rejects the real second path and unapproved sibling keys", () => fixture((root, edit) => {
   // compilerOptions.vibelang.declarationImportStyle has VIP-30's retirement as authority since 565522ee2518.
   edit(chapter, s => s + "\nRoot `compilerOptions.vibelang.declarationImportStyle` sits beside `trustedPackages` and `tracing`.\n")
   const findings = lintRegistry(root)
@@ -165,7 +165,7 @@ test("r14 OPUS-3: registry rejects the real second path and unapproved sibling k
     assert.ok(findings.some(f => f.message.startsWith(token)), token)
 }))
 
-test("r14 OPUS-3: removing the accepted VIP spelling removes option authority", () => fixture((root, edit) => {
+test("removing the accepted VIP spelling removes option authority", () => fixture((root, edit) => {
   for (const name of readdirSync(join(root, "docs/design/vips")).filter(name => name.endsWith(".md")))
     edit("docs/design/vips/" + name, s => s.replaceAll("vibelang.declarationImportStyle", "vibelang.removed"))
   assert.ok(lintRegistry(root).some(f => f.message.startsWith("vibelang.declarationImportStyle has no accepted")))
@@ -204,7 +204,7 @@ test("fast-check: moving a negative diagnostic never satisfies the original mark
   }), { seed: 502, numRuns: 40 })
 })
 
-test("r14 OPUS-4 neighbourhood: a registry row cannot turn an open VIP into approval", () => fixture((root, edit) => {
+test("a registry row cannot turn an open VIP into approval", () => fixture((root, edit) => {
   writeFileSync(join(root, "docs/design/vips/0099-open-test.md"), "# VIP-99\n\n**Status:** open\n")
   const row = "| `EK9901` | invented pending rule | 99 | chapter |\n"
   edit(appendix, s => s.replace("| `EK0501`", row + "| `EK0501`"))
@@ -262,7 +262,7 @@ test("fast-check: a code-specific prerequisite never hides another error or a st
   }), { seed: 396054, numRuns: 40 })
 })
 
-test("r2 OPUS-2 / ASTRA-2 neighbourhood: a rejection sentence cannot excuse a positive denied-VIP citation", () => fixture((root, edit) => {
+test("a rejection sentence cannot excuse a positive denied-VIP citation", () => fixture((root, edit) => {
   edit(chapter, s => s + "\nThe resource extension follows [VIP-8](../vips/0008-using-denied.md). VIP-11 was denied.\n")
   assert.ok(lintAuthority(root).some(f => f.path === chapter && f.message.includes("VIP-8")))
 }))
@@ -281,7 +281,7 @@ test("a standalone attributed quotation may record a denied VIP rationale", () =
   assert.deepEqual(lintAuthority(root).filter(f => f.path.endsWith("999-quotation.md") || (f.path === chapter && f.line > addedAfter)), [])
 }))
 
-test("r7 ASTRA-4 neighbourhood: a list-indented VIP fence cannot hide catch guest", () => {
+test("a list-indented VIP fence cannot hide catch guest", () => {
   const found = examples("  ```vibe\n  effect function load() { return fail(1) catch guest }\n  ```\n")
   assert.equal(found.length, 1)
   assert.ok(verdict(found[0], { status: 0, stdout: "" }).some(f => f.severity === "error" && f.message.includes("EK0509")))
@@ -305,7 +305,7 @@ test("consolidation: maintainer instructions run the graph aggregate", () => {
   assert.equal((guide.match(/^## Specification contracts$/gm) ?? []).length, 1)
 })
 
-test("r14 OPUS-3 neighbourhood: fenced configuration and CLI spellings retain authority checks", () => fixture((root, edit) => {
+test("fenced configuration and CLI spellings retain authority checks", () => fixture((root, edit) => {
   edit(chapter, s => s + "\n```jsonc\n{ \"compilerOptions\": { \"vibelang\": { \"tracing\": true } } }\n```\n```sh\nvibelang --spec-test-fenced\n```\n")
   const found = lintRegistry(root)
   for (const token of ["compilerOptions.vibelang.tracing", "--spec-test-fenced"])
@@ -473,7 +473,7 @@ test("superseded-denial: source snapshots verify successors without reading anot
   assert.equal(accepted.get(25).supersededBy, 40)
 })
 
-// r26 OPUS-3: an exported `effect function` keeps its form in the paired
+// an exported `effect function` keeps its form in the paired
 // Effect TypeScript counterpart. Functions, Meaning: "A declaration stays a
 // hoisted function declaration"; VIP-1: `effect` goes where `async` goes.
 function exportedEffectCounterparts(text) {
@@ -489,7 +489,7 @@ function exportedEffectCounterparts(text) {
   return found
 }
 
-test("r26 OPUS-3: an exported effect function's counterpart stays a function declaration", () => {
+test("an exported effect function's counterpart stays a function declaration", () => {
   const stale = "```vibe es\nexport effect function loadPort(raw: string) {\n  return try f(raw)\n}\n```\n\n```ts effect\n// fragment\nexport const loadPort = (raw: string) => Effect.gen(function* () { return yield* f(raw) })\n```\n"
   assert.deepEqual(exportedEffectCounterparts(stale), ["loadPort"])
   assert.deepEqual(exportedEffectCounterparts(stale.replace("export const loadPort = (raw: string) =>", "export function loadPort(raw: string) { return").replace("})\n```\n", "}) }\n```\n")), [])

@@ -27,7 +27,7 @@ function violations(key, source) {
   const appendix = text("src/900-appendices.md")
   const problems = []
   const require = (condition, message) => { if (!condition) problems.push(message) }
-  if (key === "OPUS-12") {
+  if (key === "throw expressions") {
     require(/throw-expressions|Throw expressions|`throw` as an expression/.test(failures), "missing throw-expression claim")
     require(/### ThrowExpression\b/.test(appendix), "missing throw-expression grammar")
     require(/ThrowExpressionInvalidPunctuator\s*=/.test(appendix), "missing punctuator production")
@@ -37,7 +37,7 @@ function violations(key, source) {
     require(/ThrowExpressionInvalidPunctuator/.test(text("vips/tc39-throw-expressions/spec.emu")), "missing pinned snapshot")
     require(!/0040-throw-expressions/.test(failures), "VIP-40 collides with modules")
   }
-  if (key === "OPUS-13") {
+  if (key === "whole-shape services") {
     require(text("src/005-services.md").includes("service Name: Type"), "missing whole-shape service claim")
     require(/ServiceDeclaration\s*=[\s\S]*?\|\s*ServiceStart TypeParameters\? ":" Type "\{" \(ServiceMember Separator\)\* "\}"/.test(appendix), "missing whole-shape grammar")
     require(/only KeyMember and DefaultMember are admitted; other members parse for EK0902/.test(appendix), "missing body recovery grammar")
@@ -47,7 +47,7 @@ function violations(key, source) {
       if (file.startsWith("src/")) require(/\|[^\n]*service Name: Type[^\n]*\| `EK0902` \|/.test(text(file)), `${file}: missing body diagnostic`)
     }
   }
-  if (key === "OPUS-14") {
+  if (key === "throw contracts") {
     require(/A written `@throws` or `@rethrows` tag (?:there|in a `\.vibe` file)[^\n]*`EK0406`/.test(failures), "missing written-tag diagnostic rule")
     require(!failures.includes("Pending cleanup:"), "reserved process note remains normative")
     require(!failures.includes("A source `@rethrows` parameter still admits"), "retired source callback admission")
@@ -57,7 +57,7 @@ function violations(key, source) {
       require(!text(file).includes("4.1.0"), `${file}: stale Effect version`)
     }
   }
-  if (key === "ASTRA-5") {
+  if (key === "API identity") {
     require(text("src/001-functions.md").includes("**API identity.**"), "missing API identity claim")
     for (const file of ["src/001-functions.md", "vips/0027-declaration-output.md"]) {
       require(text(file).includes("same doc comment on each export"), `${file}: lost comment identity`)
@@ -71,9 +71,9 @@ function violations(key, source) {
   return problems
 }
 
-const keys = ["OPUS-12", "OPUS-13", "OPUS-14", "ASTRA-5"]
+const keys = ["throw expressions", "whole-shape services", "throw contracts", "API identity"]
 for (const key of keys) {
-  test(`r16 ${key}: published chapter, grammar and VIP contracts agree`, () => {
+  test(`${key}: published chapter, grammar and VIP contracts agree`, () => {
     assert.deepEqual(violations(key, published()), [])
   })
 }
@@ -83,34 +83,34 @@ test("API identity guards reject a lost exception or authored contract independe
   for (const file of ["src/001-functions.md", "vips/0027-declaration-output.md"]) {
     for (const phrase of ["where the twin has no authored throw contract", "an authored `@throws`"]) {
       const changed = { ...current, [file]: current[file].replace(phrase, "changed contract") }
-      assert.ok(violations("ASTRA-5", changed).length > 0, file + ": " + phrase)
+      assert.ok(violations("API identity", changed).length > 0, file + ": " + phrase)
     }
   }
 })
 
 // Minimized exact claims from 188ab3d6, rather than a second language oracle.
 const frozen = {
-  "OPUS-12": { "src/003-failures.md": "`throw` as an expression follows the TC39 throw-expressions proposal (`EK1010` reports its syntax restriction)." },
-  "OPUS-13": { "src/005-services.md": "`service Name { members }` is the only way to declare a service.\n`service Name: Type { … }` supplies the exact whole Shape: its body permits only `key` and `defaultValue`." },
-  "OPUS-14": { "src/003-failures.md": "A written `@throws` or `@rethrows` tag in a `.vibe` file is `EK0406`.\nPending cleanup: the next paragraph stays verbatim until the Effect 4.1.1 pin commit reaches main.\nA source `@rethrows` parameter still admits arbitrary throwing callbacks." },
-  "ASTRA-5": {
+  "throw expressions": { "src/003-failures.md": "`throw` as an expression follows the TC39 throw-expressions proposal (`EK1010` reports its syntax restriction)." },
+  "whole-shape services": { "src/005-services.md": "`service Name { members }` is the only way to declare a service.\n`service Name: Type { … }` supplies the exact whole Shape: its body permits only `key` and `defaultValue`." },
+  "throw contracts": { "src/003-failures.md": "A written `@throws` or `@rethrows` tag in a `.vibe` file is `EK0406`.\nPending cleanup: the next paragraph stays verbatim until the Effect 4.1.1 pin commit reaches main.\nA source `@rethrows` parameter still admits arbitrary throwing callbacks." },
+  "API identity": {
     "src/001-functions.md": "**API identity.** The same doc comment on each export. A non-effectful exported function carries `@throws {never}`.",
     "vips/0027-declaration-output.md": "The same doc comment on each export. A non-effectful exported function carries `@throws {never}`."
   }
 }
 
-test("each frozen r16 witness is rejected by its own consistency guard", () => {
+test("each frozen witness is rejected by its own consistency guard", () => {
   for (const key of keys) assert.ok(violations(key, frozen[key]).length > 0, key)
 })
 
-test("r16 guards retain each defect across generated neighboring prose and whitespace", () => {
+test("consistency guards retain each defect across generated neighboring prose and whitespace", () => {
   fc.assert(fc.property(fc.constantFrom(...keys), fc.nat(30), fc.constantFrom("", "Unrelated prose.\n", "\n\n"), (key, count, padding) => {
     const source = Object.fromEntries(Object.entries(frozen[key]).map(([path, text]) => [path, padding.repeat(count) + text + padding]))
     assert.ok(violations(key, source).length > 0, key)
   }), { seed: 0x16cafe, numRuns: 200 })
 })
 
-test("OPUS-14: native async defaults and callbacks reject while foreign plain calls throw synchronously", async () => {
+test("native async defaults and callbacks reject while foreign plain calls throw synchronously", async () => {
   const token = { failure: "native-async" }
   const throwing = () => { throw token }
   async function invoke(callback = throwing()) { return callback() }
@@ -127,9 +127,9 @@ test("OPUS-14: native async defaults and callbacks reject while foreign plain ca
   assert.throws(plain, error => error === token)
 })
 
-test("OPUS-13: folded grammar retains exact shape and recovery restrictions", () => {
+test("folded grammar retains exact shape and recovery restrictions", () => {
   const current = published()
-  assert.deepEqual(violations("OPUS-13", current), [])
+  assert.deepEqual(violations("whole-shape services", current), [])
   fc.assert(fc.property(fc.constantFrom(
     'ServiceStart TypeParameters? ":" Type',
     "only KeyMember and DefaultMember are admitted",
@@ -138,16 +138,16 @@ test("OPUS-13: folded grammar retains exact shape and recovery restrictions", ()
     const appendix = current["src/900-appendices.md"]
     assert.ok(appendix.includes(clause), clause)
     const changed = { ...current, "src/900-appendices.md": "Unrelated prose.\n".repeat(padding) + appendix.replace(clause, "[removed]") }
-    assert.ok(violations("OPUS-13", changed).length > 0, clause)
+    assert.ok(violations("whole-shape services", changed).length > 0, clause)
   }), { seed: 1104108, numRuns: 180 })
 })
 
 test("consistency guards report missing claims instead of bypassing their checks", () => {
   for (const [key, claim] of [
-    ["OPUS-12", "missing throw-expression claim"],
-    ["OPUS-13", "missing whole-shape service claim"],
-    ["OPUS-14", "missing written-tag diagnostic rule"],
-    ["ASTRA-5", "missing API identity claim"]
+    ["throw expressions", "missing throw-expression claim"],
+    ["whole-shape services", "missing whole-shape service claim"],
+    ["throw contracts", "missing written-tag diagnostic rule"],
+    ["API identity", "missing API identity claim"]
   ]) assert.ok(violations(key, {}).includes(claim), claim)
-  assert.ok(violations("OPUS-14", { "src/003-failures.md": "Effect 4.1.0" }).includes("src/003-failures.md: stale Effect version"))
+  assert.ok(violations("throw contracts", { "src/003-failures.md": "Effect 4.1.0" }).includes("src/003-failures.md: stale Effect version"))
 })

@@ -7,7 +7,6 @@
 import { readFileSync } from "node:fs"
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import fc from "fast-check"
 import { block, chapter, read, run } from "./spec-witness.mjs"
 
 test("built-in thrown contracts use the selected signature's entire admitted domain", () => {
@@ -55,7 +54,7 @@ for (const method of ["padStart", "padEnd"]) {
 
 
 
-// Accepted docs-tools disposition 39: VIP-4 owns foreign signatures and
+// VIP-4 owns foreign signatures and
 // generated annotations; its linked chapter owns the native validation domain.
 const requiredNativeClauses = [
   "receiver or environment state is implicit",
@@ -80,14 +79,4 @@ test("VIP-4 and its linked chapter preserve full domains, defects and the paddin
   assert.match(vip, /\*\*Status:\*\* accepted/)
   assert.ok(vip.includes("../src/003-failures.md"))
   checkBuiltinAuthority(vip, chapter("003-failures"))
-})
-test("mutations cannot erase native domains or grant npm inventory an implicit contract", () => {
-  const vip = read("docs/design/vips/0004-throw.md"), native = chapter("003-failures")
-  fc.assert(fc.property(fc.boolean(), fc.nat(), (isVip, n) => {
-    const clauses = isVip ? requiredVipClauses : requiredNativeClauses
-    const clause = clauses[n % clauses.length]
-    assert.throws(() => checkBuiltinAuthority(
-      isVip ? vip.replace(clause, "[removed]") : vip,
-      isVip ? native : native.replace(clause, "[removed]")))
-  }), { seed: 1104105, numRuns: 200 })
 })

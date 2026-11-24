@@ -3,7 +3,6 @@ import { test } from "node:test"
 import fc from "fast-check"
 import { chapter, read } from "./spec-witness.mjs"
 
-// Loop round 3, OPUS-8 (decided detail 249).
 test("chapter 4, Appendix B and VIP-7 place limit and catch-parameter bindings", () => {
   const match = chapter("004-match")
   assert.ok(match.includes("A binding in a `for concurrent` limit belongs to the nearest home that encloses the loop, because the limit runs before the head environment exists"))

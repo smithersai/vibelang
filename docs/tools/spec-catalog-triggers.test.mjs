@@ -19,7 +19,7 @@ const triggers = {
   EK1907: "not assignable to",
 }
 
-test("each round-24 trigger has a 002 static-rule row and an Appendix B row", () => {
+test("each listed trigger has a 002 static-rule row and an Appendix B row", () => {
   const running = chapter("002-running")
   const appendix = chapter("900-appendices")
   for (const [code, trigger] of Object.entries(triggers)) {

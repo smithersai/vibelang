@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { block, chapter, read, run } from "./spec-witness.mjs"
 
-// Loop round 3, OPUS-3 and loop round 1, OPUS-1 (decided detail 246).
 test("Appendix A, chapter 2, VIP-23 and the pinned receipt carry both rules", () => {
   const appendix = chapter("900-appendices")
   assert.ok(appendix.includes("It is a Syntax Error if the input of a [PipeExpression](#pipeexpression) ends in an open arrow handler"))

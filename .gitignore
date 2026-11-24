@@ -4,6 +4,13 @@ node_modules
 *.db-shm
 *.db-wal
 .cache/
+# Docs witnesses sit below docs/tools so their packages resolve from its node_modules.
+/docs/tools/.spec-*/
+/docs/tools/.native-declaration-package-*/
+/docs/tools/.legacy-config-*/
+/docs/tools/.pattern-options-*/
+/docs/tools/.service-any-*/
+/docs/tools/.sidecar-input-*/
 # smthrs result cache and scratch, and the temporary trees it renames outputs
 # through (docs/maintainers/build.md). A jj snapshot must never track either.
 .flows/

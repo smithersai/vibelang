@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { chapter, read } from "./spec-witness.mjs"
 
-// Loop round 3, OPUS-1 (decided detail 245): the runtime duplicate rule stops
+// The runtime duplicate rule stops
 // at one top-level pattern; across patterns a name repeats as a let would.
 test("chapter 4 and VIP-7 limit the duplicate rule to one top-level pattern", () => {
   const match = chapter("004-match")

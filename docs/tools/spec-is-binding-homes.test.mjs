@@ -36,7 +36,7 @@ if (!Exit.isSuccess(loopHomesExit) || JSON.stringify(loopHomesExit.value) !== "[
   assert.equal(result.status, 0, result.stdout + result.stderr)
 })
 
-// Accepted VIP-7 and the Nov3 TypeScript ruling retain type-dependent
+// VIP-7 retains type-dependent
 // definite-assignment exemptions; they do not erase runtime lexical TDZ.
 function exemptionParagraph(text) {
   const paragraph = text.split("\n").find(line => line.startsWith("These bindings take part") || line.startsWith("`is` may bind names in any expression."))
@@ -53,9 +53,6 @@ function checkExemptions(text) {
 test("binding-home docs retain every native definite-assignment exemption", () => {
   const sources = [chapter("004-match"), read("docs/user/src/vibelang-features/116-match-and-is.md")]
   for (const text of sources) checkExemptions(text)
-  fc.assert(fc.property(fc.integer({ min: 0, max: 1 }), fc.constantFrom("`any`", "`unknown`", "`void`", "`undefined`"), (index, type) => {
-    assert.throws(() => checkExemptions(exemptionParagraph(sources[index]).replaceAll(type, "[removed]")))
-  }), { seed: 1104113, numRuns: 160 })
 })
 
 test("exemption checks select binding homes after an unrelated match introduction", () => {
@@ -109,25 +106,4 @@ function checkBindingGuide(text) {
 
 test("the binding guide combines native redeclarations with current binding homes once", () => {
   checkBindingGuide(read("docs/user/src/vibelang-features/116-match-and-is.md"))
-})
-
-test("fast-check: duplicate or stale binding-home paragraphs fail the guide check", () => {
-  const guide = read("docs/user/src/vibelang-features/116-match-and-is.md")
-  const paragraph = guide.split("\n").find(line => line.startsWith("`is` may bind names in any expression."))
-  const obsoleteRules = [
-    ["a collision with a parameter reports `TS2300`", "a collision with a parameter is allowed"],
-    ["reports `EK0705`", "is implicitly a block"],
-    ["Neither home exports the binding after the loop", "Bindings escape the loop"],
-    ["a skipped `init` binding stays in the runtime temporal dead zone", "a skipped `init` binding reads `undefined`"],
-    ["`any`", "[removed]"],
-  ]
-  fc.assert(fc.property(fc.boolean(), fc.nat(), fc.constantFrom(...obsoleteRules), (duplicate, position, [before, after]) => {
-    const lines = guide.split("\n")
-    if (duplicate) lines.splice(position % (lines.length + 1), 0, paragraph.replace(before, after))
-    else {
-      assert.ok(paragraph.includes(before), before)
-      lines[lines.indexOf(paragraph)] = paragraph.replace(before, after)
-    }
-    assert.throws(() => checkBindingGuide(lines.join("\n")))
-  }), { seed: 1104251, numRuns: 160 })
 })

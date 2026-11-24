@@ -52,7 +52,7 @@ function pair(text) {
     "the outer generator returns the inner scoped Effect")
 }
 
-test("r9 ASTRA-2: the denied using VIP retains native acquisition in its counterpart", () => pair(document))
+test("the denied using VIP retains native acquisition in its counterpart", () => pair(document))
 
 test("native resource ownership survives identifier, argument and trivia neighbourhoods", () => {
   fc.assert(fc.property(fc.record({

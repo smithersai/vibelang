@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { chapter } from "./spec-witness.mjs"
 
-// Carried item 17, R3 OPUS-10: the list of DOM collisions omitted both
+// The list of DOM collisions omitted both
 // type-only names, although VIP-14 already decides their two meanings.
 test("chapter 5 classifies both type-only DOM collisions", () => {
   const services = chapter("005-services")

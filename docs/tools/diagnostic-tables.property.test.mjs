@@ -21,7 +21,7 @@ function diagnosticRows(text, code) {
   return found
 }
 
-test("OPUS-6: the reserved data variant diagnostic renders inside its table", () => {
+test("the reserved data variant diagnostic renders inside its table", () => {
   const chapter = readFileSync(SpecPath("006-data.md"), "utf8")
   assert.ok(chapter.includes(quote), "update the quoted reserved-variant rule")
   const rows = diagnosticRows(chapter, "EK1602")

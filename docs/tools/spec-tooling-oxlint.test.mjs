@@ -1,6 +1,5 @@
-// Chapter 7 publishes the 2026-10-31 04:40 UTC ruling, item 2: a
-// repository's Oxlint JS-plugin rules run on .vibe files (loop round 1,
-// OPUS-7). The migrate flow's tooling test is the implementation's check.
+// Chapter 7 specifies that a repository's Oxlint JS-plugin rules run on .vibe files.
+// The migrate flow's tooling test is the implementation's check.
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"

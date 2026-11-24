@@ -1,5 +1,4 @@
 // VIP-40 tooling and diagnostic-allocation rules (docs/design/vips/0040-module-declarations.md).
-// Will, 2026-11-03: each unimplemented spec rule must at least have a test.todo.
 import { expect, test } from "bun:test"
 import fc from "fast-check"
 import { compilerCodes } from "./diagnostic-identity.mjs"

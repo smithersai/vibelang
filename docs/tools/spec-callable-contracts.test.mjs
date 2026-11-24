@@ -4,7 +4,7 @@ import fc from "fast-check"
 import { Effect } from "effect"
 import { chapter, read, run } from "./spec-witness.mjs"
 
-// VIP-4, amended 2026-10-31 (Will: "If you throw in vibelang itself in a sync function that's an error"):
+// Under the 2026-10-31 amendment to VIP-4,
 // a .vibe callable has thrown type never, so overloads, declaration output and callbacks carry no inferred contract.
 test("a local .vibe implementation throws never, so its body sets no overload bound", () => {
   const failures = chapter("003-failures")

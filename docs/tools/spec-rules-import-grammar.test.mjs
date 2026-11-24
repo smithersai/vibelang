@@ -13,7 +13,7 @@ const old = grammar([native, extra])
 test("the real spec has one side-effect import derivation", () => {
   assert.deepEqual(lintImportGrammar(readImportGrammar(process.env.SPEC_ROOT)), [])
 })
-test("round 25 defect has two derivations; either standalone production has one", () => {
+test("duplicating the side-effect import production gives it two derivations", () => {
   assert.equal(sideEffectImportDerivations(old).length, 2)
   assert.equal(lintImportGrammar(old).length, 1)
   for (const alternative of [native, extra]) {

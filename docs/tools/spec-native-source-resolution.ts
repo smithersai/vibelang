@@ -3,7 +3,7 @@ import type { Rule, Violation } from "./spec-lint"
 // VIP-34's native TypeScript resolution contract does not mean exact filename lookup.
 export const nativeSourceResolution: Rule = {
   name: "native-source-resolution",
-  finding: "r20 ASTRA-1: a written .ts specifier was said to find only the .ts file",
+  finding: "a written .ts specifier was said to find only the .ts file",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of spec) {

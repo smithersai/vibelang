@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { chapter } from "./spec-witness.mjs"
 
-// Loop round 1, OPUS-3: chapter 1's counterpart table writes parameter
+// Chapter 1's counterpart table writes parameter
 // binding before Effect.gen, which would throw at the call; chapter 3 and
 // VIP-2 say the call never throws. Chapter 1 now states the rule beside it.
 test("chapter 1 says a call whose binding throws returns a dying Effect", () => {

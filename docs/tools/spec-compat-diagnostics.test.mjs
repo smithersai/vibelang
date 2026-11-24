@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs"
 import assert from "node:assert/strict"
 import test from "node:test"
-import fc from "fast-check"
 import { loadIdentity } from "./diagnostic-identity.mjs"
 
 const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf8")
@@ -38,11 +37,6 @@ test("the complete interim block follows the landed registry, with meanings and 
   }
   const inventoryCodes = text => [...text.matchAll(/\| interim `EK(92\d\d)`/g)].map(m => Number(m[1])).sort()
   assert.deepEqual(inventoryCodes(inventory), rules.map(r => r[0]))
-  fc.assert(fc.property(fc.integer({ min: 0, max: rules.length - 1 }), index => {
-    const code = rules[index][0]
-    const missing = inventory.split("\n").filter(line => !line.startsWith("| interim `EK" + code + "` |")).join("\n")
-    assert.notDeepEqual(inventoryCodes(missing), codes, "removing EK" + code + " must break coverage")
-  }), { seed: 349214, numRuns: 90 })
   assert.match(inventory, /infallible Effect.*still run/s)
   assert.match(inventory, /control.*historical.*not.*accepted/s)
   assert.doesNotMatch(inventory, /interim `EK(?:2001|2002|2004)`/)

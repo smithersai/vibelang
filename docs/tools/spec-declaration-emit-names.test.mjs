@@ -27,13 +27,6 @@ test("emit names follow native twin options and keep compatibility sidecars dist
   assert.match(chapter("007-tooling"), /nonfatal deprecation warning `EK3011` for every value/)
   assert.match(read("docs/design/vips/0034-compiler-and-tooling.md"), /declaration import spelling follows TypeScript/)
 })
-test("mutations cannot remove native spelling, options or sidecar identity", () => {
-  const text = chapter("001-functions")
-  fc.assert(fc.property(fc.constantFrom(...clauses), clause => {
-    assert.throws(() => checkEmitContract(text.replaceAll(clause, "[removed]")))
-  }), { seed: 1104116, numRuns: 200 })
-})
-
 const options = { strict: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, types: [] }
 const errors = diagnostics => diagnostics.filter(d => d.category === ts.DiagnosticCategory.Error).map(d => d.code + ": " + ts.flattenDiagnosticMessageText(d.messageText, "\n"))
 

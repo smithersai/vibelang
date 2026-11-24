@@ -32,7 +32,7 @@ test("the specification passes every rule", () => {
   expect(lint(loadSpec()).map(v => `${v.file}:${v.line} [${v.rule}] ${v.message}`)).toEqual([])
 })
 
-test("resolution-claims rejects round 14 OPUS-1's `./x.ts` to `x.vibe` sentence", () => {
+test("resolution-claims rejects `./x.ts` to `x.vibe` sentence", () => {
   const defect = withEdit("src/007-tooling.md", insertAfter(
     "## JSX source files: `.vibex`\n",
     " A relative `./x.ts` that resolves to `x.vibe`, as an import written before `x.ts` became `x.vibe` does, is checked and emitted as it is for `x.ts`: `rewriteRelativeImportExtensions` rewrites it to `./x.js`, and a declaration keeps `./x.ts`."
@@ -48,10 +48,10 @@ test("resolution-claims accepts a claim the table lists; generated copies own ta
 
 })
 
-const opus3 = "Root `vibelang.declarationImportStyle`, or `compilerOptions.vibelang.declarationImportStyle`, is `\".js\"` (the default), `\"extensionless\"` or `\".ts\"`. It decides how an emitted declaration spells a relative import of a `.vibe` module ([Declaration output](001-functions.md#declaration-output)). Any other value is a configuration error (`TS6046`). It sits in the legacy `vibelang` section with `trustedPackages` and `tracing`, so a child config's own `vibelang` section replaces an inherited one as a whole."
+const undocumentedConfig = "Root `vibelang.declarationImportStyle`, or `compilerOptions.vibelang.declarationImportStyle`, is `\".js\"` (the default), `\"extensionless\"` or `\".ts\"`. It decides how an emitted declaration spells a relative import of a `.vibe` module ([Declaration output](001-functions.md#declaration-output)). Any other value is a configuration error (`TS6046`). It sits in the legacy `vibelang` section with `trustedPackages` and `tracing`, so a child config's own `vibelang` section replaces an inherited one as a whole."
 
-test("config-keys rejects round 14 OPUS-3's TypeScript configuration code; registry owns option authority", () => {
-  const defect = withEdit("src/007-tooling.md", text => text + "\n\n" + opus3 + "\n")
+test("config-keys rejects TypeScript configuration code; registry owns option authority", () => {
+  const defect = withEdit("src/007-tooling.md", text => text + "\n\n" + undocumentedConfig + "\n")
   expect(lint(defect, rule("config-keys")).map(v => v.message)).toEqual([
     "a VibeLang configuration error is given TypeScript's `TS6046`"
   ])
@@ -96,7 +96,7 @@ test("retired declaration notices accept arbitrary examples at both historical p
   ), { numRuns: 100, seed: 1007 })
 })
 
-test("declaration-import-form rejects round 14 OPUS-4's `import type` beside `import` for the same added import", () => {
+test("declaration-import-form rejects `import type` beside `import` for the same added import", () => {
   const defect = withEdit("src/001-functions.md", text => text
     .replace("// load.d.vibe.ts\nimport { Effect, Stream } from \"effect\"", "// load.d.vibe.ts\nimport type { Effect, Stream } from \"effect\"") + '\nimport { Effect } from "effect"\n')
   expect(lint(defect, rule("declaration-import-form")).map(v => v.message)).toEqual([
@@ -112,14 +112,14 @@ test("VIP example source scan rejects a value catch handler even without compile
   )
 })
 
-test("retired-forms rejects round 7 OPUS-6's bare `Effect<User, NotFound, Users>` in VIP-1 (row 45)", () => {
+test("retired-forms cites VIP-3 when a VIP example uses the bare Effect type", () => {
   const defect = withEdit("vips/0001-effect-and-async-functions.md", text => text.replace("effect function load(id): User!NotFound!Users {", "effect function load(id): Effect<User, NotFound, Users> {"))
   expect(lint(defect, rule("retired-forms")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
-    expect.stringMatching(/^vips\/0001-effect-and-async-functions\.md:29 the bare type `Effect<A, E, R>` is removed/)
+    expect.stringMatching(/^vips\/0001-effect-and-async-functions\.md:29 the bare type `Effect<A, E, R>` is removed \(VIP-3/)
   ])
 })
 
-test("platform-imports rejects round 6 OPUS-4's VIP-33 and VIP-26 examples (row 36)", () => {
+test("platform-imports rejects VIP-33 and VIP-26 examples", () => {
   const vip33 = "```ts\neffect function readConfig(path: string) {\n  const fs = try FileSystem.FileSystem             // Effect's platform service, injected by a layer\n  return try fs.readFileString(path)\n}\nprovide NodeServices.layer { try readConfig(\"app.json\") }   // VIP-12; the platform layer is chosen at the edge\n```"
   const defect: Spec = new Map(spec)
   defect.set("vips/0033-platform-stdlib.md", spec.get("vips/0033-platform-stdlib.md")!.replace(/```ts\n[^]*?\n```/, vip33))
@@ -131,7 +131,7 @@ test("platform-imports rejects round 6 OPUS-4's VIP-33 and VIP-26 examples (row 
   ])
 })
 
-test("counterpart-using rejects round 9 ASTRA-2's VIP-8 counterpart without `using` (row 51)", () => {
+test("counterpart-using rejects VIP-8 counterpart without `using`", () => {
   const original = "// Effect TS\nconst load = (p, q) => Effect.scoped(Effect.gen(function* () {\n  const db = yield* openDb()\n  return yield* db.query(q)\n}))\n```"
   const defect = withEdit("vips/0008-using-denied.md", text => text.replace(/\/\/ Effect TS\n[^]*?\n```/, original))
   expect(lint(defect, rule("counterpart-using")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
@@ -139,7 +139,7 @@ test("counterpart-using rejects round 9 ASTRA-2's VIP-8 counterpart without `usi
   ])
 })
 
-test("collision-conditional rejects round 6 ASTRA-5's unconditional VIP-39 collision (row 39)", () => {
+test("collision-conditional rejects unconditional VIP-39 collision", () => {
   const original = "`App.vibe` beside `App.vibex`, or `App.tsx` beside `App.vibex`, write the same output and get TypeScript's TS5055/TS5056, as `App.ts` beside `App.tsx` does."
   const defect = withEdit("vips/0039-vibex.md", text => text.replace(/`App\.vibe` beside `App\.vibex`, or `App\.tsx` beside `App\.vibex`, get[^\n]*/, original))
   expect(lint(defect, rule("collision-conditional")).map(v => `${v.file} ${v.message}`)).toEqual([
@@ -147,7 +147,7 @@ test("collision-conditional rejects round 6 ASTRA-5's unconditional VIP-39 colli
   ])
 })
 
-test("ruling-claims rejects round 9 OPUS-2's VIP-25 rationale without its amendment (row 50)", () => {
+test("ruling-claims rejects VIP-25 rationale without its amendment", () => {
   const defect = withEdit("vips/0025-inline-modules-denied.md", text => text.replace(/\n\*Amended 2026-11-02[^]*?(?=\n\n|$)/, ""))
   expect(lint(defect, rule("ruling-claims")).map(v => `${v.file} ${v.message}`)).toEqual([
     expect.stringMatching(/^vips\/0025-inline-modules-denied\.md the denial's reason .* contradicts the 2026-10-31 amendment to VIP-4/)
@@ -178,7 +178,7 @@ test("historical resolution fixtures preserve changed live tables without mutati
 function legacyStyleFixtures(current: Spec): Spec {
   const fixture: Spec = new Map([...current].map(([file, text]) =>
     [file, text.replaceAll("declarationImportStyle", "retiredStyle").replaceAll("It decides how a package declaration in the output directory spells a relative import", "Historical package spelling").replaceAll("A relative `./x.vibex`", "Historical relative source")]))
-  // The round-14 drift mutation uses its historical resolution row.
+  // The resolution drift test uses its historical resolution row.
   // Keep that witness explicit while the real-spec check reads today's table.
   for (const file of ["src/007-tooling.md", "vips/0039-vibex.md"]) {
     fixture.set(file, fixture.get(file)!.replace(/^\| `\.\/App\.vibe` \|[^\n]*$/m,
@@ -191,7 +191,7 @@ function legacyStyleFixtures(current: Spec): Spec {
   return fixture
 }
 
-test("compiler-gaps-not-rules rejects round 15 OPUS-1's EK0204 row in the normative table", () => {
+test("compiler-gaps-not-rules rejects EK0204 row in the normative table", () => {
   const row = "| `EK0204` | current compiler implementation limitation: an outward source completion cannot yet cross a generated function boundary in this position; this is not a TC39 early error | 2 | [Running Effects](002-running.md#do-expressions) |\n"
   const defect = withEdit("src/900-appendices.md", text => text.replace(/^\| `EK0205` \|/m, row + "| `EK0205` |"))
   expect(lint(defect, rule("compiler-gaps-not-rules")).map(v => v.message)).toEqual([
@@ -219,7 +219,7 @@ test("compiler-gaps-not-rules checks gap wording only in the normative table", (
   ), { numRuns: 100, seed: 1501 })
 })
 
-test("fallback-row rejects round 18 OPUS-2's positional fallback over a declaration row", () => {
+test("fallback-row rejects positional fallback over a declaration row", () => {
   const defect = withEdit("src/005-services.md", text => text.replace(/The general member row, the `EK0902` row beginning "any member", applies only when no other row applies\./, "The last row applies only when no other row applies."))
   expect(lint(defect, rule("fallback-row")).map(v => v.file)).toEqual(["src/005-services.md"])
 })
@@ -229,7 +229,7 @@ test("fallback-row accepts a table that does end in its fallback", () => {
   expect(lint(new Map([["src/x.md", text]]), rule("fallback-row"))).toEqual([])
 })
 
-test("plain-unknown-call rejects round 18 OPUS-1's untagged call as known to throw", () => {
+test("plain-unknown-call rejects untagged call as known to throw", () => {
   const defect = withEdit("src/003-failures.md", text => text.replace(/A call whose throwing is unknown, such as an unannotated `\.ts` function, stays an ordinary call[^.]*\./, "It has no tag on a foreign declaration (so throws `unknown`)."))
   expect(lint(defect, rule("plain-unknown-call")).map(v => v.rule)).toEqual(["plain-unknown-call"])
 })
@@ -239,7 +239,7 @@ const extractionFixture = (source: string, language = "ts"): Spec => new Map([
   ["vips/0040-module-declarations.md", "```" + language + "\n// module-extraction-twin\n" + source + "\n```\n"]
 ])
 
-test("module-extraction-twins rejects the unchanged R29 ASTRA-1 body", () => {
+test("module-extraction-twins rejects the unchanged body", () => {
   const body = "const privateBodyValue = 7"
   const result = lint(extractionFixture(body), rule("module-extraction-twins"))
   expect(result).toEqual([{
@@ -277,7 +277,7 @@ test("module-extraction-twins ignores unannotated illustrative scripts and ordin
 })
 
 
-test("module-extraction-twins rejects the R29 ASTRA-2 JSX body written as .ts", () => {
+test("module-extraction-twins rejects the JSX body written as .ts", () => {
   const source = "export const element = <div />"
   expect(lint(extractionFixture(source, "ts"), rule("module-extraction-twins"))).toEqual([{
     rule: "module-extraction-twins", file: "vips/0040-module-declarations.md", line: 2,
@@ -359,21 +359,21 @@ test("native TypeScript preserves JSX in virtual tsx files and rejects it in ts 
 // explicit until the mapper exposes separate virtual body files.
 test.todo("rule-evidence: docs/design/vips/0040-module-declarations.md#tooling | project module bodies from .vibe and .vibex through stock TypeScript with and without JSX | present | It projects each body as its own virtual `.ts` file for a body in `.vibe`, or `.tsx` for one in `.vibex`, retaining the body’s source language variant even when it contains no JSX ([VIP-39](0039-vibex.md#decision)).")
 
-test("spec-links rejects round 16's VIP-25 link and removed heading", () => {
+test("spec-links rejects VIP-25 link and removed heading", () => {
   const badFile = withEdit("src/900-appendices.md", text => text.replace("../vips/0025-inline-modules-denied.md", "../vips/0025-inline-modules-denied, superseded by VIP-40.md"))
   expect(lint(badFile, rule("spec-links")).map(v => v.message)).toEqual([expect.stringContaining("which is no file")])
   const badAnchor = withEdit("src/004-match.md", text => text + "\n[Thrown](003-failures.md#thrown-type-by-kind-of-callable)\n")
   expect(lint(badAnchor, rule("spec-links")).map(v => v.message)).toEqual([expect.stringContaining("no heading or anchor")])
 })
 
-test("gap-marker-authority rejects round 17 OPUS-6's marker on denied VIP-8", () => {
+test("gap-marker-authority rejects marker on denied VIP-8", () => {
   const defect = withEdit("src/008-runtime.md", text => text + "\n```vibe es\n// compiler-gap: pending VIP-8\nconst a = 1\n```\n")
   expect(lint(defect, rule("gap-marker-authority")).map(v => v.message)).toEqual([
     "a compiler-gap marker names VIP-8, which is not accepted"
   ])
 })
 
-test("statement-continuation rejects round 17 OPUS-3's assertion line after an arrow body", () => {
+test("statement-continuation rejects assertion line after an arrow body", () => {
   const defect = withEdit("src/002-running.md", text => text + "\n```vibe es\nconst f = () => 7 // one statement?\n<T>g\n```\n")
   expect(lint(defect, rule("statement-continuation")).map(v => v.message)).toEqual([
     expect.stringMatching(/^this line continues the one before it/)
@@ -411,7 +411,7 @@ test("declaration-bytes rejects byte comparisons of declarations and keeps TS505
   expect(lint(protectedInput, rule("declaration-bytes"))).toEqual([])
 })
 
-test("chapter-codes rejects round 20 OPUS-5's transitional EK1023 without its row", () => {
+test("chapter-codes rejects transitional EK1023 without its row", () => {
   const defect = withEdit("src/900-appendices.md", text => text.replace(/^\| `EK1023` \|.*\n/m, ""))
   expect(lint(defect, rule("chapter-codes")).map(v => `${v.file} ${v.message}`)).toEqual([
     "src/007-tooling.md EK1023 has no Appendix B row and no retirement note",

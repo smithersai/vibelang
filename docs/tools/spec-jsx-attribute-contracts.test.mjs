@@ -3,8 +3,7 @@ import { test } from "node:test"
 import ts from "typescript"
 import { read } from "./spec-witness.mjs"
 
-// Loop round 4, OPUS-1 (decided detail 250, with VIP-39's rejected
-// "JSX elements as throw-tracked calls"): TypeScript compares an attribute's
+// TypeScript compares an attribute's
 // value with the prop's type and a tag with JSX.ElementType, so VIP-39 must
 // say which of the two is a VIP-4 assignability site. It says: the attribute.
 const vip = read("docs/design/vips/0039-vibex.md")

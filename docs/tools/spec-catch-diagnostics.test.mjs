@@ -12,13 +12,13 @@ const good = new Map(paths.map(path => [path, path.includes("/vips/")
   ? "**remaining `catch` grammar code** " + rule + " `EK0512`."
   : "| `EK0512` | " + rule + " |"]))
 
-test("r26 ASTRA-1: the grammar has all three closed-handler families", () => {
+test("the grammar has all three closed-handler families", () => {
   const grammar = sources.get(paths[2])
   assert.match(grammar, /ClosedCatchExpression = CatchHead "catch" NonArrowHandler\s*\| CatchHead "catch" BlockArrowHandler/)
   assert.match(grammar, /NonArrowHandler = FunctionExpression \| EffectFunction[^\n]*\n\s*\| "\(" CatchHandler "\)"/)
   assert.match(grammar, /BlockArrowHandler = ArrowFunction \| EffectArrow/)
 })
-test("r26 ASTRA-1: current diagnostic publications cover all closed handlers", () => {
+test("current diagnostic publications cover all closed handlers", () => {
   assert.deepEqual(checkClosedCatchDiagnostics(sources), [])
 })
 test("historical function-only row loses two forms and repair scope", () => {

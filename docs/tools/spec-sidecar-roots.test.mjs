@@ -22,7 +22,7 @@ function declarationPaths(project, shared) {
   program.emit();
   return { root: program.getCommonSourceDirectory(), output };
 }
-test("r18 config-relative-only contract omits TypeScript root selection", () => {
+test("the config-relative-only contract omits TypeScript root selection", () => {
   assert.equal(missingRootAlternatives("sidecarDir holds every sidecar at its source's path under the config's directory").length, 3);
   assert.deepEqual(missingRootAlternatives("explicit rootDir; composite config directory; otherwise common source directory"), []);
 });

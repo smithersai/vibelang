@@ -19,7 +19,7 @@ test("fast-check: every foreign-call tier and catch exemption remains required",
     assert.equal(plainForeignContractProblems(changed).length, 1);
   }), { seed: 1104106, numRuns: 200 });
 });
-test("r18 prelude example needs bridges for its three npm value calls", () => {
+test("the historical prelude example needs bridges for its three npm value calls", () => {
   const code = "const two = pipe(1, n => n + 1)\nconst first = Effect.Array.head([1, 2])\nconst o = Option.some(1)";
   assert.equal(directPreludeInitializers(fence(code)).length, 3);
   assert.deepEqual(directPreludeInitializers(fence("const o = try Effect.try(() => Option.some(1))")), []);

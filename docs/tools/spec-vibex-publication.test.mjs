@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { chapter, read } from "./spec-witness.mjs"
 
-// Loop round 4, OPUS-2: VIP-39 was accepted with no chapter text. Every
+// VIP-39 was accepted with no chapter text. Every
 // accepted VIP must appear in the introduction's chapter list, and the
 // chapters that state a rule for `.vibe` files name `.vibex` beside it.
 test("every accepted VIP is in some chapter of the introduction's list", () => {

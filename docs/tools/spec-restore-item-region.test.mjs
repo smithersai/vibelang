@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { chapter, read } from "./spec-witness.mjs"
 
-// Loop round 3, OPUS-4: head binding initialization runs in the item
+// Head binding initialization runs in the item
 // generator, so every rule about a for concurrent item names it.
 test("every for concurrent item rule names head binding initialization", () => {
   const appendix = chapter("900-appendices").split("\n")

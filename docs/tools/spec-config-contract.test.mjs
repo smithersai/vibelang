@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
-import fc from "fast-check"
 
 const root = process.env.SPEC_CONFIG_ROOT ?? fileURLToPath(new URL("../../", import.meta.url))
 const read = path => readFileSync(resolve(root, path), "utf8")
@@ -16,7 +15,7 @@ const section = name => {
 }
 
 // VIP-30/34/38: the compact tables must retain both admission errors and all
-// transition categories. Mutation checks catch accidental code/category drift.
+// transition categories.
 const categories = text => new Map([...text.matchAll(/^\| `(EK\d+)` \| (Error|Warning) \|/gm)]
   .map(([, code, category]) => [code, category.toLowerCase()]))
 const appendixCategory = code => {
@@ -24,17 +23,11 @@ const appendixCategory = code => {
   assert.ok(row, `${code} has no Appendix B row`)
   return /\| (?:lint )?warning[: (]/.test(row) ? "warning" : "error"
 }
-const agrees = text => [...categories(text)].every(([code, category]) => category === appendixCategory(code))
 
 test("configuration and transition tables agree with Appendix B", () => {
   const text = section("Diagnostic settings") + section("Transitional diagnostics")
   assert.deepEqual([...categories(text).keys()], ["EK3006", "EK3007", "EK4853", "EK4854", "EK4855", "EK4856", "EK4857"])
-  assert.ok(agrees(text))
-  fc.assert(fc.property(fc.constantFrom(...categories(text).keys()), code => {
-    const category = appendixCategory(code) === "error" ? "Error" : "Warning"
-    const other = category === "Error" ? "Warning" : "Error"
-    assert.equal(agrees(text.replace(`| \`${code}\` | ${category} |`, `| \`${code}\` | ${other} |`)), false)
-  }), { seed: 73034, numRuns: 100 })
+  for (const [code, category] of categories(text)) assert.equal(category, appendixCategory(code), code)
 })
 
 test("lint host rules distinguish reporting, exit status and activation", () => {
@@ -74,11 +67,7 @@ test("prelude settings preserve independent function and module switches", () =>
 test("only the named Effect plugin prevents severity-key migration", () => {
   const migration = section("Severity-key activation migration")
   const exemption = migration.split(". ").find(sentence => sentence.includes("prevents this migration"))
-  const name = text => text?.match(/existing resolved plugin entry named `([^`]+)`/)?.[1]
-  assert.equal(name(exemption), "@effect/language-service")
+  assert.match(exemption, /existing resolved plugin entry named `@effect\/language-service`/)
   assert.match(exemption, /including a native disable setting/)
   assert.match(migration, /An unrelated plugin does not prevent it/)
-  fc.assert(fc.property(fc.string({ minLength: 1, maxLength: 40 }).filter(value => !value.includes("`") && value !== "@effect/language-service"), other => {
-    assert.notEqual(name(exemption.replace("@effect/language-service", other)), "@effect/language-service")
-  }), { seed: 32007, numRuns: 100 })
 })

@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { chapter, read } from "./spec-witness.mjs"
 
-// Loop round 3, OPUS-5 (decided detail 181, local own-shape hook).
 test("chapter 5 and VIP-9 agree on a local service's Shape", () => {
   const services = chapter("005-services")
   assert.ok(services.includes("Inside the service's own members `Users.Shape` names that private type"))

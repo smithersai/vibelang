@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { chapter, read, repo } from "./spec-witness.mjs"
 
-// Loop round 3, OPUS-9: chapter 000 defines the language as the accepted VIPs
+// Chapter 000 defines the language as the accepted VIPs
 // and their public amendments, so every VibeLang-owned flag chapter 7 prints
 // needs a VIP that names it. TypeScript's own flags are the compiler's.
 const vips = readdirSync(join(repo, "docs/design/vips"))

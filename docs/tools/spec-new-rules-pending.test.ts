@@ -1,5 +1,3 @@
-// Pending implementation witnesses for the reviewed round 16–24 rules.
-// Will, 2026-11-03: each unimplemented spec rule must at least have a test.todo.
 // These obligations are counted separately from executable compiler coverage.
 import { test } from "bun:test"
 
@@ -18,14 +16,12 @@ test.todo("rule-evidence: docs/design/vips/0004-throw.md#retirement-of-the-empty
 test.todo("rule-evidence: docs/design/vips/0005-try-runs-effects.md#amendment-inferred-effect-arguments | amendment-inferred-effect-arguments 97496de5063f | present | **Amended 2026-11-03:** [VIP-1's dated inferred-argument amendment](0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03) defines the `EK4802` trigger, argument positions, opt-outs, boundaries and repairs.")
 test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-words | wills-words 421e344cdcab | present | This corrects the earlier substitution of VibeLang source extensions into ordinary package declarations, under Will’s standing TypeScript rule: a package ships `.d.ts` files, not compatibility sidecars.")
 
-// Pending implementation witnesses for the reviewed round 24–27 rules.
 test.todo("rule-evidence: docs/design/src/001-functions.md#declaration-output | declaration-output c40ba4e6889f | present | An `error` or `schema error` keeps its static `[Symbol.customMatcher]` member, and every declaration file whose emitted text names `Symbol.customMatcher` begins with `/// <reference types=\"vibelang-runtime\" />`, which declares the `Symbol.customMatcher` type, so plain `tsc` checks it and matching across packages works at run time (VIP-27, amended).")
 test.todo("rule-evidence: docs/design/src/004-match.md#class-patterns | class-patterns f489e18231b2 | present | TypeScript modules, including VIP-40 bodies, keep ordinary dependency order and arrange initialization before using the key, normally with `import \"vibelang-runtime\"` first.")
 test.todo("rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | appendix-b-diagnostics b6afbad96194 | present | | `EK1402` | retirement-target error, after the migration gate in chapter 007: retired Effect data receiver-method extension, such as `Option.some(1).map(f)`; use `Option.map(Option.some(1), f)` or the preserving `vibelang --fix` migration; refuse unsafe bindings or changed declarations | 14 | [Migration](007-tooling.md#legacy-data-receiver-methods) |")
 test.todo("rule-evidence: docs/design/vips/0025-inline-modules-denied.md#decision | decision 2e2b14588421 | present | The historical 2026-10-29 decision denied inline `module` declarations.")
 test.todo("rule-evidence: docs/design/vips/0025-inline-modules-denied.md#why-it-was-denied | why-it-was-denied c23b31679ffd | present | At the time of this 2026-11-02 amendment, the denial still stood: code that throws lived in a `.ts` file (Appendix C), pending a separate inline-module VIP.")
 
-// Pending implementation witnesses for the reviewed round 28–33 rules.
 test.todo("rule-evidence: docs/design/src/004-match.md#class-patterns | class-patterns ac7cf6383c01 | present | When a class or fixed pattern's extracted list has a statically known length (an `error` or `schema error` class and the thirty-four retained errors: 1; `Option.Some`, `Exit.*`, `Result.*`: 1; `Option.None`: 0) and its known length lies outside the admitted interval of an extractor without a rest pattern: required positions through total positions, counting every elision slot and counting optional elements only in the maximum, VibeLang reports the VIP-38 lint warning `EK0703`, with the quick fixes `when X:` and, for a singleton list, `when X(let e):`.")
 test.todo("rule-evidence: docs/design/src/007-tooling.md#formatting-and-existing-tools | formatting-and-existing-tools 2372915b1e4b | present | A repository's Oxlint JS-plugin rules run on `.vibe` files wherever applicable to the source or emitted forms.")
 test.todo("rule-evidence: docs/design/src/007-tooling.md#formatting-and-existing-tools | formatting-and-existing-tools e655abc005c4 | present | JavaScript source-extension rewriting requires `rewriteRelativeImportExtensions`.")

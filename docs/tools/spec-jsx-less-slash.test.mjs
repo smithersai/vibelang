@@ -3,7 +3,7 @@ import { test } from "node:test"
 import ts from "typescript"
 import { read } from "./spec-witness.mjs"
 
-// Loop round 4, OPUS-6: TypeScript's scanner reads `</` as one token under the
+// TypeScript's scanner reads `</` as one token under the
 // JSX language variant wherever it stands, so `.vibex` text with `<` directly
 // before a regular expression changes meaning. VIP-39 keeps the scanner
 // (no new scanner mode), so the clash table lists it as row 39.

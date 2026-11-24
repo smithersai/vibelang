@@ -5,7 +5,7 @@ import { test } from "node:test"
 import ts from "typescript"
 import { chapter, tools } from "./spec-witness.mjs"
 
-// Loop round 3, OPUS-10: chapter 5 lists the subpath namespaces whose names a
+// Chapter 5 lists the subpath namespaces whose names a
 // web platform global also has. The list is computed here from the pinned
 // packages, so an Effect or TypeScript bump fails until the chapter follows.
 const effectDir = join(tools, "node_modules/effect")

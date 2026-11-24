@@ -3,7 +3,7 @@ import { test } from "node:test"
 import ts from "typescript"
 import { read } from "./spec-witness.mjs"
 
-// Loop round 4, ASTRA-2: VIP-39 reads `.vibex` as TypeScript reads `.tsx`,
+// VIP-39 reads `.vibex` as TypeScript reads `.tsx`,
 // and TypeScript rejects an import of a `.tsx` file in a project without a
 // `jsx` setting even when that file has no JSX. So renaming a JSX-free
 // `x.vibe` to `x.vibex` is a parsing guarantee, not a project guarantee.

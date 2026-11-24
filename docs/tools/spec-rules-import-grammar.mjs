@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 
 // ECMA-262 ImportDeclaration already includes import ModuleSpecifier ;.
 // Extending ModuleSpecifier changes both native import alternatives. Adding
-// that side-effect alternative again creates two derivations (R25 ASTRA-1).
+// that side-effect alternative again creates two derivations.
 export function importAlternatives(text) {
   const fence = String.fromCharCode(96).repeat(3)
   const start = text.search(/^ImportDeclaration\s*=/m)

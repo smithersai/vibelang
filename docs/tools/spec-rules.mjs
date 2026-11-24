@@ -173,7 +173,7 @@ export function lintRegistry(root) {
       if (approvedToken(value)) continue
       findings.push(issue("registry", path, text, token.offset, value + " has no accepted VIP spelling; publish the decided authority or obtain a decision", "warning"))
     }
-    // Round 14 OPUS-3: bare sibling option names smuggled into prose.
+    // Check for unqualified sibling option names in prose.
     for (const m of text.matchAll(/`(trustedPackages|tracing)`/g)) {
       if (!accepted.some(v => v.text.includes("`" + m[1] + "`")))
         findings.push(issue("registry", path, text, m.index, m[1] + " has no published option authority", "warning"))
@@ -192,7 +192,7 @@ export function table(text, header) {
 }
 
 export const sharedTables = [
-  { key: "resolution", source: "docs/design/vips/0039-vibex.md", target: "docs/design/src/007-tooling.md", header: "| Specifier | Tries, in order |", finding: "r14 OPUS-1 / r4 OPUS-2" }
+  { key: "resolution", source: "docs/design/vips/0039-vibex.md", target: "docs/design/src/007-tooling.md", header: "| Specifier | Tries, in order |", finding: "chapter resolution order differs from VIP-39" }
 ]
 export function lintCopies(root, write = false) {
   const findings = write ? [] : reviewFindings(root, "copies")

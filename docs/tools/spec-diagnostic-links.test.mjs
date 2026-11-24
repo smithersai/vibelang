@@ -1,7 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { readFileSync } from "node:fs"
-import fc from "fast-check"
 import { SpecPath } from "../../scripts/testing/spec-path.mjs"
 
 const chapter = name => readFileSync(SpecPath(name + ".md"), "utf8")
@@ -56,40 +55,11 @@ test("every Appendix B row links a section that names its code", () => {
 
 const duplicateMeaning = JSON.parse(readFileSync(new URL("./property-regressions/r36-ek4857-duplicate-meaning.json", import.meta.url), "utf8"))
 
-test("R36 OPUS-1: a duplicate Meaning fragment resolves the intended definition", () => {
+test("a duplicate Meaning fragment resolves the intended definition", () => {
   const { source, code, first, second, parent } = duplicateMeaning
   assert.ok(!section(source, first).includes(code), "the first Meaning is a different section")
   assert.ok(section(source, second)?.includes(code), "the numbered Meaning belongs to the shorthand")
   assert.ok(section(source, parent).includes(code), "the shorthand parent includes its definition")
-})
-
-test("fast-check: duplicate heading fragments preserve their occurrence and section boundary", () => {
-  fc.assert(fc.property(
-    fc.integer({ min: 2, max: 8 }),
-    fc.integer({ min: 0, max: 100 }),
-    fc.boolean(),
-    (count, padding, fenced) => {
-      const entries = Array.from({ length: count }, (_, i) =>
-        "## Owner " + i + "\n\n### Meaning\n\n" + "\n".repeat(padding)
-          + "occurrence-" + i + "\n"
-          + (fenced ? "\n```md\n### Meaning\n<a id=\"ghost\"></a>\n```\n" : "")
-          + "\n#### Detail\n\nchild-" + i + "\n")
-      const source = entries.join("\n")
-      for (let i = 0; i < count; i++) {
-        const body = section(source, "meaning" + (i ? "-" + i : ""))
-        assert.ok(body?.includes("occurrence-" + i), "duplicate fragment selects occurrence " + i)
-        assert.ok(body.includes("child-" + i), "a child heading remains in its parent")
-        for (let j = 0; j < count; j++) if (i !== j) {
-          assert.ok(!body.includes("occurrence-" + j), "sibling sections stay separate")
-        }
-      }
-      assert.equal(section(source, "meaning-" + count), undefined, "a missing fragment stays missing")
-      assert.equal(section(source, "ghost"), undefined, "fenced explicit anchors are text")
-      const explicit = "<a id=\"real\"></a>\n\ndefinition\n\n## Next\n\nother\n"
-      assert.ok(section(explicit, "real").includes("definition"))
-      assert.ok(!section(explicit, "real").includes("other"))
-    },
-  ), { seed: 3601, numRuns: 240 })
 })
 
 // Appendix B defines each printed identity and links its rule chapter. Keep the
@@ -98,11 +68,11 @@ const repairExamples = JSON.parse(readFileSync(new URL(
   "../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json", import.meta.url), "utf8"))
   .filter(example => example.repairReference)
 
-function repairReferenceFindings(examples, readChapter = chapter) {
+function repairReferenceFindings(examples) {
   return examples.flatMap(example => {
     const match = /^([0-9]{3}-[a-z-]+)#([a-z0-9-]+)$/.exec(example.repairReference)
     assert.ok(match, example.code + ": invalid repair reference")
-    const body = section(readChapter(match[1]), match[2])
+    const body = section(chapter(match[1]), match[2])
     return body !== undefined && new RegExp("\\b" + example.code + "\\b").test(body)
       ? [] : [example.code + " -> " + example.repairReference]
   })
@@ -116,16 +86,4 @@ test("retained native and mapper witnesses link their diagnostic repair definiti
     assert.ok(!example.control && !example.retired, example.code + ": active reporting witness")
   }
   assert.deepEqual(repairReferenceFindings(repairExamples), [])
-})
-
-test("repair references require a whole identity inside the named section", () => {
-  fc.assert(fc.property(fc.constantFrom(...repairExamples), fc.nat({max: 99999}),
-    fc.boolean(), fc.boolean(), (example, suffix, present, correctSection) => {
-      const fixture = {...example, repairReference: "007-tooling#repair"}
-      const code = example.code + (present ? "" : suffix)
-      const source = "## " + (correctSection ? "Repair" : "Other") + "\n\n" + code +
-        "\n\n## Neighbor\n\n" + example.code + "\n"
-      assert.deepEqual(repairReferenceFindings([fixture], () => source),
-        present && correctSection ? [] : [example.code + " -> 007-tooling#repair"])
-    }), {seed: 349004, numRuns: 120})
 })

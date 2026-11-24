@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { chapter, read } from "./spec-witness.mjs"
 
-// Loop round 3, OPUS-7 (decided detail 247): a VibeLang syntax rule without a
+// A VibeLang syntax rule without a
 // more specific code uses its owning VIP's code.
 const appendix = chapter("900-appendices")
 const row = code => appendix.split("\n").find(l => l.startsWith("| `" + code + "` |")) ?? ""

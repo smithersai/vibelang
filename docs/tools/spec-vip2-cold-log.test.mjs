@@ -3,7 +3,7 @@ import { readdirSync } from "node:fs"
 import { test } from "node:test"
 import { read } from "./spec-witness.mjs"
 
-// Loop round 5, ASTRA-3: VIP-2's first example of a cold effect block called
+// VIP-2's first example of a cold effect block called
 // the host console, which VIP-33 bans in every .vibe context (EK4402),
 // effect blocks included. It now logs with Effect's log global.
 

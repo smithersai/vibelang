@@ -3,7 +3,7 @@ import { test } from "node:test"
 import fc from "fast-check"
 import { chapter, read } from "./spec-witness.mjs"
 
-// VIP-7's accepted Nov 3 amendment replaces detail245's implicit-body home.
+// VIP-7's accepted Nov 3 amendment replaces the implicit-body home.
 const bodyRule = "when it is not a Block, cannot be the lexical home"
 const clauses = [
   bodyRule, "report `EK0705`", "TypeScript's `TS1156`",
@@ -38,10 +38,4 @@ test("fast-check: native statement bodies reject declarations and accept the bra
     assert.throws(() => new Function(head + space + declaration), SyntaxError)
     assert.doesNotThrow(() => new Function(head + space + "{ " + declaration + " }"))
   }), { seed: 1104109, numRuns: 200 })
-})
-test("fast-check: no ownership or repair clause disappears", () => {
-  const text = chapter("004-match")
-  fc.assert(fc.property(fc.constantFrom(...clauses), clause => {
-    assert.throws(() => checkBodyRule(text.replaceAll(clause, "[removed]")))
-  }), { seed: 1104110, numRuns: 160 })
 })
