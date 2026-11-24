@@ -31,6 +31,7 @@
  * @experimental
  * @since 0.0.13
  */
+import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -46,7 +47,10 @@ import type { SqlClient } from "effect/sql"
 import { Activity, DurableDeferred, Workflow, WorkflowEngine } from "effect/workflow"
 import {
   engineLaunch,
+  engineWorkflow,
+  getStepSchemas,
   isDeclaredWorkflow,
+  tagStepSchemas,
   type DurableSchemas,
   type Workflow as DeclaredWorkflow,
   type WorkflowPlan
@@ -563,6 +567,60 @@ export const task = <
 export const workflow: typeof declareWorkflow = (tag, options) => steps.rooted(declareWorkflow(tag, options))
 
 /**
+ * A workflow exceeded its declared `static readonly deadline` (VIP-56).
+ * The run dies with it.
+ *
+ * @category errors
+ * @since 0.0.13
+ */
+export class DeadlineExceeded extends Schema.TaggedError<DeadlineExceeded>()("DeadlineExceeded", {
+  workflow: Schema.String,
+  message: Schema.String
+}) {}
+
+/**
+ * Bounds a declared workflow's run (across all handoff rounds and restarts)
+ * with a durable deadline timer (VIP-56, `static readonly deadline`).
+ *
+ * @internal
+ */
+export const withDeadline = (
+  key: string,
+  deadline: Duration.Input,
+  schemas: DurableSchemas,
+  body: Effect.Effect<unknown, unknown, any>
+): Effect.Effect<unknown, unknown, any> => {
+  const Outcome = Schema.Union([
+    Schema.Struct({ _tag: Schema.Literal("ok"), value: schemas.success ?? Schema.Unknown }),
+    Schema.Struct({ _tag: Schema.Literal("err"), error: schemas.error ?? Schema.Unknown }),
+    Schema.Struct({ _tag: Schema.Literal("deadline") })
+  ])
+  return Effect.flatMap(
+    race({
+      name: "$workflow/run",
+      success: Outcome,
+      effects: [
+        Effect.match(body, {
+          onSuccess: (value) => ({ _tag: "ok" as const, value }),
+          onFailure: (error) => ({ _tag: "err" as const, error })
+        }),
+        Effect.as(sleep(deadline, { name: "$workflow/deadline" }), { _tag: "deadline" as const })
+      ]
+    }),
+    (outcome) => {
+      if (outcome._tag === "ok") return Effect.succeed(outcome.value)
+      if (outcome._tag === "err") return Effect.fail(outcome.error)
+      return Effect.die(
+        new DeadlineExceeded({
+          workflow: key,
+          message: `Workflow ${key} exceeded its deadline (${String(deadline)}).`
+        })
+      )
+    }
+  )
+}
+
+/**
  * A step whose number would change on a replay: a task call or an unnamed
  * timer inside Effect's own `DurableDeferred.raceAll` or `into`. The step
  * dies with it. Race with {@link race} instead, or name the timer.
@@ -586,10 +644,11 @@ export type UnstableStep = steps.UnstableStep
  * other. Use it to bound a step, `race({ name, success, effects: [Step(x),
  * sleep("30 seconds")] })`, or to wait for whichever comes first.
  *
- * `name` is unique among the races of its scope. Task calls and unnamed
- * timers inside the race are numbered within it, as `<name>/1`, so what the
- * race runs never changes the number of a step outside it. `success` and
- * `error` are the schemas the recorded result is stored with.
+ * `name` is unique among the races of its scope. When omitted, the race is
+ * numbered in the order its run reaches it (`Durable.race#1`, etc.). Task
+ * calls and unnamed timers inside the race are numbered within it, as
+ * `<name>/1`, so what the race runs never changes the number of a step outside
+ * it. `success` and `error` are the schemas the recorded result is stored with.
  *
  * @category waits
  * @since 0.0.13
@@ -599,7 +658,7 @@ export const race = <
   Success extends Schema.Top,
   Error extends Schema.Top = Schema.Never
 >(options: {
-  readonly name: string
+  readonly name?: string | undefined
   readonly success: Success
   readonly error?: Error | undefined
   readonly effects: Effects
@@ -608,23 +667,123 @@ export const race = <
   Effect.Error<Effects[number]>,
   Effect.Services<Effects[number]> | WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance
 > =>
-  Effect.gen(function*() {
-    const outer = yield* WorkflowEngine.WorkflowInstance
-    const path = `${steps.scopeOf(outer)}${steps.encodeName(options.name)}`
-    // The arms run on a copy of the instance, which this marks with the
-    // race's scope before any of them counts a step.
-    const scoped = (effect: Effect.Effect<any, any, any>) =>
-      Effect.flatMap(Effect.service(WorkflowEngine.WorkflowInstance), (copy) => {
-        steps.enterScope(copy, `${path}/`)
-        return effect
+  tagStepSchemas(
+    Effect.gen(function*() {
+      const outer = yield* WorkflowEngine.WorkflowInstance
+      const scope = steps.scopeOf(outer)
+      const path = options.name === undefined
+        ? `${scope}Durable.race#${
+          steps.nextOccurrence(outer, "Durable.race", "Durable.race without a name", ", or give the race a name").slice(scope.length)
+        }`
+        : `${scope}${steps.encodeName(options.name)}`
+      // The arms run on a copy of the instance, which this marks with the
+      // race's scope before any of them counts a step.
+      const scoped = (effect: Effect.Effect<any, any, any>) =>
+        Effect.flatMap(Effect.service(WorkflowEngine.WorkflowInstance), (copy) => {
+          steps.enterScope(copy, `${path}/`)
+          return effect
+        })
+      return yield* DurableDeferred.raceAll({
+        name: path,
+        success: options.success as Schema.Top as Schema.Schema<any>,
+        error: (options.error ?? Schema.Never) as Schema.Top as Schema.Schema<any>,
+        effects: options.effects.map(scoped) as unknown as readonly [Effect.Effect<any, any, any>]
       })
-    return yield* DurableDeferred.raceAll({
-      name: path,
-      success: options.success as Schema.Top as Schema.Schema<any>,
-      error: (options.error ?? Schema.Never) as Schema.Top as Schema.Schema<any>,
-      effects: options.effects.map(scoped) as unknown as readonly [Effect.Effect<any, any, any>]
-    })
-  }) as ReturnType<typeof race<Effects, Success, Error>>
+    }) as ReturnType<typeof race<Effects, Success, Error>>,
+    { success: options.success, error: options.error ?? Schema.Never }
+  )
+
+/**
+ * Compiler entry for `try.race` (`firstSuccess = false`) and `try.any`
+ * (`firstSuccess = true`) inside a declared `workflow` body (VIP-56).
+ *
+ * Each race gets a run-local occurrence name so handoff rounds (`W.to(...)`)
+ * race fresh. Each arm is tagged with its index so two arms with identical
+ * JSON encodings (such as `Schema.String` and `Schema.Date`) decode with the
+ * winning arm's own schema on replay.
+ *
+ * @internal
+ */
+export const raceSteps = <
+  const Effects extends ReadonlyArray<Effect.Effect<any, any, any>>
+>(
+  effects: Effects,
+  firstSuccess = false
+): Effect.Effect<
+  Effect.Success<Effects[number]>,
+  Effect.Error<Effects[number]>,
+  Effect.Services<Effects[number]> | WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance
+> =>
+  tagStepSchemas(
+    Effect.gen(function*() {
+      const outer = yield* WorkflowEngine.WorkflowInstance
+      const op = firstSuccess ? "try.any" : "try.race"
+      const path = `${op}/${steps.nextOccurrence(outer, op, op)}`
+      if (effects.length === 0) {
+        return yield* DurableDeferred.await(DurableDeferred.make(path, { success: Schema.Never }))
+      }
+      const successSchemas: Array<Schema.Top> = []
+      const errorSchemas: Array<Schema.Top> = []
+      const arms = effects.map((effect, index) => {
+        const boundary = getStepSchemas(effect)
+        const tag = Schema.Literal(index)
+        successSchemas.push(Schema.Tuple([tag, boundary?.success ?? Schema.Unknown]))
+        const errSchema = boundary?.error ?? Schema.Unknown
+        if (errSchema !== Schema.Never) {
+          errorSchemas.push(Schema.Tuple([tag, errSchema]))
+        }
+        return Effect.mapBoth(effect, {
+          onSuccess: (value) => [index, value] as const,
+          onFailure: (error) => [index, error] as const
+        })
+      })
+      const successSchema = successSchemas.length === 1 ? successSchemas[0]! : Schema.Union(successSchemas)
+      const errorSchema = errorSchemas.length === 0
+        ? Schema.Never
+        : errorSchemas.length === 1
+        ? errorSchemas[0]!
+        : Schema.Union(errorSchemas)
+      const scoped = (effect: Effect.Effect<any, any, any>) =>
+        Effect.flatMap(Effect.service(WorkflowEngine.WorkflowInstance), (copy) => {
+          steps.enterScope(copy, `${path}/`)
+          return effect
+        })
+      // try.any waits for the first arm to succeed (DurableDeferred.raceAll).
+      // try.race finishes with the first arm to settle (success OR non-interrupt
+      // failure), while parked arms stay interrupted until one settles.
+      const raced = firstSuccess
+        ? DurableDeferred.raceAll({
+          name: path,
+          success: successSchema as Schema.Schema<any>,
+          error: errorSchema as Schema.Schema<any>,
+          effects: arms.map(scoped) as unknown as readonly [Effect.Effect<any, any, any>]
+        })
+        : DurableDeferred.raceAll({
+          name: path,
+          success: successSchema as Schema.Schema<any>,
+          error: errorSchema as Schema.Schema<any>,
+          effects: [
+            Effect.flatMap(
+              Effect.raceAll(
+                arms.map((arm) =>
+                  Effect.flatMap(Effect.exit(scoped(arm)), (exit) =>
+                    Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
+                      ? Effect.failCause(exit.cause)
+                      : Effect.succeed(exit)
+                  )
+                )
+              ),
+              (exit) => exit
+            )
+          ]
+        })
+      return yield* Effect.mapBoth(raced, {
+        onSuccess: ([, value]: readonly [number, unknown]) => value,
+        onFailure: ([, error]: readonly [number, unknown]) => error
+      })
+    }) as any,
+    { success: Schema.Unknown, error: Schema.Unknown }
+  )
 
 /**
  * A position in history: a run and a sequence number in its journal.
@@ -846,6 +1005,15 @@ export const TimerInvalid = waits.TimerInvalid
 export type TimerInvalid = waits.TimerInvalid
 
 /**
+ * Any workflow that can receive a signal or human answer or be addressed by
+ * run handle: a declared `workflow` (VIP-55) or an Effect `Workflow`.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type WorkflowTarget = Workflow.Any | DeclaredWorkflow<any, any, any, any, any>
+
+/**
  * A typed value that enters a run from outside. Both ends import the one
  * signal: the workflow calls `wait()`, and Effect code calls `send(W, run,
  * value)`.
@@ -867,7 +1035,7 @@ export interface Signal<Name extends string, S extends Schema.Top> {
    * Delivers `value` to run `run` of `W`, and wakes the run. The first
    * delivery to a wait point wins; a later one changes nothing.
    */
-  readonly send: <W extends Workflow.Any>(
+  readonly send: <W extends WorkflowTarget>(
     W: W,
     run: string,
     value: S["Type"],
@@ -989,29 +1157,48 @@ interface AnyWorkflow extends Workflow.Any {
 /** The same workflow as the engine's own calls type it. */
 type EngineWorkflow = Workflow.Workflow<string, Workflow.AnyStructSchema, Schema.Top, Schema.Top>
 
+/** A declared `workflow` (VIP-55) or an Effect `Workflow` that a run handle can drive. */
+type RunTarget = AnyWorkflow | DeclaredWorkflow<any, any, any, any, any>
+
+type TargetSuccess<W extends RunTarget> = W extends DeclaredWorkflow<any, infer A, any, any, any> ? A
+  : W extends AnyWorkflow ? W["successSchema"]["Type"]
+  : never
+
+type TargetError<W extends RunTarget> = W extends DeclaredWorkflow<any, any, infer E, any, any> ? E
+  : W extends AnyWorkflow ? W["errorSchema"]["Type"]
+  : never
+
+type TargetPayload<W extends RunTarget> = W extends DeclaredWorkflow<any, any, any, infer S, any>
+  ? Schema.Struct.Type<S["payload"]>
+  : W extends AnyWorkflow ? Schema.Struct.Type<W["payloadSchema"]["fields"]>
+  : never
+
+const resolveWorkflow = (W: RunTarget): Effect.Effect<AnyWorkflow> =>
+  isDeclaredWorkflow(W) ? (engineWorkflow(W) as Effect.Effect<AnyWorkflow>) : Effect.succeed(W as AnyWorkflow)
+
 /**
  * The handle of run `id` of `W`.
  *
  * @category runs
  * @since 0.0.13
  */
-export const run = <W extends AnyWorkflow>(W: W, id: string): Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]> => ({
+export const run = <W extends RunTarget>(W: W, id: string): Run<TargetSuccess<W>, TargetError<W>> => ({
   id,
   result: Effect.gen(function*() {
+    const wf = yield* resolveWorkflow(W)
     const durable = yield* Durable
     const row = yield* durable.internals.store.get(id)
     if (Option.isNone(row)) return yield* Effect.die(new TimeTravelError({ code: "not_found", message: `No run ${id}` }))
     const engine = yield* WorkflowEngine.WorkflowEngine
-    const payload = engineInternal.decodePayload(W, row.value.payload)
-    return yield* engine.execute(W as unknown as EngineWorkflow, { executionId: id, payload })
-  }) as Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]>["result"],
-  poll: Effect.map(W.poll(id), (result) =>
-    Option.flatMap(result, (result) => result._tag === "Complete" ? Option.some(result.exit) : Option.none())) as Run<
-      W["successSchema"]["Type"],
-      W["errorSchema"]["Type"]
-    >["poll"],
-  cancel: W.interrupt(id),
-  resume: W.resume(id),
+    const payload = engineInternal.decodePayload(wf, row.value.payload)
+    return yield* engine.execute(wf as unknown as EngineWorkflow, { executionId: id, payload })
+  }) as Run<TargetSuccess<W>, TargetError<W>>["result"],
+  poll: Effect.flatMap(resolveWorkflow(W), (wf) =>
+    Effect.map(wf.poll(id), (result) =>
+      Option.flatMap(result, (result) => result._tag === "Complete" ? Option.some(result.exit) : Option.none()))
+  ) as Run<TargetSuccess<W>, TargetError<W>>["poll"],
+  cancel: Effect.flatMap(resolveWorkflow(W), (wf) => wf.interrupt(id)),
+  resume: Effect.flatMap(resolveWorkflow(W), (wf) => wf.resume(id)),
   send: (signal, value, point) => signal.send(W, id, value, point)
 })
 
@@ -1022,15 +1209,16 @@ export const run = <W extends AnyWorkflow>(W: W, id: string): Run<W["successSche
  * @category runs
  * @since 0.0.13
  */
-export const spawn = <W extends AnyWorkflow>(
+export const spawn = <W extends RunTarget>(
   W: W,
-  payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>
-): Effect.Effect<Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]>, never, WorkflowEngine.WorkflowEngine> =>
+  payload: TargetPayload<W>
+): Effect.Effect<Run<TargetSuccess<W>, TargetError<W>>, never, WorkflowEngine.WorkflowEngine> =>
   Effect.gen(function*() {
-    const id = yield* W.executionId(payload)
-    yield* W.execute(payload, { discard: true })
+    const wf = yield* resolveWorkflow(W)
+    const id = yield* wf.executionId(payload)
+    yield* wf.execute(payload, { discard: true })
     return run(W, id)
-  }) as Effect.Effect<Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]>, never, WorkflowEngine.WorkflowEngine>
+  }) as Effect.Effect<Run<TargetSuccess<W>, TargetError<W>>, never, WorkflowEngine.WorkflowEngine>
 
 /**
  * Always starts a new run of `W`, even when an equal payload already has one,
@@ -1040,14 +1228,15 @@ export const spawn = <W extends AnyWorkflow>(
  * @category runs
  * @since 0.0.13
  */
-export const start = <W extends AnyWorkflow>(
+export const start = <W extends RunTarget>(
   W: W,
-  payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>
-): Effect.Effect<Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]>, never, WorkflowEngine.WorkflowEngine> =>
+  payload: TargetPayload<W>
+): Effect.Effect<Run<TargetSuccess<W>, TargetError<W>>, never, WorkflowEngine.WorkflowEngine> =>
   Effect.gen(function*() {
+    const wf = yield* resolveWorkflow(W)
     const engine = yield* WorkflowEngine.WorkflowEngine
-    const id = (yield* canonical.sha256(`start:${W._tag}:${globalThis.crypto.randomUUID()}`)).slice(0, 32)
-    const workflow = W as unknown as EngineWorkflow
+    const id = (yield* canonical.sha256(`start:${wf._tag}:${globalThis.crypto.randomUUID()}`)).slice(0, 32)
+    const workflow = wf as unknown as EngineWorkflow
     // Under the engine's own workflow type the error and the requirements are open; a discarded start has neither.
     yield* (engine.execute(workflow, { executionId: id, payload: workflow.payloadSchema.make(payload), discard: true }) as unknown as Effect.Effect<unknown>)
     return run(W, id)

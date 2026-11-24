@@ -35,7 +35,8 @@ import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import { Activity, DurableClock, DurableDeferred, WorkflowEngine } from "effect/workflow"
 import type { Workflow } from "effect/workflow"
-import { Durable } from "./Durable.js"
+import { engineWorkflow, isDeclaredWorkflow, tagStepSchemas } from "../durable.js"
+import { Durable, type WorkflowTarget } from "./Durable.js"
 import { canonicalJson } from "./internal/canonical.js"
 import { encodeExit } from "./internal/durableEngine.js"
 import { encodeName, isWellFormed } from "./internal/durableSteps.js"
@@ -466,7 +467,7 @@ const question = <A>(
  * @since 0.0.13
  */
 export const confirm = (name: string, prompt: string, options?: Options): Effect.Effect<boolean, Failed, Wait> =>
-  question(name, prompt, { kind: "confirm" }, options)
+  tagStepSchemas(question(name, prompt, { kind: "confirm" }, options), { success: Schema.Boolean, error: Failed })
 
 /**
  * Asks a person for prose.
@@ -475,7 +476,7 @@ export const confirm = (name: string, prompt: string, options?: Options): Effect
  * @since 0.0.13
  */
 export const ask = (name: string, prompt: string, options?: Options): Effect.Effect<string, Failed, Wait> =>
-  question(name, prompt, { kind: "ask" }, options)
+  tagStepSchemas(question(name, prompt, { kind: "ask" }, options), { success: Schema.String, error: Failed })
 
 /**
  * Asks a person to pick one of `choices`. The result's type is the union of
@@ -489,7 +490,8 @@ export const select = <const Choices extends ReadonlyArray<string>>(
   prompt: string,
   choices: Choices,
   options?: Options
-): Effect.Effect<Choices[number], Failed, Wait> => question(name, prompt, { kind: "select", choices }, options)
+): Effect.Effect<Choices[number], Failed, Wait> =>
+  tagStepSchemas(question(name, prompt, { kind: "select", choices }, options), { success: Schema.String, error: Failed })
 
 /**
  * Asks a person for a value `schema` accepts. The answer arrives as JSON and
@@ -505,7 +507,8 @@ export const json = <S extends Schema.Top>(
   prompt: string,
   schema: S,
   options?: Options
-): Effect.Effect<S["Type"], Failed, Wait> => question(name, prompt, { kind: "json", schema }, options)
+): Effect.Effect<S["Type"], Failed, Wait> =>
+  tagStepSchemas(question(name, prompt, { kind: "json", schema }, options), { success: schema, error: Failed })
 
 /**
  * Records `value` as the answer to the question `name` that run `run` of `W`
@@ -517,7 +520,7 @@ export const json = <S extends Schema.Top>(
  * @category answering
  * @since 0.0.13
  */
-export const answer = <W extends Workflow.Any>(
+export const answer = <W extends WorkflowTarget>(
   W: W,
   run: string,
   name: string,
@@ -528,10 +531,11 @@ export const answer = <W extends Workflow.Any>(
     if (complaint !== undefined) {
       return yield* Effect.fail(new AnswerInvalid({ code: "answer_invalid", message: `The answer was not recorded: ${complaint}` }))
     }
+    const workflow: Workflow.Any = isDeclaredWorkflow(W) ? yield* engineWorkflow(W) : (W as Workflow.Any)
     const durable = yield* Durable
     const store = durable.internals.store
     const row = yield* store.get(run)
-    const known = Option.isSome(row) && row.value.workflow === W._tag ? row.value : undefined
+    const known = Option.isSome(row) && row.value.workflow === workflow._tag ? row.value : undefined
     const entries = known === undefined ? [] : yield* store.entries(run)
     const open = known === undefined
       ? undefined
@@ -542,21 +546,21 @@ export const answer = <W extends Workflow.Any>(
       // repeated, and the run is woken, so the call can be retried.
       const last = known === undefined || isTerminal(known.status) ? undefined : waits.lastAsked(entries, name)
       if (last?.answer !== undefined && canonicalJson(last.answer) === canonicalJson(encodeExit(Exit.succeed(value)))) {
-        return yield* (yield* WorkflowEngine.WorkflowEngine).resume(W, run)
+        return yield* (yield* WorkflowEngine.WorkflowEngine).resume(workflow, run)
       }
       return yield* Effect.fail(
         new AnswerInvalid({
           code: "answer_not_open",
-          message: `The answer was not recorded: run ${run} of ${W._tag} is not parked on the question "${truncate(name)}".`
+          message: `The answer was not recorded: run ${run} of ${workflow._tag} is not parked on the question "${truncate(name)}".`
         })
       )
     }
     const deferred = answerDeferred(name, open.attempt)
     yield* DurableDeferred.succeed(deferred, {
-      token: DurableDeferred.tokenFromExecutionId(deferred, { workflow: W, executionId: run }),
+      token: DurableDeferred.tokenFromExecutionId(deferred, { workflow, executionId: run }),
       value: value as Schema.Json
     })
     // An engine that has not loaded the run, such as one started after a
     // crash, loads it here, so the answer wakes it.
-    yield* (yield* WorkflowEngine.WorkflowEngine).resume(W, run)
+    yield* (yield* WorkflowEngine.WorkflowEngine).resume(workflow, run)
   })

@@ -1,6 +1,6 @@
 # VIP-56: Durable waits: timers, signals and human answers
 
-**Status:** accepted by Will, 2026-11-23. Will: "56 I accept". Runtime implementation exists (`Experimental.Durable.sleep`, signals, `Experimental.Human`); compiler lowering of waits to workflow plan nodes remains to be implemented. *(Previously reopened 2026-11-11 awaiting Will's review.)*
+**Status:** accepted by Will, 2026-11-23. Will: "56 I accept". Built 2026-11-23: runtime (`Experimental.Durable.sleep`, `until`, `signal`, `race`, `raceSteps`, `DeadlineExceeded`, declared-workflow targets on `send`/`answer`/`run`/`spawn`/`start`, `Experimental.Human`) and compiler (binding-resolved wait recognition, `EK5504` fiber-wait messages, `EK5601` `wait-outside-workflow`, `try.race`/`try.any` workflow lowering, `static readonly deadline`). *(Previously reopened 2026-11-11 awaiting Will's review.)*
 
 ## Will's words
 
@@ -132,12 +132,10 @@ The signal value and `Human` are thin library code over `WaitFor`, `DurableDefer
 
 ### Diagnostics
 
-Codes are assigned when this VIP is built.
-
-| Slug | When | The message names |
-| --- | --- | --- |
-| `workflow-try` | `try sleep(…)`, `timeout(…)` or another fiber wait in a workflow body | `Experimental.Durable.sleep`, or `try.race` with it |
-| `wait-outside-workflow` | A signal's `wait()`, a `Human` question or `Durable.sleep` in Effect code that is not a workflow body | `sleep`, or moving the wait into a workflow |
+| Code | Slug | When | The message names |
+| --- | --- | --- | --- |
+| `EK5504` | `workflow-try` | `try sleep(…)`, `timeout(…)` or another fiber wait in a workflow body | `Experimental.Durable.sleep`, or `try.race` with it |
+| `EK5601` | `wait-outside-workflow` | A signal's `wait()`, a `Human` question or `Durable.sleep` in Effect code that is not a workflow body | `sleep`, or moving the wait into a workflow |
 
 ## Maintainers' decisions
 

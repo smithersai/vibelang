@@ -1,0 +1,2 @@
+Use `sleep` in ordinary effect code, or move the wait into a workflow's `effect call`.
+Move the wait into a workflow's `effect call`.

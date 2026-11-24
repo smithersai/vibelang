@@ -1,3 +1,4 @@
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
@@ -32,6 +33,7 @@ import type * as Capability from "./experimental/Capability.js"
 /** The `static readonly` members of a task or workflow, passed through by name. */
 export interface DurableOptions {
   readonly key?: string | undefined
+  readonly deadline?: Duration.Input | undefined
   readonly tier?: Capability.Tier | undefined
   readonly capabilities?: ReadonlyArray<Capability.Pattern | Capability.PatternText> | undefined
   readonly effects?: Capability.EffectEnvelope | undefined
@@ -47,6 +49,27 @@ export interface DurableSchemas {
   readonly success?: Schema.Top
   readonly error?: Schema.Top
 }
+
+/** Success and error schemas carried by a durable step or wait for `Durable.raceSteps` (VIP-56). */
+export interface StepSchemas {
+  readonly success?: Schema.Top | undefined
+  readonly error?: Schema.Top | undefined
+}
+
+const stepSchemas = new WeakMap<object, StepSchemas>()
+
+/** Associates durable boundary schemas with an Effect returned by a step or wait. @internal */
+export const tagStepSchemas = <E extends Effect.Effect<any, any, any>>(
+  effect: E,
+  schemas: StepSchemas
+): E => {
+  stepSchemas.set(effect as object, schemas)
+  return effect
+}
+
+/** Reads the durable boundary schemas associated with a step or wait Effect, if any. @internal */
+export const getStepSchemas = (effect: unknown): StepSchemas | undefined =>
+  typeof effect === "object" && effect !== null ? stepSchemas.get(effect) : undefined
 
 /** What `W.layer` composes: a declaration with a layer and the requirements of its implementation. */
 interface Durable<R> {
@@ -230,7 +253,11 @@ export function $task<S extends Boundary>(): <const Sc extends DurableSchemas, R
     const durable = once((Durable) =>
       Durable.task(key, { ...passed(options), payload: schemas.payload, success: schemas.success, error: schemas.error } as any)
     )
-    const task: any = (...args: ReadonlyArray<unknown>) => Effect.flatMap(durable, (t: any) => t(payloadOf(schemas, args)))
+    const task: any = (...args: ReadonlyArray<unknown>) =>
+      tagStepSchemas(
+        Effect.flatMap(durable, (t: any) => t(payloadOf(schemas, args))),
+        { success: schemas.success, error: schemas.error }
+      )
     task.toLayer = (run: (...args: ReadonlyArray<unknown>) => Effect.Effect<unknown, unknown, unknown>) =>
       Layer.unwrap(Effect.map(durable, (t: any) =>
         t.toLayer((payload: Record<string, unknown>) => attenuateEffect(ceiling, run(...argsOf(schemas, payload))))
@@ -319,15 +346,22 @@ export function $workflow<P extends ReadonlyArray<unknown>, A, E, R, const Sc ex
   }
   const durable = once((Durable) => {
     const opts = passed(options)
-    return Durable.workflow(key, {
-      ...opts,
-      payload: schemas.payload,
-      success: schemas.success ?? Schema.Unknown,
-      error: schemas.error ?? Schema.Unknown,
-      plan: typeof opts.plan === "function" ? opts.plan : () => buildPlan()
-    } as any)
+    return {
+      Durable,
+      workflow: Durable.workflow(key, {
+        ...opts,
+        payload: schemas.payload,
+        success: schemas.success ?? Schema.Unknown,
+        error: schemas.error ?? Schema.Unknown,
+        plan: typeof opts.plan === "function" ? opts.plan : () => buildPlan()
+      } as any)
+    }
   })
-  const run = (args: ReadonlyArray<unknown>) => Effect.flatMap(durable, (w: any) => w.execute(payloadOf(schemas, args)))
+  const run = (args: ReadonlyArray<unknown>) =>
+    tagStepSchemas(
+      Effect.flatMap(durable, ({ workflow: w }: any) => w.execute(payloadOf(schemas, args))),
+      { success: schemas.success ?? Schema.Unknown, error: schemas.error ?? Schema.Unknown }
+    )
   const workflow: any = (...args: P) => run(args)
   workflow.child = (...args: P) => run(args)
   workflow.to = (...args: P): Handoff<P> => ({ _tag: "Handoff", key, args })
@@ -347,15 +381,20 @@ export function $workflow<P extends ReadonlyArray<unknown>, A, E, R, const Sc ex
         args = result.args
       }
     })
-  workflow.layer = Layer.unwrap(Effect.map(durable, (w: any) => {
+  workflow.layer = Layer.unwrap(Effect.map(durable, ({ Durable, workflow: w }: any) => {
     const layers = children().flatMap((value: any) =>
       value !== workflow && value?.["~durable"] === true && value.layer !== undefined ? [value.layer] : []
     )
-    const handler = w.toLayer((payload: Record<string, unknown>) => attenuateEffect(ceiling, rounds(argsOf(schemas, payload))))
+    const handler = w.toLayer((payload: Record<string, unknown>) => {
+      const bodyEffect = attenuateEffect(ceiling, rounds(argsOf(schemas, payload)))
+      return options.deadline === undefined
+        ? bodyEffect
+        : Durable.withDeadline(key, options.deadline, schemas, bodyEffect)
+    })
     return layers.length === 0 ? handler : Layer.provide(handler, Layer.mergeAll(...(layers as [any, ...Array<any>])))
   }))
   Object.defineProperties(workflow, {
-    "~engine": { value: durable },
+    "~engine": { value: Effect.map(durable, ({ workflow: w }) => w) },
     "~children": { value: children },
     tier: { value: tier, enumerable: true },
     capabilities: { value: capabilities, enumerable: true },
@@ -373,7 +412,7 @@ export function $workflow<P extends ReadonlyArray<unknown>, A, E, R, const Sc ex
  * @throws {never}
  */
 export const engineLaunch = (
-  declared: Workflow<ReadonlyArray<unknown>, unknown, unknown>,
+  declared: Workflow<any, any, any, any, any>,
   args: ReadonlyArray<unknown>
 ): Effect.Effect<{ readonly workflow: import("effect/workflow").Workflow.Any; readonly payload: Record<string, unknown> }> =>
   Effect.map((declared as any)["~engine"] as Effect.Effect<import("effect/workflow").Workflow.Any>, (workflow) => ({
@@ -383,12 +422,12 @@ export const engineLaunch = (
 
 /** The Effect workflow a declared `workflow` runs as. */
 export const engineWorkflow = (
-  declared: Workflow<ReadonlyArray<unknown>, unknown, unknown>
+  declared: Workflow<any, any, any, any, any>
 ): Effect.Effect<import("effect/workflow").Workflow.Any> =>
   (declared as any)["~engine"] as Effect.Effect<import("effect/workflow").Workflow.Any>
 
 /** Whether a value is a declared `workflow` (VIP-55). */
-export const isDeclaredWorkflow = (value: unknown): value is Workflow<ReadonlyArray<any>, unknown, unknown> =>
+export const isDeclaredWorkflow = (value: unknown): value is Workflow<any, any, any, any, any> =>
   typeof value === "function" && (value as any)["~durable"] === true && (value as any)["~engine"] !== undefined
 
 /**
