@@ -145,6 +145,21 @@ compiler makes, which map to no source position (D36). This also holds for
 whose body is a `throw` expression: their private delegation wrappers do not
 add functions or uncovered statements.
 
+## Eval files
+
+An eval file, `*.eval.vibe` or `*.eval.vibex`, is run by `vibelang eval` and
+never bundled into an application (VIP-59). The plugin refuses an import that
+resolves to an eval file from a file that is not one, in a build and in the
+development server:
+
+```text
+vibelang: /app/src/main.ts imports the eval file /app/src/greet.eval.vibe. An eval file
+(*.eval.vibe, *.eval.vibex) is run by `vibelang eval` and is never bundled into an application
+(VIP-59). Move the code both files need into a module that is not an eval file, and import that.
+```
+
+An eval file can import another eval file, and can be an entry itself.
+
 ## Options
 
 ```ts

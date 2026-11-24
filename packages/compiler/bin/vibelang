@@ -10,6 +10,13 @@ if (process.argv[2] === "agents") {
   process.exit(await main(process.argv.slice(3), findBinary))
 }
 
+// `vibelang eval` runs in Node: it imports *.eval.vibe files through the
+// loader and runs their suites with the runtime (eval.mjs, VIP-59).
+if (process.argv[2] === "eval") {
+  const { main } = await import("../eval.mjs")
+  process.exit(await main(process.argv.slice(3)))
+}
+
 if (process.argv[2] === "format") {
   try {
     const { formatFiles } = await import("../format.mjs")

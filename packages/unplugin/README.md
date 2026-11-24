@@ -228,6 +228,21 @@ aliases remain in the bundle. Source order
 and entry aliases are preserved. Choose the `.vibe` source for a single
 entry.
 
+## Eval files
+
+An eval file, `*.eval.vibe` or `*.eval.vibex`, is run by `vibelang eval` and
+never bundled into an application (VIP-59). The plugin refuses an import that
+resolves to an eval file from a file that is not one, in a build and in the
+development server:
+
+```text
+vibelang: /app/src/main.ts imports the eval file /app/src/greet.eval.vibe. An eval file
+(*.eval.vibe, *.eval.vibex) is run by `vibelang eval` and is never bundled into an application
+(VIP-59). Move the code both files need into a module that is not an eval file, and import that.
+```
+
+An eval file can import another eval file, and can be an entry itself.
+
 ## Options
 
 ```js
