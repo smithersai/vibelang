@@ -92,18 +92,6 @@ test("retired declaration notices accept arbitrary examples at both historical p
   ), { numRuns: 100, seed: 1007 })
 })
 
-test("retired declaration notices accept arbitrary examples at both historical paths", () => {
-  fc.assert(fc.property(
-    fc.constantFrom("vibelang.declarationImportStyle", "compilerOptions.vibelang.declarationImportStyle"),
-    fc.jsonValue(),
-    (path, value) => {
-      const fixture = new Map(retiredStyle)
-      fixture.set("src/007-tooling.md", "The retired `" + path + "` is ignored with a nonfatal deprecation warning for every value.\n\n```json\n" + JSON.stringify({ value }) + "\n```\n")
-      expect(lint(fixture, rule("declaration-import-style-scope"))).toEqual([])
-    }
-  ), { numRuns: 100, seed: 1007 })
-})
-
 test("declaration-import-form rejects round 14 OPUS-4's `import type` beside `import` for the same added import", () => {
   const defect = withEdit("src/001-functions.md", text => text
     .replace("// load.d.vibe.ts\nimport { Effect, Stream } from \"effect\"", "// load.d.vibe.ts\nimport type { Effect, Stream } from \"effect\"") + '\nimport { Effect } from "effect"\n')
@@ -112,7 +100,7 @@ test("declaration-import-form rejects round 14 OPUS-4's `import type` beside `im
   ])
 })
 
-test("retired-forms rejects round 7 ASTRA-4's `catch guest` in VIP-5's Decision example (row 46)", () => {
+test("VIP example source scan rejects a value catch handler even without compiler diagnostics", () => {
   const defect = withEdit("vips/0005-try-runs-effects.md", text => text.replace("const g = fetchUser(id) catch () => guest", "const g = fetchUser(id) catch guest"))
   const source = examples(defect.get("vips/0005-try-runs-effects.md")!)[0]!
   expect(verdict(source, { status: 0, stdout: "" }).map(v => v.message)).toContain(
@@ -158,7 +146,7 @@ test("collision-conditional rejects round 6 ASTRA-5's unconditional VIP-39 colli
 test("ruling-claims rejects round 9 OPUS-2's VIP-25 rationale without its amendment (row 50)", () => {
   const defect = withEdit("vips/0025-inline-modules-denied.md", text => text.replace(/\n\*Amended 2026-11-02[^]*?(?=\n\n|$)/, ""))
   expect(lint(defect, rule("ruling-claims")).map(v => `${v.file} ${v.message}`)).toEqual([
-    expect.stringMatching(/^vips\/0025-inline-modules-denied\.md the denial's reason .* contradicts Will's 2026-10-31 ruling/)
+    expect.stringMatching(/^vips\/0025-inline-modules-denied\.md the denial's reason .* contradicts the 2026-10-31 amendment to VIP-4/)
   ])
 })
 
@@ -599,4 +587,13 @@ test("new specification guards run through their categorized gate targets", () =
   for (const [kind, expected, fixture] of fixtures) {
     expect(lintKind(fixture, kind).map(v => v.rule)).toContain(expected)
   }
+})
+
+test("missing VIP fixture bindings cannot hide an unrelated type error", () => {
+  const source = 'const n: number = "x" // invalid\ntry load()'
+  const stdout = "main.vibe(1,7): error TS2322: incompatible type\nmain.vibe(2,5): error TS2304: missing load"
+  expect(verdict({ source, expected: [] }, { status: 1, stdout })).toEqual([
+    { severity: "error", message: "TS2322: incompatible type" },
+    { severity: "warning", message: "TS2304: missing load" }
+  ])
 })

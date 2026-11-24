@@ -55,8 +55,6 @@ test.todo("Chapter 008: Generator abandonment: a non-success try operand abandon
 // docs/design/src/008-runtime.md#8c3a9587513bba15 — Chapter 008: Effect cleanup APIs.
 test.todo("Chapter 008: Effect cleanup APIs: scoped acquireRelease, acquireDisposable, and addFinalizer clean up on failure, defect, and interruption [docs/design/src/008-runtime.md#8c3a9587513bba15]")
 
-// docs/design/src/008-runtime.md#da151537a64da320 — Chapter 008: Effect using warning.
-test.todo("Chapter 008: Effect using warning: EK0801 suggests acquireDisposable inside scoped without changing native disposal semantics [docs/design/src/008-runtime.md#da151537a64da320]")
 
 // docs/design/src/008-runtime.md#3f65a6eaf46bd396 — Chapter 008: Unchecked try delegation.
 test.todo("Chapter 008: Unchecked try delegation: yield-star follows native delegated-yield behavior without inserting an Effect runtime guard [docs/design/src/008-runtime.md#3f65a6eaf46bd396]")

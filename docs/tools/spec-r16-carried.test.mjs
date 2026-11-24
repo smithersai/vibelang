@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import fc from "fast-check"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -16,20 +16,19 @@ function published() {
   return Object.fromEntries(files.map(file => {
     const path = !process.env.SPEC_DESIGN_ROOT && file.startsWith("src/")
       ? SpecPath(file.slice(4)) : join(design, file)
-    return [file, existsSync(path) ? readFileSync(path, "utf8") : ""]
+    return [file, readFileSync(path, "utf8")]
   }))
 }
 
-// These are consistency guards for the newly published claims. Before the
-// simplified spec lands, the earlier chapters do not make those claims. The
-// frozen witnesses below exercise every guard independently of publication.
+// Consistency guards for the published rules and their grammar and VIP references.
 function violations(key, source) {
   const text = path => source[path] ?? ""
   const failures = text("src/003-failures.md")
   const appendix = text("src/900-appendices.md")
   const problems = []
   const require = (condition, message) => { if (!condition) problems.push(message) }
-  if (key === "OPUS-12" && /throw-expressions|Throw expressions|`throw` as an expression/.test(failures)) {
+  if (key === "OPUS-12") {
+    require(/throw-expressions|Throw expressions|`throw` as an expression/.test(failures), "missing throw-expression claim")
     require(/### ThrowExpression\b/.test(appendix), "missing throw-expression grammar")
     require(/ThrowExpressionInvalidPunctuator\s*=/.test(appendix), "missing punctuator production")
     require(/\| `EK1010` \|[^\n]*\| 41 \|/.test(appendix), "missing VIP-41 diagnostic")
@@ -38,7 +37,8 @@ function violations(key, source) {
     require(/ThrowExpressionInvalidPunctuator/.test(text("vips/tc39-throw-expressions/spec.emu")), "missing pinned snapshot")
     require(!/0040-throw-expressions/.test(failures), "VIP-40 collides with modules")
   }
-  if (key === "OPUS-13" && text("src/005-services.md").includes("service Name: Type")) {
+  if (key === "OPUS-13") {
+    require(text("src/005-services.md").includes("service Name: Type"), "missing whole-shape service claim")
     require(/ServiceDeclaration\s*=[\s\S]*?\|\s*ServiceStart TypeParameters\? ":" Type "\{" \(ServiceMember Separator\)\* "\}"/.test(appendix), "missing whole-shape grammar")
     require(/only KeyMember and DefaultMember are admitted; other members parse for EK0902/.test(appendix), "missing body recovery grammar")
     for (const file of ["src/005-services.md", "vips/0009-service-declarations.md"]) {
@@ -47,7 +47,8 @@ function violations(key, source) {
       if (file.startsWith("src/")) require(/\|[^\n]*service Name: Type[^\n]*\| `EK0902` \|/.test(text(file)), `${file}: missing body diagnostic`)
     }
   }
-  if (key === "OPUS-14" && failures.includes("A written `@throws` or `@rethrows` tag in a `.vibe` file is `EK0406`")) {
+  if (key === "OPUS-14") {
+    require(/A written `@throws` or `@rethrows` tag (?:there|in a `\.vibe` file)[^\n]*`EK0406`/.test(failures), "missing written-tag diagnostic rule")
     require(!failures.includes("Pending cleanup:"), "reserved process note remains normative")
     require(!failures.includes("A source `@rethrows` parameter still admits"), "retired source callback admission")
     require(failures.includes("Its callback parameters follow their written callable signatures"), "missing callback contract")
@@ -56,7 +57,8 @@ function violations(key, source) {
       require(!text(file).includes("4.1.0"), `${file}: stale Effect version`)
     }
   }
-  if (key === "ASTRA-5" && text("src/001-functions.md").includes("**API identity.**")) {
+  if (key === "ASTRA-5") {
+    require(text("src/001-functions.md").includes("**API identity.**"), "missing API identity claim")
     for (const file of ["src/001-functions.md", "vips/0027-declaration-output.md"]) {
       require(text(file).includes("same doc comment on each export"), `${file}: lost comment identity`)
       const exception = file.startsWith("src/")
@@ -138,4 +140,14 @@ test("OPUS-13: folded grammar retains exact shape and recovery restrictions", ()
     const changed = { ...current, "src/900-appendices.md": "Unrelated prose.\n".repeat(padding) + appendix.replace(clause, "[removed]") }
     assert.ok(violations("OPUS-13", changed).length > 0, clause)
   }), { seed: 1104108, numRuns: 180 })
+})
+
+test("consistency guards report missing claims instead of bypassing their checks", () => {
+  for (const [key, claim] of [
+    ["OPUS-12", "missing throw-expression claim"],
+    ["OPUS-13", "missing whole-shape service claim"],
+    ["OPUS-14", "missing written-tag diagnostic rule"],
+    ["ASTRA-5", "missing API identity claim"]
+  ]) assert.ok(violations(key, {}).includes(claim), claim)
+  assert.ok(violations("OPUS-14", { "src/003-failures.md": "Effect 4.1.0" }).includes("src/003-failures.md: stale Effect version"))
 })

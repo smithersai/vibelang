@@ -13,6 +13,4 @@ test("collision qualifiers belong only to the implicit binding",()=>{
 test("the pinned Effect namespace has no collision modules; aliased root imports do",()=>{
  for(const name of ["Array","String","Record","Number","Boolean","Symbol","Function","Iterable"]) assert.equal(name in EffectNamespace,false,name)
  for(let n=0;n<128;n++) assert.equal(Arr.head([n,n+1]).value,n)
- const Effect={Array:{head:xs=>xs[0]+1}}
- assert.equal(Effect.Array.head([7]),8)
 })

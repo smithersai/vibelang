@@ -1,11 +1,3 @@
-// 000-intro.md: complete comparisons are checked; explicit incomplete fragments opt out
-// rule: docs/design/src/000-intro.md#0136ffe17f698768
-// 000-intro.md: explicit fragment labels survive Effect-comparison extraction
-// rule: docs/design/src/000-intro.md#483818c8463a58d7
-// 000-intro.md: missing helper definitions produce a fragment
-// rule: docs/design/src/000-intro.md#81cff47196c634a5
-// 000-intro.md: compiler-gap markers classify a failing marked snippet as pending
-// rule: docs/design/src/000-intro.md#d9a91bb53ca0982d
 import { expect, test } from "bun:test"
 import { blockFilenames, classify, defaultCompiler, experimentalSection, extract, linkModules, markdownPages, normalizeOutput, selectedMarkdownPages, parseDiagnostics, runBlock, writeProject } from "./check-snippets"
 
@@ -18,7 +10,14 @@ test("extracts vibe and ts fences, skips unnamed TypeScript examples, and preser
   expect(blocks[0].expected).toEqual(["EK9201", "TS2322"])
   expect(blocks[1].gap).toBe("return contract")
 })
-// docs/design/src/900-appendices.md#53946a6ef522dadf — Chapter 900: extracts Effect comparison fences and keeps explicit fragment markers.
+test("only leading expectation directives declare diagnostic codes", () => {
+  const [trailing, declared] = extract("```vibe\neffect function n(): number { return 1 } // expect-error: EK0106\n```\n" +
+    "```vibe\n// expect-error: EK0106\n// expect-warning: EK0508\neffect function n(): number { return 1 }\n```")
+  expect(trailing.expected).toEqual([])
+  expect(declared.expected).toEqual(["EK0106", "EK0508"])
+  expect(declared.warns).toEqual(["EK0508"])
+})
+
 // docs/design/src/900-appendices.md#56090ea98d10c6d6 — Chapter 900: extracts Effect comparison fences and keeps explicit fragment markers.
 test("extracts Effect comparison fences and keeps explicit fragment markers", () => {
   const blocks = extract(["```ts effect", "// fragment", "const x = yield* work", "```", "```vibe es", "const x = work()", "```"].join("\n"))
@@ -69,7 +68,11 @@ test("explicit gaps remain checked, and stale markers fail", () => {
   expect(classify(gap, [diagnostic("TS2304")]).status).toBe("fail")
   expect(classify({ ...block, fragment: true }, [diagnostic("TS1005")]).status).toBe("fragment")
 })
-// A fragment opts out of checking, so its gap marker could never be found stale.
+test("a fragment cannot silently opt out of expected diagnostics", () => {
+  const [example] = extract("```vibe\n// fragment\n// expect-error: EK0502\ntry 1\n```")
+  expect(classify(example, [])).toMatchObject({ status: "fail", reason: expect.stringContaining("Expected diagnostics") })
+})
+
 test("a compiler-gap marker on an explicit fragment fails", () => {
   const [both] = extract("```vibe\n// fragment\n// compiler-gap: pending VIP-29\nconst n = 1\n```")
   expect(classify(both, []).status).toBe("fail")
@@ -97,12 +100,12 @@ test("a warning fails an example unless an expect-warning header names it", () =
   expect(classify({ ...block, gap: "pending VIP-34" }, [warning]).status).toBe("compiler-gap")
 })
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { join, relative, resolve } from "node:path"
 import { tmpdir } from "node:os"
 import { hangingBlockDeadline, runSnippets, runTestLimit } from "./run-snippets"
 const compiler = defaultCompiler()
-test.skipIf(!existsSync(compiler))("checks shared declarations, schema type/value names, captions, and expected errors together", async () => {
+test("checks shared declarations, schema type/value names, captions, and expected errors together", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-check-test-"))
   try {
     writeFileSync(join(root, "page.md"), [
@@ -121,7 +124,7 @@ test.skipIf(!existsSync(compiler))("checks shared declarations, schema type/valu
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
-test.skipIf(!existsSync(compiler))("an explicit fragment's syntax error hides no other block's error", async () => {
+test("an explicit fragment's syntax error hides no other block's error", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-check-test-"))
   const check = async (lines: string[]) => {
     writeFileSync(join(root, "page.md"), lines.join("\n"))
@@ -142,7 +145,7 @@ test.skipIf(!existsSync(compiler))("an explicit fragment's syntax error hides no
 
 // The Effect spelling of a service member's type draws EK4833, so a page that
 // teaches it fails until it writes the form the warning asks for.
-test.skipIf(!existsSync(compiler))("a compiler warning fails the example that draws it", async () => {
+test("a compiler warning fails the example that draws it", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-check-test-"))
   const check = async (lines: string[]) => {
     writeFileSync(join(root, "page.md"), lines.join("\n"))
@@ -191,7 +194,7 @@ test("repeated captions stay independent and cannot overwrite a named file", () 
   expect([...blockFilenames(blocks).values()]).toEqual(["block-1-2.vibe", "block-2.vibe", "block-1.vibe"])
 })
 
-test.skipIf(!existsSync(compiler))("checks named TypeScript companions and maps named-file errors to Markdown", async () => {
+test("checks named TypeScript companions and maps named-file errors to Markdown", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-named-test-"))
   try {
     writeFileSync(join(root, "page.md"), [
@@ -210,7 +213,7 @@ test.skipIf(!existsSync(compiler))("checks named TypeScript companions and maps 
     expect(report.pages[0].blocks[3].diagnostics[0].line).toBe(20)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
-test.skipIf(!existsSync(compiler))("compiles a vibe fence as VibeLang and a ts fence as TypeScript", async () => {
+test("compiles a vibe fence as VibeLang and a ts fence as TypeScript", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-language-test-"))
   try {
     writeFileSync(join(root, "page.md"), [
@@ -259,7 +262,7 @@ test("rejects ambiguous output and run markers without an assertion", () => {
 // Exercise the real compiler, emitted JavaScript, local runtime, and Node.
 // Intentionally wrong output and a live fiber must fail instead of passing a
 // compile-only check. An unrelated expected error must not block emission.
-test.skipIf(!existsSync(compiler))("runs marked blocks and reports output mismatches, exits, timeouts, and unrun fragments", async () => {
+test("runs marked blocks and reports output mismatches, exits, timeouts, and unrun fragments", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-run-test-"))
   try {
     const pages: Record<string, string[]> = {
@@ -315,7 +318,7 @@ test("output normalization preserves spaces and extra blank lines", () => {
   expect(normalizeOutput("")).toBe("")
 })
 
-test.skipIf(!existsSync(compiler))("runs Effect Vitest snippets, shared assertions, and run headers in a test context", async () => {
+test("runs Effect Vitest snippets, shared assertions, and run headers in a test context", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-vitest-test-"))
   try {
     writeFileSync(join(root, "pass.md"), [
@@ -362,7 +365,7 @@ test.skipIf(!existsSync(compiler))("runs Effect Vitest snippets, shared assertio
   } finally { rmSync(root, { recursive: true, force: true }) }
 }, runTestLimit)
 
-test("onboarding pages include the starter and check their inline wrapper examples", () => {
+test("the starter and agent onboarding wrapper examples compile", () => {
   const repo = resolve(import.meta.dir, "../..")
   const pages = markdownPages(join(repo, "docs/user"))
   for (const file of ["docs/user/llms-essentials.md", "templates/app/AGENTS.md"]) {
@@ -370,8 +373,16 @@ test("onboarding pages include the starter and check their inline wrapper exampl
     const blocks = extract(readFileSync(join(repo, file), "utf8"), { inlineExamples: true })
     const wrappers = blocks.filter(b => b.firstLine.startsWith("try tryPromise(") || b.firstLine.startsWith("try Effect.try("))
     expect(wrappers).toHaveLength(2)
-    expect(wrappers.every(b => b.pending?.includes("VIP-4"))).toBe(true)
-    expect(blocks.some(b => b.filename === "wrapper-input.ts")).toBe(true)
+    expect(wrappers.every(b => !b.pending && !b.fragment)).toBe(true)
+    const input = blocks.find(b => b.filename === "wrapper-input.ts")!
+    const root = mkdtempSync(join(tmpdir(), "docs-inline-wrappers-"))
+    const project = join(root, "project")
+    try {
+      writeProject(project, [input, ...wrappers])
+      linkModules(project)
+      const result = Bun.spawnSync([compiler, "-p", "tsconfig.json", "--pretty", "false"], { cwd: project })
+      expect({ status: result.exitCode, output: result.stdout.toString() + result.stderr.toString() }).toEqual({ status: 0, output: "" })
+    } finally { rmSync(root, { recursive: true, force: true }) }
   }
 })
 
@@ -483,7 +494,7 @@ test("a block marked pending names its VIPs, stays out of the program and report
   expect(files.length).toBe(1)
 })
 
-test.skipIf(!existsSync(compiler))("late-start documentation runs expose timer readiness and accept Deferred readiness", async () => {
+test("late-start documentation runs expose timer readiness and accept Deferred readiness", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-late-start-"))
   const previous = process.env.VIBELANG_LATE_START
   try {
@@ -531,7 +542,7 @@ for (const layout of [
   { name: "deeper alias", target: [], alias: ["nested", "deep"] },
   { name: "both nested", target: ["nested"], alias: ["alias"] },
 ]) {
-test.skipIf(!existsSync(compiler))("symlinked temporary directories (" + layout.name + ") retain snippet diagnostics and later pages", async () => {
+test("symlinked temporary directories (" + layout.name + ") retain snippet diagnostics and later pages", async () => {
   const root = mkdtempSync(join(realpathSync(tmpdir()), "snippet-symlink-test-"))
   try {
     const actual = join(root, "physical", ...layout.target)
@@ -562,7 +573,7 @@ test.skipIf(!existsSync(compiler))("symlinked temporary directories (" + layout.
 
 // A marker says the compiler refuses a block. Like a fuzz pending line, it goes
 // in the commit that makes it false, or the examples behind it stop being checked.
-test.skipIf(!existsSync(compiler))("a pending marker stands only while the compiler refuses its block", async () => {
+test("a pending marker stands only while the compiler refuses its block", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-stale-"))
   try {
     const pages: Record<string, string[]> = {

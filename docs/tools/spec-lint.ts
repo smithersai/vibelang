@@ -316,18 +316,14 @@ const collisionConditional: Rule = {
   }
 }
 
-// Denied-VIP rationales a later ruling falsified (row 50 of round 14's open
-// table, round 9 OPUS-2). VIP-25 was denied because "VIP-1, VIP-4 and VIP-5
-// gave plain and `async` functions in `.vibe` exactly TypeScript's meaning,
-// so nothing is left to escape from"; Will's 2026-10-31 ruling makes `throw`
-// in synchronous VibeLang code a compile error. A denied VIP stating a claim
-// listed here carries a dated amendment that cites the ruling.
+// The VIP-4 amendment rejects the rationale that plain VibeLang code
+// always has TypeScript's meaning. Denied VIPs must cite the correction.
 const falsified: { claim: RegExp; ruling: string }[] = [
   { claim: /exactly TypeScript's meaning, so nothing is left to escape from/, ruling: "2026-10-31" },
 ]
 const rulingClaims: Rule = {
   name: "ruling-claims",
-  finding: "r9 OPUS-2 (row 50): VIP-25's denial reason contradicts Will's 2026-10-31 no-throw ruling",
+  finding: "r9 OPUS-2 (row 50): VIP-25's denial reason contradicts the 2026-10-31 amendment to VIP-4",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of spec) {
@@ -336,7 +332,7 @@ const rulingClaims: Rule = {
         const m = text.match(claim)
         if (!m) continue
         const amended = [...text.matchAll(/\*\*?Amended (\d{4}-\d{2}-\d{2})[^]*?(?:\n\n|$)/g)].some(a => a[1]! >= ruling && a[0].includes(ruling))
-        if (!amended) out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: `the denial's reason "${m[0]}" contradicts Will's ${ruling} ruling, and no dated amendment says so` })
+        if (!amended) out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: `the denial's reason "${m[0]}" contradicts the ${ruling} amendment to VIP-4, and no dated amendment says so` })
       }
     }
     return out

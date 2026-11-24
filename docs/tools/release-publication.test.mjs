@@ -129,9 +129,16 @@ test("a new release keeps previously published fixes in their original version",
     assert.throws(() => assertReleasePublication(notes.replace(publicFix, publicFix + "\n" + publicFix), version),
       /each user-facing fix appears once/)
     assert.throws(() => assertReleasePublication(notes.replace(publicFix, witness), version))
-    assert.throws(() => assertReleasePublication(notes.replace("Editor parsing rejected", "Editor formerly rejected"), version),
-      /retain the user fix once/)
+    const publishedFix = goodNotes.split("\n").find(line => line.startsWith("- Editor parsing rejected"))
+    assert.throws(() => assertReleasePublication(notes.replace(publicFix, publishedFix.toUpperCase().replaceAll("`", "")), version),
+      /each user-facing fix appears once/)
   }), { numRuns: 80, seed: 120012, examples: [[12, false], [12, true]] })
+})
+
+test("whole wrapped release entries distinguish shared opening lines", () => {
+  const notes = goodNotes.replace("<!-- injected-row -->", "- The editor could crash.\n  Opening files triggered it.\n- The editor could crash.\n  Saving files triggered it.")
+  assert.doesNotThrow(() => assertReleasePublication(notes, "0.0.11"))
+  assert.throws(() => assertReleasePublication(notes.replace("Saving files", "Opening files"), "0.0.11"), /each user-facing fix appears once/)
 })
 
 const unrelatedNotes = Array.from({ length: 256 }, (_, index) =>

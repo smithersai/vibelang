@@ -87,13 +87,13 @@ export function extract(markdown: string, options: { inlineExamples?: boolean } 
     if (line < 0) throw new Error("Missing onboarding wrapper examples")
     const examples = [...lines[line].matchAll(/\x60(try (?:tryPromise|Effect\.try)\([^\x60]+)\x60/g)]
     if (examples.length !== 2) throw new Error("Expected tryPromise and Effect.try onboarding examples")
-    const add = (source: string, firstLine: string, filename?: string, language: "vibe" | "ts" = "vibe", pending?: string[]) =>
-      blocks.push({ number: ++number, line: line + 1, language, source, firstLine, filename, expected: [], fragment: pending !== undefined, pending })
+    const add = (source: string, firstLine: string, filename?: string, language: "vibe" | "ts" = "vibe") =>
+      blocks.push({ number: ++number, line: line + 1, language, source, firstLine, filename, expected: [], fragment: false })
     add("export function f(x: number): number { return x + 1 }\nexport async function load(): Promise<number> { return 1 }",
       "TypeScript wrapper input", "wrapper-input.ts", "ts")
     for (const [, expression] of examples) add(
       'import { f, load } from "./wrapper-input.ts"; effect function wrapperExample() { const x = 1; return ' + expression + ' }',
-      expression, undefined, "vibe", ["VIP-1", "VIP-4", "VIP-6"])
+      expression)
   }
   // A block that imports a pending block's module can't compile or run without
   // it, so it waits for the same VIPs.
@@ -153,6 +153,7 @@ export function classify(block: Block, diagnostics: Diagnostic[]): Result {
   if (block.pending) return { ...block, diagnostics, status: "pending", reason: `Waits for ${block.pending.join(", ")}` }
   // A fragment is never checked, so a compiler-gap marker on it could never go stale.
   if (block.fragment && block.gap) return { ...block, diagnostics, status: "fail", reason: "A fragment's compiler-gap marker is never checked; remove the fragment or the marker" }
+  if (block.fragment && block.expected.length) return { ...block, diagnostics, status: "fail", reason: "Expected diagnostics require a complete snippet; remove the fragment marker" }
   if (block.fragment) return { ...block, diagnostics, status: "fragment", reason: "Explicit fragment" }
   if (block.gap) {
     if (!absent.length && !unexpected.some(d => !missing(d))) return { ...block, diagnostics, status: "fail", reason: "Stale compiler-gap marker; remove it" }

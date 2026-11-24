@@ -62,7 +62,6 @@ test.todo("Chapter 900: function return Effect type grouping — A function or c
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: Effect type operand binding — Each operand sits at the type-operator level, so prefix and postfix operators bind tighter than `!`.")
 
-// rule-evidence: docs/design/src/900-appendices.md#78fe099476011694 — Chapter 900: single dangling bang repair
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: single dangling bang repair — A `!` after a type with no slot and no second `!` after it on its line is a syntax error, as in TypeScript (TS17019); the quick fix parenthesizes: `(x as Foo)!`.")
 
@@ -102,7 +101,6 @@ test.todo("Chapter 900: retired catch throw diagnostic — The old `EK0511` is r
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: synchronous no-throw context matrix — | `EK0401` | a `throw`, or a call known to throw outside the `try` block of a `try`/`catch` statement, in synchronous `.vibe` code outside effect code; any thrown type other than `never` in a plain function whose return type is wholly effectful, or in an effectful function's parameter list | 4, 5, 7 | [Failures](003-failures.md#plain-code-never-throws) |")
 
-// rule-evidence: docs/design/src/900-appendices.md#bda9313d164953c6 — Chapter 900: platform import and callback severity
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: platform import and callback severity — | `EK4402` | interim warning inside formerly accepted boundary callbacks; error otherwise: a value import of a Node builtin, with or without `node:` (`node:fs`, `fs`), a string-literal `import(…)` of one, or a statically named value that [reaches the platform](005-services.md#reaches-the-platform): a global declared by `lib.dom`, `lib.webworker`, `lib.scripthost` or `@types/node` and not by `lib.es*` or `lib.decorators*`, minus the allowlist, or a banned member of an allowlisted global, in a `.vibe` file | 33 | [Services](005-services.md#the-platform-standard-library) |")
 
@@ -114,7 +112,6 @@ test.todo("Chapter 900: escaped expected-error contract — | interim `EK9201` |
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: escaped requirement contract — | interim `EK9202` | error: a requirement escapes the written requirement contract | 1, 3 | Ordinary checked Effect return types and assignability |")
 
-// rule-evidence: docs/design/src/900-appendices.md#efc88709f48db4d2 — Chapter 900: legacy infallible catch retirement
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: legacy infallible catch retirement — | interim `EK9204` | warning: an old Effect `try`/`catch` statement has no expected errors, or the head of a `catch` expression cannot fail, reported at its `catch` keyword | 5 | Statement: Effect code has no `try` statement (`EK0503`); an infallible Effect is still run with `try e`.")
 
@@ -126,7 +123,6 @@ test.todo("Chapter 900: infallible catch expression validity — Expression: `su
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: compiler do gap diagnostic — The compiler also prints `EK0204`, a compiler gap rather than a language rule.")
 
-// rule-evidence: docs/design/src/900-appendices.md#1bef786019a4ac2b — Chapter 900: do parameter return completion
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: do parameter return completion — In particular, `function f(x = do { return null }) {}` returns `null` from `f`; the code retires when the compiler lowers those positions.")
 
@@ -150,7 +146,5 @@ test.todo("Chapter 900: wire retirement replacement — | [24](../vips/0024-wire
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: schema error constructor defect — | the constructor of `Schema.TaggedError`: `new Invalid({ … })` for a `schema error` | `@throws {never}`, as for `error` and `data`: a bad field at construction throws a plain `Error`, a defect: `effect { throw new Invalid({ name: \"\" }) }` dies |")
 
-// rule-evidence: docs/design/src/900-appendices.md#741c0b2e4ac2b518 — Chapter 900: throw forbidden punctuator diagnostic
-// rule-evidence: docs/design/src/900-appendices.md#ee6dad61ca20a90c — Chapter 900: throw punctuator severity amendment
 // The assigned table row changed upstream; verify comma warning, operator-left error, and the preserving repair.
 test.todo("Chapter 900: throw punctuator diagnostic \u2014 assigned trigger retained; current comma-only violation warns until its fix ships; existing operator-left violations remain errors.")

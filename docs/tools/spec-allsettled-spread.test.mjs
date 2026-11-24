@@ -2,9 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { read } from "./spec-witness.mjs"
 
-// Loop round 5, OPUS-3 and ASTRA-2 (decided detail 252): the try.allSettled
 // counterpart for a literal with spreads builds the source array once,
-// natively, and wraps it by index. The round 1 text, ...[...$xs].map(Effect.exit),
 // spread a second, compiler-created array through Array.prototype[Symbol.iterator].
 
 const row = () => read("docs/design/src/002-running.md").split("\n").find(l => l.startsWith("| `try.allSettled [a(), b()]` |"))
@@ -69,7 +67,6 @@ function buildLiteral(pre, spreads, post) {
 }
 // The stated counterpart: one native construction, then wrap by index.
 const stated = (pre, spreads, post) => buildLiteral(pre, spreads, post).map(wrap)
-// The round 1 projection: [exit(p0), ...[...xs].map(exit), exit(s0)].
 function old(pre, spreads, post) {
   const out = []
   push(out, pre.map(wrap))

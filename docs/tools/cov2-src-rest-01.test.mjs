@@ -4,11 +4,7 @@ import { test } from "node:test"
 // These TODOs specify expected behavior; they do not assert a known compiler mismatch.
 // Promote each language witness with its Effect TypeScript twin and complete Exit/type checks.
 
-// docs/design/src/000-intro.md#fc63aada3d801d69 — Chapter 000: Retired pre-VIP forms.
-test.todo("Chapter 000: Retired pre-VIP forms: --fix rewrites every legacy form, the compiler rejects the original, and release notes list it [docs/design/src/000-intro.md#fc63aada3d801d69]")
 
-// docs/design/src/000-intro.md#63d052175ec0ea8d — Chapter 000: Legacy forms census.
-test.todo("Chapter 000: Legacy forms census: vibelang-forms -legacy enumerates the retired syntax inventory [docs/design/src/000-intro.md#63d052175ec0ea8d]")
 
 // docs/design/src/000-intro.md#c4578428fd649b16 — Chapter 000: Retired data methods.
 test.todo("Chapter 000: Retired data methods: Option.map and Stream.map receive the legacy diagnostic and migrate to Effect APIs [docs/design/src/000-intro.md#c4578428fd649b16]")
@@ -94,20 +90,12 @@ test.todo("Chapter 001: Module import.meta rejection: import.meta inside a named
 // docs/design/src/001-functions.md#2db2ed2f0201ff82 — Chapter 001: Native module forms.
 test.todo("Chapter 001: Native module forms: dotted and ambient module declarations retain TS1540 [docs/design/src/001-functions.md#2db2ed2f0201ff82]")
 
-// docs/design/src/001-functions.md#8d5b00f3994227d4 — Chapter 001: Declaration API identity.
-test.todo("Chapter 001: Declaration API identity: exported names, bidirectional types, and per-export documentation match the stock TS twin [docs/design/src/001-functions.md#8d5b00f3994227d4]")
 
 // docs/design/src/001-functions.md#8f3f5f00c4326a1d — Chapter 001: Declaration normalization.
 test.todo("Chapter 001: Declaration normalization: only TS-insignificant formatting, quotes, import spelling, and ordering are ignored [docs/design/src/001-functions.md#8f3f5f00c4326a1d]")
 
-// docs/design/src/001-functions.md#2a231f3700118664 — Chapter 001: Codemod declaration identity.
-test.todo("Chapter 001: Codemod declaration identity: migration and fix comparison use the same names, bidirectional types, and documentation contract [docs/design/src/001-functions.md#2a231f3700118664]")
 
-// docs/design/src/001-functions.md#c71921fd7ccac3f0 — Chapter 001: Foreign callable documentation.
-test.todo("Chapter 001: Foreign callable documentation: the TS twin adds @throws to preserved JSDoc while the VibeLang source rejects that tag with EK0406 [docs/design/src/001-functions.md#c71921fd7ccac3f0]")
 
-// docs/design/src/001-functions.md#05024cf58f9aa0bd — Chapter 001: Cross-module thrown contract.
-test.todo("Chapter 001: Cross-module thrown contract: omitting the required throws tag makes the TS twin advertise unknown and fail API identity [docs/design/src/001-functions.md#05024cf58f9aa0bd]")
 
 // docs/design/src/005-services.md#e174004a9f0b004d — Chapter 005: Service declaration forms.
 test.todo("Chapter 005: Service declaration forms: member-object and supplied-shape service declarations match their Context.Service twins [docs/design/src/005-services.md#e174004a9f0b004d]")

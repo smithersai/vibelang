@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test"
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { defaultCompiler } from "./check-snippets"
 import { runSnippets, runTestLimit } from "./run-snippets"
 
 const compiler = defaultCompiler()
-test.skipIf(!existsSync(compiler))("runs marked Vitest examples and fails test assertions even with matching stdout", async () => {
+test("runs marked Vitest examples and fails test assertions even with matching stdout", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-vitest-"))
   try {
     writeFileSync(join(root, "pass.md"), [
@@ -45,7 +45,7 @@ test.skipIf(!existsSync(compiler))("runs marked Vitest examples and fails test a
 // The deadline bounds the example, not Vitest's own startup: booting Vitest and
 // transforming its imports took 1.6 to 9.5 s on a loaded host while the test
 // itself took 20 to 212 ms, so a 10 s process deadline failed correct examples.
-test.skipIf(!existsSync(compiler))("a Vitest example's deadline excludes Vitest startup and still stops a hung test", async () => {
+test("a Vitest example's deadline excludes Vitest startup and still stops a hung test", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-vitest-deadline-"))
   try {
     writeFileSync(join(root, "quick.md"), [

@@ -14,7 +14,7 @@ test("do result types preserve source completions and ordinary expression contex
   assert.match(text, /Contextual typing/)
 })
 
-test("the printed type witness distinguishes const, let, annotations and generated return widening", () => {
+test("the chapter lists type witnesses for const, let, annotations and generated returns", () => {
   const source = block(running(), "const literalSource =", "ts")
   for (const marker of ["literalSource", "ordinaryLet", "annotatedSource", "returnedTemporary", "effectOverload", "promiseOverload"]) {
     assert.ok(source.includes(marker), marker)

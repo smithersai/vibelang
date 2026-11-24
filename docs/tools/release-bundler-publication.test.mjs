@@ -1,3 +1,4 @@
+import { finalPublication } from "./release-publication-checks.mjs"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
@@ -14,7 +15,7 @@ function unpublished() {
 }
 
 test("publication omits the bundler teardown test fixture record", {
-  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+  skip: !finalPublication()
 }, () => assert.equal(internalRecord(unpublished()), false, "remove the internal bundler teardown tests row"))
 
 test("the publication guard recognizes wrapped and code-formatted test records", () => {

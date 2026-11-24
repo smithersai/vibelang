@@ -21,29 +21,15 @@ test.todo("docs/design/src/002-running.md#2ec71a012d9f4125 | <a id=\"operand-tes
 // Chapter 002: Yieldable structural Effect types
 test.todo("docs/design/src/002-running.md#ceb7e03dd9c3939a | For example, in Effect 4.1.1 an `Exit`, a `Config`, a `Context.Service` key, a `Context.Reference` and an `error` instance (`Data.TaggedError` or `Schema.TaggedError`) pass this structural test; the list is not exhaustive. | Retain exact boundary/type/quick-fix contract; needs focused compiler or editor witness.")
 
-// rule-evidence: docs/design/src/002-running.md#7a9fe49d4a7aa85c
-// Chapter 002: Handler kind quick fixes
-test.todo("docs/design/src/002-running.md#7a9fe49d4a7aa85c | The quick fix wraps a value in a function literal, so the handler's kind stays visible in the source, and removes `async` or `*` from a function: | Retain exact boundary/type/quick-fix contract; needs focused compiler or editor witness.")
-
-// rule-evidence: docs/design/src/002-running.md#54c248cda254f68c
 // Chapter 002: Value handler quick fix
-test.todo("docs/design/src/002-running.md#54c248cda254f68c | | `x catch guest` | syntax error | quick fix: `x catch () => guest` | | Retain exact boundary/type/quick-fix contract; needs focused compiler or editor witness.")
 
-// rule-evidence: docs/design/src/002-running.md#f8f8e785aa81faf6
 // Chapter 002: Named function handler quick fix
-test.todo("docs/design/src/002-running.md#f8f8e785aa81faf6 | | `x catch onErr` (`onErr` a function) | syntax error | quick fix: `x catch (e) => onErr(e)` | | Retain exact boundary/type/quick-fix contract; needs focused compiler or editor witness.")
 
-// rule-evidence: docs/design/src/002-running.md#a1ca3b9c9b2726c8
 // Chapter 002: Effect block handler quick fix
-test.todo("docs/design/src/002-running.md#a1ca3b9c9b2726c8 | | `x catch effect { return 7 }` | syntax error | quick fix: `x catch effect () => { return 7 }` | | Retain exact boundary/type/quick-fix contract; needs focused compiler or editor witness.")
 
-// rule-evidence: docs/design/src/002-running.md#c1d8b353c64d764c
 // Chapter 002: Async handler quick fix
-test.todo("docs/design/src/002-running.md#c1d8b353c64d764c | | `x catch async (e) => 7` | syntax error | quick fix: `x catch (e) => 7` | | Retain exact boundary/type/quick-fix contract; needs focused compiler or editor witness.")
 
-// rule-evidence: docs/design/src/002-running.md#316c56c1d13c143e
 // Chapter 002: Generator handler quick fix
-test.todo("docs/design/src/002-running.md#316c56c1d13c143e | | `x catch function* (e) { }` | syntax error | quick fix: `x catch function (e) { }` | | Retain exact boundary/type/quick-fix contract; needs focused compiler or editor witness.")
 
 // rule-evidence: docs/design/src/002-running.md#5b85617b2d4cd49d
 // Chapter 002: Promise handler results
@@ -88,14 +74,6 @@ test.todo("docs/design/src/002-running.md#5e57cb6b0fababf1 | `h` runs only when 
 // rule-evidence: docs/design/src/002-running.md#f652189d3d491384
 // Chapter 002: Effect handler parameter restrictions
 test.todo("docs/design/src/002-running.md#f652189d3d491384 | Use an effect handler with nonthrowing parameters and move the throwing work into its body behind an explicit bridge; a `try` in its parameter list is still forbidden, as `await` is. | Full editor, boundary, timing, or lexical contract needs a dedicated witness.")
-
-// rule-evidence: docs/design/src/002-running.md#5d84032e4667867c
-// Chapter 002: Effect handler result lint fix
-test.todo("docs/design/src/002-running.md#5d84032e4667867c | A plain handler whose result type is an Effect gets a VIP-38 lint warning (`EK0508`), with the quick fix `catch effect (e) => try \u2026`: | Full editor, boundary, timing, or lexical contract needs a dedicated witness.")
-
-// rule-evidence: docs/design/src/002-running.md#02a2746670a0d616
-// Chapter 002: Plain throw handler quick fix
-test.todo("docs/design/src/002-running.md#02a2746670a0d616 | A `throw` in a plain handler is `EK0401`, with the quick fix `catch effect (e) => { \u2026 }`, which makes the throw a typed failure. | Full editor, boundary, timing, or lexical contract needs a dedicated witness.")
 
 // rule-evidence: docs/design/src/002-running.md#63e602c452ff2de5
 // Chapter 002: Fiber and Deferred await lint

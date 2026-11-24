@@ -6,7 +6,7 @@ import { test } from "node:test"
 import { read, repo, run, tools } from "./spec-witness.mjs"
 const ts = createRequire(join(repo, "experiments/package.json"))("typescript")
 
-test("the formatter run preserves its output and bridges its inferred thrown contract", () => {
+test("the formatter reference implementation preserves the displayed output", () => {
   const page = process.env.SPEC_FORMATTER ? readFileSync(process.env.SPEC_FORMATTER, "utf8") : read("docs/user/src/code-style/067-pattern-matching.md")
   const lines = page.split("\n").filter(line => line.startsWith("// run:") && line.includes("display(3)") && line.includes("display(false)"))
   assert.equal(lines.length, 1)

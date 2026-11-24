@@ -1,3 +1,4 @@
+import { finalPublication } from "./release-publication-checks.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { copyFileSync, readFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -20,10 +21,10 @@ function unpublished() {
   return releases.slice(0, candidate + 1).join("\n").replace(/\s+/g, " ")
 }
 for (const phrase of privatePhrases) test("publication omits internal bookkeeping: " + phrase, {
-  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+  skip: !finalPublication()
 }, () => assert.equal(unpublished().toLowerCase().includes(phrase), false, phrase))
 test("publication includes the missing documentation anchor fix once", {
-  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+  skip: !finalPublication()
 }, () => {
   const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
   const release = notes.split(/^## /m).slice(1).find(section => section.split("\n")[0].replace(/ \(unreleased\)$/, "") === "0.0.11")
@@ -93,6 +94,7 @@ test("the 0.0.11 anchor note remains valid after a later candidate", t => {
   const path = join(root, "docs/tools/release-history-publication.test.mjs")
   mkdirSync(dirname(path), { recursive: true })
   copyFileSync(fileURLToPath(import.meta.url), path)
+  copyFileSync(new URL("./release-publication-checks.mjs", import.meta.url), join(dirname(path), "release-publication-checks.mjs"))
   const manifest = join(root, "packages/compiler/package.json")
   mkdirSync(dirname(manifest), { recursive: true })
   writeFileSync(manifest, JSON.stringify({ version: "0.0.12" }))
@@ -100,10 +102,11 @@ test("the 0.0.11 anchor note remains valid after a later candidate", t => {
     join(root, "packages/compiler/node_modules"), "dir")
   const notes = join(root, "docs/user/src/setup/release-notes.md")
   mkdirSync(dirname(notes), { recursive: true })
-  writeFileSync(notes, "# Release notes\n\n## 0.0.12 (unreleased)\n\n### Bugs fixed since 0.0.11\n\n- Another fix.\n\n" +
+  writeFileSync(notes, "# Release notes\n\n## 0.0.12\n\n### Bugs fixed since 0.0.11\n\n- Another fix.\n\n" +
     "## 0.0.11\n\n### Bugs fixed since 0.0.10\n\n" +
     "- Links to inline HTML anchors did not jump to sections; those anchors now keep their targets.\n\n## 0.0.10\n")
-  const env = { ...process.env, VIBELANG_RELEASE_NOTES_FINAL: "1" }
+  const env = { ...process.env }
+  delete env.VIBELANG_RELEASE_NOTES_FINAL
   delete env.NODE_TEST_CONTEXT
   const result = spawnSync("node", ["--test", "--test-name-pattern=^publication includes the missing documentation anchor fix once$", path],
     { env, encoding: "utf8", timeout: 15_000 })

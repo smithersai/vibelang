@@ -296,12 +296,7 @@ function caseEvidence(rule: Sentence, changes: Change[]): string | undefined {
     const attributed = ownVip ? cited.includes(Number(ownVip[1])) :
       peers.some(d => cited.includes(Number(/\/vips\/0*(\d+)/.exec(d.path)![1])))
     if (attributed) return c.path
-    // A diagnostic expectation is executable evidence too, even when it is
-    // the changed line and the minimized input already existed.
-    const reference = rule.path + (rule.section ? "#" + rule.section : "")
-    const explicit = c.after.split("\n").some(line => /^\s*\/\/ rule-evidence: /.test(line) &&
-      line.slice(line.indexOf(":") + 1).trim().split(/\s+/).includes(reference))
-    if (explicit || exercises(rule, sourceBody(c.after)) || (rule.removed && exercises(rule, sourceBody(c.before)))) return c.path
+    if (exercises(rule, sourceBody(c.after)) || (rule.removed && exercises(rule, sourceBody(c.before)))) return c.path
   }
 }
 

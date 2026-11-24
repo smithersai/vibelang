@@ -100,7 +100,7 @@ function ruleKey(rule: Rule) {
 }
 export function evidenceFiles(sources: Sources) {
   const pending = [...sources.keys()].filter(path => /^typescript\/vibelang\/cases\/[^/]+\/pending$/.test(path)).map(path => path.slice(0, -"pending".length))
-  const units: { path: string; text: string; status: Status }[] = []
+  const units: { path: string; text: string; status: Status; executable?: string }[] = []
   for (const [path, text] of sources) {
     if (/\/(?:expected|out|node_modules|testdata)\//.test(path) || path === "docs/tools/coverage-census.test.ts") continue
     if (/^typescript\/vibelang\/cases\/[^/]+\//.test(path)) {
@@ -128,11 +128,41 @@ export function evidenceFiles(sources: Sources) {
         ts.forEachChild(node, visit)
       }
       visit(ast)
-      const header = text.slice(0, calls[0]?.getFullStart() ?? 0)
       for (const call of calls) {
         const kind = call.expression.getText(ast)
-        units.push({ path: path + ":" + text.slice(0, call.getStart(ast)).split("\n").length,
-          text: header + "\n" + call.getFullText(ast), status: /\.(?:todo|skip)$/.test(kind) ? "pending" : "passing" })
+        const start = call.getStart(ast)
+        const comments = text.slice(call.getFullStart(), start)
+        const leading = comments.match(/(?:^|\n)((?:[ \t]*\/\/[^\n]*\n)+)[ \t]*$/)?.[1] ?? ""
+        const body = call.arguments.find(arg => ts.isArrowFunction(arg) || ts.isFunctionExpression(arg))
+        let executable = ""
+        if (body) {
+          const omitted: { start: number; end: number }[] = []
+          const collect = (node: ts.Node) => {
+            if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
+              ["includes", "match", "toContain", "toMatch"].includes(node.expression.name.text)) {
+              for (const arg of node.arguments) omitted.push({ start: arg.getStart(ast), end: arg.end })
+              return
+            }
+            ts.forEachChild(node, collect)
+          }
+          collect(body)
+          let cursor = body.getStart(ast)
+          for (const range of omitted) {
+            executable += text.slice(cursor, range.start) + " "
+            cursor = range.end
+          }
+          executable += text.slice(cursor, body.end)
+          const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, ts.LanguageVariant.Standard, executable)
+          executable = ""
+          for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+            if (token === ts.SyntaxKind.SingleLineCommentTrivia || token === ts.SyntaxKind.MultiLineCommentTrivia) executable += " "
+            else if (token === ts.SyntaxKind.StringLiteral || token === ts.SyntaxKind.NoSubstitutionTemplateLiteral) executable += scanner.getTokenValue()
+            else executable += scanner.getTokenText()
+          }
+        }
+        units.push({ path: path + ":" + text.slice(0, start).split("\n").length,
+          text: leading + call.getText(ast), executable: normalize(executable),
+          status: /\.(?:todo|skip)$/.test(kind) ? "pending" : "passing" })
       }
     }
   }
@@ -182,7 +212,8 @@ export async function census(sources: Sources, compileTwin?: (pair: unknown) => 
       evidence.push({ test: "scripts/generate-grammar-admission.mjs --check", status: "passing", kind: "cited", low: false,
         reason: "generated grammar admission projection; sync check compares both tables with docs/design/registry/grammar-admission.tsv" })
     const codes = [...rule.text.matchAll(/\b(?:EK|TS)\d{4,}\b/g)].map(m => m[0])
-    const forms = [...rule.text.matchAll(/`([^`]+)`/g)].map(m => m[1]).filter(s => s.length >= 8 && /[.()!]|\s/.test(s))
+    const inline = [...rule.text.matchAll(/`([^`]+)`/g)].map(m => m[1])
+    const forms = inline.filter(s => s.length >= 8 && /[.()!]|\s/.test(s))
     const exactPossible = candidates(quote)
     const possible = new Set([...exactPossible, ...candidates(rule.id), ...tagged.filter(i => tests[i].tags.some(t => t.key === ruleKey(rule))),
       ...codes.flatMap(code => [...(index.get(code) ?? []), ...(index.get(code.toLowerCase()) ?? [])]), ...forms.flatMap(form => {
@@ -191,10 +222,15 @@ export async function census(sources: Sources, compileTwin?: (pair: unknown) => 
       })])
     for (const i of possible) {
       const test = tests[i]
-      const exact = exactPossible.has(i) && quote.length >= 24 && (test.quotes.some(q => q === quote || q.includes(quote)) || test.body.includes(quote))
-      const explicit = test.ids.has(rule.id)
+      const verifies = test.executable === undefined || test.status === "pending" ||
+        [...codes, ...inline].some(anchor => test.executable!.includes(anchor.trim()) && anchor.trim().length > 0)
+      const exact = exactPossible.has(i) && quote.length >= 24 && (test.executable !== undefined && test.status !== "pending"
+        ? test.executable.includes(quote) : test.quotes.some(q => q === quote || q.includes(quote)) || test.body.includes(quote))
+      const explicit = verifies && test.ids.has(rule.id)
+      if (!explicit && test.ids.has(rule.id))
+        evidence.push({ test: test.path, kind: "cited-unverified", low: true, reason: "citation lacks a matching code or form in the test body" })
       const tag = test.tags.find(t => t.key === ruleKey(rule) && ((" " + plain(rule.text) + " ").includes(" " + t.name + " ") || (" " + plain(rule.section) + " ").includes(" " + t.name + " ")))
-      if (tag) evidence.push({ test: test.path, status: test.status, kind: "tag-linked", low: false, reason: "chapter/VIP and short rule name: " + tag.name })
+      if (tag && verifies) evidence.push({ test: test.path, status: test.status, kind: "tag-linked", low: false, reason: "chapter/VIP and short rule name: " + tag.name })
       if (exact || explicit) evidence.push({ test: test.path, status: test.status, kind: /\.go(?::\d+)?$/.test(test.path) ? "fuzz-quote" : "test-quote",
         low: false, reason: exact ? "exact normalized sentence" : "explicit stable rule id" })
       else if (!tag && codes.some(code => new RegExp("\\b" + code + "\\b", "i").test(test.text + " " + test.path)))
@@ -217,6 +253,16 @@ export async function census(sources: Sources, compileTwin?: (pair: unknown) => 
     if (import.meta.main && rows.length % 500 === 0) console.error("coverage-census: matched " + rows.length + " rules")
   }
   return rows
+}
+
+export function staleCitations(sources: Sources, rows: Row[] = []) {
+  const live = new Set(rules(sources).map(rule => rule.id))
+  const passing = new Set(rows.filter(row => status(row) === "passing").map(row => row.id))
+  return evidenceFiles(sources).flatMap(test => [...test.ids].flatMap(id => {
+    if (!live.has(id)) return [{ id, test: test.path, reason: "rule no longer exists" }]
+    if (test.status === "pending" && passing.has(id)) return [{ id, test: test.path, reason: "rule has passing evidence" }]
+    return []
+  }))
 }
 
 export function status(row: Row): Status {
@@ -317,6 +363,12 @@ async function main() {
   writeReports(out, reports(rows, id, twins ? "compiled" : "not compiled; candidates listed, no twins counted", excludedCount))
   console.error("coverage-census: complete in " + ((performance.now() - started) / 1000).toFixed(1) + "s")
   writeFileSync(join(out, "REVISION"), id + "\n")
+  const stale = staleCitations(sources, rows)
+  writeFileSync(join(out, "STALE-CITATIONS"), stale.map(item => item.test + " " + item.id + " " + item.reason).join("\n") + "\n")
+  if (stale.length) {
+    console.error("coverage-census: " + stale.length + " stale citations; see " + join(out, "STALE-CITATIONS"))
+    process.exitCode = 1
+  }
   console.log(reports(rows, id, twins ? "compiled" : "not compiled", excludedCount).percent.trim() + " -> " + out)
 }
 if (import.meta.main) main().catch(error => { console.error(String(error)); process.exitCode = 2 })

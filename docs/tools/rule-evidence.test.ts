@@ -162,7 +162,7 @@ test("parenthetical and attribution stripping never hides rule-bearing changes",
       (note: string) => "The `rule` applies (" + note + ").",
       (note: string) => "The `rule` applies (found by reviewer: " + note + ").",
       (note: string) => "The `rule` applies, found by reviewer: " + note + ".",
-      (note: string) => "The `rule` applies (Will's rule: " + note + ").",
+      (note: string) => "The `rule` applies (editor's rule: " + note + ").",
       (note: string) => "The `rule` applies (editorial (" + note + "))."
     ]) expect(changedRules([doc(wrap(after), wrap(before))]), wrap(before) + " -> " + wrap(after)).toHaveLength(1)
     expect(changedRules([doc("The `rule` applies.", "The `rule` applies (" + before + ").")])).toHaveLength(1)
@@ -211,12 +211,17 @@ test("deleted, unchanged, comment-only, unrelated and generated-output cases do 
   ]) expect((await checkEntry(entry(doc("`try` runs an Effect."), c))).findings).toHaveLength(1)
 })
 
-test("placeholder member names, grammar productions and explicit rule references count", async () => {
+test("placeholder member names and grammar productions count", async () => {
   for (const [text, source] of [
     ["A local `Users.Shape` means the service shape.", "service Local { value: Local.Shape }"],
     ["A `CatchExpression` means recovery.", "const x = fail(1) catch () => 2"],
-    ["An operand must be a function.", "// rule-evidence: docs/design/src/001-functions.md\nconst f = () => 1"]
   ]) expect((await checkEntry(entry(doc(text), caseFile(source)))).findings).toEqual([])
+})
+
+test("a bare chapter citation covers no changed rule", async () => {
+  const result = await checkEntry(entry(doc("`try` means run. `schema` means a decoder."),
+    caseFile("// rule-evidence: " + path + "\nexport const unrelated = 1")))
+  expect(result.findings).toHaveLength(2)
 })
 
 test("every changed rule needs its own evidence", async () => {
@@ -311,8 +316,8 @@ test("fast-check: semantic mutations always require evidence, presentation alway
       const after = "`" + form + "` " + predicate + "."
       expect((await checkEntry(entry(doc(after, before)), okTwin)).findings).toHaveLength(1)
       expect(changedRules([doc(after.replaceAll(" ", " ".repeat(spaces)), after)])).toEqual([])
-      const source = "// rule-evidence: " + path + "\nexport const witness = " + JSON.stringify(form)
-      expect((await checkEntry(entry(doc(after, before), caseFile(source)))).findings).toEqual([])
+      const source = "// rule-evidence: " + path + "\nexport const unrelated = 1"
+      expect((await checkEntry(entry(doc(after, before), caseFile(source)))).findings).toHaveLength(1)
     }), { seed: 20261103, numRuns: 250 })
 })
 

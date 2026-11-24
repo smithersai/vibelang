@@ -3,8 +3,7 @@ import { test } from "node:test"
 import { Effect } from "effect"
 import { chapter, read } from "./spec-witness.mjs"
 
-// Decided detail 239 made an explicit throw in a plain catch handler the lint warning EK0511. Will's
-// 2026-10-31 ruling ("today's EK0511 warning becomes this error") replaces it with EK0401 in every owner.
+// The 2026-10-31 amendment to VIP-4 makes a plain handler throw EK0401.
 test("every owner of the plain-handler throw rule states EK0401, not the EK0511 warning", () => {
   const running = chapter("002-running")
   assert.match(running, /\| `x catch \(e\) => \{ throw e \}` \| plain function \| a compile error, `EK0401`; write `x catch effect \(e\) => \{ throw e \}` \|/)

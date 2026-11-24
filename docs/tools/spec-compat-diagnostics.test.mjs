@@ -7,7 +7,6 @@ import { loadIdentity } from "./diagnostic-identity.mjs"
 const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf8")
 const appendix = () => read("design/src/900-appendices.md")
 
-// docs/design/src/900-appendices.md#7c273f2557fa5715 — Chapter 900: interim categories and emitted meanings.
 // docs/design/src/900-appendices.md#6371772a0c689cbc — Chapter 900: Appendix B interim inventory follows the registry.
 test("the complete interim block follows the landed registry, with meanings and retirement owners", () => {
   const inventory = appendix().split("### Transitional compiler diagnostics")[1]?.split("\n## ")[0]
@@ -49,8 +48,6 @@ test("the complete interim block follows the landed registry, with meanings and 
   assert.doesNotMatch(inventory, /interim `EK(?:2001|2002|2004)`/)
 })
 
-// docs/design/src/900-appendices.md#4806de564b65032d — Chapter 900: migration warning categories and authority.
-// docs/design/src/900-appendices.md#80c2c0482c46c330 — Chapter 900: migration warning categories and authority.
 test("each existing migration warning has an Appendix B row and an owning VIP amendment", () => {
   for (const [code, file, vip] of [
     [4853, "fix_omitted_requirement.go", "0003-effect-type-shorthand.md"],

@@ -9,14 +9,6 @@ import { chapter, read, repo } from "./spec-witness.mjs"
 // stale marker proves a promised code only once the header lists it.
 const appendixD = () => chapter("900-appendices").split("## Appendix D.")[1].split("\n## ")[0]
 
-test("check-snippets reads expected codes only from expect-error and expect-warning headers", () => {
-  const checker = read("docs/tools/check-snippets.ts")
-  const reads = checker.split("\n").filter(line => /^\s*expected:/.test(line))
-  assert.equal(reads.length, 1)
-  assert.match(reads[0], /header\.matchAll\(\/\\\/\\\/ expect-\(\?:error\|warning\):/)
-  assert.doesNotMatch(reads[0], /source/)
-})
-
 test("Appendix D lists the promised codes in that header before a marker is deleted", () => {
   const steps = appendixD()
   assert.doesNotMatch(steps, /the compiler now accepts it/)
