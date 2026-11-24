@@ -327,9 +327,14 @@ func TestToolsEditorAnswers(t *testing.T) {
 // checking the D276/D372 emitted-token oracle at a fixed project path.
 func TestToolsFormatProjectPaths(t *testing.T) {
 	w := NewWorkspace(t)
-	before := toolsCompile(t, w, "FuzzFormat", Single("service S { value: string }\nexport function read() { return S().value }\n").Files)
+	files := Single("service S { value: string }\nexport effect function read() { const s = try S; return s.value }\n").Files
+	files["package.json"] = `{"name":"format-fixture","type":"module"}`
+	before := toolsCompile(t, w, "FuzzFormat", files)
 	defer before.Remove()
-	after := toolsRecompile(t, w, before, Single("service S {\n value: string\n}\nexport function read() {\n return S().value\n}\n").Files)
+	if !toolsErrorFree(before) {
+		t.Fatalf("invalid formatter control: %v", before.Diagnostics)
+	}
+	after := toolsRecompile(t, w, before, Single("service S {\n value: string\n}\nexport effect function read() {\n const s = try S\n return s.value\n}\n").Files)
 	if difference := toolsFormatDifference(before, after); difference != "" {
 		t.Fatal(difference)
 	}

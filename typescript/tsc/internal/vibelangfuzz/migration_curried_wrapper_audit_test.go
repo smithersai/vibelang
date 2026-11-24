@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -129,12 +128,13 @@ func checkCurriedWrapperAudit(t *testing.T, w *Workspace, key string, mode uint8
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_curried_wrapper_audit.mjs"))
 	cmd.Dir = Root()
 	cmd.Stdin = strings.NewReader(string(input))
 	output, err := runJSONOracle(t, cmd)
+	checkOracleContext(t, ctx)
 	if err != nil {
 		t.Fatalf("actual wrapper audit: %v; context=%v\n%s", err, ctx.Err(), output)
 	}

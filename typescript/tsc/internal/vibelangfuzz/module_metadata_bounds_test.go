@@ -70,7 +70,7 @@ func FuzzModuleMetadataBounds(f *testing.F) {
 	for _, row := range rows {
 		seeded := map[[2]uint8]bool{}
 		for variant := uint8(0); variant < 36; variant++ {
-			if class := [2]uint8{variant % 4, variant / 3 % 3}; !seeded[class] {
+			if class := [2]uint8{variant % 4, variant / 4 % 3}; !seeded[class] {
 				seeded[class] = true
 				f.Add(row.key, variant)
 			}
@@ -148,8 +148,11 @@ func FuzzModuleMetadataBounds(f *testing.F) {
 			return count == 0 && row.want == 0 || count == 1 && row.want != 0
 		}
 		gaps := &Gaps{Target: "FuzzModuleMetadataBounds", Input: body}
-		rule := fmt.Sprintf("%s:%d:%d", row.key, home, variant/3%3)
-		if !valid(control) || !valid(result) {
+		rule := fmt.Sprintf("%s:%d:%d", row.key, home, variant/4%3)
+		if !valid(control) {
+			t.Fatalf("invalid TypeScript counterpart for %s: want TS%d, got %v\n%s", rule, row.want, SortedKeys(Keys(control.Dir, control.Diagnostics)), native)
+		}
+		if !valid(result) {
 			gaps.Add(rule, "VIP-33 metadata uses ImportMeta declarations; want TS%d, native=%v, vibe=%v", row.want, SortedKeys(Keys(control.Dir, control.Diagnostics)), SortedKeys(Keys(result.Dir, result.Diagnostics)))
 		} else {
 			ExpectPending(t, "FuzzModuleMetadataBounds", rule)

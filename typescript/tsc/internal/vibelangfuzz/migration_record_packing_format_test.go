@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -32,12 +31,13 @@ func TestMigrationRecordPackingFormatQuoted(t *testing.T) {
 }
 func checkRecordPackingFormat(t *testing.T, binary, key string, mode uint8) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), max(HangLimit, workerHangLimit))
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_record_packing_format.mjs"), key, strconv.Itoa(int(mode&15)))
 	cmd.Dir = Root()
 	cmd.Env = append(os.Environ(), "VIBELANG_BINARY="+binary, "VIBELANG_RUNTIME="+filepath.Join(Root(), "packages/runtime"))
 	output, err := runJSONOracle(t, cmd)
+	checkOracleContext(t, ctx)
 	if err != nil {
 		t.Fatalf("record packing fixture: %v; context=%v\n%s", err, ctx.Err(), output)
 	}

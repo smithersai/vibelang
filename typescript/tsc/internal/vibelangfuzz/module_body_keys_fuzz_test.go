@@ -159,8 +159,8 @@ func checkModuleBodyKeys(t *testing.T, w *Workspace, c moduleBodyKeyCase) {
 	vibe := Project{Files: map[string]string{"package.json": pkg, stem + ".vibe": module}, Config: c.config(stem + ".vibe")}
 	want, twinAll := deterministicKeyReports(t, w, twin)
 	got, vibeAll := deterministicKeyReports(t, w, vibe)
-	if c.key == "wrong" && len(want) == 0 && c.pattern != "identifier" {
-		t.Fatalf("%s: the .ts twin reports no deterministicKeys for a wrong key; diagnostics %v", c, diagnosticTexts(twinAll))
+	if (c.key == "wrong" || c.key == "body") && len(want) == 0 && c.pattern != "identifier" {
+		t.Fatalf("%s: the .ts twin reports no deterministicKeys for its unexpected key; diagnostics %v", c, diagnosticTexts(twinAll))
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("%s: the module body reports %q, its .ts twin %q\nbody:\n%s\nbody diagnostics %v", c, got, want, module, diagnosticTexts(vibeAll))
@@ -181,6 +181,7 @@ func TestModuleBodyKeysT3codeDesktop(t *testing.T) {
 	for _, input := range []string{
 		"src:a:platform:service:Port:pkg-file-name:package-identifier",
 		"src:a:platform:service:Port:body:package-identifier",
+		"src:a:platform:service:Port:wrong:package-identifier",
 		"src/backend:DesktopNetworkInterfaces:platform:service:file:pkg-dir-file:default",
 	} {
 		checkModuleBodyKeys(t, w, parseModuleBodyKeyCase(input))

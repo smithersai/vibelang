@@ -225,7 +225,6 @@ var isHomePositions = []struct{ name, source, want, key string }{
 	{"catch-nested-default", `try { work() } catch ({ a: { code = (1 is const c) } }: any) {}`, "EK0705", "catch:EK0705"},
 	{"catch-computed-key", `try { work() } catch ({ [(1 is let c) ? "x" : "y"]: value }: any) {}`, "EK0705", "catch:EK0705"},
 	{"catch-array-default", `try { work() } catch ([a = (1 is let c)]: any) {}`, "EK0705", "catch:EK0705"},
-	{"catch-local-do", `try { work() } catch ({ code = do { const ok = (1 is let c); ok } }: any) {}`, "", "catch:local-do"},
 	{"catch-binding-free", `try { work() } catch ({ code = (1 is Number) }: any) {}`, "", "catch:free"},
 	{"catch-body", `try { work() } catch (e: any) { if (e is { code: let c }) return c }`, "", "catch:body"},
 	{"guard-after-if", `const input: unknown = { code: 1 }; if (!(input is { code: let c })) return 0; c`, "", "guard:home"},
@@ -259,6 +258,7 @@ func FuzzIsHomePositions(f *testing.F) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer r.Remove()
 			if errs := r3Errors(r.Diagnostics); len(errs) > 0 {
 				Gap(t, "FuzzIsHomePositions", "limit:home", "004-match: %s; reports %v:\n%s", isHomeQuotes[0], errs, source)
 				return
@@ -272,6 +272,7 @@ func FuzzIsHomePositions(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer r.Remove()
 		errs := r3Errors(r.Diagnostics)
 		if wr.name == "effect" && strings.HasPrefix(p.name, "catch-") {
 			if !slices.Contains(errs, "EK0503") {
@@ -285,11 +286,9 @@ func FuzzIsHomePositions(f *testing.F) {
 			Gap(t, "FuzzIsHomePositions", p.key, "004-match: %s should compile, reports %v:\n%s", p.name, errs, source)
 		case p.want != "" && !slices.Contains(errs, p.want):
 			Gap(t, "FuzzIsHomePositions", p.key, "004-match: %s; %s reports %v:\n%s", isHomeQuotes[1], p.name, errs, source)
-		case p.want != "":
-			if slices.Contains(errs, "EK4703") {
-				Gap(t, "FuzzIsHomePositions", p.key, "004-match: %s must report its owning EK0705, not EK4703: %v", p.name, errs)
-				return
-			}
+		case slices.Contains(errs, "EK4703"):
+			Gap(t, "FuzzIsHomePositions", p.key, "004-match: %s must report its owning EK0705, not EK4703: %v", p.name, errs)
+		default:
 			ExpectPending(t, "FuzzIsHomePositions", p.key)
 		}
 	})

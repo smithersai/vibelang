@@ -2,8 +2,6 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
@@ -21,6 +19,7 @@ func FuzzTypedEffectInitializerTry(f *testing.F) {
 			f.Add(key, flags)
 		}
 	}
+	node := newMapperTryNode(f)
 	f.Fuzz(func(t *testing.T, key string, flags uint8) {
 		TestTypedEffectInitializerTryQuoted(t)
 		kind := "const"
@@ -44,7 +43,7 @@ func FuzzTypedEffectInitializerTry(f *testing.F) {
 			typ = "E.Effect<E.Effect<number>>"
 			prefix = ""
 		}
-		call := fmt.Sprintf("E.sync(()=>E.succeed(%d))", flags%31)
+		call := fmt.Sprintf("E.sync(()=>{ev('outer');return E.sync(()=>{ev('inner');return %d})})", flags%31)
 		if flags&8 != 0 {
 			call = "(" + call + ")"
 		}
@@ -52,24 +51,27 @@ func FuzzTypedEffectInitializerTry(f *testing.F) {
 		if flags&2 != 0 {
 			value = "(" + value + ")"
 		}
-		source := `import {Effect as E} from "effect";type Job=E.Effect<number>;export effect function main(){` + kind + ` program:` + typ + `=` + value + `;const value=try program;void value;return 0}`
+		source := `import {Effect as E} from "effect";import {ev} from "vip-events";type Job=E.Effect<number>;export effect function main(){` + kind + ` program:` + typ + `=` + value + `;ev("between");const value=try program;`
+		if cold {
+			source += `return try value}`
+		} else {
+			source += `return value}`
+		}
 		p := vibelangmapper.Project(source, vibelangmapper.FileContext{})
 		if len(p.Diagnostics) != 0 {
 			Gap(t, "FuzzTypedEffectInitializerTry", reportKey, "admitted initializer reports %v", p.Diagnostics)
-		}
-		runs := strings.Contains(p.Text, "$try(E.sync(") || strings.Contains(p.Text, "$run(E.sync(")
-		if runs == cold || strings.Count(p.Text, "E.sync(") != 1 {
-			Gap(t, "FuzzTypedEffectInitializerTry", reportKey, "written initializer execution and cold value construction must differ: %s", p.Text)
 		}
 		js, _, diagnostics := vibelangmapper.Emit(source, vibelangmapper.FileContext{})
 		if len(diagnostics) != 0 {
 			Gap(t, "FuzzTypedEffectInitializerTry", reportKey, "executable initializer reports %v", diagnostics)
 		}
-		cmd := exec.CommandContext(t.Context(), "node", "--input-type=module", "--check")
-		cmd.Stdin = strings.NewReader(js)
-		if output, err := cmd.CombinedOutput(); err != nil {
-			Gap(t, "FuzzTypedEffectInitializerTry", reportKey, "invalid emitted JS: %v\n%s\n%s", err, output, js)
+		steps := "ev('outer'); ev('between');"
+		if cold {
+			steps = "ev('between'); ev('outer');"
 		}
+		reference := fmt.Sprintf("export const main=()=>E.gen(function*(){%s return yield* E.sync(()=>{ev('inner');return %d});});", steps, flags%31)
+		checkMapperTryExecution(t, node, "FuzzTypedEffectInitializerTry", reportKey, js, reference)
 		ExpectPending(t, "FuzzTypedEffectInitializerTry", reportKey)
+		ExpectPending(t, "FuzzTypedEffectInitializerTry", specCorpusKey(t))
 	})
 }

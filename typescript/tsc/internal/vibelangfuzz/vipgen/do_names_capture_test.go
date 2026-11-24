@@ -28,6 +28,9 @@ func TestDoNamesCaptureCorpus(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+		if len(lines) != 2 {
+			t.Fatal("invalid corpus: expected a header and a payload")
+		}
 		input, err := strconv.Unquote(strings.TrimSuffix(strings.TrimPrefix(lines[1], "[]byte("), ")"))
 		if err != nil {
 			t.Fatal(err)
@@ -58,6 +61,9 @@ func TestPipeCaptureNamesCorpus(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+		if len(lines) != 2 {
+			t.Fatal("invalid corpus: expected a header and a payload")
+		}
 		input, err := strconv.Unquote(strings.TrimSuffix(strings.TrimPrefix(lines[1], "[]byte("), ")"))
 		if err != nil {
 			t.Fatal(err)
@@ -82,6 +88,9 @@ func TestRegionReturnNamesCorpus(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+		if len(lines) != 2 {
+			t.Fatal("invalid corpus: expected a header and a payload")
+		}
 		input, err := strconv.Unquote(strings.TrimSuffix(strings.TrimPrefix(lines[1], "[]byte("), ")"))
 		if err != nil {
 			t.Fatal(err)

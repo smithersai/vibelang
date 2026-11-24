@@ -2,7 +2,7 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"strings"
+	"slices"
 	"testing"
 )
 
@@ -55,17 +55,17 @@ func TestClassPatternDispatch(t *testing.T) {
 				}
 				defer r.Remove()
 				var codes []string
-				found := want == 0
 				for _, d := range r.Diagnostics {
-					if d.Code() >= 700 && d.Code() <= 707 && d.Code() != 703 || d.Code() == 107 {
-						codes = append(codes, fmt.Sprint(d.Code()))
-						if d.Code() == want {
-							found = true
-						}
+					if IsEK(d) && (d.Code() >= 700 && d.Code() <= 707 || d.Code() == 107) {
+						codes = append(codes, diagnosticKey(d))
 					}
 				}
-				if !found || (want == 0 && len(codes) > 0) {
-					t.Fatalf("%s: want EK%04d, got [%s]\n%s", name, want, strings.Join(codes, " "), source)
+				var expected []string
+				if want != 0 {
+					expected = []string{fmt.Sprintf("EK%04d", want)}
+				}
+				if !slices.Equal(codes, expected) {
+					t.Fatalf("%s: want %v, got %v\n%s", name, expected, codes, source)
 				}
 			})
 		}

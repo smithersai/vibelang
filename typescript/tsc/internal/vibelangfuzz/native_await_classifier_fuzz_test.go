@@ -142,7 +142,9 @@ func FuzzNativeAwaitClassifier(f *testing.F) {
 			Gap(t, nativeAwaitClassifierTarget, "emit:"+key, "want noEmitOnError skip%v, got%v", shouldSkip, r.EmitSkipped)
 			return
 		}
-		ExpectPending(t, nativeAwaitClassifierTarget, key)
+		for _, prefix := range []string{"classify:", "native:", "missing:", "emit:"} {
+			ExpectPending(t, nativeAwaitClassifierTarget, prefix+key)
+		}
 		ExpectPending(t, nativeAwaitClassifierTarget, specCorpusKey(t))
 	})
 }

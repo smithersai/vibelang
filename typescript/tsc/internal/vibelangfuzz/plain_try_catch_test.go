@@ -96,9 +96,15 @@ func FuzzPlainTryCatch(f *testing.F) {
 		key := fmt.Sprintf("%s:%s", homeName, form)
 		// A rethrow is a throw statement: outside effect and async code it is
 		// EK0401 whatever try statement holds it (chapter 3).
-		banned := homeName == "effect-function" && form != "catch-in-callback" || form == "catch-rethrow" && homeName != "async-function"
+		want := ""
+		switch {
+		case homeName == "effect-function" && form != "catch-in-callback":
+			want = "EK0503"
+		case form == "catch-rethrow" && homeName != "async-function":
+			want = "EK0401"
+		}
 		for _, native := range []bool{true, false} {
-			if native && banned {
+			if native && want != "" {
 				continue
 			}
 			source := plainTryCatchProgram(homeName, form)
@@ -116,15 +122,16 @@ func FuzzPlainTryCatch(f *testing.F) {
 				t.Fatal(err)
 			}
 			defer result.Remove()
-			ek := false
+			ek, found := false, false
 			for _, d := range result.Diagnostics {
 				if IsEK(d) {
 					ek = true
+					found = found || diagnosticKey(d) == want
 				}
 			}
 			ok := !ek && !HasError(result.Diagnostics)
-			if banned {
-				ok = ek
+			if want != "" {
+				ok = found
 			}
 			if ok {
 				continue
@@ -132,7 +139,7 @@ func FuzzPlainTryCatch(f *testing.F) {
 			if native {
 				t.Fatalf("invalid native try/catch control: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 			}
-			Gap(t, plainTryCatchTarget, key, "Chapter 1: a try/catch statement outside effect code is JavaScript's (banned=%t), got %v\n%s", banned, SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
+			Gap(t, plainTryCatchTarget, key, "Chapter 1: a try/catch statement outside effect code is JavaScript's (want %q), got %v\n%s", want, SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 		}
 		ExpectPending(t, plainTryCatchTarget, key)
 		ExpectPending(t, plainTryCatchTarget, specCorpusKey(t))

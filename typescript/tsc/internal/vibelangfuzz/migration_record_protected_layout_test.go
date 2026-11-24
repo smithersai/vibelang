@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -31,11 +30,12 @@ func checkRecordProtectedLayout(t *testing.T, key string, mode uint8) {
 	// A recorded batch runs jj init, two commits, emit and the scope proof:
 	// 6-11 s on a 4 vCPU box, past the 10 s per-stage default. Go kills a fuzz
 	// worker after 60 s, so the budget stays at workerHangLimit.
-	ctx, cancel := context.WithTimeout(t.Context(), max(HangLimit, workerHangLimit))
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_record_protected_layout.mjs"), key, strconv.Itoa(int(mode&15)))
 	cmd.Dir = Root()
 	output, err := runJSONOracle(t, cmd)
+	checkOracleContext(t, ctx)
 	if err != nil {
 		t.Fatalf("record layout fixture: %v; context=%v\n%s", err, ctx.Err(), output)
 	}

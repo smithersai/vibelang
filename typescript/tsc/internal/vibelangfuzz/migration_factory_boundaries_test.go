@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -26,7 +25,7 @@ func TestMigrationFactoryBoundariesQuoted(t *testing.T) {
 
 func migrationFactoryModel(t *testing.T, area, key string, mode uint8) (bool, string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	script := filepath.Join(repoTestdata(), "oracles", "migration_factory_boundaries.mjs")
 	encodedMode := mode & 1
@@ -38,6 +37,7 @@ func migrationFactoryModel(t *testing.T, area, key string, mode uint8) (bool, st
 	cmd := exec.CommandContext(ctx, "node", script, area, key, strconv.Itoa(int(encodedMode)))
 	cmd.Dir = Root()
 	output, err := runJSONOracle(t, cmd)
+	checkOracleContext(t, ctx)
 	if err != nil {
 		t.Fatalf("static migration model %s/%s/%d: %v; context=%v\n%s", area, key, encodedMode, err, ctx.Err(), output)
 	}

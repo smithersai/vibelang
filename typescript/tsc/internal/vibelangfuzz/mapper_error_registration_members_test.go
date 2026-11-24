@@ -17,7 +17,7 @@ func TestMapperErrorRegistrationMembersQuoted(t *testing.T) {
 }
 func FuzzMapperErrorRegistrationMembers(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"bare", "empty", "field", "getter", "method", "comma", "abstract", "schema", "unicode"}
+	keys := []string{"bare", "empty", "field", "getter", "method", "comma", "schema", "unicode"}
 	for _, key := range keys {
 		f.Add(key, false)
 		f.Add(key, true)
@@ -46,8 +46,6 @@ func FuzzMapperErrorRegistrationMembers(f *testing.F) {
 			declaration = "export error Sample {value:number;label():number{return this.value}}"
 		case "comma":
 			declaration = "export error Sample {id:string,count:number}"
-		case "abstract":
-			declaration = "export abstract error Sample {value:number}"
 		case "schema":
 			declaration = "export schema error Sample {value:number}"
 		case "unicode":

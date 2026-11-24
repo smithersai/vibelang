@@ -49,7 +49,7 @@ func reviewExecutionRules() []reviewExecutionRule {
 	}
 	for _, suffix := range []string{"all", "race", "any", "allSettled"} {
 		add("retired-await-"+suffix,
-			"export async function run():Promise<number[]> {return await Promise.all([Promise.resolve(1)])}",
+			"export effect function run(){ return try."+suffix+" [Effect.succeed(1)] }",
 			"export effect function run(){ return await."+suffix+" [Effect.succeed(1)] }",
 			"a retired `await.all`, `await.race`, `await.any` or `await.allSettled`", 1802)
 	}

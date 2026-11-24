@@ -109,7 +109,7 @@ func FuzzNamespaceServiceRuntimeTypes(f *testing.F) {
 			return errors
 		}
 		if errors := compile(p.native, "main.ts"); len(errors) != 0 {
-			Gap(t, "FuzzNamespaceServiceRuntimeTypes", "native:"+p.key, "chapter 5: %s; native counterpart fails: %v", namespaceServiceWholeQuote, errors)
+			t.Fatalf("invalid TypeScript counterpart: %v", errors)
 			return
 		}
 		if errors := compile(p.custom, "main.vibe"); len(errors) != 0 {

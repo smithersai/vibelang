@@ -76,7 +76,7 @@ func FuzzNamespaceSchemaErrorImports(f *testing.F) {
 			return errors
 		}
 		if errors := compile(native, "main.ts"); len(errors) != 0 {
-			Gap(t, namespaceSchemaErrorImportTarget, "native:"+key, "native counterpart fails: %v", errors)
+			t.Fatalf("invalid TypeScript counterpart: %v", errors)
 			return
 		}
 		if errors := compile(custom, "main.vibe"); len(errors) != 0 {

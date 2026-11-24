@@ -70,6 +70,11 @@ func FuzzSchemaLibraryTypeOnlyImport(f *testing.F) {
 		if alias {
 			vibe = prefix + "export schema Example=" + field
 		}
+		nativeType := field
+		if !alias {
+			nativeType = "{ readonly value: " + field + " }"
+		}
+		vibe += schemaBindingTypeChecks(nativeType, "typeof Example.Type")
 		for _, row := range []struct{ file, source string }{{"main.ts", native}, {"main.vibe", vibe}} {
 			result, err := w.Compile(t.Context(), Project{Files: map[string]string{row.file: row.source, "types.ts": module}})
 			if err != nil {

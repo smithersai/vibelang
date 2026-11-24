@@ -1,6 +1,7 @@
 package vipgen
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,16 +25,34 @@ func TestDoLoopHeadCorpus(t *testing.T) {
 							t.Fatal(err)
 						}
 						lines := strings.SplitN(strings.TrimSpace(string(data)), "\n", 2)
+						if len(lines) != 2 {
+							t.Fatal("invalid corpus: expected a header and a payload")
+						}
 						input, err := strconv.Unquote(strings.TrimSuffix(strings.TrimPrefix(lines[1], "[]byte("), ")"))
 						if err != nil {
 							t.Fatal(err)
+						}
+						_, choices, named := NamedInput([]byte(input))
+						wantChoices := []byte{0, 0, byte(kind), byte(declaration), byte(shape), byte(count), 1, 1}
+						if !named || !bytes.Equal(choices, wantChoices) {
+							t.Fatalf("corpus selectors got %v, want %v", choices, wantChoices)
 						}
 						p := Generate([]byte(input), nil)
 						if p == nil || p.Focus != "vip02.do-loop-head-plain" || !p.Plain {
 							t.Fatal("lost keyed plain probe")
 						}
 						source, reference := PrintVibe(p), PrintEffect(p)
-						head := "for (" + []string{"let ", "const ", "", ""}[declaration]
+						pattern := []string{"[x]", "x", "{ value: x }", "[[x]]", "[x, y]", "{ value: x = 4, other: y = 5 }"}[shape]
+						head := "for (" + []string{"let ", "const ", "", ""}[declaration] + pattern + []string{" of ", " in "}[kind] + "do {"
+						items := "([] as "
+						if kind == 1 {
+							items = map[int]string{0: "({})", 2: "({ a: 1, b: 2 })"}[count]
+						} else if count == 2 {
+							items = []string{"[[1], [2]]", "[1, 2]", "[{ value: 1 }, { value: 2 }]", "[[[1]], [[2]]]", "[[1, 3], [2, 4]]", "[{}, { value: 2, other: 3 }]"}[shape]
+						}
+						if !strings.Contains(source, "\n  "+items) {
+							t.Fatalf("wrong loop input, want %q:\n%s", items, source)
+						}
 						if !strings.Contains(source, head) {
 							t.Fatalf("lost declaration: %s", source)
 						}

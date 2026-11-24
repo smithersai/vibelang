@@ -53,7 +53,7 @@ func FuzzSchemaStandaloneLibraryAlias(f *testing.F) {
 			field, codec = field+" | null", "Schema.Union(["+codec+", Schema.Null])"
 		}
 		native := "import {Schema} from 'effect'; const Codec=" + codec + "; type Native=" + field + "; export function a(x:Native):typeof Codec.Type{return x} export function b(x:typeof Codec.Type):Native{return x}"
-		vibe := "export schema Example = " + field
+		vibe := "export schema Example = " + field + schemaBindingTypeChecks(field, "typeof Example.Type")
 		for _, row := range []struct{ file, source string }{{"main.ts", native}, {"main.vibe", vibe}} {
 			r, err := w.Compile(t.Context(), Project{Files: map[string]string{row.file: row.source}})
 			if err != nil {

@@ -79,6 +79,7 @@ func FuzzSchemaQualifiedScalarBinding(f *testing.F) {
 		}
 		native := "import {Schema} from 'effect'; " + expected + "; type Native = " + nativeType + "; " +
 			"export function a(value: Native): typeof Example.Type { return value } export function b(value: typeof Example.Type): Native { return value }"
+		vibe += schemaBindingTypeChecks(nativeType, "typeof Example.Type")
 		precise := fmt.Sprintf("binding:%s/%d/%d", name, shape, home)
 		for _, row := range []struct{ file, source string }{{"main.ts", native}, {"main.vibe", vibe}} {
 			r, err := w.Compile(t.Context(), Project{Files: map[string]string{row.file: row.source}})

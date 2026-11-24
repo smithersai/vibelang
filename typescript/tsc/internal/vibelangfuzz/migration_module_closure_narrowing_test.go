@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
@@ -36,7 +35,7 @@ func FuzzMigrationModuleClosureNarrowing(f *testing.F) {
 			}
 		}
 		t.Logf("module closure key=%s mode=%d", key, mode&15)
-		ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+		ctx, cancel := newOracleContext(t)
 		defer cancel()
 		command := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_module_closure_narrowing.mjs"), key, strconv.Itoa(int(mode&15)))
 		command.Dir = Root()

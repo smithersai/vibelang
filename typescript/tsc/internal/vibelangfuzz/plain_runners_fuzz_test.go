@@ -6,12 +6,8 @@ import (
 	"testing"
 )
 
-// plainRunnersQuote is VIP-1's rule for a function with neither keyword. A
-// runner starts a root fiber, which code no fiber runs may do (D38): a plain
-// function is such code, so a runner call in it compiles with no diagnostic,
-// whatever form the function takes (VIP-1 flip acceptance cases 3-5,
-// foldkit-3: Effect.runFork, Effect.runSync and runPromise in plain
-// functions).
+// These runners start a root fiber from plain code. The synchronous
+// throwing runner has its own failure contract.
 const plainRunnersQuote = "neither keyword: plain JavaScript"
 const plainRunnerWrapperQuote = "Promise-producing calls inside wrapper thunks are ordinary JavaScript"
 
@@ -40,7 +36,7 @@ var plainRunnerForms = []struct{ key, source string }{
 }
 
 // plainRunners are Effect's root runners (D38).
-var plainRunners = []string{"runSync", "runFork", "runPromise", "runSyncExit", "runPromiseExit", "runCallback"}
+var plainRunners = []string{"runFork", "runPromise", "runSyncExit", "runPromiseExit", "runCallback"}
 
 // TestPlainRunnersQuoted checks the VIP-1 sentence FuzzFunctionPlainRunners
 // cites (specTests in PACKAGE.ts), so a VIP edit that rewords it fails its

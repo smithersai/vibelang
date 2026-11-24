@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
@@ -20,11 +19,12 @@ var importMetaPolicyKeys = []string{"dirname", "filename", "env", "url", "dirnam
 
 func checkImportMetaPolicy(t *testing.T, binary, key string, mode uint8) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_import_meta_policy.mjs"), key, strconv.Itoa(int(mode&15)), binary)
 	cmd.Dir = Root()
 	output, err := runJSONOracle(t, cmd)
+	checkOracleContext(t, ctx)
 	if err != nil {
 		t.Fatalf("import.meta policy process: %v; context=%v\n%s", err, ctx.Err(), output)
 	}

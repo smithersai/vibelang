@@ -10,7 +10,7 @@ import (
 )
 
 const schemaLibraryTarget = "FuzzSchemaLibraryBinding"
-const schemaLibraryQuote = "The generic built-ins `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution, not by spelling."
+const schemaLibraryQuote = "The built-in names in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution."
 
 func TestSchemaLibraryBindingQuoted(t *testing.T) {
 	text := SpecText("006-data.md")
@@ -152,4 +152,13 @@ func FuzzSchemaLibraryBinding(f *testing.F) {
 		ExpectPending(t, schemaLibraryTarget, precise)
 		ExpectPending(t, schemaLibraryTarget, specCorpusKey(t))
 	})
+}
+
+// Check the inferred codec type against the ordinary TypeScript binding in
+// both directions. An explicit any would otherwise satisfy both assignments.
+func schemaBindingTypeChecks(native, mapped string) string {
+	return "\ntype NativeBinding = " + native + "; type MappedBinding = " + mapped + ";\n" +
+		"const checkMappedBinding: (0 extends (1 & MappedBinding) ? false : true) = true;\n" +
+		"export function fromBinding(value: NativeBinding): MappedBinding { return value }\n" +
+		"export function toBinding(value: MappedBinding): NativeBinding { return value }\n"
 }

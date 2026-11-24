@@ -73,6 +73,7 @@ func FuzzPackageExportDeclaration(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer os.RemoveAll(dir)
 		modules := filepath.Join(dir, "app", "node_modules")
 		if err := os.MkdirAll(modules, 0755); err != nil {
 			t.Fatal(err)

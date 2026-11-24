@@ -127,17 +127,12 @@ var bindingHomeHomes = []string{"function", "arrow", "method"}
 // bindingHomeOptions are the compiler option sets, each on top of strict.
 var bindingHomeOptions = []string{"strict", "noUncheckedIndexedAccess", "exactOptionalPropertyTypes", "both"}
 
-// bindingHomeLiterals are migrated sources kept byte for byte, with the
-// options their package sets.
+// bindingHomeLiterals includes a minimized generic Exit binding regression.
 var bindingHomeLiterals = map[string]struct{ source, options string }{
-	// smithers packages/smithers/agent/fs, SchemaBridge.vibe line 70 as
-	// drive-smithers minimized it (inbox migrate-smithers 2026-11-01, repro
-	// exit-success-binding/a.vibe). Its return annotation wrote `infer R`
-	// in the requirement slot, which is now EK4857 (chapter 001), so the
-	// literal writes `unknown` there and still probes the binding.
-	"smithers-exit-success-binding": {`export effect function recover<A>(program: Effect<A, unknown, unknown>, failure: () => Effect<string>): Effect<A, string, unknown> {
-  return match (try exit(program as Effect<A, unknown>)) {
-    when Exit.Success(let value): value;
+	"smithers-exit-success-binding": {`export effect function recover<A>(program: Effect.Effect<A, unknown>, failure: () => Effect.Effect<string>) {
+  const checked = (value: A): A => value
+  return match (try exit(program)) {
+    when Exit.Success(let value): checked(value);
     default: throw try failure();
   }
 }

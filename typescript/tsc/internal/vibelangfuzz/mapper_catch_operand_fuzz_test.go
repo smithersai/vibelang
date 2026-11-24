@@ -37,6 +37,10 @@ func FuzzMapperCatchOperandAdmission(f *testing.F) {
 			f.Fatal(err)
 		}
 	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		Missing(f, "node is required: %v", err)
+	}
 	f.Fuzz(func(t *testing.T, key string, flags uint8) {
 		TestMapperCatchOperandsQuoted(t)
 		operand := "held"
@@ -76,9 +80,12 @@ func FuzzMapperCatchOperandAdmission(f *testing.F) {
 		if len(diags) != 0 {
 			Gap(t, "FuzzMapperCatchOperandAdmission", key, "valid catch does not emit: %v", diags)
 		}
-		cmd := exec.CommandContext(t.Context(), "node", "--input-type=module", "--check")
+		cmd := exec.CommandContext(t.Context(), node, "--input-type=module", "--check")
 		cmd.Stdin = strings.NewReader(js)
 		if out, err := cmd.CombinedOutput(); err != nil {
+			if t.Context().Err() != nil {
+				t.Fatal(t.Context().Err())
+			}
 			Gap(t, "FuzzMapperCatchOperandAdmission", key, "emitted JavaScript does not parse: %v\n%s\n%s", err, out, js)
 		}
 	})

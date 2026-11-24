@@ -46,9 +46,9 @@ func FuzzTryCommaEffects(f *testing.F) {
 		{"exit", "Effect.succeed(1), Exit.succeed(2)", 0},
 		{"body-type", "Effect.succeed(1), effect { const bad: number = \"wrong\"; return bad }", 2322},
 		{"left-error", "missing(), held", 2304},
-		{"legacy-arrow", "() => 2", 4616},
-		{"legacy-function", "function () { return 2 }", 4616},
-		{"legacy-async", "async () => 2", 4616},
+		{"legacy-arrow", "() => 2", 502},
+		{"legacy-function", "function () { return 2 }", 502},
+		{"legacy-async", "async () => 2", 502},
 	}
 	for _, r := range rows {
 		for depth := 1; depth <= 4; depth++ {
@@ -86,21 +86,29 @@ func FuzzTryCommaEffects(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer result.Remove()
-		var codes []int32
+		var codes []string
 		for _, d := range result.Diagnostics {
 			if d.Category() == diagnostics.CategoryError {
-				codes = append(codes, d.Code())
+				codes = append(codes, diagnosticKey(d))
 			}
 		}
-		var want []int32
+		var want []string
 		if r.code != 0 {
-			want = []int32{r.code}
+			source := "TS"
+			if r.code == 502 {
+				source = "EK"
+			}
+			want = []string{fmt.Sprintf("%s%04d", source, r.code)}
 		}
 		slices.Sort(codes)
+		if r.code == 502 && slices.Equal(codes, []string{"EK4616"}) {
+			Gap(t, "FuzzTryCommaEffects", "retire-EK4616:"+r.key, "chapter 2 requires EK0502 for a non-Effect operand; got %v\n%s", codes, source)
+		}
 		if !slices.Equal(codes, want) {
 			Gap(t, commaTryTarget, r.key, "%s; want %v got %v\n%s", commaTryQuotes[0], want, Keys(result.Dir, result.Diagnostics), source)
 		}
-		ExpectPending(t, commaTryTarget, r.key)
+		ExpectPending(t, "FuzzTryCommaEffects", "retire-EK4616:"+r.key)
+		ExpectPending(t, "FuzzTryCommaEffects", r.key)
 		ExpectPending(t, commaTryTarget, specCorpusKey(t))
 	})
 }

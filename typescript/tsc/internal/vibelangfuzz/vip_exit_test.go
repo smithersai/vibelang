@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -36,8 +37,7 @@ func (e *vipEnv) runVIPModule(t *testing.T, name, body string) VIPOutcome {
 }
 
 // allExits settles one Effect of each kind concurrently, so the
-// interruption's fiber id is a child's, which differs from run to run
-// (fz-run's vip18.all-settled-array).
+// interruption's fiber id is a child's, which differs from run to run.
 const allExits = `export const main = () => Effect.all([Effect.succeed(1), Effect.fail(2), Effect.die(3), Effect.interrupt].map(Effect.exit), { concurrency: "unbounded" })`
 
 const allExitsEncoded = `{"_tag":"Success","value":{"$array":[` +
@@ -73,9 +73,8 @@ func TestVIPExitEncoding(t *testing.T) {
 		// The worker's driver forks main, so the interruptor is a fiber,
 		// renamed to the first one the Exit names.
 		"interrupt": {`export const main = () => Effect.interrupt`, "exit", `{"_tag":"Failure","reasons":[{"_tag":"Interrupt","fiberId":{"$fiber":0}}]}`},
-		// ensuring(fail(A), die(D)) ends with two reasons, in order. Effect
-		// 4.1.1 reports both as Die, as the host probes of opus.md and sol.md
-		// §4 found; the encoding keeps what the runtime gives.
+		// Effect 4.1.1 reports both reasons as Die, in the order the
+		// original Effect and its finalizer failed.
 		"ensuring": {`export const main = () => Effect.fail("A").pipe(Effect.ensuring(Effect.die("D")))`, "exit",
 			`{"_tag":"Failure","reasons":[{"_tag":"Die","defect":"A"},{"_tag":"Die","defect":"D"}]}`},
 		// The driver advances virtual time, so a sleep ends without waiting.
@@ -260,5 +259,28 @@ func TestVIPReferenceDeterminism(t *testing.T) {
 func TestPinnedEffectVersion(t *testing.T) {
 	if !regexp.MustCompile(`^\d+\.\d+\.\d+`).MatchString(PinnedEffectVersion()) {
 		t.Fatalf("cannot read PINNED_EFFECT_VERSION from packages/runtime/src/version.ts: got %q", PinnedEffectVersion())
+	}
+}
+
+// A pending call-time mismatch in a prerequisite cannot excuse the same
+// mismatch in a separate probe. Compile errors may originate in either one.
+func TestVIPOraclePendingOwnership(t *testing.T) {
+	const focus, prerequisite = "vip07.error-match", "vip13.error-plain"
+	used := []string{prerequisite, focus}
+	if got := vipOracleConstructs("exit:called", focus, used); !slices.Equal(got, []string{focus}) {
+		t.Fatalf("call-time gap candidates %v, want only %s", got, focus)
+	}
+	if got := vipOracleConstructs("compile:EK0704", focus, used); !slices.Equal(got, []string{focus, prerequisite}) {
+		t.Fatalf("compile gap candidates %v, want focus and prerequisite", got)
+	}
+}
+
+func TestVIPPassingProbeRejectsPendingExit(t *testing.T) {
+	const focus = "vip13.error-plain"
+	entry := PendingEntry{Target: vipTarget, Key: "exit:called/" + focus, Owner: "compiler", Reason: "test fixture"}
+	passed := &fatalRecorder{}
+	checkVIPProbePending(passed, []PendingEntry{entry}, focus, nil)
+	if !strings.HasPrefix(passed.fatal, "XPASS "+vipTarget+" "+entry.Key) {
+		t.Fatalf("a passing probe left a pending Exit unchecked: %q", passed.fatal)
 	}
 }

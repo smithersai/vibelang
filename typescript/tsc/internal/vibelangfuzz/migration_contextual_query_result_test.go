@@ -121,7 +121,7 @@ func checkContextualQueryResult(t *testing.T, w *Workspace, key string, mode uin
 func TestMigrationContextualQueryResultStockTwin(t *testing.T) {
 	w := NewWorkspace(t)
 	tsc := StockTypeScript(t)
-	dir := emitDeclarationIdentityStock(t, w, tsc, Project{Files: contextualQueryFiles(t, "shorthand", 0, false), Config: DefaultConfig})
+	dir := emitRequiredStockDeclaration(t, w, tsc, Project{Files: contextualQueryFiles(t, "shorthand", 0, false), Config: DefaultConfig})
 	defer os.RemoveAll(dir)
 }
 func FuzzMigrationContextualQueryResult(f *testing.F) {
@@ -145,4 +145,17 @@ func TestMigrationContextualQueryResultNeighborhood(t *testing.T) {
 			t.Run(key+"/"+strconv.Itoa(mode), func(t *testing.T) { checkContextualQueryResult(t, w, key, uint8(mode)) })
 		}
 	}
+}
+
+// A known-good baseline skipped by the stock compiler invalidates its oracle.
+func emitRequiredStockDeclaration(t *testing.T, w *Workspace, tsc string, project Project) string {
+	t.Helper()
+	var dir string
+	t.Run("stock", func(t *testing.T) {
+		dir = emitDeclarationIdentityStock(t, w, tsc, project)
+	})
+	if dir == "" {
+		t.Fatal("stock TypeScript rejected the known-good baseline")
+	}
+	return dir
 }

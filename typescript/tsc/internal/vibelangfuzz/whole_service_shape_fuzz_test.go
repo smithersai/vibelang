@@ -84,9 +84,6 @@ func FuzzWholeServiceShapeDeclaration(f *testing.F) {
 			head = "type Shape={readonly value:number}|{readonly text:string}"
 		case "alchemy-database-whole-shape":
 		default:
-			if key == "" {
-				return
-			}
 			return
 		}
 		variant %= 4
@@ -111,7 +108,10 @@ func FuzzWholeServiceShapeDeclaration(f *testing.F) {
 			vibe = string(data)
 			native = "import {Context} from \"effect\"\ninterface Shape {readonly value:number}\nexport class Port extends Context.Service<Port,Shape>()(\"BetterAuth.Database\") {}\n"
 		}
-		label := fmt.Sprintf("%s/%d", key, variant)
+		label := key
+		if key != "alchemy-database-whole-shape" {
+			label = fmt.Sprintf("%s/%d", key, variant)
+		}
 		outputs := [2]string{}
 		for i, source := range []string{native, vibe} {
 			file := "main.ts"

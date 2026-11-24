@@ -206,18 +206,22 @@ func FuzzSchemaErrorEffectKeyChannels(f *testing.F) {
 func TestSchemaErrorEffectKeysBoundaries(t *testing.T) {
 	schemaErrorEffectKeysQuoted(t)
 	w := NewWorkspace(t)
-	for name, source := range map[string]string{
-		"plain-function":    "effect function outer() { function inner() { schema error E { value: { readonly [try Effect.succeed(\"key\")]: string } } } }",
-		"erased-error-type": "effect function outer() { error E { value: { readonly [try Effect.succeed(\"key\")]: string } } }",
+	for _, row := range []struct {
+		name, source string
+		want         []string
+	}{
+		{"plain-function", "effect function outer() { function inner() { schema error E { value: { readonly [try Effect.succeed(\"key\")]: string } } } }", []string{"EK0501"}},
+		// The erased type also gets TypeScript's computed-property check.
+		{"erased-error-type", "effect function outer() { error E { value: { readonly [try Effect.succeed(\"key\")]: string } } }", []string{"TS1170", "EK0501"}},
 	} {
-		t.Run(name, func(t *testing.T) {
-			r, err := w.Compile(t.Context(), Single(source))
+		t.Run(row.name, func(t *testing.T) {
+			r, err := w.Compile(t.Context(), Single(row.source))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer r.Remove()
-			if !slices.Contains(r4Errors(r.Diagnostics), "EK0501") {
-				t.Fatalf("%s: expected EK0501 outside runtime Effect code, got %v", name, r4Errors(r.Diagnostics))
+			if got := r4Errors(r.Diagnostics); !slices.Equal(got, row.want) {
+				t.Fatalf("got %v, want %v", got, row.want)
 			}
 		})
 	}

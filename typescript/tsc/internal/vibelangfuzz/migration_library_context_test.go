@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
@@ -29,11 +28,12 @@ func checkMigrationLibraryContext(t *testing.T, target, key string, mode uint8, 
 			key = keys[int(key[0])%len(keys)]
 		}
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", filepath.Join(repoTestdata(), "oracles", "migration_library_context.mjs"), key, strconv.Itoa(int(mode&31)))
 	cmd.Dir = Root()
 	output, err := runJSONOracle(t, cmd)
+	checkOracleContext(t, ctx)
 	if err != nil {
 		t.Fatalf("library-context oracle: %v; context=%v\n%s", err, ctx.Err(), output)
 	}

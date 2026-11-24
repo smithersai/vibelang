@@ -88,7 +88,7 @@ func FuzzSchemaDecodedKeyFlags(f *testing.F) {
 				got++
 			}
 		}
-		if got != want {
+		if got != want || want == 0 && HasError(result.Diagnostics) {
 			Gap(t, "FuzzSchemaDecodedKeyFlags", "decoded-key:"+key, "%s: got %d EK2109, want %d:\n%s\n%v", fmt.Sprint(mode), got, want, source, result.Diagnostics)
 		}
 	})

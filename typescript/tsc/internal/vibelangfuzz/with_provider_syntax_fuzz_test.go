@@ -58,8 +58,7 @@ func FuzzRetiredWithProviderSyntax(f *testing.F) {
 		config := fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"types":[],"jsx":"preserve"},"files":["main.%s"]}`, ext)
 		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main." + ext: source, "package.json": servicesPackage}, Config: config})
 		if err != nil {
-			Gap(t, "FuzzRetiredWithProviderSyntax", item.key, "compile: %v", err)
-			return
+			t.Fatal(err)
 		}
 		defer r.Remove()
 		native := false

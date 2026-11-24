@@ -8,11 +8,28 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 )
+
+// External scripts can run multiple compilers and record an entire migration.
+func newOracleContext(t *testing.T) (context.Context, context.CancelFunc) {
+	limit := max(HangLimit, workerHangLimit)
+	if slices.Contains(os.Args[1:], "-test.fuzzworker") || slices.Contains(os.Args[1:], "-test.fuzzworker=true") {
+		limit = workerHangLimit
+	}
+	return context.WithTimeout(t.Context(), limit)
+}
+
+func checkOracleContext(t *testing.T, ctx context.Context) {
+	t.Helper()
+	if err := ctx.Err(); err != nil {
+		Missing(t, "external oracle infrastructure: %v", err)
+	}
+}
 
 // runJSONOracle owns the script's scratch tree, including when a timeout
 // prevents the script from reaching its own cleanup.

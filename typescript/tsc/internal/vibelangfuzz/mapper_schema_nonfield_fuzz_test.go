@@ -43,7 +43,7 @@ func FuzzMapperSchemaNonfields(f *testing.F) {
 		parameterText, resultType := parameter.text, result.text
 		source := fmt.Sprintf("schema Event { run(%s): %s; parts: Partial<{ a: string }> }", parameterText, resultType)
 		p := vibelangmapper.Project(source, vibelangmapper.FileContext{})
-		if len(p.Diagnostics) != 2 {
+		if len(p.Diagnostics) != 2 || p.Diagnostics[0].Code != 1505 || p.Diagnostics[1].Code != 2109 {
 			Gap(t, "FuzzMapperSchemaNonfields", key, "lost recovery diagnostics: %v\n%s", p.Diagnostics, p.Text)
 		}
 		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePathFromAbsolute("/schema.ts")}, p.Text, core.ScriptKindTS)

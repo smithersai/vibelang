@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -54,11 +53,12 @@ func moduleSidecarStockCheck(t *testing.T, stock, dir string) (string, error) {
 	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(config), 0600); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
+	ctx, cancel := newOracleContext(t)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, stock, "-p", "tsconfig.json", "--pretty", "false")
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
+	checkOracleContext(t, ctx)
 	if ctx.Err() != nil {
 		t.Fatalf("stock consumer timed out: %v", ctx.Err())
 	}

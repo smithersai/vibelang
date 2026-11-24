@@ -46,7 +46,7 @@ func FuzzMapperWrittenEffectDeclarations(f *testing.F) {
 		case 1:
 			prefix, result = "type Result = number!!;\n", ": Result"
 		case 2:
-			prefix, result = "import type { Result } from './host.js';\n", ": Result"
+			prefix, result = "import type { Effect as Result } from 'effect/Effect';\n", ": Result<number>"
 		}
 		source := ""
 		switch kind {
@@ -70,6 +70,9 @@ func FuzzMapperWrittenEffectDeclarations(f *testing.F) {
 		}
 		source = neighbors[hash%uint64(len(neighbors))] + source
 		projected := vibelangmapper.Project(source, vibelangmapper.FileContext{})
+		if len(projected.Diagnostics) != 0 {
+			Gap(t, "FuzzMapperWrittenEffectDeclarations", "written:"+key, "valid written declaration reports %+v", projected.Diagnostics)
+		}
 		if got := strings.Count(projected.Text, "function*"); got != 1 {
 			Gap(t, "FuzzMapperWrittenEffectDeclarations", "written:"+key,
 				"VIP-1: %s; want one generator, got %d:\n%s\n%s", mapperWrittenDeclarationQuote, got, source, projected.Text)
