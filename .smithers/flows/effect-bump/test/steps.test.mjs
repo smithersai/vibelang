@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "nod
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { failures, paths, report, start } from "../lib/steps.mjs"
+import { failures, paths, pin, report, start } from "../lib/steps.mjs"
 
 test("failures names failing Go subtests and bun tests", () => {
   const go = "=== RUN   TestEffectRootNamesMatchEffect\n    effectroot_test.go:40: Crypto: in effect, not in the table\n--- FAIL: TestEffectRootNamesMatchEffect (0.40s)\nFAIL\n"
@@ -21,8 +21,8 @@ test("failures names failing Go subtests and bun tests", () => {
 test("a run refuses another version, and report lists each failing build and probe", (t) => {
   const run = mkdtempSync(join(tmpdir(), "effect-bump-"))
   t.after(() => rmSync(run, { recursive: true, force: true }))
-  start(run, { repo: "/repo", version: "4.0.6" })
-  assert.throws(() => start(run, { repo: "/repo", version: "4.2.0" }), /a run of effect 4\.0\.6/)
+  start(run, { repo: run, version: "4.0.6", from: "4.1.0" })
+  assert.throws(() => start(run, { repo: run, version: "4.2.0" }), /a run of effect 4\.0\.6/)
   writeFileSync(paths(run).literals, JSON.stringify({
     ok: true, from: "4.1.0", changed: ["docs/a.md"],
     kept: [{ file: "packages/runtime/bun.lock", glob: "**/bun.lock" }, { file: ".smithers/flows/migrate/test/x.test.mjs", glob: ".smithers/flows/migrate/test/**" },
@@ -53,4 +53,22 @@ test("a run refuses another version, and report lists each failing build and pro
   // A pin guard waits for a person; a lockfile moves in install, and a fixture keeps its version.
   assert.match(md, /## Pin guards to move by hand[\s\S]*- `scripts\/effect-pin\.test\.mjs`/)
   assert.doesNotMatch(md, /bun\.lock|flows\/migrate/)
+})
+
+test("retrying the pin write retains the original Effect version", (t) => {
+  const repo = mkdtempSync(join(tmpdir(), "effect-bump-pin-"))
+  t.after(() => rmSync(repo, { recursive: true, force: true }))
+  mkdirSync(join(repo, "packages/runtime"), { recursive: true })
+  mkdirSync(join(repo, "scripts"))
+  const manifest = "packages/runtime/package.json"
+  writeFileSync(join(repo, manifest), '{"peerDependencies":{"effect":"4.1.0"}}')
+  writeFileSync(join(repo, "scripts/effect-pin.mjs"), `
+    import { writeFileSync } from "node:fs"
+    writeFileSync(${JSON.stringify(manifest)}, '{"peerDependencies":{"effect":"4.1.1"}}')
+  `)
+  const run = join(repo, "run")
+  start(run, { repo, version: "4.1.1" })
+  assert.equal(pin(run).from, "4.1.0")
+  rmSync(paths(run).pin)
+  assert.equal(pin(run).from, "4.1.0")
 })

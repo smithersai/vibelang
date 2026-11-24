@@ -4,16 +4,14 @@ A Vue single-file component renders a todo board that a VibeLang program
 builds. `src/todos.vibe` declares a `Todo` schema, a `TodoNotFound` error,
 and a `Todos` service. The `TodosLive` layer keeps the list in a `Map` that its
 setup creates once, when the layer builds. `completeTodo` recovers
-`TodoNotFound` with `try`/`catch`, and `loadBoard` declares the contract
+`TodoNotFound` with a `catch` expression, and `loadBoard` declares the contract
 `Board!!Todos`, so the compiler rejects an error that escapes it.
 `src/App.vue` runs `loadBoard()` with a `ManagedRuntime` built from
 `TodosLive` and renders `Loading…` until the program completes.
 
 ## Run the app
 
-Run `sh scripts/setup.sh` from the repository root first. It builds the
-compiler and packs the runtime tarball that `package.json` installs. Then,
-from this directory:
+From this directory, install the published packages and start Vite.
 
 ```sh
 bun install

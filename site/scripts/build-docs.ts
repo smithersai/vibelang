@@ -3,11 +3,13 @@ import { resolve } from "node:path"
 import { resolveSiteRelease } from "../../docs/tools/published-site.mjs"
 import { kernelFacts } from "../../docs/tools/kernel-facts"
 import { buildMarkdown } from "../../docs/tools/markdown"
+import { addProposalMarkdown } from "./proposal-markdown.mjs"
 const site = resolve(import.meta.dir, "..")
 const releaseFile = resolve(site, "../.cache/site-release.json")
 const factsFile = resolve(site, "../.cache/site-facts.json")
 if (process.argv[2] === "--markdown") {
   buildMarkdown(resolve(site, "dist/public"), JSON.parse(readFileSync(factsFile, "utf8")), JSON.parse(readFileSync(releaseFile, "utf8")))
+  addProposalMarkdown(resolve(site, "dist/public"), resolve(site, "../docs"), resolve(site, "src/pages/proposals.mdx"))
   // Vocs has rendered the selected npm release. Restore the committed candidate
   // sources so a build cannot change subsequent source checks or edits.
   const env = { ...process.env }

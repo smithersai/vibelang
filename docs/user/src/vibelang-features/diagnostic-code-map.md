@@ -49,19 +49,19 @@ Current compatibility splits keep the old check's behavior while freeing the can
 
 The temporary `EK92xx` codes preserve older checks whose numbers Appendix B reassigns to different rules. They are not new language rules. Interim `EK92xx` codes cannot be configured in `vibe.severities`: an entry is `EK3006`. An infallible `catch` expression stays valid when its interim `EK9204` report retires; the separate imported lint is `EK3818`. Their owning VIP implementations retire them. Other older codes keep their existing numbers until their VIP implementation removes or replaces the check.
 
-## Appendix B reference
+## Selected diagnostics
 
-Registration reserves a code; it does not mean the compiler already implements every rule. The chapters describe the intended language; [Known limitations](../setup/known-limitations.md) lists the behavior the compiler does not implement yet.
+Search [Appendix B of the specification](../../../design/src/900-appendices.md#appendix-b-diagnostics) for the full reference, including transitional diagnostics. The following table summarizes selected codes. The chapters describe the intended language; [Known limitations](../setup/known-limitations.md) lists the behavior the compiler does not implement yet.
 
 | Code | Rule |
 | --- | --- |
 | `EK0101` | `effect f() { }` or `async f() { }` outside a class or object literal |
 | `EK0102` | `await`, `for await` or `await using` in effect code |
-| `EK0103` | `await` on an Effect in an `async` function |
+| `EK0103` | `await` on an Effect in an `async` function or at the module top level |
 | `EK0104` | `effect` on a getter, setter or constructor |
 | `EK0105` | `effect` and `async` on one function |
 | `EK0106` | an `effect` function whose written return type is not an Effect |
-| `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file |
+| `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` outside a statically named member access; a function’s `.constructor`; a `data:` or `blob:` import |
 | `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member |
 | `EK0109` | a typed or generic bare `effect` arrow head; parenthesize its parameters |
 | `EK0201` | a `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error; replaces `EK0107` for the same `var`, and reports alongside `EK0203` when both apply |
@@ -99,7 +99,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK1701` | `fork` or `join` outside effect code |
 | `EK1702` | `fork` or `join` used as a binding, label, or `effect` expression name inside effect code or its parameters |
 | `EK1703` | a `fork` operand that is not an Effect |
-| `EK1801` | a `try.all` operand that is not an array of Effects |
+| `EK1801` | a `try.all`, `try.race`, `try.any` or `try.allSettled` operand that is not an array of Effects |
 | `EK1803` | a name after `try.` other than `all`, `race`, `any` or `allSettled` |
 | `EK1901` | a `for concurrent` operand that is not an `Iterable` |
 | `EK1902` | `for concurrent` outside effect code |

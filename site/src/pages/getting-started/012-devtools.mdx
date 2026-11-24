@@ -176,7 +176,7 @@ The table below maps all 108 rules and features of `@effect/language-service` 0.
 | Correctness | `genericEffectServices` | Covered: EK3005 | `service Repo<T> { … }` |
 | Correctness | `missingEffectContext` | Covered: `EK9202` (interim) at a contract, `EK9211` at a runner | `effect function f(): User!NotFound { return try (try Users).find(id) }` is `EK9202` |
 | Correctness | `missingEffectError` | Covered: `EK9201` (interim) | `effect function f(): User!! { return try (try Users).find(id) }` |
-| Correctness | `missingLayerContext` | Covered: `EK9202` (interim) and `EK3201` | `provide UsersLive { … }` without the database layer is `EK3201` at the runner |
+| Correctness | `missingLayerContext` | Covered: `EK9202` (interim) and `EK9211` | `provide UsersLive { … }` without the database layer is `EK9211` at the runner |
 | Correctness | `missingReturnYieldStar` | Not needed in `.vibe`: `throw` ends the function | `throw new NotFound({ id })` |
 | Correctness | `missingStarInYieldEffectGen` | Use `try` in an effect function | `const user = try (try Users).find(id)` |
 | Correctness | `nonObjectEffectServiceType` | Effect 3 only, and a `service` declares members | `service Port { value: number }` |

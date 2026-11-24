@@ -3,15 +3,13 @@
 A React component renders greetings that a VibeLang program computes.
 `src/users.vibe` declares a `User` schema, a `UserNotFound` error, and a
 `Users` service with the `UsersLive` layer. `greet` looks up a user and
-recovers `UserNotFound` with `try`/`catch`, so its contract is `string!!Users`:
+recovers `UserNotFound` with a `catch` expression, so its contract is `string!!Users`:
 it cannot fail. `src/Greeting.tsx` runs `greet(id)` with a `ManagedRuntime`
 built from `UsersLive` and renders `Loading…` until the program completes.
 
 ## Run the app
 
-Run `sh scripts/setup.sh` from the repository root first. It builds the
-compiler and packs the runtime tarball that `package.json` installs. Then,
-from this directory:
+From this directory, install the published packages and start Vite.
 
 ```sh
 bun install

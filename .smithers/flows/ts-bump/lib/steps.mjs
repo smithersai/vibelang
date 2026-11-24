@@ -2,7 +2,7 @@
 // repository the run names, and writes <run>/<step>.json; a step whose result
 // exists returns it, so a stopped run resumes where it stopped.
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
 export const STEPS = ["fetch", "merge", "regenerate", "build", "probe", "report"]
@@ -28,7 +28,8 @@ export const paths = (run) => Object.fromEntries([["options", path.join(run, "op
 const read = (file) => JSON.parse(readFileSync(file, "utf8"))
 const save = (file, value) => {
   mkdirSync(path.dirname(file), { recursive: true })
-  writeFileSync(file, JSON.stringify(value, null, 2) + "\n")
+  writeFileSync(file + ".tmp", JSON.stringify(value, null, 2) + "\n")
+  renameSync(file + ".tmp", file)
   return value
 }
 
@@ -59,9 +60,9 @@ export function pinned(repo) {
 // and, for npm, the version whose gitHead it is.
 export function resolve(to) {
   if (/^[0-9a-f]{40}$/.test(to)) return { sha: to, version: null }
-  const r = sh(`npm view typescript@${to} gitHead version --json`, process.cwd())
-  if (r.code) throw new Error(`npm view typescript@${to}: ${tail(r.output, 5)}`)
-  const info = JSON.parse(r.output)
+  const r = spawnSync("npm", ["view", `typescript@${to}`, "gitHead", "version", "--json"], { encoding: "utf8" })
+  if (r.status !== 0) throw new Error(`npm view typescript@${to}: ${tail(r.stderr ?? "", 5)}`)
+  const info = JSON.parse(r.stdout)
   const one = Array.isArray(info) ? info.at(-1) : info
   if (!/^[0-9a-f]{40}$/.test(one?.gitHead ?? "")) throw new Error(`typescript@${to} names no gitHead`)
   return { sha: one.gitHead, version: one.version }
@@ -69,24 +70,31 @@ export function resolve(to) {
 
 // download unpacks microsoft/TypeScript at sha into dir, without EXCLUDED.
 // <dir>.complete, beside the tree, marks a finished download.
-function download(sha, dir) {
-  if (existsSync(`${dir}.complete`)) return
+export function download(sha, dir) {
+  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error("download requires a full upstream commit ID")
+  const complete = `${dir}.complete`
+  const module = path.join(dir, "tsc/go.mod")
+  const valid = () => existsSync(module) && lstatSync(module).isFile() && lstatSync(module).size > 0
+  if (existsSync(complete) && valid() && readFileSync(complete, "utf8").trim() === sha) return
+  rmSync(complete, { force: true })
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
   const excludes = EXCLUDED.map((e) => `--exclude='*/${e}'`).join(" ")
-  const r = sh(`curl -fsSL https://codeload.github.com/microsoft/TypeScript/tar.gz/${sha} | tar -xz --strip-components=1 ${excludes}`, dir)
+  const r = sh(`set -o pipefail; curl -fsSL https://codeload.github.com/microsoft/TypeScript/tar.gz/${sha} | tar -xz --strip-components=1 ${excludes}`, dir)
   if (r.code) throw new Error(`download ${sha}: ${tail(r.output, 5)}`)
-  writeFileSync(`${dir}.complete`, sha + "\n")
+  if (!valid()) throw new Error(`download ${sha}: missing or empty tsc/go.mod`)
+  writeFileSync(complete, sha + "\n")
 }
 
 // commitInfo reads a commit's title and date from GitHub, for the pin's row.
 function commitInfo(sha) {
   const r = sh(`curl -fsSL --max-time 20 https://api.github.com/repos/microsoft/TypeScript/commits/${sha}`, process.cwd())
+  if (r.code) throw new Error(`commit metadata ${sha}: ${tail(r.output, 5)}`)
   try {
     const c = JSON.parse(r.output).commit
     return { title: c.message.split("\n")[0], date: c.committer.date.slice(0, 10) }
   } catch {
-    return { title: "unknown", date: "unknown" }
+    throw new Error(`commit metadata ${sha}: malformed response`)
   }
 }
 
@@ -96,8 +104,8 @@ export const fetch = (run) => once(run, "fetch", ({ repo, to }) => {
   const target = resolve(to)
   for (const sha of [from, target.sha]) download(sha, path.join(run, "upstream", sha))
   const same = from === target.sha
-  const { title, date } = commitInfo(target.sha)
-  return { ok: true, from, to: target.sha, version: target.version, title, date, same, summary: same ? `already at ${from.slice(0, 12)}` : `${from.slice(0, 12)} -> ${target.sha.slice(0, 12)}` }
+  const metadata = same ? {} : commitInfo(target.sha)
+  return { ok: true, from, to: target.sha, version: target.version, ...metadata, same, summary: same ? `already at ${from.slice(0, 12)}` : `${from.slice(0, 12)} -> ${target.sha.slice(0, 12)}` }
 })
 
 // files lists a tree's files, relative, without EXCLUDED and IGNORED.
@@ -108,7 +116,7 @@ export function files(root) {
       const p = rel ? `${rel}/${e.name}` : e.name
       if (e.isDirectory()) {
         if (!IGNORED.has(e.name) && !EXCLUDED.includes(p) && e.name !== ".jj" && e.name !== ".git") walk(p)
-      } else if (e.isFile()) out.add(p)
+      } else if (e.isFile() || e.isSymbolicLink()) out.add(p)
     }
   }
   walk("")
@@ -116,7 +124,9 @@ export function files(root) {
 }
 
 const same = (a, b) => {
-  if (statSync(a).size !== statSync(b).size) return false
+  const left = lstatSync(a), right = lstatSync(b)
+  if (left.isSymbolicLink() && right.isSymbolicLink()) return readlinkSync(a) === readlinkSync(b)
+  if (!left.isFile() || !right.isFile() || left.mode !== right.mode || left.size !== right.size) return false
   return readFileSync(a).equals(readFileSync(b))
 }
 
@@ -127,6 +137,7 @@ export function classify(base, ours, theirs) {
   const c = { theirsOnly: [], theirsAdded: [], theirsDeleted: [], both: [], deleteModify: [], bothAdded: [], oursOnly: 0, unchanged: 0, oursAdded: 0 }
   for (const p of [...new Set([...B, ...O, ...T])].sort()) {
     const [b, o, t] = [base, ours, theirs].map((r) => path.join(r, p))
+    if (!O.has(p) && !T.has(p)) continue
     if (!B.has(p)) {
       if (O.has(p) && T.has(p)) { if (!same(o, t)) c.bothAdded.push(p) }
       else if (O.has(p)) c.oursAdded++
@@ -139,6 +150,7 @@ export function classify(base, ours, theirs) {
     else if (!tChanged) c.oursOnly++
     else if (!oChanged) (T.has(p) ? c.theirsOnly : c.theirsDeleted).push(p)
     else if (!O.has(p) || !T.has(p)) c.deleteModify.push(p)
+    else if (same(o, t)) c.unchanged++
     else c.both.push(p)
   }
   return c
@@ -162,47 +174,119 @@ export function seams(repo) {
 }
 
 // repin records the target commit as the pin, so the next bump merges from it.
-export function repin(repo, to, version, title, date) {
+export function repin(repo, to, version, title, date, requested = version) {
   const file = path.join(repo, PIN)
   let text = readFileSync(file, "utf8")
   const row = /^\| Upstream commit \| .*\|$/m
-  text = text.replace(row, `| Upstream commit | \`${to}\`, ${JSON.stringify(title)}, ${date} |`)
+  text = text.replace(row, () => `| Upstream commit | \`${to}\`, ${JSON.stringify(title).replaceAll("|", "\\|")}, ${date} |`)
   const why = version
-    ? `| Why that commit | It is the \`gitHead\` of npm \`typescript@next\` ${version} (\`npm view typescript@next gitHead version\`) |`
+    ? `| Why that commit | It is the \`gitHead\` of npm \`typescript@${requested}\` ${version} (\`npm view typescript@${requested} gitHead version\`) |`
     : "| Why that commit | A ts-bump run named it; no npm `typescript` version was looked up |"
-  text = text.replace(/^\| Why that commit \| .*\|$/m, why)
-  writeFileSync(file, text)
+  text = text.replace(/^\| Why that commit \| .*\|$/m, () => why)
+  writeFileSync(file + ".tmp", text)
+  renameSync(file + ".tmp", file)
   if (pinned(repo) !== to) throw new Error(`${PIN}: the pin still says ${pinned(repo)}`)
 }
 
 // merge applies upstream's changes since the pin to typescript/ and moves the pin.
-export const merge = (run) => once(run, "merge", ({ repo }) => {
+export const merge = (run) => once(run, "merge", ({ repo, to }) => {
   const f = read(paths(run).fetch)
   if (f.same) return { ok: true, conflicts: [], summary: "nothing to merge" }
   const base = path.join(run, "upstream", f.from), theirs = path.join(run, "upstream", f.to), ours = path.join(repo, "typescript")
-  const c = classify(base, ours, theirs)
-  const put = (p, data) => { mkdirSync(path.dirname(path.join(ours, p)), { recursive: true }); writeFileSync(path.join(ours, p), data) }
-  for (const p of [...c.theirsOnly, ...c.theirsAdded]) put(p, readFileSync(path.join(theirs, p)))
-  for (const p of c.theirsDeleted) rmSync(path.join(ours, p))
-  const conflicts = [], merged = []
-  for (const p of c.both) {
-    const m = merge3(base, ours, theirs, p)
-    put(p, m.text)
-    if (m.hunks) conflicts.push({ file: p, hunks: m.hunks })
-    else merged.push(p)
+  // Validate even a fetch checkpoint written by an older flow.
+  download(f.from, base)
+  download(f.to, theirs)
+  const metadata = f.title && f.title !== "unknown" && f.date && f.date !== "unknown" ? f : commitInfo(f.to)
+  const planFile = path.join(run, "merge-plan.json")
+  const staged = path.join(run, "merged")
+  if (!existsSync(planFile)) {
+    const c = classify(base, ours, theirs)
+    const conflicts = [], merged = [], manual = []
+    const forkFiles = files(ours)
+    const removes = new Set(c.theirsDeleted)
+    for (const list of [c.theirsAdded, c.theirsOnly]) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        const p = list[i]
+        // Preserve fork paths that block an upstream file/directory transition.
+        const blocked = [...forkFiles].some((o) => !removes.has(o) &&
+          (o.startsWith(p + "/") || p.startsWith(o + "/")))
+        if (blocked) {
+          list.splice(i, 1)
+          manual.push(p)
+        }
+      }
+    }
+    for (const p of c.both) {
+      const [b, o, t] = [base, ours, theirs].map((root) => lstatSync(path.join(root, p)))
+      if (![b, o, t].every((entry) => entry.isFile())) {
+        manual.push(p)
+        continue
+      }
+      let m
+      try {
+        m = merge3(base, ours, theirs, p)
+      } catch (error) {
+        if (![base, ours, theirs].some((root) => readFileSync(path.join(root, p)).includes(0))) throw error
+        manual.push(p)
+        continue
+      }
+      const dest = path.join(staged, p)
+      mkdirSync(path.dirname(dest), { recursive: true })
+      writeFileSync(dest, m.text)
+      chmodSync(dest, (o.mode === b.mode ? t.mode : o.mode) & 0o777)
+      if (m.hunks) conflicts.push({ file: p, hunks: m.hunks })
+      else merged.push(p)
+    }
+    save(planFile, { c, conflicts, merged, manual })
   }
-  repin(repo, f.to, f.version, f.title, f.date)
+  const { c, conflicts, merged, manual } = read(planFile)
+  const blockedParent = (dest) => {
+    const parents = []
+    for (let parent = path.dirname(dest); parent !== ours; parent = path.dirname(parent)) parents.push(parent)
+    return parents.reverse().find((parent) => {
+      const entry = lstatSync(parent, { throwIfNoEntry: false })
+      return entry && !entry.isDirectory()
+    })
+  }
+  for (const p of c.theirsDeleted) {
+    const dest = path.join(ours, p)
+    if (!blockedParent(dest)) rmSync(dest, { force: true })
+  }
+  const put = (root, p) => {
+    const source = path.join(root, p), dest = path.join(ours, p)
+    const blocked = blockedParent(dest)
+    if (blocked) throw new Error(`merge: refusing to write through ${blocked}`)
+    mkdirSync(path.dirname(dest), { recursive: true })
+    if (lstatSync(dest, { throwIfNoEntry: false })?.isDirectory()) {
+      // A clean upstream directory-to-file transition leaves an empty tree.
+      const prune = (dir) => {
+        for (const child of readdirSync(dir, { withFileTypes: true })) {
+          if (child.isDirectory()) prune(path.join(dir, child.name))
+        }
+        rmdirSync(dir)
+      }
+      prune(dest)
+    } else rmSync(dest, { force: true })
+    if (lstatSync(source).isSymbolicLink()) symlinkSync(readlinkSync(source), dest)
+    else {
+      copyFileSync(source, dest)
+      chmodSync(dest, statSync(source).mode & 0o777)
+    }
+  }
+  for (const p of [...c.theirsOnly, ...c.theirsAdded]) put(theirs, p)
+  for (const p of [...merged, ...conflicts.map(({ file }) => file)]) put(staged, p)
+  repin(repo, f.to, f.version, metadata.title, metadata.date, to)
   const s = seams(repo)
   const seam = (p) => s[p.replace(/^typescript\//, "")] ?? null
   return {
-    ok: conflicts.length === 0 && c.deleteModify.length === 0 && c.bothAdded.length === 0,
+    ok: conflicts.length === 0 && c.deleteModify.length === 0 && c.bothAdded.length === 0 && manual.length === 0,
     from: f.from, to: f.to,
     updated: c.theirsOnly.length, added: c.theirsAdded.length, deleted: c.theirsDeleted.length,
     merged: merged.map((file) => ({ file, seam: seam(file) })),
     conflicts: conflicts.map((x) => ({ ...x, seam: seam(x.file) })),
-    deleteModify: c.deleteModify, bothAdded: c.bothAdded,
+    deleteModify: c.deleteModify, bothAdded: c.bothAdded, manual,
     kept: c.oursOnly, unchanged: c.unchanged,
-    summary: `${c.theirsOnly.length} updated, ${c.theirsAdded.length} added, ${c.theirsDeleted.length} deleted, ${merged.length} merged, ${conflicts.length} conflicted, ${c.deleteModify.length + c.bothAdded.length} need a hand`
+    summary: `${c.theirsOnly.length} updated, ${c.theirsAdded.length} added, ${c.theirsDeleted.length} deleted, ${merged.length} merged, ${conflicts.length} conflicted, ${c.deleteModify.length + c.bothAdded.length + manual.length} need a hand`
   }
 })
 
@@ -260,7 +344,7 @@ export const report = (run) => once(run, "report", () => {
     for (const c of m.conflicts) lines.push(`| \`${c.file}\` | ${c.hunks} | ${c.seam ?? "not in the seam table"} |`)
     lines.push("")
   }
-  for (const [title, list] of [["Upstream deleted a file the fork changed (kept)", m.deleteModify], ["Both added a file (the fork's kept)", m.bothAdded]]) {
+  for (const [title, list] of [["One side deleted a file the other changed", m.deleteModify], ["Both added a file (the fork's kept)", m.bothAdded], ["Both changed a file that needs a manual merge", m.manual]]) {
     if (list?.length) lines.push(`## ${title}`, "", ...list.map((x) => `- \`${x}\``), "")
   }
   if (m.merged?.length) lines.push("## Merged without conflict (review the seam)", "", ...m.merged.map((x) => `- \`${x.file}\`${x.seam ? `: ${x.seam}` : ""}`), "")
@@ -271,7 +355,7 @@ export const report = (run) => once(run, "report", () => {
   for (const r of checks.filter((r) => r.code)) lines.push("", `### ${r.name}`, "", "```text", r.output, "```")
   lines.push("", "docs/maintainers/typescript-upgrade.md says what to do with each section.")
   writeFileSync(path.join(run, "report.md"), lines.join("\n") + "\n")
-  const failing = [...(m.conflicts ?? []).map((c) => c.file), ...checks.flatMap((r) => r.code ? (r.failures.length ? r.failures : [r.name]) : [])]
+  const failing = [...(m.conflicts ?? []).map((c) => c.file), ...(m.deleteModify ?? []), ...(m.bothAdded ?? []), ...(m.manual ?? []), ...checks.flatMap((r) => r.code ? (r.failures.length ? r.failures : [r.name]) : [])]
   return { ok: failing.length === 0 && !p.skipped, failing, conflicts: (m.conflicts ?? []).map((c) => c.file), summary: `report.md: ${failing.length} findings` }
 })
 

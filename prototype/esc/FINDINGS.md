@@ -1,5 +1,7 @@
 # EffectScript prototype compiler: findings
 
+This report records the historical experiment. The commands describe its original environment.
+
 2026-10-16. Prototype `esc` in `prototype/esc/`, on `typescript@5.9.3` and `effect@4.0.5`, following `docs/design/history/DECISIONS.md` (D1-D29).
 
 **Summary.** Type-directed lowering works. The compiler decides every call, lambda, and conversion from TypeScript's checker. All 46 example files pass: the 26 runnable ones compile with no errors and produce their expected results, and the 20 expected-failure files report their codes. 25 of the proposal's 28 claimed contracts match as written.
@@ -10,7 +12,7 @@ The remaining three fail for reasons the proposal must fix:
 
 `totalSize` matches only through a recursion fixpoint that TypeScript inference cannot provide. The most consequential findings are the D1 emission (Effect's class form breaks `implements`), `finally` lowering (`Effect.ensuring` rejects a cleanup that can fail), and the circular expected-type problem the Go fork must solve inside overload resolution.
 
-## How to run
+## Commands used in the experiment
 
 ```sh
 cd .
@@ -21,7 +23,7 @@ bun prototype/esc/examples/run-all.ts [filter] [--verbose]    # 46/46 pass, abou
 
 `build` writes the `.ts` file and prints contracts and diagnostics. `run` builds, then runs the module's `main()`.
 
-`prototype/esc/node_modules` is a symlink to `experiments/node_modules`; nothing was downloaded.
+`prototype/esc/node_modules` was a symlink to `experiments/node_modules`; nothing was downloaded.
 
 ## What runs end to end
 

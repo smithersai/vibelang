@@ -1,5 +1,5 @@
 import { readFileSync, readlinkSync, readdirSync, statfsSync } from 'node:fs'
-import { freemem, totalmem, hostname, loadavg, tmpdir } from 'node:os'
+import { freemem, totalmem, loadavg, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 
@@ -42,7 +42,6 @@ function resources() {
       .map(key => [key, Number(accounting.match(new RegExp('^' + key + ' (\\d+)$', 'm'))?.[1] ?? 0)]),
   ) : undefined
   return {
-    host: hostname(),
     temporaryFreeBytes: disk.bavail * disk.bsize,
     hostOomKills: read('/proc/vmstat')?.match(/^oom_kill (\d+)$/m)?.[1],
     freeMemoryBytes: freemem(),

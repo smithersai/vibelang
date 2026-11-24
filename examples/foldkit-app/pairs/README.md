@@ -1,5 +1,8 @@
 # Foldkit migration pairs
 
+Historical migration excerpts from VibeLang 0.0.11, before explicit effects.
+The VibeLang panes do not compile with the current language.
+
 Real Effect TypeScript to VibeLang pairs from the VibeLang team's migration
 of [foldkit/foldkit](https://github.com/foldkit/foldkit) at `b702a5efbb74`
 (2026-10-28). The VibeLang compiler was 0.0.11; the commits named below are

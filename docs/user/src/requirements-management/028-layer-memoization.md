@@ -54,10 +54,6 @@ effect function documentLabels() {
     return [(try Heading).value, (try Footer).value]
   }
 }
-
-effect function stringify(value: unknown) {
-  return try Effect.try(() => JSON.stringify(value))
-}
 // Output: Prefix initialized
 // Output: ["Monthly report","Monthly archive"]
 ```

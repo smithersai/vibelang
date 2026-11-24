@@ -353,3 +353,10 @@ test("the 0.0.13 notes open with the alpha header and keep experimental features
   const bugs = release.split(/^### Bugs fixed since 0\.0\.12\n/m)[1].split(/^### /m)[0]
   assert.deepEqual(bugs.split("\n").filter(line => /Experimental\.(Durable|Human|Test|Eval|Scorer|Memory|Fuzz)\b|`(task|workflow)` declaration|\bEK55\d\d\b|\bEK3013\b/.test(line)), [])
 })
+
+test("dependency versions and historical prose survive release rendering", () => {
+  const prose = "Requires TypeScript version 5.9.3 and Effect version 4.1.1. In 4.1.0, Effect renamed an export."
+  const source = prose + "\nInstall vibelang@0.0.12."
+  assert.equal(renderReleasePage("docs/user/src/setup.md", source, "0.0.13"),
+    prose + "\nInstall vibelang@0.0.13.")
+})

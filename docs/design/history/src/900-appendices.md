@@ -166,7 +166,7 @@ vibelang/smoke.sh vibelang-infer   # one case
 - `prototype/esc/FINDINGS.md`: what the prototype compiler found.
 - `prototype/single-pass/RESULTS.md`: the single-pass experiment (D56, D52).
 - `typescript/VIBELANG.md`: the Go fork's base, commits, seams, and gaps.
-- [Upstream draft index](../../upstream/README.md): nine Effect runtime, tooling, documentation, and API drafts with reproductions; all drafted, none filed (D59).
+- [Upstream draft index](../../../upstream/README.md): nine Effect runtime, tooling, documentation, and API drafts with reproductions; all drafted, none filed (D59).
 
 ### B. Prior art
 

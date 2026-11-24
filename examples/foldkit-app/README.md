@@ -23,4 +23,4 @@ types, which Foldkit's runtime needs: `update` returns `{ model, commands }`.
 The retired `trustedPackages` setting is ignored; it cannot replace these
 call boundaries.
 
-[pairs/](pairs/) holds real before-and-after code from the Foldkit migration.
+[Historical migration excerpts](pairs/) document the earlier compiler.

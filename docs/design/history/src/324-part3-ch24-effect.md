@@ -87,7 +87,7 @@ Everything in that test except `operation`, `handle`, and the capture is ordinar
 | A Layer cycle through `Layer.suspend` hangs on its own in-progress build. | Research §6. | `wire` detects provider cycles statically (EK3203, Chapter 4). |
 | Effect 3 values die in the Effect 4 runtime and vice versa. | Research §10. | Target Effect 4 only. Effect 3 code is foreign code behind a boundary (Chapter 10). |
 
-The [upstream draft index](../../upstream/README.md) collects reproductions and proposed fixes for wake-up depth, generator cleanup and tooling, mixed-cause recovery, fairness, Layer memoization documentation, and interruption diagnostics, plus supported-prompt and segmented-stack proposals. Every entry is drafted, not filed (D59). Kernel review defects are tracked separately in `experiments/KERNEL-CHANGES.md`.
+The [upstream draft index](../../../upstream/README.md) collects reproductions and proposed fixes for wake-up depth, generator cleanup and tooling, mixed-cause recovery, fairness, Layer memoization documentation, and interruption diagnostics, plus supported-prompt and segmented-stack proposals. Every entry is drafted, not filed (D59). Kernel review defects are tracked separately in `experiments/KERNEL-CHANGES.md`.
 
 #### Scheduling, stack safety, and cancellation
 

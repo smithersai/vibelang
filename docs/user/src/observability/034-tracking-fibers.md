@@ -27,10 +27,6 @@ effect function runGroup() {
   })
 }
 
-effect function stringify(value: unknown) {
-  return try Effect.try(() => JSON.stringify(value))
-}
-
 ```
 
 ```output

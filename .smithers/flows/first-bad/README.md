@@ -13,12 +13,12 @@ prepare ──▶ reproduce ──▶ bisect ──▶ report
 
 | Step | What it does | Writes |
 | --- | --- | --- |
-| prepare | Resolves good and bad, lists the commits between them (refusing a history with merges), and adds the flow's jj workspace at bad | `prepare.json` |
+| prepare | Resolves good and bad, lists the commits between them (refusing a history with merges) | `prepare.json` |
 | reproduce | Runs the targets at bad, then reruns each failing target until it passes or the tries run out (3 by default) | `reproduce.json` |
 | bisect | Runs the broken targets at good, then bisects each one that passes there; targets whose ranges overlap share a run; a Go target runs only the tests that failed at bad | `bisect.json` |
 | report | Each target's state, and for a broken one the first bad commit, the files it changes, the failing tests and the end of their output | `report.json`, `report.md` |
 
-Every run checks out one commit in the flow's workspace (without a snapshot,
+The first checkout creates the flow's workspace if it is missing. Every run checks out one commit in the flow's workspace (without a snapshot,
 so files a run leaves never become a commit) and runs `sh scripts/ci.sh
 <targets>` there, so the commit's own graph and lockfiles decide what runs. The
 result cache keeps only passes: a failing target runs again on every try, and
@@ -31,7 +31,8 @@ run's results and graph log stay in `runs/`.
 | `broken-at-good` | Fails at good too | Run again from an older good |
 | `flaky` | Failed, then passed with the same inputs | No commit broke it; the report names the cause (the ci-health flow's classes) |
 | `not-reproduced` | Passed at bad on the first try | The RED came from the host (load, disk); check the post-merge log |
-| `untestable` | Never ran at bad: a dependency failed | Name the dependency as the target instead |
+| `untestable` | At least one attempt at bad could not run the target | Check the dependency failures |
+| `unconfirmed` | The failing test could not be identified consistently, or the final pair did not confirm | Review the recorded attempts |
 
 Bisection narrows a Go target (`//:go-vibelangfuzz`, its topic targets and
 `//:go-vibelang`) to the tests that failed at bad. At each commit the graph
@@ -52,9 +53,9 @@ same commit: on a shared host a build can die of the host, such as a cache file
 deleted mid-link, not of the commit. A commit where a target still cannot run
 is skipped, as `git bisect skip` does, and the answer widens: the report says
 the first bad commit is this one or one of the untestable commits before it.
-A target that cannot run at good is taken as passing there, as `git bisect`
-takes a good mark, and the report says so; only a failure at good is
-`broken-at-good`.
+The flow compares each failure with the tests that repeatedly failed at bad.
+A failure with a different test is untestable for this bisection. The flow
+checks the final passing and failing commits again before reporting a culprit.
 
 ## Run it
 

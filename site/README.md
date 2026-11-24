@@ -1,6 +1,6 @@
 # VibeLang documentation site
 
-The site at [vibelang.sh](https://vibelang.sh) is built with [Vocs](https://vocs.dev). The home page is `src/pages/index.mdx`. Every other page comes from the VibeLang user docs in this repository, `../docs/user`, and `sidebar.ts` comes from its `inventory.md`. Run the commands below from `site/`; `npm run deploy` deploys the site from here.
+The site at [vibelang.sh](https://vibelang.sh) is built with [Vocs](https://vocs.dev). The home page source is `src/index.mdx`. The user guides come from `../docs/user`, and `sidebar.ts` comes from its `inventory.md`. Run the commands below from `site/`; `npm run deploy` deploys the site from here.
 
 ## Update the pages
 
@@ -8,7 +8,7 @@ The site at [vibelang.sh](https://vibelang.sh) is built with [Vocs](https://vocs
 node scripts/sync-user-docs.mjs ../docs/user
 ```
 
-The script replaces every page in `src/pages` except `index.mdx`, `_root.css`, `proposals.mdx`, and `spec/`, rewrites `sidebar.ts`, and converts the Markdown that MDX rejects. Each page keeps its source path: `docs/user/src/error-management/014-expected-errors.md` becomes `/error-management/014-expected-errors`. Edit the source docs, not the generated pages, and run the script again. Production builds sync both sets of pages automatically after measuring kernel facts. `vibe.tmLanguage.json` is the grammar from the language repository's `editors/vscode/syntaxes/VibeLang.tmLanguage.json`; it highlights `vibe` code blocks.
+The script replaces every page in `src/pages` except `_root.css`, `proposals.mdx`, `spec/`, and `vips/`. It copies `src/index.mdx` to `src/pages/index.mdx`, rewrites `sidebar.ts`, and converts the Markdown that MDX rejects. Each page keeps its source path: `docs/user/src/error-management/014-expected-errors.md` becomes `/error-management/014-expected-errors`. Edit the source docs, not the generated pages, and run the script again. Production builds sync both sets of pages automatically after measuring kernel facts. `vibe.tmLanguage.json` is the grammar from the language repository's `editors/vscode/syntaxes/VibeLang.tmLanguage.json`; it highlights `vibe` code blocks.
 
 ## Add a video
 
@@ -21,7 +21,7 @@ node scripts/sync-spec-docs.mjs ../docs --facts <facts.json>
 node scripts/sync-user-docs.mjs ../docs/user
 ```
 
-The specification importer validates the Specification inventory and writes 33 chapters plus the introduction at `src/pages/spec/index.mdx`, and `spec-sidebar.ts`. Its shared Markdown converter escapes MDX syntax while preserving code. Proposed blocks become info callouts; Not designed yet blocks become warning callouts. Bare fragments resolve to their owning chapter, with missing or ambiguous targets rejected. A link to another file in the language repository keeps only its text, so the importer needs a full checkout to confirm that the file exists.
+The specification importer validates the Specification inventory and writes eight chapters and two appendices, plus the introduction at `src/pages/spec/index.mdx`, and `spec-sidebar.ts`. Its shared Markdown converter escapes MDX syntax while preserving code. Proposed blocks become info callouts; Not designed yet blocks become warning callouts. Bare fragments resolve to their owning chapter, with missing or ambiguous targets rejected. A link to another file in the language repository keeps only its text, so the importer needs a full checkout to confirm that the file exists.
 
 The facts JSON must supply `testCount`, `testFiles`, and `kernelLines` as nonnegative integers (or integer strings), taken from a real language repository test run. Example facts are for build verification only and must be replaced before publishing. Unknown or missing placeholders fail before pages are written. Syncing user docs after the spec exists changes specification links to local routes and preserves the spec pages and its independent sidebar. Without the spec, user sync retains its existing external links.
 
@@ -41,7 +41,7 @@ npm run build
 npm run preview
 ```
 
-Vocs checks internal links during the production build, and a dead link fails it. docs/tools/check-site.ts then validates built page and heading targets and self-contained images. Generated output is written to `dist/`. The prebuild hook runs the kernel law suite, or reuses the receipt of a passing run with the same inputs (`docs/tools/kernel-facts.ts`), and syncs both doc sets. The postbuild hook writes Markdown copies and llms.txt to dist/public using docs/tools/markdown.ts, normalizes Vocs build metadata to repo-relative paths, and runs the unchanged publication leak scan over dist/. Synthetic playground paths and IPs use public examples. Run npm run test:llms after building.
+Vocs checks internal links during the production build, and a dead link fails it. docs/tools/check-site.ts then validates built page and heading targets and self-contained images. Generated output is written to `dist/`. The prebuild hook runs the kernel law suite, or reuses the receipt of a passing run with the same inputs (`docs/tools/kernel-facts.ts`), and syncs both doc sets. The postbuild hook writes Markdown copies and llms.txt to dist/public using docs/tools/markdown.ts, normalizes Vocs build metadata to repo-relative paths, and runs the unchanged publication leak scan over dist/. Synthetic playground paths and IPs use public examples. The postbuild also adds the overview and VIP pages to llms.txt with their Markdown copies. Run npm run test:llms after building.
 
 ### Browser contrast check
 

@@ -1,10 +1,8 @@
 #!/bin/sh
 # Install, type-check, test, and build the React, Vue, and Svelte examples.
 #   sh examples/frameworks-check.sh [react-vite vue-vite svelte-vite]
-# Run sh scripts/setup.sh first: the examples install this checkout's
-# compiler, runtime tarball, and vibelang-vite through file: dependencies.
-# VIBELANG_BINARY=/absolute/path/to/vibelang selects the compiler for the vibelang
-# launcher and vibelang-vite; the default is packages/compiler/native/vibelang.
+# Each project installs its pinned published dependencies.
+# Set VIBELANG_BINARY to an absolute path to check with a different compiler.
 # Each example gets one status line. Logs stay in .cache/frameworks-check/.
 # bun install --no-cache fetches fresh manifests, so each example's
 # bunfig.toml minimumReleaseAge applies; a warm manifest cache skips it
@@ -14,20 +12,6 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(dirname -- "$here")
 logs="$root/.cache/frameworks-check"
 mkdir -p "$logs"
-VIBELANG_BINARY=${VIBELANG_BINARY:-$root/packages/compiler/native/vibelang}
-case "$VIBELANG_BINARY" in
-  /*) ;;
-  *) VIBELANG_BINARY="$(pwd)/$VIBELANG_BINARY" ;;
-esac
-export VIBELANG_BINARY
-if [ ! -x "$VIBELANG_BINARY" ]; then
-  echo "frameworks-check: no compiler at $VIBELANG_BINARY; run sh scripts/setup.sh" >&2
-  exit 1
-fi
-if [ ! -f "$root/packages/runtime/vibelang-runtime.tgz" ]; then
-  echo "frameworks-check: no runtime tarball; run sh scripts/setup.sh" >&2
-  exit 1
-fi
 [ "$#" -gt 0 ] || set -- react-vite vue-vite svelte-vite
 
 failed=0
@@ -50,7 +34,12 @@ for name in "$@"; do
   step install bun install --no-cache &&
     step typecheck bun run typecheck &&
     step vitest bun x vitest run &&
-    step build bun run build &&
+    step build bun run build || continue
+  if grep -q "warning EK[0-9]" "$log"; then
+    printf 'FAIL %-12s compiler warnings (see .cache/frameworks-check/%s.log)\n' "$name" "$name"
+    failed=1
+  else
     printf 'OK   %-12s install, vibelang type check, Vitest, vite build\n' "$name"
+  fi
 done
 exit "$failed"

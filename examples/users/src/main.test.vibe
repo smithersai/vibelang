@@ -2,11 +2,15 @@ import { assert, it } from "@effect/vitest"
 import { AppLive, greet, UsersTest } from "./main.vibe"
 
 it.effect("uses the test layer", effect () => {
-  const message = try Effect.provide(effect { return try greet("42") }, UsersTest)
-  try Effect.try(() => assert.strictEqual(message, "Welcome, Grace!"))
+  provide UsersTest {
+    const message = try greet("42")
+    try Effect.try(() => assert.strictEqual(message, "Welcome, Grace!"))
+  }
 })
 
 it.effect("recovers a typed missing-user failure", effect () => {
-  const message = try Effect.provide(effect { return try greet("missing") }, AppLive)
-  try Effect.try(() => assert.strictEqual(message, "No user missing"))
+  provide AppLive {
+    const message = try greet("missing")
+    try Effect.try(() => assert.strictEqual(message, "No user missing"))
+  }
 })

@@ -27,6 +27,4 @@ const release = Effect.fnUntraced(function* (version: string) {
 ```
 
 The example shows the same business program succeeding automatically and declining
-production under the scripted policy. Its earlier exported `Control` key was
-redesigned as a service; that changes the key's public declaration. The safe
-`vibelang --fix` migration therefore refuses the old exported declaration.
+production under the scripted policy.

@@ -32,7 +32,7 @@ export const UsersTest = Layer.succeed(Users, {
   effect find(id) { return ({ id, name: "Grace" }) }
 })
 
-export const AppLive = wire(UsersLive, DirectoryLive)
+export const AppLive = Layer.provideMerge(UsersLive, DirectoryLive)
 
 export effect function greet(id: string) {
   return effect {

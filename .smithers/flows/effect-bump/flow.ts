@@ -11,13 +11,13 @@ import { run as steps, start } from "./lib/steps.mjs";
 // failed execution resumes where it stopped. No step calls a model: the
 // report is the input to the fix commits. README.md describes the run.
 
-const implementationVersion = "effect-bump/v2";
+const implementationVersion = "effect-bump/v3";
 
 const Outcome = Schema.Struct({ step: Schema.String, ok: Schema.Boolean, summary: Schema.String });
 
 export class StepFailed extends Schema.TaggedError<StepFailed>()("StepFailed", { step: Schema.String, message: Schema.String }) {}
 
-const StartPayload = { run: Schema.String, repo: Schema.String, version: Schema.String };
+const StartPayload = { run: Schema.String, repo: Schema.String, version: Schema.String, from: Schema.optional(Schema.String) };
 const RunPayload = { run: Schema.String };
 
 const declare = <const Tag extends string, P extends Schema.Struct.Fields>(tag: Tag, payload: P) =>
@@ -42,13 +42,18 @@ const step = (name: keyof typeof steps, run: string) =>
 
 /** The steps' implementations, which the flow's host composes. */
 export const layer = Layer.mergeAll(
-  Pin.toLayer(({ run, repo, version }) => Effect.sync(() => start(run, { repo, version })).pipe(Effect.andThen(step("pin", run))), { implementationVersion }),
+  Pin.toLayer(({ run, repo, version, from }) => Effect.try({
+    try: () => start(run, { repo, version, from }),
+    catch: (error) => new StepFailed({ step: "pin", message: error instanceof Error ? error.message : String(error) })
+  }).pipe(Effect.andThen(step("pin", run))), { implementationVersion }),
   Literals.toLayer(({ run }) => step("literals", run), { implementationVersion }),
   Install.toLayer(({ run }) => step("install", run), { implementationVersion }),
   Build.toLayer(({ run }) => step("build", run), { implementationVersion }),
   Regenerate.toLayer(({ run }) => step("regenerate", run), { implementationVersion }),
   Probe.toLayer(({ run }) => step("probe", run), { implementationVersion }),
-  Report.toLayer(({ run }) => step("report", run), { implementationVersion })
+  Report.toLayer(({ run }) => step("report", run).pipe(Effect.flatMap((outcome) => outcome.ok
+    ? Effect.succeed(outcome)
+    : Effect.fail(new StepFailed({ step: "report", message: outcome.summary })))), { implementationVersion })
 );
 
 export default Flow.make("effect-bump", {

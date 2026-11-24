@@ -94,3 +94,20 @@ export const fence = (block, title) =>
     `${block.indent}${block.marker}`,
   ].join('\n')
 
+
+// Stable documentation heading IDs, including duplicate heading suffixes.
+const slug = s => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s/g, '-')
+export function headingIds(text) {
+  const found = new Set(), counts = new Map()
+  for (const part of readFences(text.split('\n'))) {
+    if (part.type !== 'text') continue
+    for (const [, id] of part.line.matchAll(/<a id="([^"]+)"><\/a>/g)) found.add(id)
+    const heading = part.line.match(/^#{1,6}\s+(.+?)\s*#*$/)
+    if (!heading) continue
+    const base = slug(heading[1].replace(/`/g, ''))
+    const n = counts.get(base) ?? 0
+    counts.set(base, n + 1)
+    found.add(base + (n ? `-${n}` : ''))
+  }
+  return found
+}

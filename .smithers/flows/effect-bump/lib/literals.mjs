@@ -7,11 +7,16 @@ import { spawnSync } from "node:child_process"
 import { readFileSync, statSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
+const HISTORY = "historical or mixed-version documentation; review by hand"
+const NOTES = "docs/user/src/setup/release-notes.md"
 const GUARD = "a pin guard: its witnesses are the versions around the pin"
 
 // [glob, why the file keeps the old version]. A glob as the shell and smthrs
 // read one: `**` crosses directories, `*` does not.
 export const EXEMPT = [
+  ["docs/design/history/**", HISTORY],
+  ["docs/maintainers/effect-upgrade.md", HISTORY],
+  ["docs/maintainers/typescript-upgrade.md", HISTORY],
   ["**/package.json", "scripts/effect-pin.mjs moves effect and @effect/* by name, and stubVersion a stub's own version; another package at the same version stays"],
   ["**/bun.lock", "the install step rewrites a lockfile"],
   ["**/package-lock.json", "the install step rewrites a lockfile"],
@@ -37,6 +42,8 @@ export const exemption = (file) => exempt.find(([re]) => re.test(file))?.[1]
 
 /** guard reports whether glob names a pin guard, whose witnesses a person moves. */
 export const guard = (glob) => EXEMPT.some(([g, why]) => g === glob && why === GUARD)
+
+export const historical = (glob) => glob === NOTES || EXEMPT.some(([g, why]) => g === glob && why === HISTORY)
 
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
@@ -102,8 +109,21 @@ export function literals(repo, from, to, files = tracked(repo)) {
       kept.push({ file, glob })
       continue
     }
-    writeFileSync(at, rewrite(text, from, to))
-    changed.push(file)
+    let updated
+    if (file === NOTES) {
+      const [first, next] = text.matchAll(/^## [^\r\n]*/gm)
+      updated = text
+      if (first && /^## (?:Unreleased|.+ \(unreleased\))[ \t]*$/i.test(first[0])) {
+        const start = first.index
+        const end = next?.index ?? text.length
+        updated = text.slice(0, start) + rewrite(text.slice(start, end), from, to) + text.slice(end)
+      }
+      if (literal(from).test(updated)) kept.push({ file, glob: NOTES })
+    } else updated = rewrite(text, from, to)
+    if (updated !== text) {
+      writeFileSync(at, updated)
+      changed.push(file)
+    }
   }
   return { changed, kept }
 }

@@ -5,6 +5,6 @@
 This directory keeps, as reference material:
 
 - `src/`: the previous specification (chapters 1 to 30 and appendices A to C), as it stood on 2026-10-29 before the rewrite from the VIPs.
-- `DECISIONS.md`: the previous decision log, `D1` to `D558`. VIPs cite its decisions in their "Footnote: old VibeLang" sections.
+- `DECISIONS.md`: the previous decision log, `D1` through `D520`. The [later decision references](LATER-DECISIONS.md) summarize the surviving descriptions in the VIPs.
 
-The compiler is still being changed to match the VIPs. Until it is, these documents describe much of what the compiler does today, including its diagnostic registry (`src/428-part4-ch28-tooling.md`), which its tests check.
+For current compiler behavior and diagnostic codes, consult the [current specification](../src/000-intro.md).

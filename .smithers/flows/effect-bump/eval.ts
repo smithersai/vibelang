@@ -96,15 +96,16 @@ function bumpFresh(input: Input): Promise<Output> {
     const changed = execFileSync("jj", ["diff", "--name-only", "--from", fixture.base], { cwd: workspace, encoding: "utf8" }).split("\n").filter(Boolean);
     const lanes = new Set(fixture.changed);
     const same = Object.entries(fixture.expected).filter(([file, digest]) => existsSync(join(workspace, file)) && sha256(join(workspace, file)) === digest);
+    const report = read("report");
     const output: Output = {
       pinned: read("pin")?.files ?? 0,
-      failing: read("report")?.failing ?? [],
+      failing: report?.failing ?? [],
       pinsPass: probe?.results?.find((r: { name: string }) => r.name === "pins")?.code === 0,
       reproduced: same.length,
       expected: Object.keys(fixture.expected).length,
       extra: changed.filter((file) => !lanes.has(file)),
       changed: changed.length,
-      ...(Exit.isFailure(exit) ? { error: String(exit.cause) } : {})
+      ...(Exit.isFailure(exit) && report?.ok !== false ? { error: String(exit.cause) } : {})
     };
     cleanup();
     return output;

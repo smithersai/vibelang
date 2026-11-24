@@ -32,7 +32,10 @@ it rewrites manifests and lockfiles:
 smthrs flow start effect-bump --data '{"run":"<run dir>","repo":"<checkout>","version":"4.2.0"}'
 ```
 
-Paths in the payload are absolute. `smthrs runs list` lists the runs.
+Paths in the payload are absolute. The run records the starting pin before
+writing manifests. If you already moved the manifest pin by hand, pass the
+old pin as `"from"` in the payload. `smthrs runs list` lists the runs. A run with failed checks
+writes its report and ends in a failed state.
 
 ## The eval
 

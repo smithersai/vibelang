@@ -20,7 +20,7 @@ function fixture() {
   put('docs/user/src/welcome.md', '# Welcome\n')
   put('README.md', 'Repository')
   put('docs/design/vips/README.md', '# VIPs\n\n| VIP | Title | Status |\n| --- | --- | --- |\n| [1](0001-one.md) | `one` | accepted |\n\n## Denied\n\n| VIP | Title | Status |\n| --- | --- | --- |\n| [2](0002-two.md) | Two `\\|>` | denied |\n')
-  put('docs/design/vips/0001-one.md', '# VIP-1: `one`\n\nSee [two](0002-two.md#why), [index](README.md), [repo](../../../README.md) and {braces}.\n\n```ts\nconst x = { a: 1 }\n```\n')
+  put('docs/design/vips/0001-one.md', '# VIP-1: `one`\n\nSee [two](0002-two.md#why), [index](README.md), [repo](../../../README.md), [chapter](../src/101-calls.md#calls), [intro](../src/000-intro.md), [guide](../../user/src/welcome.md#welcome) and {braces}.\n\n```ts\nconst x = { a: 1 }\n```\n')
   put('docs/design/vips/0002-two.md', '# VIP-2: Two\n')
   return { root, put, load: () => loadSpec(path.join(root, 'docs')) }
 }
@@ -109,7 +109,7 @@ test('VIPs render from docs/design/vips: README order, links, escaping and missi
   assert.deepEqual([...vips.pages.keys()], ['index.mdx', '0001-one.mdx', '0002-two.mdx'])
   const one = vips.pages.get('0001-one.mdx')
   assert.ok(one.startsWith('---\ntitle: "VIP-1: one"\ndescription: "VIP-1: one. A VibeLang improvement proposal: the decision, its reasons and its history."\n---\n\n# VIP-1: `one`'))
-  for (const text of ['[two](/vips/0002-two#why)', '[index](/vips/)', '[repo](https://github.com/smithersai/vibelang/blob/main/README.md)', '\\{braces\\}', 'const x = { a: 1 }']) assert.ok(one.includes(text), text)
+  for (const text of ['[two](/vips/0002-two#why)', '[index](/vips/)', '[chapter](/spec/101-calls#calls)', '[intro](/spec/)', '[guide](/welcome#welcome)', '[repo](https://github.com/smithersai/vibelang/blob/main/README.md)', '\\{braces\\}', 'const x = { a: 1 }']) assert.ok(one.includes(text), text)
   put('docs/design/vips/0003-three.md', '# VIP-3: Three\n')
   assert.throws(() => loadVips(path.join(root, 'docs')), /missing from README/)
   fs.unlinkSync(path.join(root, 'docs/design/vips/0003-three.md'))
@@ -173,4 +173,12 @@ test('every specification and VIP page has its own description', () => {
   assert.equal(pages[2], 'VIP-2: Two. A VibeLang improvement proposal: the decision, its reasons and its history.')
   const all = [...chapters, ...pages]
   assert.equal(new Set(all).size, all.length, JSON.stringify(all))
+})
+
+test('VIP links reject missing chapter and guide fragments', () => {
+  const { root, put } = fixture()
+  for (const target of ['../src/101-calls.md', '../../user/src/welcome.md']) {
+    put('docs/design/vips/0002-two.md', `# VIP-2: Two\n\n[missing](${target}#absent)\n`)
+    assert.throws(() => loadVips(path.join(root, 'docs')), /Unresolvable fragment/)
+  }
 })

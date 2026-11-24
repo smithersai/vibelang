@@ -6,23 +6,21 @@ These docs mirror the Effect 4 documentation page for page: same sections, order
 
 1. The accepted VIPs in `docs/design/vips/` win every conflict. Nothing is part of the language unless a VIP adds it.
 2. `docs/design/src/`, the spec, rewritten from the VIPs, one file per chapter. Chapter numbers change; refer to topics.
-3. `docs/design/history/`, the previous specification and its decision log (`DECISIONS.md`). They are historical, not normative, but they still describe the compiler where it hasn't caught up with the VIPs: read the historical tooling chapter (`docs/design/history/src/428-part4-ch28-tooling.md`) for exact tool names and diagnostic codes, and cite only codes the compiler's registry defines (D53).
-4. Effect 4.1.1's API, in `experiments/node_modules/effect/src`. Check every Effect name you use there.
+3. `docs/design/history/`, the previous specification and its decision log (`DECISIONS.md`). Use these archives for historical context. Confirm current tool names and diagnostic codes against the compiler and [Appendix B](../design/src/900-appendices.md#appendix-b-diagnostics).
+4. Effect’s API at the version pinned in `packages/runtime/package.json`. Check each Effect name against that version.
 
 ## The language
 
-Read the VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md`: every form, rule and idiom on one page, current through the newest decision. Where a page disagrees with it or with the decision log, the page changes. Writers most often get these wrong; the decisions own the details:
+Read the VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md`: every form, rule and idiom on one page, current through the newest decision. Use the accepted VIPs, specification, and compiler checks above to resolve discrepancies.
 
-- Calls run; a call returning anything but `Effect` itself returns data, such as a `Config`, an `Exit`, a key or an error (D24). A parameter that expects a program takes a call by name (D147), and collections of programs convert (D49).
-- A service is a `service` declaration with bodiless members (D128, D223): `Users.find(id)` adds `Users` to R and `Users()` returns the implementation (D41). A layer is `Layer.effect(Users, effect { ... })` or `Layer.succeed(Users, { ... })` (D221, VIP-11), not a service class.
-- `catch` receives expected failures only, the first of several (D13, D28); defects, such as `Option.getOrThrow`'s, pass through, and a catch whose try block has E = `never` warns EK2004 (D260); a plain function's catch follows the same rule, and a throw is a typed failure everywhere outside a hatch, so a plain-annotated function never fails (D282).
-- Effect's root exports and its subpath packages' modules need no import (D146, D310); `Scope` is in the prelude (D48).
-- Effect's own packages are trusted, so their throws are defects (D22); other TypeScript is trusted by `trustedPackages` or `trusted(impl, [Errors])` (D261, D249), or called through a hatch.
-- Runners run only where no fiber runs the code (D38); `.vibe` tests use `it.effect` or `it.live`, and Promise-style tests stay in `.ts`.
-- A producer is a `Stream` wherever one is expected, and `for...of` over a `Stream` pulls and closes it (D26).
-- Settings go in a top-level `vibelang` object in `tsconfig.json` (D275). dprint formats and ESLint lints `.vibe` files (D276, D277).
-- Effect code in TypeScript style may draw EK4830 to EK4837 warnings. Show the edit the reader can make by hand. Keep `Schema.TaggedError` when the code needs its Schema.
-- A hatch example must show something VibeLang cannot write directly: a Promise or callback API, a foreign library call, or platform code. Write ordinary computation in plain VibeLang. Network examples are compile-checked; never mark them `// run:`.
+- Calling an Effect function builds a program. Use `try` in effect code to run it.
+- Declare a service with `service`, request it with `const users = try Users`, and run a member with `try users.find(id)`. Build implementations with `Layer.effect` or `Layer.succeed`.
+- A plain `catch` handler maps an expected failure to a value. Use `catch effect` when the handler runs Effects or fails with `throw`.
+- Use `Effect.try` for foreign calls that may throw, `tryPromise` for promises, and services and layers for platform access.
+- Use `for try (const item of stream)` to consume a Stream in effect code.
+- Put compiler settings under `"vibe"` in `tsconfig.json`, or use `vibe.config.json`.
+- Explain any VibeLang advisory that a comparison example intentionally triggers. Keep network examples compile-checked and omit `// run:`.
+
 
 ## Voice
 

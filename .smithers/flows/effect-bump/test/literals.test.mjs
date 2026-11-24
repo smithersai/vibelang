@@ -79,3 +79,20 @@ test("each exemption names files that exist, so a moved guard leaves no stale li
   const all = files()
   assert.deepEqual(EXEMPT.map(([glob]) => glob).filter((glob) => !all.some((file) => exemption(file) === glob)), [])
 })
+
+test("only unreleased notes move, while released notes and history keep the old pin", (t) => {
+  const repo = mkdtempSync(join(tmpdir(), "effect-bump-notes-"))
+  t.after(() => rmSync(repo, { recursive: true, force: true }))
+  const notes = "docs/user/src/setup/release-notes.md"
+  const released = "## 0.0.12\r\n\r\nInstalled effect@4.1.0.\r\n"
+  const history = "docs/design/history/DECISIONS.md"
+  for (const [file, content] of [[notes, "## 0.0.13 (unreleased)\r\n\r\nInstall effect@4.1.0.\r\n\r\n" + released], [history, "Effect 4.1.0"]]) {
+    mkdirSync(dirname(join(repo, file)), { recursive: true })
+    writeFileSync(join(repo, file), content)
+  }
+  const result = literals(repo, "4.1.0", "4.1.1", [notes, history])
+  assert.deepEqual(result.changed, [notes])
+  assert.deepEqual(result.kept.map(({ file }) => file), [notes, history])
+  assert.equal(readFileSync(join(repo, notes), "utf8"), "## 0.0.13 (unreleased)\r\n\r\nInstall effect@4.1.1.\r\n\r\n" + released)
+  assert.equal(readFileSync(join(repo, history), "utf8"), "Effect 4.1.0")
+})

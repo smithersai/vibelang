@@ -14,7 +14,7 @@ VibeLang had an earlier design, documented on this site until October 2026, that
 | Idea from the earlier design | Where it stands | What to use today |
 | --- | --- | --- |
 | [Durable execution](#durable-execution) | Proposed in VIP-44, VIP-55, VIP-56 and VIP-60 | Effect's `effect/workflow` modules |
-| [Coding-agent library](#coding-agent-library) | Proposed in VIP-62 to VIP-65; not in 0.0.13 | Effect's AI modules |
+| [Coding-agent library](#coding-agent-library) | VIP-62 and VIP-63 have experimental implementations; see VIP-64 and VIP-65 for related proposals | Effect's AI modules or the experimental model and agent modules |
 | [Typed workers](#typed-workers) | Proposed in VIP-57; not in 0.0.13 | Effect's `effect/workers` modules |
 | [Build-time host selection](#build-time-host-selection) | VIP-54 asks for one model of platform-specific code | Platform layers chosen at run time |
 | [Validators derived from types](#validators-derived-from-types) | Partly shipped as `schema` declarations (VIP-15) | `schema` declarations |
@@ -26,7 +26,7 @@ VibeLang had an earlier design, documented on this site until October 2026, that
 | [Compile-time evaluation](#compile-time-evaluation) | No VIP | Nothing |
 | [Typed asset imports](#typed-asset-imports) | No VIP | `FileSystem` reads at run time |
 | [Custom loaders](#custom-loaders) | No VIP | Nothing |
-| [Rust and Zig source imports](#rust-and-zig-source-imports) | No VIP | Node-API npm packages behind a hatch |
+| [Rust and Zig source imports](#rust-and-zig-source-imports) | No VIP | Node-API npm packages wrapped in TypeScript and exposed through Effect services |
 | [Shared structs](#shared-structs) | No VIP | Workers exchange messages |
 | [Mandatory compiler options](#mandatory-compiler-options) | No VIP | The starter sets `strict` |
 | [TC39 adopt-early list](#tc39-adopt-early-list) | No VIP | A different set of TC39 forms |
@@ -39,7 +39,7 @@ A workflow that journals each completed step, so a restart resumes the run inste
 
 ### Coding-agent library
 
-A library for agents that write and run code on each turn in a sandbox with no ambient authority. [VIP-62](/vips/0062-std-model) proposes model calls, [VIP-63](/vips/0063-std-agent) the agent loop, [VIP-64](/vips/0064-std-tools) standard tools and [VIP-65](/vips/0065-std-mcp) MCP clients. 0.0.13 ships none of them. Effect's AI modules call models and tools from `.vibe` files.
+A library for agents that write and run code on each turn in a sandbox with no ambient authority. [VIP-62](/vips/0062-std-model) proposes model calls, [VIP-63](/vips/0063-std-agent) the agent loop, [VIP-64](/vips/0064-std-tools) standard tools and [VIP-65](/vips/0065-std-mcp) MCP clients. The experimental runtime includes `Experimental.Model` and parts of `Experimental.Agent`. See the [release feature status](/setup/alpha). Effect's AI modules call models and tools from `.vibe` files.
 
 ### Typed workers
 
