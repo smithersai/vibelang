@@ -20,6 +20,7 @@ test("built llms.txt has essentials first and one section per sidebar view", () 
   assert.ok(prefixBytes <= 2000, `essentials prefix is ${prefixBytes} bytes; limit is 2000`)
   const inventory = readFileSync(join(repo, "docs/user/inventory.md"), "utf8").split("## V4 sidebar in order")[1].split(/\n## /)[0]
   const views = [...inventory.matchAll(/^### (.+)$/gm)].map(m => m[1])
+  if (existsSync(join(output, "proposals.md"))) views.push("Improvement proposals")
   assert.deepEqual([...llms.matchAll(/^## (.+)$/gm)].map(m => m[1]).filter(v => v !== "Essentials"), views)
   const urls = [...llms.matchAll(/\]\((https?:[^)]+)\)/g)].map(m => new URL(m[1]))
   assert.ok(urls.length > 100)

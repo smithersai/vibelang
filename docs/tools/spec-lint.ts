@@ -588,7 +588,7 @@ const declarationIdentity: Rule = {
   }
 }
 
-rules.push(resolutionClaims, declarationIdentity)
+rules.push(declarationIdentity)
 
 // A positional fallback must name a row that falls back (r18 OPUS-2). 005's
 // service table ended with EK0905, a declaration rule, under "The last row
@@ -640,7 +640,7 @@ const codeRows: Rule = {
   }
 }
 
-rules.push(resolutionClaims, codeRows)
+rules.push(codeRows)
 
 // A rule stated twice (r18 OPUS-1). VIP-40 says a plain call of a function
 // whose throwing is unknown stays an ordinary call; chapter 3's section on
@@ -751,7 +751,7 @@ const continuationLine: Rule = {
   }
 }
 
-rules.push(resolutionClaims, gapMarkerAuthority, continuationLine)
+rules.push(gapMarkerAuthority, continuationLine)
 
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 export const lintKind = (spec: Spec, kind: string) =>

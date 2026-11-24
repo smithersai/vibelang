@@ -64,7 +64,7 @@ restore closures          bound to the pushing fiber           internal/effect.t
 stack bottom              FiberExitFrame at _stack[0]          internal/effect.ts:516
 ```
 
-Mitigation: pin `effect` exactly, check the version at load (`kernel/internals.ts`), and run the law suite on every Effect release. The durable fix is upstream: a supported prompt primitive, or at least a public stack-splice and interruptibility API on `Fiber`. The kernel is the concrete reference for the supported-prompt proposal (G1). The [supported-prompt draft](../../upstream/effect-prompt-primitive.md) states the capability and its laws; D59 sets the status to drafted, not filed.
+Mitigation: pin `effect` exactly, check the version at load (`kernel/internals.ts`), and run the law suite on every Effect release. The durable fix is upstream: a supported prompt primitive, or at least a public stack-splice and interruptibility API on `Fiber`. The kernel is the concrete reference for the supported-prompt proposal (G1). The [supported-prompt draft](../../../upstream/effect-prompt-primitive.md) states the capability and its laws; D59 sets the status to drafted, not filed.
 
 #### Representations of a compiled frame
 

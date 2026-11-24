@@ -159,7 +159,7 @@ effect function summary() {
 
 ## Never discard a cold Effect
 
-An Effect expression without `try`, `catch`, `fork`, or a runner is just an unused value — its body never runs (`EK4801` warns when an Effect statement is discarded):
+A bare statement such as `Console.log("saved")` reports `EK4801` because it discards the Effect without running it. Use `try` to run the Effect.
 
 ```vibe
 // run: try saveNotice()

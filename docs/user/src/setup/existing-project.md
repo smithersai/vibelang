@@ -132,7 +132,7 @@ Rename an Effect `.ts` file to `.vibe` (or `.tsx` to `.vibex`) and check it:
 npx vibelang -p tsconfig.json --noEmit
 ```
 
-- **TypeScript-style Effect code:** Library calls keep working in `.vibe` ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). A piped `Effect.gen(...)` reports `EK1002`: rewrite it as an `effect function` with `provide` and `try`. For retired syntax from earlier releases, see [Migrating retired forms](migrating-retired-forms.md).
+- **TypeScript-style Effect code:** Library calls keep working in `.vibe` ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). A piped `Effect.gen(...)` also works. You can write the same program as an `effect function` with `provide` and `try`. For retired syntax from earlier releases, see [Migrating retired forms](migrating-retired-forms.md).
 - **Relative imports and sidecars:** Replace stale `./user.ts` imports that point to a renamed `user.vibe` with `./user.vibe` or `./user.js` ([CLI setup](vibelang-cli.md)). `vibelang` writes adjacent `.d.vibe.ts` declarations even with `--noEmit` ([let TypeScript tools read .vibe modules](vibelang-cli.md#let-typescript-tools-read-vibe-modules)).
 - **Monorepos & project references:** When migrating referenced packages, compile and revert steps refresh affected projects automatically. They follow the reverse reference closure, clear affected outputs, and rebuild reference roots before checking dependents. For native checking with Bun (`bun check --no-script`), route to `vibelang --noEmit` (or `vibelang -b` in build mode).
 

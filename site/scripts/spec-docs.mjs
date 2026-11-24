@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { readFences, convertText, fence, LABELS } from './docs-markdown.mjs'
+import { readFences, convertText, fence, headingIds, LABELS } from './docs-markdown.mjs'
 import { VIDEO_LINE } from './user-docs.mjs'
 
 export function substituteFacts(raw, facts) {
@@ -49,22 +49,8 @@ export function loadSpec(root) {
   for (const file of chapters) if (!listed.has(file)) throw new Error(`Chapter missing from inventory: ${file}`)
   const ids = new Map(), owners = new Map()
   for (const [file, text] of raw) {
-    const found = new Set(), counts = new Map()
-    for (const part of readFences(text.split('\n'))) {
-      if (part.type !== 'text') continue
-      // An inline HTML anchor, as in `<a id="direct-eval"></a>**Legacy JavaScript.**`, names a fragment too.
-      for (const [, id] of part.line.matchAll(/<a id="([^"]+)"><\/a>/g)) {
-        found.add(id)
-        owners.set(id, [...owners.get(id) ?? [], file])
-      }
-      const heading = part.line.match(/^#{1,6}\s+(.+?)\s*#*$/)
-      if (!heading) continue
-      const base = slug(heading[1].replace(/`/g, ''))
-      const n = counts.get(base) ?? 0; counts.set(base, n + 1)
-      const id = base + (n ? `-${n}` : '')
-      found.add(id)
-      owners.set(id, [...owners.get(id) ?? [], file])
-    }
+    const found = headingIds(text)
+    for (const id of found) owners.set(id, [...owners.get(id) ?? [], file])
     ids.set(file, found)
   }
   let links = 0, proposed = 0, notDesigned = 0

@@ -101,3 +101,12 @@ test("long-form alternatives do not contribute to a paired entry or its token to
 test("a page's size keeps two significant figures, so one edit rarely moves it", () => {
   expect([7, 99, 1_250, 9_949, 63_108, 63_175, 329_066].map(rounded)).toEqual(["7", "99", "1,300", "9,900", "63,000", "63,000", "330,000"])
 })
+
+test("the home page token claim is written to the source that sync copies", async () => {
+  const { measuredClaims } = await import("./token-counts")
+  const home = "site/src/index.mdx"
+  const claims = measuredClaims()
+  expect(Object.keys(claims)).toContain(home)
+  expect(Object.keys(claims)).not.toContain("site/src/pages/index.mdx")
+  expect(readFileSync(resolve(import.meta.dir, "../..", home), "utf8")).toContain(claims[home])
+})

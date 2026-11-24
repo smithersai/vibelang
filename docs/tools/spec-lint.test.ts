@@ -597,3 +597,7 @@ test("missing VIP fixture bindings cannot hide an unrelated type error", () => {
     { severity: "warning", message: "TS2304: missing load" }
   ])
 })
+
+test("each spec lint rule is registered once", () => {
+  expect(new Set(rules.map(rule => rule.name)).size).toBe(rules.length)
+})

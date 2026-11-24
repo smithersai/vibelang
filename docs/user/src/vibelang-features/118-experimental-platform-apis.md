@@ -2,7 +2,7 @@
 
 VibeLang adds the few platform APIs that Effect does not have yet. They are experimental: a release can change or remove them, and each goes when Effect ships the API. Where Effect has the service, the experimental one extends it, so the rest of the service is Effect's own; where Effect has none, the experimental service follows Effect's style. Each addition lives under `Experimental.X` and can be proposed upstream. Native language helpers, including error declarations, keep the experimental namespace out of their bundle graph unless the source uses it.
 
-`Experimental` holds two kinds of module. The platform additions come from VIP-33, are part of the alpha and need no opt-in. The modules built from open proposals (VIPs 55 to 73) are not part of the alpha and compile only with `"vibe": { "experimental": ["builtins"] }`; without it the compiler reports `EK3013`.
+`Experimental` holds two kinds of module. The platform additions come from VIP-33, are part of the alpha and need no opt-in. The experimental builtins from VIPs 55 to 73 compile only with `"vibe": { "experimental": ["builtins"] }`; without it the compiler reports `EK3013`.
 
 **Platform additions (VIP-33, core).**
 
@@ -12,6 +12,9 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.NetAddress` | pure `isIPv6` with Node-compatible zones | none (pure) |
 | `Experimental.Dns` | Effect Dns extended only with direct authoritative-server TXT queries | Node; Worker TCP, or typed `Unsupported` |
 | `Experimental.FileSystem` | `access(path, { executable })`, `open(path, { nonBlocking })`, `File.chmod` | Node, Bun |
+| `Experimental.ChildProcess` | `runInherited` with inherited stdio and non-waiting cancellation | Node, Bun |
+| `Experimental.NodeStream` | `fromWeb` with cancellation when the response closes | Node, Bun |
+| `Experimental.Request` | `atUrl` to construct a Web Request with a replacement URL | Node, Bun, browser |
 | `Experimental.Headers` | `copy(input)` using native mutable Web Headers copies | Node, Bun, browser |
 | `Experimental.Crypto` | `hmac`, `sign`, `verify`, beside the members of Effect 4.0's `Crypto` | Node, Bun, browser |
 | `Experimental.Stdio` | Effect standard I/O plus `awaitInputClosed` without consuming input | Node, Bun |
@@ -26,10 +29,13 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 
-**Open proposals (opt-in).** Not part of the alpha; each needs `"vibe": { "experimental": ["builtins"] }`.
+**Experimental builtins (opt-in).** Each needs `"vibe": { "experimental": ["builtins"] }`.
 
 | Module | Adds | Layers |
 | --- | --- | --- |
+| `Experimental.Capability` | capability policies and decisions for access to resources | supply a policy at the application boundary |
+| `Experimental.Trigger`, `Experimental.WorkQueue` | trigger schedules and durable work queues | see [the 0.0.13 feature status](../setup/alpha.md) |
+| `Experimental.Model`, `Experimental.Agent` | language and decision model interfaces, and the experimental agent loop | supply the model implementation for your application |
 | `Experimental.Fuzz`, `Experimental.FuzzSimulation` | feedback-guided fuzzing and fiber-schedule simulation; see [Fuzzing](120-fuzzing.md) | none |
 | `Experimental.Human` | questions a workflow asks a person: `confirm`, `ask`, `select`, `json`; `answer` and `validate` for the inbox that replies | the engine of `Experimental.Durable`, in any runtime |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
@@ -53,9 +59,9 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 | Module | Layers |
 | --- | --- |
 | `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns.layer`, requiring Effect `HttpClient`; `layerWith` for an injected TCP adapter |
-| `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto`, `Process` and `Stdio`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`, `ExperimentalNodeStdio.layer`; `ExperimentalNodeLocks.layer`, within one process; `ExperimentalNodeHttpServer.layer` and `layerConfig`; `ExperimentalNodeDns.layer` and `layerWith` |
-| `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto`, `Process` and `Stdio`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer`, `ExperimentalBunStdio.layer` |
-| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserInfo.layer`, `ExperimentalBrowserWindow.layer`, `ExperimentalBrowserDocument.layer`, `ExperimentalBrowserResizeObserver.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer`, `ExperimentalBrowserAudioContext.layer` |
+| `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto`, `Process`, `Stdio`, `ChildProcess`, `Headers`, `NodeStream` and `Request`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeChildProcess.layer`, `ExperimentalNodeHeaders.layer`, `ExperimentalNodeStream.layer`, `ExperimentalNodeRequest.layer`, `ExperimentalNodeProcess.layer`, `ExperimentalNodeStdio.layer`; `ExperimentalNodeLocks.layer`, within one process; `ExperimentalNodeHttpServer.layer` and `layerConfig`; `ExperimentalNodeDns.layer` and `layerWith` |
+| `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto`, `Process`, `Stdio`, `ChildProcess`, `Headers`, `NodeStream` and `Request`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunChildProcess.layer`, `ExperimentalBunHeaders.layer`, `ExperimentalBunNodeStream.layer`, `ExperimentalBunRequest.layer`, `ExperimentalBunProcess.layer`, `ExperimentalBunStdio.layer` |
+| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserHeaders.layer`, `ExperimentalBrowserRequest.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserInfo.layer`, `ExperimentalBrowserWindow.layer`, `ExperimentalBrowserDocument.layer`, `ExperimentalBrowserResizeObserver.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer`, `ExperimentalBrowserAudioContext.layer` |
 
 `ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. Each `Crypto` layer, such as `ExperimentalNodeCrypto.layer`, provides the experimental `Crypto` and the platform's Effect crypto services, such as `SecureRandom` and `Digest`; the bundles for Node and Bun, like Effect's, hold none of Effect's crypto services.
 
@@ -648,10 +654,6 @@ effect function copyHeaders(input: Headers) {
 
 `try (try Experimental.Request.Request).atUrl(url, existingRequest)` constructs a native `Request` at a replacement URL while preserving the existing request's native initialization, including its body, headers and signal. Construction happens when the Effect runs, so native constructor errors remain defects. Provide `ExperimentalNodeRequest.layer`, `ExperimentalBunRequest.layer` or `ExperimentalBrowserRequest.layer`; the service bundles include them.
 
-## When Effect ships them
-
-Each addition has a matching change prepared for Effect. When an Effect release has the member, the experimental module re-exports Effect's, and a later VibeLang release removes the module (D313).
-
 ## AudioContext
 
 ```vibe
@@ -1241,9 +1243,11 @@ export effect function checkOrder(run: string) {
 
 ```vibe
 // experimental: builtins
+import type { ConformanceViolation } from "vibelang-runtime/experimental/Test"
+
 const subject = Effect.sync(() => Experimental.Durable.layerStore(Experimental.Durable.makeMemoryStore()))
 
-export effect function certify() {
+export effect function certify(): void!ConformanceViolation! {
   for (const conformanceCase of Experimental.Test.conformance.engine()) {
     try conformanceCase.run(subject)
   }
@@ -1957,3 +1961,7 @@ export effect function drain() {
 | A settled row is final across rounds | `landed`, `held` and `failed` rows are never worked again; `skipped` and `requeued` rows are reconsidered. |
 | Capacity gates each round of `Burndown.run` | `available(slots)` caps the round. `waitUntil(at)` waits on Effect's clock until `at`, and the wait counts as a round. `exhausted(detail)` fails with a `PatternError` whose `code` is `exhausted`. |
 | Waits are not durable | `Burndown.run` runs in one process: a restarted program starts from round 0, and a wait does not survive a restart. A durable lineage keeps its rounds in a `workflow`. |
+
+## When Effect ships them
+
+Each addition has a matching change prepared for Effect. When an Effect release has the member, the experimental module re-exports Effect's, and a later VibeLang release removes the module (D313).

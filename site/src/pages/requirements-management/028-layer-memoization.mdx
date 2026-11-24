@@ -57,10 +57,6 @@ effect function documentLabels() {
     return [(try Heading).value, (try Footer).value]
   }
 }
-
-effect function stringify(value: unknown) {
-  return try Effect.try(() => JSON.stringify(value))
-}
 // Run in an effect function:
 //   {
 //     const jsonValue = try documentLabels()

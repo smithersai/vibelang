@@ -3,3 +3,5 @@ dist
 .vocs
 .alchemy
 *.log
+
+src/pages.gen.ts

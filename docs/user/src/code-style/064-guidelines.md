@@ -33,7 +33,7 @@ This example exits after one check; place repeated work in a loop to keep a proc
 
 ```vibe
 // main.vibe
-import { BunRuntime } from "@effect/platform-bun"
+import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 
 effect function main() {
   try Console.log("running on Bun")
@@ -50,9 +50,9 @@ Match the runtime package to the target host and pin it to VibeLang's Effect ver
 
 | Host | Entry runner | Package |
 | --- | --- | --- |
-| Node.js | `NodeRuntime.runMain` | `@effect/platform-node` |
-| Bun | `BunRuntime.runMain` | `@effect/platform-bun` |
-| Browser | `BrowserRuntime.runMain` | `@effect/platform-browser` |
+| Node.js | `NodeRuntime.runMain` | `@effect/platform-node/NodeRuntime` |
+| Bun | `BunRuntime.runMain` | `@effect/platform-bun/BunRuntime` |
+| Browser | `BrowserRuntime.runMain` | `@effect/platform-browser/BrowserRuntime` |
 
 ## Making argument forwarding explicit
 

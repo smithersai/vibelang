@@ -126,7 +126,7 @@ function greeting(id: string): Effect<string, infer E, infer R> {
 // string!UserNotFound!Users
 ```
 
-Here A is checked; E and R come from the body. `Effect<string, never, infer R>` instead promises no expected failures and infers services. A type argument left out of `Effect<…>` means what it means in TypeScript, `never`, and is checked: `Effect<string>` is `string!!`, a function that cannot fail and needs nothing ([Chapter 14](#14-contracts-and-inference), D309). The name after `infer` is documentation only; it introduces no type variable.
+Here A is checked; E and R come from the body. `Effect<string, never, infer R>` instead promises no expected failures and infers services. A type argument left out of `Effect<…>` means what it means in TypeScript, `never`, and is checked: `Effect<string>` is `string!!`, a function that cannot fail and needs nothing ([Chapter 14](214-part2-ch14-contracts.md#14-contracts-and-inference), D309). The name after `infer` is documentation only; it introduces no type variable.
 
 #### Calling TypeScript
 
