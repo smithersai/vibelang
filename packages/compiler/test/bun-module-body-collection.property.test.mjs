@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -11,8 +12,8 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const preload = fileURLToPath(new URL("../bun.mjs", import.meta.url))
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-bun-module-body-companion.json", import.meta.url)))
-const skip = spawnSync("bun", ["--version"]).status !== 0 ? "Bun required" :
-  spawnSync(compiler, ["--version"]).status !== 0 && "build the compiler"
+const skip = requireOrSkip(spawnSync("bun", ["--version"]).status !== 0 ? "Bun required" :
+  spawnSync(compiler, ["--version"]).status !== 0 && "build the compiler")
 const spec = readFileSync(join(repo, "docs/design/src/001-functions.md"), "utf8")
 // Chapter 1, Modules and the top level: moving a body to a sibling .ts file
 // "changes no diagnostic, type, emitted statement, declaration or run-time observation".

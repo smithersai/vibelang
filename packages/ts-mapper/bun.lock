@@ -10,7 +10,7 @@
       },
       "peerDependencies": {
         "effect": "4.1.1",
-        "vibelang-runtime": "0.0.1",
+        "vibelang-runtime": "0.0.13",
       },
     },
   },
@@ -65,6 +65,6 @@
 
     "typescript": ["typescript@7.1.0-beta", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.1.0-beta", "@typescript/typescript-android-arm64": "7.1.0-beta", "@typescript/typescript-darwin-arm64": "7.1.0-beta", "@typescript/typescript-darwin-x64": "7.1.0-beta", "@typescript/typescript-freebsd-arm64": "7.1.0-beta", "@typescript/typescript-freebsd-x64": "7.1.0-beta", "@typescript/typescript-linux-arm": "7.1.0-beta", "@typescript/typescript-linux-arm64": "7.1.0-beta", "@typescript/typescript-linux-loong64": "7.1.0-beta", "@typescript/typescript-linux-mips64el": "7.1.0-beta", "@typescript/typescript-linux-ppc64": "7.1.0-beta", "@typescript/typescript-linux-riscv64": "7.1.0-beta", "@typescript/typescript-linux-s390x": "7.1.0-beta", "@typescript/typescript-linux-x64": "7.1.0-beta", "@typescript/typescript-netbsd-arm64": "7.1.0-beta", "@typescript/typescript-netbsd-x64": "7.1.0-beta", "@typescript/typescript-openbsd-arm64": "7.1.0-beta", "@typescript/typescript-openbsd-x64": "7.1.0-beta", "@typescript/typescript-sunos-x64": "7.1.0-beta", "@typescript/typescript-win32-arm64": "7.1.0-beta", "@typescript/typescript-win32-x64": "7.1.0-beta" }, "bin": { "tsc": "bin/tsc" } }, "sha512-cjWjZAJDsmZzsNC5GwHNlW0YPM65jZa5oR0KyQcYX3KSVIfTvtBq//vewISyatKk4OLi5grZjHhIVE9fdrw1UQ=="],
 
-    "vibelang-runtime": ["vibelang-runtime@0.0.1", "", { "peerDependencies": { "effect": "4.0.5" } }, "sha512-iTuaDNjGrjKqulYsbHChwzgN/FEDNHQYz9bZZZn5usVj/8EyTyESxJtd7RS4Suq0kiGnihAnO87NdAz1ONETNg=="],
+    "vibelang-runtime": ["vibelang-runtime@0.0.13", "", { "peerDependencies": { "@effect/platform-browser": "4.1.1", "@effect/platform-bun": "4.1.1", "@effect/platform-node": "4.1.1", "effect": "4.1.1" }, "optionalPeers": ["@effect/platform-browser", "@effect/platform-bun", "@effect/platform-node"] }, "sha512-E7Yn+k8ElL9ZYGj5aT1e1h60Zb3W3nZZPlgJgJC+Ce7IQkxH2uTRLotApVuOQpD2U+p9AbrMzXWjQPi5zMKb3g=="],
   }
 }

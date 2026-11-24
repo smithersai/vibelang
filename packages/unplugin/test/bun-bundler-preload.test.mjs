@@ -122,9 +122,9 @@ test("Bun esbuild context rebuilds native sources after edits", { skip }, async 
   succeeded(await run(root, "esbuild", { mode: "context", access: "default" }), [42, 99])
 })
 
-test("Bun Rolldown keeps the synchronous watch API", { skip }, async t => {
+test("Bun Rolldown synchronously starts watch and rebuilds after edits", { skip }, async t => {
   const root = await fixture(t, "rolldown")
-  succeeded(await run(root, "rolldown", { mode: "watch" }))
+  succeeded(await run(root, "rolldown", { mode: "watch" }), [42, 99])
 })
 
 test("Alchemy's lazy Rolldown import works on the selected Bun runtime", { skip }, async t => {

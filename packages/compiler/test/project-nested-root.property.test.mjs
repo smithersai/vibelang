@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -17,7 +18,7 @@ import { projects } from "../project.mjs"
 const packageRoot = fileURLToPath(new URL("../", import.meta.url))
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
-const skip = !existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`
+const skip = requireOrSkip(!existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`)
 const rule = "it compiles from its package's directory instead, so every module it includes\nloads, inside `root` or not"
 const options = { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", strict: true, types: [], skipLibCheck: true, allowImportingTsExtensions: true, rewriteRelativeImportExtensions: true, noEmit: true }
 

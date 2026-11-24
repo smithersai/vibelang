@@ -1,6 +1,7 @@
 // vibelang/bun hands Bun a module's map when Bun can read it: Bun reads a map
 // only from a module marked `// @bun`, which it runs as it is and reads as
 // ASCII. A module that cannot carry the mark loses its map, never its behavior.
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -16,7 +17,7 @@ const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local
 const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
 const runtime = join(repo, "packages/runtime")
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = spawnSync("bun", ["--version"]).status !== 0 ? "bun is not on PATH" : missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(spawnSync("bun", ["--version"]).status !== 0 ? "bun is not on PATH" : missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 
 function run(t, files, args = ["--preload", "vibelang/bun", "src/entry.mjs"], compilerOptions = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bun-map-")))

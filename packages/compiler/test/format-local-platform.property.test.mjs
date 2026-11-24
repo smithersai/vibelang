@@ -47,7 +47,7 @@ function witness({ directory, value, entry, readOnly }) {
     if (entry === "cli") writeFileSync(file, input)
     const result = spawnSync(process.execPath, entry === "cli" ? [join(pkg, "bin/vibelang-format"), "--write", file] : ["--input-type=module", "-e", script], {
       cwd: root, encoding: "utf8", timeout: 60000,
-      env: { ...process.env, VIBELANG_BINARY: "", VIBELANG_DISABLE_CACHE: "1", DPRINT_CACHE_DIR: process.env.DPRINT_CACHE_DIR || join(root, "dprint-cache") }
+      env: { ...process.env, VIBELANG_BINARY: "", VIBELANG_DISABLE_CACHE: "1" }
     })
     assert.equal(result.status, 0, result.stdout + result.stderr)
     assert.equal(entry === "cli" ? readFileSync(file, "utf8") : result.stdout, "export const value = " + value + "\n")

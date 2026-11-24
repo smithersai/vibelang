@@ -6,6 +6,7 @@
 // checkout. A body's declaration is an output while its source declares that
 // body (VIP-40), as the compiler's discovery treats it; a file of that shape
 // whose source declares no such body stays an input.
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -17,7 +18,7 @@ import { checkLoaderRecord, writeLoaderRecord } from "../project.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
-const skip = !existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`
+const skip = requireOrSkip(!existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`)
 
 // main.vibe declares two bodies; Über checks the file name encoding.
 const main = [

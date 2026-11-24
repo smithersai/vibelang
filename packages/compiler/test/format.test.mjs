@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -19,7 +20,7 @@ test("formatting keeps the order of the names within an import and an export", (
 // its .vibe files, as they do for its .ts files: the nearest Oxfmt, Prettier
 // or dprint configuration supplies them, with that formatter's defaults for
 // what it leaves out.
-const cli = new URL("../bin/vibelang-format", import.meta.url).pathname
+const cli = fileURLToPath(new URL("../bin/vibelang-format", import.meta.url))
 const repository = (files) => {
   const dir = mkdtempSync(join(tmpdir(), "vibe-format-style-"))
   mkdirSync(join(dir, ".git")) // the search stops at the repository's root

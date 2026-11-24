@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -13,7 +14,7 @@ import { editedFiles, init, invocation, withHook, withSection } from "../agents.
 const packageDirectory = fileURLToPath(new URL("..", import.meta.url))
 const launcher = join(packageDirectory, "bin/vibelang")
 const native = process.env.VIBELANG_BINARY || join(packageDirectory, "native/vibelang")
-const skipNative = !existsSync(native) && `run sh scripts/build-vibelang.sh first; missing ${native}`
+const skipNative = requireOrSkip(!existsSync(native) && `run sh scripts/build-vibelang.sh first; missing ${native}`)
 
 function scratch(t, files = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-agents-")))

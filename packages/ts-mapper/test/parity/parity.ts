@@ -18,7 +18,6 @@ import { runtimeExclusions, exclusionNote, typeExclusions, typeExclusionNote } f
 import crypto from "node:crypto"
 import { runDocs } from "./docs.ts"
 import { linkModules } from "../../../../docs/tools/check-snippets.ts"
-import { mapperEntry } from "./mapper-options"
 import { parseJsonc } from "../../../compiler/cache.mjs"
 import { exec as runCommand } from "./command"
 import fs from "node:fs"
@@ -439,7 +438,7 @@ const specifierPattern = /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\bexport\s+\*\
 // is a declaration normalization.
 function adaptStockProject(dir: string, tsconfig: any): Adapter {
   const adapter: Adapter = { stripped: [], forced: {}, migrations: [] }
-  const entry = mapperEntry(tsconfig)
+  const entry = { package: "vibelang-ts-mapper", extensions: [".vibe", ".vibex"] }
   const options = (tsconfig.compilerOptions ??= {})
   for (const name of forkOnlyOptions) {
     if (name in options) {

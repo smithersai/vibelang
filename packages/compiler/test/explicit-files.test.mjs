@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -7,7 +8,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
 const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
-const skip = !existsSync(native) && "run sh scripts/build-vibelang.sh"
+const skip = requireOrSkip(!existsSync(native) && "run sh scripts/build-vibelang.sh")
 const options = ["--noEmit", "--strict", "--skipLibCheck", "--target", "ESNext", "--module", "NodeNext", "--pretty", "false"]
 function project(t, config, extension) {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-explicit-files-"))

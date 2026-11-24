@@ -4,6 +4,7 @@
 // for a directory of its own, and it failed with
 // Cannot find module '../theme' from 'vibelang-module:...a.vibe.platform.js',
 // and the same for a package subpath and an imports map.
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -18,7 +19,7 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const preload = fileURLToPath(new URL("../bun.mjs", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const bun = process.env.VIBELANG_TEST_BUN || "bun"
-const skip = spawnSync(bun, ["--version"]).status !== 0 ? "Bun is required" : spawnSync(compiler, ["--version"]).status !== 0 && "build the native compiler"
+const skip = requireOrSkip(spawnSync(bun, ["--version"]).status !== 0 ? "Bun is required" : spawnSync(compiler, ["--version"]).status !== 0 && "build the native compiler")
 const rule = "A body is a TypeScript file stored inside a `.vibe` file."
 
 // Each form names a target from src/sub/, with the value it holds.
@@ -69,7 +70,7 @@ function run(input) {
     put("src/sub/inline.vibe", `module ${input.name} {\n${body}}\nexport { all } from ${input.name}\n`)
     const outcome = (module) => {
       put("main.ts", `import { all } from ${JSON.stringify(module)}\nconsole.log(all)\n`)
-      const r = spawnSync(bun, ["main.ts"], { cwd: root, encoding: "utf8", env: { ...process.env, VIBELANG_BINARY: compiler } })
+      const r = spawnSync(bun, ["main.ts"], { cwd: root, encoding: "utf8", env: { ...process.env, VIBELANG_BINARY: compiler, VIBELANG_PROJECT: "", VIBELANG_DISABLE_CACHE: "", VIBELANG_CACHE_DIR: join(root, ".cache") } })
       return { status: r.status, stdout: r.stdout.trim(), stderr: r.status === 0 ? "" : r.stderr.slice(-800) }
     }
     const inline = outcome("./src/sub/inline.vibe")

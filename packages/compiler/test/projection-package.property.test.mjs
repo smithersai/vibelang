@@ -8,6 +8,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import fc from "fast-check"
 import { findBinary } from "../binary.mjs"
+import { linkDependency, unpackPackage } from "./packed-fixture.mjs"
 
 const repository = fileURLToPath(new URL("../../../", import.meta.url))
 // Use the runtime's pinned stock TypeScript as tooling, outside the consumer.
@@ -33,14 +34,14 @@ test("packed projections resolve their prelude and preserve body-local types wit
   mkdirSync(consumer)
   writeFileSync(join(consumer, "package.json"), JSON.stringify({ private: true, type: "module" }))
   t.diagnostic("packing compiler and runtime")
-  const packed = ["compiler", "runtime"].map(name => {
-    const result = JSON.parse(run(npm, ["pack", "--ignore-scripts", "--json", "--pack-destination", tarballs], join(repository, "packages", name)))[0]
-    return join(tarballs, result.filename)
-  })
-  t.diagnostic("installing only the tarballs and their required peers in an isolated consumer")
-  run(npm, ["install", "--ignore-scripts", "--omit=optional", "--no-audit", "--no-fund", ...packed], consumer)
-  const installed = JSON.parse(readFileSync(join(consumer, "package.json"), "utf8")).dependencies
-  assert.deepEqual(Object.keys(installed).sort(), ["vibelang", "vibelang-runtime"])
+  const modules = join(consumer, "node_modules")
+  for (const [directory, name] of [["compiler", "vibelang"], ["runtime", "vibelang-runtime"]]) {
+    const result = JSON.parse(run(npm, ["pack", "--ignore-scripts", "--json", "--pack-destination", tarballs],
+      join(repository, "packages", directory)))[0]
+    unpackPackage(join(tarballs, result.filename), join(modules, name))
+  }
+  linkDependency(modules, "effect", join(repository, "packages/runtime/node_modules"))
+  linkDependency(modules, "dprint", join(repository, "packages/compiler/node_modules"))
   // Native binaries are platform packages; use this checkout's matching build.
   const env = { ...process.env, VIBELANG_BINARY: findBinary() }
   const project = (file, source) => {

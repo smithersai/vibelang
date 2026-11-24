@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -17,7 +18,7 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const missing = [native, join(modules, "typescript")].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 if (!process.env.VIBELANG_BINARY && !skip) process.env.VIBELANG_BINARY = native
 const quote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 

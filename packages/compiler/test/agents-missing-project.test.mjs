@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -9,7 +10,7 @@ import fc from "fast-check"
 
 const launcher = fileURLToPath(new URL("../bin/vibelang", import.meta.url))
 const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
-const skipNative = !existsSync(native) && "build the native compiler before running the project controls"
+const skipNative = requireOrSkip(!existsSync(native) && "build the native compiler before running the project controls")
 
 function fixture(t) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-agents-no-project-")))

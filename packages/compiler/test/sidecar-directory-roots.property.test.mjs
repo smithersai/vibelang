@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -12,7 +13,7 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const binary = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const stock = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "typescript/bin/tsc")
 const quote = "Declarations are exactly what idiomatic Effect TypeScript would declare."
-const skip = !existsSync(binary) || !existsSync(stock)
+const skip = requireOrSkip([binary, stock].find(path => !existsSync(path)))
 const options = { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, types: [], noEmit: true, allowArbitraryExtensions: true }
 const write = (path, text) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, text) }
 const run = (command, args, cwd) => {

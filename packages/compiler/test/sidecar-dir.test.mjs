@@ -18,6 +18,7 @@
 // VIP-30 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0030-config-files.md#c8670b1bb5f05e51
 // VIP-30 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0030-config-files.md#a0a5a219193d3881
 // VIP-30 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0030-config-files.md#f198926ba3c6a0c9
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawn, spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -36,7 +37,7 @@ const effect = join(modules, "effect")
 const stockTsc = join(modules, "typescript/bin/tsc")
 const runtime = join(repo, "packages/runtime")
 const missing = [native, effect, stockTsc, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 
 function project(t, files) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-sidecar-dir-")))

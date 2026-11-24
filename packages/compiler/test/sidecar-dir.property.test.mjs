@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -22,7 +23,7 @@ const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const stockTsc = join(modules, "typescript/bin/tsc")
 const missing = [native, stockTsc].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 
 test("the sidecar-directory oracle quotes VIP-27's amendment", () => {
   const text = readFileSync(vip, "utf8").replace(/\s+/g, " ")

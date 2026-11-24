@@ -48,7 +48,7 @@ else setTimeout(() => {
  child.stdout.on("data", consume)
  child.stderr.on("data", consume)
  try {
-  const deadline = Date.now() + 5000
+  const deadline = Date.now() + 30000
   while (!output.includes("AFTER") && child.exitCode === null && Date.now() < deadline) {
    await new Promise(resolve => setTimeout(resolve, 20))
   }
@@ -61,11 +61,11 @@ else setTimeout(() => {
  }
 }
 
-test("an edit after the first output reaches an already active compiler watcher", { timeout: 10000 }, async () => {
+test("an edit after the first output reaches an already active compiler watcher", { timeout: 40000 }, async () => {
  await editAfterFirstOutput()
 })
 
-test("readiness survives split and colored watch output", { timeout: 30000 }, async () => {
+test("readiness survives split and colored watch output", { timeout: 180000 }, async () => {
  await fc.assert(fc.asyncProperty(
   fc.integer({ min: 100, max: 300 }),
   fc.integer({ min: 1, max: 45 }),

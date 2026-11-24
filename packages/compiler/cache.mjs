@@ -772,7 +772,8 @@ function entryOf({ project, root, snapshot, result, files, hashDependencies = fa
 // result and caches it as its own compile. A record that fails any check
 // costs only the compile it would have saved.
 // 2: relocate structured path fields only; format 1 rewrote program data.
-const recordFormat = 2
+// 3: preserve whether a directory listing includes hidden names.
+const recordFormat = 3
 
 // The text the compiler read from `path`, which is what a map's sourcesContent
 // holds: its reader removes a BOM and decodes UTF-16.
@@ -833,12 +834,13 @@ function recordPaths(entry, path) {
     project: path(entry.project),
     root: path(entry.root),
     configs: files(entry.configs),
-    directories: entry.directories.map(([directory, stamp, names, omitted, options]) => [
+    directories: entry.directories.map(([directory, stamp, names, omitted, options, hidden]) => [
       path(directory), stamp, names, omitted,
-      ...(options === undefined ? [] : [{
+      options == null ? null : {
         ...options, excluded: options.excluded.map(path),
         sidecarDir: path(options.sidecarDir), home: path(options.home)
-      }])
+      },
+      hidden
     ]),
     installs: files(entry.installs),
     packages: files(entry.packages),

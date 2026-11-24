@@ -38,11 +38,13 @@ export function findBinary() {
   if (found !== undefined) return found
   const target = `${process.platform}-${process.arch}`
   const name = process.platform === "win32" ? `@smthrs/cli-${target}` : `vibelang-${target}`
-  console.error(`vibelang: no native compiler is installed for ${target}.`)
-  console.error(`vibelang ships native compilers for ${platforms.join(", ")}.`)
+  const lines = [
+    `vibelang: no native compiler is installed for ${target}.`,
+    `vibelang ships native compilers for ${platforms.join(", ")}.`
+  ]
   if (platforms.includes(target)) {
-    console.error(`Reinstall without omitting optional dependencies so ${name} installs.`)
+    lines.push(`Reinstall without omitting optional dependencies so ${name} installs.`)
   }
-  console.error("In a VibeLang checkout, run sh scripts/build-vibelang.sh, or set VIBELANG_BINARY.")
-  process.exit(1)
+  lines.push("In a VibeLang checkout, run sh scripts/build-vibelang.sh, or set VIBELANG_BINARY.")
+  throw Object.assign(new Error(lines.join("\n")), { code: "ERR_VIBELANG_BINARY" })
 }

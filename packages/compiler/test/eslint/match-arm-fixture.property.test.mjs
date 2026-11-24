@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
@@ -5,7 +6,7 @@ import fc from "fast-check"
 import { Linter } from "eslint"
 import vibelang, { parseESTree } from "../../eslint.mjs"
 
-const filename = new URL("./fixtures/forms.vibe", import.meta.url).pathname
+const filename = fileURLToPath(new URL("./fixtures/forms.vibe", import.meta.url))
 const lint = (code) => new Linter({ configType: "flat", cwd: "/" }).verify(code, [{
   files: ["**/*.vibe"], languageOptions: { parser: vibelang },
   rules: { "no-unexpected-multiline": "error" }

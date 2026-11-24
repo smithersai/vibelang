@@ -1,11 +1,11 @@
 // A probe: main needs the Mailer service and nothing provides it, so the
-// runner must reject the program on the mapper side, as the fork does (EK3201).
+// runner must reject the program on the mapper side, as the fork does.
 service Mailer {
-  send(to: string): Effect<void, never, never>
+  send(to: string): void!!
 }
 
 effect function welcome() {
-  try Mailer.send("ada@example.com")
+  try (try Mailer).send("ada@example.com")
 }
 
 export effect function main() {

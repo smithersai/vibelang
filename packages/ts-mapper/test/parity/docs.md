@@ -1,5 +1,5 @@
 The default full parity run also measures documentation diagnostics. Use
-`sh packages/ts-mapper/test/parity/run.sh --docs` to run only that lane.
+`bash packages/ts-mapper/test/parity/run.sh --docs` to run only that lane.
 It took 16 seconds on the implementation check, below the 60 second budget.
 Case selectors continue to select only declaration cases.
 

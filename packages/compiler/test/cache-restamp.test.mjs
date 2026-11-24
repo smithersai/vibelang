@@ -12,7 +12,7 @@ const settle = () => sleep(120)
 // A pnpm install in another workspace hard-links the same compiler, which
 // changes its ctime but not its bytes. Each later process then read and hashed
 // the whole compiler (42.5 MB) for every project it loaded: about 65 ms each in
-// the VibeLang Factory CLI (vl-bench, 2026-11-10).
+// the VibeLang Factory CLI.
 test("a hit after the compiler's stamp changed but not its bytes records the new stamp", async (t) => {
   const root = mkdtempSync(join(tmpdir(), "vibelang-cache-restamp-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))

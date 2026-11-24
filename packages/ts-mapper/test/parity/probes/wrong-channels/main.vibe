@@ -20,5 +20,5 @@ export effect function wrongError(n: number): number!never!never {
 }
 
 export effect function wrongRequirement(): number!never!never {
-  return try Needed.lookup() // probe-error: TS2322 Needed
+  return try (try Needed).lookup() // probe-error: TS2322 Needed
 }

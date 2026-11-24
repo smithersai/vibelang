@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url"
 import assert from "node:assert/strict"
 import { mkdtempSync, writeFileSync, rmSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -8,7 +9,7 @@ import { typedProgram } from "../../eslint.mjs"
 test("typed lint reads vibex sidecars through source, JS and JSX imports", t => {
   const root = mkdtempSync(join(tmpdir(), "vibex-typed-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  symlinkSync(new URL("./node_modules", import.meta.url).pathname, join(root, "node_modules"))
+  symlinkSync(fileURLToPath(new URL("./node_modules", import.meta.url)), join(root, "node_modules"))
   writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
     compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, jsx: "preserve", skipLibCheck: true, allowArbitraryExtensions: true },
     vibe: { effectModules: false }, include: ["*.ts", "*.vibex"]

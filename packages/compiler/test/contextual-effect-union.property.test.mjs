@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -15,7 +16,7 @@ const modules = process.env.EFFECT_NODE_MODULES || join(root, "experiments/node_
 const runtime = process.env.VIBELANG_RUNTIME || join(root, "packages/runtime")
 const stock = join(modules, "typescript/bin/tsc")
 const absent = [native, stock, join(modules, "effect/package.json"), join(runtime, "dist/index.d.ts")].find(path => !existsSync(path))
-const skip = absent && "missing contextual typing dependency: " + absent
+const skip = requireOrSkip(absent && "missing contextual typing dependency: " + absent)
 const corpus = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-contextual-effect-union.json", import.meta.url)))
 function check({ field, union, context, newline, missing = false }) {
   const project = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-contextual-union-")))

@@ -41,7 +41,6 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 package="$(cd "$here/.." && pwd)"
 root="$(cd "$package/../.." && pwd)"
-node --test "$here/build-inputs.test.mjs"
 ts7_version="${TS7_VERSION:-$(node -e 'process.stdout.write(require(process.argv[1]).devDependencies.typescript)' "$package/package.json")}"
 
 step() { printf '\n== %s\n' "$*"; }
@@ -81,14 +80,8 @@ ln -s "$effect_dir" "$work/node_modules/effect"
 # declarations sit beside effect. Build them from a copy of the sources whose
 # node_modules holds the same effect, without touching packages/runtime.
 runtime="$work/node_modules/vibelang-runtime"
-mkdir -p "$work/.runtime-build/node_modules" "$runtime"
-cp -R "$root/packages/runtime/src" "$root/packages/runtime/tsconfig.json" "$work/.runtime-build/"
-# The experimental platform layers (D313) need the optional @effect/platform-*
-# packages and Node's types, which this build does not install.
-rm -rf "$work/.runtime-build/src/experimental/platform-"* "$work/.runtime-build/src/experimental/internal/node"*
-ln -s "$effect_dir" "$work/.runtime-build/node_modules/effect"
-"$tsc" -p "$work/.runtime-build/tsconfig.json" --outDir "$runtime/dist" --declarationMap false --sourceMap false --inlineSources false
-cp "$root/packages/runtime/package.json" "$runtime/"
+source "$here/runtime-fixture.sh"
+build_runtime_fixture "$root/packages/runtime" "$work/.runtime-build" "$runtime" "$tsc"
 echo "$work"
 
 step "vibex projection properties against stock TSX"

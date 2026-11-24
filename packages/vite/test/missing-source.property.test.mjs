@@ -1,3 +1,4 @@
+import { devServer } from "./dev-server.mjs"
 import assert from "node:assert/strict"
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
@@ -21,14 +22,13 @@ async function until(check, stage, messages) {
 
 for (const version of ["vite", "vite7"]) {
   test(`${version}: creating and deleting imported sources updates served modules`, async () => {
-    const { createServer } = await import(version)
     const directory = join(repo, "packages/vite/test/.fixtures")
     await mkdir(directory, { recursive: true })
     const root = await mkdtemp(join(directory, "missing-source-"))
     await mkdir(join(root, "src"))
     await mkdir(join(root, "node_modules"))
     await symlink(join(repo, "packages/compiler"), join(root, "node_modules/vibelang"))
-    await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+    await symlink(join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect"), join(root, "node_modules/effect"))
     await writeFile(join(root, "package.json"), '{"type":"module"}')
     await writeFile(join(root, "tsconfig.json"), JSON.stringify({
       compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [] },
@@ -38,11 +38,10 @@ for (const version of ["vite", "vite7"]) {
     await writeFile(main, "export const value = 1\n")
     await writeFile(join(root, "src/entry.mjs"), 'import {value} from "./main.vibe"; export {value}; if (import.meta.hot) import.meta.hot.accept()\n')
     const messages = []
-    const server = await createServer({
+    const server = await devServer({
       root, configFile: false, plugins: [vibelang({ compiler })],
-      optimizeDeps: { noDiscovery: true, include: [] },
       server: { host: "127.0.0.1", port: 0, watch }, logLevel: "silent"
-    })
+    }, version)
     const channel = server.environments.client.hot
     const send = channel.send.bind(channel)
     channel.send = (...args) => { messages.push(args[0]); return send(...args) }
@@ -106,7 +105,6 @@ for (const version of ["vite", "vite7"]) {
 
 for (const version of ["vite", "vite7"]) {
   test(`${version}: dependency accept boundaries preserve hot updates without a document reload`, async () => {
-    const { createServer } = await import(version)
     async function check({ depth, name }) {
       const directory = join(repo, "packages/vite/test/.fixtures")
       await mkdir(directory, { recursive: true })
@@ -114,7 +112,7 @@ for (const version of ["vite", "vite7"]) {
       await mkdir(join(root, "src"))
       await mkdir(join(root, "node_modules"))
       await symlink(join(repo, "packages/compiler"), join(root, "node_modules/vibelang"))
-      await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+      await symlink(join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect"), join(root, "node_modules/effect"))
       await writeFile(join(root, "package.json"), '{"type":"module"}')
       await writeFile(join(root, "tsconfig.json"), JSON.stringify({
         compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [] },
@@ -134,11 +132,10 @@ for (const version of ["vite", "vite7"]) {
       await writeFile(join(root, "src/native.ts"), "export const nativeValue = 1\n")
       await writeFile(join(root, "src/entry.mjs"), 'import {value} from "./main.vibe"; import {nativeValue} from "./native.ts"; export {value,nativeValue}; if(import.meta.hot) import.meta.hot.accept(["./main.vibe","./native.ts"], () => {})\n')
       const messages = []
-      const server = await createServer({
+      const server = await devServer({
         root, configFile: false, plugins: [vibelang({ compiler })],
-        optimizeDeps: { noDiscovery: true, include: [] },
         server: { host: "127.0.0.1", port: 0, watch }, logLevel: "silent"
-      })
+      }, version)
       const channel = server.environments.client.hot, send = channel.send.bind(channel)
       channel.send = (...args) => { messages.push(args[0]); return send(...args) }
       const legacySend = server.ws.send.bind(server.ws)

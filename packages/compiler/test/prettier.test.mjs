@@ -28,7 +28,7 @@ test("syntax failures propagate through Prettier without returning formatted out
 
 test("the formatter companion checks .vibe, writes it, and then passes", () => {
   const dir = mkdtempSync(join(tmpdir(), "vibe-format-cli-"))
-  const cli = new URL("../bin/vibelang-format", import.meta.url).pathname
+  const cli = fileURLToPath(new URL("../bin/vibelang-format", import.meta.url))
   try {
     writeFileSync(join(dir, "work.vibe"), source)
     const run = (...args) => spawnSync(process.execPath, [cli, ...args], { cwd: dir, encoding: "utf8" })

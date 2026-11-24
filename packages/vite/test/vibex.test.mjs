@@ -20,7 +20,7 @@ async function fixture(t, extension, jsx = "preserve", jsxImportSource) {
   t.after(() => rm(root, { recursive: true, force: true }))
   await mkdir(join(root, "node_modules"))
   for (const name of ["compiler", "runtime"]) await symlink(join(repo, "packages", name), join(root, "node_modules", name === "compiler" ? "vibelang" : "vibelang-runtime"))
-  await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+  await symlink(join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect"), join(root, "node_modules/effect"))
   await writeFile(join(root, "package.json"), '{"type":"module"}')
   await writeFile(join(root, "tsconfig.json"), JSON.stringify({
     compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [], jsx, ...(jsxImportSource ? { jsxImportSource } : { jsxFactory: "h" }), rootDir: ".", outDir: "dist", rewriteRelativeImportExtensions: true },

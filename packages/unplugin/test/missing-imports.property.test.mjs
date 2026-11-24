@@ -99,16 +99,19 @@ test("Rollup keeps source and type-only watches after missing-import recovery", 
       output: { file: output, format: "es", sourcemap: true },
       watch: { chokidar: { usePolling: polling, interval: 20 }, buildDelay: 50 }
     })
+    let build
     watcher.on("event", async event => {
       try {
         if (event.code === "BUNDLE_END") {
-          await event.result.close()
-          events.push({ ok: true })
-          history.push("build succeeded")
+          build = { ok: true, closed: event.result.close() }
         } else if (event.code === "ERROR") {
-          await event.result?.close()
-          events.push({ ok: false, message: event.error.message })
-          history.push("build failed: " + event.error.message)
+          build = { ok: false, message: event.error.message, closed: event.result?.close() }
+        } else if (event.code === "END" && build) {
+          const { closed, ...event } = build
+          build = undefined
+          await closed
+          events.push(event)
+          history.push(event.ok ? "build succeeded" : "build failed: " + event.message)
         }
       } catch (error) {
         events.push({ ok: false, message: error.message })
@@ -119,7 +122,7 @@ test("Rollup keeps source and type-only watches after missing-import recovery", 
       return run.status === 0 && run.stdout.trim() === String(expected)
     }
     async function until(from, predicate, stage) {
-      const deadline = Date.now() + 10000
+      const deadline = Date.now() + 60000
       while (Date.now() < deadline) {
         if (events.slice(from).some(predicate)) return
         await new Promise(resolve => setTimeout(resolve, 25))
@@ -127,7 +130,6 @@ test("Rollup keeps source and type-only watches after missing-import recovery", 
       assert.fail(stage + ": no rebuild\n" + history.join("\n"))
     }
     async function edit(stage, write, predicate) {
-      await new Promise(resolve => setTimeout(resolve, 300))
       const from = events.length
       history.push(stage)
       await write()

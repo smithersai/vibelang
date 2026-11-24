@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -58,11 +59,11 @@ function check({ depth, rootConfig, leafConfig, directory, count, mode, explicit
   } finally { rmSync(cwd, { recursive: true, force: true }) }
 }
 
-test("lint selects solution-referenced native files as the compiler does", { skip: !existsSync(binary) }, () => {
+test("lint selects solution-referenced native files as the compiler does", { skip: requireOrSkip(!existsSync(binary) && binary) }, () => {
   for (const mode of ["auto", "file", "directory"]) check({ ...corpus, mode })
 })
 
-test("lint project discovery follows generated reference graphs and config spellings", { skip: !existsSync(binary), timeout: 180000 }, () => {
+test("lint project discovery follows generated reference graphs and config spellings", { skip: requireOrSkip(!existsSync(binary) && binary), timeout: 180000 }, () => {
   fc.assert(fc.property(
     fc.record({
       depth: fc.integer({ min: 0, max: 4 }),

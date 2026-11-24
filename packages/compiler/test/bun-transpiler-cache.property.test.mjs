@@ -2,6 +2,7 @@
 // (./b.js for b.vibe). When b returns to b.ts, or migrates again, a later Bun
 // process that reuses the runtime transpiler cache must load the module on
 // disk, not the path an earlier process resolved the import to.
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -19,7 +20,7 @@ const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_
 const runtime = process.env.VIBELANG_RUNTIME || join(repo, "packages/runtime")
 const bun = process.env.VIBELANG_TEST_BUN || "bun"
 const missing = [native, join(modules, "effect"), join(runtime, "dist/index.js")].find(path => !existsSync(path))
-const skip = missing ? "missing test dependency: " + missing : spawnSync(bun, ["--version"]).status !== 0 && "Bun is unavailable"
+const skip = requireOrSkip(missing ? "missing test dependency: " + missing : spawnSync(bun, ["--version"]).status !== 0 && "Bun is unavailable")
 const regression = JSON.parse(readFileSync(new URL("./property-regressions/smithers-bun-returned-module-cache.json", import.meta.url), "utf8"))
 
 // Bun caches the transpiled output of a module of at least 50 KB only.

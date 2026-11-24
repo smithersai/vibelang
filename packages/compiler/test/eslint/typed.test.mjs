@@ -3,14 +3,17 @@
 // a type from one reaches a .ts file unresolved and type-aware rules report
 // code that vibelang -p accepts. typedProgram's program reads each .vibe
 // module's declaration instead: the .ts file sees the types the compiler sees.
+import { fileURLToPath } from "node:url"
 import { strict as assert } from "node:assert"
-import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs"
 import { test } from "node:test"
+import { tmpdir } from "node:os"
+import { join, sep } from "node:path"
 import { ESLint } from "eslint"
 import tseslint from "typescript-eslint"
 import { typedProgram } from "../../eslint.mjs"
 
-const cwd = new URL("./fixtures/typed/", import.meta.url).pathname
+const cwd = fileURLToPath(new URL("./fixtures/typed/", import.meta.url))
 const rules = {
   "@typescript-eslint/no-unnecessary-type-assertion": "error",
   "@typescript-eslint/no-unsafe-argument": "error",
@@ -72,13 +75,16 @@ test("a .vibe module's .d.ts forwarder names the module and nothing else", () =>
   }
 })
 
-test("another workspace package's .vibe modules compile with that package's project", async () => {
-  const workspace = new URL("./fixtures/typed-workspace/", import.meta.url).pathname
-  const app = `${workspace}app/`
+test("another workspace package's .vibe modules compile with that package's project", async (t) => {
+  const workspace = mkdtempSync(join(tmpdir(), "vibelang-typed-workspace-"))
+  t.after(() => rmSync(workspace, { recursive: true, force: true }))
+  cpSync(fileURLToPath(new URL("./fixtures/typed-workspace/", import.meta.url)), workspace, {
+    recursive: true, filter: path => !path.split(sep).includes("node_modules")
+  })
+  const app = join(workspace, "app") + sep
   // The link pnpm makes for a workspace dependency; node_modules is not committed.
   mkdirSync(`${app}node_modules/@typed`, { recursive: true })
-  rmSync(`${app}node_modules/@typed/lib`, { force: true })
-  symlinkSync("../../../lib", `${app}node_modules/@typed/lib`)
+  symlinkSync(join(workspace, "lib"), `${app}node_modules/@typed/lib`, "junction")
   const program = typedProgram({ project: "tsconfig.json", tsconfigRootDir: app })
   const main = program.getSourceFile(`${app}src/main.ts`)
   assert.deepEqual(program.getSemanticDiagnostics(main).map((diagnostic) => diagnostic.messageText), [])

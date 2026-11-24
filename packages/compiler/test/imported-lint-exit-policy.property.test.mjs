@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -13,7 +14,7 @@ const stock = process.env.EFFECT_TSGO_BINARY
 const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
 const runtime = join(repo, "packages/runtime")
 const missing = [binary, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = missing && `build the native compiler and runtime first: ${missing}`
+const skip = requireOrSkip(missing && `build the native compiler and runtime first: ${missing}`)
 const witness = readFileSync(new URL("./fixtures/smithers-promise-success-warning.ts", import.meta.url), "utf8")
 
 function project(t) {

@@ -16,7 +16,6 @@
 //   parity.ts calls runtimeParity for the runtime column of summary.md.
 //   bun runtime.ts [case...]   the runtime column alone, with the PARITY_*
 //                              variables run.sh sets; prints one line per case
-import { mapperEntry } from "./mapper-options"
 import { parseJsonc } from "../../../compiler/cache.mjs"
 import { exec } from "./command"
 import fs from "node:fs"

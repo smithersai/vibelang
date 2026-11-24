@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -38,7 +39,7 @@ console.log(JSON.stringify([detected, Object.hasOwn(namespace, "default")]));
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
-test("Bun export inspection matches native namespaces without executing source", { skip: !hasBun }, () => {
+test("Bun export inspection matches native namespaces without executing source", { skip: requireOrSkip(!hasBun && "Bun is required") }, () => {
   for (const [extension, code] of [
     ["ts", 'export type { default } from "./types.ts"; export const value = 1;'],
     ["ts", 'export default interface Value { n: number }'],
@@ -52,7 +53,7 @@ test("Bun export inspection matches native namespaces without executing source",
   ]) compare(extension, code)
 })
 
-test("property: native TypeScript default erasure and aliases match Bun", { skip: !hasBun }, () => {
+test("property: native TypeScript default erasure and aliases match Bun", { skip: requireOrSkip(!hasBun && "Bun is required") }, () => {
   fc.assert(fc.property(
     fc.integer({ min: -20, max: 20 }),
     fc.constantFrom("binding", "expression", "type", "none", "star"),
@@ -69,7 +70,7 @@ test("property: native TypeScript default erasure and aliases match Bun", { skip
   ), { seed: 160017, numRuns: 40 })
 })
 
-test("VibeLang export inspection reads compiled JavaScript only", { skip: !hasBun }, () => {
+test("VibeLang export inspection reads compiled JavaScript only", { skip: requireOrSkip(!hasBun && "Bun is required") }, () => {
   const script = `
 import { exportsDefault } from ${JSON.stringify(inspector)};
 for (const extension of ["vibe", "vibex"]) {

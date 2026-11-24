@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -14,7 +15,7 @@ const modules = process.env.EFFECT_NODE_MODULES || join(root, "experiments/node_
 const runtime = process.env.VIBELANG_RUNTIME || join(root, "packages/runtime")
 const stock = join(modules, "typescript/bin/tsc")
 const missing = [native, stock, join(modules, "effect/package.json"), join(runtime, "dist/index.d.ts")].find(path => !existsSync(path))
-const skip = missing && "missing test dependency: " + missing
+const skip = requireOrSkip(missing && "missing test dependency: " + missing)
 const witness = JSON.parse(readFileSync(new URL("./property-regressions/smithers-relocated-effect-package.json", import.meta.url)))
 const rule = witness.rule
 

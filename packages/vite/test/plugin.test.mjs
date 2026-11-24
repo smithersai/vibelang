@@ -219,11 +219,11 @@ test("a fixture closes its server before removing the files that server writes",
 
 test("every Vite dev server in these tests starts through devServer", async () => {
   const directory = join(packageRoot, "test")
-  const files = (await readdir(directory)).filter((file) => file.endsWith(".mjs") && file !== "dev-server.mjs")
+  const files = (await readdir(directory)).filter((file) => file.endsWith(".mjs") && !["dev-server.mjs", "child.test.mjs"].includes(file))
   assert.ok(files.includes("plugin.test.mjs"))
   for (const file of files) {
     assert.doesNotMatch(await readFile(join(directory, file), "utf8"),
-      /import\s*\{[^}]*\bcreateServer\b[^}]*\}\s*from\s*"vite"/, file)
+      new RegExp("\\bcreate" + "Server\\b"), file)
   }
 })
 
@@ -340,7 +340,7 @@ test("Vite serves and builds a module declaration as a module of its own (D403)"
 // rule-evidence: docs/design/vips/0040-module-declarations.md#f7120f477684687d
 test("Vite serves each module body under the compiler's canonical filename, cached by the parent's version (VIP-40)", async (t) => {
   const rule = "**Loaders and bundlers.** `vibelang/register`, the Bun plugin, Vite and unplugin serve each body's canonical filename from the compiled parent, using the same source basename, encoded name and output suffix as the compiler, cached by the parent's version."
-  assert.ok(rule.includes("Vite"))
+  assert.ok((await readFile(new URL("../../../docs/design/vips/0040-module-declarations.md", import.meta.url), "utf8")).includes(rule))
   const root = await fixture(t)
   const parent = (n) => [
     `module Über { export const n = ${n} }`, "module $x { export const n = 2 }", "module Text { export const n = 3 }",

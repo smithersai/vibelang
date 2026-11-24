@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -13,7 +14,7 @@ const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local
 const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
 const runtime = join(repo, "packages/runtime")
 const missing = [native, effect, join(runtime, "dist/index.js")].find(path => !existsSync(path))
-const skip = spawnSync("bun", ["--version"]).status !== 0 ? "Bun is not installed" : missing && "build the compiler and runtime first"
+const skip = requireOrSkip(spawnSync("bun", ["--version"]).status !== 0 ? "Bun is not installed" : missing && "build the compiler and runtime first")
 const corpus = JSON.parse(readFileSync(new URL("./property-regressions/opencode-native-require-extensionless.json", import.meta.url), "utf8"))
 
 // VIP-34's mixed-project loader must preserve native module evaluation.

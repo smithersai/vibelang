@@ -2,6 +2,7 @@
 // VIP-34: real tooling reads Vibe imports exports and declarations.
 // docs/design/vips/0034-compiler-and-tooling.md#723d204e746beecc
 // VIP-34: Knip sees real Vibe imports and exports; ESLint, register and bundler suites are complementary tool readers.
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { existsSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -15,7 +16,7 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const missing = [native, join(modules, "typescript")].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 if (!process.env.VIBELANG_BINARY && !skip) process.env.VIBELANG_BINARY = native
 
 const source = `import { a } from "./a.vibe"

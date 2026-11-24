@@ -2,6 +2,7 @@
 // gives it, from the compiled parent, and serves a new body after the parent
 // changes. Node (vibelang/register) and Bun (vibelang/bun) are checked here;
 // Vite and unplugin check the same names in their own packages.
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -20,8 +21,8 @@ const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/n
 const runtime = join(repo, "packages/runtime")
 const bun = process.env.VIBELANG_TEST_BUN || "bun"
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
-const skipBun = skip || (spawnSync(bun, ["--version"]).status !== 0 && "Bun is required")
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
+const skipBun = requireOrSkip(skip || (spawnSync(bun, ["--version"]).status !== 0 && "Bun is required"))
 
 // Names that keep, encode or mix characters: Text -> -54-ext, Über -> -dc-ber, $x -> -24-x.
 const parent = (n) => [

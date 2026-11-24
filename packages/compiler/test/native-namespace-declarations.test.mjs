@@ -9,12 +9,12 @@ import { spawnSync } from "node:child_process"
 import { test } from "node:test"
 const require = createRequire(new URL("../../runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
-const binary = fileURLToPath(new URL("../native/vibelang", import.meta.url))
+const binary = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
 const corpus = JSON.parse(readFileSync(new URL("./fixtures/alchemy-namespace-declarations.json", import.meta.url), "utf8"))
 const rule = "Declaration emit follows TypeScript for the source’s `.ts`/`.tsx` twin"
 assert.ok(readFileSync(new URL("../../../docs/design/src/001-functions.md", import.meta.url), "utf8").includes(rule), "D263/D298 declaration spec quote must remain current")
 
-function fixture(files, style, consume) {
+function fixture(files, consume) {
   const root = mkdtempSync(join(tmpdir(), "alchemy-native-namespace-"))
   const put = (name, value) => { mkdirSync(dirname(join(root, name)), { recursive: true }); writeFileSync(join(root, name), value) }
   try {
@@ -23,7 +23,7 @@ function fixture(files, style, consume) {
       compilerOptions: { strict: true, target: "ES2022", module: "Preserve", moduleResolution: "Bundler",
         allowImportingTsExtensions: true, allowArbitraryExtensions: true, skipLibCheck: true, types: [],
         declaration: true, emitDeclarationOnly: true, rootDir: "src", outDir: "lib" },
-      vibelang: { declarationImportStyle: style }, include: ["src/**/*.ts", "src/**/*.vibe"]
+      include: ["src/**/*.ts", "src/**/*.vibe"]
     }))
     const emitted = spawnSync(binary, ["-p", "tsconfig.json", "--singleThreaded", "--pretty", "false"], { cwd: root, encoding: "utf8" })
     assert.equal(emitted.status, 0, emitted.stdout + emitted.stderr)
@@ -40,16 +40,16 @@ function fixture(files, style, consume) {
 const noAny = target => '\ntype IsAny<T> = 0 extends (1 & T) ? true : false;\nconst concrete: IsAny<' + target + '> = false;\n'
 
 test("alchemy-57: stock namespace and direct consumers resolve the same emitted DBInstance type", () => {
-  fixture({ ...corpus.files, "consumer.ts": corpus.files["consumer.ts"] + noAny("AWS.RDS.DBInstance") }, ".js", root => {
+  fixture({ ...corpus.files, "consumer.ts": corpus.files["consumer.ts"] + noAny("AWS.RDS.DBInstance") }, root => {
     assert.match(readFileSync(join(root, "lib/RDS/index.d.ts"), "utf8"), /DBInstance\.ts/)
     assert.match(readFileSync(join(root, "lib/index.d.ts"), "utf8"), /RDS\/index\.ts/)
   })
 })
 
 test("property: native leaves behind retained TypeScript barrels resolve through declaration-only packages", () => {
-  fc.assert(fc.property(fc.constantFrom(".js", ".ts", "extensionless"), fc.constantFrom('"', "'"),
+  fc.assert(fc.property(fc.constantFrom('"', "'"),
     fc.integer({ min: 0, max: 3 }), fc.constantFrom("star", "named", "typed", "importType", "namespace"),
-    (style, quote, depth, form) => {
+    (quote, depth, form) => {
       const spec = quote + "./DBInstance.vibe" + quote
       const edge = {
         star: "export * from " + spec + ";\n",
@@ -67,7 +67,7 @@ test("property: native leaves behind retained TypeScript barrels resolve through
       for (let i = 0; i < depth; i++) files["src/hop" + i + ".ts"] = "export * from " + quote + (i + 1 < depth ? "./hop" + (i + 1) + ".ts" : "./last.ts") + quote + ";\n"
       const target = "AWS.RDS." + (form === "namespace" ? "Nested." : "") + "DBInstance"
       files["consumer.ts"] = 'import * as AWS from "./lib/index.js";\nexport type Selected = ' + target + " | string;\n" + noAny(target)
-      fixture(files, style, root => {
+      fixture(files, root => {
         const declaration = readFileSync(join(root, "lib/last.d.ts"), "utf8")
         assert.ok(!declaration.includes("./DBInstance.vibe"), declaration)
         assert.ok(declaration.includes("./DBInstance.ts"), declaration)

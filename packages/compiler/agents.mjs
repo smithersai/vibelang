@@ -8,7 +8,7 @@
 // docs/maintainers/coding-agents.md cites each agent's documentation.
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs"
-import { dirname, isAbsolute, join, relative, resolve } from "node:path"
+import { dirname, isAbsolute, join, relative, resolve, win32 } from "node:path"
 import { fileURLToPath } from "node:url"
 import { isVibeLangFile } from "./vibe-directive.mjs"
 
@@ -38,8 +38,14 @@ export async function main(args, findBinary) {
     }
     return init(root)
   }
-  if (command === "check") return check(rest, findBinary)
-  if (command === "hook") return hook(findBinary)
+  try {
+    if (command === "check") return check(rest, findBinary)
+    if (command === "hook") return hook(findBinary)
+  } catch (error) {
+    if (error.code !== "ERR_VIBELANG_BINARY") throw error
+    console.error(error.message)
+    return 1
+  }
   console.error(command === undefined || command === "--help" ? usage : `vibelang agents: unknown command ${command}.\n${usage}`)
   return command === "--help" ? 0 : 2
 }
@@ -345,10 +351,11 @@ export function checkFiles(files, binary, cwd) {
 // the indented lines that continue them.
 export function parseDiagnostics(output, directory) {
   const diagnostics = []
-  for (const line of output.split("\n")) {
+  const resolveFile = /^(?:[A-Za-z]:[\\/]|\\\\)/.test(directory) ? win32.resolve : resolve
+  for (const line of output.split(/\r?\n/)) {
     const match = /^(?:(.+?)\((\d+),(\d+)\): )?(error|warning|suggestion|message) ([A-Z]+\d+): (.*)$/.exec(line)
     if (match) {
-      const location = match[1] === undefined ? {} : { file: resolve(directory, match[1]), line: Number(match[2]), column: Number(match[3]) }
+      const location = match[1] === undefined ? {} : { file: resolveFile(directory, match[1]), line: Number(match[2]), column: Number(match[3]) }
       diagnostics.push({ ...location, severity: match[4], code: match[5], message: match[6] })
     } else if (line.startsWith("  ") && diagnostics.length > 0) {
       diagnostics.at(-1).message += `\n${line}`

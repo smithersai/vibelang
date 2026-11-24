@@ -65,7 +65,7 @@ function revisions(input) {
       case "package": selected = edit.value % 2; break
       case "dependency": dependency = edit.value; break
       case "compiler": binary = edit.value; break
-      // A chmod and a rewrite with the same bytes: the compiler is unchanged (drive-t3code-apps 22:30Z).
+      // A chmod and a rewrite with the same bytes: the compiler is unchanged.
       case "compiler-metadata": break
     }
     result.push({ ...snapshot(), edit })

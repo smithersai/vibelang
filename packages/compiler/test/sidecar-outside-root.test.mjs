@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs"
@@ -15,7 +16,7 @@ const outputs = (root, suffix) => readdirSync(root, { recursive: true }).filter(
 const run = (command, args, root) => spawnSync(command, args, { cwd: root, encoding: "utf8", timeout: 60000 })
 
 for (const mode of ["beside", "directory", "rootDir", "references", "inferred"]) {
-  test("outside-config sidecars match tsc: " + mode, { skip: !existsSync(binary) || !existsSync(stock) }, t => {
+  test("outside-config sidecars match tsc: " + mode, { skip: requireOrSkip([binary, stock].find(path => !existsSync(path))) }, t => {
     const root = mkdtempSync(join(tmpdir(), "sidecar-outside-"))
     t.after(() => rmSync(root, { recursive: true, force: true }))
     const seen = []

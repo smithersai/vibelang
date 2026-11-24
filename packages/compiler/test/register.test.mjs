@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -12,7 +13,7 @@ const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local
 const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
 const runtime = join(repo, "packages/runtime")
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 
 const tsconfig = (include) => JSON.stringify({
   compilerOptions: {
@@ -49,6 +50,17 @@ process.exit(spawnSync(${JSON.stringify(native)}, args, { stdio: "inherit" }).st
   const compilations = () => existsSync(calls) ? readFileSync(calls, "utf8").trim().split("\n").length : 0
   return { root, run, compilations }
 }
+
+test("the Node loader codes an import without a project as ERR_VIBELANG_PROJECT", (t) => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-register-no-project-")))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  writeFileSync(join(root, "main.vibe"), "export const value = 1\n")
+  const result = spawnSync(process.execPath, ["--import", register, "--input-type=module", "-e",
+    'await import("./main.vibe").catch(error => { console.log(error.code); console.log(error.message) })'
+  ], { cwd: root, encoding: "utf8", env: { ...process.env, VIBELANG_PROJECT: "" } })
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /^ERR_VIBELANG_PROJECT\nvibelang\/register: no tsconfig\.json above /)
+})
 
 test("runs .vibe modules imported from TypeScript, with one compile and one copy of each module", { skip }, (t) => {
   const { run, compilations } = project(t, {

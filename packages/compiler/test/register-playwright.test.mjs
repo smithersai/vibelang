@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -13,7 +14,7 @@ const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const tooling = createRequire(join(process.env.PLAYWRIGHT_NODE_MODULES || join(repo, "packages/runtime/node_modules"), "_resolve.cjs"))
 const missing = [native, join(modules, "effect"), join(repo, "packages/runtime/dist/index.js")].find(path => !existsSync(path))
-const skip = missing && `build the compiler and runtime first; missing ${missing}`
+const skip = requireOrSkip(missing && `build the compiler and runtime first; missing ${missing}`)
 const source = readFileSync(new URL("./fixtures/alchemy-tool-entry-loaders/answer.vibe", import.meta.url), "utf8")
 
 function fixture(t, extra = {}) {

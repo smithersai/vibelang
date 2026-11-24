@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -22,7 +23,7 @@ const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/n
 const runtime = join(repo, "packages/runtime")
 const hasBun = spawnSync("bun", ["--version"]).status === 0
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = !hasBun ? "bun is not on PATH" : missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(!hasBun ? "bun is not on PATH" : missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 const rule = "docs/design/src/007-tooling.md: Existing tools work; a module that loads as .ts under Bun loads the same way when what it imports is .vibe"
 const regressions = new URL("./property-regressions/", import.meta.url)
 

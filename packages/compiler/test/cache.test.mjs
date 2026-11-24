@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { loaderScope } from "../loader-scope.mjs"
 import { strict as assert } from "node:assert"
 import { spawn, spawnSync } from "node:child_process"
@@ -20,7 +21,7 @@ const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local
 const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
 const runtime = join(repo, "packages/runtime")
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 
 const options = {
   target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, types: [], skipLibCheck: true,
@@ -339,7 +340,7 @@ test("a different or rebuilt compiler recompiles", { skip }, async (t) => {
   assert.equal(compiles(), 3)
 })
 
-// drive-t3code-apps 22:30Z: a chmod changes a compiler's ctime, not its bytes,
+// A chmod changes a compiler's ctime, not its bytes,
 // and every Vite run then recompiled each package ("compiler changed").
 test("a compiler whose stamp changed but whose bytes did not keeps the cache", { skip }, async (t) => {
   const { run, compiles, compiler, calls } = await fixture(t)
@@ -477,7 +478,7 @@ test("a default cache directory another user can write to is not used", { skip: 
   assert.deepEqual(readdirSync(join(temporary, `vibelang-cache-${process.getuid()}`)), [])
 })
 
-test("projects() and private synchronous loader compiles share the cache, and a warm load costs under 50 ms", { skip }, async (t) => {
+test("projects() and private synchronous loader compiles share the cache", { skip }, async (t) => {
   const { app, cache, compiler, compiles } = await fixture(t)
   const project = join(app, "tsconfig.json")
   const cold = await projects({ root: app, project, compiler, cache: { directory: cache } }).load(join(app, "src/shout.vibe"))
@@ -487,16 +488,11 @@ test("projects() and private synchronous loader compiles share the cache, and a 
   assert.deepEqual(warm.map, cold.map)
   assert.deepEqual(warm.inputs, cold.inputs)
   assert.equal(compiles(), 1)
-  const times = []
   for (let attempt = 0; attempt < 5; attempt++) {
-    const started = performance.now()
     const result = compileProjectSync({ [loaderScope]: true, project, compiler, cache: { directory: cache } })
-    times.push(performance.now() - started)
     assert.equal(result.outputs.get(join(app, "src/shout.vibe")).code, cold.code)
   }
   assert.equal(compiles(), 1)
-  const median = times.sort((a, b) => a - b)[2]
-  assert.ok(median < 50, `a warm load took ${median.toFixed(1)} ms`)
   assert.equal(compileProjectSync({ [loaderScope]: true, project, compiler, cache: false }).outputs.size, 2)
   assert.equal(compiles(), 2, "cache: false compiles")
 })

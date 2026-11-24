@@ -4,6 +4,8 @@
 #
 # Usage: sh packages/vite/test/run.sh [node --test options]
 #
+# Install prerequisites first with sh scripts/ci.sh --prepare-only.
+#
 # Environment:
 #   VIBELANG_BINARY        a native vibelang compiler; skips the Go build
 #   EFFECT_NODE_MODULES  a node_modules directory that holds effect 4.1.1
@@ -22,6 +24,11 @@ fi
 export VIBELANG_BINARY
 if [ "${VIBELANG_TEST_PREPARE_ONLY:-}" = 1 ]; then
 	exec node "$repo/scripts/testing/prepare-package-tests.mjs" vite
+fi
+
+if [ ! -d "$package/node_modules/vite" ]; then
+    echo "test: run sh scripts/ci.sh --prepare-only to install vite test dependencies" >&2
+    exit 1
 fi
 
 effect_modules=${EFFECT_NODE_MODULES:-$repo/experiments/node_modules}
@@ -47,17 +54,13 @@ ln -s "$effect" "$built/node_modules/effect"
 echo "build: vibelang -p test/.fixtures/vibelang-runtime/tsconfig.json"
 "$VIBELANG_BINARY" -p "$built/tsconfig.json"
 
-# The compiler peer may not be published yet. Fixtures link this checkout below.
-(cd "$package" && bun install --frozen-lockfile --no-cache --omit peer)
-
-# Fixtures resolve effect and the runtime from test/.fixtures/node_modules. The
-# plugin's compile backend, vibelang/project, is the vibelang package beside it.
+# Fixtures resolve the checkout packages from this private module directory.
 modules=$package/test/.fixtures/node_modules
 mkdir -p "$modules"
-rm -rf "$modules/effect" "$modules/vibelang-runtime" "$package/node_modules/vibelang"
+rm -rf "$modules/effect" "$modules/vibelang-runtime" "$modules/vibelang"
 ln -s "$effect" "$modules/effect"
 ln -s "$built" "$modules/vibelang-runtime"
-ln -s "$repo/packages/compiler" "$package/node_modules/vibelang"
+ln -s "$repo/packages/compiler" "$modules/vibelang"
 
 cd "$package"
 # Includes plugin.property.test.mjs; FC_* controls property selection and replay.

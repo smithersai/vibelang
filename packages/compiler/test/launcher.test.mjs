@@ -66,6 +66,18 @@ test("names the scoped Windows package when its optional dependency is missing",
     assert.match(result.stderr, /@smthrs\/cli-win32-/)
     assert.match(result.stderr, /VIBELANG_BINARY/)
     assert.doesNotMatch(result.stderr, /\n\s+at /)
+
+    const probe = `import { findBinary } from ${JSON.stringify(pathToFileURL(join(scratch, "binary.mjs")).href)}
+try { findBinary(); process.exitCode = 2 }
+catch (error) { console.log(error.code); console.log(error.message) }
+console.log("host still running")`
+    const host = spawnSync(process.execPath, ["--import", asWindows, "--input-type=module", "-e", probe], {
+      env, encoding: "utf8"
+    })
+    assert.equal(host.status, 0, host.stderr)
+    assert.match(host.stdout, /^ERR_VIBELANG_BINARY\n/)
+    assert.match(host.stdout, /@smthrs\/cli-win32-/)
+    assert.match(host.stdout, /host still running\n$/)
   } finally {
     rmSync(scratch, { recursive: true, force: true })
   }
