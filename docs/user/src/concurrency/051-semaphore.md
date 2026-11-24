@@ -18,10 +18,6 @@ effect function makeUploadLimit() {
   return try Semaphore.make(3)
 }
 // Semaphore.Semaphore!!
-
-effect function stringify(value: unknown) {
-  return try Effect.try(() => JSON.stringify(value))
-}
 // Output: three permits acquired
 ```
 

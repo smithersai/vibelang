@@ -2,7 +2,7 @@
 
 [Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs. This guide targets `alchemy` and `@alchemy.run/cloudflare` `2.0.0-beta.84`, `effect` `4.1.1`, and VibeLang `0.0.13`. Because Alchemy `2.0.0-beta.84` imports `effect/Crypto` (removed in Effect 4.1), apply the patch in [Install](#install) before importing `@alchemy.run/cloudflare`.
 
-The complete notes API (an R2 bucket plus `PUT /key` and `GET /key` Worker) lives in [`examples/alchemy-stack`](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack), where one Vitest suite verifies both the VibeLang and Effect TypeScript versions.
+The executable sources below use the pinned Alchemy patch and dependencies from [`examples/alchemy-stack`](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack). One Vitest suite verifies both implementations.
 
 ## Install
 
@@ -146,16 +146,17 @@ export default Cloudflare.Worker(
 // fragment
 // api.vibe
 import * as Cloudflare from "@alchemy.run/cloudflare"
+import { HttpServerRequest, HttpServerResponse } from "effect/http"
 
 // An R2 bucket of notes, keyed by the request path. Alchemy declares a
-// resource as an Effect; a .vibe module holds that value without running it.
+// resource as an Effect, which a module's top level holds unrun (VIP-26).
 export const Notes = Cloudflare.R2.Bucket("Notes", { forceDestroy: true })
 
 export error MissingNote { key: string }
 
-// Initialization binds the bucket and builds the request Effect.
+// The Worker's init: binds the bucket, then returns the request handler.
 export effect function makeApi() {
-  const bucket = try Cloudflare.R2.ReadWriteBucket(Notes)
+  const bucket = try Cloudflare.R2.ReadWriteBucket(try Notes)
 
   effect function read(key: string) {
     const note = try bucket.get(key)
@@ -173,13 +174,16 @@ export effect function makeApi() {
         return HttpServerResponse.empty({ status: 204 })
       }
       return HttpServerResponse.text(try read(key))
-    } catch effect (error) => match (error) {
-      when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 });
-      when { _tag: "R2Error" }: HttpServerResponse.text("Storage failed", { status: 502 });
-      default: throw error;
+    } catch effect (error) => {
+      return match (error) {
+        when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 });
+        when { _tag: "R2Error" }: HttpServerResponse.text("Storage failed", { status: 502 });
+        default: throw error;
+      }
     }
   }
 
+  // Alchemy reads fetch as an Effect: calling handle gives it unrun (VIP-1).
   const api: Cloudflare.WorkerShape = { fetch: handle() }
   return api
 }
@@ -209,6 +213,11 @@ export default Alchemy.Stack(
 
 ```vibe
 // fragment
+// stack.vibe
+import * as Cloudflare from "@alchemy.run/cloudflare"
+import * as Alchemy from "alchemy"
+import Api from "./api.vibe"
+
 export default Alchemy.Stack(
   "NotesStack",
   { providers: Cloudflare.providers(), state: Cloudflare.state() },

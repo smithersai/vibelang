@@ -17,8 +17,9 @@ export const issue = (kind, path, text, offset, message, severity = "error") =>
 export function vipRegistryFromSources(sources) {
   const vips = new Map([...sources].filter(([path]) => /^docs\/design\/vips\/\d+[^/]*\.md$/.test(path))
     .sort(([a], [b]) => a.localeCompare(b)).map(([path, text]) => {
-      const status = text.match(/\*\*Status:\*\*\s*(accepted|denied|open)\b/i)?.[1]?.toLowerCase()
-      if (!status) throw new Error(path + ": missing VIP status")
+      const label = text.match(/\*\*Status:\*\*\s*(accepted|denied|open|proposed|rfp|revised)\b/i)?.[1]?.toLowerCase()
+      if (!label) throw new Error(path + ": missing VIP status")
+      const status = label === "accepted" || label === "denied" ? label : "open"
       return [Number(path.split("/").at(-1).slice(0, 4)), { path, text, status }]
     }))
   for (const vip of vips.values()) {

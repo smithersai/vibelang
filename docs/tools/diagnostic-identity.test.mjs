@@ -17,7 +17,7 @@ import {allocationPreservesChecker} from "./diagnostic-identity-allocation.mjs"
 import fc from "fast-check"
 import {identityHash} from "./diagnostic-identity-renames.mjs"
 import {executableDigest,digest} from "./diagnostic-identity-authorization.mjs"
-import { appendixCodes, auditIdentity, compilerCodes, compilerCategories, appendixCategory, auditCategories, repository } from "./diagnostic-identity.mjs"
+import { appendixCodes, auditIdentity, compilerCodes, compilerCategories, appendixCategory, auditCategories, loadIdentity, repository, retiredDiagnosticCodes } from "./diagnostic-identity.mjs"
 
 const source = text => [{ path: "typescript/tsc/internal/vibelang/diagnostics.go", text }]
 const appendix = rows => "## Appendix B. Diagnostics\n\n| Code | Rule | VIP | Chapter |\n| --- | --- | --- | --- |\n" + rows + "\n## Appendix C. Decisions\n| `EK9999` | outside B |\n"
@@ -153,9 +153,30 @@ test("an explicit retired-code declaration is historical; ordinary citations sti
   }
 })
 
+test("published diagnostic numbers cannot be reassigned even with an Appendix B row", () => {
+  for (const code of ["EK4618", "EK4705"]) {
+    const registered = compilerCodes(source(`var diagnostic = message(${code.slice(2)}, errorCategory, "unrelated rule")`))
+    const findings = auditIdentity(registered, appendixCodes(appendix(row(code))), [])
+    assert.deepEqual(findings.map(({ kind, code }) => [kind, code]), [
+      ["retired-registered", code], ["retired-row", code]
+    ])
+  }
+})
+
+test("former codes named in the migration record remain reserved", () => {
+  const { registered } = loadIdentity()
+  const recorded = new Set(retiredDiagnosticCodes)
+  for (const path of ["../user/src/setup/release-notes.md", "../user/src/vibelang-features/diagnostic-code-map.md"]) {
+    const codes = readFileSync(new URL(path, import.meta.url), "utf8").match(/\bEK\d{4,}\b/g)
+    assert.deepEqual([...new Set(codes)].filter(code => !registered.has(code) && !recorded.has(code)), [],
+      "record retired diagnostic numbers from " + path)
+  }
+})
+
 test("seeded mutations detect row loss, registry loss and unknown citations across whole codes", () => {
   fc.assert(fc.property(
-    fc.uniqueArray(fc.integer({ min: 1, max: 999999 }), { minLength: 1, maxLength: 30 }),
+    fc.uniqueArray(fc.integer({ min: 1, max: 999999 }).filter(n =>
+      !retiredDiagnosticCodes.includes("EK" + String(n).padStart(4, "0"))), { minLength: 1, maxLength: 30 }),
     fc.nat(), fc.constantFrom("message", "messageOff", "registryMessage"),
     (ordinals, choice, constructor) => {
       const names = ordinals.map(n => "EK" + String(n).padStart(4, "0"))
@@ -359,7 +380,7 @@ test("typed mapper helpers register actual call-site codes without registering t
   `}
  ])
  assert.deepEqual([...registered.keys()].sort(),["EK4605","EK4606","EK4804"])
- assert.deepEqual(auditIdentity(registered,new Map([["EK4804","warning"]]),[]).map(f=>f.code),["EK4605","EK4606"])
+ assert.deepEqual(auditIdentity(registered,new Map([["EK4804","warning"]]),[]).filter(f=>f.kind==="registered-missing").map(f=>f.code),["EK4605","EK4606"])
 })
 test("a helper with nested call arguments retains the whole code and ignores strings/comments",()=>{
  const registered=compilerCodes([
@@ -505,7 +526,7 @@ test("retired variant-pattern identity stays absent from active rows and replay"
    const registered=new Map([...audit.registered,...compilerCodes(source(definition))])
    const rows=new Map([...audit.appendix,["EK4707","error: "+characters.join("")]])
    const documents=[{path:"docs/design/src/900-appendices.md",text:retirement}]
-   assert.deepEqual(auditIdentity(registered,rows,documents).map(f=>f.kind),["retired-registered","retired-row"])
+   assert.deepEqual(auditIdentity(registered,rows,documents).filter(f=>f.code==="EK4707").map(f=>f.kind),["retired-registered","retired-row"])
   }),{seed:4707,numRuns:200})
 })
 

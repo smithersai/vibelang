@@ -346,7 +346,7 @@ These original pages supplement the 110 mirrored Effect pages. They have no upst
 
 | Local page | Topics |
 | --- | --- |
-| [Control operations and handlers](src/vibelang-features/111-control-operations-and-handlers.md) | Declaration, performing, policies, resuming, abandonment, cleanup, fiber diagnostics |
+| [Handlers](src/vibelang-features/111-control-operations-and-handlers.md) | Status of VIP-35 and the retired continuation forms |
 | [Producers](src/vibelang-features/112-producers.md) | Lazy yields, services, early cleanup, Stream operators and iteration |
 | [Building an HTTP API](src/vibelang-features/113-building-an-http-api.md) | Server layers, routing, Schema bodies, typed errors, socket-free testing |
 | [VibeLang for Effect users](src/vibelang-features/114-vibelang-for-effect-users.md) | Idiom translation, programs, top-level declarations, platform work, expected failures |
@@ -358,14 +358,16 @@ These original pages supplement the 110 mirrored Effect pages. They have no upst
 | [Experimental platform APIs](src/vibelang-features/118-experimental-platform-apis.md) | What VibeLang adds where Effect lacks an API: `Experimental.FileSystem`, `Crypto`, `Process`, `Locks`, `Dns`, `Durable`, `Test`, `Patterns` and pure `Encoding`, their layers and guarantees, and how they leave |
 | [Durable tasks and workflows](src/vibelang-features/119-tasks-and-workflows.md) | `task` and `workflow` declarations: a task's boundary, its options, where a task may run, and the engine a workflow needs |
 | [Fuzzing with Experimental.Fuzz](src/vibelang-features/120-fuzzing.md) | `Experimental.Fuzz` and `Experimental.FuzzSimulation`: feedback-guided fuzzing from a schema, shrunk and replayable findings, a corpus store, and races and deadlocks found by fuzzing fiber schedules |
+| [Spec functions and proofs](src/vibelang-features/121-proofs.md) | Status of VIP-43 and its accepted proof forms |
 
 ## Counts by sidebar section
 
 | View | Section or root page | Pages |
 | --- | --- | ---: |
-| Onboarding | Start Here | 2 |
+| Onboarding | Start Here | 3 |
 | Onboarding | Learning Path | 5 |
 | Onboarding | Core Concepts | 5 |
+| Setup | Setup and integration | 23 |
 | Guides | Getting Started | 1 |
 | Guides | Error Management | 11 |
 | Guides | Requirements Management | 4 |
@@ -386,9 +388,11 @@ These original pages supplement the 110 mirrored Effect pages. They have no upst
 | Guides | Trait | 2 |
 | Guides | Behaviour | 2 |
 | Guides | Schema | 20 |
-| Guides | Platform | 6 |
-| VibeLang features | Original language guides | 8 |
-| **Total** | | **118** |
+| Guides | Platform | 9 |
+| VibeLang features | Original language guides | 10 |
+| Experimental | Experimental language and library guides | 3 |
+| Specification | Introduction, language chapters and appendices | 11 |
+| **Total** | | **161** |
 
 ## Counts by upstream directory
 

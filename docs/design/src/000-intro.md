@@ -4,7 +4,7 @@ This specification defines VibeLang as the accepted VibeLang Improvement Proposa
 
 Declaration serialization has one explicit exception for [cyclic inferred types](001-functions.md#declaration-output); ordinary TypeScript recursion checking still applies.
 
-The previous specification and its decision log are in `docs/design/history/`. They are historical and not normative: nothing in them is part of the language unless a VIP adds it. Every pre-VIP form no VIP adds is retired: the compiler rejects it with a clear error, and the release notes list it. Data-type methods such as `x.map` on `Option` and `Stream` are among them. The migration sections of [Tooling](007-tooling.md), whose titles name a migration or a legacy form, and [Appendix B's transitional diagnostics](900-appendices.md#transitional-compiler-diagnostics) specify those migrations and interim diagnostics. They are requirements on the toolchain during the upgrade, not forms of the language.
+The previous specification and its decision log are in `docs/design/history/`. They are historical and not normative: nothing in them is part of the language unless a VIP adds it. The archived decision numbers and diagnostic registry describe the pre-VIP design. Decision notes record reversals within that archive. For current behavior, use the accepted or denied VIP and [Appendix B](900-appendices.md#appendix-b-diagnostics), where some diagnostic numbers have different meanings. Every pre-VIP form no VIP adds is retired: the compiler rejects it with a clear error, and the release notes list it. Data-type methods such as `x.map` on `Option` and `Stream` are among them. The migration sections of [Tooling](007-tooling.md), whose titles name a migration or a legacy form, and [Appendix B's transitional diagnostics](900-appendices.md#transitional-compiler-diagnostics) describe manual source changes and specify the interim diagnostics the toolchain reports during the upgrade.
 
 ## Principles
 
@@ -37,6 +37,7 @@ VibeLang is TypeScript with a small set of constructs for writing Effect program
 | `service S { members }` | `class S extends Context.Service<S, { … }>()("key") {}` | 9 | [Services](005-services.md) |
 | `provide L, K = v { … }` | `yield* Effect.provide(Effect.gen(…), [L, Layer.succeed(K, v)])` | 12 | [Services](005-services.md) |
 | `retry`, `sleep`, `Schema`, `Layer`, … | Effect's exports and modules, in scope without an import | 6, 14, 33 | [Services](005-services.md) |
+| `task T { effect call(…) … }`, `workflow W { effect call(…) … }` | durable step and derived workflow plan, with the experimental opt-in | 55, 58 | [Services](005-services.md#task-and-workflow-declarations) |
 | `schema S { fields }` | `const S = Schema.Struct({ … }); type S = typeof S.Type` | 15 | [Data](006-data.md) |
 | `data D { V; W { f: T } }` | `Data.TaggedEnum` and `Data.taggedEnum` | 16, 28 | [Data](006-data.md) |
 | `x.vibex` | a `.vibe` file read with `.tsx`'s JSX language variant | 39 | [Configuration and tooling](007-tooling.md#vibex) |
@@ -46,13 +47,13 @@ The table abbreviates the full translations: preserve [source function bindings]
 
 Classes without an own `Symbol.customMatcher` use `instanceof`, built-ins use `Array.isArray` or `instanceof`, and primitives test `typeof` too, because compiled JavaScript can't read the pinned draft's engine slots. [Class patterns](004-match.md#class-patterns) gives the full rule.
 
-What VibeLang leaves out is just as deliberate. The [appendix](900-appendices.md#denied-vips) lists the denied VIPs: no Effect meaning for `using`, no `Users.find(id)` shorthand, no trailing blocks, no `wire`. The open VIPs (handlers, the declaration manifest, Effectify the universe, VibeLang in `.ts` files) are not part of the language.
+What VibeLang leaves out is just as deliberate. The [appendix](900-appendices.md#denied-vips) lists the denied VIPs: no Effect meaning for `using`, no `Users.find(id)` shorthand, no trailing blocks, no `wire`. The [VIP index](../vips/README.md) records the current status of denied and open proposals, including the denial of handlers and the declaration manifest.
 
 ## How to read this specification
 
 Each form has its syntax, the exact Effect TypeScript it means, and its diagnostics. Anything TypeScript or the pinned TC39 proposal already defines (evaluation order, binding, types, modules, resolution, declaration emit) is as in TypeScript and is not restated. Constructs generally have four parts; the type shorthand keeps its static rule under **Meaning**:
 
-- **Syntax**, as links to the productions of [Appendix A](900-appendices.md#appendix-a-grammar), the only place the grammar is written, with prose and examples.
+- **Syntax**, as links to the productions of [Appendix A](900-appendices.md#appendix-a-grammar), with prose and examples. Accepted forms still awaiting compiler support use their linked VIP as the grammar reference.
 - **Static rules**, with the diagnostic each rule reports and its code in [Appendix B](900-appendices.md#appendix-b-diagnostics). VIP-34 requires every diagnostic to have a code; each imported Effect language-service rule prints a stable `EK38xx` code (VIP-38, amended).
 - **Meaning**, as the exact Effect TypeScript the construct equals, beside the VibeLang.
 - **Examples.**
@@ -69,18 +70,22 @@ The compiler is being changed to match the VIPs. Until it does, a VibeLang examp
 2. [Running Effects](002-running.md): VIP-5, VIP-2, VIP-17 to VIP-23.
 3. [Failures](003-failures.md): VIP-4, VIP-13, VIP-29, VIP-41.
 4. [Pattern matching](004-match.md): VIP-7.
-5. [Services and the environment](005-services.md): VIP-9, VIP-12, VIP-6, VIP-14, VIP-33.
-6. [Data](006-data.md): VIP-15, VIP-16, VIP-28.
-7. [Configuration and tooling](007-tooling.md): VIP-30, VIP-32, VIP-34, VIP-38, VIP-39.
+5. [Services and the environment](005-services.md): VIP-9, VIP-12, VIP-6, VIP-14, VIP-33, VIP-55 to VIP-58.
+6. [Data](006-data.md): VIP-15, VIP-16, VIP-28, VIP-44 (schema mapping).
+7. [Configuration and tooling](007-tooling.md): VIP-30, VIP-32, VIP-34, VIP-38, VIP-39, VIP-59.
 8. [Runtime guarantees](008-runtime.md): VIP-31.
 9. [Appendices](900-appendices.md): the grammar, the diagnostics, the denied and open VIPs, flipping pending examples, and theorems and proofs.
 
-The chapter list names only what the alpha, 0.0.13, supports: the accepted VIPs numbered 1 to 41.
+## Acceptance and release support
 
-**Not in the alpha.** Accepted VIP-43 (theorems and proofs) and VIP-44 (durable values) are outside the alpha. 0.0.13 implements none of VIP-43, and the vibelang prove command its appendix describes does not exist yet. Of VIP-44, only its schema mapping is in the alpha, as an amendment to VIP-15. VIPs 55 to 72 are open proposals and not part of the language ([VIPs](../vips/README.md#the-built-in-set)); what is built from them is experimental, and a program reaches it only through an explicit opt-in. Their rules are in parts titled as not in the alpha: [Open proposals, not in the alpha](005-services.md#open-proposals-not-in-the-alpha) in chapter 5, and [Appendix F](900-appendices.md#appendix-f-theorems-and-proofs-vip-43) for VIP-43.
+A VIP joins the specification when the maintainer accepts it under the [acceptance rules](../vips/README.md#acceptance). The supported core of alpha 0.0.13 covers the 33 accepted VIPs numbered 1 to 41. Of VIP-44, the alpha supports its schema mappings as an amendment to VIP-15. VIP-43's theorems and proofs and VIP-44's broader durable-value rules sit outside the supported core.
+
+VIPs 55 through 73 were accepted on 2026-11-23. [Chapter 5](005-services.md#task-and-workflow-declarations) describes the experimental `task` and `workflow` syntax (VIP-55), its capability metadata (VIP-58), and the status of durable waits and worker imports (VIPs 56 and 57). [Chapter 7](007-tooling.md#eval-files-vip-59) records the accepted eval tooling (VIP-59). Implemented compiler features in this set can require the experimental opt-in during alpha rollout. The individual VIPs give the accepted rules and implementation status.
+
+VIPs 60 through 73 add standard-library APIs and conventions. They leave the language and compiler unchanged. See the [library inventory](005-services.md#accepted-standard-library-vips) for the modules and current status.
 
 ## Retired continuation forms
 
-The first-release retirement diagnostics are `EK3501` for `control` and `handle` syntax or resolved continuation-runtime `Control`, `resume`, `resumeWith`, `abandon` and `handle`, and `EK4607` for a retired `select` block. They do not accept VIP-35, which remains open. Ordinary TypeScript bindings, callback parameters and members with these names keep their native meaning. Parser recovery only diagnoses and migrates old source.
+The first-release retirement diagnostics are `EK3501` for `control` and `handle` syntax or resolved continuation-runtime `Control`, `resume`, `resumeWith`, `abandon` and `handle`, and `EK4607` for a retired `select` block. [VIP-35](../vips/0035-handlers-open.md) is denied. Ordinary TypeScript bindings, callback parameters and members with these names keep their native meaning. Parser recovery only diagnoses and migrates old source.
 
 As for every relic, migrate consumers before enforcing rejection.

@@ -20,3 +20,16 @@ test("the Alchemy guide configures its test command before invoking it", () => {
   }
   expect(invoked).toBe(true)
 })
+
+test("the Alchemy guide uses the exact dependency pins and sources tested in the example", () => {
+  const page = readFileSync(new URL("../user/src/platform/alchemy.md", import.meta.url), "utf8")
+  const example = new URL("../../examples/alchemy-stack/", import.meta.url)
+  const manifest = JSON.parse(readFileSync(new URL("package.json", example), "utf8"))
+  expect(page).toContain(`vitest@${manifest.devDependencies.vitest}`)
+  const snippets = lexer(page).filter(token => token.type === "code" && token.lang === "vibe")
+  for (const file of ["api.vibe", "stack.vibe"]) {
+    const header = `// fragment\n// ${file}\n`
+    const snippet = snippets.find(token => token.text.startsWith(header))
+    expect(snippet?.text.slice(header.length).trim()).toBe(readFileSync(new URL("src/" + file, example), "utf8").trim())
+  }
+})

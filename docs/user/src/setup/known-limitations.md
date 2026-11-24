@@ -24,7 +24,7 @@ The experimental TypeScript mapper keeps an exported function’s written Effect
 
 After the supported CLI, plugins and editor routes, the experimental [TypeScript shim](typescript-shim.md) is a last resort for projects that cannot change TypeScript file names. Under open VIP-42, the `vibelang` compiler recognizes a `.ts` file whose first line is `// @vibe`; the `vibelang-typescript` replacement package that runs it as `tsc` is a source-checkout preview and is not published to npm. Stock readers can accept a marked file with different meaning.
 
-Mapper failures `EK9001` through `EK9006` have [repair guidance in the diagnostic reference](../vibelang-features/diagnostic-code-map.md#typescript-mapper-failures).
+Mapper failures `EK9001` through `EK9007` have [repair guidance in the diagnostic reference](../vibelang-features/diagnostic-code-map.md#typescript-mapper-failures).
 
 In a `.vibex` file, `return` inside a `do` expression in a JSX attribute or child container reports `EK0204`, although [VIP-39](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0039-vibex.md) says it leaves the enclosing function. For example, `export function f() { return <Box v={do { return 7 }} /> }` fails. Move the `do` expression into a statement of its own before the element: `const v = do { return 7 }; return <Box v={v} />`.
 

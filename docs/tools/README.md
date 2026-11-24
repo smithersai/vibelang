@@ -246,7 +246,7 @@ Checks the files smithers.sh reads from VibeLang's `main`, and the vibelang.sh h
   - every link resolves to a docs page source or a repository file;
   - every VibeLang block passes `check-snippets.ts`;
   - the install block equals what `create-vibelang` prints.
-- `.smithers/home.json`: decodes with smithers.sh's reader, copied in `home.ts` from `@smthrs/views` (sections with audiences, or a bare `blocks` array); has no block of a kind the reader skips; declares a block; and every markdown path exists.
+- `.smithers/home.json`: decodes with smithers.sh's reader, copied in `home.ts` from `@smthrs/views` (sections with audiences, or a bare `blocks` array); has no block of a kind the reader skips; declares a block; every Markdown path exists and each VibeLang code block compiles on its own.
 - `.smithers/flows/convert/prompt.md`: matches `build-prompt.mjs`'s output.
 - `docs/site/converter/hero.json`: equals golden case 01, with matching hashes.
 
@@ -291,7 +291,7 @@ The check reads the site and registry; it does not deploy anything.
 `bun docs/tools/check-diagnostic-docs.ts` checks that every compiler message
 declared under `typescript/tsc/internal/vibelang/` has a code reference in
 `docs/user/src/`. Add its meaning and remedy when adding a diagnostic.
-EK4407 is temporarily exempt while module-name resolution is reworked.
+Every current registration must appear in the user docs. When retiring a published code, record its number in `diagnostic-retired-codes.json` so it cannot be reused.
 The docs/tools test suite runs the same coverage check. Appendix B coverage also checks imported lint rows against `lint-codes.json` and the compiler's `VibeImportedLintCodes` registry, preserving whole codes beyond ordinal `99`.
 
 Regenerate the normative shipped throw contracts with `node docs/tools/throws-inventory.mjs --write`; check them with `node docs/tools/throws-inventory.mjs --check` or `node --test docs/tools/throws-inventory.test.mjs`. Install `docs/tools` first. This reads the compiler's bundled TypeScript lib files and the pinned Effect package's published declarations and `dist` sources. Computed properties use their source spellings, such as `[Symbol.iterator]`, in declaration keys and callback paths; TypeScript's process-local symbol IDs never enter the artifact.
@@ -468,13 +468,8 @@ kind and reason. A rule's ID is its source path and the first 16 hexadecimal
 digits of the SHA-256 of its normalized sentence; line wrapping and insertions
 above it preserve the ID.
 
-The census reuses `rule-evidence.ts`'s normative sentence detector when that
-module is present. Until gate-rule-evidence lands, `spec-normative.ts` carries
-the same exported sentence and twin API extracted from `dd4ff590c915`; this
-does not require that lane's commit as a parent. Accepted VIP selection shares
-the spec linters' `vipRegistryFromSources` parser. Normative detection is
-syntactic, and the counts describe discoverable source evidence rather than
-execution results or a proof of semantic adequacy.
+The census uses the normative sentence detector in `rule-evidence.ts`. It also
+counts generated grammar rows and credits their projection sync check. The rule-evidence gate excludes those rows from its rule checks.
 
 Exact normalized sentence quotes, `// rule-evidence: <stable-rule-id>`
 citations (also stable IDs in pending marker text, skip messages or todo titles),

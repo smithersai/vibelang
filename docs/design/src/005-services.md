@@ -1,6 +1,6 @@
 # Services and the environment
 
-Sources: [VIP-9](../vips/0009-service-declarations.md), [VIP-12](../vips/0012-provide.md), [VIP-6](../vips/0006-effect-globals.md), [VIP-14](../vips/0014-effect-modules-in-scope.md), [VIP-33](../vips/0033-platform-stdlib.md).
+Sources: [VIP-9](../vips/0009-service-declarations.md), [VIP-12](../vips/0012-provide.md), [VIP-6](../vips/0006-effect-globals.md), [VIP-14](../vips/0014-effect-modules-in-scope.md), [VIP-33](../vips/0033-platform-stdlib.md), [VIP-55](../vips/0055-durable-tasks-workflows.md), [VIP-56](../vips/0056-durable-waits.md), [VIP-57](../vips/0057-workers-remote.md), [VIP-58](../vips/0058-capabilities.md).
 
 ## `service` declarations
 
@@ -23,7 +23,7 @@ service Auth {
 
 `service Name { members }` and `service Name: Type { … }` declare services. A recognized service header missing its required body is `EK0906`. A custom `service` declaration in any native TypeScript ambient source context is `EK0907`, ahead of the same declaration's missing-body recovery. This includes an explicit `declare service` prefix and inherited ambientness in `declare namespace`, ambient external `declare module`, `declare global`, or a native declaration-file context wherever custom source service syntax can otherwise occur. Nested regions and `export` do not escape inherited ambientness; a complete body, explicit key or `defaultValue` does not create an ambient service form. Supply the intended runtime declaration or import the actual service key; no ambient service API is introduced. `export default service S { }` is `EK0905`; write `export { S as default }`. An `abstract class` is not a service. A member is typed as in an `interface`, because it has no body to infer from, and may have any type, Effect or not, as `Context.Service` allows. For a method or property, an omitted type follows TypeScript's `noImplicitAny`: with the option on, `read()` is `TS7010` and an untyped property is `TS7008`; with it off, they are an `any` return and an `any` property. Explicit `read(): any` is valid under strict checking. VibeLang adds no diagnostic of its own and infers no Effect contract; fix `TS7010` by writing the intended return type ([VIP-9](../vips/0009-service-declarations.md#decision), amended). For throw tracking a VibeLang service member admits only `never`; a written `@throws` or `@rethrows` is `EK0406` ([Thrown types](003-failures.md#thrown-types)). A foreign implementation must satisfy that non-throwing contract.
 
-Legacy `service class Name { members }` is not a service production and reports `EK0909`. The preserving repair removes only `class`, keeping the key, member contracts and comments. Native `abstract class` declarations remain TypeScript classes. Both accepted body-only and whole-shape service declarations retain their existing rules.
+Legacy `service class Name { members }` is not a service production and reports `EK0909`. Remove `class` by hand and keep the key, member contracts and comments. Native `abstract class` declarations remain TypeScript classes. Both accepted body-only and whole-shape service declarations retain their existing rules.
 
 ### Meaning
 
@@ -789,13 +789,9 @@ yield* Console.log("hi")
 yield* Effect.sleep("10 millis")
 ```
 
-## Open proposals, not in the alpha
-
-The sections below restate open proposals. They are not part of the language and not part of the alpha.
-
 ## `task` and `workflow` declarations
 
-**Experimental.** This section restates [VIP-55](../vips/0055-durable-tasks-workflows.md), an open proposal, and [VIP-44](../vips/0044-durable-values.md)'s durable boundaries. It is not part of the language: it describes the compiler's experimental implementation, which compiles only in a project that opts in with `"vibe": { "experimental": ["builtins"] }` ([Configuration](007-tooling.md#config-files)); without it a declaration is `EK3013`.
+**Experimental.** This section restates [VIP-55](../vips/0055-durable-tasks-workflows.md) and [VIP-44](../vips/0044-durable-values.md)'s durable boundaries. The compiler implements these accepted declarations behind the alpha rollout opt-in `"vibe": { "experimental": ["builtins"] }` ([Configuration](007-tooling.md#config-files)); without it a declaration is `EK3013`.
 
 A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks ([VIP-55](../vips/0055-durable-tasks-workflows.md)). Both are written as `service` is: a class-shaped body with one `effect call` method and `static readonly` options.
 
@@ -854,3 +850,32 @@ The grammar is [TaskDeclaration](900-appendices.md#taskdeclaration) and [Workflo
 - A task whose body requires `HttpClient` or `ChildProcessSpawner` without declaring `static readonly tier` is the warning `EK5801`: omitting `tier` defaults to `"sealed"`.
 - A workflow's written `A!E` leaves `R` unchecked: its body is a plan, and the workflows it calls need the engine only when they run.
 - Every parameter and written success and error type of a `call` is a durable boundary: a type with no schema form is `EK2109`, as in a `schema` declaration. A task's parameters are identifiers, not patterns or a rest parameter, and its annotation leaves the `R` slot out (`EK5501`).
+
+## Durable waits (VIP-56)
+
+[VIP-56](../vips/0056-durable-waits.md#decision) specifies replayable timers, typed signals and human answers as workflow plan nodes. Signals use their declared schema to encode the journaled value and decode it on delivery. The timer, signal and human-answer runtime APIs are implemented. Compiler lowering of these calls to workflow plan nodes remains pending.
+
+## Typed services across worker and remote boundaries (VIP-57)
+
+[VIP-57](../vips/0057-workers-remote.md#decision) specifies `schema service` and imports with `with { type: "worker" }`. A schema service uses the ordinary service key and layer for local calls and derives an RPC group for its methods that return an Effect or a Stream. Parameters, successes or stream elements, and failures cross a worker or transport through their schemas. A worker import loads a handle to a module whose default layer provides schema services. Implementation of the syntax and compiler and bundler support remains pending.
+
+## Accepted standard-library VIPs
+
+These VIPs define standard-library APIs. The VIP links record accepted behavior and rollout status.
+
+| VIP | API | Implementation |
+| --- | --- | --- |
+| [60](../vips/0060-std-durable.md) | `Experimental.Durable` | Implemented |
+| [61](../vips/0061-std-triggers.md) | `Experimental.Trigger` and `Experimental.WorkQueue` | Implemented |
+| [62](../vips/0062-std-model.md) | `Experimental.Model` | Implemented |
+| [63](../vips/0063-std-agent.md) | `Experimental.Agent` | CLI adapters and interpreter implemented. Public agent loop pending. |
+| [64](../vips/0064-std-tools.md) | `Experimental.Tools` | In progress |
+| [65](../vips/0065-std-mcp.md) | `Experimental.McpClient` | In progress |
+| [66](../vips/0066-std-memory.md) | `Experimental.Memory` | Implemented |
+| [67](../vips/0067-std-sandbox.md) | `Experimental.Sandbox` | In progress |
+| [68](../vips/0068-std-secrets.md) | `Experimental.Secrets` | In progress |
+| [69](../vips/0069-std-eval.md) | `Experimental.Eval` and `Experimental.Scorer` | Implemented |
+| [70](../vips/0070-std-fuzz.md) | `Experimental.Fuzz` and `Experimental.FuzzSimulation` | Implemented |
+| [71](../vips/0071-std-test.md) | `Experimental.Test` | Implemented |
+| [72](../vips/0072-std-observe.md) | `Experimental.Otlp` and `Experimental.Logger` | In progress |
+| [73](../vips/0073-std-patterns.md) | `Experimental.Patterns` and the `PACKAGE.vibe` build-graph convention | Patterns implemented |

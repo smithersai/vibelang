@@ -40,46 +40,41 @@ Each row is one Effect form and the VibeLang that replaces it.
 | `class Users extends Context.Service<Users, { find(id: string): Effect.Effect<User, NotFound> }>()("app/Users") {}` | `service Users { static readonly key = "app/Users"; find(id: string): User!NotFound }` |
 | `Effect.Effect<User, NotFound, Users>` | `User!NotFound!Users` (empty slot: never) |
 | `yield* Effect.fail(new NotFound({ id }))` | `throw new NotFound({ id })` |
-| `const user = yield* users.find(id)` | `const user = Users.find(id)` |
-| `x.pipe(Effect.orElseSucceed(() => "guest"))` | `x catch "guest"` |
-| `x.pipe(Effect.catchTag("NotFound", (e) => …))` | `x catch (e) => match (e) { when NotFound: …; }` |
+| `const users = yield* Users; const user = yield* users.find(id)` | `const users = try Users; const user = try users.find(id)` |
+| `x.pipe(Effect.orElseSucceed(() => "guest"))` | `x catch () => "guest"` |
+| `x.pipe(Effect.catchTag("NotFound", (e) => …))` | `x catch effect (e) => match (e) { when NotFound: …; default: throw e; }` |
 | `x.pipe(Effect.retry(Schedule.recurs(3)), Effect.timeout("1 second"))` | `x \|> retry(%, Schedule.recurs(3)) \|> timeout(%, "1 second")` |
-| `Effect.forEach(ids, f, { concurrency: 8 })` | `forEach(ids, f, { concurrency: 8 })` |
+| `yield* Effect.forEach(ids, f, { concurrency: 8 })` | `try forEach(ids, f, { concurrency: 8 })` |
 | `Effect.all([a, b], { concurrency: "unbounded" })` | `try.all [a(), b()]` |
 | `Effect.provide(program, UsersLive)` | `provide UsersLive { … }` |
 
-All of it in one program:
+This program runs two lookups concurrently and handles a missing user.
 
 ```vibe
-interface User { id: string; name: string }
-
-error NotFound { id: string }
-
+error UserNotFound { id: string }
 service Users {
-  find(id: string): User!NotFound
+  find(id: string): string!UserNotFound
 }
 
 const UsersLive = Layer.succeed(Users, {
-  find(id) {
-    if (id !== "1") throw new NotFound({ id })
-    return { id, name: "Ada" }
+  effect find(id: string) {
+    if (id !== "42") throw new UserNotFound({ id })
+    return "Ada"
   }
 })
 
-function nameOf(id: string) {
-  return Users.find(id).name
-    |> retry(%, Schedule.recurs(3))
-    |> timeout(%, "1 second")
-    catch "guest"
-}
-
-export function main() {
+export effect function main() {
   provide UsersLive {
-    const [a, b] = try.all [nameOf("1"), nameOf("2")]
-    const all = forEach(["1", "2"], nameOf, { concurrency: 8 })
-    log(`${a} ${b} ${all.length}`)
+    const users = try Users
+    const [name, fallback] = try.all [
+      users.find("42"),
+      effect { return users.find("7") catch () => "Guest" }
+    ]
+    try Console.log(name, fallback)
   }
 }
+
+runPromise(main())
 ```
 
 ## The converter

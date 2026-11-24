@@ -1,6 +1,6 @@
 # Experimental platform APIs
 
-VibeLang adds the few platform APIs that Effect does not have yet. They are experimental: a release can change or remove them, and each goes when Effect ships the API. Where Effect has the service, the experimental one extends it, so the rest of the service is Effect's own; where Effect has none, the experimental service follows Effect's style. Each addition lives under `Experimental.X` and can be proposed upstream. Native language helpers, including error declarations, keep the experimental namespace out of their bundle graph unless the source uses it.
+VibeLang exposes platform adapters and experimental builtins through the `Experimental` namespace. A release can change or remove these APIs. Where Effect has the service, the experimental one extends it, so the rest of the service is Effect's own; where Effect has none, the experimental service follows Effect's style. Each addition lives under `Experimental.X` and can be proposed upstream. Native language helpers, including error declarations, keep the experimental namespace out of their bundle graph unless the source uses it.
 
 `Experimental` holds two kinds of module. The platform additions come from VIP-33, are part of the alpha and need no opt-in. The experimental builtins from VIPs 55 to 73 compile only with `"vibe": { "experimental": ["builtins"] }`; without it the compiler reports `EK3013`.
 
@@ -671,7 +671,7 @@ effect function sampleRate() {
 
 ## Durable execution
 
-> **Open proposal ([VIP-60](https://vibelang.sh/vips/0060-std-durable)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+> **Experimental (accepted [VIP-60](https://vibelang.sh/vips/0060-std-durable)).** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
 
 Effect defines durable workflows: `Workflow.make` declares a workflow and its payload, `Activity.make` a recorded step, and both run on Effect's `WorkflowEngine` service. Effect's one local engine, `WorkflowEngine.layerMemory`, forgets every run when the process exits. `Experimental.Durable` adds the engine that remembers. Each step's start and result go to an append-only journal, one per run. A run that stopped part way, because its process crashed or was killed, resumes the next time anything executes it with the same input: the body runs again, and each step the journal finished returns its recorded result instead of running.
 
@@ -761,7 +761,7 @@ export effect function forkAt(run: string, seq: number) {
 
 ## Evals and scorers
 
-> **Open proposal ([VIP-59](https://vibelang.sh/vips/0059-eval-declarations), [VIP-69](https://vibelang.sh/vips/0069-std-eval)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+> **Experimental (accepted [VIP-59](https://vibelang.sh/vips/0059-eval-declarations), [VIP-69](https://vibelang.sh/vips/0069-std-eval)).** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
 
 A test asserts that an answer equals something. A model's answer rarely equals anything; it is better or worse than the last one. `Experimental.Eval` runs a fixed set of cases against a target, `Experimental.Scorer` grades each answer from 0 to 1, and a gate compares the scores with a committed baseline and returns an exit code. Both modules are pure: no layer, no platform. They port an existing Effect library's evaluation and scoring packages, and a baseline is the same versioned JSON (VIP-69).
 
@@ -998,7 +998,7 @@ Pick the store with one layer: `Experimental.Scorer.memory` keeps scores in this
 
 ## Testing agentic programs
 
-> **Open proposal ([VIP-71](https://vibelang.sh/vips/0071-std-test)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+> **Experimental (accepted [VIP-71](https://vibelang.sh/vips/0071-std-test)).** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
 
 A test of an agentic program needs a model that holds still. `Experimental.Test` (VIP-71) adds doubles for what Effect has none of, each a layer the test provides in place of the production one. Tests stay `@effect/vitest` tests, and Effect's `TestClock` and `TestConsole` stay as they are.
 
@@ -1258,7 +1258,7 @@ export effect function certify(): void!ConformanceViolation! {
 
 ## Memory
 
-> **Open proposal ([VIP-66](https://vibelang.sh/vips/0066-std-memory)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+> **Experimental (accepted [VIP-66](https://vibelang.sh/vips/0066-std-memory)).** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
 
 A model's context is gone when its process exits, and a durable run's journal records only what that run did. `Experimental.Memory` keeps what a later run should still know: facts a program writes now and recalls in a later run, ranked by a query and cut to a byte budget so the answer fits in a prompt. It ports an existing Effect memory package.
 
@@ -1346,7 +1346,7 @@ export effect function tidy() {
 
 ### Waits: timers, signals and human answers
 
-> **Open proposal ([VIP-56](https://vibelang.sh/vips/0056-durable-waits)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+> **Experimental (accepted [VIP-56](https://vibelang.sh/vips/0056-durable-waits)).** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
 
 A workflow that waits a week for an approval must not keep a process alive for a week. Inside a workflow, these calls park the run instead of holding a fiber: the run is stored as `suspended`, no process waits, and the clock, a delivery or an answer wakes it on any engine over the same store.
 

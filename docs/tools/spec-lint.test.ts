@@ -4,6 +4,10 @@ import ts from "typescript"
 import { lint, lintKind, loadSpec, rules, type Spec } from "./spec-lint"
 import { examples, verdict } from "./spec-examples.mjs"
 
+test("spec lint registers each rule once", () => {
+  expect(new Set(rules.map(rule => rule.name)).size).toBe(rules.length)
+})
+
 const spec = legacyStyleFixtures(loadSpec(process.env.VIBELANG_SPEC_ROOT))
 const rule = (name: string) => {
   const found = rules.find(r => r.name === name)

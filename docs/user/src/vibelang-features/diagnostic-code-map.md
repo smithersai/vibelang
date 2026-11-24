@@ -1,6 +1,6 @@
 # Diagnostic code map
 
-Diagnostic codes follow Appendix B of the specification: `EK`, the two-digit VIP number, then two digits for the rule. A code change does not change which programs a diagnostic rejects. Update saved diagnostic filters and expected-output assertions to the new code.
+Look up a printed code in [Appendix B of the specification](../../../design/src/900-appendices.md#appendix-b-diagnostics). Language rules usually use `EK` followed by the two-digit VIP number and a two-digit rule number. A renumbering retains the original trigger. Update saved diagnostic filters and expected-output assertions to the new code.
 
 | Previous code | Appendix B code | Rule and repair |
 | --- | --- | --- |
@@ -80,22 +80,37 @@ Search [Appendix B of the specification](../../../design/src/900-appendices.md#a
 | `EK0506` | `e catch h` where `e` is not an Effect |
 | `EK0507` | a handler whose result is a Promise or thenable |
 | `EK0508` | lint warning: a plain handler whose result is an Effect; use `catch effect` |
+| `EK0509` | Use a plain or `effect` function or arrow literal as the `catch` handler. For a fallback value, write `program catch () => value`. |
 | `EK0801` | warning: `using` in effect code; use `acquireDisposable` inside `scoped` |
 | `EK0901` | a `static key` without `readonly`, or whose initializer is not a string literal |
 | `EK0902` | a service member that is not a `PropertySignature`, `MethodSignature`, `KeyMember` or `DefaultMember` |
 | `EK0903` | a service with no derived key and no `static readonly key` |
+| `EK0904` | Remove `extends` or `implements` from the service. Put the shared contract in its written shape. |
+| `EK0905` | Declare the service, then write `export { Service as default }`. |
+| `EK0906` | Give the service its required body, even when it uses a written shape. |
+| `EK0907` | Declare the service in executable source. Use an ordinary ambient TypeScript declaration for an erased type. |
+| `EK0908` | Separate service members with a semicolon or line break. |
 | `EK1201` | `provide` outside effect code |
 | `EK1301` | a constructor in an `error` or `schema error` body |
 | `EK1302` | a user-written `static` member or setter in an `error` or `schema error` body |
 | `EK1303` | type parameters on an `error` or `schema error` declaration |
 | `EK1304` | any other `RejectedElement` in an `error` or `schema error` body; an `implements` clause |
+| `EK1305` | Declare the error or schema error, then write `export { ErrorName as default }`. |
 | `EK1306` | two `error` or `schema error` body members on one line with no separator (`;` or newline) |
 | `EK1307` | an `error` or `schema error` declaration in a native TypeScript ambient context; use a native ambient class for an erased declaration |
 | `EK1308` | warning: an `abstract error` root is a legacy declaration form; use a union or an Effect TypeScript class |
 | `EK1401` | a namespace name that two subpaths export, or a subpath and the root |
 | `EK1501` | `export default schema S …`; write `export { S as default }` |
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory |
+| `EK1505` | Write only field declarations in a schema body. |
+| `EK1506` | Declare a schema in executable source so it emits a codec. |
+| `EK1601` | Rename the field. `data` provides the variant’s own `_tag`. |
+| `EK1602` | Rename the variant and its references. `$is` and `$match` are reserved helpers. |
 | `EK1603` | `export default data D { … }`; write `export { D as default }` |
+| `EK1604` | Give the `data` declaration a variant body, which may be empty. |
+| `EK1605` | Separate variants and their fields with semicolons or line breaks. |
+| `EK1606` | Write a variant name with an optional field body. Use field declarations in that body. |
+| `EK1607` | Declare `data` in executable source so it emits the variant constructors. |
 | `EK1701` | `fork` or `join` outside effect code |
 | `EK1702` | `fork` or `join` used as a binding, label, or `effect` expression name inside effect code or its parameters |
 | `EK1703` | a `fork` operand that is not an Effect |
@@ -117,12 +132,14 @@ Search [Appendix B of the specification](../../../design/src/900-appendices.md#a
 | `EK2111` | `restore` outside an `uninterruptible` block |
 | `EK2117` | an `extends` clause or a `_tag` member in an `error` or `schema error` body, or a computed `schema error` key whose runtime domain cannot be proved to exclude `"_tag"` |
 | `EK2126` | a constraint on a generic `data` type parameter |
+| `EK2127` | Choose a variant declared by the `data` type. |
 | `EK2201` | an interruption block outside effect code |
 | `EK2202` | `restore` in a `for concurrent` head binding initialization or body, or `restore` that captures an outer mask across an `effect` function, arrow, method, producer or block |
 | `EK2301` | a pipe body that never uses its topic, `x \|> f()`; a `%` outside every pipe body; a whole unparenthesized `yield`, assignment or arrow as a pipe body, `x \|> (y = %)`; an unparenthesized conditional at either end of a pipe, `x \|> f(%) ? a : b`; write `(x \|> f(%)) ? a : b` or `x \|> (f(%) ? a : b)`, the old reading; also a whole bare plain, `async` or `effect` arrow pipe body, repaired by parentheses around the arrow |
 | `EK2801` | a `data` declaration with more than 4 type parameters |
 | `EK2803` | a default on a generic `data` type parameter |
 | `EK3001` | two services with the same key |
+| `EK3101` | A legacy provider reads a service at call time, but its contract admits no requirements. Check the written service contract and Effect requirements. |
 | `EK3002` | a class extends a service |
 | `EK3003` | `new` on a service |
 | `EK3004` | `instanceof` a service, or a class pattern naming one |
@@ -162,6 +179,7 @@ The experimental `vibelang-ts-mapper` reports these codes while stock TypeScript
 | `EK9004` | A resolved Effect or platform package differs from the mapper's pinned forms table. Install the version named in the diagnostic in the consuming project; keep the mapper and its dependency pins together when updating. |
 | `EK9005` | The mapper cannot choose a lowering from the written types. Add the requested annotation, or compile with the native compiler. |
 | `EK9006` | The mapper cannot prove a data-method receiver or access form. Add the requested receiver type, or call the module function explicitly. |
+| `EK9007` | The mapper sees `try` outside effect code. Move it into an `effect` function or block. |
 
 After a configuration or dependency repair, rerun the original TypeScript command.
 
@@ -178,8 +196,8 @@ These identities remain in the compiler registry for older source and migration 
 | --- | --- |
 | `EK1402` | A retired Effect receiver-method extension, such as `Option.some(1).map(f)`. Write `Option.map(Option.some(1), f)`. |
 | `EK2105` | A typed legacy catch has no literal `_tag` to match. Use a `catch` expression and test its handler value with `match` or `is`. |
-| `EK2107`, `EK2110`, `EK4202` | Legacy control-handler checks. Handlers are an open proposal; express the operation with supported Effect functions and services. |
-| `EK2120` | Legacy `control class` spelling. The handler proposal is open. Use Effect operations from the supported language. A retired `service class` reports `EK0909`. |
+| `EK2107`, `EK2110`, `EK4202` | Legacy control-handler checks. Express the operation with Effect functions and services (VIP-35 denied). |
+| `EK2120` | Legacy `control class` spelling. VIP-35 is denied. Use Effect operations from the supported language. A retired `service class` reports `EK0909`. |
 | `EK3202` | A legacy wiring expression supplies more than one provider for a service. Use an explicit `provide` block with the intended provider. |
 | `EK4501` | A receiver-method extension is read as a value. Use the module function and pass the receiver explicitly; current code does not rely on receiver-method extensions. |
 | `EK4601` | A legacy `await` check found a call returning an unrun Effect in plain code. Mark the function `effect` and run it with `try`, or use `await runPromise(program)` in an `async` function. |
@@ -206,7 +224,7 @@ The following compatibility reports can still occur while older source is migrat
 | `EK1013` | A legacy inherited error or control body uses a comma as a class-member separator. Use native class separators; root declaration payloads retain their own separator rules. |
 | `EK2006` | A legacy Effect `finally` jumps outside its block. Replace Effect `try` statements with `ensuring` or `onExit` cleanup; native JavaScript `finally` keeps its own completion rules. |
 | `EK2106` | A legacy catch follows a handler that catches every failure. Use one catch expression with a `match` handler, or a native JavaScript catch clause. |
-| `EK2108`, `EK2119`, `EK4201` | Legacy handler clauses are incomplete, return an incompatible answer, or cross fibers. Handlers remain an open proposal; use supported Effect functions and services. |
+| `EK2108`, `EK2119`, `EK4201` | Legacy handler clauses are incomplete, return an incompatible answer, or cross fibers. Use Effect functions and services (VIP-35 denied). |
 | `EK2114` | A catch expression appears in a retired hatch. Use a JavaScript `try` statement in a `.ts` helper or a catch expression in effect code. |
 | `EK2115` | The stock mapper finds an Effect-running call in a legacy factory's call-time body. Separate plain factory setup from an explicit `effect` function or block, or compile with the native compiler. |
 | `EK3203`, `EK3204` | Legacy automatic wiring finds a cycle or an unnamed output. Compose Layers explicitly and provide them with `provide`. |

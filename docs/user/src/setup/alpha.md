@@ -1,6 +1,6 @@
 # What is in the alpha
 
-VibeLang 0.0.13 is the alpha. It supports the 33 accepted VIPs numbered 1 to 41 (the core language). Features from open proposals are experimental and require `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`.
+VibeLang 0.0.13 is the alpha. It supports the 33 accepted VIPs numbered 1 to 41 (the core language). Implemented experimental features beyond the core, including accepted `task` and `workflow` declarations, require `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`.
 
 `Experimental` holds two kinds of module: VIP-33's platform additions (`Experimental.FileSystem`, `Experimental.Encoding`, and peers) are core and need no opt-in, while open-proposal modules marked experimental below require it.
 
@@ -55,7 +55,7 @@ File a [bug report](https://github.com/smithersai/vibelang/issues/new?template=b
 | [53](https://vibelang.sh/vips/0053-rename-smithersscript-open) | Renaming VibeLang → **Vibe** (SmithersScript denied) | Revised 2026-11-23; needs Vibe rename plan |
 | [54](https://vibelang.sh/vips/0054-consistent-platform-code-open) | One consistent model for platform-specific code | RFP (request for proposal) |
 | [55](https://vibelang.sh/vips/0055-durable-tasks-workflows) | `task` and `workflow`, durable steps and the plan the compiler derives | Accepted (2026-11-23); implemented (`task`, `workflow`) |
-| [56](https://vibelang.sh/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | Accepted (2026-11-23); implemented (`Experimental.Human`) |
+| [56](https://vibelang.sh/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | Accepted (2026-11-23). Runtime APIs implemented. Compiler plan lowering pending. |
 | [57](https://vibelang.sh/vips/0057-workers-remote) | `schema service` and worker imports: threads and other machines behind one typed boundary | Accepted (2026-11-23); implementation queued |
 | [58](https://vibelang.sh/vips/0058-capabilities) | Capabilities: a permission kernel in the standard library (+ task plan metadata) | Accepted (2026-11-23); runtime implemented (`Experimental.Capability`) |
 | [59](https://vibelang.sh/vips/0059-eval-declarations) | Eval declarations: a file kind and a function, no syntax | Accepted (2026-11-23); toolchain/CLI (`vibelang eval`, no grammar changes) |

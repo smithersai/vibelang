@@ -2,7 +2,7 @@
 // A symbol reaches the platform when it does I/O, starts a timer, or reads or
 // changes host state (VIP-33). Run: node docs/tools/platform-globals.mjs --write
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
+import { existsSync, realpathSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -46,7 +46,7 @@ function dts(directory) {
 }
 
 export function generate() {
-  const ts = createRequire(join(root, "docs/tools/package.json"))(existsSync(join(root, "docs/tools/node_modules/typescript")) ? "typescript" : join(root, "experiments/node_modules/typescript"))
+  const ts = createRequire(join(root, "docs/tools/package.json"))("typescript")
   const version = JSON.parse(readFileSync(join(nodeTypes, "package.json"), "utf8")).version
   const libFiles = readdirSync(libs).filter(name => /^lib\..*\.d\.ts$/.test(name)).sort(compare).map(name => join(libs, name))
   const nodeFiles = dts(nodeTypes)
@@ -106,7 +106,21 @@ export function generate() {
 
 export const serialize = (inventory) => JSON.stringify(inventory, null, 2) + "\n"
 
-if (process.argv.includes("--write")) {
-  mkdirSync(dirname(join(root, artifactPath)), { recursive: true })
-  writeFileSync(join(root, artifactPath), serialize(generate()))
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const artifact = join(root, artifactPath)
+  switch (process.argv[2]) {
+    case "--write":
+      mkdirSync(dirname(artifact), { recursive: true })
+      writeFileSync(artifact, serialize(generate()))
+      break
+    case "--check":
+      if (readFileSync(artifact, "utf8") !== serialize(generate())) {
+        console.error(`${artifactPath} is stale. Run node docs/tools/platform-globals.mjs --write.`)
+        process.exitCode = 1
+      }
+      break
+    default:
+      console.error("usage: node docs/tools/platform-globals.mjs --check | --write")
+      process.exitCode = 2
+  }
 }

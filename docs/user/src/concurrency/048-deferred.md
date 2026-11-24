@@ -24,10 +24,6 @@ effect function makeStartupSignal() {
   return try Deferred.make<string, StartupFailed>()
 }
 // Deferred.Deferred<string, StartupFailed>!!
-
-effect function stringify(value: unknown) {
-  return try Effect.try(() => JSON.stringify(value))
-}
 // Output: false
 // Output: true
 ```

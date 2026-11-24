@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { test } from "node:test"
+import { spawnSync } from "node:child_process"
 import { allowlist, artifactPath, generate, reachesHost, root, serialize } from "./platform-globals.mjs"
 import { chapter, read } from "./spec-witness.mjs"
 
@@ -12,6 +13,15 @@ const pinned = existsSync(join(root, "docs/tools/node_modules/@types/node"))
 // VIP-33: generated platform inventory.
 test("the inventory is current for the pinned libs and @types/node", { skip: !pinned, timeout: 120_000 }, () => {
   assert.equal(readFileSync(join(root, artifactPath), "utf8"), serialize(generate()), "run node docs/tools/platform-globals.mjs --write")
+})
+
+test("importing the generator ignores a caller's write flag", () => {
+  const artifact = join(root, artifactPath)
+  const before = statSync(artifact).mtimeMs
+  const importCommand = `process.argv.push("--write"); await import(${JSON.stringify(new URL("./platform-globals.mjs", import.meta.url).href)})`
+  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", importCommand], { encoding: "utf8" })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(statSync(artifact).mtimeMs, before)
 })
 
 test("the banned set follows the rule", () => {

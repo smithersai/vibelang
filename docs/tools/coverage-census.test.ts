@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process"
 import { join } from "node:path"
 import fc from "fast-check"
 import { censusSection } from "../../scripts/grammar-census.mjs"
-import * as portable from "./spec-normative"
+import { normative, sentences } from "./rule-evidence"
 import { vipRegistryFromSources } from "./spec-rules.mjs"
 import { exclusions, parseCSV, census, normalize, parseSnapshot, reports, rules, staleCitations, totals, type Sources } from "./coverage-census"
 
@@ -28,6 +28,13 @@ describe("source coverage census", () => {
     expect(extracted.length).toBe(2)
     expect(extracted[0].line).toBe(3)
     expect(extracted[0].id).not.toBe(extracted[1].id)
+  })
+  test("the census omits VIPs still at the request or revision stage", () => {
+    const sources = new Map([
+      ["docs/design/vips/0037-effectify-the-universe-open.md", "**Status:** RFP\n\n" + quote],
+      ["docs/design/vips/0053-rename-smithersscript-open.md", "**Status:** revised\n\n" + quote]
+    ])
+    expect(rules(sources)).toEqual([])
   })
   test("identical repeats deduplicate within a file; wording changes get a new id", () => {
     const a = rules(fixture(quote))[0]
@@ -296,7 +303,7 @@ test("generated grammar rows retain their rules and cite the sync check; adjacen
   const text = "# Appendix A\n\n" + outside + "\n\n" + generatedSection() + "\n\n" + outside.replace("handWritten", "afterRegion")
   const sources: Sources = new Map([[appendix, text]])
   const rows = await census(sources)
-  const expected = portable.sentences(appendix, text).filter(s => portable.normative(s.text))
+  const expected = sentences(appendix, text, { includeGrammarCensus: true }).filter(s => normative(s.text))
   expect(rows.map(r => r.text)).toEqual([...new Set(expected.map(s => s.text))])
   const handwritten = rows.filter(r => /handWritten|afterRegion/.test(r.text))
   expect(handwritten).toHaveLength(2)
