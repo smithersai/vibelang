@@ -8,8 +8,7 @@ import "testing"
 // in run(() => program) for run<R>(f: () => Effect<void, never, R>), so the
 // callback's requirement is no escape: EK9202 printed "this function needs R,
 // but its contract says R = R", two different Rs under one name (t3code's
-// managedTunnelStartup retryManagedTunnelRegistration, drive-t3code-server
-// slice 4, migration-refusal:generic-requirement-self-mismatch).
+// managedTunnelStartup retryManagedTunnelRegistration).
 func TestGenericCallbackChannelIsNoContract(t *testing.T) {
 	prelude := "import { Effect } from \"effect\"\nservice Input { value: number }\n"
 	cases := []struct {

@@ -14,7 +14,7 @@ import (
 // the inferred Effect at once, so EK4802 stays silent. The same call assigned,
 // passed, returned or pushed without try still warns. The exemption is
 // consumption by try, not the callee's name: pipe is not special.
-// Alchemy RC6 (drive-alchemy 05:12Z, 229 sites in 173 files) reported
+// Alchemy RC6 (229 sites in 173 files) reported
 // `return try Stream.make(1, 2).pipe(Stream.runCollect)`.
 func TestEffectIntoPlainGenericRunCall(t *testing.T) {
 	const decls = "function take<T>(x: T): T { return x }\n" +
