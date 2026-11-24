@@ -33,6 +33,7 @@ else { console.error("fixture: missing report"); process.exitCode = 1 }
       })
       const stderr = result.stderr.toString()
       if (report === "valid") {
+        expect(result.exitCode).toBe(0)
         expect(stderr).not.toContain("check-snippets.ts")
       } else if (report === "rejected") {
         expect(result.exitCode).toBe(1)

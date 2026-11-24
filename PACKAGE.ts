@@ -897,6 +897,13 @@ const targets = {
     [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"]],
     [bun, node]
   ),
+  "smithers-content": check(
+    "Compile the repository home and visitor examples and check the generated converter prompt.",
+    "bun run --cwd docs/tools check:content && node --test .smithers/flows/convert/check-heldout.test.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [bun, node],
+    "5m"
+  ),
   // A case copied from an older one keeps its pin, so stale pins landed on the
   // stack, which gates only on a build. Fast enough for that gate.
   "docs-migration-globals": check(

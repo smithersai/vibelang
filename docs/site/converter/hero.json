@@ -1,15 +1,15 @@
 {
   "effect": "import { Context, Effect, Schedule, Schema } from \"effect\"\n\nclass ApiError extends Schema.TaggedError<ApiError>()(\"ApiError\", {\n  status: Schema.Number\n}) {}\n\nclass Users extends Context.Service<Users, {\n  name(id: string): Effect.Effect<string, ApiError>\n}>()(\"app/Users\") {}\n\nconst nameOf = Effect.fn(\"nameOf\")(function* (id: string) {\n  const users = yield* Users\n  return yield* users.name(id).pipe(\n    Effect.retry(Schedule.exponential(\"100 millis\")),\n    Effect.timeout(\"2 seconds\"),\n    Effect.orElseSucceed(() => \"unknown\")\n  )\n})\n\nexport const names = Effect.fn(\"names\")(function* (ids: ReadonlyArray<string>) {\n  const all = yield* Effect.forEach(ids, nameOf, { concurrency: 8 })\n  yield* Effect.log(`Loaded ${all.length} names`)\n  return all\n})\n",
-  "vibelang": "error ApiError { status: number }\n\nservice Users {\n  name(id: string): string!ApiError\n}\n\nfunction nameOf(id: string) {\n  return Users.name(id)\n    |> retry(%, Schedule.exponential(\"100 millis\"))\n    |> timeout(%, \"2 seconds\")\n    catch \"unknown\"\n}\n\nexport function names(ids: ReadonlyArray<string>) {\n  const all = forEach(ids, nameOf, { concurrency: 8 })\n  log(`Loaded ${all.length} names`)\n  return all\n}\n",
-  "vibelangVersion": "0.0.1",
+  "vibelang": "error ApiError { status: number }\n\nservice Users {\n  name(id: string): string!ApiError\n}\n\neffect function nameOf(id: string) {\n  return (try Users).name(id)\n    |> retry(%, Schedule.exponential(\"100 millis\"))\n    |> timeout(%, \"2 seconds\")\n    catch () => \"unknown\"\n}\n\nexport effect function names(ids: ReadonlyArray<string>) {\n  const all = try forEach(ids, nameOf, { concurrency: 8 })\n  try log(`Loaded ${all.length} names`)\n  return all\n}\n",
+  "vibelangVersion": "0.0.13",
   "receipt": {
     "kind": "hand-checked",
-    "note": "Hand-written pair, compiled with VibeLang. Replaced by the convert flow's signed receipt once it exists.",
+    "note": "Hand-written golden pair. The VibeLang output was compiled with the checkout compiler. The dependency digest identifies the runtime lockfile.",
     "inputSha": "sha256:9fc713164cc38b63241eb065ab6589b6952c672c1c3840ea6eef7ca76934ea17",
-    "outputSha": "sha256:7284f84180cefc71aa948915f6db18df49644bc74386b72e6c3047b4d64118c2",
-    "compilerDigest": "sha256:b2563e8962b0420c5c3f0beadeb1e52803888e63e4bf210f3a745819bcbaaf9d",
-    "dependenciesDigest": "sha256:3a28688543dab139ae9fa92f026f347ceffc86086fa0d73acf0cfd25c9d14256",
-    "checkedAt": "2026-10-18",
+    "outputSha": "sha256:56f243edd4acc6de32c9c4ddff345a7206143a7e5db181ebb751e97f9f6a3244",
+    "compilerDigest": "sha256:a8f8cc1667189243d0e6e8206438a17ee1a3c5c453b136c56007afd5ed9f8e43",
+    "dependenciesDigest": "sha256:14f2f06819a2483e55db7e48afa4c007f73fb23d8c02f256b9b864175fdb9e29",
+    "checkedAt": "2026-11-24",
     "signature": null
   }
 }

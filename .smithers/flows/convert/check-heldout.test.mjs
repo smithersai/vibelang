@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -138,8 +138,23 @@ test("building the prompt does not need or read golden/", () => {
     writeFileSync(join(example, "input.ts"), unrelated.input)
     writeFileSync(join(example, "expected.vibe"), unrelated.expected)
     writeFileSync(join(instructions, "app.md"), "## Syntax cheat sheet\n\nSeparate forms\n\n## Next\n")
-    const result = spawnSync(process.execPath, [join(flow, "build-prompt.mjs")], { encoding: "utf8" })
+    const alias = join(dir, "linked-flow")
+    symlinkSync(flow, alias, "junction")
+    const script = join(alias, "build-prompt.mjs")
+    const prompt = join(flow, "prompt.md")
+    writeFileSync(prompt, "stale")
+    const stale = spawnSync(process.execPath, [script, "--check"], { encoding: "utf8" })
+    assert.equal(stale.status, 1, stale.stderr)
+    assert.match(stale.stderr, /prompt\.md is stale/)
+
+    const result = spawnSync(process.execPath, [script], { encoding: "utf8" })
     assert.equal(result.status, 0, result.stderr)
+    const generated = readFileSync(prompt, "utf8")
+    assert.match(generated, /Separate forms/)
+    assert.ok(generated.includes(unrelated.expected))
+
+    const current = spawnSync(process.execPath, [script, "--check"], { encoding: "utf8" })
+    assert.equal(current.status, 0, current.stderr)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

@@ -2,7 +2,7 @@
 // .smithers/instructions/app.md, and the separate examples/ pairs. Generated, never hand-edited.
 //   node .smithers/flows/convert/build-prompt.mjs           write prompt.md
 //   node .smithers/flows/convert/build-prompt.mjs --check   exit 1 if prompt.md is stale
-import { readFileSync, writeFileSync } from "node:fs"
+import { readFileSync, realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { casesIn } from "./cases.mjs"
@@ -35,7 +35,7 @@ Answer with exactly one fenced \`ts\` code block holding the whole VibeLang file
 - Use the VibeLang forms below wherever the input uses the Effect form they replace.
 - Keep the program's behavior. Add nothing the input does not do, and do not explain.
 
-${cheatSheet().replace(/^## /m, "## ")}
+${cheatSheet()}
 
 ## Examples
 
@@ -43,7 +43,7 @@ ${examples.join("\n\n")}
 `
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) {
   const target = join(here, "prompt.md")
   const next = buildPrompt()
   if (process.argv.includes("--check")) {
