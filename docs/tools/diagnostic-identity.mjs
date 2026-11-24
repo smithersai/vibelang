@@ -435,10 +435,16 @@ export function appendixCodes(text) {
   return rows
 }
 
+// Reserve published identities independently of how the prose describes them.
+export const retiredDiagnosticCodes = JSON.parse(readFileSync(new URL("./diagnostic-retired-codes.json", import.meta.url), "utf8"))
+
 export function auditIdentity(registered, appendix, documents) {
   const findings = []
-  const retiredCodes = new Set(documents.filter(d => d.path === "docs/design/src/900-appendices.md")
-    .flatMap(d => [...d.text.matchAll(/The old `(EK\d{4,})` is retired and will never be reassigned:/g)].map(m => m[1])))
+  const retiredCodes = new Set(retiredDiagnosticCodes)
+  for (const { path, text } of documents) {
+    if (path !== "docs/design/src/900-appendices.md") continue
+    for (const [, code] of text.matchAll(/The old `(EK\d{4,})` is retired and will never be reassigned:/g)) retiredCodes.add(code)
+  }
 
   for (const code of retiredCodes) {
     if (registered.has(code)) findings.push({kind: "retired-registered", code, path: registered.get(code)[0].path})

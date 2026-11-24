@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { leaks } from "./leaks"
@@ -29,6 +29,19 @@ test("prepare-site rejects unexpected paths, hosts and credential values", () =>
       expect(result.exitCode).toBe(1)
       expect(result.stderr.toString()).not.toContain("fixture-sensitive-value-0123456789")
     }
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
+test("prepare-site leaves Vocs output in place and creates no extra fallback page", () => {
+  const dir = mkdtempSync(join(tmpdir(), "docs-publication-"))
+  try {
+    const page = join(dir, "public", "404.html")
+    mkdirSync(join(dir, "public"))
+    writeFileSync(page, "<h1>Page not found</h1>\n")
+    const result = Bun.spawnSync(["bun", join(import.meta.dir, "prepare-site.ts"), dir])
+    expect(result.exitCode).toBe(0)
+    expect(readFileSync(page, "utf8")).toBe("<h1>Page not found</h1>\n")
+    expect(existsSync(join(dir, "404.html"))).toBe(false)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 

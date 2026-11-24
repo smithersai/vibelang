@@ -26,7 +26,7 @@ import type * as Runtime from "vibelang-runtime"
 
 // D4, D146: effect's root modules, every one in scope in a .vibe file.
 export {
-  Arbitrary, Array, BigDecimal, BigInt, Boolean, Brand, ByteSize, Cache, Cause, Channel, ChannelSchema, Chunk,
+  Arbitrary, Array, BigDecimal, BigInt, Boolean, Brand, Bytes, ByteSize, Cache, Cause, Channel, ChannelSchema, Chunk,
   Clock, Combiner, Config, ConfigProvider, Console, Context, Cron, Data, DateTime, Deferred, Differ,
   Duration, Effect, Effectable, Equal, Equivalence, ErrorReporter, ExecutionPlan, Exit, Fiber, FiberHandle,
   FiberMap, FiberSet, FileSystem, Filter, Formatter, Function, Glob, Graph, Hash, HashMap, HashRing, HashSet, HKT,
@@ -36,8 +36,8 @@ export {
   Pool, Predicate, PrimaryKey, PubSub, Pull, Queue, Random, RcMap, RcRef, Record, Redactable, Redacted, Reducer,
   Ref, References, RegExp, Request, RequestResolver, Resource, Result, Runtime, Schedule, Scheduler, Schema,
   SchemaAST, SchemaGetter, SchemaIssue, SchemaParser, SchemaRepresentation, SchemaTransformation, Scope,
-  ScopedCache, ScopedRef, Semaphore, Sink, StandardSchema, Stdio, Stream, String, Struct, SubscriptionRef, Symbol,
-  SynchronizedRef, Take, Terminal, Tracer, Trie, Tuple, TxChunk, TxDeferred, TxHashMap, TxHashSet,
+  ScopedCache, ScopedRef, Semaphore, SemVer, SemVerRange, Sink, StandardSchema, Stdio, Stream, String, Struct, SubscriptionRef, Symbol,
+  SynchronizedRef, Take, Terminal, TextDiff, Tracer, Trie, Tuple, TxChunk, TxDeferred, TxHashMap, TxHashSet,
   TxPriorityQueue, TxPubSub, TxQueue, TxReentrantLock, TxRef, TxSemaphore, TxSubscriptionRef, Types, UndefinedOr,
   Unify, Utils, Version,
   absurd, cast, flow, hole, identity
@@ -48,6 +48,11 @@ export type Effect<A, E = never, R = never> = EffectModule.Effect<A, E, R>;
 
 /** D48: in a .vibe file, the type `Scope` is `Scope.Scope`. */
 export type Scope = ScopeModule.Scope;
+
+// VIP-6: every export of effect/Effect is a global of a .vibe file. The
+// explicit exports in this file win over these where a name is in both, so the
+// runtime's fork, sync, uninterruptible and the rest keep their meaning.
+export * from "effect/Effect"
 
 // D151: the Effect functions a .vibe file calls without the Effect. prefix.
 export {

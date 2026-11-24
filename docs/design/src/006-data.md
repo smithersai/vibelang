@@ -125,6 +125,15 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 schema Order {
   at: Date
   tags: ReadonlySet<string>
+  links: ReadonlyMap<string, URL>
+}
+```
+
+```vibe
+// expect-error: EK2109
+schema MutableCollections {
+  tags: Set<string>
+  links: Map<string, URL>
 }
 ```
 

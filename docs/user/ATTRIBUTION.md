@@ -59,12 +59,12 @@ These counts use Markdown/MDX paths in the pinned tree. Root pages include onboa
 | trait | 2 | 2 |
 | **Total** | **110** | **124** |
 
-## Plan: original docs mirroring structure
+## Original docs and upstream structure
 
-VibeLang end-user documentation will mirror the pinned Effect 4 sections, pages, order, and topics one to one. No upstream prose is copied; pages are written fresh for VibeLang. Upstream code examples are not copied either. The unresolved upstream licensing status remains recorded above.
+VibeLang end-user documentation follows the pinned Effect 4 sections, pages, order, and topics one to one. No upstream prose is copied; pages are written fresh for VibeLang. Upstream code examples are not copied either. The unresolved upstream licensing status remains recorded above.
 
 The [structure and topic inventory](inventory.md) records all 110 upstream page paths, titles, sidebar sections, original short topic phrases, central Effect API names, and fenced code example counts. It follows both sidebar views: onboarding has 12 pages across Start Here, Learning Path, and Core Concepts; guides has the remaining 98 pages. Ordering was checked against `sidebar-config.json`, `onboarding-groups.json`, the sidebar construction code, and page frontmatter at the pinned commit.
 
-The [draft source directory](src/) contains exactly one Markdown stub for every upstream page. Relative source directories and page slugs are retained, with numeric filename prefixes recording sidebar reading order. Each stub contains only its page title, an upstream `effect.website` link, original topic bullets, and “Draft pending.” These are planning stubs for original writing, not translations or adaptations of upstream page text.
+The [source directory](src/) contains the VibeLang guides. The guides that follow the Effect structure retain the source directories and page slugs, with numeric filename prefixes recording sidebar reading order. The structure inventory records the upstream sources used when planning those guides.
 
 Upstream pages were read through pinned raw-file URLs, and the page list was read through `gh api`. Source text was processed in memory; no upstream body prose or code examples were saved locally. All 110 pages were readable. No archive, Git command, or jj command was used. All task writes were confined to `docs/user/`.

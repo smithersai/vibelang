@@ -22,10 +22,6 @@ effect function chooseQueues() {
   const unrestricted = try Queue.unbounded<string>()
   return { jobs, optionalEvents, recentPositions, unrestricted }
 }
-
-effect function stringify(value: unknown) {
-  return try Effect.try(() => JSON.stringify(value))
-}
 // Output: 32 32 32 Infinity
 ```
 

@@ -7,7 +7,7 @@ error fails the check until its marker is removed. The checker reports Markdown
 line numbers and can write full per-block diagnostics with `--json path`.
 
 This inventory records language/compiler disagreements, not new language rules.
-The rule references are in `docs/design/history/DECISIONS.md`. A `// fragment` example
+Use the [current specification](../design/src/000-intro.md) and its linked VIPs for rule references. A `// fragment` example
 instead omits a fixture or contains an incomplete integration sketch. Type
 checking does not prove runtime behavior; the native smoke suite covers that.
 
@@ -15,8 +15,6 @@ checking does not prove runtime behavior; the native smoke suite covers that.
 
 Each row identifies the missing contract, resource, producer, or value-call
 behavior and the exact diagnostic observed.
-
-The Vite plugin uses compiler subprocesses. See [Devtools](src/getting-started/012-devtools.md) for diagnostics, editor refactors, linting and build integration.
 
 ## Checked blocks
 
@@ -28,8 +26,7 @@ disagreement.
 
 `setup/zed.md` was tested with Zed 0.195.3. The configured server starts and
 receives `.vibe` documents with language id `typescript`, but Zed sends
-`previousResultId: null` in `textDocument/diagnostic`. Both the published 0.0.1
-server and the local compiler reject the request with -32602 (`InvalidParams`).
+`previousResultId: null` in `textDocument/diagnostic`. In that test, the server rejected the request with -32602 (`InvalidParams`).
 The field is optional but nonnullable in LSP 3.17; the shared protocol decoder
 intentionally rejects null for such fields. A request that omits the field
 returns the expected TS2322 diagnostic, and hover requests work. Use
@@ -44,11 +41,7 @@ pages state the runtime limitation in prose.
 
 ### Timeout discards failures from interrupted cleanup
 
-`error-management/019-timing-out.md`, "Limiting execution duration": Effect
-4.0.5's `timeout`, `timeoutOption`, and `timeoutOrElse` wait for the interrupted
-source's cleanup but discard failures from that cleanup. Both a `finally` that
-dies and a `using` release that dies reproduce this. A plain `timeout` reports
-only `TimeoutError`. D256 resolves the scope of D15: cleanup VibeLang itself runs
-keeps its failures, while Effect operators retain Effect's semantics under D22,
-including dropping a loser's cleanup failure. VibeLang does not fork `timeout`;
-surfacing the loser's finalizer failure is an upstream Effect follow-up.
+[Timing out](src/error-management/019-timing-out.md#limiting-execution-duration)
+describes the behavior of the pinned Effect release. The timeout operators wait
+for interrupted cleanup, including `ensuring` finalizers and scoped releases,
+then discard failures from that cleanup.

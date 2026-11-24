@@ -25,10 +25,6 @@ effect function broadcast() {
   }), PubSub.shutdown(hub))
 }
 // Returns ["deployment complete", "deployment complete"].
-
-effect function stringify(value: unknown) {
-  return try Effect.try(() => JSON.stringify(value))
-}
 // Output: ["deployment complete","deployment complete"]
 ```
 

@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync }
 import { tmpdir } from "node:os"
 import { delimiter, join } from "node:path"
 
-test("the content checker removes its snippet report after valid, malformed and missing reports", () => {
+test("the content checker removes its snippet report after successful, rejected, malformed and missing reports", () => {
   const scratch = mkdtempSync(join(tmpdir(), "vibelang-content-cleanup-"))
   try {
     const bin = join(scratch, "bin")
@@ -12,21 +12,33 @@ test("the content checker removes its snippet report after valid, malformed and 
     mkdirSync(temp)
     const runner = join(bin, "bun")
     writeFileSync(runner, `#!/usr/bin/env node
-import { writeFileSync } from "node:fs"
+import { readdirSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
 const output = process.argv[process.argv.indexOf("--json") + 1]
-if (process.env.SNIPPET_REPORT === "valid") writeFileSync(output, JSON.stringify({ pages: [{ blocks: [{ status: "ok" }] }] }))
-else if (process.env.SNIPPET_REPORT === "malformed") writeFileSync(output, "{")
+const root = process.argv[process.argv.indexOf("--root") + 1]
+if (process.env.SNIPPET_REPORT === "valid" || process.env.SNIPPET_REPORT === "rejected") {
+  const pages = readdirSync(root).filter(name => name.endsWith(".md")).map(name => ({
+    page: join(root, name),
+    blocks: [{ status: name.startsWith("home-") && process.env.SNIPPET_REPORT === "rejected" ? "fail" : "ok" }]
+  }))
+  writeFileSync(output, JSON.stringify({ pages }))
+} else if (process.env.SNIPPET_REPORT === "malformed") writeFileSync(output, "{")
 else { console.error("fixture: missing report"); process.exitCode = 1 }
 `)
     chmodSync(runner, 0o755)
-    for (const report of ["valid", "malformed", "missing"]) {
+    for (const report of ["valid", "rejected", "malformed", "missing"]) {
       const result = Bun.spawnSync([process.execPath, join(import.meta.dir, "check-smithers-content.ts")], {
         env: { ...process.env, PATH: bin + delimiter + process.env.PATH, TMPDIR: temp, SNIPPET_REPORT: report },
         stdout: "pipe", stderr: "pipe"
       })
       const stderr = result.stderr.toString()
-      if (report === "valid") expect(stderr).not.toContain("check-snippets.ts did not report")
-      else {
+      if (report === "valid") {
+        expect(stderr).not.toContain("check-snippets.ts")
+      } else if (report === "rejected") {
+        expect(result.exitCode).toBe(1)
+        expect(stderr).toContain("home.json VibeLang block 1: 1 snippet(s) do not pass")
+        expect(stderr).not.toContain("app.md: 1 snippet(s) do not pass")
+      } else {
         expect(result.exitCode).toBe(1)
         expect(stderr).toContain("check-snippets.ts did not report on app.md")
       }

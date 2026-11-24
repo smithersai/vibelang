@@ -1,6 +1,6 @@
 # Configuration and tooling
 
-Sources: [VIP-30](../vips/0030-config-files.md), [VIP-32](../vips/0032-effect-version.md), [VIP-34](../vips/0034-compiler-and-tooling.md), [VIP-38](../vips/0038-effect-lint-built-in.md), [VIP-39](../vips/0039-vibex.md). Declaration output (VIP-27) is in [Functions](001-functions.md#declaration-output).
+Sources: [VIP-30](../vips/0030-config-files.md), [VIP-32](../vips/0032-effect-version.md), [VIP-34](../vips/0034-compiler-and-tooling.md), [VIP-38](../vips/0038-effect-lint-built-in.md), [VIP-39](../vips/0039-vibex.md), [VIP-59](../vips/0059-eval-declarations.md). Declaration output (VIP-27) is in [Functions](001-functions.md#declaration-output).
 
 ## Config files
 
@@ -256,14 +256,14 @@ The stock-TypeScript mapper reports `EK9001` when it cannot represent a source f
 
 ### Explicit source changes
 
-VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available. Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.
+VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available. Compiling a file reports diagnostics without rewriting the source. The migration steps in this chapter describe edits to make by hand. Keep declarations, types, comments, evaluation order and behavior when changing source.
 
 ### Trailing-block migration
 
 | Code | Trigger | Repair |
 | --- | --- | --- |
 | `EK1101` | A rejected trailing block | Pass the block as the last argument: `Layer.effect(Users) { … }` becomes `Layer.effect(Users, effect { … })`; `it.effect("loads") { … }` becomes `it.effect("loads", effect () => { … })`; a plain callback becomes `() => { … }`. |
-| `TS2345`, `TS2554`, `TS2769`, or transitional `EK1023` | A legacy Effect-dual trailing block; `EK1023` applies when appending the block type-checks with changed meaning | The versioned dual migration runs first, preserves the original data-first or curried argument position and emits no duplicate `EK1101`. |
+| `TS2345`, `TS2554`, `TS2769`, or transitional `EK1023` | A legacy Effect-dual trailing block; `EK1023` applies when appending the block type-checks with changed meaning | Check the legacy dual signature first and place the callback in the original data-first or curried argument position. The compiler reports the applicable diagnostic without a duplicate `EK1101`. |
 
 Use the pinned legacy source, compiler and options to determine the block's kind and argument position, never the callee's parameter type alone. Preserve runtime behavior and comments; printed comment placement and equivalent arrow layout may differ. Retain a comment between the call and its rejected trailing block when changing the source ([VIP-11](../vips/0011-trailing-blocks-denied.md#amendments)).
 
@@ -299,7 +299,7 @@ These [Appendix B compatibility codes](900-appendices.md#transitional-compiler-d
 
 `EK4856` selects the resolved legacy symbol: local and imported types named `Effect` retain their TypeScript meaning. Keep existing parentheses, written default slots and the `Effect` namespace binding; otherwise refuse. Emitted declarations already use `Effect.Effect<…>` and stay unchanged. Remove the alias only with a coordinated compiler and docs release. Afterwards, a module-only `Effect<number>` is native `TS2709`; an unbound name follows TypeScript resolution ([VIP-3](../vips/0003-effect-type-shorthand.md#decision)).
 
-The manual migrations below describe how to write retired forms as their VIP form or equivalent Effect TypeScript under the same preservation rule. The legacy `fork(program, options)` call becomes `try Effect.forkChild(program, options)`. The user guide's *Migrating retired forms* page is explanatory, not normative.
+The manual migrations below describe how to write retired forms as their VIP form or equivalent Effect TypeScript while keeping the original types and behavior. The legacy `fork(program, options)` call becomes `try Effect.forkChild(program, options)`. The user guide's *Migrating retired forms* page is explanatory, not normative.
 
 ### Ordinary mutable-marker migration
 
@@ -328,7 +328,7 @@ Written imports, local or ambient types, type parameters, already qualified expo
 | `EK0503` | A `try` statement in effect code | Explicit Effects, `catch effect` and native cleanup combinators (VIP-5). |
 | `EK2401` | The resolved retired `wire` intrinsic | Explicit `Layer.provideMerge` composition replaces the rejected form; an unrelated local `wire` keeps its TypeScript meaning (VIP-24). |
 
-For these retirements and the mutable-marker, receiver-method and prelude-shorthand retirements above, enforcement waits until every migration repository has zero remaining uses. This states the target, not completion of implementation or consumer migration. Every repair obeys the [preservation and refusal rules](#explicit-source-changes).
+For these retirements and the mutable-marker, receiver-method and prelude-shorthand retirements above, enforcement waits until every migration repository has zero remaining uses. This states the target, not completion of implementation or consumer migration. Apply the replacements [by hand](#explicit-source-changes).
 
 ### Empty legacy trust wrappers
 
@@ -338,7 +338,7 @@ For these retirements and the mutable-marker, receiver-method and prelude-shorth
 
 `EK2601` rejects the retired side-effect markers `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser`, even without `main`: `legacy platform entry marker: write an explicit runner`.
 
-Only a marked module is migration input. An eligible legacy startup is an exported, non-default, zero-parameter function declaration `main` with a body and no checker-resolved top-level runner call under the pinned legacy compiler and options. The migration removes the marker and expands eligible startup as follows:
+Make this change only in a module that imports a legacy marker. An eligible legacy startup is an exported, non-default, zero-parameter function declaration `main` with a body and no checker-resolved top-level runner call under the pinned legacy compiler and options. Remove the marker and choose the explicit runner for eligible startup from this table.
 
 | Marker | Explicit runner | Legacy service layer |
 | --- | --- | --- |
@@ -346,11 +346,11 @@ Only a marked module is migration input. An eligible legacy startup is an export
 | `bun` | The same Node runner | `BunServices.layer` from `@effect/platform-bun/BunServices` |
 | `browser` | `BrowserRuntime.runMain` from `@effect/platform-browser/BrowserRuntime` | `BrowserServices.layer` |
 
-Use a listed service layer only when the pinned legacy compiler selected it; preserve selected experimental layers and nesting order. A marker does not by itself add a layer. Pass `main()` for an Effect function, otherwise `Effect.sync(main)`, retaining the declaration's callable kind and public types. Without eligible startup, remove only the inert marker and keep any explicit runner. CommonJS does not justify retaining the retired dispatcher; introducing `import.meta.main` requires proof that the original host supports the same entry test; availability in `ImportMeta` declarations alone is insufficient. Preserve entry-only execution and import-only behavior. Refuse an unavailable runner or layer, an entry test not expressible in admitted source, or any other loss of types, behavior or declarations. No retired dispatcher or fallback runner is a migration target. A remaining marker keeps `EK2601`; `main` alone is ordinary source, gets no entry diagnostic and causes no implicit startup ([VIP-26](../vips/0026-top-level-and-main.md#decision), [VIP-34](../vips/0034-compiler-and-tooling.md#decision)).
+Use a listed service layer only when the pinned legacy compiler selected it; preserve selected experimental layers and nesting order. A marker does not by itself add a layer. Pass `main()` for an Effect function, otherwise `Effect.sync(main)`, retaining the declaration's callable kind and public types. Without eligible startup, remove only the inert marker and keep any explicit runner. CommonJS does not justify retaining the retired dispatcher; introducing `import.meta.main` requires proof that the original host supports the same entry test; availability in `ImportMeta` declarations alone is insufficient. Preserve entry-only execution and import-only behavior. Before editing, confirm that the runner and layer exist and that the replacement can express the entry test and keep types, behavior and declarations. No retired dispatcher or fallback runner is a migration target. A remaining marker keeps `EK2601`; `main` alone is ordinary source, gets no entry diagnostic and causes no implicit startup ([VIP-26](../vips/0026-top-level-and-main.md#decision), [VIP-34](../vips/0034-compiler-and-tooling.md#decision)).
 
 ### Retired layer declarations
 
-Legacy `layer Live: Service { … }` has no declaration production. Its transitional `EK2121` is an error. Write `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit. Retain a captured or type-only `Layer` binding when changing the source. Lowering of rejected source remains available only for migration and its equivalence checks.
+Legacy `layer Live: Service { … }` has no declaration production. Its transitional `EK2121` is an error. Write `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit. Retain a captured or type-only `Layer` binding when changing the source.
 
 ## Effect's type-aware lint
 
@@ -378,17 +378,17 @@ Pinned defaults are `diagnostics: true`, `includeSuggestionsInTsc: true`, `ignor
 
 ### Severity-key activation migration
 
-`EK3012` is a migration warning when a resolved config has an assigned `EK38xx` severity key, `"off"` included, without a resolved Effect plugin entry: `an imported lint severity needs an explicit Effect plugin entry`. An existing resolved plugin entry named `@effect/language-service`, including a native disable setting, prevents this migration. An unrelated plugin does not prevent it.
+`EK3012` is a migration warning when a resolved config has an assigned `EK38xx` severity key, `"off"` included, without a resolved Effect plugin entry: `an imported lint severity needs an explicit Effect plugin entry`. An existing resolved plugin entry named `@effect/language-service`, including a native disable setting, satisfies the rule. An unrelated plugin still leaves the Effect plugin entry missing.
 
-Append `{ "name": "@effect/language-service" }` to the selected project's own `compilerOptions.plugins`. Copy inherited plugin entries before appending; never edit an external base. Retain explicit disables, severities, JSONC comments and unrelated settings under the [ownership and preservation rules](#explicit-source-changes).
+Append `{ "name": "@effect/language-service" }` to the selected project's own `compilerOptions.plugins`. Copy inherited plugin entries before appending; never edit an external base. Retain explicit disables, severities, JSONC comments and unrelated settings in the project you are editing.
 
-The legacy shortcut activated the whole default plugin even for an `"off"` key. Add no per-rule suppression or ignore flags: the plain entry must preserve diagnostic inclusion, categories, exit status and emission, except for `EK3012` itself. Refuse an unprovable replacement. With the entry present, migration is idempotent and reports no `EK3012`. Retire implicit severity-key activation only when this migration is available and verified against the legacy release ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)).
+The legacy shortcut activated the whole default plugin even for an `"off"` key. Add no per-rule suppression or ignore flags: the plain entry must preserve diagnostic inclusion, categories, exit status and emission, except for `EK3012` itself. Confirm the new configuration against the legacy release. With the entry present, the compiler reports no `EK3012`. Retire implicit severity-key activation only after verifying the replacement against the legacy release ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)).
 
 ### VibeLang warnings
 
 The following own warnings default to `"warning"`; they are separate from imported rules and the [TypeScript-form advisories](#typescript-spellings-with-vibelang-forms). They preserve the underlying behavior. An `effect { … }` expression statement builds and discards an unrun Effect; imported `floatingEffect` reports it as `EK3801`, as in TypeScript.
 
-The row that cites VIP-55 is experimental: it belongs to the durable declarations of the open proposal [VIP-55](../vips/0055-durable-tasks-workflows.md) and is not part of the language.
+The rows for [VIP-55](../vips/0055-durable-tasks-workflows.md) and [VIP-58](../vips/0058-capabilities.md) apply when the project opts into experimental builtins.
 
 | Warning | Code | Suggested fix |
 | --- | --- | --- |
@@ -558,3 +558,7 @@ Imported rules from `@effect/tsgo@0.57.0` (commit `999942fa41462eb46dfcb2d718e76
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
 `vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options; for example, `vibelang lint --project tsconfig.json` selects that project ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)).
+
+## Eval files (VIP-59)
+
+[VIP-59](../vips/0059-eval-declarations.md#decision) accepts `*.eval.vibe` and `*.eval.vibex` as a toolchain file kind. An eval file exports one `Experimental.Eval.suite` or an array of suites as its default export. The specified command discovers those suites, can list them without invoking their targets, and uses recorded model calls unless live mode is selected. Bundlers must reject application imports of eval files. The file kind uses ordinary VibeLang syntax. The file discovery, `vibelang eval` command and bundler enforcement remain pending.

@@ -4,19 +4,16 @@ import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, renameSync, readdirSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import ts from "typescript"
-import * as portable from "./spec-normative"
+import { compileTwin as checkTwin, nearbyTwins, normative, sentences, type Sentence } from "./rule-evidence"
 import { outputs, isGeneratedCensusSection } from "../../scripts/grammar-census.mjs"
 import { vipRegistryFromSources } from "./spec-rules.mjs"
 
 export type Sources = Map<string, string>
-export type Rule = portable.Sentence & { id: string; chapter: string }
+export type Rule = Sentence & { id: string; chapter: string }
 export type Status = "passing" | "pending" | "none"
 export type Evidence = { status?: Status; test: string; kind: string; low: boolean; reason: string }
 export type Row = Rule & { evidence: Evidence[] }
 const root = resolve(import.meta.dir, "../..")
-const gatePath = join(import.meta.dir, "rule-evidence.ts")
-const detector = existsSync(gatePath) ? await import(gatePath) : portable
-export const detectorName = existsSync(gatePath) ? "rule-evidence.ts" : "spec-normative.ts (gate dd4ff590c915 API)"
 export const normalize = (s: string) => s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\s+/g, " ").trim()
 const digest = (s: string) => createHash("sha256").update(s).digest("hex")
 
@@ -28,8 +25,7 @@ export function rules(sources: Sources): Rule[] {
     if (path.includes("/vips/") && !accepted.has(path)) continue
     // The entry gate omits generated metadata. The census keeps it in the
     // denominator and cites the projection sync check instead.
-    const sentences = path === outputs[1] ? portable.sentences(path, text) : detector.sentences(path, text)
-    for (const sentence of sentences.filter(s => detector.normative(s.text))) {
+    for (const sentence of sentences(path, text, { includeGrammarCensus: true }).filter(s => normative(s.text))) {
       const id = path + "#" + digest(normalize(sentence.text)).slice(0, 16)
       if (!found.has(id)) found.set(id, { ...sentence, id, chapter: path })
     }
@@ -240,14 +236,12 @@ export async function census(sources: Sources, compileTwin?: (pair: unknown) => 
           evidence.push({ test: test.path, kind: "shared-form", low: true, reason: "shared literal code only; adequacy unverified" })
       }
     }
-    if ("nearbyTwins" in detector) {
-      for (const pair of detector.nearbyTwins(rule, sources.get(rule.path)!)) {
-        const key = digest(JSON.stringify(pair))
-        const result = compiled.get(key) ?? (compileTwin ? await compileTwin(pair) : { ok: false, reason: "adjacent complete twin; not compiled" })
-        compiled.set(key, result)
-        evidence.push({ test: rule.path + ":" + pair.vibe.line + "+" + pair.effect.line,
-          status: result.ok ? "passing" : "none", kind: result.ok ? "compiled-twin" : compileTwin ? "failed-twin" : "uncompiled-twin", low: !result.ok, reason: result.reason })
-      }
+    for (const pair of nearbyTwins(rule, sources.get(rule.path)!)) {
+      const key = digest(JSON.stringify(pair))
+      const result = compiled.get(key) ?? (compileTwin ? await compileTwin(pair) : { ok: false, reason: "adjacent complete twin; not compiled" })
+      compiled.set(key, result)
+      evidence.push({ test: rule.path + ":" + pair.vibe.line + "+" + pair.effect.line,
+        status: result.ok ? "passing" : "none", kind: result.ok ? "compiled-twin" : compileTwin ? "failed-twin" : "uncompiled-twin", low: !result.ok, reason: result.reason })
     }
     rows.push({ ...rule, evidence })
     if (import.meta.main && rows.length % 500 === 0) console.error("coverage-census: matched " + rows.length + " rules")
@@ -283,7 +277,7 @@ export function reports(rows: Row[], revision: string, twinMode: string, exclude
   const t = totals(rows)
   const percent = "passing " + t.passing + ", pending " + t.pending + ", no test " + t.none + " of " + t.rules + " rules (excluded " + excluded + ")\n"
   const lines = ["# Specification test coverage census", "", "**" + percent.trim() + " · Coverage: " + t.percent + "% · tag-linked: " + t.tagLinked + "**", "",
-    "Revision: `" + revision + "`. Detector: `" + detectorName + "`. Twin mode: " + twinMode + ".", "",
+    "Revision: `" + revision + "`. Detector: `rule-evidence.ts`. Twin mode: " + twinMode + ".", "",
     "Passing and pending are source classifications, not fresh execution results. Passing takes precedence over pending. Pending includes harness pending markers, Go tests containing t.Skip, and test.todo/test.skip declarations. Exact sentence quotes, stable rule ids, chapter/VIP comments with a matching short rule name, successfully compiled twins, and generated grammar admission regions cited to their sync check count. Tag-linked rules are reported separately. Shared codes/forms remain low confidence and count as no test. Exclusions come from not-rules/*.csv and are removed from the denominator. One normalized sentence per file is one rule. Accepted VIPs require explicit accepted status. The census retains generated grammar admission rows; other generated pages, fences and headings are excluded; this syntactic census cannot prove semantic adequacy.", "",
     "CSV contains every evidence path and both rule status and evidence status. Chapter/VIP tags require a matching phrase in the sentence or section; a chapter alone does not cover every rule.", ""]
   const records: unknown[][] = [["rule", "test", "missing", "status", "chapter", "line", "sentence", "low_confidence", "kind", "reason", "test_status"]]
@@ -355,11 +349,9 @@ async function main() {
   const { id, sources } = snapshot(revision)
   console.error("coverage-census: snapshot " + id + ", " + sources.size + " files; matching evidence")
   if (![...sources.keys()].some(p => p.startsWith("docs/design/src/"))) throw new Error("Snapshot has no spec chapters")
-  // The shared linter registry consumes the snapshot, never the mutable workspace.
-  if (twins && !("compileTwin" in detector)) throw new Error("Compiled twins require landed gate-rule-evidence dd4ff590c915")
   const excluded = exclusions(excludeDir)
   const excludedCount = rules(sources).filter(rule => excluded.has(rule.id)).length
-  const rows = await census(sources, twins ? detector.compileTwin : undefined, excluded)
+  const rows = await census(sources, twins ? checkTwin : undefined, excluded)
   writeReports(out, reports(rows, id, twins ? "compiled" : "not compiled; candidates listed, no twins counted", excludedCount))
   console.error("coverage-census: complete in " + ((performance.now() - started) / 1000).toFixed(1) + "s")
   writeFileSync(join(out, "REVISION"), id + "\n")

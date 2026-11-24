@@ -41,7 +41,7 @@ Example first, then two to five sentences.
 
 ## Coming from Effect        (optional)
 
-- `Effect.gen(function* () { … })` becomes an ordinary function.
+- Use `effect { … }` for the Effect built by `Effect.gen(function* () { … })`.
 ```
 
 VibeLang code uses the `vibe` fence. Real TypeScript uses the `ts` fence and starts with `// TypeScript (.ts)`; Effect TypeScript shown for comparison uses `ts effect`. Name a file in a first-line comment when it matters (`// main.vibe`, `// vite.config.ts`); its extension matches the fence. After a function, show the inferred contract as a comment when it teaches something: `// User!UserNotFound!Users`.
@@ -50,7 +50,7 @@ VibeLang code uses the `vibe` fence. Real TypeScript uses the `ts` fence and sta
 
 Show exact stdout with an `output` fence immediately after a runnable `vibe` or checked `ts` block (blank lines between are allowed), or with one `// Output: text` line per stdout line inside the block; an empty `// Output:` asserts no stdout. Don't combine the two forms. `out` and `text` fences are display-only.
 
-`bun docs/tools/check-snippets.ts --run` runs these examples. Export `function main()` or include a top-level runner to make a block an entry module. For a function excerpt, add a header comment such as `// run: Console.log(greet("Ada"))`: the checker runs that expression in a VibeLang entry function with the excerpt's declarations in scope. Use `Console.log` for stable output. Match spaces and line order exactly; only line endings and one final newline are normalized. Marked `@effect/vitest` examples run in Vitest, where an empty output marker checks that their assertions pass silently. Keep examples deterministic and under ten seconds. See [the checker conventions](../tools/README.md#running-examples).
+`bun docs/tools/check-snippets.ts --run` runs these examples. Use an explicit top-level runner for a standalone program. For a function excerpt, add a header comment such as `// run: try Console.log(greet("Ada"))`: the checker runs that expression in a VibeLang entry function with the excerpt's declarations in scope. Use `Console.log` for stable output. Match spaces and line order exactly; only line endings and one final newline are normalized. Marked `@effect/vitest` examples run in Vitest, where an empty output marker checks that their assertions pass silently. Keep examples deterministic and under ten seconds. See [the checker conventions](../tools/README.md#running-examples).
 
 Every output a page shows comes from code the reader can see. Publication turns a `// run:` header into a visible `// Run in an effect function:` comment (`// Run:` in a `ts` block) above the block's first `// Output:` line, or at its end when an `output` fence follows, and drops empty `// Output:` markers. Write the run statements as a reader would: name the layers, test clocks and fixtures that make the output true, and make each fixture the run uses a block on the page. `docs/tools/published-run-lines.test.ts` fails when a published page or Markdown copy hides a run line.
 

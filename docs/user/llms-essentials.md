@@ -17,7 +17,7 @@ export effect function names(ids: ReadonlyArray<string>) {
 }
 ```
 
-- `throw e` fails in effect code. `x catch () => v`, `x catch (e) => v` and `x catch effect (e) => { … }` recover. Effect handlers fail with `throw`; plain handlers throw defects. `catch` binds like `??`; parenthesize mixtures with `??`, `||`, `&&`.
+- `throw e` fails in effect code. `x catch () => v`, `x catch (e) => v` and `x catch effect (e) => { … }` recover. Use `catch effect` to fail with `throw`. A plain handler with `throw` reports `EK0401`. `catch` binds like `??`; parenthesize mixtures with `??`, `||`, `&&`.
 - No `try` statements in effect code, including `try`/`finally`; use `ensuring` or `onExit`. `@throws` is only for non-Effect functions; Effect failures use the error channel.
 - Imports keep `"./user.vibe"`. Effect modules and functions are global. Provide platform services; run `NodeRuntime.runMain(main())` yourself.
 - Plain and `async` functions are TypeScript's. `await` is Promise-only. Wrap a Promise: `try tryPromise(() => load())`; a throwing call: `try Effect.try(() => f(x))`.

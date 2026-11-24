@@ -626,7 +626,7 @@ test("open VIP prose cannot establish an inherited rule in a chapter", () => {
   ])).toEqual([{ path, line: 1, text, section: "" }])
 })
 
-test("landed open VIP-53 and its README row remain non-normative", async () => {
+test("the revised VIP-53 and its README row remain non-normative", async () => {
   const vipPath = "docs/design/vips/0053-rename-smithersscript-open.md"
   const after = readFileSync(resolve(import.meta.dir, "../design/vips/0053-rename-smithersscript-open.md"), "utf8")
   const row = readFileSync(resolve(import.meta.dir, "../design/vips/README.md"), "utf8")
@@ -638,7 +638,7 @@ test("landed open VIP-53 and its README row remain non-normative", async () => {
 
 test("fast-check: VIP authority follows its own status across candidate and amendment wording", async () => {
   await fc.assert(fc.asyncProperty(
-    fc.constantFrom("open", "proposed"),
+    fc.constantFrom("open", "proposed", "RFP", "revised"),
     fc.constantFrom("must compile", "is an error", "means a value"),
     fc.constantFrom("Candidates", "Amended", "Clarified", "Accepted"),
     fc.integer({ min: 1, max: 9999 }),

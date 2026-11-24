@@ -1,19 +1,18 @@
 // Checks the repository content smithers.sh serves for VibeLang: the guest chat's instructions
 // (.smithers/instructions/app.md), the repo home (.smithers/home.json), the convert flow's prompt and
-// the vibelang.sh hero (docs/site/converter/hero.json). It blocks the docs deploy, because these files
-// are what the converter, the repo home and the chat say about VibeLang.
+// the vibelang.sh hero (docs/site/converter/hero.json).
 //
 //   bun docs/tools/check-smithers-content.ts
 //
 // app.md: under 24 KiB; every link resolves to a docs page or a repository file; every VibeLang block
 // passes check-snippets.ts; the install block matches what create-vibelang prints. home.json: what
-// smithers.sh's reader accepts (home.ts), every block of a known kind, existing markdown paths. prompt.md: not stale. hero.json: the
+// smithers.sh's reader accepts (home.ts), known blocks, existing Markdown paths and checked VibeLang snippets. prompt.md: not stale. hero.json: the
 // hero golden case, with matching hashes. Golden source stays out of examples/ and prompt.md.
 import { heldoutProblems } from "../../.smithers/flows/convert/check-heldout.mjs"
 import { createHash } from "node:crypto"
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { basename, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 import * as Home from "./home.ts"
 
@@ -104,21 +103,51 @@ export function homeProblems(document: string, exists: (path: string) => boolean
 
 const sha = (text: string) => `sha256:${createHash("sha256").update(text).digest("hex")}`
 
-function appSnippetProblems(): string[] {
-  const scratch = mkdtempSync(join(tmpdir(), "vibelang-content-"))
-  const problems: string[] = []
-  try {
-    const json = join(scratch, "snippets.json")
-    const snippets = spawnSync("bun", [join(repo, "docs/tools/check-snippets.ts"), "--root", join(repo, ".smithers/instructions"), "--json", json], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
-    try {
-      const report = JSON.parse(readFileSync(json, "utf8"))
-      const blocks = report.pages.flatMap((p: { blocks: Array<{ status: string }> }) => p.blocks)
-      const bad = blocks.filter((b: { status: string }) => b.status !== "ok")
-      if (!blocks.length) problems.push("app.md has no checked VibeLang block")
-      if (bad.length) problems.push(`app.md: ${bad.length} snippet(s) do not pass check-snippets.ts:\n${snippets.stdout.slice(-1500)}`)
-    } catch {
-      problems.push(`check-snippets.ts did not report on app.md (exit ${snippets.status}):\n${(snippets.stdout + snippets.stderr).slice(-1500)}`)
+export function homeVibeBlocks(document: string): string[] {
+  const home = Home.read(document)
+  if (home._tag === "Invalid") return []
+  return home.sections.flatMap(section => {
+    const samples: string[] = []
+    for (const block of section.blocks) {
+      if (block.type === "code" && (block.language === "vibe" || (!block.language && block.file?.endsWith(".vibe")))) {
+        samples.push(block.code)
+      }
     }
+    return samples
+  })
+}
+
+function contentSnippetProblems(app: string, homeBlocks: string[]): string[] {
+  const scratch = mkdtempSync(join(tmpdir(), "vibelang-content-"))
+  const pages = new Map([["app.md", "app.md"]])
+  try {
+    writeFileSync(join(scratch, "app.md"), app)
+    for (const [index, code] of homeBlocks.entries()) {
+      const filename = `home-${index + 1}.md`
+      const fence = "~".repeat(Math.max(3, ...[...code.matchAll(/~+/g)].map(match => match[0].length + 1)))
+      pages.set(filename, `home.json VibeLang block ${index + 1}`)
+      writeFileSync(join(scratch, filename), `${fence}vibe\n${code}\n${fence}\n`)
+    }
+    const json = join(scratch, "snippets.json")
+    const snippets = spawnSync("bun", [join(repo, "docs/tools/check-snippets.ts"), "--root", scratch, "--json", json], { encoding: "utf8" })
+    const output = ((snippets.stdout ?? "") + (snippets.stderr ?? "")).slice(-2500)
+    let reports: Map<string, Array<{ status: string }>>
+    try {
+      const report: { pages: Array<{ page: string; blocks: Array<{ status: string }> }> } = JSON.parse(readFileSync(json, "utf8"))
+      reports = new Map(report.pages.map(page => [basename(page.page), page.blocks]))
+    } catch {
+      return [`check-snippets.ts did not report on app.md or home.json (exit ${snippets.status}):\n${output}`]
+    }
+    const problems: string[] = []
+    for (const [filename, label] of pages) {
+      const blocks = reports.get(filename)
+      if (!blocks?.length) problems.push(`${label} has no checked VibeLang block`)
+      else {
+        const bad = blocks.filter(block => block.status !== "ok").length
+        if (bad) problems.push(`${label}: ${bad} snippet(s) do not pass check-snippets.ts`)
+      }
+    }
+    if (snippets.status !== 0 || problems.length) problems.push(`check-snippets.ts exited ${snippets.status}:\n${output}`)
     return problems
   } finally {
     rmSync(scratch, { recursive: true, force: true })
@@ -140,13 +169,13 @@ async function main() {
   if (install !== commands.join("\n")) problems.push(`app.md's install block must be:\n${commands.join("\n")}\nnot:\n${install ?? "(missing)"}`)
   for (const line of (editorBlock ?? "").split("\n")) if (line && !editor.includes(line)) problems.push(`app.md: "${line}" is not what create-vibelang prints`)
 
-  problems.push(...appSnippetProblems())
-
-  problems.push(...homeProblems(readFileSync(at(".smithers/home.json"), "utf8"), (p) => existsSync(at(p))).map((p) => `home.json: ${p}`))
+  const home = readFileSync(at(".smithers/home.json"), "utf8")
+  problems.push(...homeProblems(home, (p) => existsSync(at(p))).map((p) => `home.json: ${p}`))
+  problems.push(...contentSnippetProblems(app, homeVibeBlocks(home)))
 
   problems.push(...heldoutProblems())
 
-  const prompt = spawnSync("node", [at(".smithers/flows/convert/build-prompt.mjs"), "--check"], { encoding: "utf8" })
+  const prompt = spawnSync("node", [realpathSync(at(".smithers/flows/convert/build-prompt.mjs")), "--check"], { encoding: "utf8" })
   if (prompt.status !== 0) problems.push(prompt.stderr.trim() || "prompt.md is stale")
 
   const hero = JSON.parse(readFileSync(at("docs/site/converter/hero.json"), "utf8"))

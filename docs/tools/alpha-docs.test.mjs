@@ -112,8 +112,9 @@ test("the README says which release is the alpha, and marks none of its examples
   const box = text.slice(text.indexOf("> [!IMPORTANT]"), text.indexOf("> [!WARNING]"))
   assert.match(box, /VibeLang 0\.0\.13 is the first alpha release\./)
   assert.doesNotMatch(box, /expected|coming days|soon/i)
-  // Only the core language is final: the open proposals (VIPs 55 to 72) are experimental.
-  assert.match(box, /The core alpha \[specification\]\([^)]+\), the 33 accepted VIPs, is final/)
+  assert.match(box, /The \[specification\]\([^)]+\) describes the 33 accepted VIPs in the supported core/)
+  assert.match(box, /Some accepted features beyond that core are experimental/)
+  assert.doesNotMatch(box, /is final|open proposals/)
   assert.match(box, /\(https:\/\/vibelang\.sh\/setup\/alpha\)/)
   assert.ok(read("docs/user/src/setup/alpha.md").includes("33 accepted VIPs"))
   // A pending marker tells the snippet checker the block waits for a VIP; on the

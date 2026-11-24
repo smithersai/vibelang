@@ -41,7 +41,7 @@ export function canonical(text: string): string {
 function nonNormativeVip(path: string, markdown: string): boolean {
   if (!/^docs\/design\/vips\/(?:\d+[^/]*|reviews\/.+)\.md$/.test(path)) return false
   const status = sentences("", markdown).find(s => /^\*\*Status:\*\*/.test(s.text))
-  return !!status && /^\*\*Status:\*\*\s*(?:open|proposed)(?=[\s,.]|$)/i.test(status.text)
+  return !!status && /^\*\*Status:\*\*\s*(?:open|proposed|rfp|revised)\b/i.test(status.text)
 }
 
 function openTableVip(sentence: Sentence): string | undefined {
@@ -50,12 +50,12 @@ function openTableVip(sentence: Sentence): string | undefined {
   return target ? "docs/design/vips/" + target[1] : undefined
 }
 
-export function sentences(path: string, markdown: string): Sentence[] {
+export function sentences(path: string, markdown: string, { includeGrammarCensus = false } = {}): Sentence[] {
   if (generated(markdown) || nonNormativeVip(path, markdown)) return []
   const out: Sentence[] = []
   // This generated implementation census is metadata, never grammar authority.
   // Preserve line numbers; malformed frames and handwritten additions stay rules.
-  if (path === "docs/design/src/900-appendices.md") markdown = markdown.replace(
+  if (!includeGrammarCensus && path === "docs/design/src/900-appendices.md") markdown = markdown.replace(
     /<!-- grammar-admission:start -->[\s\S]*?<!-- grammar-admission:end -->/g,
     section => isGeneratedCensusSection(section) ? section.replace(/^[^\r\n]+/gm,
       line => /^#{1,6}\s/.test(line) ? line : "") : section

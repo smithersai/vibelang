@@ -1,6 +1,6 @@
 # Fuzzing with Experimental.Fuzz
 
-> **Open proposal ([VIP-70](https://vibelang.sh/vips/0070-std-fuzz)), experimental, not part of the alpha.** Requires `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. Any release may change or remove it.
+> **Experimental (accepted [VIP-70](https://vibelang.sh/vips/0070-std-fuzz)).** Requires `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. Any release may change or remove it.
 
 `Experimental.Fuzz.run` generates inputs from a schema, keeps inputs that trigger new coverage feedback, mutates them, and reports shrunk, replayable failures. Paired with `Experimental.FuzzSimulation.execution()`, it also controls fiber interleaving and virtual timers to find, shrink, and replay concurrency races and deadlocks. Both modules are in scope once opted in (implemented at `vibelang-runtime/experimental/Fuzz` and `vibelang-runtime/experimental/FuzzSimulation`), require no layer, and run in browsers, Workers, Node, and Bun.
 

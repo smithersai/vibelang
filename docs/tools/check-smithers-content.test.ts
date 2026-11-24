@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { homeProblems, linkTarget, links, sectionBlocks } from "./check-smithers-content.ts"
+import { homeProblems, homeVibeBlocks, linkTarget, links, sectionBlocks } from "./check-smithers-content.ts"
 
 describe("links in app.md", () => {
   test("map vibelang.sh pages to their sources", () => {
@@ -44,6 +44,17 @@ describe("home.json", () => {
       ]
     })
     expect(homeProblems(doc, exists)).toEqual([])
+  })
+  test("checks VibeLang code across sections and ignores other languages", () => {
+    const doc = JSON.stringify({ sections: [
+      { blocks: [{ type: "code", language: "vibe", code: "export const first = 1" }] },
+      { blocks: [
+        { type: "code", file: "second.vibe", code: "export const second = 2" },
+        { type: "code", language: "ts", code: "export const third = 3" }
+      ] }
+    ] })
+    expect(homeVibeBlocks(doc)).toEqual(["export const first = 1", "export const second = 2"])
+    expect(homeVibeBlocks("invalid")).toEqual([])
   })
   test("refuses a missing markdown file, a bad path and an unknown kind", () => {
     expect(homeProblems(one({ type: "markdown", path: "docs/site/fixed-by-agents.md" }), exists)).toEqual(["markdown file is missing: docs/site/fixed-by-agents.md"])

@@ -19,7 +19,8 @@ export effect function makeApi() {
 
   effect function handle() {
     const request = try HttpServerRequest.HttpServerRequest
-    const key = new URL(request.url, "http://worker").pathname.slice(1)
+    const url = try orDie(Effect.try(() => new URL(request.url, "http://worker")))
+    const key = url.pathname.slice(1)
     return effect {
       if (request.method === "PUT") {
         try bucket.put(key, try request.text)

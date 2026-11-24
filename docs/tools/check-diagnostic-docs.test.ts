@@ -3,7 +3,7 @@ import fc from "fast-check"
 import { appendixCodes, auditIdentity, compilerCodes } from "./diagnostic-identity.mjs"
 import { readFileSync, readdirSync } from "node:fs"
 import { join, relative, resolve } from "node:path"
-import { diagnosticCodes, importedLintRules, pendingRegistryCodes, retiredByVips, undocumentedCodes } from "./check-diagnostic-docs"
+import { diagnosticCodes, importedLintRules, pendingRegistryCodes, undocumentedCodes } from "./check-diagnostic-docs"
 
 const repo = resolve(import.meta.dir, "../..")
 const docsRepo = process.env.DOCS_REVIEW_ROOT || repo
@@ -20,17 +20,9 @@ test("extracts message declarations across files without counting references or 
   ])).toEqual(["EK1004", "EK4610", "EK9100"])
 })
 
-test("coverage requires a whole code and exempts the deferred name-resolution code and codes the VIPs retire", () => {
-  expect(undocumentedCodes(["EK2301", "EK4407", "EK4610", "EK9100"], ["EK10060; EK4610: wait with d.await()"])).toEqual(["EK2301", "EK9100"])
-  expect(undocumentedCodes(["EK2005"], [])).toEqual(["EK2005"])
-  for (const reason of Object.values(retiredByVips)) expect(reason).toMatch(/VIP-\d+|no VIP/)
-})
-
-test("a retired code is still one the compiler registers", () => {
-  const sources = walk(join(repo, "typescript/tsc/internal/vibelang"))
-    .filter(path => path.endsWith(".go") && !path.endsWith("_test.go")).map(path => readFileSync(path, "utf8"))
-  const registered = new Set(diagnosticCodes(sources))
-  expect(Object.keys(retiredByVips).filter(code => !registered.has(code))).toEqual([])
+test("coverage requires a whole code for every registration", () => {
+  expect(undocumentedCodes(["EK1006", "EK2006", "EK4407", "EK4610"], ["EK10060; EK4610: wait with d.await()"]))
+    .toEqual(["EK1006", "EK2006", "EK4407"])
 })
 
 test("every registered diagnostic has a user-doc reference", () => {
