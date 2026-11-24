@@ -1,0 +1,82 @@
+// expect-result: {"plan":{"workflow":"Audit","tier":"irreversible","capabilities":["fs:read:/workspace/**"],"tasks":[{"key":"ReadDoc","tier":"sealed","capabilities":["fs:read:/workspace/docs/**"]},{"key":"Isolated","tier":"sealed","capabilities":[]},{"key":"Inherit","tier":"compensable"}]},"digestLen":64,"ok":"ok","denied":"outside capability ceiling","isolated":"outside capability ceiling","inherited":"outside capability ceiling"}
+// VIP-58: static readonly tier, capabilities, effects on task & workflow,
+// derived workflow plan metadata, and runtime capability ceiling enforcement.
+
+task ReadDoc {
+  static readonly tier = "sealed"
+  static readonly capabilities = ["fs:read:/workspace/docs/**"]
+  static readonly effects = { reads: ["fs:read:/workspace/docs/**"], writes: [] }
+  effect call(target: string): string!string {
+    const ok = Experimental.Capability.check(`fs:read:${target}`) catch (err) =>
+      match (err) {
+        when Experimental.Capability.PermissionDenied: err.reason;
+        default: "required";
+      }
+    return ok === undefined ? "ok" : ok
+  }
+}
+
+task Isolated {
+  static readonly capabilities = []
+  effect call(target: string): string!string {
+    const ok = Experimental.Capability.check(`fs:read:${target}`) catch (err) =>
+      match (err) {
+        when Experimental.Capability.PermissionDenied: err.reason;
+        default: "required";
+      }
+    return ok === undefined ? "ok" : ok
+  }
+}
+
+task Inherit {
+  static readonly tier = "compensable"
+  effect call(target: string): string!string {
+    const ok = Experimental.Capability.check(`fs:write:${target}`) catch (err) =>
+      match (err) {
+        when Experimental.Capability.PermissionDenied: err.reason;
+        default: "required";
+      }
+    return ok === undefined ? "ok" : ok
+  }
+}
+
+export workflow Audit {
+  static readonly tier = "irreversible"
+  static readonly capabilities = ["fs:read:/workspace/**"]
+  effect call(mode: string, target: string): string!string {
+    if (mode === "read") return try ReadDoc(target)
+    if (mode === "isolated") return try Isolated(target)
+    return try Inherit(target)
+  }
+}
+
+export effect function main() {
+  const inspected = try Experimental.Durable.plan(Audit, "read", "/workspace/docs/a.md")
+  const env = Layer.provideMerge(
+    Layer.provideMerge(Audit.layer, Experimental.Durable.memory),
+    Experimental.Capability.grantStore({ allow: ["*"], attended: false })
+  )
+  provide env {
+    const ok = try Audit("read", "/workspace/docs/a.md")
+    const denied = try Audit("read", "/workspace/secret.txt")
+    const isolated = try Audit("isolated", "/workspace/docs/a.md")
+    const inherited = try Audit("inherit", "/workspace/docs/a.md")
+    return {
+      plan: {
+        workflow: Audit.plan.workflow,
+        tier: Audit.plan.tier,
+        capabilities: Audit.plan.capabilities,
+        tasks: Audit.plan.tasks.map((t) => ({
+          key: t.key,
+          tier: t.tier,
+          ...(t.capabilities === undefined ? {} : { capabilities: t.capabilities })
+        }))
+      },
+      digestLen: inspected.digest === null ? 0 : inspected.digest.length,
+      ok,
+      denied,
+      isolated,
+      inherited
+    }
+  }
+}

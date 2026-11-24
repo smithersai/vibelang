@@ -1,6 +1,6 @@
 # VIP-58: Capabilities: a permission kernel in the standard library
 
-**Status:** accepted by Will, 2026-11-23 (standard library + task plan metadata; no grammar changes). Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". The runtime exports `Experimental.Capability` (policy evaluator, grant stores, and platform service guards); adding `tier` and `capabilities` fields to the compiler-derived task plan remains queued.
+**Status:** accepted by Will, 2026-11-23 (standard library + task plan metadata; no grammar changes) and implemented. Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". The runtime exports `Experimental.Capability` (policy evaluator, grant stores, and platform service guards), `W.plan` / `Experimental.Durable.plan` exposes each reached task's declared `tier` and `capabilities`, task/workflow `capabilities` ceilings are enforced monotonically across layers, and `EK5801` warns when a task requiring `HttpClient` or `ChildProcessSpawner` omits `tier`.
 
 ## Will's words
 

@@ -145,6 +145,72 @@ export interface Pattern {
 export type PatternText = `${PatternAction}:${string}` | "*"
 
 /**
+ * A capability pattern accepted in policies, ceilings (`attenuate`), and
+ * `static readonly capabilities` on `task` and `workflow` declarations.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type CapabilityPattern = Pattern | PatternText
+
+/**
+ * A step's declared effect envelope (`static readonly effects` on a `task` or
+ * `workflow`): either a list of actions or capability patterns, or a structured
+ * envelope naming its `reads` and `writes` (VIP-55, VIP-58).
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type EffectEnvelope =
+  | ReadonlyArray<Action | PatternAction | Pattern | PatternText>
+  | {
+      readonly reads?: ReadonlyArray<Action | PatternAction | Pattern | PatternText | `/${string}`> | undefined
+      readonly writes?: ReadonlyArray<Action | PatternAction | Pattern | PatternText | `/${string}`> | undefined
+      readonly mode?: string | undefined
+      readonly onConflict?: string | undefined
+      readonly tier?: Tier | undefined
+    }
+
+/**
+ * One reached task in a workflow's derived plan (VIP-58).
+ *
+ * `tier` defaults to `"sealed"` when omitted; `tierDeclared` distinguishes an
+ * explicit `static readonly tier` from that default. `capabilities` lists the
+ * task's declared capability ceiling patterns in text form (`action:resource`),
+ * or is `undefined` when omitted (meaning the task inherits its caller's
+ * ceiling). Authority is never inferred from `R`.
+ *
+ * @category plans
+ * @since 0.0.13
+ */
+export interface WorkflowPlanTask {
+  readonly key: string
+  readonly tier: Tier
+  readonly tierDeclared: boolean
+  readonly capabilities: ReadonlyArray<string> | undefined
+  readonly effects?: EffectEnvelope | undefined
+}
+
+/**
+ * The static plan derived for a `workflow` declaration (VIP-55, VIP-58).
+ * Lists each reached task's declared `tier` and `capabilities` so a reviewer
+ * or operator can inspect what the workflow may touch before running it.
+ *
+ * @category plans
+ * @since 0.0.13
+ */
+export interface WorkflowPlan {
+  readonly workflow: string
+  readonly tier?: Tier | undefined
+  readonly capabilities?: ReadonlyArray<string> | undefined
+  readonly effects?: EffectEnvelope | undefined
+  /** Reached tasks in discovery order (including through nested workflows). */
+  readonly tasks: ReadonlyArray<WorkflowPlanTask>
+  /** Alias of `tasks`, compatible with `Experimental.Durable.PlanNodes` and `Durable.diff`. */
+  readonly nodes: ReadonlyArray<WorkflowPlanTask>
+}
+
+/**
  * What a program allows and what it denies. A deny is a veto: no allow in
  * the policy and no later answer overrides it.
  *

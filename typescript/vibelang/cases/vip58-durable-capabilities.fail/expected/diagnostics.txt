@@ -1,0 +1,5 @@
+main.vibe(6,19): error TS2322
+main.vibe(11,35): error TS2322
+main.vibe(16,19): error TS2322
+main.vibe(20,6): warning EK5801
+main.vibe(28,6): warning EK5801

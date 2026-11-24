@@ -22,7 +22,16 @@ export * from "./hatches.js"
 export * from "./fibers.js"
 export { $provideEntries, $provideService } from "./provide.js"
 export { $handoff, $task, $workflow } from "./durable.js"
-export type { $Handoff, DurableOptions, DurableSchemas, Handoff, Task, Workflow } from "./durable.js"
+export type {
+  $Handoff,
+  DurableOptions,
+  DurableSchemas,
+  Handoff,
+  Task,
+  Workflow,
+  WorkflowPlan,
+  WorkflowPlanTask
+} from "./durable.js"
 export * from "./primitives.js"
 export * from "./match.js"
 export * from "./main.js"

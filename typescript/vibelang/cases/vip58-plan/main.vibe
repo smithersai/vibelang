@@ -1,0 +1,7 @@
+// expect-result: "compensable"
+import * as Tasks from "./tasks.js"
+workflow Review {
+  static readonly capabilities = []
+  effect call(): number!never { return try Tasks.Read() }
+}
+export effect function main() { return Review.plan.nodes[0].tier }

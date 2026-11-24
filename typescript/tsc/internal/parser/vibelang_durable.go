@@ -490,8 +490,15 @@ func (p *Parser) durableReached(body *ast.Node, name string, parameters *ast.Nod
 				workflowOnly = true
 				callee = callee.Expression()
 			}
-			if ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsVibeLangIntrinsic == 0 && !scope[callee.Text()] {
-				key := callee.Text()
+			root := callee
+			if ast.IsPropertyAccessExpression(callee) {
+				root = callee.Expression()
+			}
+			if ast.IsIdentifier(root) && root.Flags&ast.NodeFlagsVibeLangIntrinsic == 0 && !scope[root.Text()] {
+				key := root.Text()
+				if root != callee {
+					key += "." + callee.Name().Text()
+				}
 				if _, seen := uses[key]; !seen {
 					uses[key] = callee
 					order = append(order, key)
@@ -528,10 +535,44 @@ func (p *Parser) durableReached(body *ast.Node, name string, parameters *ast.Nod
 }
 
 func (p *Parser) finalizeDurableWorkflows() {
+	if len(p.vibelangPendingWorkflows) == 0 {
+		return
+	}
+	// Imported namespace members are live bindings. Ordinary property reads
+	// could invoke a getter, so never evaluate them to inspect a plan.
+	namespaces := map[string]bool{}
+	file := ast.GetSourceFileOfNode(p.vibelangPendingWorkflows[0].taskArray)
+	if file != nil {
+		for _, statement := range file.Statements.Nodes {
+			if !ast.IsImportDeclaration(statement) {
+				continue
+			}
+			clause := statement.AsImportDeclaration().ImportClause
+			if clause == nil {
+				continue
+			}
+			bindings := clause.AsImportClause().NamedBindings
+			if bindings != nil && ast.IsNamespaceImport(bindings) {
+				namespaces[bindings.Name().Text()] = true
+			}
+		}
+	}
 	for _, pending := range p.vibelangPendingWorkflows {
 		var tasks, others []*ast.Node
 		for _, used := range pending.order {
-			id := p.vibelangSynthesized(p.factory.NewIdentifier(used), pending.uses[used].Loc)
+			use := pending.uses[used]
+			var id *ast.Node
+			if ast.IsPropertyAccessExpression(use) {
+				base := use.Expression()
+				if !namespaces[base.Text()] {
+					continue
+				}
+				root := p.vibelangSynthesized(p.factory.NewIdentifier(base.Text()), base.Loc)
+				member := p.vibelangSynthesized(p.factory.NewIdentifier(use.Name().Text()), use.Name().Loc)
+				id = p.vibelangSynthesized(p.factory.NewPropertyAccessExpression(root, nil, member, ast.NodeFlagsNone), use.Loc)
+			} else {
+				id = p.vibelangSynthesized(p.factory.NewIdentifier(used), use.Loc)
+			}
 			if !pending.directCall[used] || (p.vibelangDurableWorkflows[used] && !p.vibelangDurableTasks[used]) {
 				others = append(others, id)
 			} else {
