@@ -287,8 +287,9 @@ async function settle(config, p, cm, options) {
       const exceptions = warningExceptions(checks.flatMap(c => c.diagnostics), [...live])
       const result = { settled: !added.length, rounds: history, causes, remaining: added, warningExceptions: exceptions }
       writeJson(join(p.batch("01"), "settle.json"), result)
+      // Settle proves compilation only. Verify alone may set done to true.
       if (result.settled) writeJson(join(p.run,"done.json"), Object.fromEntries(config.packages.map(pkg => [pkg.dir,{
-        identity, digest: packageDigest(config,pkg.dir,cm.renames.map(r=>r.to)), at: new Date().toISOString(), kept: [...live].filter(f => owner(config,f) === pkg.dir),
+        done: false, identity, digest: packageDigest(config,pkg.dir,cm.renames.map(r=>r.to)), at: new Date().toISOString(), kept: [...live].filter(f => owner(config,f) === pkg.dir),
         reverted: Object.entries(causes).filter(([f]) => owner(config,f) === pkg.dir), checked: checks.map(c => c.file),
         warningExceptions: exceptions.filter(e => owner(config, e.file) === pkg.dir)
       }])))
@@ -310,6 +311,16 @@ async function settle(config, p, cm, options) {
       reverted.add(file)
     }
   }
+}
+
+/** Settle banks packages with done false; only a verify verdict sets done. */
+export function bankVerification(run, verified) {
+  const path = join(run, "done.json"), banked = readJsonIf(path)
+  if (!banked) return null
+  const verdict = { ok: verified.ok === true, at: new Date().toISOString(), commit: verified.commit ?? null }
+  const next = Object.fromEntries(Object.entries(banked).map(([dir, entry]) => [dir, { ...entry, done: verdict.ok, verified: verdict }]))
+  writeJson(path, next)
+  return next
 }
 
 /** The CLI and library share commands, with no repository-specific paths or environment. */

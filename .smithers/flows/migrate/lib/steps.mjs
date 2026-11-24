@@ -2223,6 +2223,7 @@ export async function verify(options) {
   result.commit = await Jj.commitId(t, "@")
   result.ok = Object.values(result.checks).every(Boolean)
   writeJson(p.verify(b), result)
+  if (thePlan.mode === "one-pass") (await import("./onepass.mjs")).bankVerification(p.run, result)
   return result
 }
 

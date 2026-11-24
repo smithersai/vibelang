@@ -217,7 +217,9 @@ A conversion can also be stale by converter: fresh source, old writer. Before b7
 ### Restart and measurement rules for a whole-scope pass
 
 A successful wide settle banks package outcomes, kept modules and return
-causes in `done.json`.
+causes in `done.json` with `done: false`, because settle proves compilation
+only. Verify writes its verdict to every entry's `verified` field and sets
+`done` to that verdict; a later settle sets `done` back to `false`.
 
 A diagnostic whose file is a live migrated module blames only that module,
 including ordinary TypeScript diagnostics repeated by an importing project.
