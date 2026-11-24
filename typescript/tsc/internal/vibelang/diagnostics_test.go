@@ -63,33 +63,19 @@ func TestCategory(t *testing.T) {
 	}
 }
 
-// renumbering is the lane that registers the codes decided detail 60 gives
-// each VIP's rules, one hundred-block per VIP.
-const renumbering = "lane diag-renumber registers each VIP's hundred-block (decided detail 60)"
-
-// specAhead holds the codes Appendix B assigns before the registry has them,
-// each with the lane that registers it. A code here that the registry has, or
-// that Appendix B no longer assigns, fails, so the change that registers it
-// deletes its entry.
-var specAhead = map[int32]string{
-	// Assigned by the round-17 and round-18 spec (decided detail 60) for VibeLang syntax errors and decided details 67b, 82 and 88.
-	// Assigned by the round-20 spec for decided detail 100 (an extractor on a class without its own matcher).
-
-	// Decided details 122/130 reserve a separate code for Data.taggedEnum helper variant names.
-	// The round-24 trigger catalog gives unsupported fork owners, fork.in scopes, dotted try names and concurrency limits their codes.
-	// Decided detail 212 gives an unparenthesized execution expression on the left of ** its code (loop round 1, ASTRA-10).
-	// Decided detail 247 gives the remaining owner-block rejections codes (loop round 3, OPUS-7).
-	// Spec-direct commits of 2026-11-03 (576e5f80a23f, 93ee4a5d11cf, ad7c006e1e7c and the 14:26Z fold batch) assigned these.
-	1402: "lane spec-lander assigned EK1402 (claim spec:EK1402-public-provenance); " + renumbering,
-	2401: "lane relic-try-forms registers EK2401 (claim diagnostic:EK2401-wire-intrinsic)",
-	3010: "lane no-trusted-packages registers EK3010 (claim trustedPackages:deprecation)",
-	3011: renumbering,
-	3410: "lane relic-mutable registers EK3410 (claim diagnostic:EK3410:retired-mutable)",
+// specAhead lists diagnostic codes assigned in Appendix B that still need
+// registry entries. Registering a code also removes it from this table.
+var specAhead = map[int32]struct{}{
+	1402: {},
+	2401: {},
+	3010: {},
+	3011: {},
+	3410: {},
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the
 // specification, the diagnostics VIP-34 asks for: every code the VIPs assign
-// must be registered, unless specAhead names the lane that registers it. The
+// must be registered, except for codes listed in specAhead. The
 // registry's other codes are the old language's, which Appendix B says are
 // not normative, until a VIP assigns codes to the rules it marks "code
 // pending"; they are logged, not failed.
@@ -121,17 +107,17 @@ func TestRegistryMatchesSpec(t *testing.T) {
 		vibelangmapper.CodeInvalidOption, vibelangmapper.CodeVersionMismatch,
 		vibelangmapper.CodeFormChoice, vibelangmapper.CodeDataMethod}
 	for _, code := range assigned {
-		lane, ahead := specAhead[code]
+		_, ahead := specAhead[code]
 		switch {
 		case registry[code] == nil && !slices.Contains(mapperCodes, code) && core.VibeDiagnosticCategories[fmt.Sprintf("EK%04d", code)] == "" && core.VibeImportedLintCodes[fmt.Sprintf("EK%04d", code)] == "" && !ahead:
 			t.Errorf("Appendix B assigns EK%04d, which the registry does not have", code)
 		case registry[code] != nil && ahead:
-			t.Errorf("the registry has EK%04d now; delete it from specAhead (%s)", code, lane)
+			t.Errorf("the registry has EK%04d now; delete it from specAhead", code)
 		}
 	}
-	for code, lane := range specAhead {
+	for code := range specAhead {
 		if !slices.Contains(assigned, code) {
-			t.Errorf("specAhead holds EK%04d, which Appendix B does not assign; delete it (%s)", code, lane)
+			t.Errorf("specAhead holds EK%04d, which Appendix B does not assign; delete it", code)
 		}
 	}
 	var pending []int32

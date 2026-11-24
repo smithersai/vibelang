@@ -78,9 +78,6 @@ func rethrowsAliasSource(key string, choice uint8) (string, string, int) {
 
 func TestRethrowsAliasAdmission(t *testing.T) {
 	for _, key := range rethrowsAliasKeys() {
-		if strings.HasSuffix(key, ":wrapped") {
-			continue
-		} // The quoted fuzz target retains the separate wrapper gap.
 		for choice := uint8(0); choice < 5; choice++ {
 			for _, extension := range []string{"ts", "d.ts"} {
 				t.Run(fmt.Sprintf("%s/%d/%s", key, choice, extension), func(t *testing.T) {
@@ -95,6 +92,13 @@ func TestRethrowsAliasAdmission(t *testing.T) {
 							t.Errorf("unexpected: %s", d.String())
 						}
 						got = append(got, int(d.Code()))
+					}
+					// #590 tracks the missing callback-admission error inside a wrapper.
+					if strings.HasSuffix(key, ":wrapped") && want == 402 {
+						if len(got) != 0 {
+							t.Errorf("wrapped admission gap changed: got %v; remove the known-gap expectation once EK0402 is reported", got)
+						}
+						return
 					}
 					if want == 0 && len(got) != 0 || want != 0 && (len(got) != 1 || got[0] != want) {
 						t.Errorf("got %v, want EK%04d\n%s", got, want, source)

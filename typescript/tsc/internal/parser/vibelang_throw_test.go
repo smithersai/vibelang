@@ -82,15 +82,7 @@ func TestTC39ThrowExpressions(t *testing.T) {
 			source := strings.Replace(place, "%s", " "+op+tail, 1)
 			t.Run(source, func(t *testing.T) {
 				file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
-				found := false
-				for _, d := range file.Diagnostics() {
-					if d.Code() == 1010 {
-						found = true
-					}
-				}
-				if !found {
-					t.Fatalf("proposal forbids %q: wanted EK1010, got %v", source, file.Diagnostics())
-				}
+				requireThrowLookahead(t, source, file)
 			})
 		}
 	}
@@ -134,7 +126,7 @@ func TestTC39ThrowExpressionsASINativeError(t *testing.T) {
 		t.Fatal("the following unterminated regular expression must fail")
 	}
 	for _, d := range file.Diagnostics() {
-		if d.Code() == 1010 {
+		if d.Source() == "EK" && d.Code() == 1010 {
 			t.Fatalf("ASI succeeded; the following native error became EK1010: %s", d.String())
 		}
 	}
@@ -175,20 +167,14 @@ func TestTC39ThrowClassASI(t *testing.T) {
 		"class C { value = throw e *method() {} }",
 	} {
 		file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
-		found := false
-		for _, diagnostic := range file.Diagnostics() {
-			found = found || diagnostic.Code() == 1010
-		}
-		if !found {
-			t.Fatalf("proposal lookahead rejects %q: %v", source, file.Diagnostics())
-		}
+		requireThrowLookahead(t, source, file)
 	}
 	file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, "class C { value = throw e\n*() {} }")
 	if len(file.Diagnostics()) == 0 {
 		t.Fatal("malformed generator method needs its native diagnostic")
 	}
 	for _, diagnostic := range file.Diagnostics() {
-		if diagnostic.Code() == 1010 {
+		if diagnostic.Source() == "EK" && diagnostic.Code() == 1010 {
 			t.Fatal("a method error after ASI is not a throw lookahead error")
 		}
 	}
@@ -247,7 +233,7 @@ func TestTC39ThrowMissingOperand(t *testing.T) {
 					file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
 					expected := false
 					for _, d := range file.Diagnostics() {
-						if d.Code() == 1010 && d.Source() == "EK" {
+						if d.Source() == "EK" && d.Code() == 1010 {
 							t.Fatalf("a missing operand is not a throw lookahead error: %s", d.String())
 						}
 						if d.Code() == 1109 {
@@ -260,5 +246,22 @@ func TestTC39ThrowMissingOperand(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func requireThrowLookahead(t *testing.T, source string, file *ast.SourceFile) {
+	t.Helper()
+	start := strings.Index(source, "throw ")
+	count := 0
+	for _, d := range file.Diagnostics() {
+		if d.Source() == "EK" && d.Code() == 1010 {
+			count++
+			if d.Pos() != start || d.End() != start+len("throw e") {
+				t.Errorf("EK1010 span = [%d,%d), want throw expression at %d", d.Pos(), d.End(), start)
+			}
+		}
+	}
+	if count != 1 {
+		t.Fatalf("want one EK1010 for %q, got %v", source, file.Diagnostics())
 	}
 }

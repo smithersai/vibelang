@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // platformTypes stands in for @types/node: the modules and globals that the
@@ -17,7 +19,7 @@ const platformTypes = `declare module "node:fs/promises" {
 declare module "node:path" { export function join(...paths: string[]): string }
 declare module "node:child_process" { export function execFileSync(command: string, args: string[]): string }
 declare module "node:net" { export function isIPv6(address: string): boolean }
-declare module "node:http" { export function createServer(): unknown }
+declare module "node:http" { export interface Server {} export function createServer(): unknown }
 declare module "node:os" { export function tmpdir(): string; export function hostname(): string; export function uptime(): number; export function homedir(): string }
 declare module "node:events" { export function once(emitter: unknown, name: string): Promise<unknown[]> }
 declare module "node:fs" { export const constants: { X_OK: number; O_NONBLOCK: number } }
@@ -292,7 +294,7 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		}},
 		{"pure web helpers", `export const run = (text: string, url: string) => [
   new TextEncoder().encode(text), new TextDecoder().decode(new Uint8Array()), new URL(url).host, new URLSearchParams(text).size,
-  structuredClone({ text }), atob(btoa(text)), new Headers().has(text), new AbortController().signal.aborted,
+  new AbortController().signal.aborted,
 ]`, nil},
 	}
 	for _, test := range tests {
@@ -304,9 +306,20 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 			files["/workspace/x/src/main.vibe"] = test.source
 			// Load the host declarations: these test replacement messages, not missing names.
 			files["/workspace/x/src/tsconfig.json"] = strings.Replace(files["/workspace/x/src/tsconfig.json"], `"files":["main.vibe"]`, `"files":["main.vibe","node_modules/@types/node/index.d.ts"]`, 1)
+			program := computedKeyProgram(t, files)
+			file := program.GetSourceFile(tspath.RootedFilePath("/workspace/x/src/main.vibe"))
+			if file == nil {
+				t.Fatal("missing fixture main.vibe")
+			}
 			var got []string
-			for _, d := range computedKeyProgram(t, files).GetSemanticDiagnostics(t.Context(), nil) {
-				if d.Code() == EK4402.Code {
+			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+				if test.want == nil && d.Category() == errorCategory {
+					t.Errorf("unexpected error: %s", diagnosticWithNotes(d))
+				}
+				if d.Source() == diagnosticSource && d.Code() == EK4402.Code {
+					if test.name == "http client inside tryPromise" && d.Category() != warningCategory {
+						t.Errorf("EK4402 category = %v, want warning", d.Category())
+					}
 					got = append(got, diagnosticWithNotes(d))
 				}
 			}

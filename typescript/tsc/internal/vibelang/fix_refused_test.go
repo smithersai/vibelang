@@ -57,3 +57,22 @@ func TestEK4802SeverityError(t *testing.T) {
 		t.Fatalf("errors on line %d: %v; want EK4802 as an error", line, found)
 	}
 }
+
+// legacyRunsPrelude declares what the position cases call: an Effect
+// function, a plain function, and a plain function that returns an Effect.
+const legacyRunsPrelude = `error Missing { id: number }
+
+effect function load(n: number) {
+  try yieldNow
+  return n
+}
+
+function plainId(n: number): number {
+  return n
+}
+
+function factory(n: number) {
+  return Effect.succeed(n * 10)
+}
+
+`

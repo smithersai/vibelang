@@ -37,8 +37,6 @@ func TestMatchChainNotReported(t *testing.T) {
 	}
 }
 
-// VIP-7 refuse native Match migration when contextual types cannot be preserved; rule: docs/design/vips/0007-match.md#ac19cae21b402757
-
 func assertMatchFormWarning(t *testing.T, source string) {
 	t.Helper()
 	program, file, _, _ := editorProgram(t, source)

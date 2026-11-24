@@ -45,7 +45,7 @@ func TestNativeCallbackPlatformMigrationWarning(t *testing.T) {
 		{"shadowed", "const callback = (run: () => void) => run(); export const value = callback(() => { const name = process.env.COMPLETE })", errorCategory},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dir := smithersPlatformCase(t, tc.source)
+			dir := platformProcessCase(t, tc.source)
 			found := 0
 			for _, d := range platformCallProgram(t, dir).GetSemanticDiagnostics(t.Context(), nil) {
 				if d.Source() == diagnosticSource && d.Code() == EK4402.Code {

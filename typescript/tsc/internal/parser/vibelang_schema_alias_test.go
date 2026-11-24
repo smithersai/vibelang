@@ -76,6 +76,15 @@ func TestSchemaAliasLeavesOtherSpellings(t *testing.T) {
 	// In a .ts file schema Code = ... stays TypeScript, which rejects it.
 	ts := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/main.ts", PathKey: "/main.ts"}, "schema Code = \"a\"", core.ScriptKindTS)
 	if len(ts.Diagnostics()) == 0 {
-		t.Error("a .ts file has no schema alias")
+		t.Error("TypeScript accepted schema alias syntax")
 	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if parser.IsSchemaAliasDeclaration(node) || (node.Kind == ast.KindTypeAliasDeclaration && node.Flags&ast.NodeFlagsReparsed != 0) {
+			t.Errorf("TypeScript built a schema alias node at %d", node.Pos())
+		}
+		node.ForEachChild(visit)
+		return false
+	}
+	ts.AsNode().ForEachChild(visit)
 }

@@ -68,9 +68,7 @@ func specifierTwinFiles(source, options string) (map[string]string, string) {
 // A .vibe module's declaration names a TypeScript sibling as the source
 // writes it, ./helper.ts, as stock TypeScript's declaration of the same
 // module does; ./users.vibe stands for the twin's ./users.ts
-// (VIP-30 and detail 263, amended 2026-11-02). Before, every relative .ts specifier became .js, so
-// each t3code module migrated beside unchanged .ts siblings changed its
-// declarations (drive-t3code-server slices 2 and 8, 2026-11-01).
+// (VIP-30 and detail 263).
 func TestDeclarationKeepsWrittenTypeScriptSpecifier(t *testing.T) {
 	t.Parallel()
 	const source = `import type { H } from "./helper.ts"

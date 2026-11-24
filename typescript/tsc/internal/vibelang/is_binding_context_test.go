@@ -77,8 +77,6 @@ func TestUnsettledIsBindingHomeControls(t *testing.T) {
 	}
 }
 
-// VIP-7 reject parameter-environment bindings without relocating initialization; rule: docs/design/vips/0007-match.md#3f108270c1a50ebb
-
 // VIP-7, chapter 004: a for-of RHS binding belongs to the head and each item.
 func TestForEachIsBindingHomes(t *testing.T) {
 	for _, tc := range []struct{ name, source string }{

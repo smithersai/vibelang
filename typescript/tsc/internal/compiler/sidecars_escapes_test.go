@@ -11,7 +11,7 @@ import (
 // These are printed TypeScript string literals, not raw filesystem paths.
 // All declaration module-reference forms must resolve the decoded value,
 // retaining their quote delimiter and escaping it when writing a new path.
-func TestSidecarTextEscapedSpecifiers(t *testing.T) {
+func TestRelocatedSidecarTextEscapedSpecifiers(t *testing.T) {
 	t.Parallel()
 	spellings := []struct{ literal, stem, want string }{
 		{"\"./plain.js\"", "plain", "\"./plain.vibe\""},
@@ -43,11 +43,14 @@ func TestSidecarTextEscapedSpecifiers(t *testing.T) {
 				t.Parallel()
 				declaration := fmt.Sprintf(form, spelling.literal)
 				var lookups []string
-				exists := func(path string) bool {
-					lookups = append(lookups, path)
-					return path == tspath.ResolvePath("/src", spelling.stem+".vibe")
+				resolve := func(specifier string) string {
+					lookups = append(lookups, specifier)
+					return tspath.ResolvePath("/src", spelling.stem+".vibe")
 				}
-				got := sidecarText(declaration, "/out/main.d.ts", "/src/main.vibe", exists, tspath.CaseSensitive)
+				got := relocatedSidecarText(declaration, "/src/main.d.ts", "/src", resolve, tspath.CaseSensitive)
+				if len(lookups) != 1 || lookups[0] != "./"+spelling.stem+".js" && lookups[0] != spelling.stem+".js" {
+					t.Fatalf("resolver did not receive the decoded module name: %q", lookups)
+				}
 				if spelling.want != "" {
 					if want := fmt.Sprintf(form, spelling.want); got != want {
 						t.Fatalf("got %q, want %q (lookups %q)", got, want, lookups)
@@ -60,13 +63,13 @@ func TestSidecarTextEscapedSpecifiers(t *testing.T) {
 	}
 }
 
-func TestSidecarTextEscapedNativeSpecifiersStayWritten(t *testing.T) {
+func TestRelocatedSidecarTextEscapedNativeSpecifiersStayWritten(t *testing.T) {
 	t.Parallel()
 	for _, literal := range []string{"\"./caf\\u00e9.ts\"", "'./odd\\'name.js'", "\"./odd'name.js\""} {
 		t.Run(literal, func(t *testing.T) {
 			t.Parallel()
 			declaration := "export * from " + literal + ";"
-			got := sidecarText(declaration, "/out/main.d.ts", "/src/main.vibe", func(path string) bool { return strings.HasSuffix(path, ".vibe") || strings.HasSuffix(path, ".ts") }, tspath.CaseSensitive)
+			got := relocatedSidecarText(declaration, "/src/main.d.ts", "/src", func(specifier string) string { return tspath.ResolvePath("/src", specifier) }, tspath.CaseSensitive)
 			if got != declaration {
 				t.Fatalf("native declaration changed: got %q, want %q", got, declaration)
 			}
@@ -75,16 +78,16 @@ func TestSidecarTextEscapedNativeSpecifiersStayWritten(t *testing.T) {
 }
 
 // Decoding a module name must not make a package import source-relative.
-func TestSidecarTextEscapedPackageSpecifiersStayWritten(t *testing.T) {
+func TestRelocatedSidecarTextEscapedPackageSpecifiersStayWritten(t *testing.T) {
 	t.Parallel()
 	for _, declaration := range []string{
 		"export * from \"caf\\u00e9.js\";",
 		"export type Value = import('pack\\x61ge').Value;",
 		"declare module \"pack'age\" {}",
 	} {
-		got := sidecarText(declaration, "/out/main.d.ts", "/src/main.vibe", func(string) bool {
+		got := relocatedSidecarText(declaration, "/src/main.d.ts", "/src", func(string) string {
 			t.Fatal("non-relative module reached the filesystem fallback")
-			return true
+			return ""
 		}, tspath.CaseSensitive)
 		if got != declaration {
 			t.Fatalf("package declaration changed: got %q, want %q", got, declaration)

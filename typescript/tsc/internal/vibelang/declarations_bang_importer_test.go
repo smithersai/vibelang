@@ -8,10 +8,7 @@ import (
 // A .ts module whose declaration copies a type that a .vibe module writes in
 // the ! form declares it as Effect TypeScript writes it: Effect's E and R
 // default to never, so the slots the source leaves empty stay out of the
-// importer's declaration, as they stay out of the .vibe module's own sidecar
-// (emptySlots). t3code's provider-muse textGeneration.ts and GitVcsDriver.ts
-// printed Effect.Effect<A, E, never> after their dependency became .vibe
-// (drive-t3code 2026-11-01T19:55Z, drive-t3code-server 21:34Z).
+// importer's declaration and the .vibe module's sidecar.
 func TestImporterDeclarationOmitsEmptyBangSlots(t *testing.T) {
 	t.Parallel()
 	types := []struct{ name, bang, native string }{

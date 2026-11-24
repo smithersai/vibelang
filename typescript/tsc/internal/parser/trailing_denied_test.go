@@ -73,6 +73,9 @@ func TestDeniedTrailingBlockParsesLikeTypeScript(t *testing.T) {
 }
 
 func TestDeniedTrailingBlockBoundaries(t *testing.T) {
+	if file := parseVibe(t, "const value = f() {}"); !file.VibeLangDeniedTrailingBlock {
+		t.Fatal("a call with a trailing block must set the denied-block flag")
+	}
 	for _, source := range []string{
 		"f()\n{}", "f\n{}", "obj.f\n{}", "f(); {}", "f() // line\n{}",
 		"f?.() {}", "obj?.f() {}", "obj?.f {}", "class C extends f() {}",
@@ -136,6 +139,8 @@ func TestNoSupportedTrailingBlocks(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("%s: checked %d supported sources", dir, checked)
+		if checked == 0 {
+			t.Errorf("%s: no supported sources checked", dir)
+		}
 	}
 }

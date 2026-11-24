@@ -77,6 +77,9 @@ func TestNamespaceServiceDetectionBoundaries(t *testing.T) {
 		name, source string
 		want         bool
 	}{
+		{"top-level", "service S { value: number }", true},
+		{"namespace", "export namespace N { export service S { value: number } }", true},
+		{"dotted", "export namespace N.M { export service S { value: number } }", true},
 		{"ordinary", "export namespace N {export const value=1}", false},
 		{"ambient-namespace", "declare namespace N {service S {static readonly key=\"namespace/Ambient\";value:number}}", false},
 		{"ambient-module", "declare module \"foreign\" {service S {static readonly key=\"namespace/Foreign\";value:number}}", false},

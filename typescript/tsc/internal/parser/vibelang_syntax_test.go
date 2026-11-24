@@ -21,6 +21,7 @@ func describeVibeSyntax(source string, forms []parser.VibeSyntax) string {
 		return source[r.Pos():r.End()]
 	}
 	names := map[parser.VibeSyntaxKind]string{
+		parser.VibeSyntaxEffect:         "effect",
 		parser.VibeSyntaxEffectType:     "effect-type",
 		parser.VibeSyntaxMutable:        "mutable",
 		parser.VibeSyntaxDeclaration:    "declaration",
@@ -95,8 +96,8 @@ func TestVibeLangSyntaxRecordsEachForm(t *testing.T) {
 			`declaration schema error range="schema error FsError { method: string }" head="schema error FsError" open="{" close="}"`},
 		{"schema error subclass", "schema error Missing extends FsError { path: string; describe(): string { return this.path } }",
 			`declaration schema error class range="schema error Missing extends FsError { path: string; describe(): string { return this.path } }" head="schema error Missing" open="{" close="}"`},
-		{"service", `service class Users { find(id: string): string!Gone }`,
-			"declaration service range=\"service class Users { find(id: string): string!Gone }\" head=\"service class Users\" open=\"{\" close=\"}\"\neffect-type range=\"string!Gone\""},
+		{"service", `service Users { find(id: string): string!Gone }`,
+			"declaration service range=\"service Users { find(id: string): string!Gone }\" head=\"service Users\" open=\"{\" close=\"}\"\neffect-type range=\"string!Gone\""},
 		{"service of a shape", `service Prefix: string {}`,
 			`declaration service range="service Prefix: string {}" head="service Prefix: string" right="string" open="{" close="}"`},
 		{"service of a shape with a body", `export service Search: SearchApi { static readonly key = "app/Search" }`,
@@ -113,8 +114,8 @@ func TestVibeLangSyntaxRecordsEachForm(t *testing.T) {
 			"prefix range=\"fork read()\" word=\"fork\"\nfork-block range=\"fork { poll() }\" word=\"fork\" open=\"{\" close=\"}\""},
 		{"try operations", `function f() { const a = try.all [read()]; const b = try.any xs }`,
 			"prefix range=\"try.all [read()]\" word=\"try.all\"\nprefix range=\"try.any xs\" word=\"try.any\""},
-		{"join and await operations", `function f() { const a = join task; const b = await.allSettled [read()] }`,
-			"prefix range=\"join task\" word=\"join\"\nprefix range=\"await.allSettled [read()]\" word=\"await.allSettled\""},
+		{"join and settled operations", `function f() { const a = join task; const b = try.allSettled [read()] }`,
+			"prefix range=\"join task\" word=\"join\"\nprefix range=\"try.allSettled [read()]\" word=\"try.allSettled\""},
 		{"throw expression", `const v = x ?? throw new Gone()`,
 			`prefix range="throw new Gone()" word="throw"`},
 		{"catch", `const v = read() catch (e) => 0`,
@@ -160,12 +161,40 @@ func TestVibeLangSyntaxRecordsEachForm(t *testing.T) {
 	}
 }
 
+func TestVibeLangSyntaxRecordsExplicitEffects(t *testing.T) {
+	t.Parallel()
+	const source = `effect function run() { return try work() }
+const program = effect { return try work() }
+const recover = work() catch effect (e) => { return try fallback(e) }`
+	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+	if ds := file.Diagnostics(); len(ds) != 0 {
+		t.Fatalf("explicit effects rejected: %v", ds)
+	}
+
+	counts := map[string]int{}
+	for _, form := range forms {
+		word := source[form.Word.Pos():form.Word.End()]
+		switch form.Kind {
+		case parser.VibeSyntaxEffect, parser.VibeSyntaxPrefix, parser.VibeSyntaxCatch:
+			counts[word]++
+		}
+	}
+	for word, want := range map[string]int{"effect": 3, "try": 3, "catch": 1} {
+		if got := counts[word]; got != want {
+			t.Errorf("recorded %d %q forms, want %d:\n%s", got, word, want, describeVibeSyntax(source, forms))
+		}
+	}
+}
+
 // A form inside a lookahead the parser abandons must not be recorded: the
-// arrow function parser tries (e) => match ... as a parenthesized arrow first.
+// pipe input starts with a parenthesized expression that is not an arrow.
 func TestVibeLangSyntaxDropsAbandonedLookaheads(t *testing.T) {
 	t.Parallel()
 	source := `const v = f((x) |> g(%), do { 1 })`
-	_, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+	if ds := file.Diagnostics(); len(ds) != 0 {
+		t.Fatalf("lookahead fixture rejected: %v", ds)
+	}
 	counts := map[parser.VibeSyntaxKind]int{}
 	for _, form := range forms {
 		counts[form.Kind]++
@@ -175,10 +204,15 @@ func TestVibeLangSyntaxDropsAbandonedLookaheads(t *testing.T) {
 	}
 }
 
-// A .ts file records nothing, and ParseSourceFile records nothing anywhere.
 func TestVibeLangSyntaxOnlyForVibeFiles(t *testing.T) {
 	t.Parallel()
-	_, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.ts", PathKey: "/main.ts"}, `const v = a ?? b`)
+	const source = "const v = n |> f(%)"
+	vibe, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+	const want = "pipe range=\"n |> f(%)\" word=\"|>\" left=\"n\" right=\"f(%)\"\ntopic range=\"%\" word=\"%\""
+	if got := describeVibeSyntax(source, forms); got != want || len(vibe.Diagnostics()) != 0 {
+		t.Fatalf("want a pipe and its topic in .vibe, got %s, diagnostics %v", got, vibe.Diagnostics())
+	}
+	_, forms = parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.ts", PathKey: "/main.ts"}, source)
 	if len(forms) != 0 {
 		t.Fatalf("a .ts file recorded %d forms", len(forms))
 	}

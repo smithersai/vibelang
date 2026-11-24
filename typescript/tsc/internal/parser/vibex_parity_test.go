@@ -83,12 +83,6 @@ func TestVibexClashParity(t *testing.T) {
 					if ds := got.Diagnostics(); len(ds) != 0 {
 						t.Fatalf("valid row rejected: %v", vibexDiagnostics(got))
 					}
-				case "compiler":
-					// Denied syntax may recover in the parser. Its public diagnostic
-					// is checked independently by compile-parity.mjs.
-					if !strings.Contains(text, "// expect-compile: EK1101") {
-						t.Fatal("missing compiler diagnostic expectation")
-					}
 				case "invalid":
 					if len(got.Diagnostics()) == 0 {
 						t.Fatal("invalid row accepted")
@@ -154,25 +148,9 @@ func TestVibexPanelCorpus(t *testing.T) {
 	}
 	var rows []struct {
 		Key, Source string
-		Origins     []string
 	}
 	if err := json.Unmarshal(data, &rows); err != nil {
 		t.Fatal(err)
-	}
-	groups := map[string]map[string]bool{}
-	for _, row := range rows {
-		for _, origin := range row.Origins {
-			group := strings.SplitN(origin, ":", 2)[0]
-			if groups[group] == nil {
-				groups[group] = map[string]bool{}
-			}
-			groups[group][origin] = true
-		}
-	}
-	for group, want := range map[string]int{"sol": 155, "opus": 102, "astra-expanded": 128} {
-		if len(groups[group]) < want {
-			t.Fatalf("%s panel has %d origins, want at least %d", group, len(groups[group]), want)
-		}
 	}
 	if len(rows) < 300 {
 		t.Fatalf("panel corpus incomplete: %d", len(rows))

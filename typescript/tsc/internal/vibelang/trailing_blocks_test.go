@@ -62,7 +62,7 @@ func TestTrailingBlockLeavesDualBlocksToTheirMigration(t *testing.T) {
 // The old layer declaration builds a Layer.effect call whose block the source
 // never writes after a call, so it keeps EK2121 and draws no EK1101.
 func TestTrailingBlockSkipsTheLayerDeclaration(t *testing.T) {
-	errors := errorsOf(t, "service Counter { next(): number!! }\nexport layer CounterLive: Counter {\n  const start = 0\n  effect next() { return start }\n}")
+	errors := trailingBlockErrorsOf(t, "service Counter { next(): number!! }\nexport layer CounterLive: Counter {\n  const start = 0\n  effect next() { return start }\n}")
 	for _, d := range errors {
 		if d.Code() == EK1101.Code {
 			t.Fatalf("the layer declaration reports EK1101: %v", errors)
@@ -73,7 +73,7 @@ func TestTrailingBlockSkipsTheLayerDeclaration(t *testing.T) {
 // fork { … } is fork's own block (D166), which the parser reads apart
 // from block params, so it draws no EK1101.
 func TestTrailingBlockLeavesForkBlocks(t *testing.T) {
-	errors := errorsOf(t, "export effect function f() { const g = fork { try yieldNow; return 1 }; return join g }")
+	errors := trailingBlockErrorsOf(t, "export effect function f() { const g = fork { try yieldNow; return 1 }; return join g }")
 	for _, d := range errors {
 		if d.Code() == EK1101.Code {
 			t.Fatalf("fork { … } reports EK1101: %v", errors)
@@ -95,6 +95,15 @@ func legacyTrailingBlockErrorsOf(t *testing.T, source string) []*ast.Diagnostic 
 		}
 	}
 	return errors
+}
+
+func TestTrailingBlockSyntacticDiagnostic(t *testing.T) {
+	for _, d := range trailingBlockErrorsOf(t, trailingBlockPrelude+"export const n = twice() { return 2 }") {
+		if d.Source() == diagnosticSource && d.Code() == EK1101.Code {
+			return
+		}
+	}
+	t.Fatal("ordinary trailing block did not report syntactic EK1101")
 }
 
 func trailingBlockErrorsOf(t *testing.T, source string) []*ast.Diagnostic {
