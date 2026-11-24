@@ -35,16 +35,13 @@ func isVibeLangDeclarationWord(text string) bool {
 	return slices.Contains(vibelangDeclarationWords, text)
 }
 
-// scanStartOfVibeLangDeclaration reports whether the current token starts an
-// VibeLang declaration. service and control may also be followed by class on
-// the same line, the older spelling (D220, D223): service class Users { ... }.
-// An identifier followed by class on the same line is a TypeScript syntax error
-// too. It moves the scanner; call it through lookAhead.
+// scanStartOfVibeLangDeclaration reports whether the current token starts a
+// VibeLang declaration. service and control followed by class on the same
+// line start one too, so that the retired spellings service class Users { ... }
+// (EK0909) and control (EK3501) draw their own errors; an identifier followed
+// by class on the same line is a TypeScript syntax error anyway. It moves the
+// scanner; call it through lookAhead.
 func (p *Parser) scanStartOfVibeLangDeclaration() bool {
-	return p.scanStartOfVibeLangDeclarationInContext(false)
-}
-
-func (p *Parser) scanStartOfVibeLangDeclarationInContext(ambient bool) bool {
 	if p.token != ast.KindIdentifier {
 		return false
 	}
@@ -218,16 +215,17 @@ func (p *Parser) vibelangAbstractMember(modifiers *ast.ModifierList, name *ast.N
 //
 //	export const widen = (o: { minimum: number }): void => { o.minimum = 0 }
 //
-// Inside a data, schema or error body the type members keep the old default
-// (D134), readonly unless written with mutable, so those declarations and
-// schema mappings are unchanged:
+// Every field of a data variant or an error is readonly, as in Effect's
+// Data.TaggedEnum and Data.TaggedError (chapters 3 and 6). A schema's fields
+// map as written: a field is writable unless written readonly (chapter 6).
 //
-//	data Shape { Circle { r: number }; Grow { mutable r: number } }
+//	data Shape { Circle { r: number } }       r is readonly
+//	schema User { name: string }              name is writable
 //
-// mutable is still accepted on any member, where outside those bodies it
-// changes nothing, so code written for the default compiles. It is a modifier
-// only when a member name follows it on the same line, so a member named
-// mutable still parses as before.
+// mutable is retired (EK2125 in a data variant, EK3410 in a plain error).
+// parseVibeLangMutable still reads it, so that the checker can report it and
+// migration can remove it; it is a modifier only when a member name follows
+// it on the same line, so a member named mutable still parses as before.
 
 // parseVibeLangMutable consumes mutable at the start of a type member and
 // reports whether it did.
@@ -456,8 +454,9 @@ func (p *Parser) parseVibeLangSlotType() *ast.TypeNode {
 //	control Approval { approve(request: string): boolean!! }
 //
 // as the abstract classes they abbreviate, with members that have no bodies
-// (D128, D223). The older spelling with class, service class Users { ... },
-// parses the same way; the checker warns about it (EK2120):
+// (D128, D223). The retired spelling with class, service class Users { ... },
+// parses the same way so that the checker can report it (EK0909); control
+// is retired too (EK3501):
 //
 //	abstract class Users { abstract find(id: string): User!NotFound; abstract region: string }
 //	abstract class Approval extends Control { abstract approve(request: string): boolean!! }

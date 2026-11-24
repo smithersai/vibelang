@@ -11,11 +11,13 @@ import (
 // into a call of the runtime's $catchExpression, so the checker, the analyzer,
 // and the lowering treat it as the call it abbreviates:
 //
-//	getUser(id) catch guest               $catchExpression(() => getUser(id), () => guest)
 //	getUser(id) catch (e) => describe(e)  $catchExpression(() => getUser(id), (e) => describe(e))
 //
-// The left side is passed as a function, so it runs inside the catch, and a
-// fallback runs only after an expected failure. vibelang/catch_expressions.go
+// The handler is always a function literal (Appendix A CatchHandler); a value
+// after catch, as in getUser(id) catch guest, is EK0509. The parser still
+// wraps such a value in a function so that the checker can report it. The
+// left side is passed as a function, so it runs inside the catch, and the
+// handler runs only after an expected failure. vibelang/catch_expressions.go
 // knows the call by its synthesized callee, anchored on the keyword.
 
 // isVibeLangCatchExpression reports whether the current token, which follows an
@@ -29,8 +31,8 @@ func (p *Parser) isVibeLangCatchExpression() bool {
 // parseVibeLangCatchRest parses the catch operators after left, which starts at
 // pos. catch binds like ??, rejecting unparenthesized logical mixing, and
 // tighter than ? : and assignment; it associates to the left, so
-// a() catch b() catch c tries b() after a() fails and c after b() fails. A
-// handler is an arrow function, whose body extends as far as an arrow
+// a() catch (e) => f(e) catch (e) => g(e) handles a() with f, and handles a
+// failure of that with g. A handler is an arrow function, whose body extends as far as an arrow
 // function's does, so a catch after a handler belongs to its body.
 func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expression {
 	for p.isVibeLangCatchExpression() {

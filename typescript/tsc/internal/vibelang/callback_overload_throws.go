@@ -26,10 +26,7 @@ func checkOverloadedCallbackValue(c *checker.Checker, expr *ast.Node) bool {
 	if contextual == nil {
 		return false
 	}
-	members := []*checker.Type{contextual}
-	if contextual.Flags()&checker.TypeFlagsUnion != 0 {
-		members = contextual.Types()
-	}
+	members := alternativesOf(contextual)
 	if len(sources) == 1 {
 		overloadedDestination := false
 		for _, member := range members {
@@ -42,50 +39,18 @@ func checkOverloadedCallbackValue(c *checker.Checker, expr *ast.Node) bool {
 			return false
 		}
 	}
-	sourceTypes := make([]*checker.Type, len(sources))
 	contracts := make([]throwContract, len(sources))
 	for i, signature := range sources {
-		sourceTypes[i] = c.NewFunctionType(nil, []*checker.Signature{signature})
-		contracts[i] = foreignOverloadThrows(c, signature)
+		contracts[i] = foreignSignatureThrows(c, signature)
 	}
-	nativeMatch := false
-	var rejected throwContract
-	for _, member := range members {
-		if !c.IsTypeAssignableTo(source, member) {
-			continue // TypeScript reports the ordinary type mismatch.
-		}
-		nativeMatch = true
-		fits := true
-		for _, target := range c.GetSignaturesOfType(member, checker.SignatureKindCall) {
-			targetType := c.NewFunctionType(nil, []*checker.Signature{target})
-			var destination throwContract
-			if decl := target.Declaration(); decl != nil {
-				destination = writtenThrows(c, decl)
-			}
-			matched := false
-			for i, sourceType := range sourceTypes {
-				related := c.IsTypeAssignableTo(sourceType, targetType)
-				if len(sources) > 1 || len(c.GetSignaturesOfType(member, checker.SignatureKindCall)) > 1 {
-					related = c.IsOverloadSignatureAssignableTo(sources[i], target)
-				}
-				if !related {
-					continue
-				}
-				if destination.admits(c, contracts[i]) {
-					matched = true
-					break
-				}
-				rejected.unknown = rejected.unknown || contracts[i].unknown
-				rejected.types = append(rejected.types, contracts[i].types...)
-			}
-			if !matched {
-				fits = false
-				break
-			}
-		}
-		if fits {
-			return true // All overloads of one union alternative must fit.
-		}
+	fit := callbackFit{
+		kind:     checker.SignatureKindCall,
+		provided: func(i int, _ *checker.Signature) (throwContract, bool) { return contracts[i], true },
+		required: writtenBound(c),
+	}
+	fits, nativeMatch, rejected := fit.fits(c, source, sources, members)
+	if fits {
+		return true // All overloads of one union alternative must fit.
 	}
 	if nativeMatch {
 		name := scanner.GetTextOfNode(expr)
@@ -94,28 +59,4 @@ func checkOverloadedCallbackValue(c *checker.Checker, expr *ast.Node) bool {
 		note(d, "Pass a function that handles the throw, call {0} through Effect.try, or write @throws on the matching function signature.", name)
 	}
 	return true
-}
-
-// This check covers written foreign contracts, just like foreignThrows.
-// VibeLang callables and Effect-returning signatures intrinsically throw never;
-// untagged foreign/default contracts remain outside this check.
-func foreignOverloadThrows(c *checker.Checker, signature *checker.Signature) throwContract {
-	for signature.Target() != nil {
-		signature = signature.Target()
-	}
-	decl := signature.Declaration()
-	if decl == nil {
-		return throwContract{}
-	}
-	file := ast.GetSourceFileOfNode(decl)
-	if file == nil || isVibeLangFile(file) || isLibFile(c, file) ||
-		isEffectfulType(c, c.GetReturnTypeOfSignature(signature)) {
-		return throwContract{}
-	}
-	for _, host := range jsdocHosts(decl) {
-		if ast.IsTypeAliasDeclaration(host) {
-			return throwContract{}
-		}
-	}
-	return writtenSourceSignatureThrows(c, decl)
 }

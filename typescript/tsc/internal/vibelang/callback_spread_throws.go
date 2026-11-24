@@ -105,48 +105,27 @@ func writtenSpreadCallbacksFit(c *checker.Checker, source, target *checker.Type)
 	contracts := make([]throwContract, len(provided))
 	tracked := false
 	for i, given := range provided {
-		contracts[i] = foreignOverloadThrows(c, given)
+		contracts[i] = foreignSignatureThrows(c, given)
 		tracked = tracked || contracts[i].unknown || len(contracts[i].types) != 0
 	}
 	if !tracked {
 		return true, throwContract{}
 	}
-	alternatives := []*checker.Type{target}
-	if target.Flags()&checker.TypeFlagsUnion != 0 {
-		alternatives = target.Types()
-	}
-	var rejected throwContract
-	for _, alternative := range alternatives {
-		if !c.IsTypeAssignableTo(source, alternative) {
-			continue
-		}
-		required := c.GetSignaturesOfType(alternative, checker.SignatureKindCall)
-		overloaded := len(provided) > 1 || len(required) > 1
-		fits := true
-		for _, need := range required {
-			matched := false
-			for i, given := range provided {
-				if !callbackSignatureRelated(c, given, need, overloaded) {
-					continue
-				}
-				declaration := need.Declaration()
-				if declaration == nil || sameRootSignatureDeclaration(given, need) || writtenThrows(c, declaration).admits(c, contracts[i]) {
-					matched = true
-					break
-				}
-				rejected.unknown = rejected.unknown || contracts[i].unknown
-				rejected.types = append(rejected.types, contracts[i].types...)
+	fit := callbackFit{
+		kind:     checker.SignatureKindCall,
+		own:      true,
+		provided: func(i int, _ *checker.Signature) (throwContract, bool) { return contracts[i], true },
+		required: func(_ *checker.Type, need *checker.Signature) (throwContract, bool) {
+			if declaration := need.Declaration(); declaration != nil {
+				return writtenThrows(c, declaration), true
 			}
-			if !matched {
-				fits = false
-				break
-			}
-		}
-		if fits {
-			return true, throwContract{}
-		}
+			return throwContract{}, false
+		},
 	}
-	return false, rejected
+	if fits, _, rejected := fit.fits(c, source, provided, alternativesOf(target)); !fits {
+		return false, rejected
+	}
+	return true, throwContract{}
 }
 
 // A uniform array rest parameter keeps the same receiving callback type at

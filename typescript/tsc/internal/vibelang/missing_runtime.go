@@ -38,41 +38,39 @@ func prepareMissingRuntimeDiagnostics(c *checker.Checker, _ *ast.SourceFile) {
 	if state.scanning || state.scanned {
 		return
 	}
-	if !state.scanned {
-		state.scanning = true
-		files := slices.Clone(c.Program().SourceFiles())
-		slices.SortFunc(files, func(a, b *ast.SourceFile) int { return a.FileName().Compare(b.FileName()) })
-		for _, candidate := range files {
-			if !isVibeLangFile(candidate) || c.Program().IsSourceFileFromExternalLibrary(candidate) ||
-				runtimeInstalledFor(c, candidate) {
-				continue
-			}
-			c.GetDiagnostics(context.Background(), candidate)
-			p := newFilePlan()
-			populateFilePlan(c, candidate, p)
-			tx := &lowering{plan: p, frames: findFrameReferences(candidate), fresh: freshNames{file: candidate}}
-			tx.NewTransformer(tx.visit, nil)
-			lowered := tx.TransformSourceFile(candidate)
-			needed := tx.runtime != nil
-			for _, statement := range lowered.Statements.Nodes {
-				if ast.IsImportDeclaration(statement) {
-					specifier := statement.AsImportDeclaration().ModuleSpecifier
-					if specifier == nil || !ast.IsStringLiteral(specifier) {
-						continue // parser recovery can retain an expression; its TS syntax errors stand
-					}
-					module := specifier.Text()
-					if module == runtimeModule || strings.HasPrefix(module, runtimeModule+"/") {
-						needed = true
-					}
+	state.scanning = true
+	files := slices.Clone(c.Program().SourceFiles())
+	slices.SortFunc(files, func(a, b *ast.SourceFile) int { return a.FileName().Compare(b.FileName()) })
+	for _, candidate := range files {
+		if !isVibeLangFile(candidate) || c.Program().IsSourceFileFromExternalLibrary(candidate) ||
+			runtimeInstalledFor(c, candidate) {
+			continue
+		}
+		c.GetDiagnostics(context.Background(), candidate)
+		p := newFilePlan()
+		populateFilePlan(c, candidate, p)
+		tx := &lowering{plan: p, frames: findFrameReferences(candidate), fresh: freshNames{file: candidate}}
+		tx.NewTransformer(tx.visit, nil)
+		lowered := tx.TransformSourceFile(candidate)
+		needed := tx.runtime != nil
+		for _, statement := range lowered.Statements.Nodes {
+			if ast.IsImportDeclaration(statement) {
+				specifier := statement.AsImportDeclaration().ModuleSpecifier
+				if specifier == nil || !ast.IsStringLiteral(specifier) {
+					continue // parser recovery can retain an expression; its TS syntax errors stand
+				}
+				module := specifier.Text()
+				if module == runtimeModule || strings.HasPrefix(module, runtimeModule+"/") {
+					needed = true
 				}
 			}
-			state.needs[candidate] = needed
-			if needed && state.owner == nil {
-				state.owner = candidate
-			}
 		}
-		state.scanning, state.scanned = false, true
+		state.needs[candidate] = needed
+		if needed && state.owner == nil {
+			state.owner = candidate
+		}
 	}
+	state.scanning, state.scanned = false, true
 	if state.owner != nil {
 		at := state.owner.AsNode()
 		if len(state.owner.Statements.Nodes) != 0 {

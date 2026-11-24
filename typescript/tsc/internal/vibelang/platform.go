@@ -885,9 +885,6 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 		use = id // the global held as a value
 	}
 	name := nodeText(file, use)
-	if ref.module != "" {
-		name += " from " + ref.module
-	}
 	members, _ := accessChain(id)
 	message := EK4402
 	if inFormerPlatformBoundary(id) {

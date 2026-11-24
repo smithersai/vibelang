@@ -84,7 +84,7 @@ func legacyRequirements(a *analyzer, fn *ast.Node, visiting map[*ast.Node]bool) 
 	}
 	visiting[fn] = true
 	requirements := slices.Clone(info.requirements)
-	a.forEachRunningCallInBody(fn, func(call *ast.Node) bool {
+	forEachCallInBody(fn, func(call *ast.Node) bool {
 		if !a.runs(call) {
 			return false
 		}
