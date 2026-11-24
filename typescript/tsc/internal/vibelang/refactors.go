@@ -126,20 +126,24 @@ func (rc *refactorContext) contractRefactors(fn *ast.Node) []*ls.CodeAction {
 }
 
 // closeParenOf returns the position after the ) that closes fn's parameter
-// list, or -1.
+// list, or -1. It scans tokens from the last thing before that ): the last
+// parameter, the type parameter list or the name. A ) inside a type
+// parameter's type or a comment is not the one.
 func closeParenOf(file *ast.SourceFile, fn *ast.Node) int {
-	parameters := fn.Parameters()
 	from := nodeStart(file, fn)
-	if len(parameters) > 0 {
-		from = parameters[len(parameters)-1].End()
+	if name := fn.Name(); name != nil {
+		from = max(from, name.End())
 	}
-	if fn.Name() != nil && len(parameters) == 0 {
-		from = fn.Name().End()
+	if typeParameters := fn.TypeParameterList(); typeParameters != nil {
+		from = max(from, typeParameters.End())
 	}
-	text := file.Text()
-	for i := from; i < nodeStart(file, fn.Body()); i++ {
-		if text[i] == ')' {
-			return i + 1
+	if parameters := fn.Parameters(); len(parameters) > 0 {
+		from = max(from, parameters[len(parameters)-1].End())
+	}
+	body := nodeStart(file, fn.Body())
+	for s := scanner.GetScannerForSourceFile(file, from); s.Token() != ast.KindEndOfFile && s.TokenStart() < body; s.Scan() {
+		if s.Token() == ast.KindCloseParenToken {
+			return s.TokenEnd()
 		}
 	}
 	return -1
@@ -432,8 +436,10 @@ func outermostPipe(pipe *ast.Node) *ast.Node {
 }
 
 // pipeToCalls offers to write pipe, a chain of |>, as nested calls when each
-// body uses its topic once: x |> g(%) |> f(%) becomes f(g(x)). It is Effect's
-// "Pipe to data-first".
+// body uses its topic once and evaluates it first: x |> g(%) |> f(%) becomes
+// f(g(x)). It declines next() |> pair(other(), %), x() |> (c ? f(%) : 0) and
+// x() |> (() => g(%)), whose calls would run next() later, only sometimes or
+// on every call. It is Effect's "Pipe to data-first".
 func (rc *refactorContext) pipeToCalls(pipe *ast.Node) []*ls.CodeAction {
 	var levels []*ast.Node // innermost first
 	value := pipe
@@ -445,7 +451,9 @@ func (rc *refactorContext) pipeToCalls(pipe *ast.Node) []*ls.CodeAction {
 	for _, level := range levels {
 		body := level.AsBinaryExpression().Right
 		topics := topicsOf(level)
-		if len(topics) != 1 {
+		// The left side runs first, so the call must evaluate it first too:
+		// once, on every path, after only stable values (topicFirst).
+		if len(topics) != 1 || !topicFirst(rc.c, body, topics[0]) {
 			return nil
 		}
 		if needsParentheses(value) && !isCallArgument(topics[0]) {
@@ -469,11 +477,11 @@ func isCallArgument(node *ast.Node) bool {
 // repeatedly, as a |> pipe: f(g(h(x))) becomes x |> h(%) |> g(%) |> f(%).
 // It is Effect's "Function calls to pipe" and missedPipeableOpportunity.
 func (rc *refactorContext) callsToPipe(call *ast.Node) []*ls.CodeAction {
-	for call.Parent != nil && ast.IsCallExpression(call.Parent) && len(call.Parent.Arguments()) > 0 && call.Parent.Arguments()[0] == call && isPipeableCall(call.Parent) {
+	for call.Parent != nil && ast.IsCallExpression(call.Parent) && len(call.Parent.Arguments()) > 0 && call.Parent.Arguments()[0] == call && rc.isPipeStep(call.Parent) {
 		call = call.Parent
 	}
 	var steps []*ast.Node
-	for c := call; isPipeableCall(c) && len(c.Arguments()) > 0; {
+	for c := call; rc.isPipeStep(c); {
 		steps = append([]*ast.Node{c}, steps...)
 		first := ast.SkipParentheses(c.Arguments()[0])
 		if !ast.IsCallExpression(first) {
@@ -499,6 +507,22 @@ func (rc *refactorContext) callsToPipe(call *ast.Node) []*ls.CodeAction {
 		parts = append(parts, stepText[:start]+"%"+stepText[end:])
 	}
 	return []*ls.CodeAction{rc.action("Convert to a pipe", nodeStart(rc.file, call), call.End(), strings.Join(parts, " |> "))}
+}
+
+// isPipeStep reports whether call can become a step of a pipe that keeps
+// its evaluation order. The pipe evaluates call's first argument before its
+// callee, and evaluates it even when an optional chain would not, so the call
+// must not be an optional chain and its callee must be a plain name or a
+// stable value (order.go): make()(g(x)) and logger?.log(g(x)) stay calls,
+// and so does obj.f(g(x)), where obj.f may be a getter. A name reads its
+// binding without running code; only a first argument that assigns that
+// binding could tell the difference.
+func (rc *refactorContext) isPipeStep(call *ast.Node) bool {
+	if !isPipeableCall(call) || ast.IsOptionalChain(call) || len(call.Arguments()) == 0 || ast.IsSpreadElement(call.Arguments()[0]) {
+		return false
+	}
+	callee := ast.SkipParentheses(call.Expression())
+	return ast.IsIdentifier(callee) || stableValue(rc.c, callee)
 }
 
 // isPipeableCall reports whether call is an ordinary call that a pipe step

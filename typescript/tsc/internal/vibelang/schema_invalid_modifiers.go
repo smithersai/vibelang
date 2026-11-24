@@ -11,11 +11,10 @@ import (
 func init() {
 	fileChecks = append(fileChecks, checkSchemaTypeMemberModifiers)
 	checker.RegisterDiagnosticsFilterHook(filterSchemaTypeMemberModifierDiagnostics)
-
 }
 
 func checkSchemaTypeMemberModifiers(c *checker.Checker, file *ast.SourceFile) {
-	for _, repair := range schemaTypeMemberRepairs(file) {
+	for _, repair := range schemaTypeMemberRepairsOf(c, file) {
 		switch repair.code {
 		case 1090:
 			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_0_modifier_cannot_appear_on_a_parameter, repair.name))
@@ -48,11 +47,16 @@ func checkSchemaTypeMemberModifiers(c *checker.Checker, file *ast.SourceFile) {
 }
 
 // Keep the same first grammar error when both independent schema grammar
-// providers are installed. Nested fields retain their own diagnostics.
-func filterSchemaTypeMemberModifierDiagnostics(_ *checker.Checker, file *ast.SourceFile, all []*ast.Diagnostic) []*ast.Diagnostic {
-	repairs := schemaTypeMemberRepairs(file)
-	return slices.DeleteFunc(slices.Clone(all), func(d *ast.Diagnostic) bool {
-		if d.Source() != "" || d.Code() != 1030 {
+// providers are installed. Nested fields retain their own diagnostics. The
+// checker runs the filter on every file, so it returns all itself unless a
+// .vibe file has a TS1030 it may drop.
+func filterSchemaTypeMemberModifierDiagnostics(c *checker.Checker, file *ast.SourceFile, all []*ast.Diagnostic) []*ast.Diagnostic {
+	if !isVibeLangFile(file) || !slices.ContainsFunc(all, droppableModifierDiagnostic) {
+		return all
+	}
+	repairs := schemaTypeMemberRepairsOf(c, file)
+	drop := func(d *ast.Diagnostic) bool {
+		if !droppableModifierDiagnostic(d) {
 			return false
 		}
 		for _, repair := range repairs {
@@ -64,5 +68,15 @@ func filterSchemaTypeMemberModifierDiagnostics(_ *checker.Checker, file *ast.Sou
 			}
 		}
 		return false
-	})
+	}
+	if !slices.ContainsFunc(all, drop) {
+		return all
+	}
+	return slices.DeleteFunc(slices.Clone(all), drop)
+}
+
+// droppableModifierDiagnostic reports whether d is TypeScript's TS1030
+// ("modifier already seen"), the one code the filter may drop.
+func droppableModifierDiagnostic(d *ast.Diagnostic) bool {
+	return d.Source() == "" && d.Code() == 1030
 }

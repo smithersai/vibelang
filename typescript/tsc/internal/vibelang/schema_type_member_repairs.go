@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/binder"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -21,6 +22,23 @@ type schemaTypeMemberRepair struct {
 	// effect marks a field written with a recognized effect modifier
 	// (EK0108); primary is then the field, and code is 0.
 	effect bool
+}
+
+type schemaTypeMemberRepairsKey struct{}
+
+// schemaTypeMemberRepairsOf returns schemaTypeMemberRepairs(file), computed
+// once per checker: the file checks and the diagnostics filter all read them,
+// and each computation parses and binds every schema body again.
+func schemaTypeMemberRepairsOf(c *checker.Checker, file *ast.SourceFile) []schemaTypeMemberRepair {
+	cache := c.ExtensionState(schemaTypeMemberRepairsKey{}, func() any {
+		return map[*ast.SourceFile][]schemaTypeMemberRepair{}
+	}).(map[*ast.SourceFile][]schemaTypeMemberRepair)
+	repairs, ok := cache[file]
+	if !ok {
+		repairs = schemaTypeMemberRepairs(file)
+		cache[file] = repairs
+	}
+	return repairs
 }
 
 // TypeScript reports the first modifier error on a type member. Repair every

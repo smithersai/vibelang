@@ -1,11 +1,8 @@
 package vibelang
 
 import (
-	"strings"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // Retained foreign function declarations default to unknown (VIP-4, chapter
@@ -39,7 +36,7 @@ func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
 			owners := defaultForeignValueOwners(c, node)
 			if defaultForeignCallbackCandidate(c, source, owners, node) &&
 				!admittedByShippedContract(c, node) && !defaultForeignComputedWrapper(c, node) &&
-				!defaultForeignCallbackFitsOwn(c, source, target, owners, append([]*checker.Type{target}, owners...), !defaultForeignTrustedImpl(c, node) && forwarded == nil) {
+				!ownedCallbackFits(c, source, target, owners, append([]*checker.Type{target}, owners...), true, !defaultForeignTrustedImpl(c, node) && forwarded == nil) {
 				d := report(c, node, EK0402)
 				note(d, "An unannotated foreign function has thrown type unknown; this callback type does not admit it.")
 				note(d, "Handle its throw in a callback, or use a foreign signature with an admitted written @throws contract.")
@@ -51,58 +48,10 @@ func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func checkDefaultForeignCallbackClass(c *checker.Checker, class *ast.Node) {
-	heritage := ast.GetImplementsHeritageClauseElements(class)
-	if len(heritage) == 0 && ast.GetClassExtendsHeritageElement(class) == nil {
-		return
-	}
-	symbol := c.GetSymbolOfDeclaration(class)
-	if symbol == nil {
-		return
-	}
-	instance := c.GetDeclaredTypeOfSymbol(symbol)
-	reported := map[string]bool{}
-	for _, element := range heritage {
-		implemented := implementedType(c, class, element)
-		if implemented == nil || implemented.Flags()&(checker.TypeFlagsAnyOrUnknown|checker.TypeFlagsUnion|checker.TypeFlagsTypeVariable) != 0 {
-			continue
-		}
-		for _, required := range c.GetPropertiesOfType(implemented) {
-			name := required.Name()
-			if reported[name] {
-				continue
-			}
-			actual := c.GetPropertyOfType(instance, name)
-			if actual == nil {
-				continue
-			}
-			source, target := c.GetTypeOfSymbol(actual), c.GetTypeOfSymbol(required)
-			declaration := actual.ValueDeclaration()
-			if !defaultForeignClassMember(c, source, instance, declaration) || defaultForeignCallbackFits(c, source, target, []*checker.Type{instance}, []*checker.Type{implemented}) {
-				continue
-			}
-			at := element
-			if decl := actual.ValueDeclaration(); decl != nil && decl.Parent == class && decl.Name() != nil {
-				at = decl.Name()
-			}
-			display := name
-			if decl := required.ValueDeclaration(); decl != nil && decl.Name() != nil {
-				display = scanner.GetTextOfNode(decl.Name())
-			}
-			d := report(c, at, EK0402)
-			note(d, "The implemented member {0}.{1} does not admit this member's callable throws.", scanner.GetTextOfNode(element), display)
-			note(d, "Use a member that catches its throw, or an interface signature that admits it.")
-			reported[name] = true
-		}
-	}
-	overrides := map[*ast.Symbol]bool{}
-	forEachClassOverride(c, class, instance, func(actual, overridden *ast.Symbol, owner, base *checker.Type) {
-		source := c.GetTypeOfSymbol(actual)
-		if overrides[actual] || reported[actual.Name()] && owner == instance || !defaultForeignClassMember(c, source, owner, actual.ValueDeclaration()) ||
-			defaultForeignCallbackFits(c, source, c.GetTypeOfSymbol(overridden), []*checker.Type{owner}, []*checker.Type{base}) {
-			return
-		}
-		reportClassOverride(c, class, actual, overridden)
-		overrides[actual] = true
+	checkCallbackClass(c, class, func(source, owner *checker.Type, declaration *ast.Node) bool {
+		return defaultForeignClassMember(c, source, owner, declaration)
+	}, func(source, target *checker.Type, sourceOwners, targetOwners []*checker.Type) bool {
+		return ownedCallbackFits(c, source, target, sourceOwners, targetOwners, true, true)
 	})
 }
 
@@ -117,74 +66,6 @@ func defaultForeignClassMember(c *checker.Checker, source, instance *checker.Typ
 		return false
 	}
 	return defaultForeignCallbackCandidate(c, source, []*checker.Type{instance}, declaration)
-}
-
-// Every source union alternative must fit one native-compatible destination.
-// Every required overload must have a native-compatible admitted source
-// signature. Written tags are metadata; they do not replace native inference.
-func defaultForeignCallbackFits(c *checker.Checker, source, target *checker.Type, sourceOwners, targetOwners []*checker.Type) bool {
-	return defaultForeignCallbackFitsOwn(c, source, target, sourceOwners, targetOwners, true)
-}
-
-// defaultForeignCallbackFitsOwn admits a target signature that is the
-// source's own declaration when own is set.
-func defaultForeignCallbackFitsOwn(c *checker.Checker, source, target *checker.Type, sourceOwners, targetOwners []*checker.Type, own bool) bool {
-	if source == nil || target == nil || !c.IsTypeAssignableTo(source, target) {
-		return true
-	}
-	if source.Flags()&checker.TypeFlagsUnion != 0 {
-		for _, part := range source.Types() {
-			if !defaultForeignCallbackFitsOwn(c, part, target, sourceOwners, targetOwners, own) {
-				return false
-			}
-		}
-		return true
-	}
-	provided := c.GetSignaturesOfType(source, checker.SignatureKindCall)
-	if len(provided) == 0 {
-		return true
-	}
-	alternatives := []*checker.Type{target}
-	if target.Flags()&checker.TypeFlagsUnion != 0 {
-		alternatives = target.Types()
-	}
-	for _, alternative := range alternatives {
-		if !c.IsTypeAssignableTo(source, alternative) {
-			continue
-		}
-		fits := true
-		requiredSignatures := c.GetSignaturesOfType(alternative, checker.SignatureKindCall)
-		overloaded := len(provided) > 1 || len(requiredSignatures) > 1
-		for _, required := range requiredSignatures {
-			bound, _ := defaultForeignCallbackContract(c, required, append(append([]*checker.Type{}, targetOwners...), alternative), false)
-			matched := false
-			for _, given := range provided {
-				if !callbackSignatureRelated(c, given, required, overloaded) {
-					continue
-				}
-				if own && sameRootSignatureDeclaration(given, required) {
-					// typeof f, or a type parameter inferred from the argument,
-					// names the source's own signature, so it carries the same
-					// thrown type: unknown for an untagged foreign declaration.
-					matched = true
-					break
-				}
-				contract, known := defaultForeignCallbackContract(c, given, append(append([]*checker.Type{}, sourceOwners...), source), true)
-				if !known || bound.admits(c, contract) {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				fits = false
-				break
-			}
-		}
-		if fits {
-			return true
-		}
-	}
-	return false
 }
 
 // The runtime's listed trusted(impl, [Errors]) wrapper requires impl's written
@@ -266,52 +147,6 @@ func defaultForeignForwardedTarget(c *checker.Checker, node *ast.Node) *checker.
 	return nil
 }
 
-// sameRootSignatureDeclaration reports whether two signatures instantiate one
-// declaration.
-func sameRootSignatureDeclaration(a, b *checker.Signature) bool {
-	for a.Target() != nil {
-		a = a.Target()
-	}
-	for b.Target() != nil {
-		b = b.Target()
-	}
-	return a.Declaration() != nil && a.Declaration() == b.Declaration()
-}
-
-// Preserve substitutions from inherited generic owners whose parameters occur
-// only in metadata and therefore disappear from the native callable structure.
-func defaultForeignCallbackOwners(c *checker.Checker, roots []*checker.Type) []*checker.Type {
-	var owners []*checker.Type
-	seen := map[*checker.Type]bool{}
-	var visit func(*checker.Type)
-	visit = func(owner *checker.Type) {
-		if owner == nil || seen[owner] {
-			return
-		}
-		seen[owner] = true
-		owners = append(owners, owner)
-		if owner.Flags()&checker.TypeFlagsObject == 0 {
-			return
-		}
-		target := owner
-		if owner.ObjectFlags()&checker.ObjectFlagsReference != 0 {
-			target = owner.Target()
-		}
-		if target.ObjectFlags()&checker.ObjectFlagsClassOrInterface == 0 {
-			return
-		}
-		for _, base := range c.GetBaseTypes(target) {
-			visit(c.InstantiateWrittenSignatureType(nil, base, []*checker.Type{owner}))
-		}
-	}
-	for _, root := range roots {
-		visit(root)
-	}
-	return owners
-}
-
-// The existing signature/owner substitution maps also cover type parameters
-// used only in JSDoc, which TypeScript may prune from the callable structure.
 // A factory's annotation belongs to its signature, not to the callable
 // returned by that signature (chapter 003). Keep binding/property hosts,
 // but stop before an enclosing function- or signature-like node.
@@ -323,95 +158,6 @@ func defaultForeignSignatureHosts(decl *ast.Node) []*ast.Node {
 		}
 	}
 	return hosts
-}
-
-// A type alias name's tags never annotate the signature inside it.
-func defaultForeignCallbackContract(c *checker.Checker, signature *checker.Signature, owners []*checker.Type, foreignOnly bool) (throwContract, bool) {
-	original := signature
-	for original.Target() != nil {
-		original = original.Target()
-	}
-	decl := original.Declaration()
-	if decl == nil {
-		return throwContract{}, false
-	}
-	owners = defaultForeignCallbackOwners(c, owners)
-	if isEffectfulType(c, defaultForeignSignatureReturn(c, signature, owners)) {
-		return throwContract{tagged: true}, true
-	}
-	file := ast.GetSourceFileOfNode(decl)
-	if file == nil {
-		return throwContract{}, false
-	}
-	if isLibFile(c, file) {
-		key := globalKey(decl)
-		for n := decl.Parent; n != nil; n = n.Parent {
-			if ast.IsGlobalScopeAugmentation(n) {
-				canonical := strings.TrimPrefix(key, "global.")
-				if _, present := globalThrowsTable[canonical]; present {
-					key = canonical
-				}
-				break
-			}
-		}
-		if _, present := globalThrowsTable[key]; !present {
-			return throwContract{}, false
-		}
-		names, known := globalThrowsOf(key)
-		contract := throwContract{tagged: true, unknown: !known}
-		for _, name := range names {
-			value, ok := classFailure(c, name, c.GetGlobalSymbol(name, ast.SymbolFlagsValue, nil))
-			if !ok {
-				contract.unknown = true
-			} else {
-				contract.types = append(contract.types, value.t)
-			}
-		}
-		return contract, true
-	}
-	if foreignOnly && isVibeLangFile(file) {
-		foreign := false
-		for n := decl; n != nil; n = n.Parent {
-			if isTypeScriptModule(n) {
-				foreign = true
-				break
-			}
-		}
-		if !foreign {
-			return throwContract{}, false
-		}
-	}
-	var contract throwContract
-	for _, host := range defaultForeignSignatureHosts(decl) {
-		if ast.IsTypeAliasDeclaration(host) {
-			continue
-		}
-		for _, doc := range host.JSDoc(nil) {
-			for _, tag := range jsdocTags(doc) {
-				if !ast.IsJSDocThrowsTag(tag) || tag.AsJSDocThrowsTag().TypeExpression == nil {
-					continue
-				}
-				contract.tagged = true
-				node := tag.AsJSDocThrowsTag().TypeExpression.AsJSDocTypeExpression().Type
-				if node == nil {
-					contract.unknown = true
-					continue
-				}
-				t := c.InstantiateWrittenSignatureType(signature, c.GetTypeFromTypeNode(node), owners)
-				switch {
-				case t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 && t != c.GetAnyType():
-					contract.unknown = true
-				case t.Flags()&checker.TypeFlagsNever != 0:
-				default:
-					contract.types = append(contract.types, t)
-				}
-			}
-		}
-	}
-	if foreignOnly && !contract.tagged {
-		return throwContract{tagged: true, unknown: true}, true
-	}
-	return contract, contract.tagged
 }
 
 // Retained foreign callable variables keep their declaration provenance.

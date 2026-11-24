@@ -98,9 +98,10 @@ func init() {
 
 // methodState is what one checker remembers about method syntax.
 type methodState struct {
-	properties map[string]*ast.Symbol // "Stream.filter" -> the method property, or nil
-	accesses   map[*ast.Node]string   // property access -> the module it calls into
-	prelude    map[*ast.Node]bool     // called accesses where the module's name means the module through the prelude
+	properties map[string]*ast.Symbol          // "Stream.filter" -> the method property, or nil
+	accesses   map[*ast.Node]string            // property access -> the module it calls into
+	byFile     map[*ast.SourceFile][]*ast.Node // the keys of accesses, by the file that holds them
+	prelude    map[*ast.Node]bool              // called accesses where the module's name means the module through the prelude
 	members    map[string]*checker.Type
 }
 
@@ -108,7 +109,7 @@ type methodStateKey struct{}
 
 func methodStateOf(c *checker.Checker) *methodState {
 	return c.ExtensionState(methodStateKey{}, func() any {
-		return &methodState{properties: map[string]*ast.Symbol{}, accesses: map[*ast.Node]string{}, prelude: map[*ast.Node]bool{}, members: map[string]*checker.Type{}}
+		return &methodState{properties: map[string]*ast.Symbol{}, accesses: map[*ast.Node]string{}, byFile: map[*ast.SourceFile][]*ast.Node{}, prelude: map[*ast.Node]bool{}, members: map[string]*checker.Type{}}
 	}).(*methodState)
 }
 
@@ -172,9 +173,14 @@ func moduleMethod(c *checker.Checker, node *ast.Node, receiver *checker.Type, na
 	if home == "" {
 		return nil
 	}
-	property := methodProperty(c, ast.GetSourceFileOfNode(node), home, name)
+	file := ast.GetSourceFileOfNode(node)
+	property := methodProperty(c, file, home, name)
 	if property != nil {
-		methodStateOf(c).accesses[node] = home
+		state := methodStateOf(c)
+		if _, seen := state.accesses[node]; !seen {
+			state.byFile[file] = append(state.byFile[file], node)
+		}
+		state.accesses[node] = home
 	}
 	return property
 }
@@ -315,10 +321,8 @@ func methodModuleOf(c *checker.Checker, access *ast.Node) string {
 func checkModuleMethods(c *checker.Checker, file *ast.SourceFile) {
 	state := methodStateOf(c)
 	var nodes []*ast.Node
-	for access, module := range state.accesses {
-		if ast.GetSourceFileOfNode(access) != file {
-			continue
-		}
+	for _, access := range state.byFile[file] {
+		module := state.accesses[access]
 		if parent := access.Parent; parent != nil && ast.IsCallExpression(parent) && parent.Expression() == access {
 			if namesPreludeModule(c, access, module) {
 				state.prelude[access] = true

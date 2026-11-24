@@ -21,60 +21,22 @@ func checkUnionCallbackValue(c *checker.Checker, expr *ast.Node) bool {
 	if !c.IsTypeAssignableTo(source, contextual) {
 		return true
 	}
-	destinations := []*checker.Type{contextual}
-	if contextual.Flags()&checker.TypeFlagsUnion != 0 {
-		destinations = contextual.Types()
-	}
+	destinations := alternativesOf(contextual)
 	for _, member := range source.Types() {
-		var rejected throwContract
 		sources := c.GetSignaturesOfType(member, checker.SignatureKindCall)
 		if len(sources) == 0 {
 			continue
 		}
-		sourceTypes := make([]*checker.Type, len(sources))
 		contracts := make([]throwContract, len(sources))
 		for i, sig := range sources {
-			sourceTypes[i] = c.NewFunctionType(nil, []*checker.Signature{sig})
-			contracts[i] = foreignUnionSignatureThrows(c, sig)
+			contracts[i] = foreignSignatureThrows(c, sig)
 		}
-		admitted := false
-		for _, destination := range destinations {
-			if !c.IsTypeAssignableTo(member, destination) {
-				continue
-			}
-			fits := true
-			for _, target := range c.GetSignaturesOfType(destination, checker.SignatureKindCall) {
-				targetType := c.NewFunctionType(nil, []*checker.Signature{target})
-				var bound throwContract
-				if decl := target.Declaration(); decl != nil {
-					bound = writtenThrows(c, decl)
-				}
-				matched := false
-				for i, sourceType := range sourceTypes {
-					related := c.IsTypeAssignableTo(sourceType, targetType)
-					if len(sources) > 1 || len(c.GetSignaturesOfType(destination, checker.SignatureKindCall)) > 1 {
-						related = c.IsOverloadSignatureAssignableTo(sources[i], target)
-					}
-					if !related {
-						continue
-					}
-					if bound.admits(c, contracts[i]) {
-						matched = true
-						break
-					}
-					rejected.unknown = rejected.unknown || contracts[i].unknown
-					rejected.types = append(rejected.types, contracts[i].types...)
-				}
-				if !matched {
-					fits = false
-					break
-				}
-			}
-			if fits {
-				admitted = true
-				break
-			}
+		fit := callbackFit{
+			kind:     checker.SignatureKindCall,
+			provided: func(i int, _ *checker.Signature) (throwContract, bool) { return contracts[i], true },
+			required: writtenBound(c),
 		}
+		admitted, _, rejected := fit.fits(c, member, sources, destinations)
 		if !admitted {
 			if admittedByShippedContract(c, expr) {
 				return true
@@ -87,27 +49,4 @@ func checkUnionCallbackValue(c *checker.Checker, expr *ast.Node) bool {
 		}
 	}
 	return true
-}
-
-// This covers written foreign contracts, leaving untagged defaults to the
-// ordinary foreign-call rule. Effect-returning signatures intrinsically throw
-// never and are classified before generic instantiation.
-func foreignUnionSignatureThrows(c *checker.Checker, signature *checker.Signature) throwContract {
-	for signature.Target() != nil {
-		signature = signature.Target()
-	}
-	decl := signature.Declaration()
-	if decl == nil {
-		return throwContract{}
-	}
-	file := ast.GetSourceFileOfNode(decl)
-	if file == nil || isVibeLangFile(file) || isLibFile(c, file) || isEffectfulType(c, c.GetReturnTypeOfSignature(signature)) {
-		return throwContract{}
-	}
-	for _, host := range jsdocHosts(decl) {
-		if ast.IsTypeAliasDeclaration(host) {
-			return throwContract{}
-		}
-	}
-	return writtenSourceSignatureThrows(c, decl)
 }

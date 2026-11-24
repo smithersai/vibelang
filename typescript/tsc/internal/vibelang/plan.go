@@ -302,39 +302,11 @@ func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
 	return visit(body)
 }
 
-// forEachRunningCallInBody excludes expressions passed by name (D147).
-// Constructing a cold program does not make its enclosing factory effectful.
-// Lowering still uses forEachCallInBody to plan the deferred program itself.
+// forEachRunningCallInBody is forEachCallInBody. It remains only for
+// object_member_context_test.go, which pins that the two walks agree; delete
+// it with that use.
 func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) bool) bool {
-	body := fn.Body()
-	if body == nil {
-		return false
-	}
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if ast.IsClassLike(node) {
-			// The class evaluates its base and computed member names here.
-			for _, expression := range classDefinitionExpressions(node) {
-				if visit(expression) {
-					return true
-				}
-			}
-			return false
-		}
-		if isFunctionBoundary(node) && !catchLeftHoldsTry(node) && !inlineCatchLeft(node) {
-			if ast.IsFunctionLike(node) && node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
-				return node.ForEachChild(func(child *ast.Node) bool {
-					return ast.IsComputedPropertyName(child) && visit(child)
-				})
-			}
-			return false
-		}
-		if isInvocation(node) && cb(node) {
-			return true
-		}
-		return node.ForEachChild(visit)
-	}
-	return visit(body)
+	return forEachCallInBody(fn, cb)
 }
 
 type fnState uint8

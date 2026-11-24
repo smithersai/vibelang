@@ -8,16 +8,15 @@ import (
 )
 
 // Lowering pipes (pipes.go). A pipe compiles to its body, with each topic
-// replaced by one of three things:
+// replaced by the left side or by a variable that holds its value:
 //
 //	x |> f(args)(%)                    x.pipe(f(args)) (normalized by the parser)
 //
-//	fetchUser(id) |> retry(%, policy)    retry(Effect.suspend(() => fetchUser(id)), policy)
+//	fetchUser(id) |> retry(%, policy)    retry(fetchUser(id), policy)
 //	user |> greet(%)                     greet(user)
 //	user |> greet(%, %.name)             (topic = user, greet(topic, topic.name))
 //
-// A topic passed by name becomes a program that evaluates the left side
-// (byNameProgram). A topic used once, and evaluated after only values that
+// A topic used once, and evaluated after only values that
 // can neither run code nor change (stableValue, order.go), becomes the left
 // side itself. Otherwise the left side runs once into a variable, and each
 // topic reads it; a function in the body that reads the topic takes the
@@ -30,15 +29,12 @@ type pipeMode uint8
 const (
 	pipeTemp       pipeMode = iota // (topic = left, body)
 	pipeSubstitute                 // body, with left where its one topic stands
-	pipeByName                     // body, with a program that evaluates left where each topic stands
 )
 
 // planPipe decides how pipe compiles.
 func (p *plan) planPipe(a *analyzer, pipe *ast.Node) {
 	topics := topicsOf(pipe)
 	switch {
-	case len(topics) != 0 && !slices.ContainsFunc(topics, func(topic *ast.Node) bool { return true }):
-		p.pipes[pipe] = pipeByName
 	case len(topics) == 1 && topicFirst(a.checker, pipe.AsBinaryExpression().Right, topics[0]):
 		p.pipes[pipe] = pipeSubstitute
 	default:
@@ -135,9 +131,8 @@ func topicClosure(pipe, topic *ast.Node) *ast.Node {
 // visitPipe lowers left |> body.
 func (tx *lowering) visitPipe(node *ast.Node) *ast.Node {
 	pipe := node.AsBinaryExpression()
-	switch tx.plan.pipes[node] {
-	case pipeByName, pipeSubstitute:
-		// visitTopic and byNameProgram evaluate the left side where the topic stands.
+	if tx.plan.pipes[node] == pipeSubstitute {
+		// visitTopic evaluates the left side where the topic stands.
 		return tx.Visitor().VisitNode(pipe.Right)
 	}
 	f := tx.Factory()

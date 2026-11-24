@@ -20,8 +20,8 @@ import (
 // argument on another fiber (fork, detach, forkIn, the await operations, for
 // concurrent, Effect's forks, races and timeouts, and any call with a
 // concurrency option other than 1) and the requirements of each program the
-// call runs there: a program passed by name (D147) needs what running it
-// adds, and each element of an await operation's operand is its own program.
+// call runs there: each element of an await operation's operand is its own
+// program.
 // EK4202 rejects a call
 // to a TypeScript function whose declared requirements hold a control
 // operation, because its body can fork where no table sees it.
@@ -56,9 +56,6 @@ func checkReach(c *checker.Checker, file *ast.SourceFile) {
 		if isForTry(node) {
 			expression := node.AsForInOrOfStatement().Expression
 			checkStreamControls(c, file, expression, " looped over with for try")
-		}
-		if node.Kind == ast.KindYieldExpression && node.AsYieldExpression().AsteriskToken != nil && node.Expression() != nil {
-			checkStreamControls(c, file, node.Expression(), " yielded with yield*")
 		}
 		return node.ForEachChild(visit)
 	}
@@ -196,9 +193,7 @@ func holdsRecord(c *checker.Checker, call *ast.Node) bool {
 
 // forkedPrograms calls visit with each program that argument, an argument of
 // a call that runs it on another fiber, holds, and the requirements of that
-// program. An expression passed by name (D147), such as fork Ask.ask() or
-// Effect.forkChild(load(id)), needs what running it adds, as the lambda
-// () => Ask.ask() would; visit receives the expression it runs. Each element
+// program. Each element
 // of an array literal, and each property of an object literal that record
 // says is a record of programs, such as Effect.all's first argument, is its own
 // program. Any other argument needs what its type holds, and a program it
@@ -206,7 +201,6 @@ func holdsRecord(c *checker.Checker, call *ast.Node) bool {
 // Effect.all({ x: Ask.ask() }), needs that control too: the call looks the
 // control up here, and its program performs the operation where it runs.
 func forkedPrograms(c *checker.Checker, argument *ast.Node, record bool, visit func(program *ast.Node, requirements []*checker.Type)) {
-	a := analyzerFor(c)
 	node := ast.SkipParentheses(argument)
 	switch {
 	case ast.IsArrayLiteralExpression(node):
@@ -228,9 +222,6 @@ func forkedPrograms(c *checker.Checker, argument *ast.Node, record bool, visit f
 				visit(property, requirementsOf(c, c.GetTypeAtLocation(property.Name()), 0))
 			}
 		}
-	case false:
-		program := byNameSubject(argument)
-		visit(program, a.flowOf(program).requirements)
 	default:
 		t := c.GetTypeAtLocation(argument)
 		requirements := requirementsOf(c, t, 0)
@@ -373,8 +364,7 @@ func checkProducerArguments(c *checker.Checker, file *ast.SourceFile, call *ast.
 }
 
 // checkStreamControls reports EK4201 when stream, a Stream that a consumer
-// runs, needs a control operation. Every consumer, for...of and yield*
-// included, runs a Stream on a fiber of its own: a producer is
+// runs, needs a control operation. Every consumer, for try included, runs a Stream on a fiber of its own: a producer is
 // Stream.callback, whose body runs on its own fiber (VIP-21), so no handler
 // on this fiber reaches it. consumer completes "the Stream s…".
 func checkStreamControls(c *checker.Checker, file *ast.SourceFile, stream *ast.Node, consumer string) {

@@ -349,7 +349,7 @@ func (tx *lowering) initializerProgram(initializer *ast.Node, value *ast.Node) *
 	ec := tx.EmitContext()
 	// The initializer's leading comments are printed where it was written.
 	// Printed again inside the program, a line comment between the return and
-	// the value would end the return (byNameProgram).
+	// the value would end the return.
 	ec.AddEmitFlags(value, printer.EFNoLeadingComments)
 	body := f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(value)}), false /*multiLine*/)
 	generator := f.NewFunctionExpression(nil /*modifiers*/, f.NewToken(ast.KindAsteriskToken), nil /*name*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*type*/, nil /*fullSignature*/, body)

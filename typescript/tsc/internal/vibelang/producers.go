@@ -14,8 +14,8 @@ import (
 //
 // An effect function* is a producer (VIP-21). A plain function* keeps its
 // native iterator and return value (VIP-1).
-// Its body is effect code, so its calls run; `yield v` offers v to the producer's queue, and `yield* p` yields
-// every element of p. Calling a producer runs none of its body: it returns a
+// Its body is effect code, so its calls run, and `yield v` offers v to the
+// producer's queue; `yield* p` is EK2103 (producer_delegation.go). Calling a producer runs none of its body: it returns a
 // Stream, built with the project's Stream.callback with one
 // element of buffer, so the body runs on a fiber of its own and may run up to
 // two elements ahead of its consumer (VIP-21). To TypeScript, and to
@@ -147,7 +147,8 @@ func streamChannel(c *checker.Checker, t *checker.Type, name string) *checker.Ty
 
 // iteratedElementType is the checker's iterated element type hook. In the
 // body of a .vibe function, a for try statement over a Stream iterates the
-// Stream's elements, and so does a yield* of a Stream in a producer.
+// Stream's elements. A yield* of a Stream in a producer, which EK2103
+// rejects, is typed the same way so that it reports nothing more.
 func iteratedElementType(c *checker.Checker, node *ast.Node, iterated *checker.Type) *checker.Type {
 	switch node.Kind {
 	case ast.KindForOfStatement:
@@ -412,19 +413,15 @@ func (tx *lowering) producerBindingBoundary(node *ast.Node, parameters *ast.Node
 }
 
 // visitYield turns `yield v` in a producer into `yield* runtime.$yield(v)`,
-// which performs Yield, and `yield* p` into `yield* runtime.$yieldAll(p)`.
+// which performs Yield. A `yield* p` there is EK2103 and is not emitted.
 func (tx *lowering) visitYield(node *ast.Node) *ast.Node {
 	f := tx.Factory()
 	y := node.AsYieldExpression()
-	helper := "$yield"
-	if y.AsteriskToken != nil {
-		helper = "$yieldAll"
-	}
 	var arguments []*ast.Node
 	if y.Expression != nil {
 		arguments = append(arguments, tx.Visitor().VisitNode(y.Expression))
 	}
-	run := f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), tx.runtimeCall(helper, arguments...))
+	run := f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), tx.runtimeCall("$yield", arguments...))
 	tx.EmitContext().SetOriginal(run, node)
 	run.Loc = node.Loc
 	return run

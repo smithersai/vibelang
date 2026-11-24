@@ -77,17 +77,6 @@ func topicsOf(pipe *ast.Node) []*ast.Node {
 	return topics
 }
 
-// byNameSubject returns the expression that node passes by name: for a
-// topic, its pipe's left side; for any other node, node itself.
-func byNameSubject(node *ast.Node) *ast.Node {
-	if isTopic(node) {
-		if pipe := pipeOfTopic(node); pipe != nil {
-			return pipe.AsBinaryExpression().Left
-		}
-	}
-	return node
-}
-
 // pipeStateKey keys the topic symbols of one checker: pipe -> the symbol its
 // topic resolves to, and nil -> the symbol of a % in no pipe's body.
 type pipeStateKey struct{}

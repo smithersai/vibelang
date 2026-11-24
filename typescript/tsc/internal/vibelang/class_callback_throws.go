@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"strings"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -31,6 +29,16 @@ func checkImplementedCallbackThrows(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func checkImplementedCallbackClass(c *checker.Checker, class *ast.Node) {
+	checkCallbackClass(c, class, nil, func(source, target *checker.Type, sourceOwners, targetOwners []*checker.Type) bool {
+		return ownedCallbackFits(c, source, target, sourceOwners, targetOwners, false, false)
+	})
+}
+
+// checkCallbackClass reports EK0402 on each member of class whose callable
+// does not fit the member it implements or overrides. member, when set,
+// selects the members a check owns, given the member's type, its owning type
+// and its declaration.
+func checkCallbackClass(c *checker.Checker, class *ast.Node, member func(source, owner *checker.Type, declaration *ast.Node) bool, fits func(source, target *checker.Type, sourceOwners, targetOwners []*checker.Type) bool) {
 	heritage := ast.GetImplementsHeritageClauseElements(class)
 	if len(heritage) == 0 && ast.GetClassExtendsHeritageElement(class) == nil {
 		return
@@ -56,7 +64,7 @@ func checkImplementedCallbackClass(c *checker.Checker, class *ast.Node) {
 				continue
 			}
 			source, target := c.GetTypeOfSymbol(actual), c.GetTypeOfSymbol(required)
-			if implementedCallbackFits(c, source, target, []*checker.Type{instance}, []*checker.Type{implemented}) {
+			if member != nil && !member(source, instance, actual.ValueDeclaration()) || fits(source, target, []*checker.Type{instance}, []*checker.Type{implemented}) {
 				continue
 			}
 			at := element
@@ -75,7 +83,9 @@ func checkImplementedCallbackClass(c *checker.Checker, class *ast.Node) {
 	}
 	overrides := map[*ast.Symbol]bool{}
 	forEachClassOverride(c, class, instance, func(actual, overridden *ast.Symbol, owner, base *checker.Type) {
-		if overrides[actual] || reported[actual.Name()] && owner == instance || implementedCallbackFits(c, c.GetTypeOfSymbol(actual), c.GetTypeOfSymbol(overridden), []*checker.Type{owner}, []*checker.Type{base}) {
+		source := c.GetTypeOfSymbol(actual)
+		if overrides[actual] || reported[actual.Name()] && owner == instance || member != nil && !member(source, owner, actual.ValueDeclaration()) ||
+			fits(source, c.GetTypeOfSymbol(overridden), []*checker.Type{owner}, []*checker.Type{base}) {
 			return
 		}
 		reportClassOverride(c, class, actual, overridden)
@@ -124,196 +134,4 @@ func reportClassOverride(c *checker.Checker, class *ast.Node, actual, overridden
 	d := report(c, actual.ValueDeclaration().Name(), EK0402)
 	note(d, "The overridden member {0}.{1} does not admit this member's callable throws.", scanner.GetTextOfNode(ast.GetClassExtendsHeritageElement(class).Expression()), display)
 	note(d, "Use a member that catches its throw, or a base member type that admits it.")
-}
-
-// Every source union alternative must fit one native-compatible destination.
-// Every required overload must have a native-compatible admitted source
-// signature. Written tags are metadata; they do not replace native inference.
-func implementedCallbackFits(c *checker.Checker, source, target *checker.Type, sourceOwners, targetOwners []*checker.Type) bool {
-	if source == nil || target == nil || !c.IsTypeAssignableTo(source, target) {
-		return true
-	}
-	if source.Flags()&checker.TypeFlagsUnion != 0 {
-		for _, part := range source.Types() {
-			if !implementedCallbackFits(c, part, target, sourceOwners, targetOwners) {
-				return false
-			}
-		}
-		return true
-	}
-	provided := c.GetSignaturesOfType(source, checker.SignatureKindCall)
-	if len(provided) == 0 {
-		return true
-	}
-	alternatives := []*checker.Type{target}
-	if target.Flags()&checker.TypeFlagsUnion != 0 {
-		alternatives = target.Types()
-	}
-	for _, alternative := range alternatives {
-		if !c.IsTypeAssignableTo(source, alternative) {
-			continue
-		}
-		fits := true
-		requiredSignatures := c.GetSignaturesOfType(alternative, checker.SignatureKindCall)
-		overloaded := len(provided) > 1 || len(requiredSignatures) > 1
-		for _, required := range requiredSignatures {
-			bound, _ := implementedCallbackContract(c, required, append(append([]*checker.Type{}, targetOwners...), alternative), false)
-			matched := false
-			for _, given := range provided {
-				if !callbackSignatureRelated(c, given, required, overloaded) {
-					continue
-				}
-				contract, known := implementedCallbackContract(c, given, append(append([]*checker.Type{}, sourceOwners...), source), true)
-				if !known || bound.admits(c, contract) {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				fits = false
-				break
-			}
-		}
-		if fits {
-			return true
-		}
-	}
-	return false
-}
-
-// callbackSignatureRelated pairs a provided signature with a required one as
-// TypeScript relates signature lists (checker signaturesRelatedTo): a lone
-// pair compares with the source instantiated in the target's context, and an
-// overloaded side compares with type parameters erased. A member TypeScript
-// accepts through an erased overload is then checked against that overload's
-// contract instead of matching nothing.
-func callbackSignatureRelated(c *checker.Checker, given, required *checker.Signature, overloaded bool) bool {
-	if overloaded {
-		return c.IsOverloadSignatureAssignableTo(given, required)
-	}
-	return c.IsTypeAssignableTo(c.NewFunctionType(nil, []*checker.Signature{given}), c.NewFunctionType(nil, []*checker.Signature{required}))
-}
-
-// Preserve substitutions from inherited generic owners whose parameters occur
-// only in metadata and therefore disappear from the native callable structure.
-func implementedCallbackOwners(c *checker.Checker, roots []*checker.Type) []*checker.Type {
-	var owners []*checker.Type
-	seen := map[*checker.Type]bool{}
-	var visit func(*checker.Type)
-	visit = func(owner *checker.Type) {
-		if owner == nil || seen[owner] {
-			return
-		}
-		seen[owner] = true
-		owners = append(owners, owner)
-		if owner.Flags()&checker.TypeFlagsObject == 0 {
-			return
-		}
-		target := owner
-		if owner.ObjectFlags()&checker.ObjectFlagsReference != 0 {
-			target = owner.Target()
-		}
-		if target.ObjectFlags()&checker.ObjectFlagsClassOrInterface == 0 {
-			return
-		}
-		for _, base := range c.GetBaseTypes(target) {
-			visit(c.InstantiateWrittenSignatureType(nil, base, []*checker.Type{owner}))
-		}
-	}
-	for _, root := range roots {
-		visit(root)
-	}
-	return owners
-}
-
-// The existing signature/owner substitution maps also cover type parameters
-// used only in JSDoc, which TypeScript may prune from the callable structure.
-// A type alias name's tags never annotate the signature inside it.
-func implementedCallbackContract(c *checker.Checker, signature *checker.Signature, owners []*checker.Type, foreignOnly bool) (throwContract, bool) {
-	original := signature
-	for original.Target() != nil {
-		original = original.Target()
-	}
-	decl := original.Declaration()
-	if decl == nil {
-		return throwContract{}, false
-	}
-	owners = implementedCallbackOwners(c, owners)
-	if isEffectfulType(c, c.SignatureReturnBeforeOwnTypeArguments(signature, owners)) {
-		return throwContract{tagged: true}, true
-	}
-	file := ast.GetSourceFileOfNode(decl)
-	if file == nil {
-		return throwContract{}, false
-	}
-	if isLibFile(c, file) {
-		key := globalKey(decl)
-		for n := decl.Parent; n != nil; n = n.Parent {
-			if ast.IsGlobalScopeAugmentation(n) {
-				canonical := strings.TrimPrefix(key, "global.")
-				if _, present := globalThrowsTable[canonical]; present {
-					key = canonical
-				}
-				break
-			}
-		}
-		if _, present := globalThrowsTable[key]; !present {
-			return throwContract{}, false
-		}
-		names, known := globalThrowsOf(key)
-		contract := throwContract{tagged: true, unknown: !known}
-		for _, name := range names {
-			value, ok := classFailure(c, name, c.GetGlobalSymbol(name, ast.SymbolFlagsValue, nil))
-			if !ok {
-				contract.unknown = true
-			} else {
-				contract.types = append(contract.types, value.t)
-			}
-		}
-		return contract, true
-	}
-	if foreignOnly && isVibeLangFile(file) {
-		foreign := false
-		for n := decl; n != nil; n = n.Parent {
-			if isTypeScriptModule(n) {
-				foreign = true
-				break
-			}
-		}
-		if !foreign {
-			return throwContract{}, false
-		}
-	}
-	var contract throwContract
-	hosts := jsdocHosts(decl)
-	if foreignOnly {
-		hosts = sourceSignatureHosts(decl)
-	}
-	for _, host := range hosts {
-		if ast.IsTypeAliasDeclaration(host) {
-			continue
-		}
-		for _, doc := range host.JSDoc(nil) {
-			for _, tag := range jsdocTags(doc) {
-				if !ast.IsJSDocThrowsTag(tag) || tag.AsJSDocThrowsTag().TypeExpression == nil {
-					continue
-				}
-				contract.tagged = true
-				node := tag.AsJSDocThrowsTag().TypeExpression.AsJSDocTypeExpression().Type
-				if node == nil {
-					contract.unknown = true
-					continue
-				}
-				t := c.InstantiateWrittenSignatureType(signature, c.GetTypeFromTypeNode(node), owners)
-				switch {
-				case t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 && t != c.GetAnyType():
-					contract.unknown = true
-				case t.Flags()&checker.TypeFlagsNever != 0:
-				default:
-					contract.types = append(contract.types, t)
-				}
-			}
-		}
-	}
-	return contract, contract.tagged
 }

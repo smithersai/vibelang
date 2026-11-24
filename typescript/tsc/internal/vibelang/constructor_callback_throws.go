@@ -58,62 +58,26 @@ func checkConstructorCallbackValue(c *checker.Checker, expr *ast.Node) {
 	if source == nil || destination == nil || !c.IsTypeAssignableTo(source, destination) {
 		return
 	}
-	sources := []*checker.Type{source}
-	if source.Flags()&checker.TypeFlagsUnion != 0 {
-		sources = source.Types()
-	}
-	destinations := []*checker.Type{destination}
-	if destination.Flags()&checker.TypeFlagsUnion != 0 {
-		destinations = destination.Types()
-	}
-	for _, member := range sources {
+	destinations := alternativesOf(destination)
+	for _, member := range alternativesOf(source) {
 		signatures := c.GetSignaturesOfType(member, checker.SignatureKindConstruct)
 		if len(signatures) == 0 {
 			continue
 		}
 		contracts := make([]throwContract, len(signatures))
-		sourceTypes := make([]*checker.Type, len(signatures))
 		for i, sig := range signatures {
 			contracts[i] = constructorSignatureThrows(c, sig)
-			sourceTypes[i] = c.NewFunctionType(nil, []*checker.Signature{sig})
 		}
-		admitted := false
-		var rejected throwContract
-		for _, target := range destinations {
-			if !c.IsTypeAssignableTo(member, target) {
-				continue
-			}
-			fits := true
-			for _, signature := range c.GetSignaturesOfType(target, checker.SignatureKindConstruct) {
-				var bound throwContract
-				if decl := signature.Declaration(); decl != nil {
-					bound = writtenThrows(c, decl)
-				}
-				targetType := c.NewFunctionType(nil, []*checker.Signature{signature})
-				matched := false
-				for i, sourceType := range sourceTypes {
-					if !c.IsTypeAssignableTo(sourceType, targetType) {
-						continue
-					}
-					// A destination instantiated from this constructor's own
-					// declaration carries that declaration's thrown contract.
-					if sameRootSignatureDeclaration(signatures[i], signature) || bound.admits(c, contracts[i]) {
-						matched = true
-						break
-					}
-					rejected.unknown = rejected.unknown || contracts[i].unknown
-					rejected.types = append(rejected.types, contracts[i].types...)
-				}
-				if !matched {
-					fits = false
-					break
-				}
-			}
-			if fits {
-				admitted = true
-				break
-			}
+		// A destination instantiated from this constructor's own
+		// declaration carries that declaration's thrown contract.
+		fit := callbackFit{
+			kind:     checker.SignatureKindConstruct,
+			plain:    true,
+			own:      true,
+			provided: func(i int, _ *checker.Signature) (throwContract, bool) { return contracts[i], true },
+			required: writtenBound(c),
 		}
+		admitted, _, rejected := fit.fits(c, member, signatures, destinations)
 		if !admitted {
 			name := scanner.GetTextOfNode(expr)
 			d := report(c, expr, EK0402)
