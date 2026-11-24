@@ -29,8 +29,8 @@ func TestFormatErrorEmptyClassElements(t *testing.T) {
 	if err := SameProgram("class C { ;; x = 1; ;; }", "class C { x = 1 }"); err != nil {
 		t.Fatal(err)
 	}
-	if err := SameProgram("class C { ;; x = 1; ;; }", "class C {}"); err == nil {
-		t.Fatal("dropping an initialized field must still change the program")
+	if err := SameProgram("class C { ;; x = 1; ;; }", "class C {}"); err == nil || !strings.Contains(err.Error(), "KindClassDeclaration has 2 children, then 1") {
+		t.Fatalf("dropping an initialized field must still change the program, got %v", err)
 	}
 }
 
@@ -62,13 +62,13 @@ func TestFormatEmptyClassElementJSDoc(t *testing.T) {
 	}
 	before := "class C { /** @internal */ ; visible(): number { return 1 } }"
 	after := "class C { /** @internal */ visible(): number { return 1 } }"
-	if err := SameProgram(before, after); err == nil {
-		t.Fatal("moving @internal off an empty member changes declaration output")
+	if err := SameProgram(before, after); err == nil || !strings.Contains(err.Error(), "KindClassDeclaration has 3 children, then 2") {
+		t.Fatalf("moving @internal off an empty member changes declaration output, got %v", err)
 	}
 	_, err := Format("main.vibe", "class C { /** @internal */ ;\nvisible() {} }", func(text string) (string, error) {
 		return strings.Replace(text, ";\n", " = sideEffect();\n", 1), nil
 	})
-	if err == nil {
-		t.Fatal("formatter must not add an initializer to the temporary property")
+	if err == nil || !strings.Contains(err.Error(), `the placeholder for ";" lost its place`) {
+		t.Fatalf("want refusal for an initializer on the temporary property, got %v", err)
 	}
 }

@@ -164,7 +164,12 @@ func TestLineAndColumnUnicode(t *testing.T) {
 	}
 }
 
+// Refresh locally with UPDATE_CLI_GOLDENS=1 go test -run ^TestEmitDiagnosticGolden$.
+// The refresh fails deliberately. Rerun with the variable unset to verify.
 func TestEmitDiagnosticGolden(t *testing.T) {
+	if os.Getenv("UPDATE_CLI_GOLDENS") == "1" && os.Getenv("CI") != "" {
+		t.Fatal("UPDATE_CLI_GOLDENS is disabled under CI")
+	}
 	// A Unicode prefix and a Unicode line separator exercise the actual
 	// byte-offset-to-tsc-coordinate path, not just the coordinate helper.
 	const source = "const title = \"😀\"; import { maybe } from \"./host\"; maybe?.isSome()\u2028maybe?.isSome()"
@@ -182,6 +187,7 @@ func TestEmitDiagnosticGolden(t *testing.T) {
 		if err := os.WriteFile(golden, []byte(got), 0644); err != nil {
 			t.Fatal(err)
 		}
+		t.Fatal("golden rewritten; rerun without UPDATE_CLI_GOLDENS")
 	}
 	want, err := os.ReadFile(golden)
 	if err != nil {

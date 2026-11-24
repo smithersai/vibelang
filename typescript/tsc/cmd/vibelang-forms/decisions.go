@@ -3,8 +3,7 @@ package main
 // The decision snapshot: what the resolver decides at every lambda, block,
 // and by-name argument of the repository's .vibe files, over a table.
 // scripts/check-forms-table.sh fails when it differs from a fresh run, and
-// --write refuses to record a decision that moved at a site the snapshot
-// already has unless forms_decisions_approved.txt names the move. A table
+// both check and write require a fresh approval for each moved decision. A table
 // regeneration therefore shows its user-visible effect as reviewed lines,
 // not as an opaque table diff.
 
@@ -15,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -142,35 +142,85 @@ func readLines(path string) ([]string, error) {
 	return out, sc.Err()
 }
 
-// unapprovedMoves returns the decisions that moved between previous and
-// next at a site both snapshots have, which no approval line names. An
-// approval line is "site kind: old -> new", optionally followed by
-// " # reason".
-func unapprovedMoves(previous, next, approvals []string) []string {
-	parse := func(lines []string) map[string]string {
-		m := map[string]string{}
-		for _, l := range lines {
-			site, rest, _ := strings.Cut(l, " ")
-			kind, result, _ := strings.Cut(rest, " ")
-			m[site+" "+kind] = result
-		}
-		return m
+// decisionSiteOrder pairs decisions by their source order within a file and
+// kind. Coordinates remain in the snapshot and identify the current site in
+// review output. Using numeric order keeps inserted lines from hiding changes.
+func decisionSiteOrder(lines []string) map[string][]decisionSite {
+	groups := make(map[string][]decisionSite)
+	for _, entry := range lines {
+		site, rest, _ := strings.Cut(entry, " ")
+		kind, result, _ := strings.Cut(rest, " ")
+		path, line, column := decisionLocation(site)
+		group := path + " " + kind
+		groups[group] = append(groups[group], decisionSite{site + " " + kind, result, line, column})
 	}
-	before, after := parse(previous), parse(next)
+	for _, group := range groups {
+		sort.SliceStable(group, func(i, j int) bool {
+			a, b := group[i], group[j]
+			return a.line < b.line || a.line == b.line && a.column < b.column
+		})
+	}
+	return groups
+}
+
+type decisionSite struct {
+	key, result  string
+	line, column int
+}
+
+func decisionLocation(site string) (path string, line, column int) {
+	colStart := strings.LastIndexByte(site, ':')
+	if colStart < 0 {
+		return site, 0, 0
+	}
+	lineStart := strings.LastIndexByte(site[:colStart], ':')
+	if lineStart < 0 {
+		return site, 0, 0
+	}
+	line, _ = strconv.Atoi(site[lineStart+1 : colStart])
+	column, _ = strconv.Atoi(site[colStart+1:])
+	return site[:lineStart], line, column
+}
+
+// freshApprovals excludes unchanged historical approvals, so a repeated move
+// needs a new review reason.
+func freshApprovals(previous, current []string) []string {
+	historical := make(map[string]bool, len(previous))
+	for _, line := range previous {
+		historical[strings.Join(strings.Fields(line), " ")] = true
+	}
+	var fresh []string
+	for _, line := range current {
+		if !historical[strings.Join(strings.Fields(line), " ")] {
+			fresh = append(fresh, line)
+		}
+	}
+	return fresh
+}
+
+// unapprovedMoves returns changed decisions, using the new source location
+// for each approval. Entirely new and removed files or kinds need no approval.
+func unapprovedMoves(previous, next, approvals []string) []string {
+	before, after := decisionSiteOrder(previous), decisionSiteOrder(next)
 	approved := map[string]bool{}
-	for _, a := range approvals {
-		a, _, _ = strings.Cut(a, " #")
-		approved[strings.Join(strings.Fields(a), " ")] = true
+	for _, approval := range approvals {
+		entry, reason, ok := strings.Cut(approval, " #")
+		if ok && strings.TrimSpace(reason) != "" {
+			approved[strings.Join(strings.Fields(entry), " ")] = true
+		}
 	}
 	var moved []string
-	for key, old := range before {
-		now, ok := after[key]
-		if !ok || now == old {
-			continue
-		}
-		entry := key + ": " + old + " -> " + now
-		if !approved[strings.Join(strings.Fields(entry), " ")] {
-			moved = append(moved, entry)
+	for group, oldSites := range before {
+		newSites := after[group]
+		for i := range min(len(oldSites), len(newSites)) {
+			old, now := oldSites[i], newSites[i]
+			if now.result == old.result {
+				continue
+			}
+			entry := now.key + ": " + old.result + " -> " + now.result
+			if !approved[strings.Join(strings.Fields(entry), " ")] {
+				moved = append(moved, entry)
+			}
 		}
 	}
 	sort.Strings(moved)

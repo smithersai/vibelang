@@ -1,4 +1,4 @@
 examples/main.vibe:1:27 byname program table
 examples/main.vibe:1:46 lambda plain table
-examples/main.vibe:2:40 block appended/program table
+examples/main.vibe:2:40 lambda program table
 examples/main.vibe:3:36 lambda choice fallback

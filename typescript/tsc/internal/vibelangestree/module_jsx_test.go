@@ -7,8 +7,11 @@ import (
 
 func TestNativeModuleJSXTree(t *testing.T) {
 	for _, name := range []string{"view", ""} {
-		for _, expression := range []string{"<div />", "<><button onClick={() => process.cwd()} /></>"} {
-			text := "module " + name + " { export const view = " + expression + " }\n"
+		for _, tc := range []struct{ expression, diagnostic string }{
+			{"<div />", "'>' expected"},
+			{"<><button onClick={() => process.cwd()} /></>", "Type expected"},
+		} {
+			text := "module " + name + " { export const view = " + tc.expression + " }\n"
 			tree := parse(t, "/view.vibex", text)
 			modules := find(tree, "VibeModuleDeclaration")
 			if len(modules) != 1 {
@@ -22,11 +25,11 @@ func TestNativeModuleJSXTree(t *testing.T) {
 			if got := sourceOf(text, elements[0]); !strings.HasPrefix(got, "<") || !strings.HasSuffix(got, "/>") {
 				t.Fatalf("JSX range lost source identity: %q", got)
 			}
-			if strings.Contains(expression, "=>") && len(find(body, "ArrowFunctionExpression")) != 1 {
+			if strings.Contains(tc.expression, "=>") && len(find(body, "ArrowFunctionExpression")) != 1 {
 				t.Fatal("native JSX callback is missing")
 			}
-			if _, failure := Parse("/view.vibe", text); failure == nil {
-				t.Fatal("a non-JSX native body accepted JSX")
+			if _, failure := Parse("/view.vibe", text); failure == nil || !strings.Contains(failure.Message, tc.diagnostic) {
+				t.Errorf("want %q in a non-JSX module, got %v", tc.diagnostic, failure)
 			}
 		}
 	}

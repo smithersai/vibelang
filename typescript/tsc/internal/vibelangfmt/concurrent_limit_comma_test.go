@@ -1,6 +1,9 @@
 package vibelangfmt
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestConcurrentLimitCommaFormat(t *testing.T) {
 	for _, host := range []string{"identity", "dprint"} {
@@ -23,8 +26,8 @@ func TestConcurrentLimitCommaFormat(t *testing.T) {
 					t.Fatalf("not idempotent: %v\n%s\n%s", err, got, again)
 				}
 			}
-			if _, err := Format("limit.vibe", "effect function f() { for concurrent(mark(1), 1) (const n of [1]) {} }\n", format); err == nil {
-				t.Fatal("format accepted a bare comma limit instead of requiring its syntax repair")
+			if _, err := Format("limit.vibe", "effect function f() { for concurrent(mark(1), 1) (const n of [1]) {} }\n", format); err == nil || !strings.Contains(err.Error(), "')' expected") {
+				t.Fatalf("want closing parenthesis diagnostic for bare comma limit, got %v", err)
 			}
 		})
 	}

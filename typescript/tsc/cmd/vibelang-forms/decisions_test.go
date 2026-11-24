@@ -17,30 +17,41 @@ import (
 func TestDecisionMovesRequireExactApprovals(t *testing.T) {
 	previous := []string{
 		"z.vibe:2:1 lambda plain table",
+		"z.vibe:10:1 lambda dual fallback",
 		"a.vibe:1:1 block appended/program table",
 		"a.vibe:1:1 lambda plain fallback",
 		"removed.vibe:1:1 lambda plain table",
 		"stable.vibe:1:1 lambda plain fallback",
 	}
 	next := []string{
-		"z.vibe:2:1 lambda effectFn table",
+		"z.vibe:10:1 lambda effectFn table",
+		"z.vibe:18:1 lambda dual fallback",
 		"a.vibe:1:1 block applied/program table",
 		"a.vibe:1:1 lambda plain table",
 		"added.vibe:1:1 lambda effectFn table",
 		"stable.vibe:1:1 lambda plain fallback",
 	}
-	want := []string{"a.vibe:1:1 block: appended/program table -> applied/program table", "a.vibe:1:1 lambda: plain fallback -> plain table", "z.vibe:2:1 lambda: plain table -> effectFn table"}
+	want := []string{"a.vibe:1:1 block: appended/program table -> applied/program table", "a.vibe:1:1 lambda: plain fallback -> plain table", "z.vibe:10:1 lambda: plain table -> effectFn table"}
 	if got := unapprovedMoves(previous, next, nil); !reflect.DeepEqual(got, want) {
 		t.Fatalf("moves %v, want %v", got, want)
 	}
-	approved := []string{" a.vibe:1:1   block: appended/program table -> applied/program table # checked D188", "z.vibe:2:1 lambda: effectFn table -> plain table # wrong direction"}
+	approved := []string{" a.vibe:1:1   block: appended/program table -> applied/program table # checked D188", "z.vibe:10:1 lambda: effectFn table -> plain table # wrong direction"}
 	if got := unapprovedMoves(previous, next, approved); !reflect.DeepEqual(got, want[1:]) {
 		t.Fatalf("unapproved %v, want %v", got, want[1:])
 	}
-	approved = append(approved, "a.vibe:1:1 lambda: plain fallback -> plain table # checked table evidence", "z.vibe:2:1 lambda: plain table -> effectFn table # checked callback contract")
+	approved = append(approved, "a.vibe:1:1 lambda: plain fallback -> plain table # checked table evidence", "z.vibe:10:1 lambda: plain table -> effectFn table # checked callback contract")
 	if got := unapprovedMoves(previous, next, approved); len(got) != 0 {
 		t.Fatalf("approved moves rejected: %v", got)
 	}
+	for _, reason := range []string{"", " #", " #   "} {
+		if got := unapprovedMoves(previous, next, []string{want[2] + reason}); !reflect.DeepEqual(got, want) {
+			t.Fatalf("blank reason %q approved a move: %v", reason, got)
+		}
+	}
+	if got := unapprovedMoves(previous, next, freshApprovals(approved, approved)); !reflect.DeepEqual(got, want) {
+		t.Fatalf("historical approvals covered a repeated move: %v", got)
+	}
+
 }
 
 func TestDecisionSnapshotFileRoundTrip(t *testing.T) {
@@ -68,10 +79,15 @@ func TestDecisionSnapshotFileRoundTrip(t *testing.T) {
 	}
 }
 
+// Refresh locally with UPDATE_FORMS_GOLDENS=1 go test -run ^TestDecisionSnapshotGolden$.
+// The refresh fails deliberately. Rerun with the variable unset to verify.
 func TestDecisionSnapshotGolden(t *testing.T) {
+	if os.Getenv("UPDATE_FORMS_GOLDENS") == "1" && os.Getenv("CI") != "" {
+		t.Fatal("UPDATE_FORMS_GOLDENS is disabled under CI")
+	}
 	root := t.TempDir()
 	const source = `const result = Effect.map(Effect.succeed(1), (n) => n + 1)
-function f() { return Effect.forkChild { read() } }
+function f() { return Effect.forkChild(effect { read() }) }
 function g(xs: Items) { xs.forEach((x) => { log(x); read(x) }) }
 `
 	writeFixture(t, root, "examples/main.vibe", source)
@@ -96,6 +112,7 @@ function g(xs: Items) { xs.forEach((x) => { log(x); read(x) }) }
 		if err := os.WriteFile(golden, []byte(got), 0644); err != nil {
 			t.Fatal(err)
 		}
+		t.Fatal("golden rewritten; rerun without UPDATE_FORMS_GOLDENS")
 	}
 	want, err := os.ReadFile(golden)
 	if err != nil {
