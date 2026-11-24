@@ -1,4 +1,4 @@
-// VIP-4: source contracts cannot opt into synchronous throws.
+// expect: EK0406
 /** @throws {Error} */
 export function local() { return 1 }
 service Port {
@@ -7,3 +7,5 @@ service Port {
   read: () => number
 }
 export type Reader = { /** @throws {Error} */ (): number }
+
+// VIP-4: source contracts cannot opt into synchronous throws.

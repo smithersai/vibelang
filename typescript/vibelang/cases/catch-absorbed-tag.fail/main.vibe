@@ -4,7 +4,7 @@
 // `read()`'s `Error | ApiError` and holds no `"NotReady"` tag (see
 // catch-absorbed-tag). Stock TypeScript rejects the counterpart
 // `Effect.gen(...).pipe(Effect.catchTag("NotReady", ...))` with TS2345.
-// Write the class pattern `when NotReady:` instead. alchemy-63.
+// Write the class pattern `when NotReady:` instead. the alchemy migration.
 // @vibelang-diagnostics-next-line EK4830:off
 class ApiError extends Data.TaggedError("ApiError")<{ status: number }> {}
 // @vibelang-diagnostics-next-line EK4830:off

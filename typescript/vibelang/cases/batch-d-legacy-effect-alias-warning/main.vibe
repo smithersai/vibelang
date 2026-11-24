@@ -1,2 +1,2 @@
-// expect:
+// expect-clean
 export let old: Effect<number>;

@@ -1,5 +1,5 @@
 // expect: EK0705
-// Unbraced bodies cannot host lexical is bindings (Will, 2026-11-03; TS1156).
+// Unbraced bodies cannot host lexical is bindings (VIP-7, 2026-11-03; TS1156).
 function ids(xs: unknown[]) {
   const out: unknown[] = []
   for (const x of xs) if (x is { id: let id }) out.push(id)

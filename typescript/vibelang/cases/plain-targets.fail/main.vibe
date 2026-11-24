@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // VIP-1/detail303: function values, object members and class instances retain
 // native TypeScript assignability at declared callback destinations.
 // A void return type can ignore an Effect result, and neither void nor

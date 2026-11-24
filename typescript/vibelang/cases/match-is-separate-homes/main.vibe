@@ -1,5 +1,5 @@
 // expect-result: {"first":1,"second":2,"arms":3,"names":5}
-// Chapter 004, decided detail 245 (loop round 3, OPUS-1): separate blocks and
+// Chapter 004, decided detail 245: separate blocks and
 // match arms are separate homes, and distinct names never collide.
 function pick(a: unknown, b: unknown) {
   { if (a is { id: let id }) return id }

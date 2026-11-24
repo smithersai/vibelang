@@ -1,6 +1,6 @@
 # Synchronous VibeLang code never throws
 
-Will, 2026-10-31: "If you throw in vibelang itself in a sync function that's an
+VIP-4: "If you throw in vibelang itself in a sync function that's an
 error." Each `throw` in synchronous code outside effect code is `EK0401`: a
 function declaration, arrow and function expression with a plain return
 annotation, a throw its own `try` catches, a throw expression, a parameter

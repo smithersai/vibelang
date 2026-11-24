@@ -2,9 +2,9 @@
 // VIP-3, amended 2026-11-02: an effect function's return annotation means
 // what the same annotation means in Effect TypeScript, which has no infer
 // outside a conditional type (TS1338). Each Effect slot written infer is
-// EK4857; vibelang --fix writes vip3-infer-slot-fixed, whose declaration
-// file is this one's: the type the checker inferred for each slot, or no
-// annotation where every slot was infer.
+// EK4857. vip3-infer-slot-fixed is the repaired program: the type the
+// checker inferred for each slot, or no annotation where every slot was
+// infer. This file is rejected, so it emits nothing to compare with it.
 error Gone { id: string }
 service Users { find(id: string): string!Gone }
 

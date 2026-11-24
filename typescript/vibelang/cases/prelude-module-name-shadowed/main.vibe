@@ -1,4 +1,4 @@
-// opencode-43: packages/stats/core imports `Resource` from sst/resource, a
+// The opencode migration: packages/stats/core imports `Resource` from sst/resource, a
 // name the prelude also gives effect's Resource module. A value lookup finds
 // the import, but a namespace lookup in an Effect body fell through to the
 // prelude, so the emit imported effect/Resource as Resource too, and the

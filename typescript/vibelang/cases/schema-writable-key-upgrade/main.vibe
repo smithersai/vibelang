@@ -20,6 +20,6 @@ const $makeCodec502_0 = () => Schema.Struct({
 const $codecs502 = { get $codec502_0() { return $makeCodec502_0(); } };
 
 export schema error Root {nested:$codecs502.$codec502_0;get label():string{return "kept"}}
-export function make():infer _ {return new Root({nested:{value:7,count:1}})}
+export function make() {return new Root({nested:{value:7,count:1}})}
 export function matches(value:unknown):boolean{return value is Root}
 export const sameCodec=Ref.fields.value===Mutable

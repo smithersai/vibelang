@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // 007 EK4833: use the equivalent A!E!R spelling, preserving required parentheses.
 // VIP-3 requires grouping the union success slot: (number | string)!!.
 export let u: Effect.Effect<number | string>;

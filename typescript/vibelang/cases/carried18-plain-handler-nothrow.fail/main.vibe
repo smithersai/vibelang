@@ -1,5 +1,7 @@
-// VIP-4: a synchronous plain catch handler cannot throw.
+// expect: EK0401
 import { Effect } from "effect"
 export effect function rejected() {
   return Effect.fail("missing") catch (error) => { throw error }
 }
+
+// VIP-4: a synchronous plain catch handler cannot throw. The retired EK0511 once named this rule.

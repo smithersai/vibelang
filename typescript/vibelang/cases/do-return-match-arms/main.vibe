@@ -1,5 +1,5 @@
 // expect-result: [7,9,7,9,11,13,3]
-// foldkit-44: Kanban update uses a concise arrow whose match arms return early.
+// The foldkit migration: Kanban update uses a concise arrow whose match arms return early.
 export const concise = (n: number): number => match (n) {
   when 1: do { return 7 };
   default: 9;

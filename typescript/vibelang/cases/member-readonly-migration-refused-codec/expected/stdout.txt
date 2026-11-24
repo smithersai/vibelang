@@ -1,1 +1,1 @@
-explicit and native member declarations are stable
+the refused member upgrade keeps EK2109 and its source

@@ -1,5 +1,5 @@
 // expect: EK38123
-// alchemy-27: an effect block's braces are its syntax (Appendix A,
+// The alchemy migration: an effect block's braces are its syntax (Appendix A,
 // EffectBlock: EffectModifier "{" FunctionBody "}"), so EK4823 never reports
 // one, nested blocks included. It still reports a real arrow, inside a block
 // too, and an effect arrow, which can drop its braces.

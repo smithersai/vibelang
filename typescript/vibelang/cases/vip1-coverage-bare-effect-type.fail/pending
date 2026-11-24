@@ -1,1 +1,1 @@
-cov-effect missing TS2709 (8.0 s)
+cov-effect the retired global Effect<A> alias still resolves: a bare Effect<number> type draws warning EK4856 where the target is native TS2709, "Cannot use namespace 'Effect' as a type". Rules: docs/design/vips/0001-effect-and-async-functions.md#6b0316b4e947261e, docs/design/src/005-services.md#fa3aaa1f4748d3d3

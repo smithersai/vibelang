@@ -1,4 +1,4 @@
-// alchemy-25: Railway's and Cloudflare's AuthProvider register an
+// The alchemy migration: Railway's and Cloudflare's AuthProvider register an
 // implementation built inside a callback, whose configure pipes a union of
 // Effects. TypeScript 5.9 and 7.0.2 infer R = B from configure's
 // requirements; 7.1's cached inference from type arguments (upstream

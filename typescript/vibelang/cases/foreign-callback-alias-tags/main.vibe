@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import { risky, safe, take, takeParen, takeChain, takeBounded, takeAllowed, takeWide,
   type Misplaced, type Parenthesized, type Chain, type Allowed, type Wide } from "./helpers.js"
 export function check() {

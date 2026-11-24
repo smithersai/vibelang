@@ -1,4 +1,4 @@
-// opencode-51: a private companion alias is printed when an export references it.
+// The opencode migration: a private companion alias is printed when an export references it.
 const Meta = Schema.Struct({ id: Schema.String })
 type Meta = Schema.Schema.Type<typeof Meta>
 export interface Event { readonly meta?: Meta }

@@ -4,7 +4,7 @@
 // recorded at run time, never by Scope in a contract (D401). An acquisition
 // that registers the value's release records it, and using adds nothing:
 // Effect.acquireRelease of a Disposable whose release disposes it closes once
-// ("released", opus-7's t33), behind a wrapper function ("wrapped"), as an
+// ("released"), behind a wrapper function ("wrapped"), as an
 // Effect value using calls ("value"), and Effect.acquireDisposable behind a
 // wrapper ("disposable"). A value that nothing recorded is disposed by using
 // once: a plain Disposable ("plain"), one an Effect returns ("unscoped"), and

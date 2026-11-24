@@ -5,7 +5,7 @@
 // reaches a do expression's final conditional, its if/else branches and a
 // nested do, so an object literal's _tag stays a literal type; and the value
 // keeps its literal types: "`const exact = do { 1 }` has type `1`, while
-// `let ordinary = do { 1 }` widens to `number`". foldkit-121.
+// `let ordinary = do { 1 }` widens to `number`". the foldkit migration.
 type Selection =
   | { readonly _tag: 'SelectedEdge'; readonly value: number }
   | { readonly _tag: 'IgnoredEdge'; readonly reason: 'GuardFailed' }

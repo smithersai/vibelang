@@ -1,5 +1,5 @@
 // expect: EK0401
-// Will, 2026-10-31: synchronous VibeLang code never throws. A throw that a
+// VIP-4, 2026-10-31: synchronous VibeLang code never throws. A throw that a
 // constructor's, an accessor's or the top level's own catch handles is still
 // EK0401: every throw counts. A module declaration's body is TypeScript, so
 // its throw is JavaScript's, and a throw in effect code is Effect.fail.

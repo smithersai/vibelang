@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // A factory whose result may be an Effect retains native assignability.
 // Void destinations can ignore either result, while map keeps it as data.
 // No destination runs the program or supplies a different function kind

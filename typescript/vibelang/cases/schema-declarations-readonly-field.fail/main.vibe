@@ -1,5 +1,5 @@
 // expect: TS2540
 schema Immutable { readonly value: string }
-const item = Schema.decodeUnknownSync(Immutable)({ value: "before" })
+const item: Immutable = { value: "before" }
 item.value = "after"
 export {}

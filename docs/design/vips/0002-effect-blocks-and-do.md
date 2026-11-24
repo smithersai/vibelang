@@ -40,7 +40,7 @@ const x = do { const a = 1; a + 1 }                // TC39 do expression: runs n
 
 ## Clarification: overlapping `var` diagnostics
 
-VIP-34 requires: "Use an already assigned specific diagnostic for the same rejection; preserve independent native errors." The `do` early errors use their assigned codes instead of the general legacy-JavaScript `EK0107` for the same `var`: `EK0201` for a final declaration, `EK0203` for a declaration in a parameter list, and both when both independent early errors apply. A nonfinal `var` outside a parameter list remains `EK0107` under VIP-4's amended ban. This clarifies diagnostic overlap without admitting `var` anywhere in `.vibe` code. [Running Effects](../src/002-running.md#do-expressions) gives the three witnesses.
+VIP-34 requires: "Use an already assigned specific diagnostic for the same rejection; preserve independent native errors." The `do` early errors use their assigned codes instead of the general legacy-JavaScript `EK0107` for the same `var`: `EK0201` for a final declaration, `EK0203` for a declaration in a parameter list, and both when both independent early errors apply. A nonfinal `var` outside a parameter list remains `EK0107` under VIP-1's amended ban. This clarifies diagnostic overlap without admitting `var` anywhere in `.vibe` code. [Running Effects](../src/002-running.md#do-expressions) gives the three witnesses.
 
 ## Amendment: mixed block modifier recovery
 

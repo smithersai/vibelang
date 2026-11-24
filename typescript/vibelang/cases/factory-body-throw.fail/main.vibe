@@ -1,6 +1,6 @@
 // expect: EK0401
 // D269: a factory's body runs as plain JavaScript when it is called, and
-// synchronous VibeLang code never throws (Will, 2026-10-31), so a throw there
+// synchronous VibeLang code never throws (VIP-4, 2026-10-31), so a throw there
 // is EK0401. The returned program fails instead: return () => { throw … }.
 export error Missing { reason: string }
 

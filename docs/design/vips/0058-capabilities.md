@@ -91,7 +91,7 @@ Pure evaluation runs everywhere. The runtime guard checks resolved file paths an
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - The read succeeds. [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
 - The write fails: no rule allows `fs:write`. [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).

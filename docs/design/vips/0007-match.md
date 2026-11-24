@@ -44,7 +44,6 @@ export const label = (e: NotFound | DbError | Option.Option<string>) => match (e
 - **Amended 2026-10-31: one name per home.** The pinned duplicate-initialization rules and their `or` exception apply within one top-level pattern, as the explainer's scope sentence says. Two top-level patterns that bind one name in the same lexical home are a redeclaration, as two `let` declarations are: `TS2451`, or `TS2300` beside a parameter. Separate blocks, match arms and the other binding homes are separate homes. The diagnostic advises using distinct names or separate blocks. This rejects programs the previous statement-local compiler accepted.
 
 ```vibe es
-// compiler-gap: pending VIP-7
 function loopReaders() {
   const x = 99; let n = 0; const readers: (() => number)[] = []
   while (n < 2 && (++n is let x)) { readers.push(() => x); x += 10 }
@@ -108,7 +107,6 @@ const alternativeCellExit = Effect.runSyncExit(Effect.sync(alternativeCellWitnes
 Negation complements the actual recognition test for every dispatch path: literals use their equality test, ordinary classes their `instanceof` test, primitive/built-in adapters their specified tests, retained Effect patterns their module guards, generated tagged errors their tag tests, and own matchers or predicates their invocation. Only the false-branch narrowing established by that TypeScript test applies. An arbitrary `boolean`-returning matcher establishes no narrowing on either branch. This typing rule adds no exhaustiveness coverage for `not`.
 
 ```vibe es
-// compiler-gap: pending VIP-7
 class OnlyNumbers {
   readonly kind = "instance"
   static [Symbol.customMatcher](s: unknown, _hint: { matchType: "boolean" }): boolean {
@@ -165,7 +163,6 @@ console.log(matcherExit) // Success([true, "number", 0, 8])
 - **Amended 2026-10-30: async results and default flow use TypeScript's actual tests.** For arm-type union `U`, `async match` has type `Promise<Awaited<U>>`, with native async-return adoption and TypeScript's Promise-like/thenable checks. A returned Promise is adopted rather than nested. A default arm follows TypeScript control flow after the preceding ordered pattern and guard tests fail, including cached reads and source mutations. This is independent of exhaustiveness coverage: a predicate can narrow its false branch without covering a case, and a failed guard does not establish that its positive predicate failed. Do not subtract a coverage set instead of analyzing those tests.
 
 ```vibe es
-// compiler-gap: pending VIP-7
 function isText(s: string | number): s is string { return typeof s === "string" }
 function classifyDefault(s: string | number) {
   return match (s) { when isText: s.length; default: String(s); }

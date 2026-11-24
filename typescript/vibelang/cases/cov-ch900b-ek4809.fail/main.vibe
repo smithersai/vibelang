@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // Appendix B: EK4809 — spec-rule: docs/design/src/900-appendices.md#ac96540d588701a8
 // A service whose every member requires the same service is a warning by
 // default; a service with one member free of it is not.

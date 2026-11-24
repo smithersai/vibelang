@@ -13,12 +13,13 @@ export effect function bare() {
   return [d, e, f]
 }
 
-// The bridges compile, for the npm calls and for the prelude's calls.
+// The bridges compile for the npm calls. The effect package's own exports are
+// typed explicitly (Appendix E), so their bare calls need no bridge.
 export effect function bridged() {
   const d = try Effect.try(() => unannotated(1))
   const f = try Effect.try(() => throwsRange(1))
-  const two = try Effect.try(() => pipe(1, (n: number) => n + 1))
-  const first = try Effect.try(() => Effect.Array.head([1, 2]))
-  const o = try Effect.try(() => Option.some(1))
+  const two = pipe(1, (n: number) => n + 1)
+  const first = Effect.Array.head([1, 2])
+  const o = Option.some(1)
   return { d, f, two, first, o }
 }

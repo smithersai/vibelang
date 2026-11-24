@@ -64,12 +64,15 @@ export function checkErrorKeyMigration(dir, fieldless = false) {
   }
   // Independent source modules share a program so every mode checks every
   // key shape without repeatedly loading the compiler and Effect declarations.
+  // What the first compile declared and ran; every later compile of the same sources must give the same.
+  let firstDeclarations, firstExit
   for (const mode of modes) {
     const work = project(mode)
     for (const [name, prefix, suffix, raw, fields] of variants) {
       fs.writeFileSync(path.join(work, name + ".vibe"), [
         'const Brand = Schema.Literal(' + JSON.stringify(raw) + ').pipe(Schema.brand("Key"))',
-        'const branded = Schema.decodeUnknownSync(Brand)(' + JSON.stringify(raw) + ')',
+        // A cast, not a decode: the bare decoder call may throw, which is EK0401 at the top level (Appendix E).
+        'const branded = ' + JSON.stringify(raw) + ' as typeof Brand.Type',
         'const field: ' + tick + prefix + dollar + '{typeof branded}' + suffix + tick +
           ' = ' + tick + prefix + dollar + '{branded}' + suffix + tick,
         'export error E { ' + (fields ? 'id: string; ' : '') + 'get [field](): number { return 1 } }',
@@ -82,8 +85,15 @@ export function checkErrorKeyMigration(dir, fieldless = false) {
       assert.ok(before.includes(name + ".vibe("), "missing diagnostic for " + name)
       return [name, fs.readFileSync(path.join(work, "out", name + ".d.ts"), "utf8")]
     }))
+    for (const [name, declaration] of declarations) {
+      assert.match(declaration, /\bclass E\b/, name + ": the rejected key still declares the error class")
+    }
     const originalExit = JSON.parse(command(work, "run-before", process.execPath, ["--input-type=module", "-e", probe]))
-    assert.ok(Array.isArray(originalExit), "runtime observations are recorded")
+    assert.ok(Array.isArray(originalExit) && originalExit.length > 0, "runtime observations are recorded")
+    firstDeclarations ??= declarations
+    firstExit ??= originalExit
+    assert.deepEqual([...declarations], [...firstDeclarations], mode + ": declarations differ from the first compile's")
+    assert.deepEqual(originalExit, firstExit, mode + ": Exits differ from the first compile's")
 
     // Native-resolved accessors retain the reserved-key diagnostic.
     if (!fieldless) {

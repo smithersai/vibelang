@@ -1,4 +1,4 @@
-// expect:
+// This module lists no codes of its own: the other modules' first lines hold the project's expected codes.
 // A main that provides only Effect's bundle still needs the experimental
 // Crypto, and EK3205 says so.
 import { NodeServices } from "@effect/platform-node"

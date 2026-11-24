@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // Appendix B: EK4804 — spec-rule: docs/design/src/900-appendices.md#400e2e503efb36a8
 // A global Error thrown as an Effect failure is a warning by default; a
 // tagged error is not.

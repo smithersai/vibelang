@@ -1,0 +1,5 @@
+// expect: TS2488
+export function load() { for (const n of Stream.make(1)) { void n } }
+
+// A plain for...of over a Stream keeps TypeScript's diagnostic: a Stream is not iterable. No EK2007 exists;
+// `for try` is the Stream loop. spec-rule: docs/design/src/900-appendices.md#a7c1677f7d34ab85

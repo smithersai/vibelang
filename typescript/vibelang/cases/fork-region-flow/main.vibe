@@ -131,7 +131,7 @@ effect function all() {
 
 effect function operand() {
   const fiber = fork slow()
-  const waiter = fork { return join fiber }
+  const waiter = fork effect { return join fiber }
   return join waiter
 }
 

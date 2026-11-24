@@ -34,6 +34,6 @@ export function differentAbruptType(): unknown { return do { label: { try { 1; }
 // The pinned do algorithm applies UpdateEmpty to abrupt completions too: the inner do carries 7.
 export function nestedDoBreak(): unknown { return do { label: { try { 1; } finally { (do { 7; break label; }); } } }; }
 
-// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// A synchronous VibeLang function never throws (VIP-4, 2026-10-31): the throw
 // these tests need lives in raise.ts, which keeps JavaScript's throw.
 import { raise } from "./raise.js"

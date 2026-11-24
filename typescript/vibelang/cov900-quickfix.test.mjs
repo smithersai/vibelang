@@ -39,9 +39,10 @@ function fixture(source,body,severities={EK4833:"off"}){
 // docs/design/src/900-appendices.md#ed55030ff023734c — Chapter 900: EK4833 excludes interfaces extending Effect.
 test("EK4833 excludes interfaces extending Effect",()=>{
 
+ // The rule keeps its default severity: with EK4833 off, the fixture's default, no input can print it.
  fixture('export interface Api<A> extends Effect.Effect<A, never, never> { readonly kind: "Api" }',({run})=>{
   const r=run();assert.equal(r.status,0,r.text);assert.doesNotMatch(r.text,/EK4833:/)
- })
+ },{})
  fixture("export type Api<A> = Effect.Effect<A, never, never>",({run})=>assert.match(run().text,/EK4833:/),{})
 
 })

@@ -10,6 +10,23 @@ const fc = createRequire(new URL("../../packages/runtime/package.json", import.m
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
+// Deadline tests do not sleep against a deadline (#623): node's start-up counts against it, and a plain start has
+// outrun one second on a loaded host. A runner waits for a `go` file beside it. The test writes the file for a
+// runner that must pass, which then ends at once, and omits it for a runner that must be killed, which then never
+// ends. The report proves which deadline each runner was given.
+const awaitGo = 'while (!(await import("node:fs")).existsSync(new URL("./go", import.meta.url))) await new Promise((resolve) => setTimeout(resolve, 20))\n'
+const waitForGo = 'export const wait = async (runner) => { const fs = await import("node:fs"); while (!fs.existsSync(new URL("./go", runner))) await new Promise((resolve) => setTimeout(resolve, 20)) }\n'
+const go = (root, ...names) => { for (const name of names) fs.writeFileSync(path.join(root, "vibelang/cases", name, "go"), "") }
+// runDeadlines runs the cases with a report and returns the result with each case's run deadline in milliseconds.
+function runDeadlines(root, harness, args) {
+  const report = path.join(fs.mkdtempSync(path.join(root, "report-")), "report.json")
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const result = spawnSync(process.execPath, [harness, "--report", report, ...args], { env, encoding: "utf8", timeout: 60_000 })
+  const deadlines = Object.fromEntries(JSON.parse(fs.readFileSync(report, "utf8")).cases.map((item) =>
+    [item.name, item.commands.find((command) => command.phase === "run")?.timeoutMs]))
+  return { result, deadlines }
+}
+
 function fixture(t) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-harness-test-"))
   t.after(() => fs.rmSync(temp, { recursive: true, force: true }))
@@ -99,11 +116,12 @@ test("a custom runner's run-seconds line sets its deadline", (t) => {
     fs.writeFileSync(path.join(at, "scenario"), "runtime")
     fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
     fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
-    fs.writeFileSync(path.join(at, "run.mjs"), `// run-seconds: ${seconds} (a pipeline of bounded stages)\nawait new Promise((resolve) => setTimeout(resolve, 2500))\nconsole.log("expected")\n`)
+    fs.writeFileSync(path.join(at, "run.mjs"), `// run-seconds: ${seconds} (a pipeline of bounded stages)\n${awaitGo}console.log("expected")\n`)
   }
-  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
-  const result = spawnSync(process.execPath, [harness, "--verbose", "--jobs", "2", "runner-1s", "runner-5s"], { env, encoding: "utf8", timeout: 30_000 })
+  go(root, "runner-5s")
+  const { result, deadlines } = runDeadlines(root, harness, ["--verbose", "--jobs", "2", "runner-1s", "runner-5s"])
   assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.deepEqual(deadlines, { "runner-1s": 1_000, "runner-5s": 5_000 })
   assert.match(result.stdout, /^ok\s+runner-5s/m, result.stdout)
   assert.match(result.stdout, /^FAIL\s+runner-1s: run.mjs killed at its 1 s deadline/m, result.stdout)
   const log = /log:\s+(.+?)(?:\)|$)/m.exec(result.stdout)?.[1]
@@ -119,7 +137,7 @@ test("a runner takes the largest run-seconds among the helpers it imports", (t) 
   fs.writeFileSync(path.join(cases, "_one.mjs"), "// run-seconds: 1\nexport const one = 1\n")
   fs.writeFileSync(path.join(cases, "_five.mjs"), "// run-seconds: 5 (a pipeline)\nexport const five = 5\n")
   fs.writeFileSync(path.join(cases, "_plain.mjs"), "export const plain = 0\n")
-  const wait = 'await new Promise((resolve) => setTimeout(resolve, 2500))\nconsole.log("expected")\n'
+  const wait = awaitGo + 'console.log("expected")\n'
   const runners = {
     "takes-helper": `import { one } from "../_one.mjs"\n${wait}`,
     "takes-largest": `import { one } from "../_one.mjs"\nimport { five } from "../_five.mjs"\n${wait}`,
@@ -134,9 +152,10 @@ test("a runner takes the largest run-seconds among the helpers it imports", (t) 
     fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
     fs.writeFileSync(path.join(at, "run.mjs"), runner)
   }
-  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
-  const result = spawnSync(process.execPath, [harness, "--verbose", "--jobs", "4", ...Object.keys(runners)], { env, encoding: "utf8", timeout: 30_000 })
+  go(root, "takes-largest", "own-line-wins", "plain-helper")
+  const { result, deadlines } = runDeadlines(root, harness, ["--verbose", "--jobs", "4", ...Object.keys(runners)])
   assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.deepEqual(deadlines, { "takes-helper": 1_000, "takes-largest": 5_000, "own-line-wins": 5_000, "plain-helper": 60_000 })
   assert.match(result.stdout, /^FAIL\s+takes-helper: run.mjs killed at its 1 s deadline/m, result.stdout)
   for (const name of ["takes-largest", "own-line-wins", "plain-helper"]) assert.match(result.stdout, new RegExp(`^ok\\s+${name}`, "m"), result.stdout)
 })
@@ -146,7 +165,7 @@ test("nested helper budgets bound the real runner process", (t) => {
   const cases = path.join(root, "vibelang/cases")
   for (const seconds of [1, 5]) {
     fs.writeFileSync(path.join(cases, "nested-leaf-" + seconds + ".mjs"),
-      "// run-seconds: " + seconds + "\nexport const wait = () => new Promise(resolve => setTimeout(resolve, 2500))\n")
+      "// run-seconds: " + seconds + "\n" + waitForGo)
     fs.writeFileSync(path.join(cases, "nested-wrapper-" + seconds + ".mjs"),
       'import { wait } from "./nested-leaf-' + seconds + '.mjs"\nexport { wait }\n')
     const at = path.join(cases, "nested-runner-" + seconds)
@@ -155,12 +174,12 @@ test("nested helper budgets bound the real runner process", (t) => {
     fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
     fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
     fs.writeFileSync(path.join(at, "run.mjs"),
-      'import { wait } from "../nested-wrapper-' + seconds + '.mjs"\nawait wait()\nconsole.log("expected")\n')
+      'import { wait } from "../nested-wrapper-' + seconds + '.mjs"\nawait wait(import.meta.url)\nconsole.log("expected")\n')
   }
-  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
-  const result = spawnSync(process.execPath, [harness, "--jobs", "2", "nested-runner-1", "nested-runner-5"],
-    { env, encoding: "utf8", timeout: 30_000 })
+  go(root, "nested-runner-5")
+  const { result, deadlines } = runDeadlines(root, harness, ["--jobs", "2", "nested-runner-1", "nested-runner-5"])
   assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.deepEqual(deadlines, { "nested-runner-1": 1_000, "nested-runner-5": 5_000 })
   assert.match(result.stdout, /^FAIL\s+nested-runner-1: run.mjs killed at its 1 s deadline/m)
   assert.match(result.stdout, /^ok\s+nested-runner-5/m)
 })
@@ -450,7 +469,7 @@ if (named) {
     assert.equal(fs.existsSync(path.join(root, "vibelang/cases", name, "out")), false)
     assert.equal(fs.existsSync(path.join(root, "vibelang/cases", name, "node_modules")), false)
   }
-  for (const shell of Object.values(targets)) assert.match(shell, /harness\.mjs --isolated/)
+  for (const shell of Object.values(targets)) assert.match(shell, /harness\.mjs --allow-stale --isolated/)
 })
 
 test("isolated custom runners keep relative imports of shared helpers", (t) => {
@@ -575,7 +594,7 @@ fs.writeFileSync("out/main.js", 'console.log("expected")')
 
 // A compiler older than a file //typescript:compiler builds from is an earlier compiler; tests and testdata are
 // not its inputs (typescript/tsc/PACKAGE.ts `srcs`).
-test("the summary warns when the compiler is older than a source it builds from", (t) => {
+test("a compiler older than a source it builds from stops the run unless --allow-stale is given", (t) => {
   const { root, harness, compiler } = fixture(t)
   const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
   const now = Date.now() / 1000
@@ -589,14 +608,221 @@ test("the summary warns when the compiler is older than a source it builds from"
   write("tsc/internal/vibelang/checker_test.go", now)
   write("tsc/internal/vibelang/testdata/fuzz/seed", now)
   fs.utimesSync(compiler, now - 60, now - 60)
-  const run = () => spawnSync(process.execPath, [harness, "runtime"], { env, encoding: "utf8", timeout: 10_000 })
+  const run = (...args) => spawnSync(process.execPath, [harness, ...args, "runtime"], { env, encoding: "utf8", timeout: 10_000 })
   const fresh = run()
   assert.equal(fresh.status, 1, fresh.stdout + fresh.stderr)
   assert.doesNotMatch(fresh.stdout + fresh.stderr, /older than/)
   write("tsc/internal/vibelang/checker.go", now)
+  const older = /built\/local\/tsc is older than tsc\/internal\/vibelang\/checker\.go, so these cases run an earlier compiler; rebuild it with sh scripts\/build-vibelang\.sh$/m
+  // Make the case pass, so only the earlier compiler can fail the run.
+  fs.writeFileSync(path.join(root, "vibelang/cases/runtime/run.mjs"), 'console.log("expected")\n')
+  fs.rmSync(path.join(root, "vibelang/cases/runtime/out"), { recursive: true, force: true })
   const stale = run()
-  assert.equal(stale.status, 1, "the warning leaves the exit status to the cases")
-  assert.match(stale.stdout, /^warning: built\/local\/tsc is older than tsc\/internal\/vibelang\/checker\.go, so these cases run an earlier compiler; rebuild it with sh scripts\/build-vibelang\.sh$/m)
+  assert.equal(stale.status, 2, "an all-green run of an earlier compiler must not exit 0:\n" + stale.stdout + stale.stderr)
+  assert.match(stale.stderr, older)
+  assert.match(stale.stderr, /--allow-stale/)
+  assert.doesNotMatch(stale.stdout, /cases:/, "no case may run")
+  assert.equal(fs.existsSync(path.join(root, "vibelang/cases/runtime/out")), false, "no case may compile")
+  const allowed = run("--allow-stale")
+  assert.equal(allowed.status, 0, allowed.stdout + allowed.stderr)
+  assert.match(allowed.stdout, /1 cases: 1 ok, 0 FAIL/)
+  assert.match(allowed.stdout, new RegExp("^warning: " + older.source, "m"))
+})
+
+// Every case copies the runtime's dist/, so one older than the runtime's sources is an earlier runtime (#623).
+test("a runtime dist older than its sources stops the run unless --allow-stale is given", (t) => {
+  const { root, harness } = fixture(t)
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  fs.writeFileSync(path.join(root, "vibelang/cases/runtime/run.mjs"), 'console.log("expected")\n')
+  const now = Date.now() / 1000
+  const source = path.join(root, "runtime/src/nested/index.ts")
+  fs.mkdirSync(path.dirname(source), { recursive: true })
+  fs.writeFileSync(source, "export {}\n")
+  fs.utimesSync(source, now - 120, now - 120)
+  const dist = path.join(root, "runtime/dist/index.js")
+  fs.utimesSync(dist, now - 60, now - 60)
+  const run = (...args) => spawnSync(process.execPath, [harness, ...args, "runtime"], { env, encoding: "utf8", timeout: 10_000 })
+  const fresh = run()
+  assert.equal(fresh.status, 0, fresh.stdout + fresh.stderr)
+  fs.utimesSync(source, now, now)
+  const stale = run()
+  assert.equal(stale.status, 2, stale.stdout + stale.stderr)
+  assert.match(stale.stderr, /dist\/index\.js is older than .*src\/nested\/index\.ts, so these cases run an earlier runtime/)
+  const allowed = run("--allow-stale")
+  assert.equal(allowed.status, 0, allowed.stdout + allowed.stderr)
+  assert.match(allowed.stdout, /^warning: .*earlier runtime/m)
+})
+
+// #621: three ways a case passed without checking what it holds.
+function caseFixture(t, files, { compilerExit, diagnostic = "main.vibe(1,1): error TS9999: deliberate failure" } = {}) {
+  const { root, harness, compiler } = fixture(t)
+  // Reports the diagnostic when the case has a file named `rejects`; otherwise emits a program that prints "expected".
+  fs.writeFileSync(compiler, `#!/usr/bin/env node
+import fs from "node:fs"
+if (fs.existsSync("crash")) process.exit(${compilerExit ?? 134})
+if (fs.existsSync("hang")) await new Promise(() => setInterval(() => {}, 1000))
+if (fs.existsSync("rejects")) { console.log(${JSON.stringify(diagnostic)}); process.exit(1) }
+fs.mkdirSync("out", { recursive: true })
+fs.writeFileSync("out/main.js", 'console.log("expected")')
+fs.writeFileSync("out/main.d.ts", "export declare const n = 1;\\n")
+`, { mode: 0o755 })
+  for (const name of ["compile", "runtime"]) fs.rmSync(path.join(root, "vibelang/cases", name), { recursive: true })
+  for (const [file, text] of Object.entries(files)) {
+    const at = path.join(root, "vibelang/cases", file)
+    fs.mkdirSync(path.dirname(at), { recursive: true })
+    fs.writeFileSync(at, text)
+  }
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const run = (...args) => spawnSync(process.execPath, [harness, "--jobs", "1", ...args], { env, encoding: "utf8", timeout: 30_000 })
+  return { root, run }
+}
+
+for (const [held, files] of [
+  ["expected/stdout.txt", { "expected/stdout.txt": "something the rejected program never prints\n" }],
+  ["run.mjs", { "run.mjs": "process.exit(1)\n" }],
+  ["expected/main.d.ts", { "expected/main.d.ts": "export declare const other: string;\n" }],
+  ["typescript/", { "typescript/tsconfig.json": "{}" }],
+  ["main.vibe (// expect-result)", { "main.vibe": "// expect: TS9999\n// expect-result: 1\n" }],
+]) {
+  test("a failing case with an unchecked " + held + " does not pass", (t) => {
+    const { run } = caseFixture(t, {
+      "sample/tsconfig.json": "{}", "sample/rejects": "", "sample/main.vibe": "// expect: TS9999\n",
+      ...Object.fromEntries(Object.entries(files).map(([file, text]) => ["sample/" + file, text])),
+    })
+    const result = run("sample")
+    assert.equal(result.status, 1, result.stdout + result.stderr)
+    assert.match(result.stdout, /^FAIL    sample: failing case has an unchecked expectation: /m)
+    assert.ok(result.stdout.includes("unchecked expectation: " + held), result.stdout)
+    assert.match(result.stdout, /1 cases: 0 ok, 1 FAIL/)
+  })
+}
+
+test("a failing case keeps its diagnostics and message expectations", (t) => {
+  const { run } = caseFixture(t, {
+    "sample/tsconfig.json": "{}", "sample/rejects": "", "sample/main.vibe": "// expect: TS9999\n",
+    "sample/expected/diagnostics.txt": "main.vibe(1,1): error TS9999\n",
+    "sample/expected/messages.txt": "deliberate failure\n",
+  })
+  const result = run("sample")
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.match(result.stdout, /1 cases: 1 ok, 0 FAIL/)
+})
+
+test("an empty expect line is a harness error, also when the compile is clean and the case is pending", (t) => {
+  const { run } = caseFixture(t, {
+    "empty/tsconfig.json": "{}", "empty/main.vibe": "// expect:\nexport const n = 1\n",
+    "spaces/tsconfig.json": "{}", "spaces/main.vibe": "// expect:   \nexport const n = 1\n",
+    "hidden/tsconfig.json": "{}", "hidden/main.vibe": "// expect:\n", "hidden/pending": "lane the empty line must not hide here\n",
+  })
+  const result = run()
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  for (const name of ["empty", "spaces", "hidden"]) {
+    assert.match(result.stdout, new RegExp("^FAIL    " + name + ": main\\.vibe has an empty `// expect:` line: name the error codes, or write `// expect-clean`", "m"))
+  }
+  assert.match(result.stdout, /3 cases: 0 ok, 3 FAIL, 0 pending, 0 XPASS/)
+})
+
+test("an expect-clean case passes on a clean compile and still runs what it holds", (t) => {
+  const { run } = caseFixture(t, {
+    "clean/tsconfig.json": "{}", "clean/main.vibe": "// expect-clean\nexport const n = 1\n",
+    "clean-warning/tsconfig.json": "{}", "clean-warning/main.vibe": "// expect-clean\n",
+    "clean-warning/expected/diagnostics.txt": "main.vibe(1,1): warning EK4609\n",
+    "clean-emits/tsconfig.json": "{}", "clean-emits/main.vibe": "// expect-clean\n",
+    "clean-emits/expected/main.d.ts": "export declare const n = 2;\n",
+    "clean-runs/tsconfig.json": "{}", "clean-runs/main.vibe": "// expect-clean\n",
+    "clean-runs/expected/stdout.txt": "not what the program prints\n",
+    "clean-rejected/tsconfig.json": "{}", "clean-rejected/main.vibe": "// expect-clean\n", "clean-rejected/rejects": "",
+    "clean-both/tsconfig.json": "{}", "clean-both/main.vibe": "// expect-clean\n", "clean-both/other.vibe": "// expect: TS9999\n",
+    "unmarked/tsconfig.json": "{}", "unmarked/main.vibe": "export const n = 1\n",
+  })
+  const result = run()
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /^ok      clean$/m)
+  assert.match(result.stdout, /^FAIL    clean-warning: diagnostics differ from expected\/diagnostics\.txt$/m)
+  assert.match(result.stdout, /^FAIL    clean-emits: out\/main\.d\.ts differs from expected\/main\.d\.ts$/m)
+  assert.match(result.stdout, /^FAIL    clean-runs: out\/main\.js printed expected$/m)
+  assert.match(result.stdout, /^FAIL    clean-rejected: tsc reported 1 error\(s\): TS9999$/m)
+  assert.match(result.stdout, /^FAIL    clean-both: the case has both an `\/\/ expect-clean` and an `\/\/ expect:` first line/m)
+  assert.match(result.stdout, /^FAIL    unmarked: nothing to compare/m, "a clean compile is an assertion only when the case says so")
+  assert.match(result.stdout, /7 cases: 1 ok, 6 FAIL/)
+})
+
+test("pending does not hide a crashed or killed compiler, and an ordinary rejection stays pending", (t) => {
+  const { run } = caseFixture(t, {
+    "crashes/tsconfig.json": "{}", "crashes/crash": "", "crashes/expected/stdout.txt": "expected\n",
+    "crashes/pending": "lane the feature is missing\n",
+    "rejected/tsconfig.json": "{}", "rejected/rejects": "", "rejected/expected/stdout.txt": "expected\n",
+    "rejected/pending": "lane the feature is missing\n",
+    "mismatch/tsconfig.json": "{}", "mismatch/expected/stdout.txt": "other\n",
+    "mismatch/pending": "lane the feature is missing\n",
+    "bad-header/tsconfig.json": "{}", "bad-header/main.vibe": "// expect-result: {not json}\n",
+    "bad-header/pending": "lane the feature is missing\n",
+  })
+  const result = run()
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /^FAIL    crashes: tsc exited with 134$/m)
+  assert.match(result.stdout, /^FAIL    bad-header: harness error: /m)
+  assert.match(result.stdout, /^pending rejected \(lane: the feature is missing\): tsc reported 1 error\(s\): TS9999$/m)
+  assert.match(result.stdout, /^pending mismatch /m)
+  assert.match(result.stdout, /4 cases: 0 ok, 2 FAIL, 2 pending, 0 XPASS/)
+  const only = run("rejected", "mismatch")
+  assert.equal(only.status, 0, "an unmet expectation alone keeps the suite green:\n" + only.stdout + only.stderr)
+})
+
+test("pending does not hide a compiler killed by a signal", (t) => {
+  const { root, run } = caseFixture(t, {
+    "killed/tsconfig.json": "{}", "killed/expected/stdout.txt": "expected\n", "killed/pending": "lane the feature is missing\n",
+  })
+  fs.writeFileSync(path.join(root, "built/local/tsc"), "#!/bin/sh\nkill -KILL $$\n", { mode: 0o755 })
+  const result = run("killed")
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /^FAIL    killed: tsc exited with killed by SIGKILL$/m)
+})
+
+test("a pending case that passes fails the run until its pending file is deleted", (t) => {
+  const { root, run } = caseFixture(t, {
+    "fixed/tsconfig.json": "{}", "fixed/expected/stdout.txt": "expected\n", "fixed/pending": "lane the feature is missing\n",
+  })
+  const result = run("fixed")
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /^XPASS   fixed \(pending on lane; delete its pending file\)$/m)
+  assert.match(result.stdout, /1 cases: 0 ok, 0 FAIL, 0 pending, 1 XPASS/)
+  fs.rmSync(path.join(root, "vibelang/cases/fixed/pending"))
+  const deleted = run("fixed")
+  assert.equal(deleted.status, 0, deleted.stdout + deleted.stderr)
+  assert.match(deleted.stdout, /1 cases: 1 ok, 0 FAIL, 0 pending, 0 XPASS/)
+})
+
+test("a pending file names a lane and a reason", (t) => {
+  const { run } = caseFixture(t, Object.fromEntries(Object.entries({
+    "no-reason": "lane\n", "sentence": "Until the ruling lands.\n", "path": "docs/design/src/001-functions.md is ahead\n", "valid": "cov-ch900a the rule is not enforced\n",
+  }).flatMap(([name, text]) => [[name + "/tsconfig.json", "{}"], [name + "/expected/stdout.txt", "other\n"], [name + "/pending", text]])))
+  const result = run()
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /^FAIL    no-reason: harness error: pending file must say what is missing after its owner lane$/m)
+  assert.match(result.stdout, /^FAIL    sentence: harness error: pending file must name its owner as the first word: .* not "Until"$/m)
+  assert.match(result.stdout, /^FAIL    path: harness error: pending file must name its owner as the first word: /m)
+  assert.match(result.stdout, /^pending valid \(cov-ch900a: the rule is not enforced\)/m)
+})
+
+// #623: a directory without tsconfig.json is skipped, so one that holds expectations tests nothing.
+test("a whole-suite run names and fails directories that read as cases and are never run", (t) => {
+  const { run } = caseFixture(t, {
+    "real/tsconfig.json": "{}", "real/expected/stdout.txt": "expected\n",
+    "remnant-expected/expected/messages.txt": "a message nothing checks\n",
+    "remnant-runner/run.mjs": "process.exit(1)\n",
+    "remnant-pending/pending": "lane nothing runs this\n",
+    "data/examples.json": "{}",
+  })
+  const result = run()
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /1 cases: 1 ok, 0 FAIL/)
+  assert.match(result.stdout, /^not a case: remnant-expected has no tsconfig\.json, so nothing runs it, and holds expected;/m)
+  assert.match(result.stdout, /^not a case: remnant-runner has no tsconfig\.json, so nothing runs it, and holds run\.mjs;/m)
+  assert.match(result.stdout, /^not a case: remnant-pending has no tsconfig\.json, so nothing runs it, and holds pending;/m)
+  assert.doesNotMatch(result.stdout, /not a case: data/, "a data directory is not a case")
+  const selected = run("real")
+  assert.equal(selected.status, 0, "a selected case is not a census of the directory:\n" + selected.stdout + selected.stderr)
 })
 
 test("nonzero runners cannot pass with matching stdout", (t) => {
@@ -812,6 +1038,8 @@ test("performance report arguments reject missing and repeated paths before runn
 test("an expected compiler error reports a successful case without inventing a run phase", (t) => {
   const { root, harness } = fixture(t)
   fs.writeFileSync(path.join(root, "vibelang/cases/compile/main.vibe"), "// expect: TS9999\n")
+  // A failing case is never run, so it holds no stdout expectation.
+  fs.rmSync(path.join(root, "vibelang/cases/compile/expected"), { recursive: true })
   const report = path.join(root, "expected-error.json")
   const result = spawnSync(process.execPath, [harness, "--report", report, "compile"], {
     env: { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") },
@@ -897,14 +1125,25 @@ test("status output retains a passing runner deadline warning and summary", (t) 
   fs.writeFileSync(path.join(at, "scenario"), "runtime")
   fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
   fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
-  fs.writeFileSync(path.join(at, "run.mjs"), `// run-seconds: 6\nawait new Promise((resolve) => setTimeout(resolve, 3600))\nconsole.log("expected")\n`)
+  fs.writeFileSync(path.join(at, "run.mjs"), `// run-seconds: 6\nconsole.log("expected")\n`)
+  // Supply the elapsed time after the real runner finishes: a real sleep past half of six seconds also has to
+  // end before six, and a loaded host decides that. The limit stays the one the harness read from the runner.
+  fs.appendFileSync(path.join(root, "vibelang/harness-command.mjs"), `
+const nativeRun = CaseCommands.prototype.run
+CaseCommands.prototype.run = async function (...args) {
+  const result = await nativeRun.apply(this, args)
+  const record = this.records.at(-1)
+  if (record.phase === "run") record.wallMs = 3_600
+  return result
+}
+`)
   const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
   for (const flags of [[], ["--status"], ["--verbose"], ["--status", "--verbose"]]) {
     const result = spawnSync(process.execPath, [harness, ...flags, "deadline-margin"], { env, encoding: "utf8", timeout: 30_000 })
     assert.equal(result.status, 0, result.stdout + result.stderr)
     if (flags.includes("--status")) assert.match(result.stdout, /^deadline-margin\s+-\s+ok$/m)
     else assert.match(result.stdout, /^ok\s+deadline-margin/m)
-    assert.match(result.stdout, /^\s+deadline: run took \d+\.\d s of 6 s/m, "every output mode must retain the phase and both times")
+    assert.match(result.stdout, /^\s+deadline: run took 3\.6 s of 6 s/m, "every output mode must retain the phase and both times")
     assert.match(result.stdout, /1 passed past half a deadline: deadline-margin/)
   }
 })
@@ -977,16 +1216,16 @@ test("helper import quote spelling preserves native runner deadline enforcement"
       fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
       fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
       fs.writeFileSync(path.join(at, "leaf.mjs"),
-        "// run-seconds: " + seconds + "\nexport const wait = () => new Promise(resolve => setTimeout(resolve, 2500))\n")
+        "// run-seconds: " + seconds + "\n" + waitForGo)
       fs.writeFileSync(path.join(at, "wrapper.mjs"), "export { wait } from " + quote + "./leaf.mjs" + quote + "\n")
       fs.writeFileSync(path.join(at, "run.mjs"),
-        "import { wait } from " + quote + "./wrapper.mjs" + quote + "\nawait wait()\nconsole.log('expected')\n")
+        "import { wait } from " + quote + "./wrapper.mjs" + quote + "\nawait wait(import.meta.url)\nconsole.log('expected')\n")
+      if (seconds === 5) go(root, name)
     }
   }
-  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
-  const result = spawnSync(process.execPath, [harness, "--jobs", "4", ...names],
-    { env, encoding: "utf8", timeout: 30_000 })
+  const { result, deadlines } = runDeadlines(root, harness, ["--jobs", "4", ...names])
   assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.deepEqual(deadlines, Object.fromEntries(names.map((name) => [name, name.endsWith("-1") ? 1_000 : 5_000])))
   for (const style of ["single", "double"]) {
     assert.match(result.stdout, new RegExp("^FAIL\\s+quoted-helper-" + style + "-1: run.mjs killed at its 1 s deadline", "m"))
     assert.match(result.stdout, new RegExp("^ok\\s+quoted-helper-" + style + "-5", "m"))

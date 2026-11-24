@@ -1,5 +1,5 @@
 // expect: EK1704
-// expect-result: {"values":[7],"events":["has-fiber"]}
+// The program is rejected, so it has no run result to expect.
 export effect function main() {
  const events:string[]=[]
  const child=try Effect.forkDetach(Effect.succeed(7))

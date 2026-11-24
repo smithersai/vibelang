@@ -62,7 +62,8 @@ fs.writeFileSync("out/main.js", 'console.log(42)')
   for (const name of ["pass", "expected-error", "custom", "failure"]) {
     put("typescript/vibelang/cases/" + name + "/tsconfig.json", "{}")
     put("typescript/vibelang/cases/" + name + "/main.ts", name === "expected-error" ? "// expect: TS9999\n" : "export const n = 42")
-    put("typescript/vibelang/cases/" + name + "/expected/stdout.txt", name === "failure" ? "wrong\n" : "42\n")
+    // A failing case is never run, so it holds no stdout expectation.
+    if (name !== "expected-error") put("typescript/vibelang/cases/" + name + "/expected/stdout.txt", name === "failure" ? "wrong\n" : "42\n")
   }
   put("typescript/vibelang/cases/expected-error/expected-error", "")
   put("typescript/vibelang/cases/custom/run.mjs", `import { value } from "../shared.mjs"

@@ -22,7 +22,7 @@ export effect function main() {
   const waiter = fork $tryJoinFiber(f)
   const forked = join waiter
   const pending = fork sleep("1 minute")
-  const stopper = fork { try Fiber.interrupt(pending) }
+  const stopper = fork effect { try Fiber.interrupt(pending) }
   join stopper
   const interrupted = Exit.isFailure(try Fiber.await(pending))
   const other = fork sleep("1 minute")

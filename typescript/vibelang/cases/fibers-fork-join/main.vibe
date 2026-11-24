@@ -114,7 +114,7 @@ effect function record() {
   return try $joinCollection({ user: fork getUser("42"), count: fork count() })
 }
 
-// fork { ... } forks a block.
+// fork effect { ... } forks a block.
 effect function block() {
   const done = try Deferred.make<string>()
   fork effect {
@@ -164,7 +164,7 @@ effect function interrupted() {
 
 effect function detached() {
   const d = try Deferred.make<string>()
-  try detach(Deferred.succeed(d, "background"))
+  fork.detached Deferred.succeed(d, "background")
   return try d.await()
 }
 

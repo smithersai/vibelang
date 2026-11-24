@@ -1,7 +1,7 @@
 # Count completed generator yields toward cooperative scheduling
 
 **Status:** drafted, not filed. **Target:** Effect runtime.
-**Version:** `effect@4.0.5`.
+**Version:** `effect@4.1.1`.
 
 ## Behavior and reproduction
 

@@ -45,14 +45,14 @@ effect function route(error: NotFound | Locked): string!! {
 
 export effect function main() {
   const notFound = new NotFound({ method: "read", attempts: 2 })
-  const decoded = Schema.decodeUnknownSync(NotFound)({ _tag: "NotFound", method: "stat", attempts: 1 })
+  const decoded = try Effect.orDie(Effect.try(() => Schema.decodeUnknownSync(NotFound)({ _tag: "NotFound", method: "stat", attempts: 1 })))
   const base = new FsError({ method: "open", path: "/x" })
   return {
     tag: notFound._tag,
     name: notFound.name,
-    encoded: Schema.encodeSync(NotFound)(notFound),
+    encoded: try Effect.orDie(Effect.try(() => Schema.encodeSync(NotFound)(notFound))),
     decoded: { tag: decoded._tag, method: decoded.method, family: decoded instanceof FsError },
-    base: { tag: base._tag, encoded: Schema.encodeSync(FsError)(base) },
+    base: { tag: base._tag, encoded: try Effect.orDie(Effect.try(() => Schema.encodeSync(FsError)(base))) },
     isNotFound: Schema.is(NotFound)(base),
     routed: try route(notFound),
     locked: try route(new Locked({ holder: "ann" }))

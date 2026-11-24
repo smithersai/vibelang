@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // Appendix B: EK4808 — spec-rule: docs/design/src/900-appendices.md#18e027056cd55ac0
 // A provide block whose whole body is another provide block is a warning by
 // default; a provide block with other statements is not.

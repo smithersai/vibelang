@@ -6,7 +6,7 @@
 // `read()`'s, so the generator's yield type drops it, and the channel is
 // `read()`'s as written: `Error | ApiError`. So the `ApiError` tag arm types,
 // and `NotReady` needs its class pattern, which tests `instanceof`, not the
-// static union (004-match). alchemy-63: kubernetes `waitForLoadBalancer`.
+// static union (004-match). the alchemy migration: kubernetes `waitForLoadBalancer`.
 // @vibelang-diagnostics-next-line EK4830:off
 class ApiError extends Data.TaggedError("ApiError")<{ status: number }> {}
 // @vibelang-diagnostics-next-line EK4830:off

@@ -9,5 +9,5 @@ export const method = Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefau
 const same: typeof method = piped
 // expect-result: ["ok",null]
 export effect function main() {
-  return [Schema.decodeUnknownSync(same)("ok"), Schema.decodeUnknownSync(same)(null)]
+  return [try Schema.decodeUnknownEffect(same)("ok"), try Schema.decodeUnknownEffect(same)(null)]
 }

@@ -1,1 +1,1 @@
-cov-try-throw VIP coverage counterexample: missing EK0403; unexpected TS2349 (7.4 s); rule and witness recorded in review-spec/conformance/from-coverage.md.
+cov-try-throw the expected EK0403 is reported at every call in the list; one site (main.vibe line 13) also draws native TS2349, "This expression is not callable", which the case does not expect. Decide whether line 13 is a callable the compiler must accept or drop it from the list. Rule: docs/design/vips/0004-throw.md

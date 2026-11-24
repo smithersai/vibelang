@@ -84,7 +84,7 @@ None for scoring. A rubric needs a model ([std-model](0062-std-model.md)). Persi
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - `Experimental.Eval` and `Experimental.Scorer`, in scope with no import, as [VIP-33](0033-platform-stdlib.md) rules. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
 - Their code is `vibelang-runtime/experimental/Eval` and `…/Scorer`. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).

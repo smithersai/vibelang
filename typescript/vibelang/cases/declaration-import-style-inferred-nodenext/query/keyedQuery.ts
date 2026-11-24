@@ -1,4 +1,4 @@
-// foldkit-92: experimental/query/keyedQuery.ts writes .js specifiers under
+// The foldkit migration: experimental/query/keyedQuery.ts writes .js specifiers under
 // module nodenext and rewriteRelativeImportExtensions. Its baseline declares
 // import("../../schema/index.ts"), tsc's own spelling for a module the file
 // never imports; once schema/index was .vibe it declared index.js.

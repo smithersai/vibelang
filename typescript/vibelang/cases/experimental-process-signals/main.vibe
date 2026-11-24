@@ -1,5 +1,5 @@
 // expect-result: {"before":true,"refused":"BadArgument","exitCode":143}
-// foldkit-119: a scaffold script exits 130 on SIGINT and 143 on SIGTERM. runMain interrupts on both, so the
+// The foldkit migration: a scaffold script exits 130 on SIGINT and 143 on SIGTERM. runMain interrupts on both, so the
 // cleanup finalizer reads which arrived from observeSignals and dies with Effect's exit-code marker.
 import * as Runtime from "effect/Runtime"
 import { ExperimentalNodeProcess } from "vibelang-runtime/experimental/platform-node"

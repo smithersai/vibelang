@@ -80,7 +80,7 @@ The module is browser-bundleable: it "adapts a provider a caller hands it and ow
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - `Experimental.Sandbox`, in scope with no import, as VIP-33 rules. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
 - Its code is `vibelang-runtime/experimental/Sandbox`. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).

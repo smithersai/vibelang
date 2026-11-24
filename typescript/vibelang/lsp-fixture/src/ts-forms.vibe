@@ -1,5 +1,5 @@
 // TypeScript-style Effect forms (D284, D287): EK4830 and EK4833 warn, and
-// their quick fixes write an error declaration and the ! form.
+// the server offers no quick fix for the error declaration or the ! form.
 export class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}
 
 export effect function lookupName(id: string): Effect.Effect<string, NotFound, never> {

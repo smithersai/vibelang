@@ -1,5 +1,7 @@
 # How real Effect code uses pipe
 
+> Historical research from before the October 2026 VIP rewrite. This page uses ‘EffectScript’ for the project now called VibeLang and may use ‘VibeLang’ for the earlier design. See the [current specification](../design/src/000-intro.md).
+
 Measured 2026-10-16 with `experiments/scripts/pipe-census.ts`, which parses every `.ts`/`.tsx` file that imports `effect` with the TypeScript 5.9.3 parser (no type information) and inspects every `x.pipe(...)` and `pipe(x, ...)` call.
 
 Set `SMITHERS_CHECKOUT` and `OPENCODE_CHECKOUT` to the roots of the Smithers and [opencode](https://github.com/anomalyco/opencode) source snapshots. The original measurement did not record the checkout revisions. Run from the VibeLang repository root.

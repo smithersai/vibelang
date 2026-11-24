@@ -8,7 +8,7 @@ export effect function item() { uninterruptible { for concurrent(1) (const n of 
 // `restore { … }` is allowed only inside an `uninterruptible` block; anywhere else it is a compile error.
 
 // docs/design/vips/0022-interruption-blocks.md#273b8596954389b6 | VIP-22 restore-activation-and-item-boundaries
-// (`for concurrent` and `for try` keep their own rule, because their bodies run once per item.) Recorded under Will's standing approval of recommendations.
+// (`for concurrent` and `for try` keep their own rule, because their bodies run once per item.)
 
 // docs/design/vips/0022-interruption-blocks.md#302f64c3a6ea73a1 | VIP-22 restore-activation-and-item-boundaries
 // **Amended 2026-10-30: `restore` follows source activations.** Capturing an outer mask across an `effect` function declaration or expression, arrow, method, producer or `effect` block is `EK2202`: the nested Effect can run after the mask ends.

@@ -74,7 +74,8 @@ test("real compiler cases leave a read-only checkout unchanged", { timeout: 300_
   // also detects mutations when the OS lets such a runner bypass permissions.
   assert.equal(fs.statSync(copy).mode & 0o222, 0)
   const result = spawnSync(process.execPath, [
-    path.join(copy, "typescript/vibelang/harness.mjs"), "--isolated", "--jobs", "2", ...cases,
+    // The copy rewrites every modification time, so its compiler can look older than its sources.
+    path.join(copy, "typescript/vibelang/harness.mjs"), "--allow-stale", "--isolated", "--jobs", "2", ...cases,
   ], {
     cwd: copy, encoding: "utf8", timeout: 240_000, maxBuffer: 8 * 1024 * 1024,
     env: { ...process.env, TMPDIR: scratch, EFFECT_NODE_MODULES: fs.realpathSync(process.env.EFFECT_NODE_MODULES ?? path.join(repository, "experiments/node_modules")),

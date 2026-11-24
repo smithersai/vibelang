@@ -1,0 +1,19 @@
+// expect: EK0403
+// Appendix E: the decoder that Schema.decodeUnknownSync(schema) or
+// Schema.decodeSync(schema) returns is `@throws {SchemaError}`. A bare call of
+// it in effect code may throw, which is EK0403; the Effect.try bridge and
+// Schema.decodeUnknownEffect are the accepted forms.
+schema User { name: string }
+export effect function bare(input: unknown) {
+  return Schema.decodeUnknownSync(User)(input)
+}
+export effect function held(input: User) {
+  const decode = Schema.decodeSync(User)
+  return decode(input)
+}
+export effect function bridged(input: unknown) {
+  return try Effect.try(() => Schema.decodeUnknownSync(User)(input))
+}
+export effect function effectful(input: unknown) {
+  return try Schema.decodeUnknownEffect(User)(input)
+}

@@ -1,5 +1,5 @@
 // expect: EK0401
-// Will, 2026-10-31: "If you throw in vibelang itself in a sync function
+// VIP-4: "If you throw in vibelang itself in a sync function
 // that's an error." Every throw in synchronous code outside effect code is
 // EK0401, one per throw, caught by its own try or not. Effect code, async
 // functions (decided detail 251), module blocks and .ts files keep their

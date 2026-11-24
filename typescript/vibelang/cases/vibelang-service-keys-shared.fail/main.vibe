@@ -3,7 +3,7 @@
 // local declarations write their keys explicitly; these preserve the old
 // shared identity and still collide.
 // Its project emits no declarations, so the sidecar cannot name Local (TS4058)
-// only where a .ts file imports the module, and none does (foldkit-33).
+// only where a .ts file imports the module, and none does (the foldkit migration).
 import { Effect } from "effect"
 
 export function first() {

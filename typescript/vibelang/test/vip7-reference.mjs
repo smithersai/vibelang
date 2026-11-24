@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import { spawn } from "node:child_process"
@@ -34,7 +35,16 @@ const npmInstall = (cache, versions, childStarted, timeoutMs) => new Promise((re
 
 // Acceptance cases run in parallel. Hold one lock until npm has completed;
 // package.json appearing early in an install is not a readiness signal.
-export async function ensurePinnedReference(cache, { install = npmInstall, timeoutMs = 240000 } = {}) {
+//
+// The harness kills a runner's process group at its deadline, which leaves a
+// lock whose owner is dead. A waiter never removes such a lock: two waiters
+// that both saw the dead owner would each remove and re-create it, the second
+// removing the first's new lock, and both would install into one cache. A
+// waiter takes the lock over in place by creating a directory inside it named
+// for the dead owner. mkdir is atomic, so one waiter succeeds per dead owner
+// and the others keep waiting for the new one. `staleOwnerSeen` is a test
+// seam: it runs after a waiter has judged the owner dead and before it acts.
+export async function ensurePinnedReference(cache, { install = npmInstall, timeoutMs = 240000, staleOwnerSeen } = {}) {
   fs.mkdirSync(path.dirname(cache), { recursive: true })
   const lock = cache + ".install-lock"
   const ownerFile = path.join(lock, "owner.json")
@@ -44,7 +54,16 @@ export async function ensurePinnedReference(cache, { install = npmInstall, timeo
       if (error.code !== "EEXIST") throw error
       try {
         const owner = JSON.parse(fs.readFileSync(ownerFile, "utf8"))
-        if (!alive(owner.pid) && !alive(owner.child)) { fs.rmSync(lock, { recursive: true, force: true }); continue }
+        if (!alive(owner.pid) && !alive(owner.child)) {
+          await staleOwnerSeen?.(owner)
+          try {
+            fs.mkdirSync(path.join(lock, "takeover-" + owner.pid + "-" + (owner.token ?? "0")))
+            break
+          } catch (takeoverError) {
+            // EEXIST: another waiter took this owner's lock over. ENOENT: its new owner has already released it.
+            if (!["EEXIST", "ENOENT"].includes(takeoverError.code)) throw takeoverError
+          }
+        }
       } catch (readError) {
         if (!["ENOENT", undefined].includes(readError.code)) throw readError
         if (fs.existsSync(lock) && Date.now() - fs.statSync(lock).mtimeMs > timeoutMs)
@@ -54,8 +73,14 @@ export async function ensurePinnedReference(cache, { install = npmInstall, timeo
       await delay(25)
     }
   }
-  const owner = { pid: process.pid, child: null }
-  const saveOwner = () => fs.writeFileSync(ownerFile, JSON.stringify(owner))
+  // The token tells one owner from a later process that reuses its pid.
+  const owner = { pid: process.pid, child: null, token: randomBytes(8).toString("hex") }
+  // Replace the file in one step: a waiter never reads a half-written owner.
+  const saveOwner = () => {
+    const next = ownerFile + "." + owner.token
+    fs.writeFileSync(next, JSON.stringify(owner))
+    fs.renameSync(next, ownerFile)
+  }
   saveOwner()
   try {
     if (valid(cache)) return

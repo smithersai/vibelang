@@ -1,5 +1,5 @@
 // expect: EK1702
-// expect-result: [true,1,"join",0]
+// The program is rejected, so it has no run result to expect.
 import { join } from "./model.js"
 function make() { return new join() }
 function readName() { return join.name }

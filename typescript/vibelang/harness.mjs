@@ -1,6 +1,6 @@
 // Compiles and runs the VibeLang acceptance cases in vibelang/cases.
 //
-//   node vibelang/harness.mjs [--status] [--verbose] [--jobs N] [--late-start] [--isolated] [--scratch dir] [--report new.json] [case...]
+//   node vibelang/harness.mjs [--status] [--verbose] [--jobs N] [--late-start] [--isolated] [--scratch dir] [--report new.json] [--allow-stale] [case...]
 //
 // smoke.sh builds tsc and the runtime, then runs this script; run smoke.sh,
 // not this file. A case argument selects the case with that name, or else
@@ -8,7 +8,17 @@
 // tsconfig.json, and its kind comes from its sources:
 //
 //   - A failing case has a source whose first line is `// expect: EK9201 ...`.
-//     It passes when the error codes tsc reports are exactly those codes.
+//     It passes when the error codes tsc reports are exactly those codes. The
+//     line names at least one code: an empty `// expect:` is a harness error.
+//     A failing case is never run or compared with a twin, so it fails when it
+//     carries an expectation nothing would check: an `// expect-result` line,
+//     a run.mjs, a typescript/ twin, or a file in expected/ other than
+//     diagnostics.txt and messages.txt.
+//   - A clean case has a source whose first line is `// expect-clean`. It
+//     must compile without errors, and that is its assertion when it has
+//     nothing to run: pin its warnings with expected/diagnostics.txt. When it
+//     has a run.mjs, an `// expect-result` line, expected/ files or a
+//     typescript/ twin, those are checked as in any other case.
 //   - A runnable case has a source with a `// expect-result: <json>` line.
 //     That source must export main(), a function that returns an Effect. The
 //     harness writes out/run.mjs, which runs main() and prints the JSON of its
@@ -71,8 +81,27 @@
 //
 // A case is pending when it has a file named `pending` whose first word names
 // the lane that owns the missing feature and whose rest says what is missing.
-// A pending case runs but never fails the suite; when it passes, the harness
-// reports XPASS, and its owner deletes the file in the commit that fixed it.
+// The owner is a lane name in lower case (letters, digits and `-`) and the
+// reason is required. A pending case runs, and a failed expectation is
+// reported as `pending` without failing the suite. Pending never hides a
+// broken compile or a broken case: a compiler that was killed, timed out or
+// exited outside 0, 1 and 2, a harness error and a case the harness rejects as
+// written (above) are FAIL. When a pending case passes, the harness reports
+// XPASS and exits 1: its owner deletes the file in the commit that fixed it.
+//
+// A whole-suite run (no case argument) also fails for each directory under
+// cases/ that has no tsconfig.json, so nothing runs it, and still holds a
+// run.mjs, an expected/ directory or a pending file: it reads as a case and
+// tests nothing. Data directories without those files are not cases.
+//
+// The harness refuses to start (exit 2) when built/local/tsc is older than a
+// source the compiler builds from, or the runtime's dist/index.js is older
+// than a file under its src/: the cases would then say nothing about the
+// checkout. The check compares modification times, so a checkout or rebase
+// that rewrites sources can trip it on a current build; --allow-stale turns
+// the refusal into a warning after the summary. The build graph's per-case
+// targets pass it, because the compiler and the runtime are their declared
+// inputs.
 //
 // Every failed check, including pending cases and --status runs, retains a
 // JSON log under .cache/vibelang-harness/<run>/<case>.json (scratch's logs/
@@ -99,6 +128,23 @@ const tsc = path.join(root, "built", "local", "tsc")
 // scripts/build-vibelang.sh and the //typescript:compiler target write tsc. One older than a file that target builds
 // from (typescript/tsc without its tests and testdata) is an earlier compiler: the cases then say nothing about the
 // checkout's change (2026-10-31: 21 lane reports had run cases against an earlier compiler).
+// newerThan returns a file under dir modified after `built`, skipping the directories and files `skip` names.
+function newerThan(dir, built, skip) {
+  let entries
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return undefined
+  }
+  for (const entry of entries) {
+    const at = path.join(dir, entry.name)
+    if (skip(entry)) continue
+    if (entry.isDirectory()) {
+      const found = newerThan(at, built, skip)
+      if (found) return found
+    } else if (fs.statSync(at).mtimeMs > built) return at
+  }
+}
 const staleCompiler = (() => {
   let built
   try {
@@ -106,24 +152,10 @@ const staleCompiler = (() => {
   } catch {
     return undefined
   }
-  const newer = (dir) => {
-    let entries
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true })
-    } catch {
-      return undefined
-    }
-    for (const entry of entries) {
-      const at = path.join(dir, entry.name)
-      if (entry.isDirectory()) {
-        const found = entry.name === "testdata" ? undefined : newer(at)
-        if (found) return found
-      } else if (!entry.name.endsWith("_test.go") && fs.statSync(at).mtimeMs > built) return at
-    }
-  }
-  const source = newer(path.join(root, "tsc"))
+  const source = newerThan(path.join(root, "tsc"), built, (entry) =>
+    entry.isDirectory() ? entry.name === "testdata" : entry.name.endsWith("_test.go"))
   return source &&
-    `warning: ${path.relative(root, tsc)} is older than ${path.relative(root, source)}, so these cases run an earlier ` +
+    `${path.relative(root, tsc)} is older than ${path.relative(root, source)}, so these cases run an earlier ` +
       "compiler; rebuild it with sh scripts/build-vibelang.sh"
 })()
 const effectModules = process.env.EFFECT_NODE_MODULES
@@ -174,10 +206,20 @@ try {
   process.exit(2)
 }
 
+// Every case copies the runtime's dist/. One older than a file under the runtime's src/ is an earlier runtime. A
+// VIBELANG_RUNTIME without src/ (an installed package) has nothing to compare.
+const staleRuntime = (() => {
+  const dist = path.join(runtimeDir, "dist/index.js")
+  const source = newerThan(path.join(runtimeDir, "src"), fs.statSync(dist).mtimeMs, (entry) =>
+    entry.isDirectory() && entry.name === "node_modules")
+  return source &&
+    `${dist} is older than ${source}, so these cases run an earlier runtime; rebuild it with vibelang/smoke.sh`
+})()
+
 const args = process.argv.slice(2)
 // Reject unknown switches before case selection or filesystem writes. A value
 // belongs to --jobs, --report or --scratch; validate those values below.
-const switches = new Set(["--status", "--late-start", "--isolated", "--verbose", "-v"])
+const switches = new Set(["--status", "--late-start", "--isolated", "--verbose", "-v", "--allow-stale"])
 for (let i = 0; i < args.length; i++) {
   const arg = args[i]
   if (arg === "--jobs" || arg === "--report" || arg === "--scratch") {
@@ -186,6 +228,13 @@ for (let i = 0; i < args.length; i++) {
     console.error("harness.mjs: unknown option " + arg)
     process.exit(2)
   }
+}
+const stale = [staleCompiler, staleRuntime].filter(Boolean)
+// Refuse before a case is selected or its output replaced: an all-green run of an earlier build proves nothing.
+if (stale.length > 0 && !args.includes("--allow-stale")) {
+  for (const line of stale) console.error("harness.mjs: " + line)
+  console.error("harness.mjs: pass --allow-stale to run the cases against this build anyway")
+  process.exit(2)
 }
 const statusOnly = args.includes("--status")
 const lateStart = args.includes("--late-start") || process.env.VIBELANG_LATE_START === "1"
@@ -247,6 +296,15 @@ const allCases = fs
   .filter((name) => fs.existsSync(path.join(casesDir, name, "tsconfig.json")))
   .sort()
 const selected = selectors.length === 0 ? allCases : [...new Set(selectors.flatMap(select))]
+// A directory without tsconfig.json is not a case, so nothing runs it. One that still holds a runner, expectations
+// or a pending file reads as a case and tests nothing; a whole-suite run names it and fails.
+const remnants = selectors.length > 0 ? [] : fs.readdirSync(casesDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && !allCases.includes(entry.name))
+  .flatMap((entry) => {
+    const holds = ["run.mjs", "expected", "pending"].filter((file) => fs.existsSync(path.join(casesDir, entry.name, file)))
+    return holds.length > 0 ? [{ name: entry.name, holds }] : []
+  })
+  .sort((a, b) => a.name < b.name ? -1 : 1)
 
 // A sparse mirror keeps runners' repository-relative reads working. Only
 // selected cases and helper inputs are writable copies. Copying helpers also keeps
@@ -423,19 +481,51 @@ function linkNodeModules(dir) {
 
 // readHeaders finds the expected codes and the expected result in a case's sources.
 function readHeaders(dir) {
-  const headers = { codes: undefined, result: undefined, entry: undefined }
+  const headers = { codes: undefined, clean: false, result: undefined, entry: undefined, resultFile: undefined }
   for (const name of fs.readdirSync(dir).sort()) {
     if (!/\.(vibex?|ts|mts|cts)$/.test(name) || name.endsWith(".d.ts")) continue
     const lines = fs.readFileSync(path.join(dir, name), "utf8").split("\n")
     const codes = /^\/\/ expect:\s*(.*)$/.exec(lines[0])
-    if (codes) headers.codes = [...(headers.codes ?? []), ...codes[1].split(/\s+/).filter(Boolean)]
+    if (codes) {
+      const listed = codes[1].split(/\s+/).filter(Boolean)
+      // An empty list is truthy: the case would pass on any clean compile and return before anything ran.
+      if (listed.length === 0) {
+        throw new CaseDefect(`${name} has an empty \`// expect:\` line: name the error codes, or write \`// expect-clean\` for a case that must compile without errors`)
+      }
+      headers.codes = [...(headers.codes ?? []), ...listed]
+    }
+    if (/^\/\/ expect-clean\s*$/.test(lines[0])) headers.clean = true
     const result = lines.find((line) => line.startsWith("// expect-result:"))
     if (result) {
       headers.result = JSON.stringify(JSON.parse(result.slice("// expect-result:".length)))
       headers.entry = name.replace(/\.(vibex?|ts|mts|cts)$/, ".js")
+      headers.resultFile = name
     }
   }
+  if (headers.clean && headers.codes) {
+    throw new CaseDefect("the case has both an `// expect-clean` and an `// expect:` first line: it cannot compile cleanly and report errors")
+  }
   return headers
+}
+
+// A CaseDefect is a case the harness rejects as written, before it compiles. A pending file cannot hide it.
+class CaseDefect extends Error {}
+
+// uncheckedExpectations lists what a failing case holds that the harness never reads: check returns once the
+// error codes match, so a run result, a runner, an emitted file or a twin beside `// expect:` asserts nothing.
+function uncheckedExpectations(dir, headers) {
+  const unchecked = []
+  if (headers.resultFile) unchecked.push(`${headers.resultFile} (// expect-result)`)
+  if (fs.existsSync(path.join(dir, "run.mjs"))) unchecked.push("run.mjs")
+  const expectedDir = path.join(dir, "expected")
+  if (fs.existsSync(expectedDir)) {
+    for (const file of fs.readdirSync(expectedDir, { recursive: true }).map(String).sort()) {
+      if (file === "diagnostics.txt" || file === "messages.txt" || fs.statSync(path.join(expectedDir, file)).isDirectory()) continue
+      unchecked.push("expected/" + file)
+    }
+  }
+  if (fs.existsSync(path.join(dir, "typescript", "tsconfig.json"))) unchecked.push("typescript/")
+  return unchecked
 }
 
 // resultMarker starts the line on which out/run.mjs prints main()'s result.
@@ -472,8 +562,12 @@ function readPending(dir) {
   if (!fs.existsSync(file)) return undefined
   const text = fs.readFileSync(file, "utf8").trim()
   if (!text) throw new Error("pending file must name its owner as the first word")
-  const space = text.indexOf(" ")
-  return space < 0 ? { owner: text, reason: "" } : { owner: text.slice(0, space), reason: text.slice(space + 1) }
+  const [, owner, reason] = /^(\S+)\s*([^]*)$/.exec(text)
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(owner)) {
+    throw new Error("pending file must name its owner as the first word: a lane name of lower-case letters, digits and `-`, not " + JSON.stringify(owner))
+  }
+  if (!reason) throw new Error("pending file must say what is missing after its owner " + owner)
+  return { owner, reason }
 }
 
 const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x))
@@ -593,6 +687,13 @@ function removeNativeDeclarations(dir) {
 async function check(name, commands) {
   const dir = caseDirectory(name)
   const headers = readHeaders(dir)
+  if (headers.codes) {
+    const unchecked = uncheckedExpectations(dir, headers)
+    if (unchecked.length > 0) {
+      throw new CaseDefect("failing case has an unchecked expectation: " + unchecked.join(", ") +
+        "; a case with an `// expect:` line is never run or compared, so delete it or make the case a passing one")
+    }
+  }
   fs.rmSync(path.join(dir, "out"), { recursive: true, force: true })
   linkNodeModules(dir)
 
@@ -603,7 +704,8 @@ async function check(name, commands) {
   // Exit 1/2 can accompany expected diagnostics; they cannot establish a
   // successful compilation when the compiler reported no errors.
   if (compiled.code !== 0 && (errors.length === 0 || (compiled.code !== 1 && compiled.code !== 2))) {
-    return { ok: false, detail: `tsc exited with ${compiled.code}`, log: output }
+    // A compiler that was killed, timed out or crashed is broken, not missing a feature: pending cannot hide it.
+    return { ok: false, broken: compiled.code !== 1 && compiled.code !== 2, detail: `tsc exited with ${compiled.code}`, log: output }
   }
 
   const diagnosticsFile = path.join(dir, "expected", "diagnostics.txt")
@@ -658,6 +760,10 @@ async function check(name, commands) {
     if (!fs.existsSync(path.join(dir, "run.mjs")) && !headers.entry && !fs.existsSync(path.join(expectedDir, "stdout.txt"))) {
       return { ok: true, detail: "declaration API identical to typescript/", log: output }
     }
+  }
+
+  if (headers.clean && !fs.existsSync(path.join(dir, "run.mjs")) && !headers.entry && !fs.existsSync(path.join(expectedDir, "stdout.txt"))) {
+    return { ok: true, detail: "compiled without errors", log: output }
   }
 
   let entry = path.join(dir, "out", "main.js")
@@ -742,7 +848,7 @@ async function main() {
         if (preparationErrors.has(name)) throw preparationErrors.get(name)
         result = await check(name, commands)
       } catch (e) {
-        result = { ok: false, detail: `harness error: ${e.message}`, log: e.stack }
+        result = { ok: false, broken: true, detail: e instanceof CaseDefect ? e.message : `harness error: ${e.message}`, log: e.stack }
       } finally {
         removeNativeDeclarations(isolated ? path.join(isolatedCasesDir, name) : path.join(casesDir, name))
       }
@@ -761,7 +867,7 @@ async function main() {
           fs.rmSync(path.join(isolatedCasesDir, name, entry), { recursive: true, force: true })
         }
       }
-      const status = pending ? (result.ok ? "XPASS" : "pending") : result.ok ? "ok" : "FAIL"
+      const status = result.ok ? (pending ? "XPASS" : "ok") : pending && !result.broken ? "pending" : "FAIL"
       const deadline = result.ok ? nearDeadline(commands.records) : null
       results[index] = { name, pending, status, ms: performance.now() - started, commands: reportPath ? commands.records : undefined, deadline, ...result }
       flush()
@@ -797,13 +903,17 @@ async function main() {
   console.log(
     `\n${results.length} cases: ${count("ok")} ok, ${count("FAIL")} FAIL, ${count("pending")} pending, ${count("XPASS")} XPASS`,
   )
-  if (staleCompiler) console.log(staleCompiler)
+  for (const line of stale) console.log("warning: " + line)
   const near = results.filter((r) => r.deadline)
   if (near.length > 0) console.log(`${near.length} passed past half a deadline: ${near.map((r) => r.name).join(", ")}`)
   const xpass = results.filter((r) => r.status === "XPASS")
   if (xpass.length > 0) console.log(`XPASS: delete the pending file of ${xpass.map((r) => r.name).join(", ")}`)
-  // Piped console output may still be buffered; let it drain before exiting.
-  process.exitCode = count("FAIL") > 0 ? 1 : 0
+  for (const { name, holds } of remnants) {
+    console.log(`not a case: ${name} has no tsconfig.json, so nothing runs it, and holds ${holds.join(", ")}; delete it or give it a tsconfig.json`)
+  }
+  // Piped console output may still be buffered; let it drain before exiting. An XPASS fails the run: a green
+  // run that someone must read to notice a fixed case leaves the pending file in place.
+  process.exitCode = count("FAIL") > 0 || xpass.length > 0 || remnants.length > 0 ? 1 : 0
 }
 
 function report(r) {

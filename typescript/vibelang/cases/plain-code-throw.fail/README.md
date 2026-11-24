@@ -1,7 +1,7 @@
 # Plain code never throws
 
 A constructor, an accessor, a class static block and a module's top level are
-plain JavaScript (VIP-1, VIP-26). Synchronous VibeLang code never throws (Will,
+plain JavaScript (VIP-1, VIP-26). Synchronous VibeLang code never throws (VIP-4,
 2026-10-31; chapter 3), so each `throw` here is `EK0401`: an error class's
 constructor and an ordinary one, class and object-literal accessors, a static
 block, a rethrow from a constructor's catch, a class declared inside a function,

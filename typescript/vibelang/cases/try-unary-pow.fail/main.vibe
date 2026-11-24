@@ -1,5 +1,5 @@
 // expect: EK0510 EK0510
-// Decided detail 212 (loop round 1, ASTRA-10): an unparenthesized try, fork or
+// Decided detail 212: an unparenthesized try, fork or
 // join expression on the left of ** is EK0510, as ECMAScript rejects
 // `await a ** b`. The parenthesized forms below compile.
 declare const a: Effect.Effect<number>

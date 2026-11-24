@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import {capturedIntersection,intersectionFx,safe,fx,source,admit,fxOwner,constrained,type API,type Handler,type Admitting} from "./helpers.js"
 import * as Effect from "effect/Effect"
 function local(){return 1}

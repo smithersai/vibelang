@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import { Struct as Foreign } from "./helpers.js"
 import { Struct } from "effect"
 type Transform<O> = Partial<{ [K in keyof O]: (a: O[K]) => O[K] }>

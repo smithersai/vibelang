@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import { Safe, Risky, tagged, anyThrows, Overloaded, fx, genericFx, take, allow, allowAny,
  takeSafe, takeOptional, takeFx, takeGenericFx, type Pure } from "./helpers.js"
 class Local { readonly value:number; constructor(value:number){this.value=value} }

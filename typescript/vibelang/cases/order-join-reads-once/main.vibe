@@ -82,8 +82,8 @@ function joinParts(value: object, fibers: Array<Fiber.Fiber<unknown, unknown>>):
 }
 import { $join as $joinCollection } from $LegacyJoin
 export effect function main() {
-  const a = try detach(effect { return "A" })
-  const b = try detach(effect { return "B" })
+  const a = fork.detached effect { return "A" }
+  const b = fork.detached effect { return "B" }
   let reads = 0
   const tasks = {
     get task() {

@@ -1,5 +1,7 @@
 # VibeLang: prior art for EffectScript
 
+> Historical research from before the October 2026 VIP rewrite. This page uses ‘EffectScript’ for the project now called VibeLang and may use ‘VibeLang’ for the earlier design. See the [current specification](../design/src/000-intro.md).
+
 Researched 2026-10-15. Purpose: decide which VibeLang compiler architecture and
 boundary-analysis ideas EffectScript can borrow without inheriting VibeLang's
 execution model.

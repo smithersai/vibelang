@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // Appendix B: EK4817 — spec-rule: docs/design/src/900-appendices.md#5fea487a123560c6
 // instanceof against a Schema class is off by default and a warning when
 // enabled.

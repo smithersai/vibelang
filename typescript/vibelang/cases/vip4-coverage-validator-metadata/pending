@@ -1,1 +1,1 @@
-cov-try-throw VIP coverage counterexample: run.mjs printed printed no result (exit 1) (4.3 s); rule and witness recorded in review-spec/conformance/from-coverage.md.
+cov-try-throw no compiler change makes this pass: run.mjs reads docs/design/inventory/throws.json, where Number.toFixed and String.repeat are RangeError as the case wants and the global URL entry is `unknown`, not TypeError ("URL: unknown"). Correct the inventory entry or the case's claim. Rule: docs/design/vips/0004-throw.md#f43abcba01c5b779

@@ -1,0 +1,4 @@
+export interface I { value: { nested: number }; readonly fixed: number }
+export type T = { value: number; [key: string]: number }
+export class C { value: { nested: number } = { nested: 1 } }
+export const object = { value: 1 }

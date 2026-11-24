@@ -1,5 +1,5 @@
 // expect: TS2451 TS2451 TS2451 TS2451 TS2300 TS2300
-// Chapter 004, decided detail 245 (loop round 3, OPUS-1): two top-level patterns
+// Chapter 004, decided detail 245: two top-level patterns
 // that bind one name in one home are a redeclaration, as two let declarations
 // are; so is a collision with another declaration or a parameter of that home.
 export function pick(a: unknown, b: unknown) {

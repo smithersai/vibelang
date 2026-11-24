@@ -1,6 +1,6 @@
 import { Effect, Stream, Layer } from 'effect'
 // rule-evidence: docs/design/src/001-functions.md#declaration-output docs/design/vips/0027-declaration-output.md#decision
-// VIP-27 / Will 2026-11-04: every local non-Effect export signature has a generated contract.
+// VIP-27, 2026-11-04: every local non-Effect export signature has a generated contract.
 /** Adds one. @deprecated kept for compatibility */
 export function add(n: number) { return n + 1 }
 export default function identity(n: number) { return n }

@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // @vibelang-diagnostics *:off EK4816:warning
 import { Effect, Layer } from "effect"
 export function main(): Effect.Effect<number> {

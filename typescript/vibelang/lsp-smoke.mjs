@@ -292,7 +292,7 @@ try {
     }
   })
 
-  await check("diagnostics retained without VibeLang automatic fixes: src/old-catch.vibe", async () => {
+  await check("diagnostics retained without VibeLang automatic fixes: src/old-catch.vibe (EK2113)", async () => {
     const items = (await diagnostics("src/old-catch.vibe")).filter((d) => d.code === 2113)
     assert(items.length === 1, `expected one EK2113 warning, got ${JSON.stringify(items.map((d) => d.message))}`)
     const [item] = items

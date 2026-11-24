@@ -63,7 +63,7 @@ effect function parsePrice(input: string) {
 }
 // BigDecimal.BigDecimal!InvalidPrice
 
-const fixedRate = BigDecimal.fromNumberUnsafe(1.25)
+const fixedRate = BigDecimal.make(125n, 2)
 ```
 
 ```output
@@ -71,7 +71,7 @@ const fixedRate = BigDecimal.fromNumberUnsafe(1.25)
 InvalidPrice invalid
 ```
 
-Use `fromStringUnsafe` and `fromNumberUnsafe` only for known-valid literals or constants. For external input, call the safe constructor and raise a domain error on `None`.
+Use `BigDecimal.make` for an exact constant when you know its coefficient and scale. For text input, parse with `fromString` and raise a domain error on `None`.
 
 ## Performing arithmetic
 

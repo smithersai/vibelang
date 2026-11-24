@@ -1,6 +1,6 @@
 // expect-result: {"value":"detached","held":"held","events":["acquired","released"]}
 // An Effect whose success is a function: running it gives the function, which
-// is its result, not a thunk to call. foldkit-15: port.vibe acquires a channel
+// is its result, not a thunk to call. the foldkit migration: port.vibe acquires a channel
 // subscription whose resource is the function that detaches it. takes returns
 // the Effect it is given (no by-name passing, VIP-1), so held is run with try.
 const events: Array<string> = []

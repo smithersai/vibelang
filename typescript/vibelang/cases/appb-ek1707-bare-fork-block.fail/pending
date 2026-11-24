@@ -1,1 +1,2 @@
-relic-try-forms EK1707 is not reported yet: the compiler accepts a bare fork { … } block. Enforcement waits for the preserving codemod and zero remaining migration uses (chapter 7, Legacy fork, try-statement and wire migration).
+relic-try-forms EK1707 is not reported yet: the compiler accepts a bare fork { … } block. Enforcement waits for zero remaining migration uses (chapter 7, Legacy fork, try-statement and wire migration).
+Change in the same commit: w02-fork-block-ek1707.fail (the same rejection, pending), and tooling-legacyfork-migration, the one case that still holds the bare block as migration input. No other case writes the form: the rest write fork effect { … }.

@@ -2,10 +2,13 @@
 # Builds tsc and vibelang-runtime, then compiles and runs every case under
 # vibelang/cases with vibelang/harness.mjs, which describes the cases.
 #
-# Usage: vibelang/smoke.sh [--status] [--verbose] [--jobs N] [case...]
+# Usage: vibelang/smoke.sh [--status] [--verbose] [--jobs N] [--late-start] [--isolated] [--scratch dir]
+#                          [--report new.json] [--allow-stale] [case...]
 #
 #   --status    one line per case: name, owner, and ok, FAIL, pending, or XPASS
 #   case        a case name, or a substring that selects every case containing it
+#
+# The other options are the harness's; its header describes them.
 #
 # Prerequisites (from the repository root):
 #   (cd experiments && bun install --frozen-lockfile)
@@ -18,7 +21,10 @@
 #   VIBELANG_RUNTIME   the vibelang-runtime package directory
 #                          (default: ../packages/runtime, built here with tsc)
 #
-# The suite fails when a case that is not pending fails.
+# The suite fails when a case that is not pending fails, when a pending case
+# passes (XPASS: delete its pending file), when a pending case's compile
+# crashes or the harness rejects the case as written, and when a directory
+# under cases/ holds expectations and no tsconfig.json.
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)

@@ -1,4 +1,4 @@
-// foldkit-91: devTools/store declared import { HashMap } from "effect" and one
+// The foldkit migration: devTools/store declared import { HashMap } from "effect" and one
 // more import per name; its TypeScript declared them in its one written import.
 import {
   Array as EffectArray,

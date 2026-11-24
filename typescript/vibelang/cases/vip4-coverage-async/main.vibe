@@ -3,7 +3,7 @@
 // rule-evidence: docs/design/vips/0004-throw.md#eaee5ce5e6b94192
 // VIP-4: throw in an async VibeLang function rejects its Promise, as
 // rule-evidence: docs/design/vips/0004-throw.md#aadbd77823202189
-// VIP-4: An async VibeLang function carries no thrown type (Will: thrown-type
+// VIP-4: An async VibeLang function carries no thrown type (thrown-type
 // rule-evidence: docs/design/vips/0004-throw.md#d78882fe9f839e24
 // VIP-4: vibe async function load(id: string) { if (!id) throw new
 // rule-evidence: docs/design/vips/0005-try-runs-effects.md#75ee07ed265e1679

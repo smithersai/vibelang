@@ -141,7 +141,7 @@ Codes are assigned when this VIP is built.
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - A signal carries a typed value into a run. [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
 - Both ends import one value: [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).

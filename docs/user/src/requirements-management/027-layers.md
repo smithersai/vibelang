@@ -150,7 +150,7 @@ effect function withBuiltContext() {
 // Output: reports/Inventory
 ```
 
-`provide AppLive { ... }` is a statement inside effect code (`EK1201` outside):
+Use `provide AppLive { ... }` inside effect code:
 
 - It builds `AppLive` once, shares its implementations across the block, and releases its resources when the block finishes.
 - `return`, `break`, and `continue` inside `provide` target the enclosing function or loop normally.

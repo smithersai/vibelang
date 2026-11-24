@@ -1,5 +1,5 @@
 // Retired service class and layer declarations report EK0909 and EK2121.
-// Their quick fixes write service without class and the Layer.effect block.
+// The server offers no quick fix: write service without class and Layer.effect by hand.
 service class Greeting {
   text(): string!!
 }

@@ -1,6 +1,6 @@
 // expect-result: {"load":[1,"none"],"loadEffect":[2,"none"],"block":[3,"none"],"runs":6}
 // VIP-1 flip acceptance case 11 (t3code queryPersistence.vibe:32; spec
-// ruling 2026-11-01 00:50Z): e catch h runs e (VIP-5), so in an effect block
+// ruling 2026-11-01): e catch h runs e (VIP-5), so in an effect block
 // return Effect.asSome(x) catch () => Option.none() returns an Option, like
 // Effect.asSome(x).pipe(Effect.catch(() => Effect.succeedNone())).
 let runs = 0

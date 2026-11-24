@@ -13,7 +13,7 @@ export effect function main() {
   const is = Schema.is(Keyed)
   const good = { byDate: new Map([[new Date(0), 1]]), byPair: new Map([[["a", 1] as const, "x"]]), bySet: new Map([[new Set(["k"]), true]]) }
   const decoded = try Schema.decodeUnknownEffect(Keyed)({ byDate: new Map([[new Date(0), 1], [new Date(1), 2]]), byPair: new Map(), bySet: new Map() })
-  const encoded = Schema.encodeSync(Keyed)(good)
+  const encoded = try Schema.encodeEffect(Keyed)(good)
   return [
     is(good), is({ ...good, byDate: new Map([["1970", 1]]) }), decoded.byDate instanceof Map, decoded.byDate.size,
     is({ ...good, byPair: new Map([[["a", 1], "x"]]) }), is({ ...good, bySet: new Map([[["k"], true]]) }),

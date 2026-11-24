@@ -1,1 +1,3 @@
-explicit and native member declarations are stable
+member 4 value: explicit readonly, native writable
+member 5 nested: explicit readonly, native writable
+explicit and native member declarations differ in readonly only at the members above

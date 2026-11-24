@@ -108,7 +108,7 @@ Which host supplies them is VIP-54's question.
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - `Experimental.Durable`, in scope with no import, as [VIP-33](0033-platform-stdlib.md) rules. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
 - Its code is `vibelang-runtime/experimental/Durable`. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).

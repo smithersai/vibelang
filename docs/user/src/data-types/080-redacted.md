@@ -32,17 +32,18 @@ effect function reportConfiguration() {
 ## Revealing values deliberately
 
 ```vibe
-// run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try authenticate(Redacted.make("example-token")), try authenticate(Redacted.make("wrong-token"))) }
+// run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try authenticate("example-token"), try authenticate("wrong-token")) }
 service CredentialsClient {
   authenticate(token: string): boolean!!
 }
 
-effect function authenticate(token: Redacted.Redacted<string>) {
+effect function authenticate(secret: string) {
   const client = try CredentialsClient
-  const raw = try Effect.try(() => Redacted.value(token))
+  const token = Redacted.make(secret)
+  const raw = Redacted.value(token)
   return try client.authenticate(raw)
 }
-// boolean!Cause.UnknownError!CredentialsClient
+// boolean!!CredentialsClient
 ```
 
 ```output
@@ -56,8 +57,12 @@ Call `Redacted.value` only at the point where the raw secret is required. Once e
 ```vibe
 // run: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try useOnce("example-token")) }; const wiped = Redacted.make("example-token"); Redacted.wipeUnsafe(wiped); const failed = try exit(Effect.try(() => Redacted.value(wiped))); try Console.log(Exit.isFailure(failed), String(wiped))
 effect function useOnce(raw: string) {
+  const client = try CredentialsClient
   const token = Redacted.make(raw)
-  return try ensuring(authenticate(token), sync(() => Redacted.wipeUnsafe(token)))
+  return try ensuring(
+    effect { return try client.authenticate(Redacted.value(token)) },
+    sync(() => Redacted.wipeUnsafe(token))
+  )
 }
 ```
 

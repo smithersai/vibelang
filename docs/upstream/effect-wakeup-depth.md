@@ -2,11 +2,11 @@
 
 **Status:** drafted, not filed. **Target:** Effect runtime.
 
-**Title:** Synchronous fiber wake-ups have no depth guard: a chain of ~1,000 `Deferred` wake-ups overflows and silently strands the rest (4.0.5)
+**Title:** Synchronous fiber wake-ups have no depth guard: a chain of ~1,000 `Deferred` wake-ups overflows and silently strands the rest (4.1.1)
 
-**Version:** effect 4.0.5. Node 26.10.0 and Bun 1.4.1, macOS arm64.
+**Version:** effect 4.1.1. Native stack measurements below are from the original Effect 4.0.5 run on macOS arm64, with Node 26.10.0 and Bun 1.4.1.
 
-**What happens.** When fiber A completes a `Deferred` that fiber B awaits, B runs synchronously on A's JavaScript stack (`Effect.callback` resume calls `fiber.evaluate` inline, `internal/effect.ts:1155-1164`). If B then completes a `Deferred` that C awaits, C runs nested inside B, and so on. `evaluate`/`runLoop` keep no depth counter (`internal/effect.ts:583-679`; `currentOpCount` resets on each entry). At about 815 to 1,400 hops on Node, or 3,000 to 4,700 on Bun, one fiber dies with `RangeError: Maximum call stack size exceeded`. Every later fiber in the chain waits forever, and nothing reports the problem unless someone observes the dead fiber. One run on Bun at 5,000 hops spun at 98% CPU instead.
+**What happens.** When fiber A completes a `Deferred` that fiber B awaits, B runs synchronously on A's JavaScript stack (`Effect.callback` resume calls `fiber.evaluate` inline, `internal/effect.ts`). If B then completes a `Deferred` that C awaits, C runs nested inside B, and so on. `evaluate`/`runLoop` keep no depth counter (`internal/effect.ts`; `currentOpCount` resets on each entry). At about 815 to 1,400 hops on Node, or 3,000 to 4,700 on Bun, one fiber dies with `RangeError: Maximum call stack size exceeded`. Every later fiber in the chain waits forever, and nothing reports the problem unless someone observes the dead fiber. One run on Bun at 5,000 hops spun at 98% CPU instead.
 
 The same nesting applies to `PubSub.publish`, fiber exit observed through `Fiber.join`/`Fiber.await`, rendezvous queues, `Queue.shutdown`, and late `Effect.callback` resumes. Buffered `Queue.offer`, `Latch.open`, and `Semaphore.release` schedule through the dispatcher. Capacity-zero queue offers can resume takers inline, so the queue distinction depends on capacity and operation.
 

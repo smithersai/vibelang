@@ -227,7 +227,7 @@ A durable boundary type with no schema form stays `EK2109`.
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - The host also provides `ChildProcessSpawner` and a `LanguageModel` ([std-model](0062-std-model.md)). [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
 - A `task` declaration has one `call` method and optional `static readonly` members. [Design](#task) · [Review](reviews/2026-11-09-built-in-set.md).

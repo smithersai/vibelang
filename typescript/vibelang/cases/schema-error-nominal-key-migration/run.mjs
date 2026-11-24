@@ -33,7 +33,8 @@ for (const [variant, prefix, suffix, raw] of [
     const source = path.join(work, "main.vibe")
     fs.writeFileSync(source, [
       'const Brand = Schema.String.pipe(Schema.brand("Key"))',
-      'const branded = Schema.decodeUnknownSync(Brand)(' + JSON.stringify(raw) + ')',
+      // A cast, not a decode: the bare decoder call may throw, which is EK0401 at the top level (Appendix E).
+      'const branded = ' + JSON.stringify(raw) + ' as typeof Brand.Type',
       'const field: ' + tick + prefix + dollar + '{typeof branded}' + suffix + tick +
         ' = ' + tick + prefix + dollar + '{branded}' + suffix + tick,
       'export schema error E { id: string; get [field](): number { return 1 } }',

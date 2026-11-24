@@ -1,5 +1,5 @@
 // The stock oracle reads E from the Effects an Effect.gen body yields, a
-// subtype-reduced union: alchemy-40, where AWS `tagResource` and
+// subtype-reduced union: the alchemy migration, where AWS `tagResource` and
 // `untagResource` fail with two aliases of one union and the declaration keeps
 // the first alias. Effects with another success stay, and their errors join.
 import { base, derived, list, read, tag, untag } from "./lib.js"

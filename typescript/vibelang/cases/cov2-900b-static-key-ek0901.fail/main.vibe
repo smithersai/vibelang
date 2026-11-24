@@ -1,0 +1,4 @@
+// expect: EK0901
+// Appendix B: a static key without readonly is EK0901. The retired EK3008 once named this rule and is never
+// reported; spec-rule: docs/design/src/900-appendices.md#2b17e9765ac34cd6
+export service Users { static key = "users"; value: number }

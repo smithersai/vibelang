@@ -1,4 +1,4 @@
-// expect:
+// The Effect TypeScript twin of ../main.vibe: both must declare the same API.
 import type { Effect } from "effect"
 export type RequiredObjects = Effect.Effect<number, { reason: string }, { service: number }>;
 type Same<X, Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false

@@ -1,6 +1,6 @@
 // expect: EK0401
 // A generator with a JavaScript iterator annotation is plain synchronous code,
-// so a throw in it is EK0401, caught by its own catch or not (Will,
+// so a throw in it is EK0401, caught by its own catch or not (VIP-4,
 // 2026-10-31). An async generator's throw rejects, as in TypeScript (detail
 // 251).
 error Invalid { value: string }

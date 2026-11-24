@@ -4,7 +4,7 @@
 // docs/design/src/002-running.md#f17708f5ff4ad986
 // rule-evidence: docs/design/vips/0005-try-runs-effects.md#32f7b39dcdd3cd53
 // VIP-5: Mixing it with ??, || or && without parentheses is
-// Chapter 002 and Appendix A, decided detail 247 (loop round 3, OPUS-7): catch
+// Chapter 002 and Appendix A, decided detail 247: catch
 // can't mix with ??, || or && without parentheses, and a member access or call
 // can't attach to a function-expression handler.
 declare const a: Effect.Effect<number, string>

@@ -68,7 +68,7 @@ Two additions, each named after the Effect module it extends, as [VIP-33](0033-p
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - The same program compiles under `vibelang` 0.0.13 today with Effect's exporter, unscrubbed and unbounded: [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
 - Two additions, each named after the Effect module it extends, as [VIP-33](0033-platform-stdlib.md) rules. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).

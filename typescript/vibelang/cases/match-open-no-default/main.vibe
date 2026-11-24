@@ -74,7 +74,7 @@ export function vibeClass(p: Point): string {
 
 type Input = { orientation: "Horizontal" | "Vertical"; alignment: "Center" | "Edge" }
 
-// foldkit-71: slider's style, four arms over an untagged object of two
+// The foldkit migration: slider's style, four arms over an untagged object of two
 // finite fields. Its literal fields make it finite, and the four arms cover
 // it; a value outside its type still throws the TypeError.
 export function slider(input: Input): string {
