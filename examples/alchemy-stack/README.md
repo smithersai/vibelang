@@ -27,4 +27,4 @@ one.
 The example never runs `alchemy plan` or `alchemy deploy`: both need a
 Cloudflare profile, and `plan` reads the account even for an empty state.
 
-[pairs/](pairs/) holds real before-and-after code from the Alchemy migration.
+[Historical migration excerpts](pairs/) document the earlier compiler.

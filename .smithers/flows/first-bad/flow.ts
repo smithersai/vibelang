@@ -8,7 +8,7 @@ import { finish, parseTests, run as steps, start } from "./lib/steps.mjs";
 // directory, so a stopped execution resumes where it stopped. No step calls a
 // model. README.md describes the run.
 
-const implementationVersion = "first-bad/v1";
+const implementationVersion = "first-bad/v2";
 
 const Outcome = Schema.Struct({ step: Schema.String, ok: Schema.Boolean, summary: Schema.String });
 

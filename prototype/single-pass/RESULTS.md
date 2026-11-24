@@ -1,5 +1,7 @@
 # Single-pass lowering: results
 
+This report records the historical experiment. The commands describe its original environment.
+
 2026-10-16. TypeScript 5.9.3 patched in `typescript/`, effect 4.0.5, the prototype `esc` at `prototype/esc/` (read, not edited).
 
 **Summary.** The hypothesis survives on the corpus. With each lambda classified per overload candidate inside `chooseOverload`, one checker pass reaches the prototype's final lowering for all 46 files: 817 call sites, 257 lambdas and methods, 0 disagreements, and byte-identical generated TypeScript.

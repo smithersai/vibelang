@@ -2,9 +2,9 @@
 // the repository the run names, and writes <run>/<step>.json; a step whose
 // result exists returns it, so a stopped run resumes where it stopped.
 import { spawnSync } from "node:child_process"
-import { existsSync, lstatSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs"
+import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 import path from "node:path"
-import { guard, literals as rewriteLiterals } from "./literals.mjs"
+import { guard, historical, literals as rewriteLiterals } from "./literals.mjs"
 
 export const STEPS = ["pin", "literals", "install", "build", "regenerate", "probe", "report"]
 
@@ -38,7 +38,8 @@ export const paths = (run) => Object.fromEntries([["options", path.join(run, "op
 const read = (file) => JSON.parse(readFileSync(file, "utf8"))
 const save = (file, value) => {
   mkdirSync(path.dirname(file), { recursive: true })
-  writeFileSync(file, JSON.stringify(value, null, 2) + "\n")
+  writeFileSync(file + ".tmp", JSON.stringify(value, null, 2) + "\n")
+  renameSync(file + ".tmp", file)
   return value
 }
 
@@ -59,12 +60,13 @@ function once(run, step, work) {
 
 // pin moves every manifest and version literal to the target version, and
 // records the version it moved from.
-export const pin = (run) => once(run, "pin", ({ repo, version }) => {
-  const from = JSON.parse(readFileSync(path.join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies?.effect
-  const r = sh(`node scripts/effect-pin.mjs --write ${version}`, repo)
-  if (r.code !== 0) throw new Error(`pin: ${tail(r.output, 10)}`)
-  const files = Number(/(\d+) files now pin/.exec(r.output)?.[1] ?? 0)
-  const installs = [...r.output.matchAll(/reinstall (\S+)/g)].map((m) => m[1])
+export const pin = (run) => once(run, "pin", ({ repo, version, from }) => {
+  if (!from) throw new Error("pin: run options lack the original Effect version")
+  const proc = spawnSync(process.execPath, ["scripts/effect-pin.mjs", "--write", version], { cwd: repo, encoding: "utf8" })
+  const output = (proc.stdout ?? "") + (proc.stderr ?? "")
+  if (proc.status !== 0) throw new Error(`pin: ${tail(output || proc.error?.message || "", 10)}`)
+  const files = Number(/(\d+) files now pin/.exec(output)?.[1] ?? 0)
+  const installs = [...output.matchAll(/reinstall (\S+)/g)].map((m) => m[1])
   return { ok: true, version, from, files, installs, summary: `${files} files now pin effect ${version} (from ${from})` }
 })
 
@@ -164,6 +166,8 @@ export const report = (run) => once(run, "report", ({ version }) => {
     lines.push("", `## Pin guards to move by hand`, "", `The literals step moved ${moved.changed.length} files. These test the versions around the pin: the previous patch is now ${moved.from}, the pin ${version}.`, "")
     for (const k of byHand) lines.push(`- \`${k.file}\` (\`${k.glob}\`)`)
   }
+  const history = (moved.kept ?? []).filter((k) => historical(k.glob))
+  if (history.length) lines.push("", "## Documentation to review by hand", "", ...history.map(({ file }) => `- \`${file}\``))
   lines.push("", "docs/maintainers/effect-upgrade.md says what each probe's tables are.")
   writeFileSync(path.join(run, "report.md"), lines.join("\n") + "\n")
   const red = results.filter((r) => r.code)
@@ -173,12 +177,24 @@ export const report = (run) => once(run, "report", ({ version }) => {
 export const run = { pin, literals, install, build, regenerate, probe, report }
 
 // start records the run's options; the steps read them.
+function originalPin(repo) {
+  return JSON.parse(readFileSync(path.join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies?.effect
+}
+
 export function start(runDir, options) {
   const file = paths(runDir).options
   if (existsSync(file)) {
     const old = read(file)
     if (old.repo !== options.repo || old.version !== options.version) throw new Error(`${runDir} is a run of effect ${old.version} on ${old.repo}`)
+    if (options.from && old.from && options.from !== old.from) throw new Error(`${runDir} started from effect ${old.from}`)
+    if (!old.from && !existsSync(paths(runDir).pin)) {
+      const current = options.from ?? originalPin(options.repo)
+      if (!options.from && current === options.version) {
+        throw new Error("run options predate the Effect pin checkpoint; pass the original version as from")
+      }
+      return save(file, { ...old, from: current })
+    }
     return old
   }
-  return save(file, options)
+  return save(file, { ...options, from: options.from ?? originalPin(options.repo) })
 }

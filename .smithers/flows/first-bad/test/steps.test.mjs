@@ -1,9 +1,9 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { classify, explain, GO_DEPS, GO_TARGETS, goVerdict, narrowed, next, parseHistory, parseResults, parseTests, probe, record, reproduceRuns, start, verdict } from "../lib/steps.mjs"
+import { bisect, checkout, classify, explain, finish, paths, prepare, GO_DEPS, GO_TARGETS, goVerdict, narrowed, next, parseHistory, parseResults, parseTests, probe, record, reproduceRuns, start, verdict } from "../lib/steps.mjs"
 
 const run = (targets) => ({ targets: Object.fromEntries(Object.entries(targets).map(([t, v]) => [t, { verdict: v, tests: [], cause: "", excerpt: "" }])) })
 
@@ -189,4 +189,68 @@ test("parseTests reads <target>=<Test>,<Test> pairs; a run directory keeps its t
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+test("bisect ignores unrelated failures and confirms the final pair", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "first-bad-match-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const target = "//:docs-tools"
+  const commits = Array.from({ length: 10 }, (_, i) => ({ commit: `c${i}` }))
+  const failure = (name) => ({ verdict: "fail", tests: ["TestSuite", `TestSuite/${name}`] })
+  const good = { verdict: "pass", tests: [] }
+  const setup = {
+    options: {},
+    prepare: { good: "good", bad: "c9", commits },
+    reproduce: { broken: [target], runs: [{ targets: { [target]: failure("B") } }] }
+  }
+  for (const [step, data] of Object.entries(setup)) writeFileSync(paths(dir)[step], JSON.stringify(data))
+  const seen = []
+  const probeAt = (_run, commit) => {
+    seen.push(commit)
+    const i = Number(commit.slice(1))
+    const result = i >= 8 ? failure("B") : i >= 3 && i <= 5 ? failure("A") : good
+    return { commit, targets: { [target]: result } }
+  }
+  assert.deepEqual(bisect(dir, probeAt).ranges[target], [7, 8])
+  assert.deepEqual(seen.slice(-2), ["c7", "c8"])
+  rmSync(paths(dir).bisect)
+  seen.length = 0
+  const retried = bisect(dir, (...args) => {
+    const result = probeAt(...args)
+    if (result.commit === "c8" && seen.filter((x) => x === "c8").length > 1) result.targets[target] = good
+    return result
+  })
+  assert.deepEqual(retried.unconfirmed, [target])
+  assert.deepEqual(retried.ranges, {})
+})
+
+test("checkout recreates a workspace after cleanup with prepare cached", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "first-bad-resume-"))
+  const oldPath = process.env.PATH
+  t.after(() => {
+    process.env.PATH = oldPath
+    rmSync(dir, { recursive: true, force: true })
+  })
+  const repo = join(dir, "repo")
+  mkdirSync(repo)
+  writeFileSync(join(dir, "jj"), `#!/bin/sh
+set -eu
+case "$1 $2" in
+  "workspace add") mkdir -p "$3/.jj" ;;
+  "workspace forget") ;;
+  "--ignore-working-copy new"|"workspace update-stale") test -d .jj ;;
+  *) exit 2 ;;
+esac
+`, { mode: 0o755 })
+  process.env.PATH = `${dir}:${oldPath}`
+  const runDir = join(dir, "run")
+  start(runDir, { repo, good: "good", bad: "bad", targets: ["//a"] })
+  const prepared = { bad: "bad", workspace: join(runDir, "ws") }
+  writeFileSync(paths(runDir).prepare, JSON.stringify(prepared))
+  checkout(runDir, prepared.bad)
+  finish(runDir)
+  assert.equal(existsSync(prepared.workspace), false)
+  assert.deepEqual(prepare(runDir), prepared)
+  checkout(runDir, prepared.bad)
+  assert.ok(existsSync(join(prepared.workspace, ".jj")))
 })

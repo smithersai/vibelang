@@ -122,12 +122,13 @@ function bumpFresh(input: Input): Promise<Output> {
     const read = (step: string) => existsSync(join(run, `${step}.json`)) ? JSON.parse(readFileSync(join(run, `${step}.json`), "utf8")) : undefined;
     const fetch = read("fetch"), merge = read("merge");
     const merged = [...(merge?.merged ?? [])];
+    const report = read("report");
     const output: Output = {
       pinned: pinned(workspace) === input.to,
       conflicts: (merge?.conflicts ?? []).map((c: { file: string }) => c.file),
-      failing: read("report")?.failing ?? [],
+      failing: report?.failing ?? [],
       preserved: { files: merged.length, lost: fetch && merge ? lost(run, fetch.from, fetch.to, join(workspace, "typescript"), merged, before) : ["no merge"] },
-      ...(Exit.isFailure(exit) ? { error: String(exit.cause) } : {})
+      ...(Exit.isFailure(exit) && report?.ok !== false ? { error: String(exit.cause) } : {})
     };
     cleanup();
     return output;

@@ -76,9 +76,13 @@ export function history(repo, good, bad) {
 const workspace = (run) => path.join(run, "ws")
 export const workspaceName = (run) => `first-bad-${createHash("sha256").update(path.resolve(run)).digest("hex").slice(0, 10)}`
 
-function checkout(run, commit) {
+export function checkout(run, commit) {
   const ws = workspace(run)
-  must(`jj --ignore-working-copy new ${commit}`, ws)
+  if (!existsSync(path.join(ws, ".jj"))) {
+    const { repo } = read(paths(run).options)
+    must(`jj workspace add ${quote(ws)} --name ${workspaceName(run)} -r ${quote(commit)}`, repo)
+  }
+  must(`jj --ignore-working-copy new ${quote(commit)}`, ws)
   must("jj workspace update-stale", ws)
 }
 
@@ -142,7 +146,7 @@ export function goVerdict(code, text) {
 // under runs/<name>.json and .log. A target with an entry in tests runs only
 // those tests (narrowed), after the graph builds GO_DEPS; its log is
 // runs/<name>-go.log.
-function attempt(run, commit, targets, name, tests = {}) {
+function attempt(run, commit, targets, name, tests = {}, confirm = false) {
   const dir = path.join(run, "runs")
   mkdirSync(dir, { recursive: true })
   const results = path.join(dir, `${name}.json`), log = path.join(dir, `${name}.log`)
@@ -151,7 +155,7 @@ function attempt(run, commit, targets, name, tests = {}) {
   const { jobs } = read(paths(run).options)
   const narrow = Object.fromEntries(targets.map((t) => [t, narrowed(t, tests[t])]).filter(([, n]) => n))
   const graph = [...targets.filter((t) => !narrow[t]), ...(Object.keys(narrow).length ? GO_DEPS : [])]
-  const r = sh(`CI_RESULTS=${quote(results)} sh scripts/ci.sh ${graph.map(quote).join(" ")} --jobs ${jobs} > ${quote(log)} 2>&1`, workspace(run))
+  const r = sh(`CI_RESULTS=${quote(results)} sh scripts/ci.sh ${graph.map(quote).join(" ")} --jobs ${jobs}${confirm ? " --no-cache" : ""} > ${quote(log)} 2>&1`, workspace(run))
   const statuses = existsSync(results) ? parseResults(readFileSync(results, "utf8")) : null
   const text = existsSync(log) ? readFileSync(log, "utf8") : ""
   const depsOk = GO_DEPS.every((d) => verdict(statuses, d) === "pass")
@@ -181,19 +185,18 @@ function attempt(run, commit, targets, name, tests = {}) {
 // probe runs targets at one commit. A target that never ran is run once more:
 // on a shared host its dependency's build can die of the host (a build cache
 // file deleted mid-link, 2026-11-01), not of the commit.
-export function probe(run, commit, targets, n, once = attempt, tests = {}) {
-  const first = once(run, commit, targets, `${n}`, tests)
+export function probe(run, commit, targets, n, once = attempt, tests = {}, confirm = false) {
+  const first = once(run, commit, targets, `${n}`, tests, confirm)
   const again = targets.filter((t) => first.targets[t].verdict === "untestable")
   if (!again.length) return { n, commit, ...first }
-  const second = once(run, commit, again, `${n}b`, tests)
+  const second = once(run, commit, again, `${n}b`, tests, confirm)
   return { n, commit, code: second.code, seconds: first.seconds + second.seconds, retried: again, targets: { ...first.targets, ...second.targets } }
 }
 
-// prepare resolves the commits and adds the flow's workspace at bad.
+// prepare records the history; checkout creates the workspace on demand.
 export const prepare = (run) => once(run, "prepare", ({ repo, good, bad }) => {
   const h = history(repo, good, bad)
   const ws = workspace(run)
-  if (!existsSync(ws)) must(`jj workspace add ${quote(ws)} --name ${workspaceName(run)} -r ${h.bad}`, repo)
   return { ok: true, ...h, workspace: ws, summary: `${h.commits.length} commits from ${h.good.slice(0, 12)} to ${h.bad.slice(0, 12)}` }
 })
 
@@ -205,7 +208,7 @@ export function classify(runs, targets) {
     const vs = runs.map((r) => r.targets[t]?.verdict).filter(Boolean)
     const state = vs[0] === "untestable" ? "untestable"
       : vs[0] === "pass" ? "not-reproduced"
-      : vs.includes("pass") ? "flaky" : "broken"
+      : vs.includes("pass") ? "flaky" : vs.includes("untestable") ? "untestable" : "broken"
     return [t, state]
   }))
 }
@@ -248,11 +251,13 @@ export const reproduce = (run) => once(run, "reproduce", ({ targets, tries, test
 // among the targets still bisecting, or the nearest commit to it not already
 // found untestable. A range is [last passing index, first failing index];
 // good is -1. Null when every range is closed.
+const skippedAt = (skipped, target) => skipped instanceof Set ? skipped : skipped[target]
+
 export function next(ranges, skipped) {
-  const open = Object.values(ranges).filter(([lo, hi]) => hi - lo > 1).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))
-  for (const [lo, hi] of open) {
+  const open = Object.entries(ranges).filter(([, [lo, hi]]) => hi - lo > 1).sort(([, a], [, b]) => (b[1] - b[0]) - (a[1] - a[0]))
+  for (const [target, [lo, hi]] of open) {
     const mid = Math.floor((lo + hi) / 2)
-    const inside = Array.from({ length: hi - lo - 1 }, (_, k) => lo + 1 + k).filter((i) => !skipped.has(i))
+    const inside = Array.from({ length: hi - lo - 1 }, (_, k) => lo + 1 + k).filter((i) => !skippedAt(skipped, target).has(i))
     inside.sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid) || a - b)
     if (inside.length) return inside[0]
   }
@@ -268,7 +273,7 @@ export function record(ranges, i, verdicts, skipped) {
     const v = verdicts[t]
     if (v === "pass") out[t] = [i, hi]
     else if (v === "fail") out[t] = [lo, i]
-    else skipped.add(i)
+    else skippedAt(skipped, t).add(i)
   }
   return out
 }
@@ -279,33 +284,58 @@ const closed = (ranges, skipped) => next(ranges, skipped) === null
 // bisect checks the broken targets at good, then narrows each one's range to
 // the first commit it fails at. Untestable commits widen the answer to a range
 // the report names. Targets that share a midpoint share its run.
-export const bisect = (run) => once(run, "bisect", () => {
+function leafTests(names) {
+  return names.filter((name) => !names.some((other) => other.startsWith(name + "/")))
+}
+
+function matchingVerdict(result, tests) {
+  if (result.verdict !== "fail") return result.verdict
+  return leafTests(result.tests).some((test) => tests.includes(test)) ? "fail" : "untestable"
+}
+
+export const bisect = (run, probeAt = probe) => once(run, "bisect", () => {
   const p = read(paths(run).prepare), r = read(paths(run).reproduce)
   const runs = []
   let n = r.runs.length
   if (!r.broken.length) return { ok: true, runs, ranges: {}, atGood: [], goodUntestable: [], skipped: [], summary: "nothing to bisect" }
   // A Go target bisects on the tests that failed at bad (narrowed).
-  const tests = Object.fromEntries(r.broken.map((t) => [t, [...new Set(r.runs.flatMap((x) => x.targets[t]?.tests ?? []))]]))
-  const atGoodRun = probe(run, p.good, r.broken, ++n, attempt, tests)
+  const tests = Object.fromEntries(r.broken.map((t) => {
+    const attempts = r.runs.flatMap((x) => x.targets[t] ? [leafTests(x.targets[t].tests)] : [])
+    const repeated = (attempts[0] ?? []).filter((test) => attempts.every((names) => names.includes(test)))
+    return [t, repeated]
+  }))
+  const atGoodRun = probeAt(run, p.good, r.broken, ++n, attempt, tests)
   runs.push({ ...atGoodRun, index: -1 })
-  // Only a failure at good means broken-at-good. A target that cannot run at
-  // good (its dependency does not build there) is taken as good on the
-  // caller's word, as git bisect takes a good mark; the report says so.
-  const atGood = r.broken.filter((t) => atGoodRun.targets[t].verdict === "fail")
-  const goodUntestable = r.broken.filter((t) => atGoodRun.targets[t].verdict === "untestable")
-  let ranges = Object.fromEntries(r.broken.filter((t) => !atGood.includes(t)).map((t) => [t, [-1, p.commits.length - 1]]))
-  const skipped = new Set(), probed = new Set()
+  // Only a matching failure at good proves the break predates the range.
+  // Even initially untestable good endpoints must pass confirmation if retained.
+  const identifiable = r.broken.filter((t) => tests[t].length)
+  const unconfirmed = r.broken.filter((t) => !tests[t].length)
+  const atGood = identifiable.filter((t) => matchingVerdict(atGoodRun.targets[t], tests[t]) === "fail")
+  const goodUntestable = identifiable.filter((t) => matchingVerdict(atGoodRun.targets[t], tests[t]) === "untestable")
+  let ranges = Object.fromEntries(identifiable.filter((t) => !atGood.includes(t)).map((t) => [t, [-1, p.commits.length - 1]]))
+  const skipped = Object.fromEntries(Object.keys(ranges).map((t) => [t, new Set()]))
+  const probed = new Set()
   while (!closed(ranges, skipped)) {
     const i = next(ranges, skipped)
     if (probed.has(i)) throw new Error(`bisection made no progress at ${p.commits[i].commit}`)
     probed.add(i)
     const open = Object.keys(ranges).filter((t) => ranges[t][0] < i && i < ranges[t][1])
-    const result = probe(run, p.commits[i].commit, open, ++n, attempt, tests)
+    const result = probeAt(run, p.commits[i].commit, open, ++n, attempt, tests)
     runs.push({ ...result, index: i })
-    ranges = record(ranges, i, Object.fromEntries(open.map((t) => [t, result.targets[t].verdict])), skipped)
+    ranges = record(ranges, i, Object.fromEntries(open.map((t) => [t, matchingVerdict(result.targets[t], tests[t])])), skipped)
+  }
+  for (const [target, [lo, hi]] of Object.entries(ranges)) {
+    const last = probeAt(run, lo < 0 ? p.good : p.commits[lo].commit, [target], ++n, attempt, tests, true)
+    const first = probeAt(run, p.commits[hi].commit, [target], ++n, attempt, tests, true)
+    runs.push({ ...last, index: lo }, { ...first, index: hi })
+    if (matchingVerdict(last.targets[target], tests[target]) !== "pass" ||
+        matchingVerdict(first.targets[target], tests[target]) !== "fail") {
+      unconfirmed.push(target)
+      delete ranges[target]
+    }
   }
   const summary = Object.entries(ranges).map(([t, [lo, hi]]) => `${t}: ${p.commits[hi].commit.slice(0, 12)}${hi - lo > 1 ? ` (or one of ${hi - lo - 1} untestable before it)` : ""}`)
-  return { ok: true, runs, ranges, atGood, goodUntestable, skipped: [...skipped], summary: summary.join(", ") || "every broken target already fails at good" }
+  return { ok: true, runs, ranges, atGood, goodUntestable, unconfirmed, tests, skipped: [...new Set(Object.values(skipped).flatMap((indices) => [...indices]))], summary: [...summary, ...unconfirmed.map((t) => `${t}: unconfirmed`)].join(", ") || "every broken target already fails at good" }
 })
 
 const cell = (s) => String(s).replaceAll("|", "\\|").replaceAll("\n", " ")
@@ -324,6 +354,7 @@ export function explain(p, r, b, targets) {
       return [t, { state, cause: failed.targets[t].cause, tests: failed.targets[t].tests }]
     }
     if (state !== "broken") return [t, { state }]
+    if (b.unconfirmed?.includes(t)) return [t, { state: "unconfirmed" }]
     if (b.atGood.includes(t)) return [t, { state: "broken-at-good" }]
     const [lo, hi] = b.ranges[t]
     const c = p.commits[hi]
@@ -332,8 +363,10 @@ export function explain(p, r, b, targets) {
     const failedAt = allRuns.find((x) => x.commit === c.commit && x.targets[t]?.verdict === "fail")?.targets[t]
     return [t, {
       state, firstBad: c.commit, title: c.title, lastGood: lo < 0 ? p.good : p.commits[lo].commit, untestable: hi - lo - 1,
-      ...(b.goodUntestable?.includes(t) ? { goodUntestable: true } : {}),
-      tests: failedAt?.tests ?? [], excerpt: failedAt?.excerpt ?? ""
+      ...(b.goodUntestable?.includes(t) && lo >= 0 ? { goodUntestable: true } : {}),
+      tests: (failedAt?.tests ?? []).filter((test) =>
+        !b.tests || b.tests[t].some((name) => name === test || name.startsWith(test + "/"))),
+      excerpt: failedAt?.excerpt ?? ""
     }]
   }))
 }
@@ -351,12 +384,14 @@ export const report = (run) => once(run, "report", ({ repo, targets }) => {
   }
   lines.push("", "`broken`: failed every try at bad and passes at good. `broken-at-good`: fails at good too; start from an older good.",
     "`flaky`: failed, then passed with the same inputs; no commit broke it. `not-reproduced`: passed at bad on the first try.",
-    "`untestable`: never ran at bad, because a dependency failed.")
+    "`untestable`: at least one reproduction attempt did not run the target.",
+    "`unconfirmed`: the failing test could not be identified or the final pair did not reproduce.")
   for (const [t, e] of Object.entries(found).filter(([, e]) => e.firstBad)) {
     const files = sh(`jj --ignore-working-copy diff --name-only -r ${e.firstBad}`, repo).output.split("\n").filter(Boolean)
-    const passes = e.goodUntestable && e.lastGood === p.good ? `could not run at good \`${p.good}\`, taken as passing there` : `passes at \`${e.lastGood}\``
+    const passes = `passes at \`${e.lastGood}\``
     const only = b.runs.find((x) => x.targets[t]?.narrowed)?.targets[t].narrowed
-    lines.push("", `## \`${t}\``, "", `Fails first at \`${e.firstBad}\` (${e.title}); ${passes}.`)
+    const first = e.untestable ? "First observed failure" : "First failure"
+    lines.push("", `## \`${t}\``, "", `${first} at \`${e.firstBad}\` (${e.title}); ${passes}.`)
     if (only) lines.push("", `Bisected on the tests that failed at bad, run alone: ${only.map((x) => `\`${x}\``).join(", ")}.`)
     lines.push("", "Files that commit changes:", "", ...files.slice(0, 40).map((f) => `- \`${f}\``))
     if (e.excerpt) lines.push("", "```text", e.excerpt, "```")

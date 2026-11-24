@@ -2,8 +2,10 @@ import { assert, it } from "@effect/vitest"
 import { InventoryLive, Inventory, OutOfStock, quote, quoteCart } from "./cart.vibe"
 
 it.effect("quotes a product in stock", effect () => {
-  const line = try Effect.provide(effect { return try quote("tea", 2) }, InventoryLive)
-  try Effect.try(() => assert.strictEqual(line, "2 x Green tea: $8.00"))
+  provide InventoryLive {
+    const line = try quote("tea", 2)
+    try Effect.try(() => assert.strictEqual(line, "2 x Green tea: $8.00"))
+  }
 })
 
 it.effect("fails a reservation with OutOfStock", effect () => {
@@ -15,11 +17,15 @@ it.effect("fails a reservation with OutOfStock", effect () => {
 })
 
 it.effect("recovers OutOfStock in quote", effect () => {
-  const line = try Effect.provide(effect { return try quote("coffee", 3) }, InventoryLive)
-  try Effect.try(() => assert.strictEqual(line, "Only 1 coffee left"))
+  provide InventoryLive {
+    const line = try quote("coffee", 3)
+    try Effect.try(() => assert.strictEqual(line, "Only 1 coffee left"))
+  }
 })
 
 it.effect("quotes the cart concurrently", effect () => {
-  const lines = try Effect.provide(effect { return try quoteCart() }, InventoryLive)
-  try Effect.try(() => assert.deepStrictEqual(lines, ["2 x Green tea: $8.00", "Only 1 coffee left"]))
+  provide InventoryLive {
+    const lines = try quoteCart()
+    try Effect.try(() => assert.deepStrictEqual(lines, ["2 x Green tea: $8.00", "Only 1 coffee left"]))
+  }
 })

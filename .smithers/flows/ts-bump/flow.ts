@@ -12,7 +12,7 @@ import { run as steps, start } from "./lib/steps.mjs";
 // resumes where it stopped. No step calls a model: the report is the input to
 // the fix commits. README.md describes the run.
 
-const implementationVersion = "ts-bump/v1";
+const implementationVersion = "ts-bump/v2";
 
 const Outcome = Schema.Struct({ step: Schema.String, ok: Schema.Boolean, summary: Schema.String });
 
@@ -53,7 +53,9 @@ export const layer = Layer.mergeAll(
   Regenerate.toLayer(({ run }) => step("regenerate", run), { implementationVersion }),
   Build.toLayer(({ run }) => step("build", run), { implementationVersion }),
   Probe.toLayer(({ run }) => step("probe", run), { implementationVersion }),
-  Report.toLayer(({ run }) => step("report", run), { implementationVersion })
+  Report.toLayer(({ run }) => step("report", run).pipe(Effect.flatMap((outcome) => outcome.ok
+    ? Effect.succeed(outcome)
+    : Effect.fail(new StepFailed({ step: "report", message: outcome.summary })))), { implementationVersion })
 );
 
 export default Flow.make("ts-bump", {

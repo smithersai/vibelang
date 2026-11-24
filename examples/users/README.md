@@ -1,7 +1,7 @@
 # Users and layers
 
-A directory-backed greeting uses abstract services, inferred contracts,
-`TaggedError`, `throw`, typed `try`/`catch`, layers, and `wire`.
+A directory-backed greeting uses `service` declarations, typed errors, a
+`catch` expression, and layers composed with `Layer.provideMerge`.
 The directory is captured when `UsersLive` builds, so lookups need only `Users`.
 Tests replace the live graph with `UsersTest` and check missing-user recovery.
 
@@ -15,7 +15,7 @@ bun run test
 
 `src/main.test.vibe` uses `it.effect`; Vitest runs the source
 through `vibelang-vite`, with assertion stacks mapped to `.vibe` lines.
-Assertions sit inside `Effect.sync`, an explicit boundary for foreign code.
+Assertions run inside `Effect.try`, an explicit boundary for foreign code.
 The lookup in Effect TypeScript is:
 ```ts
 const find = Effect.fnUntraced(function* (id: string) {

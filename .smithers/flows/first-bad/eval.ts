@@ -114,7 +114,10 @@ const culprit = score("culprit", (i, o) => {
   return want.filter(([t, c]) => o.firstBad[t]?.startsWith(c)).length / Math.max(want.length, blamed.length);
 });
 const tests = score("tests", (i, o) => (i.tests.length === 0 ? 1 : i.tests.filter((t) => o.tests.includes(t)).length / i.tests.length));
-const runs = score("runs", (_, o) => (o.bisectRuns <= 1 + Math.ceil(Math.log2(o.commits)) ? 1 : 0));
+const runs = score("runs", (i, o) => {
+  const confirmations = 2 * Object.keys(i.firstBad).length;
+  return o.bisectRuns <= 1 + Math.ceil(Math.log2(o.commits)) + confirmations ? 1 : 0;
+});
 // Every run of a Go target ran only the tests post-merge named (reproduce) or
 // that failed at bad (bisect).
 const narrowed = score("narrowed", (_, o) => (o.narrowed ? 1 : 0));

@@ -3,16 +3,14 @@
 A Svelte 5 component renders a cart quote that a VibeLang program computes.
 `src/cart.vibe` declares a `Product` schema, an `OutOfStock` error, and an
 `Inventory` service with the `InventoryLive` layer. `quote` reserves a product
-and recovers `OutOfStock` with `try`/`catch`. `quoteCart` runs two quotes
+and recovers `OutOfStock` with a `catch` expression. `quoteCart` runs two quotes
 concurrently with `try.all`. `src/App.svelte` runs `quoteCart()` with a
 `ManagedRuntime` built from `InventoryLive` and renders `Loading…` in an
 `{#await}` block until the program completes.
 
 ## Run the app
 
-Run `sh scripts/setup.sh` from the repository root first. It builds the
-compiler and packs the runtime tarball that `package.json` installs. Then,
-from this directory:
+From this directory, install the published packages and start Vite.
 
 ```sh
 bun install

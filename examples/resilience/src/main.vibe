@@ -20,11 +20,9 @@ export effect function slowReport() {
 }
 
 export effect function deadline() {
-  return try Effect.catch(effect {
+  return effect {
     return try timeout(slowReport(), "20 millis")
-  }, effect (error) => {
-    return error._tag
-  })
+  } catch (error) => error._tag
 }
 
 export effect function scenario() {

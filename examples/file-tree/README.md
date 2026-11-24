@@ -1,7 +1,7 @@
 # File tree
 
 A recursive function snapshots regular files, then an `effect function*` producer yields their paths.
-`for try` consumes the producer; `Effect.forEach` reads files with concurrency 4.
+`for try` consumes the producer; `forEach` reads files with concurrency 4.
 The recursion accumulates into an array and returns void. Because it is recursive,
 it writes out its contract, `void!PlatformError!FileSystem | Path`.
 `FileSystem` and `Path` come from Effect. The written runner in `src/entry.vibe` provides `NodeServices.layer` to `main()` and starts the application.
@@ -24,5 +24,3 @@ const lengths = Effect.forEach(files, (path) => Effect.gen(function* () {
   return { path: paths.relative(root, path), lines: text.trimEnd().split("\n").length }
 }), { concurrency: 4 })
 ```
-
-The prototype widens an inferred recursive E and R to `unknown`; the written contract states them.

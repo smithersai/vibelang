@@ -1,5 +1,4 @@
 /dist/
-/.prototype/
 # bun.lock would pin the integrity of the local runtime tarball, which
 # changes with every runtime build.
 /bun.lock

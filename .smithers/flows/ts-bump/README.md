@@ -12,7 +12,7 @@ fetch ──▶ merge ──▶ regenerate ──▶ build ──▶ probe ─�
 | Step | What it does | Writes |
 | --- | --- | --- |
 | fetch | Reads the pinned upstream commit from `typescript/VIBELANG.md`, resolves the target (a commit, or an npm `typescript` dist-tag or version, through its `gitHead`), and downloads both trees from GitHub without `tsc/testdata` | `fetch.json`, `upstream/<sha>/` |
-| merge | Merges three ways, file by file, with the pinned tree as the base: a file only upstream changed takes upstream's text, a file only the fork changed keeps the fork's, a file both changed goes through `diff3 -m` and keeps its conflict markers. Upstream's new files are added and its deleted files removed. Then it moves the pin in `VIBELANG.md` | `merge.json` |
+| merge | Merges three ways, file by file, with the pinned tree as the base: a file only upstream changed takes upstream's text, a file only the fork changed keeps the fork's, a file both changed goes through `diff3 -m` and keeps its conflict markers. Upstream additions and updates carry their modes and symlinks. The merge stages results before editing the checkout. Then it moves the pin in `VIBELANG.md` | `merge-plan.json`, `merge.json` |
 | regenerate | `sh tsc/internal/effecttsgo/sync.sh <tag>` at the tag `effecttsgo/UPSTREAM` records: it reapplies no patch it already applied, regenerates `tsc/internal/diagnostics`, and generates the Effect rules' shims over the merged compiler's structs | `regenerate.json` |
 | build | `go vet ./...` in `typescript/tsc` (compiles every package and test) and `sh scripts/build-vibelang.sh` | `build.json` |
 | probe | `sh scripts/ci.sh` over the graph targets that cover the fork (`lib/steps.mjs` `TARGETS`: the compiler, `//:spec-tests`, `//:go-vibelang`, `//:go-vibelangmapper` and every compiler case), unless the build failed | `probe.json` |
@@ -33,7 +33,8 @@ smthrs flow start ts-bump --data '{"run":"<run dir>","repo":"<checkout>","to":"n
 smthrs flow start ts-bump --data '{"run":"<run dir>","repo":"<checkout>","to":"<commit>","targets":"//typescript:compiler"}'
 ```
 
-Paths in the payload are absolute. `smthrs runs list` lists the runs.
+Paths in the payload are absolute. `smthrs runs list` lists the runs. A run with failed checks
+writes its report and ends in a failed state.
 
 ## The eval
 

@@ -1,5 +1,8 @@
 # Alchemy migration pairs
 
+Historical migration excerpts from VibeLang 0.0.11, before explicit effects.
+The VibeLang panes do not compile with the current language.
+
 Real Effect TypeScript to VibeLang pairs from the VibeLang team's migration
 of [alchemy-run/alchemy](https://github.com/alchemy-run/alchemy) at
 `29537a8f4aa3` (2026-10-28), package `@alchemy.run/domain`. The VibeLang
