@@ -307,7 +307,14 @@ func (p *projector) dynamicDataMethod(call *ast.Node, e env) bool {
 			last.fields = []string{name}
 		}
 	} else {
-		p.plan.edits = append(p.plan.edits, edit{pos: call.End() - 1, end: call.End(), kind: editDataMethod, text: ")", arg: "])", fields: []string{name}})
+		// The call's closing parenthesis, which an unfinished call still
+		// being typed lacks: its last character then belongs to the last
+		// argument and stays.
+		closing := call.End() - 1
+		if p.text[closing] != ')' {
+			closing = call.End()
+		}
+		p.plan.edits = append(p.plan.edits, edit{pos: closing, end: call.End(), kind: editDataMethod, text: ")", arg: "])", fields: []string{name}})
 	}
 	fragmentEnd := len(p.plan.edits)
 	if running {

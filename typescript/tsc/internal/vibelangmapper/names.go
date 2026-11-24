@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/effectglobals"
 )
 
 // Names (rule 1 of the projection: lexical bindings and hygienic helper
@@ -45,12 +46,8 @@ var preludeNames = func() map[string]bool {
 		Stdio Stream String Struct SubscriptionRef Symbol SynchronizedRef Take Terminal TextDiff Tracer Trie Tuple TxChunk
 		TxDeferred TxHashMap TxHashSet TxPriorityQueue TxPubSub TxQueue TxReentrantLock TxRef TxSemaphore
 		TxSubscriptionRef Types UndefinedOr Unify Utils Version absurd cast flow hole identity`,
-		// D151.
-		`all die exit forEach interrupt yieldNow log logDebug logError logInfo logWarning race repeat retry sleep timeout withSpan`,
-		// The runtime's prelude names; Experimental is D313's namespace.
-		`TaggedError pipe wire fork sync callback Resume runPromise runFork
-		runSync runCallback detach forkIn uninterruptible restore interruptible customMatcher
-		Experimental`,
+		d151List,
+		runtimePreludeList,
 	} {
 		for _, name := range strings.Fields(list) {
 			names[name] = true
@@ -58,6 +55,17 @@ var preludeNames = func() map[string]bool {
 	}
 	return names
 }()
+
+// d151List are the Effect functions a .vibe file calls without the Effect.
+// prefix (D151, prelude.d.ts), which come from effect/Effect.
+const d151List = `all die exit forEach interrupt yieldNow log logDebug logError logInfo logWarning race repeat retry sleep timeout withSpan`
+
+// runtimePreludeList are the runtime's prelude names (prelude.d.ts), which
+// come from vibelang-runtime; Experimental is D313's namespace. The
+// executable rendering imports each from the runtime (render_exec.go).
+const runtimePreludeList = `TaggedError pipe wire fork sync callback Resume runPromise runFork
+	runSync runCallback detach forkIn uninterruptible restore interruptible customMatcher
+	Experimental`
 
 // builtinGlobals are ECMAScript and shared web-standard global values (D264). Each keeps its meaning
 // in a .vibe file although effect's root exports a module of the same
@@ -88,11 +96,15 @@ type names struct {
 	importedFrom map[string]string
 	// imports maps each imported prelude export to its local name.
 	imports map[string]string
+	// effectGlobals are the exports of effect/Effect the source uses as
+	// globals (VIP-6) that are no prelude name. The executable rendering
+	// imports each from effect/Effect.
+	effectGlobals map[string]bool
 }
 
 // newNames reads file's bindings and the prelude names its source uses.
 func newNames(file *ast.SourceFile, text string) *names {
-	n := &names{words: wordsOf(text), declared: map[string]bool{}, declarations: map[string]int{}, topLevel: map[string]bool{}, importedFrom: map[string]string{}, imports: map[string]string{}}
+	n := &names{words: wordsOf(text), declared: map[string]bool{}, declarations: map[string]int{}, topLevel: map[string]bool{}, importedFrom: map[string]string{}, imports: map[string]string{}, effectGlobals: map[string]bool{}}
 	for _, statement := range file.Statements.Nodes {
 		forEachTopLevelName(statement, func(name string) {
 			n.topLevel[name] = true
@@ -114,6 +126,8 @@ func newNames(file *ast.SourceFile, text string) *names {
 				n.declarations[name]++
 			case preludeNames[name] && !builtinGlobals[name] && !n.topLevel[name]:
 				n.imports[name] = name
+			case effectglobals.Names[name] && !preludeNames[name] && !n.topLevel[name]:
+				n.effectGlobals[name] = true
 			}
 		}
 		node.ForEachChild(visit)
