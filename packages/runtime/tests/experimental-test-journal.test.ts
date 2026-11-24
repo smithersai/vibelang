@@ -126,6 +126,73 @@ test("Test.divergence finds nothing between equal journals and names the first d
   expect([found.seq, found.field]).toEqual([7, "payload"])
 })
 
+test("Test.divergence names field entry when one journal is shorter than the other", async () => {
+  const result = await runWith({ failures: 0 }, Effect.gen(function*() {
+    const id = yield* Steps.executionId({ count: 1 })
+    yield* Steps.execute({ count: 1 })
+    const entries = (yield* Test.journal(id)).entries.length
+    const absent = yield* Steps.executionId({ count: 99 })
+    return { entries, longer: yield* Test.divergence(id, absent), shorter: yield* Test.divergence(absent, id) }
+  }))
+  expect(result.entries).toBeGreaterThan(0)
+  const longer = Option.getOrThrow(result.longer)
+  expect([longer.seq, longer.field, longer.actual]).toEqual([1, "entry", undefined])
+  expect((longer.expected as Durable.JournalEntry).eventType).toBe("RunStarted")
+  const shorter = Option.getOrThrow(result.shorter)
+  expect([shorter.seq, shorter.field, shorter.expected]).toEqual([1, "entry", undefined])
+})
+
+test("Test.journal reports a failed run and a step whose outcome is failure", async () => {
+  // Flaky fails more often than its five attempts allow, so the run fails.
+  const journal = await runWith({ failures: 10 }, Effect.gen(function*() {
+    const exit = yield* Effect.exit(Steps.execute({ count: 1 }))
+    expect(Exit.isFailure(exit)).toBe(true)
+    return yield* Test.journal(yield* Steps.executionId({ count: 1 }))
+  }))
+  expect(journal.status).toBe("failed")
+  expect(journal.steps.map((s) => [s.step, s.attempts, s.outcome])).toEqual([
+    ["journal#Step/1", 1, "success"],
+    ["journal#Flaky/1", 5, "failure"]
+  ])
+  await Effect.runPromise(journal.terminal("failed"))
+  const missing = await Effect.runPromiseExit(journal.executed("journal#Flaky"))
+  expect(Exit.isFailure(missing) && Cause.squash(missing.cause)).toBeInstanceOf(Test.JournalMismatch)
+})
+
+const Parks = Durable.workflow("journal#Parks", { payload: { id: Schema.String }, success: Schema.String })
+const statusWorld = Parks.toLayer(({ id }) => Effect.as(Durable.sleep("1 hour"), id)).pipe(Layer.provideMerge(Test.restartable))
+
+const runStatus = <A, E>(effect: Effect.Effect<A, E, any>) =>
+  Effect.runPromise(Effect.scoped(effect).pipe(Effect.provide(statusWorld)) as Effect.Effect<A, E>)
+
+// Polls the journal of `run` until it reports `status`, as a parked run's
+// status changes on the engine's fiber, not the caller's.
+const awaitStatus = (run: string, status: Test.JournalStatus) =>
+  Effect.gen(function*() {
+    for (let i = 0; i < 400; i++) {
+      const seen = yield* Test.journal(run)
+      if (seen.status === status) return seen
+      yield* Effect.sleep(5)
+    }
+    return yield* Test.journal(run)
+  })
+
+test("Test.journal reports a run parked on a durable timer as suspended, and an interrupted run as interrupted", async () => {
+  const { parked, interrupted } = await runStatus(Effect.gen(function*() {
+    const run = yield* Durable.start(Parks, { id: "a" })
+    const parked = yield* awaitStatus(run.id, "suspended")
+    // An interrupt from outside, through the workflow, ends the parked run.
+    yield* Parks.interrupt(run.id)
+    return { parked, interrupted: yield* awaitStatus(run.id, "interrupted") }
+  }))
+  expect(parked.status).toBe("suspended")
+  expect(parked.entries.map((entry) => entry.eventType)).toContain("RunSuspended")
+  await Effect.runPromise(parked.terminal("suspended"))
+  expect(interrupted.status).toBe("interrupted")
+  expect(interrupted.entries.at(-1)?.eventType).toBe("RunCompleted")
+  await Effect.runPromise(interrupted.terminal("interrupted"))
+})
+
 // VIP-71: Test.divergence reports the FIRST attributable difference. A run
 // crashed first at step c differs from a clean run of the same workflow
 // exactly where the clean run completed step c and the crashed run started

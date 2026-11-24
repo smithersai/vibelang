@@ -8,6 +8,7 @@ import { describe, expect, test } from "bun:test"
 import { fileURLToPath } from "node:url"
 import { runInNewContext } from "node:vm"
 import { inspect } from "node:util"
+import { spawnBounded } from "./subprocess"
 import { Cause, Config, Context, Data, Deferred, Fiber, Option, Stream } from "effect"
 import {
   $catch, $catchCause, $control, $direct, $done, $fast, $finally, $isRun, $service, $settle, $tailResume,
@@ -398,7 +399,7 @@ describe("fast calls", () => {
         for (const entry of [small$fast, large$fast]) console.log(String(await Effect.runPromise(Effect.gen(function* () { return yield* site(entry(100000)) }))))
       `
       const packageDir = fileURLToPath(new URL("..", import.meta.url))
-      const result = Bun.spawnSync(["node", "--input-type=module", "-e", script], { cwd: packageDir, stdout: "pipe", stderr: "pipe" })
+      const result = spawnBounded(["node", "--input-type=module", "-e", script], { cwd: packageDir, timeout: 50_000 })
       expect(result.exitCode).toBe(0)
       expect(result.stderr.toString()).toBe("")
       expect(result.stdout.toString().trim().split("\n")).toEqual(["100000", "100000"])
@@ -421,7 +422,7 @@ describe("fast calls", () => {
         console.log(String(await Effect.runPromise(Effect.gen(function* () { return yield* site(recurse$fast(100000)) }))))
       `
       const packageDir = fileURLToPath(new URL("..", import.meta.url))
-      const result = Bun.spawnSync(["node", "--input-type=module", "-e", script], { cwd: packageDir, stdout: "pipe", stderr: "pipe" })
+      const result = spawnBounded(["node", "--input-type=module", "-e", script], { cwd: packageDir, timeout: 50_000 })
       expect(result.exitCode).toBe(0)
       expect(result.stderr.toString()).toBe("")
       expect(result.stdout.toString().trim()).toBe("100000")

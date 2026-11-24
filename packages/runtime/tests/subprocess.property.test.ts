@@ -27,7 +27,11 @@ test("runtime child observations preserve every numeric exit without emitting no
 })
 
 test("runtime child spawn errors retain identity and redact untrusted fields", () => {
-  fc.assert(fc.property(fc.string(), fc.string(), (message, secret) => {
+  const allowed = ["EACCES", "EAGAIN", "ENOENT", "ENOBUFS", "ETIMEDOUT"]
+  const seen = new Set<string>()
+  // fc.string() alone never draws an allow-listed code, so the pass-through branch would go untested.
+  fc.assert(fc.property(fc.string(), fc.oneof(fc.constantFrom(...allowed), fc.string()), (message, secret) => {
+    if (allowed.includes(secret)) seen.add(secret)
     const error = Object.assign(new Error(message), { code: secret, command: secret, path: secret })
     const records: string[] = []
     let caught: unknown
@@ -36,8 +40,9 @@ test("runtime child spawn errors retain identity and redact untrusted fields", (
     expect(caught).toBe(error)
     const record = JSON.parse(records[0].slice("[runtime-child] ".length))
     expect(Object.keys(record).sort()).toEqual(["elapsedMs", "errorCode", "explicitTimeoutMs", "host", "stage"])
-    expect(record.errorCode).toBe(["EACCES", "EAGAIN", "ENOENT", "ENOBUFS", "ETIMEDOUT"].includes(secret) ? secret : null)
+    expect(record.errorCode).toBe(allowed.includes(secret) ? secret : null)
   }), { seed: 240026, numRuns: 100 })
+  expect([...seen].sort()).toEqual([...allowed].sort())
 })
 
 test("runtime main timeout includes bounded child evidence", () => {

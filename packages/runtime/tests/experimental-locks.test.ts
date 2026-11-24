@@ -8,6 +8,7 @@ import { existsSync } from "node:fs"
 import { Locks } from "vibelang-runtime/experimental"
 import { ExperimentalBrowserLocks, ExperimentalBrowserServices } from "vibelang-runtime/experimental/platform-browser"
 import { ExperimentalNodeLocks } from "vibelang-runtime/experimental/platform-node"
+import { spawnBounded } from "./subprocess.ts"
 
 const packageDir = new URL("..", import.meta.url).pathname
 
@@ -132,35 +133,31 @@ test("Locks: layerTest grants every request at once and never loses a lock", asy
 })
 
 // Node 22 has no Web Locks. Probe the selected Node, not the Bun test host.
-const nodeHasLocks = Bun.spawnSync(["node", "--input-type=module", "-e",
-  "process.exit(globalThis.navigator?.locks === undefined ? 1 : 0)"]).exitCode === 0
+const nodeHasLocks = spawnBounded(["node", "--input-type=module", "-e",
+  "process.exit(globalThis.navigator?.locks === undefined ? 1 : 0)"], { timeout: 10_000 }).exitCode === 0
 
 test("Locks: Node without Web Locks rejects only the opt-in layer", () => {
   if (nodeHasLocks) return
-  const result = Bun.spawnSync(["node", "--input-type=module", "-e", `
+  const result = spawnBounded(["node", "--input-type=module", "-e", `
     import { Effect, Exit } from "vibelang-runtime"
     import { Locks } from "vibelang-runtime/experimental"
     import { ExperimentalNodeLocks } from "vibelang-runtime/experimental/platform-node"
     const exit = await Effect.runPromiseExit(Effect.provide(Effect.service(Locks.Locks), ExperimentalNodeLocks.layer))
     if (!Exit.isFailure(exit) || !String(exit).includes("The Locks layer needs navigator.locks")) process.exit(1)
-  `], { cwd: packageDir })
+  `], { cwd: packageDir, timeout: 20_000 })
   expect(result.stderr.toString()).toBe("")
   expect(result.exitCode).toBe(0)
-})
+}, 30_000)
 
 test.skipIf(!nodeHasLocks)("Locks: Node.js's layer runs every scenario over its own navigator.locks", () => {
-  const result = Bun.spawnSync(["node", "tests/fixtures/locks-node.ts", "scenarios"], {
-    cwd: packageDir, stdout: "pipe", stderr: "pipe"
-  })
+  const result = spawnBounded(["node", "tests/fixtures/locks-node.ts", "scenarios"], { cwd: packageDir, timeout: 25_000 })
   expect(result.stderr.toString()).toBe("")
   expect(result.exitCode).toBe(0)
   expect(JSON.parse(result.stdout.toString())).toEqual(scenarios)
 }, 30_000)
 
 test.skipIf(!nodeHasLocks)("Locks: Node.js's locks exclude a worker thread, never another process", () => {
-  const result = Bun.spawnSync(["node", "tests/fixtures/locks-node.ts", "reach"], {
-    cwd: packageDir, stdout: "pipe", stderr: "pipe"
-  })
+  const result = spawnBounded(["node", "tests/fixtures/locks-node.ts", "reach"], { cwd: packageDir, timeout: 25_000 })
   expect(result.stderr.toString()).toBe("")
   expect(result.exitCode).toBe(0)
   expect(JSON.parse(result.stdout.toString())).toEqual({ thread: "refused", process: "taken" })
@@ -169,6 +166,11 @@ test.skipIf(!nodeHasLocks)("Locks: Node.js's locks exclude a worker thread, neve
 // Chromium through Playwright. Without it the browser tests skip, naming the setup step.
 const chromium = await import("playwright").then((playwright) => playwright.chromium, () => undefined)
 const browserReady = chromium !== undefined && existsSync(chromium.executablePath())
+// A run that must cover the real browser sets VIBELANG_REQUIRE_BROWSER_TESTS=1, as the
+// browser services test does, so a missing Chromium fails it instead of skipping.
+if (!browserReady && process.env.VIBELANG_REQUIRE_BROWSER_TESTS === "1") {
+  throw new Error("Chromium is required for this run: install it with bunx playwright install chromium")
+}
 if (!browserReady) {
   console.warn("Skipping the Chromium Locks tests: run `bunx playwright install chromium` in packages/runtime.")
 }

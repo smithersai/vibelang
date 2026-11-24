@@ -85,6 +85,103 @@ test("Test.modelServer answers a recorded provider failure with its status", asy
   expect(status).toBe(429)
 })
 
+const user = (text: string) => ({ role: "user", content: text })
+const chat = (url: string, body: Record<string, unknown>) => post(url, { model: "m", ...body })
+
+test("Test.modelServer matches a json_schema response_format against a recorded JSON request, and text against it misses", async () => {
+  const schema = { type: "object", properties: { type: { type: "string" } }, required: ["type"] }
+  const fixture = {
+    calls: [{
+      request: { prompt: "label", responseFormat: { type: "json", objectName: "Label", schema } },
+      response: [{ type: "text", text: `{"type":"bug"}` }]
+    }]
+  }
+  const seen = await serving(fixture, async (url) => {
+    const text = await chat(url, { messages: [user("label")] })
+    const json = await chat(url, { messages: [user("label")], response_format: { type: "json_schema", json_schema: { name: "Label", schema } } })
+    return [text.status, json.status, (await json.json()).choices[0].message.content]
+  })
+  expect(seen).toEqual([501, 200, `{"type":"bug"}`])
+})
+
+test("Test.modelServer matches tool_choice: a named function and a mode string", async () => {
+  const fixture = {
+    calls: [
+      { request: { prompt: "pick", toolChoice: { tool: "Lookup" } }, response: [{ type: "text", text: "named" }] },
+      { request: { prompt: "pick", toolChoice: "required" }, response: [{ type: "text", text: "required" }] }
+    ]
+  }
+  const seen = await serving(fixture, async (url) => {
+    const none = await chat(url, { messages: [user("pick")], tool_choice: "none" })
+    const required = await chat(url, { messages: [user("pick")], tool_choice: "required" })
+    const named = await chat(url, { messages: [user("pick")], tool_choice: { type: "function", function: { name: "Lookup" } } })
+    return [none.status, (await required.json()).choices[0].message.content, (await named.json()).choices[0].message.content]
+  })
+  expect(seen).toEqual([501, "required", "named"])
+})
+
+test("Test.modelServer reads developer messages as system messages and tool messages as tool results", async () => {
+  const fixture = {
+    calls: [{
+      request: {
+        prompt: [
+          { role: "system", content: "be brief" },
+          { role: "user", content: "find 7" },
+          { role: "assistant", content: [{ type: "tool-call", id: "c1", name: "Lookup", params: { id: "7" }, providerExecuted: false }] },
+          { role: "tool", content: [{ type: "tool-result", id: "c1", name: "Lookup", isFailure: false, result: { found: true } }] }
+        ]
+      },
+      response: [{ type: "text", text: "found it" }]
+    }]
+  }
+  const body = await serving(fixture, async (url) =>
+    (await chat(url, {
+      messages: [
+        { role: "developer", content: "be brief" },
+        user("find 7"),
+        { role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "Lookup", arguments: `{"id":"7"}` } }] },
+        { role: "tool", tool_call_id: "c1", content: `{"found":true}` }
+      ]
+    })).json())
+  expect(body.choices?.[0]?.message?.content).toBe("found it")
+})
+
+test("Test.modelServer reports recorded usage in the completion and as the last streamed chunk", async () => {
+  const usage = { inputTokens: { total: 3 }, outputTokens: { total: 2 } }
+  const call = { request: { prompt: "count" }, response: [{ type: "text", text: "one two" }, { type: "finish", reason: "stop", usage }] }
+  const expected = { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 }
+  const seen = await serving({ calls: [call, call] }, async (url) => {
+    const completion = await (await chat(url, { messages: [user("count")] })).json()
+    const streamed = await (await chat(url, { stream: true, messages: [user("count")] })).text()
+    const chunks = streamed.split("\n\n").filter((e) => e.startsWith("data: ") && e !== "data: [DONE]").map((e) => JSON.parse(e.slice(6)))
+    return { completion: completion.usage, last: chunks.at(-1) }
+  })
+  expect(seen.completion).toEqual(expected)
+  expect(seen.last).toMatchObject({ object: "chat.completion.chunk", choices: [], usage: expected })
+})
+
+test("Test.modelServer streams recorded tool calls as tool_calls deltas", async () => {
+  const fixture = {
+    calls: [{
+      request: { prompt: "find 7" },
+      response: [{ type: "tool-call", id: "c1", name: "Lookup", params: { id: "7" } }, { type: "finish", reason: "tool-calls" }]
+    }]
+  }
+  const text = await serving(fixture, async (url) => (await chat(url, { stream: true, messages: [user("find 7")] })).text())
+  const chunks = text.split("\n\n").filter((e) => e.startsWith("data: ") && e !== "data: [DONE]").map((e) => JSON.parse(e.slice(6)))
+  const calls = chunks.flatMap((c) => c.choices[0]?.delta?.tool_calls ?? [])
+  expect(calls).toEqual([{ index: 0, id: "c1", type: "function", function: { name: "Lookup", arguments: `{"id":"7"}` } }])
+  expect(chunks.at(-1).choices[0].finish_reason).toBe("tool_calls")
+})
+
+test("Test.modelServer answers a body that is not JSON as unrecorded, not as a server error", async () => {
+  const seen = await serving({ calls: [answer("hello", "hi")] }, async (url) => {
+    const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: "{not json" })
+    return [response.status, (await response.json()).error.type]
+  })
+  expect(seen).toEqual([501, "unrecorded"])
+})
+
 // A conversation recorded in this process through Test.record replays over
 // HTTP: the server reads a Chat Completions body as the prompt Effect's
 // LanguageModel sends a provider, so the recorded request matches.

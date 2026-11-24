@@ -50,3 +50,17 @@ export function observeChild<T extends ChildResult>(host: "Node" | "Bun", run: (
     throw error
   }
 }
+
+// Bun.spawnSync blocks the event loop, so the test's own deadline cannot fire
+// while the child runs. Every synchronous child therefore carries a timeout
+// below that deadline, and running out of it fails the test by name.
+export function spawnBounded(command: string[], options: {
+  readonly cwd?: string
+  readonly env?: Record<string, string | undefined>
+  readonly timeout: number
+}) {
+  const host = /(^|[\\/])node(\.exe)?$/.test(command[0]) ? "Node" : "Bun"
+  const result = observeChild(host, () => Bun.spawnSync(command, { ...options, stdout: "pipe", stderr: "pipe" }), { timeoutMs: options.timeout })
+  if (result.exitedDueToTimeout) throw new Error(`${host} child exceeded its ${options.timeout} ms timeout`)
+  return result
+}

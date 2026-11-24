@@ -4,7 +4,8 @@
     "body": {
       "op": "interrupt"
     },
-    "masked": false
+    "masked": false,
+    "point": 1
   },
   "rule": "VIP-33 uses Effect primitives while runtime wrappers preserve Exit, interruption and finalizer behavior"
 }

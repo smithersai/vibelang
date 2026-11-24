@@ -2,12 +2,19 @@ import { expect, it } from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Cause from "effect/Cause"
-import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import fc from "fast-check"
 import { readFileSync } from "node:fs"
 
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-native-response-headers.json", import.meta.url), "utf8"))
 const load = () => import("../src/experimental/Headers.js")
+// The service under test is the shipped layer's, never a lambda of the test's
+// own: a property that built its service from `new Headers(source)` would
+// compare the native constructor with itself.
+const shipped = async () => {
+  const api = await load()
+  const { layer } = await import("../src/experimental/platform-node/ExperimentalNodeHeaders.js")
+  return Effect.runPromise(Effect.provide(api.Headers, layer))
+}
 it("defers construction and passes the exact native source", async () => {
   const api = await load(), input = new Headers(corpus.pairs), calls: unknown[] = []
   const headers = api.make({ copy(source) { calls.push(source); return source } })
@@ -17,8 +24,8 @@ it("defers construction and passes the exact native source", async () => {
   expect(calls).toEqual([input])
 })
 it("preserves duplicate Set-Cookie and independent mutable copies", async () => {
-  const api = await load(), input = new Headers(corpus.pairs)
-  const copy = await Effect.runPromise(api.make({ copy: source => new Headers(source) }).copy(input))
+  const input = new Headers(corpus.pairs)
+  const copy = await Effect.runPromise((await shipped()).copy(input))
   expect(copy).not.toBe(input)
   expect(copy.getSetCookie()).toEqual(input.getSetCookie())
   expect(copy.getSetCookie()).toHaveLength(2)
@@ -27,9 +34,9 @@ it("preserves duplicate Set-Cookie and independent mutable copies", async () => 
   expect(input.get("x-foldkit")).toBe("native")
 })
 it("copies response headers into an independently mutable native object", async () => {
-  const api = await load(), input = Response.redirect("https://redirect.invalid/").headers
+  const input = Response.redirect("https://redirect.invalid/").headers
   const before = [...input]
-  const copy = await Effect.runPromise(api.make({ copy: source => new Headers(source) }).copy(input))
+  const copy = await Effect.runPromise((await shipped()).copy(input))
   copy.set("x-probe", "a")
   expect(copy.get("x-probe")).toBe("a")
   expect([...input]).toEqual(before)
@@ -45,13 +52,8 @@ it("provides a required explicit fake without constructing a host object", async
   const operation = Effect.flatMap(api.Headers, headers => headers.copy(input))
   expect(await Effect.runPromise(Effect.provide(operation, api.layerTest({ copy: () => Effect.succeed(input) })))).toBe(input)
 })
-it("rejects response-model cookie normalization as a native copy", () => {
-  const input = new Headers(corpus.pairs)
-  const converted = HttpServerResponse.toWeb(HttpServerResponse.fromWeb(new Response(null, { headers: input }))).headers
-  expect(converted.getSetCookie()).not.toEqual(new Headers(input).getSetCookie())
-})
 it("matches the native constructor across 500 keyed mutation schedules", async () => {
-  const api = await load(), service = api.make({ copy: source => new Headers(source) })
+  const service = await shipped()
   const observe = async (pairs: string[][], changes: Array<{ key: string; value: string; remove: boolean }>, copy: (h: Headers) => Promise<Headers>) => {
     const input = new Headers([...corpus.pairs, ...pairs]), before = [...input], cookies = input.getSetCookie()
     const out = await copy(input), initial = [...out], initialCookies = out.getSetCookie()

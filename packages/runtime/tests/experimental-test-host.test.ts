@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import fc from "fast-check"
-import { Effect, Exit, FileSystem, Path } from "effect"
+import { Effect, Exit, FileSystem, Path, Stream } from "effect"
 import { NodeFileSystem } from "@effect/platform-node"
 import { ChildProcess, ChildProcessSpawner } from "effect/process"
 import { Test } from "vibelang-runtime/experimental"
@@ -59,6 +59,42 @@ test("Test.host answers scripted commands and fails an unscripted one as a missi
     return { status, code: Number(code), missing: failureTag(missing) }
   }), { commands })
   expect(exit).toEqual(Exit.succeed({ status: " M src/a.ts\n", code: 2, missing: "NotFound" }))
+})
+
+test("Test.host copies a file into an independent file and fails a missing source with NotFound", async () => {
+  const exit = await onHost(Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    yield* fs.copyFile("/src/a.txt", "/src/b.txt")
+    yield* fs.writeFileString("/src/a.txt", "changed")
+    const missing = yield* Effect.exit(fs.copyFile("/src/none.txt", "/src/c.txt"))
+    return {
+      copy: yield* fs.readFileString("/src/b.txt"),
+      source: yield* fs.readFileString("/src/a.txt"),
+      missing: failureTag(missing),
+      created: yield* fs.exists("/src/c.txt")
+    }
+  }), { files: { "/src/a.txt": "original" } })
+  expect(exit).toEqual(Exit.succeed({ copy: "original", source: "changed", missing: "NotFound", created: false }))
+})
+
+test("Test.host fails a piped command with BadArgument, even when each side is scripted", async () => {
+  const exit = await onHost(Effect.gen(function*() {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+    const piped = ChildProcess.make("git", ["log"]).pipe(ChildProcess.pipeTo(ChildProcess.make("head", ["-1"])))
+    return failureTag(yield* Effect.exit(spawner.string(piped)))
+  }), { commands: { "git log": { stdout: "commit 1\n" }, "head -1": { stdout: "commit 1\n" } } })
+  expect(exit).toEqual(Exit.succeed("BadArgument"))
+})
+
+test("Test.host drains a scripted command's stdin and still answers its script", async () => {
+  const exit = await onHost(Effect.gen(function*() {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+    const input = Stream.make(new TextEncoder().encode("line one\n"), new TextEncoder().encode("line two\n"))
+    const output = yield* spawner.string(ChildProcess.make("wc", ["-l"], { stdin: input }))
+    const code = yield* spawner.exitCode(ChildProcess.make("wc", ["-l"], { stdin: input }))
+    return { output, code: Number(code) }
+  }), { commands: { "wc -l": { stdout: "2\n", exitCode: 0 } } })
+  expect(exit).toEqual(Exit.succeed({ output: "2\n", code: 0 }))
 })
 
 // The memory file system is a stand-in for the real one, so it must agree with

@@ -82,7 +82,15 @@ test.skipIf(!browserReady)("browser services: each runs over Chromium's real API
     dataUrl: "data:text/plain;base64,aGk=",
     bytes: 2,
     resizes: [10, 20],
-    document: true
+    document: true,
+    window: true,
+    width: "10px",
+    audio: [true, true, "closed"],
+    isolated: false,
+    userAgent: true,
+    hmac: "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843",
+    digest: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    uuid: true
   })
 }, 30_000)
 

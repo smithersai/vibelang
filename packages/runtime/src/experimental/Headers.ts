@@ -1,6 +1,8 @@
 /**
  * Native mutable Web Headers copies, preserving native duplicate cookies.
- * Effect's HTTP data models remain the ordinary protocol APIs.
+ * Effect's HTTP data models remain the ordinary protocol APIs; they are not a
+ * native copy: a round trip through `HttpServerResponse.fromWeb` and `toWeb`
+ * joins duplicate `Set-Cookie` headers.
  * @experimental
  * @since 0.0.11
  */

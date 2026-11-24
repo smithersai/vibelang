@@ -5,6 +5,7 @@ import { afterAll, expect, test } from "bun:test"
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync, mkdirSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { spawnBounded } from "./subprocess"
 
 const root = mkdtempSync(join(tmpdir(), "vibelang-entry-"))
 mkdirSync(join(root, "node_modules"))
@@ -30,7 +31,7 @@ const hosts = [["Node", "node"], ["Bun", process.execPath]] as const
 const entryTimeout = 35_000
 
 function start(executable: string, dir: string, file: string) {
-  const result = Bun.spawnSync([executable, file], { cwd: dir, timeout: 10_000 })
+  const result = spawnBounded([executable, file], { cwd: dir, timeout: 10_000 })
   expect(result.stderr.toString()).toBe("")
   expect(result.exitCode).toBe(0)
   return result.stdout.toString()
@@ -161,12 +162,12 @@ $entry(false, import.meta.url, main, () => console.log("imported ran"));
 }, entryTimeout)
 
 test("the runner loads on a host that refuses code generation", () => {
-  const run = Bun.spawnSync(["node", "--disallow-code-generation-from-strings", "--input-type=module", "-e",
+  const run = spawnBounded(["node", "--disallow-code-generation-from-strings", "--input-type=module", "-e",
     `const { $entry } = await import(${JSON.stringify(join(import.meta.dir, "../dist/main.js"))})
-     $entry(true, undefined, undefined, () => console.log("ran"))`])
+     $entry(true, undefined, undefined, () => console.log("ran"))`], { timeout: 20_000 })
   expect(run.stderr.toString()).toBe("")
   expect(run.stdout.toString()).toBe("ran\n")
-})
+}, 30_000)
 
 // Metro bundles the runtime for React Native, and Hermes refuses a bundle that
 // holds an import() expression anywhere.
