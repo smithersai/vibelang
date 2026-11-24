@@ -9,6 +9,9 @@ import { Package as Typescript } from "../PACKAGE.ts"
 // `harness.mjs <case>`, keyed on the compiler binary's target, the runtime's
 // dist/, the Effect install, the harness, and the case directory's own files.
 // A change to one case reruns that case; a compiler change reruns them all.
+// The compiler and the runtime are declared inputs, so a target cannot run an
+// earlier build; --allow-stale keeps the harness's modification-time check,
+// which a checkout or a cache restore can trip, from refusing a current one.
 // `smthrs test //typescript/vibelang/...` runs the suite.
 const casesDir = join(dirname(fileURLToPath(import.meta.url)), "cases")
 const cases = readdirSync(casesDir)
@@ -54,7 +57,7 @@ for (const name of cases) {
   targets[label(name)] = S.Shell.Test({
     summary: `Compile and run the compiler case ${name}.`,
     shell: "cd typescript && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
-      `VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --isolated --verbose ${name}`,
+      `VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --allow-stale --isolated --verbose ${name}`,
     data: [
       ...shared,
       ...(name === "tooling-format-tool-inputs" ? [Packages["tooling-adapter-srcs"]] : []),
@@ -65,6 +68,7 @@ for (const name of cases) {
       ] : []),
       ...(name === "error-nominal-literal-key-migration" || name === "error-nominal-fieldless-key-migration"
         ? [S.file("error-key-migration.mjs")] : []),
+      ...(name.startsWith("member-readonly-migration-") ? [S.file("member-readonly-upgrade.mjs")] : []),
       S.glob(`cases/${name}/**`)
     ],
     tools: [S.Host.bin("node")],
@@ -79,7 +83,7 @@ const startupCases = ["uninterruptible-using", "fork-named-region", "fork-arrow-
 targets["fork-late-start"] = S.Shell.Test({
   summary: "Fork lifetime checks wait for child readiness under delayed scheduling.",
   shell: "cd typescript && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
-    "VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --isolated --late-start --verbose " + startupCases.join(" "),
+    "VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --allow-stale --isolated --late-start --verbose " + startupCases.join(" "),
   data: [...shared, ...startupCases.map((name) => S.glob(`cases/${name}/**`))],
   tools: [S.Host.bin("node")],
   sandbox: "none",

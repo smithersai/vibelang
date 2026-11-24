@@ -1,5 +1,5 @@
 // expect-result: {"parens":[1,1,2],"arrow":3,"inner":[0,1]}
-// Decided detail 247 (loop round 3, OPUS-7): the repaired forms of each rejected
+// Decided detail 247: the repaired forms of each rejected
 // program compile, and a jump inside an effect block stays legal.
 const a: number!string = Effect.fail("no")
 const b = undefined as number | undefined

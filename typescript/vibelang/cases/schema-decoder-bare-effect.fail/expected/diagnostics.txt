@@ -1,0 +1,2 @@
+main.vibe(8,10): error EK0403
+main.vibe(12,10): error EK0403

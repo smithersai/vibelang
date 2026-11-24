@@ -1,5 +1,5 @@
 // expect-result: {"forOf":[1,2],"forIn":["a"],"forLoop":[1,2],"whileLoop":[1,2],"doLoop":[1],"closures":[1,2],"elseIf":"y"}
-// Chapter 004, decided detail 245 (loop round 3, OPUS-2): a braced statement
+// Chapter 004, decided detail 245: a braced statement
 // body supplies a fresh home for each iteration.
 function ids(xs: unknown[]) {
   const out: unknown[] = []

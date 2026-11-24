@@ -1,4 +1,4 @@
-// foldkit-16: a data declaration declares what TypeScript declares for its
+// The foldkit migration: a data declaration declares what TypeScript declares for its
 // Effect TypeScript counterpart (typescript/main.ts): the type first, the
 // payload as written, and the constant's inferred type.
 

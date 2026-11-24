@@ -1,6 +1,6 @@
 # A call known to throw in synchronous VibeLang code
 
-Will, 2026-10-31: synchronous VibeLang code never throws. A call whose callee
+VIP-4, 2026-10-31: synchronous VibeLang code never throws. A call whose callee
 is known to throw, `JSON.parse` (shipped `SyntaxError`) or a `.ts` function
 tagged `@vibelang trusted @throws {SyntaxError}`, is `EK0401` in plain code:
 a function, arrow, constructor or the module's top level. The DESIGN.md

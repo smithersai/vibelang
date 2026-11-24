@@ -1,5 +1,5 @@
 // expect: EK0403
-// expect-result: "done"
+// The program is rejected, so it has no run result to expect.
 import { isResolved, accepts, type News } from "./foreign.ts"
 export effect function read(news: News | undefined) {
   if (isResolved(news)) {

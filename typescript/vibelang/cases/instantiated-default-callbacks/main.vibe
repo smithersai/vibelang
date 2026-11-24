@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import {generic,fxOwner,streamOwner,layerOwner,type Program,type StreamProgram,type LayerProgram,type Handler,type Admitting,type API} from "./helpers.js"
 import * as Effect from "effect/Effect"
 export const effectful:Handler=fxOwner.generic<Program>

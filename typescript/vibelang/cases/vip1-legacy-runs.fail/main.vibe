@@ -1,7 +1,7 @@
 // expect: EK4801 TS2365 EK4801 TS2345 TS2339 EK4801 EK0509
 // VIP-1 migration (decided detail 274): before VIP-1 a call in effect code
 // whose result was an Effect ran where it stood: a statement, an initializer,
-// a return value, an arm of ?: or match (foldkit-18's
+// a return value, an arm of ?: or match (the foldkit migration's
 // `when Option.None: die(new Error("missing"))`), either side of ?? or ||,
 // the right side of &&, a do expression's result, an effect arrow's body, a
 // catch handler or fallback, an argument, an element or a property value.

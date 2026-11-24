@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // An Effect-returning factory is an ordinary value (VIP-1/detail303).
 // A void callback destination accepts it under native TypeScript rules
 // and ignores its returned program; map instead keeps those programs.
@@ -6,7 +6,7 @@
 // Imported and local factories follow the same native assignment rules.
 import { passThrough } from "./helpers.ts"
 
-function pick(p: number!!): infer _ {
+function pick(p: number!!) {
   return p
 }
 
@@ -22,5 +22,5 @@ export function fromTypeScript(xs: Array<number!!>) {
 
 // A literal collects the programs as data.
 export function asData(xs: Array<number!!>) {
-  return xs.map((p): infer _ => p)
+  return xs.map((p) => p)
 }

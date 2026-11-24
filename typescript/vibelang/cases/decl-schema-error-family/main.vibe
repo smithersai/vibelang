@@ -98,21 +98,22 @@ export effect function main() {
   const evicted = new Evicted({ key: "b", at: 3, by: "lru" })
   const encode = Schema.encodeSync(StoreError)
   const decode = Schema.decodeUnknownSync(StoreError)
-  const decodedEvicted = decode({ _tag: "Evicted", key: "c", at: 4, by: "ttl" })
-  const decodedBase = decode({ _tag: "StoreError", key: "s" })
+  // The synchronous codecs throw SchemaError (Appendix E), so each call crosses an Effect.try bridge.
+  const decodedEvicted = try Effect.orDie(Effect.try(() => decode({ _tag: "Evicted", key: "c", at: 4, by: "ttl" })))
+  const decodedBase = try Effect.orDie(Effect.try(() => decode({ _tag: "StoreError", key: "s" })))
   return {
-    encoded: encode(notStored),
-    decoded: describe(decode(encode(notStored))),
-    evicted: encode(evicted),
-    throughExpired: Schema.encodeSync(Expired)(evicted),
+    encoded: try Effect.orDie(Effect.try(() => encode(notStored))),
+    decoded: describe(try Effect.orDie(Effect.try(() => decode(encode(notStored))))),
+    evicted: try Effect.orDie(Effect.try(() => encode(evicted))),
+    throughExpired: try Effect.orDie(Effect.try(() => Schema.encodeSync(Expired)(evicted))),
     decodedEvicted: [decodedEvicted._tag, decodedEvicted instanceof Evicted],
-    base: encode(new StoreError({ key: "s" })),
+    base: try Effect.orDie(Effect.try(() => encode(new StoreError({ key: "s" })))),
     decodedBase: [decodedBase._tag, decodedBase instanceof NotStored],
-    subclass: [Schema.is(NotStored)(new StoreError({ key: "s" })), Schema.encodeSync(NotStored)(notStored)],
-    abstract: Schema.encodeSync(Quota)(new OverQuota({ limit: 1, used: 2 })),
-    envelope: Schema.encodeSync(Envelope)({ id: "e", error: new Late({ key: "l" }) }),
+    subclass: [Schema.is(NotStored)(new StoreError({ key: "s" })), try Effect.orDie(Effect.try(() => Schema.encodeSync(NotStored)(notStored)))],
+    abstract: try Effect.orDie(Effect.try(() => Schema.encodeSync(Quota)(new OverQuota({ limit: 1, used: 2 })))),
+    envelope: try Effect.orDie(Effect.try(() => Schema.encodeSync(Envelope)({ id: "e", error: new Late({ key: "l" }) }))),
     unknownTag: Option.isNone(Schema.decodeUnknownOption(StoreError)({ _tag: "Unknown", key: "x" })),
-    caught: fail(notStored) catch (e) => encode(e)._tag,
-    json: Schema.encodeSync(Schema.toCodecJson(StoreError))(notStored)
+    caught: fail(notStored) catch effect (e) => (try Effect.orDie(Effect.try(() => encode(e))))._tag,
+    json: try Effect.orDie(Effect.try(() => Schema.encodeSync(Schema.toCodecJson(StoreError))(notStored)))
   }
 }

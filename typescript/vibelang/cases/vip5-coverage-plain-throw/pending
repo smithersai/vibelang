@@ -1,1 +1,1 @@
-fold-details VIP coverage counterexample: run.mjs printed printed no result (exit 1) (42.2 s); rule and witness recorded in review-spec/conformance/from-coverage.md.
+fold-details the case throws inside a plain function to record VIP-5's historical plain-throw behaviour, which is now EK0401 (main.vibe line 11), so run.mjs never runs. Move the throwing code to a module block or a .ts file. Rule: docs/design/vips/0005-try-runs-effects.md, docs/design/vips/0004-throw.md

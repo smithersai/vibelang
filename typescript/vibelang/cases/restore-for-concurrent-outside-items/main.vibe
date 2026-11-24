@@ -1,5 +1,5 @@
 // expect-result: [1,2]
-// Chapter 002 and VIP-22 (loop round 3, OPUS-4): the limit and the iterable of
+// Chapter 002 and VIP-22: the limit and the iterable of
 // for concurrent run outside the item region, on the enclosing fiber, so
 // restore stays legal there.
 export effect function main() {

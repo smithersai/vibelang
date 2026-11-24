@@ -1,5 +1,5 @@
 // expect: EK0401
-// Will, 2026-10-31: synchronous VibeLang code never throws. A call known to
+// VIP-4, 2026-10-31: synchronous VibeLang code never throws. A call known to
 // throw, a built-in's shipped contract such as JSON.parse's SyntaxError or a
 // trusted @throws, is EK0401 in plain code, unless it stands in the try block
 // of a try statement with a catch clause in the same function (DESIGN.md,

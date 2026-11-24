@@ -1,4 +1,4 @@
-// A runner in an initializer suppresses automatic main execution too (D135).
+// main is an ordinary function (VIP-26): the runner call in this initializer is the only thing that runs it.
 export effect function main() {
   try Console.log("ran once")
 }

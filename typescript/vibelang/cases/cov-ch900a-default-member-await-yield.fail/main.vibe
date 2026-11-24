@@ -13,3 +13,6 @@ effect function outer() {
 }
 
 // Appendix A: cov-ch900a-default-member-await-yield.fail — spec-rule: docs/design/src/900-appendices.md#0139dc9c7612d40b
+// Chapter 005, service default members (this case also stands for the merged coverage-ch005-service-default-await.fail):
+// spec-rule: docs/design/src/005-services.md#98d344a73e39b3c2
+// spec-rule: docs/design/src/005-services.md#4fc2d1324d3860ea

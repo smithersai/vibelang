@@ -1,0 +1,6 @@
+// expect-clean
+// VIP-1/detail303: ordinary TypeScript assignability also governs Function.
+// Passing a factory as data neither runs it nor changes its written kind.
+import { Thing, take } from "./lib.ts"
+
+export const taken = take(Thing)

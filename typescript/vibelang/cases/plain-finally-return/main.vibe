@@ -46,6 +46,6 @@ export effect function main() {
   }
 }
 
-// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// A synchronous VibeLang function never throws (VIP-4, 2026-10-31): the throw
 // these tests need lives in raise.ts, which keeps JavaScript's throw.
 import { raise } from "./raise.js"

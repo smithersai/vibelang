@@ -17,7 +17,8 @@ function readonlyProjection(text) {
 }
 
 // The reference materializes pre-pin schema/service and nested payload defaults.
-// Ordinary native members keep their original source spelling.
+// Ordinary native members keep their original source spelling. Returns the
+// members whose readonly modifier differs between the two spellings.
 export function checkMemberReadonlyUpgrade(caseUrl) {
   const root = fileURLToPath(caseUrl)
   const compiler = process.env.VIBELANG_BINARY
@@ -64,10 +65,29 @@ export function checkMemberReadonlyUpgrade(caseUrl) {
   if (invalid) assert.match(current.text,/EK2109/)
   else assert.equal(current.status,0,current.text)
   const declaration = fs.readFileSync(path.join(dir,"decl","main.d.ts"),"utf8")
+  // Compare the explicit (legacy.txt) and native (input.txt) declarations member by member. They must declare
+  // the same members in the same order; each member that is readonly in one and writable in the other is printed,
+  // so the case's expected/stdout.txt pins exactly which members differ, and the closing line claims no more
+  // than was measured. A refused upgrade (EK2109) has no declaration contract to compare.
+  const differences = []
+  if (!invalid) {
+    const explicit = readonlyProjection(expected), native = readonlyProjection(declaration)
+    const name = entry => entry.replace(/^readonly /, "")
+    assert.deepEqual(native.map(name), explicit.map(name), "the explicit and native spellings declare different members")
+    explicit.forEach((entry, index) => {
+      if (entry === native[index]) return
+      const mode = value => value.startsWith("readonly ") ? "readonly" : "writable"
+      differences.push(`member ${index + 1} ${name(entry)}: explicit ${mode(entry)}, native ${mode(native[index])}`)
+    })
+  }
   assert.equal(fs.readFileSync(path.join(dir,"main.vibe"),"utf8"),source)
   const again = run()
   assert.equal(again.status,current.status,again.text)
   assert.equal(fs.readFileSync(path.join(dir,"decl","main.d.ts"),"utf8"),declaration)
   assert.equal(fs.readFileSync(path.join(dir,"main.vibe"),"utf8"),source)
-  console.log("explicit and native member declarations are stable")
+  for (const difference of differences) console.log(difference)
+  console.log(invalid ? "the refused member upgrade keeps EK2109 and its source"
+    : differences.length > 0 ? "explicit and native member declarations differ in readonly only at the members above"
+    : "explicit and native member declarations are stable")
+  return differences
 }

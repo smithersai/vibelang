@@ -1,1 +1,1 @@
-fold-details VIP coverage counterexample: run.mjs printed printed no result (exit 1) (76.4 s); rule and witness recorded in review-spec/conformance/from-coverage.md.
+fold-details the case records VIP-4's historical thrown-type inference, and the compiler now rejects its sources: a throw in a plain function is EK0401 and a @throws or @rethrows tag in .vibe source is EK0406 (10 errors), so run.mjs never runs. The case needs its sources moved to a module block or a .ts file before its inventory claims can be checked. Rule: docs/design/vips/0004-throw.md

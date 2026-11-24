@@ -1,5 +1,5 @@
 // expect-result: ["special","early-B","zero","one"]
-// foldkit-49/44: a bind-only fallback remains exhaustive after do completion lowering.
+// The foldkit migration: a bind-only fallback remains exhaustive after do completion lowering.
 type Event = { readonly _tag: "A" } | { readonly _tag: "B" }
 export const choose = (event: Event): string => match (event) {
   when { _tag: "A" }: "special";

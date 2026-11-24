@@ -1,6 +1,6 @@
 // expect-result: 1
 // A project with no declaration output has no reader of a sidecar but its own
-// .ts files (foldkit-33: an app's main.vibe exporting AppTabs, whose type
+// .ts files (the foldkit migration: an app's main.vibe exporting AppTabs, whose type
 // only declaration emit must name, TS2883). Stock tsc compiles the same
 // TypeScript without TS4094, so this module compiles too, and its sidecar
 // cannot print the class's private member.

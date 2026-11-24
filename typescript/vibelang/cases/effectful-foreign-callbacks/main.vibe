@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import { fx, unknownFx, stream, layer, union, genericFx, genericStream, genericLayer,
  takeFx, takeStream, takeLayer, takeUnion, takeGF, takeGS, takeGL, type Fx, type GF } from "./helpers.js"
 export function check() {

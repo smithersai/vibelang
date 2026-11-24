@@ -1,0 +1,1 @@
+a readonly difference between the explicit and native spellings is reported, never called stable

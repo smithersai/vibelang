@@ -1,5 +1,5 @@
 // expect-result: [[],["/a","A"],[],["/a","A"],["head"],["head","/a","A"],[],["x"],[0,1],[],["y"],{"undoStack":[],"redoStack":[],"grid":["blank"]},{"undoStack":[],"redoStack":[],"grid":["/a"]}]
-// foldkit-122 (Foldkit uiToastBasic, pixel-art): a match whose arms are an
+// The foldkit migration (Foldkit uiToastBasic, pixel-art): a match whose arms are an
 // empty array and a do ending in an array. Chapter 002 types a do's value as
 // the expression written in place, so `[]` beside it is an empty array
 // literal, not an evolving array (TS7034/TS7005 on the $do temporary), and so

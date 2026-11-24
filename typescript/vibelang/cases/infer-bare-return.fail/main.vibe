@@ -1,0 +1,10 @@
+// expect: TS1338
+// 001-functions.md, "Legacy written infer return slots": a written infer has no
+// channel-inference meaning, so ordinary TypeScript rules apply. A return
+// annotation that is the whole type `infer _` names no Effect channel and is
+// outside a conditional type: TS1338 in a plain function, an arrow and a
+// method alike. Omit the annotation to infer the return type.
+export function plain(): infer _ { return 1 }
+export const arrow = (): infer _ => 1
+export const object = { method(): infer _ { return 1 } }
+export class Box { get(): infer _ { return 1 } }

@@ -1,6 +1,6 @@
 // expect: EK0401
 // A plain return annotation makes a function plain synchronous code, which
-// never throws (Will, 2026-10-31). Each throw here is EK0401 at the throw,
+// never throws (VIP-4, 2026-10-31). Each throw here is EK0401 at the throw,
 // whatever form it takes: a statement, a throw expression, a match arm, a do
 // block, a method, a rethrow from a catch, and a plain callback.
 error Invalid { value: string }

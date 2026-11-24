@@ -1,1 +1,1 @@
-fold-details VIP coverage counterexample: run.mjs printed printed no result (exit 1) (23.1 s); rule and witness recorded in review-spec/conformance/from-coverage.md.
+fold-details run.mjs reports two historical VIP-4 inventory claims that the current text contradicts: "old Promise executor rethrows claim conflicts with the accepted rejection correction" and "original no-global-annotations quotation needs reconciliation with the pinned annotated JSON.parse signature". No compiler change makes it pass: reconcile docs/design/vips/0004-throw.md or delete the two claims.

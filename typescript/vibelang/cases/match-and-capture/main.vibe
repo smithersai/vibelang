@@ -1,4 +1,4 @@
-// VIP-7 / foldkit-181: irrefutable captures preserve coverage.
+// VIP-7 / the foldkit migration: irrefutable captures preserve coverage.
 // rule-evidence: docs/design/src/004-match.md#exhaustiveness
 export type State = { readonly _tag: "Idle" } | { readonly _tag: "Ready"; readonly value: number }
 

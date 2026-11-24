@@ -1,3 +1,2 @@
-cov-ch900b Chapter 900: The retired wire macro remains bound and reports an argument type error instead of native TS2304.
+cov-ch900b the later of two phases. Today the prelude binds the retired wire intrinsic, so wire(1,2) reports TS2345 for its argument. During migration a resolved wire is EK2401 (w02-wire-ek2401.fail and appb-ek2401-wire.fail, both pending); this case passes only after removal, when the prelude no longer binds wire and an unimported wire is native TS2304 (Appendix C, VIP-24 denied). Do not make it pass before the EK2401 phase lands.
 Rules: docs/design/src/900-appendices.md#ec21c02b4d57759a
-Witness: typescript/vibelang/cases/cov900-wire-is-unbound.fail/main.vibe

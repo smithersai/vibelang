@@ -1,6 +1,6 @@
 import * as $nativeTryEffect from "effect/Effect";
-// Reference program 4. Callbacks: a pure Array.map; a rejected callback that pauses
-// (ch10-map-pausing-callback.fail.vibe and ref4-pausing-function-value.fail.vibe); an effect-aware
+// Reference program 4. Callbacks: a pure Array.map; a callback that pauses, kept as data
+// (ch10-map-pausing-callback.fail.vibe and ref4-pausing-function-value.vibe); an effect-aware
 // traversal; a callback API adapted with suspend under cancellation (ref4-adapter.ts).
 // NOTE: the proposal states this program in prose only; the contract comments below are this file's
 // expectations, not contracts printed in the proposal.

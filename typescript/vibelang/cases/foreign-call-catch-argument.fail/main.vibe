@@ -1,5 +1,5 @@
 // expect: EK0403
-// expect-result: "cancel"
+// The program is rejected, so it has no run result to expect.
 import { terminal, view } from "./foreign.ts"
 export effect function main() {
   return terminal.prompt.screen(view({ initialValue: "cancel" as const })) catch effect (e) => match (e) {

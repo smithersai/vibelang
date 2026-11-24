@@ -24,5 +24,5 @@ const $makeCodec1333_0 = () => Schema.Union([Schema.Literals(["a", "b"]), Schema
 const $codecs1333 = { get $codec1333_0() { return $makeCodec1333_0(); } };
 
 export schema error Root { value: $codecs1333.$codec1333_0; get label(): string {return "kept"} }
-export function make(): infer _ { return new Root({value: "a"}) }
+export function make() { return new Root({value: "a"}) }
 export function matches(value: unknown): boolean {return value is Root}

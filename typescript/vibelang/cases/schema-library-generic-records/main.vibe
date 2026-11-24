@@ -13,10 +13,10 @@ function typeChecks(a:Canonical,b:Mutable,c:Qualified,d:CrossArray,e:CrossReadon
   e.x = 1
 }
 export effect function main() {
-  const a = try sync((codec) => Schema.decodeUnknownSync(codec)({a:1}), Canonical)
-  const b = try sync((codec) => Schema.decodeUnknownSync(codec)({b:2}), Mutable)
-  const c = try sync((codec) => Schema.decodeUnknownSync(codec)({c:3}), Qualified)
-  const d = try sync((codec) => Schema.decodeUnknownSync(codec)({d:4}), CrossArray)
-  const e = try sync((codec) => Schema.decodeUnknownSync(codec)({e:5}), CrossReadonly)
+  const a = try Schema.decodeUnknownEffect(Canonical)({a:1})
+  const b = try Schema.decodeUnknownEffect(Mutable)({b:2})
+  const c = try Schema.decodeUnknownEffect(Qualified)({c:3})
+  const d = try Schema.decodeUnknownEffect(CrossArray)({d:4})
+  const e = try Schema.decodeUnknownEffect(CrossReadonly)({e:5})
   return [a,b,c,d,e]
 }

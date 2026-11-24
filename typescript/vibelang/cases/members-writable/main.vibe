@@ -1,6 +1,6 @@
 // expect-result: {"between":true,"minimum":0,"x":2,"z":3,"count":2}
 // A member of an interface or an object type is writable unless written
-// readonly, as in TypeScript, and its declaration says the same (foldkit-10:
+// readonly, as in TypeScript, and its declaration says the same (the foldkit migration:
 // calendar/comparison's options and mount's MountDefinition members).
 export const between = (self: number, options: { minimum: number; maximum: number }): boolean =>
   self >= options.minimum && self <= options.maximum

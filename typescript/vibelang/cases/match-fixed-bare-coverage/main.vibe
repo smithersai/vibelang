@@ -1,5 +1,5 @@
 // expect-result: [1,1,1,2]
-// Chapter 004, decided detail 78 (loop round 3, OPUS-6): a bare fixed pattern
+// Chapter 004, decided detail 78: a bare fixed pattern
 // has no argument list, so it covers its case. Every match below is exhaustive.
 export function option(o: Option.Option<number>) {
   return match (o) { when Option.Some: 1; when Option.None: 2; }

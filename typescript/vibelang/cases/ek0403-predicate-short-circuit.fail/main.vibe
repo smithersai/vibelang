@@ -1,5 +1,5 @@
 // expect: EK0403
-// expect-result: "news news news absent"
+// The program is rejected, so it has no run result to expect.
 import { isResolved, type News } from "./foreign.ts"
 export effect function early(news: News | undefined, skip: boolean): string!! {
   if (skip || !isResolved(news)) return "absent"

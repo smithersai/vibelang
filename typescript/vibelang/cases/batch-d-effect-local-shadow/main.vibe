@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 const Effect = { Array: { head: (xs: number[]): number => xs.length } };
 export const result: number = Effect.Array.head([1]);
 // VIP-14 local-Effect-members

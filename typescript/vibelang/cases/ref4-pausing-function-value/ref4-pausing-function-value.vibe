@@ -1,0 +1,25 @@
+// expect-clean
+// Reference program 4: findName is an effect function because it is marked.
+// Array.forEach accepts its value and drops each unrun Effect; map keeps
+// the programs as data, as native TypeScript does (VIP-1/detail303). The
+// declaration pins it: names returns the unrun programs, not their results.
+
+error UserNotFound { id: string }
+
+interface User {
+  id: string
+  name: string
+}
+
+service Users {
+  find(id: string): User!UserNotFound
+}
+
+export effect function findName(id: string) {
+  return (try (try Users).find(id)).name
+}
+
+export function names(ids: ReadonlyArray<string>) {
+  ids.forEach(findName)
+  return ids.map(findName)
+}

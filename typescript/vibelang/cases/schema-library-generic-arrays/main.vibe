@@ -17,11 +17,11 @@ function typeChecks(a: Mutable, b: Frozen, c: CrossFrozen, d: CrossMutable): voi
 }
 
 export effect function main() {
-  const a = try sync((codec) => Schema.decodeUnknownSync(codec)([1,2]), Mutable)
-  const b = try sync((codec) => Schema.decodeUnknownSync(codec)([3,4]), Frozen)
-  const c = try sync((codec) => Schema.decodeUnknownSync(codec)([5]), CrossFrozen)
-  const d = try sync((codec) => Schema.decodeUnknownSync(codec)([6]), CrossMutable)
-  const e = try sync((codec) => Schema.decodeUnknownSync(codec)([7]), QualifiedMutable)
-  const f = try sync((codec) => Schema.decodeUnknownSync(codec)([8]), QualifiedFrozen)
+  const a = try Schema.decodeUnknownEffect(Mutable)([1,2])
+  const b = try Schema.decodeUnknownEffect(Frozen)([3,4])
+  const c = try Schema.decodeUnknownEffect(CrossFrozen)([5])
+  const d = try Schema.decodeUnknownEffect(CrossMutable)([6])
+  const e = try Schema.decodeUnknownEffect(QualifiedMutable)([7])
+  const f = try Schema.decodeUnknownEffect(QualifiedFrozen)([8])
   return [a,b,c,d,e,f]
 }

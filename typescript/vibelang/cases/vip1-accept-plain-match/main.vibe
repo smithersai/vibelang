@@ -1,5 +1,5 @@
 // expect-result: {"built":0,"some":7,"afterSome":1,"none":1,"afterNone":2,"exact":[7,1],"afterExact":3,"control":[7,1],"afterControl":5}
-// VIP-1 flip acceptance case 1 (foldkit-65; spec ruling 2026-10-31 21:45Z).
+// VIP-1 flip acceptance case 1 (the foldkit migration; spec ruling 2026-10-31).
 // In a plain arrow, match picks a value eagerly and runs nothing (VIP-1:
 // plain code returns the Effect unrun; VIP-2: effect { } is the Effect
 // itself). pick behaves like Option.match(fallback, { onSome: (v) =>

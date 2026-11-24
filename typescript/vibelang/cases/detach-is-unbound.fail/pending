@@ -1,3 +1,2 @@
-retired-prelude The prelude still binds the pre-VIP detach (history D170), so a bare detach(e) compiles and runs instead of reporting native TS2304; no VIP adds it and no Tooling migration section defers it. Rejecting it breaks existing programs and needs a maintainer decision.
+retired-prelude The prelude still binds the pre-VIP detach (history D170), so a bare detach(e) compiles and runs instead of reporting native TS2304; no VIP adds it and no Tooling migration section defers it. Rejecting it breaks existing programs and needs a maintainer decision. No other case calls the prelude detach: the rest write fork.detached.
 Rules: docs/design/src/000-intro.md, docs/design/vips/0017-fork.md
-Witness: typescript/vibelang/cases/detach-is-unbound.fail/main.vibe

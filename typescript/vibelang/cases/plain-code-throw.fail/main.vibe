@@ -1,5 +1,5 @@
 // expect: EK0401
-// Will, 2026-10-31: synchronous VibeLang code never throws. A constructor, an
+// VIP-4, 2026-10-31: synchronous VibeLang code never throws. A constructor, an
 // accessor, a class static block, a function a hatch runs and a module's top
 // level run as plain JavaScript, so a throw in any of them is EK0401. Only a
 // module declaration's body, which is TypeScript, keeps JavaScript's throw.

@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import {make,makeSafe,makeEffect,makeCaptured,type Program,type Fn,type Handler,type Admitting,type API} from "./helpers.js"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"

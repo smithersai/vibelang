@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import { risky, safe, safeZero, unknownSource, foreign, foreignSafe, take, takeOptional, allow, wide, byReturn,
   effectZero, effectOne, effectUse, type Callback, type Allowed, type Wide, type PerReturn } from "./helpers.js"
 export function check(flag: boolean) {

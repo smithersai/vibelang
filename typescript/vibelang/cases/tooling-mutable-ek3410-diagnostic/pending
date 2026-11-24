@@ -1,1 +1,1 @@
-tooling EK3410 is never reported: the compiler accepts retired mutable markers on ordinary members and plain error payloads silently (only --fix removes them)
+tooling EK3410 is never reported: the compiler accepts retired mutable markers on ordinary members and plain error payloads silently. Flips with appb-ek3410-mutable-marker.fail, whose pending file lists the cases that accept the marker today.

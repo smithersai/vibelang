@@ -1,7 +1,7 @@
 // expect-result: {"statementRun":1,"constInit":3,"returned":3,"ternary":5,"ternaryConst":4,"nullish":6,"orElse":7,"andAlso":8,"matchArm":9,"matchDie":1,"matchFail":2,"ifElse":[],"doResult":11,"arrow":1,"arrowTernary":12,"handler":14,"argument":16,"member":"17","template":"18","factoryRun":190,"byName":21,"insideArray":[21,22],"handlerFail":24,"handlerBlock":25,"fallback":26,"matchDieNone":"Error: missing","matchFailNone":"Missing: "}
 // VIP-1 migration (decided detail 274): before VIP-1 a call in effect code
 // whose result was an Effect ran where it stood: a statement, an initializer,
-// a return value, an arm of ?: or match (foldkit-18's
+// a return value, an arm of ?: or match (the foldkit migration's
 // `when Option.None: die(new Error("missing"))`), either side of ?? or ||,
 // the right side of &&, a do expression's result, an effect arrow's body, a
 // catch handler or fallback, an argument, an element or a property value.

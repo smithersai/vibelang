@@ -1,3 +1,2 @@
-cov-ch900b Chapter 900: After binding succeed, the bad E=never return still uses interim EK9201 instead of ordinary TS2322 assignability.
-Rules: docs/design/src/900-appendices.md#28529248d8aab896
-Witness: typescript/vibelang/cases/cov900-error-contract.fail/main.vibe
+cov-ch900b a throw against an E = never contract reports interim EK9201 where Appendix B's transitional table names ordinary TS2322 assignability as the target. The case flips when the transitional contract check retires.
+Rules: docs/design/src/900-appendices.md#28529248d8aab896, docs/design/src/900-appendices.md#3f5f45010c0a714a

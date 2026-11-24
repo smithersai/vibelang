@@ -1,5 +1,5 @@
 // expect-result: [7,9,7,9,"early",4,7]
-// foldkit-44: Kanban's update returns early from inside a do expression. A
+// The foldkit migration: Kanban's update returns early from inside a do expression. A
 // do expression introduces no function boundary (VIP-2), so its return
 // returns from the enclosing function: a concise arrow, a block arrow, a
 // function declaration and a call argument.

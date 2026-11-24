@@ -1,5 +1,5 @@
 // expect-result: "Envelope object"
-// alchemy-29: a name in a JSDoc comment is no use of Effect's module of that
+// The alchemy migration: a name in a JSDoc comment is no use of Effect's module of that
 // name (VIP-14: emitted code imports each module it uses). Here Entity loads
 // effect/cluster, whose modules include Envelope and Sharding. The
 // {@link Envelope.correlationId} that alchemy's domain/Aggregate writes once

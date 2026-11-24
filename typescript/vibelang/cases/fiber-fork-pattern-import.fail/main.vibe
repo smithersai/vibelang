@@ -1,5 +1,5 @@
 // expect: EK1702
-// expect-result: [true,0,"fork"]
+// The program is rejected, so it has no run result to expect.
 import { fork } from "./model.js"
 function make() { return new fork() }
 function readName() { return fork.name }

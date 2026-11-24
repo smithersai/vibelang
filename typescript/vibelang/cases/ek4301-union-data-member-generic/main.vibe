@@ -1,5 +1,5 @@
 // expect-result: "1:42 2"
-// alchemy-28: a generic data member of a union target, Like<W> in
+// The alchemy migration: a generic data member of a union target, Like<W> in
 // register<W>(cls: Like<W> | Plat), takes the value as data, as the
 // non-generic member of ek4301-union-data-member does: W matches the
 // resource's witness, so an Effect-returning resource class is no EK4301

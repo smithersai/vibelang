@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // Appendix B: EK4807 — spec-rule: docs/design/src/900-appendices.md#a6961d425e081439
 // Layer.mergeAll of a layer that needs another is a warning by default;
 // independent layers are not.

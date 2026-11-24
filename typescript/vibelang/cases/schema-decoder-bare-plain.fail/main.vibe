@@ -1,0 +1,17 @@
+// expect: EK0401
+// Appendix E: the decoder that Schema.decodeUnknownSync(schema) returns is
+// `@throws {SchemaError}`. Synchronous .vibe code never throws, so a call of it
+// outside the try block of a try/catch statement is EK0401, in a plain
+// function and at the top level; inside the try block it compiles.
+schema User { name: string }
+export function bare(input: unknown): User {
+  return Schema.decodeUnknownSync(User)(input)
+}
+export const top = Schema.decodeUnknownSync(User)({ name: "Ada" })
+export function caught(input: unknown): User | undefined {
+  try {
+    return Schema.decodeUnknownSync(User)(input)
+  } catch {
+    return undefined
+  }
+}

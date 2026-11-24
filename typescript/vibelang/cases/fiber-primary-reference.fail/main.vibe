@@ -1,5 +1,5 @@
 // expect: EK1702
-// expect-result: [7,11,7,11,"join","C",0]
+// The program is rejected, so it has no run result to expect.
 class join { value = 7 }
 const fork = { C: class { value = 11 } }
 function names() { return [join.name, fork.C.name] }

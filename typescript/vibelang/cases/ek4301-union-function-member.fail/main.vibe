@@ -1,7 +1,0 @@
-// expect:
-// VIP-1/detail303: Function and generic data members retain native checking.
-// Neither destination turns an Effect-returning factory into another kind.
-import { Thing, register, collection } from "./lib.ts"
-
-export const registered = register(Thing)
-export const collected = collection([Thing])

@@ -1,5 +1,5 @@
 // expect: EK0403
-// expect-result: [["Success","value"],["Failure",["Fail"]]]
+// The program is rejected, so it has no run result to expect.
 import { Effect } from "effect"
 import { describe } from "./helper.js"
 export effect function parse(s:string):unknown!SyntaxError! { return JSON.parse(s) }

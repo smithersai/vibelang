@@ -9,7 +9,7 @@
 // rule-evidence: docs/design/vips/0005-try-runs-effects.md#4e2dd4071a6bfe7d
 // VIP-5: ts function demo(e: Effect.Effect<number>, h: (x: unknown) => Effect.Effect<number>) {
 // expect-result: {"one":1,"two":2,"three":3,"r":4,"p":5,"c":7,"all":[1,2],"settled":1,"chained":8}
-// 007-tooling.md, EK4834-EK4836 (loop round 5 OPUS-4, decided detail 254):
+// 007-tooling.md, EK4834-EK4836 (decided detail 254):
 // the three rows warn only on the direct operand of bare try in effect code,
 // through parentheses, as and an import alias. A fork operand, a try.all or
 // try.allSettled element, an Effect API argument and a stored Effect do not

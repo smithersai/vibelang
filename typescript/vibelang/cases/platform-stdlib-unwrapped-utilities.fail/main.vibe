@@ -1,4 +1,4 @@
-// expect: EK0403
+// expect: EK0401 EK0403
 import { Effect } from "effect"
 export function ordinary() { return [Date.now(), Math.random(), JSON.stringify({ n: 1 }), Intl.NumberFormat] }
 export effect function main() {

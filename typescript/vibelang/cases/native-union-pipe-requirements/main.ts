@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect"
-// alchemy-25: packages/railway/src/AuthProvider.ts:109, minimized by drive-alchemy (nyc-02 repros/round3-auth-provider-types/minimal.ts).
+// Minimized from alchemy's packages/railway/src/AuthProvider.ts:109, found while migrating that repository.
 interface A { readonly _A: unique symbol }
 interface B { readonly _B: unique symbol }
 type E = { readonly message: string }

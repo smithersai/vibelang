@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK4837` | lint warning: A class written with `Schema.TaggedError`, except one with spread fields or a user-written static `_tag` | 29, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 // Only the ordinary Schema.TaggedError class (line 7) draws EK4837. Spread
 // fields or a user-written static _tag keep the class form without it; the

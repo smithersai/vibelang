@@ -34,8 +34,8 @@ schema Draft {
   mutable title: string
 }
 
-function edit() {
-  const draft: Draft = Schema.decodeUnknownSync(Draft)({ title: "Ada" })
+effect function edit() {
+  const draft: Draft = try Schema.decodeUnknownEffect(Draft)({ title: "Ada" })
   draft.title = `${draft.title}!`
   return draft.title
 }
@@ -45,6 +45,6 @@ export effect function main() {
     a: bump({ label: "c", count: 1 }),
     b: tally(["x", "y", "x"]),
     c: describe({ mutable: false, tags: ["a"] }),
-    e: edit()
+    e: try edit()
   }
 }

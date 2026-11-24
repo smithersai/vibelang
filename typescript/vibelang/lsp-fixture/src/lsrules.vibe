@@ -1,4 +1,4 @@
-// Rules from Effect's language service (D240), with their quick fixes.
+// Rules from Effect's language service (D240). The server offers no VibeLang quick fix for them.
 service Name {
   value(): string!!
 }

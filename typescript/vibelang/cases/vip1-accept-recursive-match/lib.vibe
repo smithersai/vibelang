@@ -1,6 +1,6 @@
-// VIP-1 flip acceptance case 6 (foldkit-72): a recursive native match does
+// VIP-1 flip acceptance case 6 (the foldkit migration): a recursive native match does
 // not turn an explicitly plain function into an Effect function. Corpus:
-// drive-foldkit-web repros/recursive-native-match (scalar, a tagged tree and
+// the foldkit website's recursive native matches (scalar, a tagged tree and
 // an Array.map pipeline callback).
 import { Array as Arr, pipe } from "effect"
 
@@ -18,7 +18,7 @@ export const tree = (value: Tree): string => match (value) {
 
 export const pipelineTree = (values: readonly Tree[]): string => pipe(
   values,
-  Arr.map((value): infer _ => match (value) {
+  Arr.map((value) => match (value) {
     when { _tag: "Leaf", text: let text }: text;
     when { _tag: "Branch", children: let children }: pipelineTree(children);
   }),

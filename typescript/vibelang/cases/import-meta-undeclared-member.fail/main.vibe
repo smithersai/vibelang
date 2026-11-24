@@ -1,0 +1,14 @@
+// expect: TS2339
+// VIP-33, amended 2026-11-09: import.meta follows TypeScript. A member the
+// program's ImportMeta declarations do not name receives TypeScript's
+// ordinary diagnostic, never EK4402, in plain and in effect code; url and a
+// declared member compile.
+declare global {
+  interface ImportMeta {
+    env: Record<string, string>
+  }
+}
+export const url = import.meta.url
+export const mode = import.meta.env.MODE
+export const directory = import.meta.dirname
+export effect function wrapped() { return try Effect.sync(() => import.meta.filename) }

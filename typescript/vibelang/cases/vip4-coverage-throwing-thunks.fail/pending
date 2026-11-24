@@ -1,1 +1,1 @@
-cov-try-throw VIP coverage counterexample: missing EK0402 (9.7 s); rule and witness recorded in review-spec/conformance/from-coverage.md.
+cov-try-throw a bare call that may throw, inside a plain function that returns an Effect, reports EK0401 at the call (main.vibe line 10); the case expects EK0402 for passing the throwing thunk where the function type admits no thrown type. Rule: docs/design/vips/0004-throw.md, Appendix B rows EK0401 and EK0402.

@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 type Url={origin:string;toString():string};type Reply={location?:string;status:number};
 declare function parse(s:string,base?:Url):Url|undefined;
 declare function execute(s:string):Reply;

@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import { risky, safe, fx, takeSafe, takeLoose, type Safe, type Loose, type Fx } from "./helpers.js"
 function local() { return 1 }
 export function check() {

@@ -1,5 +1,5 @@
 // expect-result: [7,7,7]
-// Decided detail 225 (loop round 1, ASTRA-3): a producer's Stream requirements
+// Decided detail 225: a producer's Stream requirements
 // are its body's without Scope, because the Stream's callback supplies that
 // Scope, as Stream.callback does. Forking a scoped child inside a producer
 // asks the consumer for no Scope; another service stays. The declaration

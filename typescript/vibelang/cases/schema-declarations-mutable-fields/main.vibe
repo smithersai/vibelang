@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect"
 schema Mutable { value: string }
 export effect function main() {
- const item = Schema.decodeUnknownSync(Mutable)({ value: "before" })
+ const item = try Effect.orDie(Effect.try(() => Schema.decodeUnknownSync(Mutable)({ value: "before" })))
  item.value = "after"
  return item
 }

@@ -1,4 +1,4 @@
-// Retired catch clauses: EK2112 and EK2113 warn, and their quick fixes rewrite them.
+// Retired catch clauses: EK2112 and EK2113 warn. The server offers no quick fix for either.
 error Missing { id: string }
 error Late
 

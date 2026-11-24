@@ -58,11 +58,22 @@ for (const [name, marker] of [["empty", ""], ["spaces", "   "], ["newlines", "\r
     test(`${name} marker rejects a ${mismatch ? "failing" : "passing"} case`, t => invalid(t, marker, { mismatch, status: mismatch }))
   }
 }
-for (const marker of ["lane", "lane explanation", "  lane explanation\n"]) {
+for (const marker of ["lane", "Lane explanation", "lane/path explanation", "lane\n"]) {
+  for (const mismatch of [false, true]) {
+    test(`marker ${JSON.stringify(marker)} without a lane and a reason rejects a ${mismatch ? "failing" : "passing"} case`, t => {
+      const result = run(t, marker, { mismatch, status: mismatch })
+      assert.equal(result.status, 1, result.stdout + result.stderr)
+      assert.match(result.stdout, /1 cases: 0 ok, 1 FAIL, 0 pending, 0 XPASS/)
+      assert.equal(existsSync(path.join(result.at, "out")), false, "invalid metadata must fail before launching a compiler")
+    })
+  }
+}
+for (const marker of ["lane explanation", "  lane explanation\n", "lane-2 two\nlines"]) {
   for (const mismatch of [false, true]) {
     test(`owned marker ${JSON.stringify(marker)} retains ${mismatch ? "pending" : "XPASS"}`, t => {
       const result = run(t, marker, { mismatch, status: mismatch })
-      assert.equal(result.status, 0, result.stdout + result.stderr)
+      // A pending case that passes fails the run until its owner deletes the pending file.
+      assert.equal(result.status, mismatch ? 0 : 1, result.stdout + result.stderr)
       assert.match(result.stdout, mismatch ? /1 cases: 0 ok, 0 FAIL, 1 pending, 0 XPASS/ : /1 cases: 0 ok, 0 FAIL, 0 pending, 1 XPASS/)
       assert.ok(existsSync(path.join(result.at, "out/main.js")))
     })

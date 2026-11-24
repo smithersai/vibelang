@@ -32,7 +32,8 @@ function fixture(t, { diagnostic = "", header = "", identity = false, identityAf
   const at = "typescript/vibelang/cases/sample"
   put(at + "/tsconfig.json", "{}")
   put(at + "/main.vibe", header + "\nexport const answer = 42\n")
-  put(at + "/expected/stdout.txt", "42\n")
+  // A failing case is never run, so it holds no stdout expectation.
+  if (!header.startsWith("// expect:")) put(at + "/expected/stdout.txt", "42\n")
   if (runnerBinary) put(at + "/run.mjs", [
     'import assert from "node:assert/strict"',
     'assert.equal(process.env.VIBELANG_BINARY, ' + JSON.stringify(join(root, "typescript/built/local/tsc")) + ')',
@@ -82,7 +83,7 @@ const error = "main.vibe(1,1): error EK0102: error fixture"
 for (const [name, options] of [
   ["plain", {}], ["warnings", { diagnostic: warning }],
   ["expected warnings", { diagnostic: warning, expectedDiagnostics: true }],
-  ["empty expected codes", { header: "// expect:" }],
+  ["clean marker", { header: "// expect-clean" }],
   ["identity", { identity: true }],
 ]) {
   test(name + ": successful compile still passes", t => {
@@ -122,6 +123,23 @@ test("status output retains the failed compiler receipt", t => {
   const result = f.run(2, ["--status"])
   assert.equal(result.status, 1, result.stdout + result.stderr)
   assert.equal(f.log(result).commands[0].exitCode, 2)
+})
+test("an empty expected-codes line never passes", t => {
+  for (const code of [0, 1]) {
+    const result = fixture(t, { header: "// expect:" }).run(code)
+    assert.equal(result.status, 1, result.stdout + result.stderr)
+    assert.match(result.stdout, /FAIL    sample: main\.vibe has an empty `\/\/ expect:` line/)
+  }
+})
+test("a pending compiler crash fails instead of staying pending", t => {
+  for (const code of [7, 134, 255]) {
+    const f = fixture(t, { pending: true })
+    const result = f.run(code)
+    assert.equal(result.status, 1, result.stdout + result.stderr)
+    assert.match(result.stdout, new RegExp("FAIL    sample: tsc exited with " + code))
+    assert.match(result.stdout, /0 ok, 1 FAIL, 0 pending, 0 XPASS/)
+    assert.equal(f.log(result).commands[0].exitCode, code)
+  }
 })
 test("a pending compile failure stays pending with evidence", t => {
   const f = fixture(t, { pending: true })

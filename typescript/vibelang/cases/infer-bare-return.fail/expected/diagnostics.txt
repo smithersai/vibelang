@@ -1,0 +1,4 @@
+main.vibe(7,26): error TS1338
+main.vibe(8,26): error TS1338
+main.vibe(9,35): error TS1338
+main.vibe(10,27): error TS1338

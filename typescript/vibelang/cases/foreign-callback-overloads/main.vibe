@@ -1,4 +1,4 @@
-// expect:
+// expect-clean
 import { choose, reverse, safe, singleSafe, intrinsic, effectUse, zero, one, both, permitted, either } from "./helpers.js"
 const chooseAlias = choose
 const reverseAlias = reverse

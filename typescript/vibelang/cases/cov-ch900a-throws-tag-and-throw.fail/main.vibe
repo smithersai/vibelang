@@ -1,0 +1,5 @@
+// expect: EK0406 EK0401
+// Appendix B: a @throws tag in .vibe source is EK0406, and a throw in synchronous .vibe code is EK0401.
+// No EK0405 exists; spec-rule: docs/design/src/900-appendices.md#f7830da0e1663fc7
+/** @throws {never} */
+export function load() { throw new Error("bad") }

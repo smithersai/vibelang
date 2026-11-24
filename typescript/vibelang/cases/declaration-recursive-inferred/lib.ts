@@ -1,4 +1,4 @@
-// alchemy-23: an inferred return type that meets its own anonymous type
+// The alchemy migration: an inferred return type that meets its own anonymous type
 // again, as alchemy's packages/aws builders do, declares it /*elided*/ any,
 // as TypeScript 5.9 and 7.0.2 do (decision 6); expected/lib.d.ts is 7.0.2's.
 export const from = (value: string) => makeBuilder({ value })
