@@ -1,6 +1,6 @@
 # VIP-60: `Experimental.Durable`, the durable runtime: journal, replay, run state, step cache and time travel
 
-**Status:** Accepted, 2026-11-23. The runtime exports the journal, replay and run inspection APIs as `Experimental.Durable`. VibeLang projects enable the built-in with `"vibe": { "experimental": ["builtins"] }` ([VIP-30](0030-config-files.md#decision)).
+**Status:** accepted by Will, 2026-11-23 — **standard library only (no compiler or language changes)**. Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". Implemented in the runtime as `Experimental.Durable`.
 
 ## Will's words
 

@@ -1,6 +1,6 @@
 # VIP-61: `Experimental.Trigger` and `Experimental.WorkQueue`: cron triggers and durable queues
 
-**Status:** Accepted, 2026-11-23. The runtime exports cron scheduling, verified webhooks and keyed work queues as `Experimental.Trigger` and `Experimental.WorkQueue`.
+**Status:** accepted by Will, 2026-11-23 — **standard library only (no compiler or language changes)**. Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". Implemented in the runtime as `Experimental.Trigger` and `Experimental.WorkQueue`.
 
 ## Will's words
 

@@ -1,6 +1,6 @@
 # VIP-63: `Experimental.Agent`: the agent loop, model-written scripts and coding-agent CLIs
 
-**Status:** Accepted, 2026-11-23. The runtime provides `Agent.cli`, `Agent.layerCli`, `Agent.detect` and the internal QuickJS cell interpreter. The public agent loop, streaming API, judge, durable CLI sessions and worker integration remain design commitments.
+**Status:** accepted by Will, 2026-11-23 — **standard library only (no compiler or language changes)**. Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". Runtime provides `Agent.cli`, `Agent.layerCli`, `Agent.detect`, and the internal QuickJS cell interpreter (`Experimental.Agent`); public agent loop completion queued.
 
 ## Will's words
 

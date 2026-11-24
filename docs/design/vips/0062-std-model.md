@@ -1,6 +1,6 @@
 # VIP-62: `Experimental.Model`: language models and decision models with no SDK
 
-**Status:** Accepted, 2026-11-23. The runtime exports model selection, fallback, proxying and durable recording as `Experimental.Model`.
+**Status:** accepted by Will, 2026-11-23 — **standard library only (no compiler or language changes)**. Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". Implemented in the runtime as `Experimental.Model`.
 
 ## Will's words
 > Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?

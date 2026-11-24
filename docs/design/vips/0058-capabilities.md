@@ -1,6 +1,6 @@
 # VIP-58: Capabilities: a permission kernel in the standard library
 
-**Status:** Accepted, 2026-11-23. The runtime exports the policy evaluator, grant stores and platform service guards as `Experimental.Capability`.
+**Status:** accepted by Will, 2026-11-23 (standard library + task plan metadata; no grammar changes). Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". The runtime exports `Experimental.Capability` (policy evaluator, grant stores, and platform service guards); adding `tier` and `capabilities` fields to the compiler-derived task plan remains queued.
 
 ## Will's words
 

@@ -1,6 +1,6 @@
-# VIP-54: One consistent model for platform-specific code (open)
+# VIP-54: One consistent model for platform-specific code (RFP)
 
-**Status:** open, 2026-11-09. Early proposal: recorded for discussion, not decided. No candidate model is selected, and this VIP changes no compiler behavior until accepted.
+**Status:** RFP (request for proposal), 2026-11-23. Will: "54 isn't a proposal it's more like a request for a proposal as is effectify universe". Recorded as a problem statement inviting a concrete design proposal; no candidate model is selected, and this VIP changes no compiler behavior until a concrete proposal is accepted. *(Previously open, 2026-11-09.)*
 
 ## Will's words
 

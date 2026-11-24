@@ -1,6 +1,6 @@
 # VIP-55: `task` and `workflow`, durable steps and the plan the compiler derives
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](README.md#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. An experimental implementation exists: the compiler parses and checks `task` and `workflow` declarations, which run on `Experimental.Durable`. It compiles only in a project that opts in with `"vibe": { "experimental": ["builtins"] }` ([VIP-30](0030-config-files.md#decision)); without it, the first use in a file is `EK3013`.
+**Status:** accepted by Will, 2026-11-23. Will: "55 I accept". The compiler parses and checks `task` and `workflow` declarations, which run on `Experimental.Durable` (currently behind `"vibe": { "experimental": ["builtins"] }` during alpha rollout until promoted). *(Previously reopened 2026-11-11 awaiting Will's review.)*
 
 ## Will's words
 

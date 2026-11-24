@@ -1,6 +1,6 @@
-# VIP-35: effect handlers (`control`, `handle`, `resume`, `abandon`) (open)
+# VIP-35: effect handlers (`control`, `handle`, `resume`, `abandon`), denied
 
-**Status:** open, 2026-10-29. Listed for a future decision and not part of the first release. Will: "yea list as an open VIP".
+**Status:** denied by Will, 2026-11-23. Will: "I deny 35 I don't think it's necessary". Services and Effect cover its use cases without delimited continuations. *(Previously open, 2026-10-29: Will: "yea list as an open VIP".)*
 
 ## What it is
 

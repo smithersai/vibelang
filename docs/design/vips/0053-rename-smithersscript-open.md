@@ -1,6 +1,6 @@
-# VIP-53: Renaming VibeLang to SmithersScript (open)
+# VIP-53: Renaming VibeLang to Vibe (formerly SmithersScript proposal)
 
-**Status:** open, 2026-11-07. Will, 2026-11-06: "We are renaming vibelang to smithersscript. This is a very large change". Will, 2026-11-07: "we are keeping name vibelang for now don't change name leave it as an open VIP". Listed for a decision; nothing is renamed.
+**Status:** revised by Will, 2026-11-23 — SmithersScript denied; target name is **Vibe**. Will: "53 I don't accept as is. We want to rename VibeLang to Vibe." Needs a revised rename plan scoped to renaming VibeLang → Vibe (keeping `.vibe`, `.vibex`, `.d.vibe.ts`, `// @vibe`, and `vibe.config.json`, which already match). *(Historical: 2026-11-06 proposed SmithersScript; 2026-11-07 left open.)*
 
 **One sentence.** VibeLang becomes SmithersScript, either in name only with `.vibe` kept (variant A) or everywhere including the file extension (variant B, `.smts`).
 

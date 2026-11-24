@@ -1,6 +1,6 @@
-# VIP-36: the declaration manifest (`vibelang.manifest.json`) (open)
+# VIP-36: the declaration manifest (`vibelang.manifest.json`), denied
 
-**Status:** open, 2026-10-29. Not part of the first release. Will: "Yup open vip for that".
+**Status:** denied by Will, 2026-11-23. Will: "36 also looks unnecessary". `@throws` in declaration files (VIP-27 + VIP-4) already carries throw contracts without a manifest. *(Previously open, 2026-10-29: Will: "Yup open vip for that".)*
 
 ## What it was
 

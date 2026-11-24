@@ -1,6 +1,6 @@
 # VIP-70: `Experimental.Fuzz`: fuzzing and deterministic fiber simulation
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](README.md#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. An experimental implementation exists: the runtime modules `Experimental.Fuzz` and `Experimental.FuzzSimulation`. It compiles only in a project that opts in with `"vibe": { "experimental": ["builtins"] }` ([VIP-30](0030-config-files.md#decision)); without it, the first use in a file is `EK3013`.
+**Status:** accepted by Will, 2026-11-23 — **standard library only (no compiler or language changes)**. Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". Implemented in the runtime as `Experimental.Fuzz` and `Experimental.FuzzSimulation`.
 
 ## Will's words
 

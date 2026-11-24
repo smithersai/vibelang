@@ -1,6 +1,6 @@
 # VIP-57: `schema service` and worker imports: threads and other machines behind one typed boundary
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](README.md#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. No implementation exists.
+**Status:** accepted by Will, 2026-11-23. Will: "57 I accept but I want you to read it and polish it too it's a messy vip". Polished on 2026-11-23 to remove duplicated decision bullets, reconcile the Effect/Stream member rule, scrub internal reference-engine commits, and drop the stale VIP-54 blocker. Implementation queued. *(Previously reopened 2026-11-11 awaiting Will's review.)*
 
 ## Will's words
 > Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
@@ -57,12 +57,11 @@ export effect function main(samples: readonly (readonly number[])[]) {
 
 ### `schema service`
 
-1. Every member is a method that returns an Effect. A property is an error.
-2. Every parameter, success type and error type is a durable boundary type (VIP-44). A type with no schema form is `EK2109`.
-3. The declaration is still a `service`: the same key, the same `Stats.Shape`, the same `Layer.succeed(Stats, …)`. A local layer provides it with no serialization.
-4. The compiler also generates the service's Rpc group, one Rpc per member, with the payload keyed by parameter name.
-5. A member may return a `Stream`. It becomes a streaming Rpc.
-6. Only the declared members cross. Services the implementation uses are built on the far side from its own layer; none is serialized out of the caller.
+1. Every member is a method returning an `Effect` or a `Stream`. Properties, getters/setters, plain non-Effect methods, and overloaded or generic methods (which have no single wire schema) are compile errors (`schema-service-member`).
+2. Every parameter, success/element type, and error type is a durable boundary type ([VIP-44](0044-durable-values.md)). Any type with no schema form is `EK2109`. Optional parameters map to `Schema.optional`.
+3. The declaration is still a normal `service`: same key, same `Stats.Shape`, same `Layer.succeed(Stats, …)`. Providing a local layer executes in-process with zero serialization.
+4. The compiler also generates the service's `RpcGroup` (one `Rpc` per member, payload keyed by parameter name; `Stream` return types become streaming RPCs).
+5. Only the declared method inputs, outputs, and errors cross the boundary. Services used by the implementation are resolved on the worker/server side from its own layer — nothing is serialized from the caller's environment.
 
 ### Worker imports
 
@@ -105,10 +104,7 @@ provide Layer.provide(Experimental.Rpc.client(Stats), RpcClient.layerProtocolHtt
 | On a machine made for the job | `provide Experimental.Sandbox.container(…) { … }`: the same `FileSystem` and `ChildProcess` code runs there | [std-sandbox](0067-std-sandbox.md) |
 | As a durable step on another engine | `static readonly placement = { remote: "compute" }` on a `task` | [durable-tasks-workflows](0055-durable-tasks-workflows.md) |
 
-A placed task compiles to `PlacedAction.layer(T, Placement.remote({ target }), body)` in the reference engine (an existing Effect durable-execution framework these built-ins are modelled on), and the serving engine exposes it with `FlowProxy.toRpcGroup([PlacedAction.served(T)])`. A lost reply is asked again under the same invocation key, so the holder joins the run it recorded. Two gaps in the reference engine at `main@origin` `bcf8076a4ff4` must close first (`engine/src/PlacedAction.ts`, `engine/src/Hosts.ts`):
-
-- `PlacedAction.layer` calls `action.toLayer` with no `implementationVersion`, so a versioned task cannot be placed.
-- `Hosts` resolves a target nobody bound to `Here`, so the body runs in the caller's process. Vibe must refuse an unbound target.
+A placed task compiles to remote durable RPC placement ([VIP-55](0055-durable-tasks-workflows.md)), preserving `implementationVersion` and refusing unbound remote targets at startup rather than silently falling back to local execution. A lost reply is retried under the same invocation key so the caller joins the recorded run.
 
 ### What the compiler emits
 
@@ -152,75 +148,20 @@ Layer.effect(Stats, Effect.map(RpcClient.make(StatsRpcs), (client) => ({
 
 ### Diagnostics
 
-Codes are assigned when this VIP is built.
+Diagnostic codes are allocated from the `EK57xx` block when implemented:
 
 | Slug | When |
 | --- | --- |
-| `schema-service-member` | A member is a property, or does not return an Effect or a Stream |
+| `schema-service-member` | A member is a property, accessor, overload, generic method, or does not return an `Effect` or `Stream` |
 | `worker-default-export` | A module imported `with { type: "worker" }` has no default-export `Layer`, or provides a service that is not a `schema service` |
-| `worker-binding` | A worker import names anything but a default binding |
+| `worker-binding` | A worker import uses named or namespace bindings instead of a default binding |
 
-## Maintainers' decisions
+### Resolved design scope
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
-
-- Every member is a method that returns an Effect. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- A property is an error. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- Every parameter, success type and error type is a durable boundary type (VIP-44). [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- A type with no schema form is `EK2109`. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- The declaration is still a `service`: the same key, the same `Stats.Shape`, the same `Layer.succeed(Stats, …)`. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- A local layer provides it with no serialization. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- The compiler also generates the service's Rpc group, one Rpc per member, with the payload keyed by parameter name. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- A member may return a `Stream`. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- It becomes a streaming Rpc. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- Only the declared members cross. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- Services the implementation uses are built on the far side from its own layer; none is serialized out of the caller. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- `import w from "./m.vibe" with { type: "worker" }` binds `w` to a handle for the module as a worker entry. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- It imports no code into this thread. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Import attributes are ECMAScript 2025; the value `"worker"` is Vibe's. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- The module's default export is a `Layer`. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Every service it provides is a `schema service`. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Its requirements are services the worker's host provides. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- The compiler emits a worker entry that serves those services, and the bundler plugins emit it as its own chunk. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- A worker is a separate realm with separate module state. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- **It is not a security boundary.** A sandbox is ([std-sandbox](0067-std-sandbox.md)). [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Values are copied through their schemas. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Nothing is shared or transferred unless a schema says so. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- In scope as `Experimental.Rpc`, named after the Effect module it extends ([VIP-33](0033-platform-stdlib.md)). [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Its code is `vibelang-runtime/experimental/Rpc`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Rpc.workers(w, { size })` or `{ minSize, maxSize, timeToLive }`, with optional `concurrency`: Gives: A layer that provides `w`'s services from a pool of threads; Effect code underneath: `RpcClient.layerProtocolWorker(options)`, `RpcClient.make(group)`, the host's `Worker.Spawner`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Rpc.client(Stats)`: Gives: A layer that provides `Stats` by calling a server; Effect code underneath: `RpcClient.make(group)`; needs `RpcClient.Protocol`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Rpc.serve(Stats)`: Gives: A layer that serves `Stats` to callers; Effect code underneath: `RpcServer.layer(group)`; needs `Stats` and `RpcServer.Protocol`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- The transport is Effect's and is chosen with `provide`: `RpcClient.layerProtocolHttp`, `RpcServer.layerProtocolHttp`, the socket protocols, and `RpcSerialization.layerNdjson` or another serializer. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- VIP-44's serialization rules apply unchanged. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Failures.** A transport failure is a defect, unless the member's declared error type includes Effect's `RpcClientError`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Then the member fails with it, typed. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Limits.** A pool bounds its threads (`size`) and the calls each runs at once (`concurrency`). [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Message size is the transport's bound. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Cancellation.** Interrupting the calling fiber sends Rpc's interrupt to the far side. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- It does not prove the far side stopped. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- A pool's scope owns its threads and ends them when it closes. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- To run code On another thread: Use: A worker import and `Experimental.Rpc.workers`; Defined in: This VIP. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- To run code On another machine you run: Use: `Experimental.Rpc.serve` there, `Experimental.Rpc.client` here; Defined in: This VIP. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- To run code On a machine made for the job: Use: `provide Experimental.Sandbox.container(…) { … }`: the same `FileSystem` and `ChildProcess` code runs there; Defined in: [std-sandbox](0067-std-sandbox.md). [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- To run code As a durable step on another engine: Use: `static readonly placement = { remote: "compute" }` on a `task`; Defined in: [durable-tasks-workflows](0055-durable-tasks-workflows.md). [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- A placed task compiles to the reference engine's `PlacedAction.layer(T, Placement.remote({ target }), body)`, and the serving engine exposes it with `FlowProxy.toRpcGroup([PlacedAction.served(T)])`. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- A lost reply is asked again under the same invocation key, so the holder joins the run it recorded. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- Two gaps in the reference engine at `main@origin` `bcf8076a4ff4` must close first (`engine/src/PlacedAction.ts`, `engine/src/Hosts.ts`): [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- `PlacedAction.layer` calls `action.toLayer` with no `implementationVersion`, so a versioned task cannot be placed. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- `Hosts` resolves a target nobody bound to `Here`, so the body runs in the caller's process. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- Vibe must refuse an unbound target. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- For `stats.vibe`, beside the ordinary service: [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
-- For the worker entry of `stats.vibe`: [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
-- For `Experimental.Rpc.workers(statsWorker, { size: 4 })`: [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
-- Codes are assigned when this VIP is built. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
-- Slug `schema-service-member`: When: A member is a property, or does not return an Effect or a Stream. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
-- Slug `worker-default-export`: When: A module imported `with { type: "worker" }` has no default-export `Layer`, or provides a service that is not a `schema service`. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
-- Slug `worker-binding`: When: A worker import names anything but a default binding. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
-
-### Adopted review answers
-
-- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- **Module name:** Keep `Experimental.Rpc` under [VIP-33](0033-platform-stdlib.md) until a later promotion decision.
+- **Transport failures:** Defects by default so call sites stay identical across local, worker, and remote layers; typed when a member explicitly declares `RpcClientError` in its error channel.
+- **Zero-copy buffers:** Copy by default; explicit Effect `Transferable` schemas opt into transfer semantics so sender buffers are never silently neutered.
+- **Out of scope for VIP-57:** Stateful addressed entities (`effect/cluster` `Entity` — future follow-up VIP) and shared-memory structs.
 
 ## Compared
 
@@ -307,7 +248,7 @@ export const main = (samples: ReadonlyArray<ReadonlyArray<number>>) =>
 ## What this changes
 
 - `schema` becomes a modifier of `service`, as it is of `error` ([VIP-29](0029-schema-errors.md)).
-- The import attribute `type: "worker"` gains a meaning. The bundler plugins emit a chunk for it. VIP-54, the open platform model, must classify it as a build-time form.
+- The import attribute `type: "worker"` gains a meaning, and bundler plugins emit a dedicated chunk for it.
 - `Experimental.Rpc` is new.
 - The proposals page's `spawn module { … }` is replaced.
 
@@ -318,16 +259,9 @@ export const main = (samples: ReadonlyArray<ReadonlyArray<number>>) =>
 - **A module's exports as the contract**: `import * as stats from "./stats.vibe" with { type: "worker" }`, then `stats.summarize(values)`. One declaration fewer. It gives the worker no way to say which layers its functions need, and no interface a remote machine can implement.
 - **Library only.** That is the three-file program, and it needs a `.ts` file to construct the worker.
 
-## Follow-up questions
-
-1. **Transport failures.** A defect by default, typed when a member declares `RpcClientError`. The alternative adds a failure to every remote call's type and breaks "the call site does not change". Recommendation: as written.
-2. **Addressed, stateful processes.** Elixir addresses a process by name on any node. Effect's `effect/cluster` has that as `Entity`, built from the same Rpc definitions a `schema service` generates. Should `Experimental.Rpc.entity(Stats)` be in this VIP? Recommendation: a follow-up VIP, after this one is built.
-3. **Zero-copy data.** A `Uint8Array` is copied between threads unless the Rpc schema marks it with Effect's `Transferable`. Recommendation: no default; moving a buffer empties the sender's copy.
-4. **Shared memory.** The proposals page's shared structs stay out of scope.
-
 ## Depends on
 
 - [VIP-44](0044-durable-values.md), accepted: the Rpc boundary and its serialization.
 - [VIP-9](0009-service-declarations.md) and [VIP-29](0029-schema-errors.md), accepted.
-- VIP-54, the platform model: which host supplies the worker spawner.
-- Nothing else in this set. Durable placement is [durable-tasks-workflows](0055-durable-tasks-workflows.md)'s member.
+- Host worker spawners from `@effect/platform-{node,browser,bun}` (does not block on the VIP-54 RFP).
+- Nothing else in this set. Durable placement is [VIP-55](0055-durable-tasks-workflows.md)'s member.
