@@ -19,6 +19,8 @@ import type * as Process from "../Process.js"
 import type * as Stdio from "../Stdio.js"
 import * as StdioExtension from "../internal/stdio.js"
 import type * as Request from "../Request.js"
+import type * as Rpc from "../Rpc.js"
+import * as RpcExtension from "../internal/rpcNode.js"
 import * as ExperimentalNodeChildProcess from "./ExperimentalNodeChildProcess.js"
 import * as ExperimentalNodeHeaders from "./ExperimentalNodeHeaders.js"
 import * as ExperimentalNodeStream from "./ExperimentalNodeStream.js"
@@ -41,6 +43,7 @@ export type ExperimentalNodeServices =
   | Process.Process
   | Stdio.Stdio
   | Request.Request
+  | Rpc.WorkerHost
 
 /**
  * `@effect/platform-node`'s `NodeServices.layer` plus the experimental
@@ -58,6 +61,7 @@ export const layer: Layer.Layer<ExperimentalNodeServices> = Layer.provideMerge(
     ExperimentalNodeHeaders.layer,
     ExperimentalNodeStream.layer,
     ExperimentalNodeRequest.layer,
+    RpcExtension.layer,
     CryptoExtension.layer,
     FileSystemExtension.layer,
     ExperimentalNodeProcess.layer,

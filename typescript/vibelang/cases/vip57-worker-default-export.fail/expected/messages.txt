@@ -1,0 +1,6 @@
+"./named-only.vibe" cannot be imported as a worker: it has no default export, and a worker serves the Layer its module exports by default.
+"./not-layer.vibe" cannot be imported as a worker: its default export is not a Layer.
+"./plain-service.vibe" cannot be imported as a worker: its default export provides Plain, which is not a schema service.
+"./unexported.vibe" cannot be imported as a worker: its default export provides Hidden, which the module does not export; the importing thread needs the schema service to call it.
+"./mixed.vibe" cannot be imported as a worker: its default export provides Plain, which is not a schema service.
+Type 'WorkerHandle<Layer<Stats, never, never>>' is missing the following properties from type 'Layer<never, never, never>': pipe, [TypeId]

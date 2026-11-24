@@ -1,0 +1,13 @@
+schema Summary { mean: number; max: number }
+schema error EmptySample {}
+
+export schema service Stats {
+  summarize(values: readonly number[]): Summary!EmptySample
+}
+
+export default Layer.succeed(Stats, {
+  summarize: effect (values) => {
+    if (values.length === 0) throw new EmptySample()
+    return { mean: values.reduce((a, b) => a + b, 0) / values.length, max: Math.max(...values) }
+  }
+})

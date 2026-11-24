@@ -247,6 +247,8 @@ or runtime references valid in first-release `.vibe` source.
 | `forkIn` | Fork a program into a given Scope | D47 |
 | `$Context` | Expose Effect's Context namespace for generated service references | D1, D40 |
 | `$service` | Create the Context key base merged with a generated service interface | D1, D45 |
+| `$schemaService` | Base of a generated `schema service` class: `$service(key)` plus its RpcGroup thunk and typed-transport members | VIP-57 (experimental) |
+| `$worker` | The handle a `with { type: "worker" }` import binds: module URL, schema services, bundled-entry flag | VIP-57 (experimental) |
 | `$reference` | Create the `Context.Reference` base of a service class that declares `static readonly default` | D40, D45 |
 | `ServiceKey` (type) | Name the static side of a compiled service class or legacy control artifact in its declaration file | D45 |
 | `ReferenceKey` (type) | Name the static side of a compiled service class with a static default in its declaration file | D40, D45 |

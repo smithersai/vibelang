@@ -1,0 +1,10 @@
+import { ExperimentalNodeRpc } from "vibelang-runtime/experimental/platform-node"
+import { Stats } from "./stats.vibe"
+import statsWorker from "./stats.vibe" with { type: "worker" }
+
+export effect function main() {
+  provide Layer.provide(Experimental.Rpc.workers(statsWorker, { size: 2 }), ExperimentalNodeRpc.layer) {
+    const stats = try Stats
+    return try stats.summarize([1, 2, 3])
+  }
+}

@@ -1,6 +1,6 @@
 # VIP-57: `schema service` and worker imports: threads and other machines behind one typed boundary
 
-**Status:** accepted by Will, 2026-11-23. Will: "57 I accept but I want you to read it and polish it too it's a messy vip". Polished on 2026-11-23 to remove duplicated decision bullets, reconcile the Effect/Stream member rule, scrub internal reference-engine commits, and drop the stale VIP-54 blocker. Implementation queued. *(Previously reopened 2026-11-11 awaiting Will's review.)*
+**Status:** accepted by Will, 2026-11-23. Will: "57 I accept but I want you to read it and polish it too it's a messy vip". Polished on 2026-11-23 to remove duplicated decision bullets, reconcile the Effect/Stream member rule, scrub internal reference-engine commits, and drop the stale VIP-54 blocker. Implemented 2026-11-23 (codes `EK5701` to `EK5703`). *(Previously reopened 2026-11-11 awaiting Will's review.)*
 
 ## Will's words
 > Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
@@ -148,13 +148,25 @@ Layer.effect(Stats, Effect.map(RpcClient.make(StatsRpcs), (client) => ({
 
 ### Diagnostics
 
-Diagnostic codes are allocated from the `EK57xx` block when implemented:
+Diagnostic codes are allocated from the `EK57xx` block:
 
-| Slug | When |
-| --- | --- |
-| `schema-service-member` | A member is a property, accessor, overload, generic method, or does not return an `Effect` or `Stream` |
-| `worker-default-export` | A module imported `with { type: "worker" }` has no default-export `Layer`, or provides a service that is not a `schema service` |
-| `worker-binding` | A worker import uses named or namespace bindings instead of a default binding |
+| Code | Slug | When |
+| --- | --- | --- |
+| `EK5701` | `schema-service-member` | A member is a property, accessor, overload, generic method, or does not return an `Effect` or `Stream`. Also: a rest or destructured parameter (no payload key), a return type that names its channels through an alias (the schemas are read from the written type), a member that declares requirements, a `defaultValue`, and `schema service Name: Type` (no body to read) |
+| `EK5702` | `worker-default-export` | A module imported `with { type: "worker" }` has no default-export `Layer`, or provides a service that is not a `schema service`, or provides a `schema service` the module does not export |
+| `EK5703` | `worker-binding` | A worker import uses named or namespace bindings, or no binding, instead of a default binding |
+
+`EK2109` reports a parameter, success or error type with no schema form, as in a `schema` field.
+
+### Implementation notes
+
+- **The mapping is syntactic**, as a `schema` field's is. A member's return type is read as written: `A!E`, `Effect<A, E>`, `Effect.Effect<A, E>`, `Stream<A, E>` or `Stream.Stream<A, E>`. `void` success and `never` error are left out, as `Rpc.make`'s defaults.
+- **The group is `<Name>Rpcs`**, declared before the service and exported when the service is. It is ordinary Effect code: `RpcServer.layer(StatsRpcs)` and `RpcClient.make(StatsRpcs)` work on it directly.
+- **The service's key class holds its group**: `class Stats extends $schemaService("app/stats#Stats", () => StatsRpcs, ["remote"]) {}`. The third argument lists the members that declare `RpcClientError`; that error is never in the wire schema.
+- **A worker import lowers to a handle.** The importing thread needs the services' keys and schemas, so the module exports each schema service its default `Layer` provides, and the import becomes `import { Stats as w$Stats } from "./stats.js"` and `const w = $worker(new URL("./stats.js", import.meta.url), [w$Stats])`. The binding's type is `Experimental.Rpc.WorkerHandle<L>`, not the `Layer`.
+- **The worker entry.** Run unbundled, the host's `WorkerHost` layer starts the runtime's worker entry on the module's URL: it imports the module and serves the schema services of its default `Layer` (`runWorker`). The bundler plugins emit a worker entry chunk for the module and pass its URL: `$worker(url, services, true)`.
+- **Hosts.** `Experimental.Rpc.workers` needs `Experimental.Rpc.WorkerHost`, which `ExperimentalNodeServices`, `ExperimentalBunServices` and `ExperimentalBrowserServices` provide.
+- **Tags.** `Experimental.Rpc.client` and `serve` use the group's tags unchanged, so a hand-written Effect peer interoperates. A worker pool prefixes each tag with the service's key, so two services in one worker may share a member name.
 
 ### Resolved design scope
 

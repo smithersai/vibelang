@@ -8,6 +8,7 @@
  * @since 0.0.11
  */
 export * as ExperimentalNodeRequest from "./ExperimentalNodeRequest.js"
+export * as ExperimentalNodeRpc from "./ExperimentalNodeRpc.js"
 export * as ExperimentalNodeStream from "./ExperimentalNodeStream.js"
 export * as ExperimentalNodeHeaders from "./ExperimentalNodeHeaders.js"
 export * as ExperimentalNodeCrypto from "./ExperimentalNodeCrypto.js"

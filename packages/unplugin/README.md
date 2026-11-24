@@ -234,7 +234,8 @@ entry.
 vibelang({
   project: "tsconfig.app.json", // Relative to root; default: tsconfig.json.
   root: "/path/to/app", // Default: the Vite root, webpack or Rspack context, Rolldown's cwd, esbuild's absWorkingDir, or the working directory.
-  compiler: "/absolute/path/to/vibelang" // Native binary or Node launcher.
+  compiler: "/absolute/path/to/vibelang", // Native binary or Node launcher.
+  workerPlatform: "node" // Worker imports' runner: "node", "bun" or "browser"; default below.
 })
 ```
 
@@ -273,6 +274,28 @@ trace each build start, compile, and module load on stderr.
 Loading the plugin does not require its `vibelang` peer. Builds that need a
 missing compiler package report an installation hint without terminating the
 process, including repeated builds.
+
+## Worker imports
+
+A module that imports `import statsWorker from "./stats.vibe" with { type:
+"worker" }` (VIP-57) gets a worker entry for `stats.vibe`: a module that
+imports it and serves its default `Layer` with the platform's `runWorker`. The
+plugin passes the entry to the handle, so `Experimental.Rpc.workers` starts it
+directly.
+
+| Bundler | The entry |
+| --- | --- |
+| Rollup, Rolldown, Vite build | A chunk of the same build, named `stats.worker`, by `this.emitFile` and `import.meta.ROLLUP_FILE_URL_` |
+| webpack, Rspack | Their worker chunk: the handle receives a spawner, `() => new Worker(new URL("./stats.vibe?vibelang-worker=node", import.meta.url))`, with `Worker` imported from `worker_threads` on Node |
+| Vite dev server | Served at `/stats.vibe?vibelang-worker=browser`; in a server environment the runtime starts `stats.vibe` itself |
+| esbuild, `Bun.build` | None: the build fails and names the import, since neither can emit a chunk from a plugin |
+
+The platform is `"node"` for Rolldown's `platform: "node"`, a webpack or Rspack
+`node` or Electron main target, and a Vite server environment, and `"browser"`
+otherwise. Rollup has no platform, so a Rollup build for Node sets
+`workerPlatform: "node"`. With esbuild or `Bun.build`, bundle the program with
+another bundler, or run it unbundled, where the runtime starts the worker
+module itself.
 
 ## How it works
 

@@ -1064,7 +1064,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1109 records)</summary>
+<summary>Parser and lowering hooks (1136 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1102,11 +1102,11 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang.go:Parser.vibelangCatchChain ` | ` admission:typed-catch ` | ` - ` | ` pending ` | VIP-5 forbids Effect try statements and typed catch clauses |
 | ` parser/vibelang.go:Parser.vibelangClauseBody ` | ` admission:typed-catch ` | ` - ` | ` pending ` | VIP-5 forbids Effect try statements and typed catch clauses |
 | ` parser/vibelang.go:Parser.vibelangClauseBodyOf ` | ` admission:typed-catch ` | ` - ` | ` pending ` | VIP-5 forbids Effect try statements and typed catch clauses |
-| ` parser/vibelang.go:Parser.isStartOfHandleClause ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
-| ` parser/vibelang.go:Parser.parseVibeLangHandleStatement ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
-| ` parser/vibelang.go:Parser.parseHandleClause ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
-| ` parser/vibelang.go:Parser.parseHandleOperation ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
-| ` parser/vibelang.go:Parser.vibelangClauseResumes ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.isStartOfHandleClause ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.parseVibeLangHandleStatement ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.parseHandleClause ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.parseHandleOperation ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.vibelangClauseResumes ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
 | ` parser/vibelang.go:Parser.parseSchemaDeclaration ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration ` | ` support ` | VIP-15 schema mapping |
 | ` parser/vibelang.go:Parser.parseSchemaDeclaration@jsdoc-field-type ` | ` admission:schema-jsdoc-field-type ` | ` - ` | ` pending ` | VIP-15 requires an ordinary source `Type` in `Field`; JSDoc type prefixes `?`, `??`, `!` and `*` instead become an unsupported schema type with `EK2109` and lose the native syntax rejection |
 | ` parser/vibelang.go:Parser.vibelangSchemaMember ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration ` | ` support ` | VIP-15 schema mapping |
@@ -1402,7 +1402,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_try.go:isVibeLangTry ` | ` admission:try ` | ` 900-appendices.md#TryExpression ` | ` support ` | VIP-5: try (try e) runs both layers; the inner try stays the operand |
 | ` parser/vibelang_try.go:holdsVibeLangTry ` | ` admission:try ` | ` 900-appendices.md#TryExpression ` | ` support ` | VIP-5: try (try (e)) runs both layers; parentheses around the inner try keep it the operand |
 | ` parser/vibelang_try.go:isVibeLangFormCall ` | ` admission:try ` | ` 900-appendices.md#TryExpression ` | ` support ` | VIP-5: try do { e }, try match and try try.race [a, b] run the value the form gives; the form stays the operand |
-| ` parser/vibelang_retired_controls.go:Parser.retiredControlForm ` | ` admission:retired-control-forms ` | ` 000-intro.md ` | ` recovery ` | First-release handler retirement reports `EK3501`/`EK4607`; recovery retains diagnostics and existing lowering, never admission of open VIP-35 forms. |
+| ` parser/vibelang_retired_controls.go:Parser.retiredControlForm ` | ` admission:retired-control-forms ` | ` 000-intro.md ` | ` recovery ` | First-release handler retirement reports `EK3501`/`EK4607`; recovery retains diagnostics and existing lowering, never admission of forms denied by VIP-35. |
 | ` vibelang/catches.go:init ` | ` admission:catch-tests ` | ` 003-failures.md ` | ` support ` | Failure test support; legacy typed catch syntax audited separately |
 | ` vibelang/catches.go:isFailureTest ` | ` admission:catch-tests ` | ` 003-failures.md ` | ` support ` | Failure test support; legacy typed catch syntax audited separately |
 | ` vibelang/catches.go:failureTags ` | ` admission:catch-tests ` | ` 003-failures.md ` | ` support ` | Failure test support; legacy typed catch syntax audited separately |
@@ -1816,7 +1816,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/wire.go:providedBy ` | ` admission:wire ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
 | ` parser/vibelang_catch.go:Parser.parseVibeLangCatchRest@catch-value ` | ` admission:catch-value ` | ` 900-appendices.md#CatchHandler `, ` 002-running.md ` | ` recovery ` | VIP-5: a value handler is parsed only to report EK0509 (4488a715) |
 | ` parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration@effect-shorthand ` | ` admission:effect-shorthand ` | ` 900-appendices.md#EffectShorthand ` | ` recovery ` | VIP-1: explicitly specified recovery for EK0101; not language admission |
-| ` parser/vibelang.go:Parser.parseServiceDeclaration@control-declaration ` | ` admission:control-declaration ` | ` - ` | ` pending ` | Open VIP-35 does not admit control declarations |
+| ` parser/vibelang.go:Parser.parseServiceDeclaration@control-declaration ` | ` admission:control-declaration ` | ` - ` | ` pending ` | Denied by VIP-35; does not admit control declarations |
 | ` parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-aggregate ` | ` admission:join-aggregate ` | ` - ` | ` pending ` | VIP-17 admits grammar operand but not aggregate Fiber join semantics |
 | ` parser/vibelang_fibers.go:Parser.nextTokenStartsLegacyForkOperand ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` recovery ` | VIP-1/17: outside source Effect context, legacy fork operands are recognized only for their diagnostics and migration |
 | ` parser/vibelang_fibers.go:Parser.legacyForkOwnerHasOperand ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` recovery ` | VIP-1/17: outside source Effect context, a named owner with an operand recovers for EK1701; a valid member access keeps its reading |
@@ -2177,6 +2177,33 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_proofs.go:Parser.parseVibeLangProofBlock ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` admitted ` | VIP-43 proof block; placement is EK4304 |
 | ` parser/vibelang_proofs.go:Parser.markProofStatements ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` support ` | VIP-43 proof statements: syntax decides, in a proof block and its if statements and blocks |
 | ` parser/vibelang_proofs.go:Parser.isProofStatementCall ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` support ` | VIP-43 proof statements: an unparenthesized, unescaped identifier callee without type arguments or optional chaining |
+| ` parser/vibelang_schema_service.go:IsSchemaServiceGroup ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcGroup companion check |
+| ` parser/vibelang_schema_service.go:IsSchemaServiceTransportError ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcClientError recognition |
+| ` parser/vibelang_schema_service.go:Parser.isStartOfVibeLangSchemaService ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service lookahead |
+| ` parser/vibelang_schema_service.go:Parser.parseSchemaServiceDeclaration ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` admitted ` | VIP-57 schema service declaration and RpcGroup companion |
+| ` parser/vibelang_schema_service.go:Parser.vibelangRpc ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service Rpc.make synthesis |
+| ` parser/vibelang_schema_service.go:Parser.vibelangRpcGroup ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcGroup.make class synthesis |
+| ` parser/vibelang_schema_service.go:Parser.vibelangRpcSchema ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service Rpc schema conversion |
+| ` parser/vibelang_schema_service.go:Parser.vibelangServiceHead ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service header span |
+| ` parser/vibelang_schema_service.go:Parser.vibelangTypeCopy ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service written type clone |
+| ` parser/vibelang_schema_service.go:SchemaServiceDeclaresTransportError ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcClientError union check |
+| ` parser/vibelang_schema_service.go:SchemaServiceGroupCall ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcGroup.make call extractor |
+| ` parser/vibelang_schema_service.go:SchemaServiceParameter ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service parameter eligibility check |
+| ` parser/vibelang_schema_service.go:SchemaServiceRequirements ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service return requirement slot reader |
+| ` parser/vibelang_schema_service.go:SchemaServiceReturn ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service Effect/Stream return slot reader |
+| ` parser/vibelang_schema_service.go:vibelangRpcMemberName ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service member name check |
+| ` vibelang/worker_imports.go:checkWorkerImports ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import static checks (EK5702, EK5703) |
+| ` vibelang/worker_imports.go:hasWorkerImport ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import presence check |
+| ` vibelang/worker_imports.go:init ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import hook registration |
+| ` vibelang/worker_imports.go:isSchemaServiceIdentifier ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service identifier recognition for worker exports |
+| ` vibelang/worker_imports.go:isWorkerImport ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 with { type: "worker" } import attribute recognition |
+| ` vibelang/worker_imports.go:lowering.visitWorkerImport ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` admitted ` | VIP-57 worker import lowering to runtime.$worker |
+| ` vibelang/worker_imports.go:servicePlan.planWorkerImport ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import lowering plan |
+| ` vibelang/worker_imports.go:workerBinding ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import default binding check |
+| ` vibelang/worker_imports.go:workerBindings ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import binding cache |
+| ` vibelang/worker_imports.go:workerHandleInterface ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 Experimental.Rpc.WorkerHandle lookup |
+| ` vibelang/worker_imports.go:workerHandleType ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import handle expression type hook |
+| ` vibelang/worker_imports.go:workerModuleServices ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker module default Layer service resolution |
 
 </details>
 
@@ -2400,6 +2427,9 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK5508` | `W.to(…)`, a workflow's handoff to its next round, anywhere but as a `return` operand | 55 | [Services](005-services.md#durable-static-rules) |
 | `EK5509` | warning: a written `retryPolicy` object literal with neither `maxAttempts` nor `expirationMs`, no spread and no computed property name | 55 | [Services](005-services.md#durable-static-rules) |
 | `EK5601` | a durable wait (`Experimental.Durable.sleep`, `Experimental.Durable.until`, a signal's `wait()`, or `Experimental.Human.{confirm,ask,select,json}`) called in Effect code outside a workflow body | 56 | [Services](005-services.md#durable-static-rules) |
+| `EK5701` | a member of a `schema service` is a property, accessor, overload, generic method, or does not return an `Effect` or `Stream` | 57 | [Services](005-services.md#schema-services) |
+| `EK5702` | a module imported `with { type: "worker" }` has no default-export `Layer`, or provides a service that is not an exported `schema service` | 57 | [Services](005-services.md#worker-imports) |
+| `EK5703` | a worker import uses named or namespace bindings instead of a default binding | 57 | [Services](005-services.md#worker-imports) |
 | `EK5801` | warning: a task whose body requires `HttpClient` or `ChildProcessSpawner` declares no `static readonly tier`, so it defaults to `"sealed"` | 58 | [Services](005-services.md#durable-static-rules) |
 | `EK1011` | compiler dependency error: an Effect construct cannot resolve the installed Effect type; install the pinned peer before compiling. Example: `effect function f() { return 1 }` with no resolvable Effect package | 6, 32, 34 | [Tooling](007-tooling.md#the-effect-version) |
 | `EK2112` | warning: a legacy catch clause tests its failure's type; the preserving migration removes the annotation and tests the value with `match` or `is`. Example: `catch (e: NotFound) { recover(e) }` in legacy effect code Replay [example: main.vibe:7:15; also EK2105](../../../typescript/vibelang/cases/decl-catch-untagged.fail/main.vibe). | 5, 34 | [Running Effects](002-running.md#catch) |

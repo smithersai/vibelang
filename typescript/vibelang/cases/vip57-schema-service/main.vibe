@@ -1,0 +1,44 @@
+// expect-result: {"summary":{"mean":2,"max":3},"empty":"EmptySample","count":2,"all":3,"ticks":[1,2,3],"rpcs":["summarize","count","ticks","reset"],"payload":["values","floor"],"key":"vip57-schema-service/main#Stats"}
+// VIP-57: schema service is service with codecs. It is still a normal
+// service (same key, Stats.Shape, Layer.succeed(Stats, …)), and the compiler
+// also writes its Rpc group, StatsRpcs: one Rpc for each member, the payload
+// keyed by parameter name, a Stream member a streaming Rpc.
+
+schema Summary { mean: number; max: number }
+schema error EmptySample {}
+
+export schema service Stats {
+  summarize(values: readonly number[]): Summary!EmptySample
+  count(values: readonly number[], floor?: number): number!!
+  ticks(upTo: number): Stream<number>
+  reset(): void!!
+}
+
+const implementation: Stats.Shape = {
+  summarize: effect (values) => {
+    if (values.length === 0) throw new EmptySample()
+    return { mean: values.reduce((a, b) => a + b, 0) / values.length, max: Math.max(...values) }
+  },
+  count: effect (values, floor) => values.filter((value) => value >= (floor ?? 0)).length,
+  ticks: (upTo) => Stream.fromIterable(Array.from({ length: upTo }, (_, index) => index + 1)),
+  reset: effect () => {}
+}
+
+export const StatsLive = Layer.succeed(Stats, implementation)
+
+export effect function main() {
+  provide StatsLive {
+    const stats = try Stats
+    try stats.reset()
+    return {
+      summary: try stats.summarize([1, 2, 3]),
+      empty: try (stats.summarize([]) |> Effect.catch(%, effect (error) => error._tag)),
+      count: try stats.count([1, 5, 9], 4),
+      all: try stats.count([1, 5, 9]),
+      ticks: Array.from(try Stream.runCollect(stats.ticks(3))),
+      rpcs: Array.from(StatsRpcs.requests.keys()),
+      payload: Object.keys(StatsRpcs.requests.get("count")?.payloadSchema.fields ?? {}),
+      key: Stats.key
+    }
+  }
+}

@@ -9,4 +9,12 @@ export interface VibeLangOptions {
   root?: string
   /** Native vibelang binary or Node launcher path. Defaults to VIBELANG_BINARY, then the root's vibelang package, then the one beside the plugin. */
   compiler?: string
+  /**
+   * The platform whose worker runner serves a `with { type: "worker" }`
+   * import's entry chunk (VIP-57). Defaults to `"node"` for Rolldown's
+   * `platform: "node"`, a webpack or Rspack Node or Electron main target, and
+   * a Vite server environment, and to `"browser"` otherwise, including Rollup,
+   * which has no platform.
+   */
+  workerPlatform?: "node" | "bun" | "browser"
 }

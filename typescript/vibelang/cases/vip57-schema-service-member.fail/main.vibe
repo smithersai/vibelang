@@ -1,0 +1,27 @@
+// expect: EK5701
+// VIP-57, schema-service-member (EK5701): every member of a schema service is
+// a method that returns an Effect or a Stream, with one wire schema.
+
+schema Point { x: number; y: number }
+type Later = number!!
+
+export schema service Bad {
+  readonly region: string
+  get size(): number
+  find(id: string): Point!!
+  find(id: number): Point!!
+  pick<T>(value: T): T!!
+  plain(id: string): string
+  aliased(id: string): Later
+  needs(id: string): Point!!Clock
+  rest(...ids: string[]): number!!
+  spread({ id }: { id: string }): number!!
+  ok(id: string): Point!!
+}
+
+export schema service Whole: { run(): void!! } {}
+
+export schema service Defaulted {
+  static readonly defaultValue = () => ({ get: effect () => 1 })
+  get(): number!!
+}

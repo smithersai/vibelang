@@ -118,6 +118,9 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	case "workflow":
 		return p.parseDurableDeclaration(pos, jsdoc, modifiers, true /*workflow*/) // VIP-55, vibelang_durable.go
 	case "schema":
+		if p.isStartOfVibeLangSchemaService() {
+			return p.parseSchemaServiceDeclaration(pos, jsdoc, modifiers) // VIP-57, vibelang_schema_service.go
+		}
 		if p.isStartOfVibeLangSchemaError() {
 			return p.parseErrorDeclaration(pos, jsdoc, modifiers, true /*schema*/) // vibelang_errors.go
 		}
@@ -494,7 +497,7 @@ func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 	if control {
 		formName = "control"
 	}
-	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: formName, Head: core.NewTextRange(word.Pos(), name.End())}
+	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: formName, Head: core.NewTextRange(p.vibelangServiceHead(word), name.End())}
 	if p.token == ast.KindOpenBraceToken {
 		form.Open = p.tokenRange()
 	} else if !control && !ambient {

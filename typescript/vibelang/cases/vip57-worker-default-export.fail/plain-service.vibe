@@ -1,0 +1,5 @@
+export service Plain {
+  double(value: number): number!!
+}
+
+export default Layer.succeed(Plain, { double: effect (value) => value * 2 })

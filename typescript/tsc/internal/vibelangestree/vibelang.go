@@ -81,8 +81,9 @@ func (c *converter) typeArgumentNodes(list *ast.NodeList) []*ast.Node {
 // source of its own: the interface a schema declaration declares.
 func (c *converter) skipStatement(statement *ast.Node) bool {
 	// A schema declaration's interface, a schema alias's type (D280), and a
-	// generic data declaration's interface; a data declaration's constant (D307).
-	return c.vibe && ((statement.Kind == ast.KindInterfaceDeclaration || statement.Kind == ast.KindTypeAliasDeclaration) && synthesized(statement) || parser.IsDataConstructors(statement))
+	// generic data declaration's interface; a data declaration's constant (D307);
+	// a schema service's Rpc group class (VIP-57).
+	return c.vibe && ((statement.Kind == ast.KindInterfaceDeclaration || statement.Kind == ast.KindTypeAliasDeclaration) && synthesized(statement) || parser.IsDataConstructors(statement) || parser.IsSchemaServiceGroup(statement))
 }
 
 func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) {

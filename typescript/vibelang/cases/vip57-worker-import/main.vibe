@@ -1,0 +1,23 @@
+// expect-result: {"summaries":[{"mean":2,"max":3},{"mean":5,"max":6}],"empty":"EmptySample","here":true,"there":false,"countdown":[3,2,1]}
+// VIP-57: a worker import binds a handle for the module as a worker entry,
+// and Experimental.Rpc.workers provides the services of the module's default
+// Layer from a pool of threads. The code that calls the service is the code
+// that would call a local layer.
+
+import { ExperimentalNodeRpc } from "vibelang-runtime/experimental/platform-node"
+import { Stats } from "./stats.vibe"
+import statsWorker from "./stats.vibe" with { type: "worker" }
+import { onMainThread } from "./thread.ts"
+
+export effect function main() {
+  provide Layer.provide(Experimental.Rpc.workers(statsWorker, { size: 2 }), ExperimentalNodeRpc.layer) {
+    const stats = try Stats
+    return {
+      summaries: try forEach([[1, 2, 3], [4, 6]], (values) => stats.summarize(values), { concurrency: "unbounded" }),
+      empty: try (stats.summarize([]) |> Effect.catch(%, effect (error) => error._tag)),
+      here: onMainThread(),
+      there: try stats.onMainThread(),
+      countdown: Array.from(try Stream.runCollect(stats.countdown(3)))
+    }
+  }
+}

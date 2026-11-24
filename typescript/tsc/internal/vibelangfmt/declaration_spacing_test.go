@@ -15,6 +15,7 @@ func TestDeclarationKeywordSpacing(t *testing.T) {
 		"schema   User{id:string}",
 		"schema   Code = string",
 		"schema   error   Oops{code:number}",
+		"schema   service   Stats{read():number!!}",
 		"service   Users{find():Effect<string>}",
 		"service   class   Users{find():Effect<string>}",
 		"service   Prefix:   string {}",
@@ -46,6 +47,7 @@ func TestDeclarationKeywordComments(t *testing.T) {
 	for _, source := range []string{
 		"error /* explanation */   Oops { code: number }",
 		"schema /* explanation */ error   Oops { code: number }",
+		"schema /* explanation */ service   Stats { read(): number!! }",
 		"service /* explanation */ Users { name: string }",
 	} {
 		result, err := Format("test.vibe", source, func(text string) (string, error) { return text, nil })

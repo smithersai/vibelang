@@ -1,5 +1,6 @@
 import { clientUrls, moduleUrls } from "./url-output.js"
 import { relativeOutput } from "./relative-output.js"
+import { checkPlatform, compilerParser, hasWorkerImports, workerEntryCode, workerEntryId, workerEntryPlatform, workerOutput } from "./worker-output.js"
 import { aliasImport, forgetPaths } from "./paths-imports.js"
 import { extensionlessImport } from "./relative-imports.js"
 import { existsSync, readFileSync, realpathSync } from "node:fs"
@@ -257,9 +258,12 @@ async function acquireProjects(backend, options) {
 
 /** @param {import('./index.d.ts').VibeLangOptions} options */
 export default function vibelang(options = {}) {
+  checkPlatform(options.workerPlatform, "vibelang-vite")
   let root, project, logger, backend, modules, current, closing, serving, clientGraph
   let urlBase = "/"
   const urlVersions = new Map()
+  // Worker entry chunks a server build emitted; resolveFileUrl places them.
+  const serverWorkers = new Set()
   const rewrittenUrls = new WeakSet()
 
   // One compile per tsconfig: the project for root's modules, and each
@@ -367,6 +371,38 @@ export default function vibelang(options = {}) {
     if (output.writtenImports?.size) writtenNames.set(file, output.writtenImports)
     else writtenNames.delete(file)
     return output
+  }
+
+  // VIP-57: the platform whose worker runner a worker entry starts. A server
+  // environment (SSR, Vitest's Node tests) runs on Node; any other on a browser.
+  function workerPlatform(context, loadOptions) {
+    if (options.workerPlatform) return options.workerPlatform
+    const consumer = context.environment?.config.consumer ?? (loadOptions?.ssr ? "server" : "client")
+    return consumer === "server" ? "node" : "browser"
+  }
+
+  // A worker import's new URL argument. A build emits the worker entry as its
+  // own chunk of this build, so it needs no worker.plugins; the dev server
+  // serves the entry by its URL. Vite's module runner executes server modules
+  // without serving them to threads, so there the runtime's own entry starts
+  // the worker module from its source file, which needs a .vibe loader in the
+  // thread, such as NODE_OPTIONS=--import=vibelang/register.
+  function workerUrl(context, loadOptions, module) {
+    const platform = workerPlatform(context, loadOptions)
+    const consumer = context.environment?.config.consumer ?? (loadOptions?.ssr ? "server" : "client")
+    if (!serving) {
+      const name = basename(module).replace(/\.vibex?$/, "") + ".worker"
+      const reference = context.emitFile({ type: "chunk", id: workerEntryId(slash(module), platform), name })
+      if (consumer === "server") serverWorkers.add(reference)
+      // Vite renders the file URL under its base, such as /assets/x.js, which
+      // the importing module's URL resolves.
+      return { code: `new URL(import.meta.ROLLUP_FILE_URL_${reference}, import.meta.url)` }
+    }
+    if (consumer === "server") return { code: `new URL(${JSON.stringify(pathToFileURL(module).href)})`, entry: false }
+    const inRoot = relative(root, module)
+    const path = !inRoot.startsWith("..") && !isAbsolute(inRoot) ? urlBase + slash(inRoot) : urlBase + "@fs/" + slash(module).replace(/^\//, "")
+    const url = encodeURI(path).replace(/[?#]/g, encodeURIComponent) + "?vibelang-worker=" + platform
+    return { code: `new URL(${JSON.stringify(url)}, import.meta.url)` }
   }
 
   function diagnostics(errors, file) {
@@ -499,6 +535,8 @@ export default function vibelang(options = {}) {
     },
     resolveId(source, importer, resolveOptions) {
       const original = cleanId(source)
+      // A worker entry this plugin emitted, by its module's absolute path.
+      if (workerEntryPlatform(source) && isAbsolute(original) && isCompiled(original) && existsSync(original)) return slash(source)
       const query = source.slice(original.length)
       const file = outputPath(original, importer, writtenOutput)
       const serve = target => slash(isModuleId(source) ? servedId(target) : target) + query
@@ -550,8 +588,10 @@ export default function vibelang(options = {}) {
       return this.resolve(written + query, importer, { ...resolveOptions, skipSelf: true }).then(resolved => resolved ?? relative())
     },
     // Source modules and module declarations share the owning project compile.
-    async load(id) {
+    async load(id, loadOptions) {
       const file = cleanId(id)
+      const entryPlatform = workerEntryPlatform(id)
+      if (entryPlatform && isCompiled(file)) return { code: workerEntryCode(file, entryPlatform), map: null }
       if (!isCompiled(file) || !isModuleId(id)) return
       const { project, code, map, inputs, errors, warnings, error } = await loadModule(sourceFile(file))
       this.addWatchFile(project)
@@ -570,7 +610,10 @@ export default function vibelang(options = {}) {
       if (error) this.error(error)
       // Vite relativizes sources and annotates maps in place. The backend
       // caches these objects across requests, so each caller owns its copy.
-      return { code, map: structuredClone(map) }
+      const output = { code, map: structuredClone(map) }
+      if (!hasWorkerImports(code)) return output
+      const parse = compilerParser(backend, () => backend.findCompiler(root, options.compiler), debug)
+      return workerOutput(output, file, { parse, replace: ({ module }) => workerUrl(this, loadOptions, module) })
     },
     // Import analysis runs after ordinary transforms. Compile in load so this
     // post transform can serialize the resolved module URLs without changing IDs.
@@ -601,6 +644,13 @@ export default function vibelang(options = {}) {
     },
     async handleHotUpdate(context) {
       return hotUpdate(context)
+    },
+    // A server build's base names a URL path, not where Node finds the
+    // chunk: place a worker entry beside the module that imports it.
+    resolveFileUrl({ referenceId, chunkId, fileName, format }) {
+      if (!serverWorkers.has(referenceId) || format !== "es") return
+      const path = relative(dirname(chunkId), fileName).replaceAll("\\", "/")
+      return `new URL(${JSON.stringify(path.startsWith(".") ? path : "./" + path)}, import.meta.url).href`
     },
     closeBundle: close,
     closeWatcher: close
