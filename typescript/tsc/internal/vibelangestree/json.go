@@ -56,6 +56,14 @@ func (o *obj) rng() span {
 
 func (o *obj) setRange(r span) { o.set("range", r) }
 
+func (o *obj) isSynthesized() bool {
+	if o == nil {
+		return false
+	}
+	b, _ := o.get("synthesized").(bool)
+	return b
+}
+
 // positions converts byte offsets of text to UTF-16 offsets, which is what
 // JavaScript strings, and so ESLint, count.
 type positions struct {

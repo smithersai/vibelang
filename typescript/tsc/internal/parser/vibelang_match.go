@@ -1725,6 +1725,8 @@ func (p *Parser) propertyPath(base matchPath, clause objectClause, ctx *matchCom
 			return p.cachePatternRead(p.mPatternRead(p.mElement(base(), p.mString(key.Text(), key.Loc), key.Loc)), ctx)
 		case !clause.computed && key.Kind == ast.KindNumericLiteral:
 			return p.cachePatternRead(p.mPatternRead(p.mElement(base(), p.vibelangSynthesized(p.factory.NewNumericLiteral(key.Text(), ast.TokenFlagsNone), key.Loc), key.Loc)), ctx)
+		case !clause.computed && key.Kind == ast.KindBigIntLiteral:
+			return p.cachePatternRead(p.mPatternRead(p.mElement(base(), p.mString(strings.TrimSuffix(key.Text(), "n"), key.Loc), key.Loc)), ctx)
 		}
 		index := p.cloneIdentExpression(key)
 		if index == nil {
@@ -1834,6 +1836,8 @@ func (p *Parser) propertyKeyTest(path matchPath, clause objectClause, at core.Te
 		left = p.mString(key.Text(), key.Loc)
 	case !clause.computed && key.Kind == ast.KindNumericLiteral:
 		left = p.vibelangSynthesized(p.factory.NewNumericLiteral(key.Text(), ast.TokenFlagsNone), key.Loc)
+	case !clause.computed && key.Kind == ast.KindBigIntLiteral:
+		left = p.mString(strings.TrimSuffix(key.Text(), "n"), key.Loc)
 	default:
 		left = p.cloneIdentExpression(key)
 		if left == nil {

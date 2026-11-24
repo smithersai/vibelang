@@ -121,16 +121,19 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 		if parser.VibeLangMatchCacheFinish(n) != nil {
 			return c.convertChild(binary.Left, n), true
 		}
-		assignment := ast.SkipParentheses(binary.Left)
+		var assignment *ast.Node
+		if binary.Left != nil {
+			assignment = ast.SkipParentheses(binary.Left)
+		}
 		// A pattern step assigns a subject/extraction/binding, then yields
 		// synthetic true so the next test runs. It is not a source comma
 		// expression whose constant truthiness ESLint should report (VIP-34).
-		if binary.OperatorToken.Kind == ast.KindCommaToken && synthesized(binary.OperatorToken) &&
-			binary.Right.Kind == ast.KindTrueKeyword && synthesized(binary.Right) &&
-			assignment.Kind == ast.KindBinaryExpression && assignment.AsBinaryExpression().OperatorToken.Kind == ast.KindEqualsToken {
+		if binary.OperatorToken != nil && binary.OperatorToken.Kind == ast.KindCommaToken && synthesized(binary.OperatorToken) &&
+			binary.Right != nil && binary.Right.Kind == ast.KindTrueKeyword && synthesized(binary.Right) &&
+			assignment != nil && assignment.Kind == ast.KindBinaryExpression && assignment.AsBinaryExpression().OperatorToken.Kind == ast.KindEqualsToken {
 			return c.node(n, "VibePatternAssignment").set("expression", c.convertChild(binary.Left, n)), true
 		}
-		if n.Flags&ast.NodeFlagsVibeLang != 0 && binary.OperatorToken.Kind == ast.KindBarToken {
+		if n.Flags&ast.NodeFlagsVibeLang != 0 && binary.OperatorToken != nil && binary.OperatorToken.Kind == ast.KindBarToken {
 			return c.node(n, "VibePipeExpression").
 				set("left", c.convertChild(binary.Left, n)).
 				set("right", c.convertChild(binary.Right, n)), true
@@ -139,11 +142,17 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 		// span sits on P while Left is the source subject before `is`. Expose
 		// it as VibeIsExpression spanning subject through pattern so ESLint
 		// rules never see a BinaryExpression with Left outside its range.
-		if synthesized(binary.OperatorToken) && !synthesized(binary.Left) {
+		if binary.OperatorToken != nil && synthesized(binary.OperatorToken) && binary.Left != nil && !synthesized(binary.Left) && binary.Right != nil {
 			if _, tokKind := c.tokenAfter(binary.Left.End()); tokKind == ast.KindIsKeyword {
-				return c.nodeAt(span{c.start(binary.Left), max(binary.Right.End(), n.End())}, "VibeIsExpression").
-					set("subject", c.convertChild(binary.Left, n)).
-					set("pattern", c.convertChild(binary.Right, n)), true
+				left := c.convertChild(binary.Left, n)
+				right := c.convertChild(binary.Right, n)
+				end := c.rangeOf(n).end
+				if right != nil && right.rng().end > end {
+					end = right.rng().end
+				}
+				return c.nodeAt(span{left.rng().start, end}, "VibeIsExpression").
+					set("subject", left).
+					set("pattern", right), true
 			}
 		}
 	case ast.KindLabeledStatement:
@@ -158,11 +167,16 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 			start := c.start(n)
 			discriminant := c.nodeAt(span{start, start}, "Literal").set("value", 0).set("raw", "0").set("synthesized", true)
 			clause := c.node(n, "SwitchCase").set("test", nil).set("consequent", []any{body})
-			return c.node(n, "SwitchStatement").set("discriminant", discriminant).set("cases", []any{clause}), true
+			sw := c.node(n, "SwitchStatement").set("discriminant", discriminant).set("cases", []any{clause})
+			if body != nil {
+				fixParentLocation(clause, body.rng())
+				fixParentLocation(sw, body.rng())
+			}
+			return sw, true
 		}
 	case ast.KindBreakStatement:
 		if label := n.AsBreakStatement().Label; synthesized(label) {
-			return c.node(n, "BreakStatement").set("label", nil), true
+			return c.node(n, "BreakStatement").set("label", nil).set("synthesized", true), true
 		}
 	case ast.KindTryStatement:
 		if n.Flags&ast.NodeFlagsVibeLang != 0 {
@@ -332,7 +346,18 @@ func (c *converter) vibeCall(n *ast.Node) *obj {
 		// evaluated once. There is no written call around the pattern:
 		// retain its matcher scope and subject, without exposing imaginary
 		// call parentheses to source-based rules.
-		return c.convertCall(n).set("type", "VibeIsExpression")
+		res := c.convertCall(n).set("type", "VibeIsExpression")
+		if fn, ok := res.get("callee").(*obj); ok {
+			fixParentLocation(res, fn.rng())
+		}
+		if args, ok := res.get("arguments").([]any); ok {
+			for _, arg := range args {
+				if a, ok := arg.(*obj); ok {
+					fixParentLocation(res, a.rng())
+				}
+			}
+		}
+		return res
 	case isSynthesizedIdentifier(callee, "$catchExpression") && len(arguments) == 2:
 		self, handler := arguments[0], arguments[1]
 		result := c.node(n, "VibeCatchExpression").set("expression", c.convertChild(programBody(self), self))

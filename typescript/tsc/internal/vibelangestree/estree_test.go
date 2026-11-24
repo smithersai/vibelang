@@ -74,6 +74,7 @@ var forms = map[string]string{
 	"match":          "function f(x: number) { match (x) { when 1: log(\"one\"); default: log(\"other\"); } }\n",
 	"hatches":        "function f(text: string) { return try((text) => JSON.parse(text), text) ?? throw new Gone({ id: text }) }\n",
 	"service shapes": "service Prefix: string {}\nexport service Search: SearchApi { static readonly key = \"app/Search\" }\n",
+	"is literals":    "const r = x is 1\nconst s = next() is 0 or 1\n",
 	"data":           dataFile,
 	"modules":        moduleFile,
 }
@@ -302,6 +303,34 @@ func TestTokensAndCommentsAreTheSourceText(t *testing.T) {
 					t.Errorf("%s has range [%d, %d]", node["type"], start, end)
 				}
 			}
+			// Issue #610: every non-synthesized AST child must lie inside its parent's range.
+			var checkContainment func(value any, parent map[string]any)
+			checkContainment = func(value any, parent map[string]any) {
+				switch v := value.(type) {
+				case map[string]any:
+					nextParent := parent
+					if typ, ok := v["type"].(string); ok {
+						if parent != nil && v["synthesized"] != true && parent["synthesized"] != true {
+							cStart, cEnd := rangeOf(v)
+							pStart, pEnd := rangeOf(parent)
+							if cStart < pStart || cEnd > pEnd {
+								t.Errorf("child %s [%d, %d] escapes parent %s [%d, %d]", typ, cStart, cEnd, parent["type"], pStart, pEnd)
+							}
+						}
+						nextParent = v
+					}
+					for key, child := range v {
+						if key != "tokens" && key != "comments" {
+							checkContainment(child, nextParent)
+						}
+					}
+				case []any:
+					for _, child := range v {
+						checkContainment(child, parent)
+					}
+				}
+			}
+			checkContainment(program, nil)
 		})
 	}
 }

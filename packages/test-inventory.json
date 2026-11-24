@@ -238,7 +238,10 @@
     "compiler/test/experimental-gate.test.mjs",
     "compiler/test/module-body-diagnostics.test.mjs",
     "compiler/test/format-service-constructor.test.mjs",
-    "compiler/test/format-service-constructor-methods.test.mjs"
+    "compiler/test/format-service-constructor-methods.test.mjs",
+    "compiler/test/incremental-config-sidecar.property.test.mjs",
+    "compiler/test/source-map-frames.property.test.mjs",
+    "compiler/test/vibe-directive.property.test.mjs"
   ],
   "runtime": [
     "runtime/tests/binding-iterator.test.mjs",
@@ -413,7 +416,10 @@
     "runtime/tests/trigger-sql.test.ts",
     "runtime/tests/trigger-webhook.test.ts",
     "runtime/tests/trigger.test.ts",
-    "runtime/tests/workqueue.test.ts"
+    "runtime/tests/workqueue.test.ts",
+    "runtime/tests/binding-iterator.property.test.ts",
+    "runtime/tests/data-methods.property.test.ts",
+    "runtime/tests/producers.property.test.ts"
   ],
   "vite": [
     "vite/test/cache-watch.property.test.mjs",

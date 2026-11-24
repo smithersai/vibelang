@@ -1,0 +1,11 @@
+{
+  "property": "ESLintValueImportAutofixSoundness",
+  "rule": "PR #666: consistent-type-imports flags a namespace-qualified schema field import as type-only and its autofix fails with TS1361",
+  "pendingFamily": "schema-import",
+  "errorPattern": "TS1361",
+  "input": {
+    "scenarioId": "schema-field",
+    "importStyle": "namespace",
+    "fixStyle": "separate-type-imports"
+  }
+}

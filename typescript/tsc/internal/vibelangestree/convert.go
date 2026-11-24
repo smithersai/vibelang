@@ -65,7 +65,23 @@ func (c *converter) start(n *ast.Node) int {
 }
 
 func (c *converter) rangeOf(n *ast.Node) span {
-	return span{c.start(n), max(n.End(), 0)}
+	start := c.start(n)
+	end := max(n.End(), 0)
+	if c.vibe && (synthesized(n) || ast.NodeIsMissing(n)) {
+		for end > start && end <= len(c.text) && (c.text[end-1] == ' ' || c.text[end-1] == '\t' || c.text[end-1] == '\r' || c.text[end-1] == '\n') {
+			end--
+		}
+		if start == end && end > 0 && end <= len(c.text) {
+			trimmed := end
+			for trimmed > 0 && (c.text[trimmed-1] == ' ' || c.text[trimmed-1] == '\t' || c.text[trimmed-1] == '\r' || c.text[trimmed-1] == '\n') {
+				trimmed--
+			}
+			if trimmed > 0 {
+				start, end = trimmed, trimmed
+			}
+		}
+	}
+	return span{start, end}
 }
 
 // node makes an ESTree node of type typ at n's range.
@@ -597,7 +613,16 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 			set("sourceType", sourceType)
 
 	case ast.KindBlock:
-		return c.node(n, "BlockStatement").set("body", c.convertBodyExpressions(n.Statements(), n, parent))
+		body := c.convertBodyExpressions(n.Statements(), n, parent)
+		block := c.node(n, "BlockStatement").set("body", body)
+		if c.vibe {
+			for _, item := range body {
+				if stmt, ok := item.(*obj); ok && !stmt.isSynthesized() {
+					fixParentLocation(block, stmt.rng())
+				}
+			}
+		}
+		return block
 
 	case ast.KindIdentifier:
 		if c.isThisInTypeQuery(n, parent) {
@@ -729,17 +754,39 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 		declaration := n.AsVariableDeclaration()
 		init := c.convertChild(declaration.Initializer, n)
 		id := c.convertBindingNameWithTypeAnnotation(n.Name(), declaration.Type, n)
-		return c.node(n, "VariableDeclarator").
+		declarator := c.node(n, "VariableDeclarator").
 			set("definite", declaration.ExclamationToken != nil).
 			set("id", id).
 			set("init", init)
+		if init != nil {
+			fixParentLocation(declarator, init.rng())
+		}
+		return declarator
 
 	case ast.KindVariableStatement:
 		list := n.AsVariableStatement().DeclarationList
+		decls := listNodes(list.AsVariableDeclarationList().Declarations)
+		convertedDecls := c.convertChildren(decls, list)
 		result := c.node(n, "VariableDeclaration").
-			set("declarations", c.convertChildren(listNodes(list.AsVariableDeclarationList().Declarations), list)).
+			set("declarations", convertedDecls).
 			set("declare", hasModifier(ast.KindDeclareKeyword, n)).
 			set("kind", c.variableKind(n, list))
+		for _, d := range convertedDecls {
+			if o, ok := d.(*obj); ok {
+				fixParentLocation(result, o.rng())
+			}
+		}
+		allSynth := c.vibe && len(decls) > 0
+		for _, d := range decls {
+			name := d.Name()
+			if name == nil || (!synthesized(name) && name.Flags&ast.NodeFlagsVibeLangTemporary == 0) {
+				allSynth = false
+				break
+			}
+		}
+		if c.synthesized(n) || allSynth {
+			result.set("synthesized", true)
+		}
 		return c.fixExports(n, result)
 
 	case ast.KindVariableDeclarationList:
@@ -749,7 +796,12 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 			set("kind", c.variableKind(n, n))
 
 	case ast.KindExpressionStatement:
-		return c.node(n, "ExpressionStatement").set("expression", c.convertChild(n.Expression(), n))
+		expr := c.convertChild(n.Expression(), n)
+		stmt := c.node(n, "ExpressionStatement").set("expression", expr)
+		if c.vibe && expr != nil {
+			fixParentLocation(stmt, expr.rng())
+		}
+		return stmt
 
 	case ast.KindThisKeyword:
 		return c.node(n, "ThisExpression")
@@ -850,6 +902,9 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 		} else {
 			result.set("value", c.convertChild(property.Initializer, n))
 		}
+		if c.synthesized(n) {
+			result.set("synthesized", true)
+		}
 		return result
 
 	case ast.KindGetAccessor, ast.KindSetAccessor:
@@ -918,15 +973,19 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 
 	case ast.KindArrowFunction:
 		arrow := n.AsArrowFunction()
+		body := c.convertChild(arrow.Body, n)
 		result := c.node(n, "ArrowFunctionExpression").
 			set("async", hasModifier(ast.KindAsyncKeyword, n)).
-			set("body", c.convertChild(arrow.Body, n)).
+			set("body", body).
 			set("expression", arrow.Body.Kind != ast.KindBlock).
 			set("generator", false).
 			set("id", nil).
 			set("params", c.convertParameters(n.ParameterList(), n))
 		setReturnType(result, c, n)
 		setTypeParameters(result, c.convertTypeParameters(n.TypeParameterList(), n))
+		if c.vibe && body != nil {
+			fixParentLocation(result, body.rng())
+		}
 		if c.vibe && n.Flags&ast.NodeFlagsVibeLangEffect != 0 && isProgramArrow(n) {
 			return c.effectBlockValue(n, result)
 		}
@@ -1114,6 +1173,9 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 			set("object", object).
 			set("optional", access.QuestionDotToken != nil).
 			set("property", property)
+		if c.synthesized(n) || (c.vibe && access.Expression != nil && (synthesized(access.Expression) || access.Expression.Flags&ast.NodeFlagsVibeLangTemporary != 0)) {
+			result.set("synthesized", true)
+		}
 		return c.convertChainExpression(result, n)
 
 	case ast.KindElementAccessExpression:
@@ -1125,6 +1187,9 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 			set("object", object).
 			set("optional", access.QuestionDotToken != nil).
 			set("property", property)
+		if c.synthesized(n) || (c.vibe && access.Expression != nil && (synthesized(access.Expression) || access.Expression.Flags&ast.NodeFlagsVibeLangTemporary != 0)) {
+			result.set("synthesized", true)
+		}
 		return c.convertChainExpression(result, n)
 
 	case ast.KindCallExpression:
@@ -1539,7 +1604,11 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 
 	case ast.KindClassStaticBlockDeclaration:
 		body := n.AsClassStaticBlockDeclaration().Body
-		return c.node(n, "StaticBlock").set("body", c.convertBodyExpressions(body.Statements(), n, parent))
+		result := c.node(n, "StaticBlock").set("body", c.convertBodyExpressions(body.Statements(), n, parent))
+		if c.synthesized(n) {
+			result.set("synthesized", true)
+		}
+		return result
 
 	case ast.KindImportAttribute:
 		attribute := n.AsImportAttribute()
@@ -1694,6 +1763,9 @@ func (c *converter) convertMethod(n *ast.Node, parent *ast.Node) *obj {
 	case result.get("static") == false && n.Name().Kind == ast.KindStringLiteral && n.Name().Text() == "constructor" && result.typ() != "Property":
 		result.set("kind", "constructor")
 	}
+	if c.synthesized(n) {
+		result.set("synthesized", true)
+	}
 	return result
 }
 
@@ -1740,6 +1812,9 @@ func (c *converter) convertConstructor(n *ast.Node) *obj {
 		kind = "method"
 	}
 	result := c.node(n, typ)
+	if c.synthesized(n) {
+		result.set("synthesized", true)
+	}
 	setAccessibility(result, n)
 	return result.set("computed", false).
 		set("decorators", []any{}).
@@ -1990,7 +2065,15 @@ func (c *converter) convertBinary(n *ast.Node) *obj {
 			expressions = append(expressions, left)
 		}
 		expressions = append(expressions, c.convertChild(binary.Right, n))
-		return result.set("expressions", expressions)
+		result.set("expressions", expressions)
+		if c.vibe {
+			for _, item := range expressions {
+				if expr, ok := item.(*obj); ok && !expr.isSynthesized() {
+					fixParentLocation(result, expr.rng())
+				}
+			}
+		}
+		return result
 	}
 	typ, ok := binaryType(operator)
 	if !ok {
@@ -2003,10 +2086,21 @@ func (c *converter) convertBinary(n *ast.Node) *obj {
 			set("optional", false).
 			set("right", c.convertChild(binary.Right, n))
 	}
-	return c.node(n, typ).
+	left := c.converter(binary.Left, n, typ == "AssignmentExpression")
+	right := c.convertChild(binary.Right, n)
+	result := c.node(n, typ).
 		set("operator", tokenText(operator)).
-		set("left", c.converter(binary.Left, n, typ == "AssignmentExpression")).
-		set("right", c.convertChild(binary.Right, n))
+		set("left", left).
+		set("right", right)
+	if c.vibe {
+		if left != nil && !left.isSynthesized() {
+			fixParentLocation(result, left.rng())
+		}
+		if right != nil && !right.isSynthesized() {
+			fixParentLocation(result, right.rng())
+		}
+	}
+	return result
 }
 
 func (c *converter) convertCall(n *ast.Node) *obj {
@@ -2043,6 +2137,16 @@ func (c *converter) convertCall(n *ast.Node) *obj {
 		set("optional", call.QuestionDotToken != nil)
 	if typeArguments != nil {
 		result.set("typeArguments", typeArguments)
+	}
+	if c.vibe {
+		if callee != nil && !callee.isSynthesized() {
+			fixParentLocation(result, callee.rng())
+		}
+		for _, item := range args {
+			if arg, ok := item.(*obj); ok && !arg.isSynthesized() {
+				fixParentLocation(result, arg.rng())
+			}
+		}
 	}
 	return c.convertChainExpression(result, n)
 }
