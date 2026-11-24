@@ -17,7 +17,7 @@ export function deniedVips(root) {
   const denied = new Set()
   for (const name of readdirSync(join(root, dir))) {
     if (!/^\d{4}.*\.md$/.test(name)) continue
-    const status = read(root, join(dir, name)).match(/\*\*Status:\*\*\s*(accepted|denied|open)\b/i)?.[1]?.toLowerCase()
+    const status = read(root, join(dir, name)).match(/\*\*Status:\*\*\s*(accepted|denied|open|rfp|revised)\b/i)?.[1]?.toLowerCase()
     if (!status) throw new Error(dir + "/" + name + ": missing VIP status")
     if (status === "denied") denied.add(Number(name.slice(0, 4)))
   }

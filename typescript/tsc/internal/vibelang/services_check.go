@@ -119,7 +119,13 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 		// member rule ahead of TypeScript's class-accessor errors, which an
 		// abstract modifier would otherwise silence altogether.
 		if word == "service" && ast.IsAccessor(member) && member.Body() == nil {
-			report(c, member, serviceAccessorSignatureDiagnostic)
+			if isSchemaService(class) {
+				// VIP-57: the schema service's member rule names the accessor.
+				d := report(c, member, EK5701, class.Name().Text()+"."+scanner.GetTextOfNode(member.Name()), "it is an accessor, and only a call crosses the boundary")
+				note(d, "Write it as a method that returns an Effect.")
+			} else {
+				report(c, member, serviceAccessorSignatureDiagnostic)
+			}
 			coverServiceRejectedContractErrors(c, member)
 			continue
 		}

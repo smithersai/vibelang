@@ -94,6 +94,13 @@ func (tx *lowering) intrinsicReference(node *ast.Node) *ast.Node {
 	if root, ok := effectRootNames[node.Text()]; ok && root.namespace {
 		return tx.moduleNamespace(root.module)
 	}
+	// A schema service's Rpc group names effect/rpc's Rpc and RpcGroup
+	// (VIP-57), subpath modules whose names the file may declare itself.
+	if _, runtime := preludeModules[node.Text()]; !runtime {
+		if subpath, ok := effectSubpathNames[node.Text()]; ok {
+			return tx.moduleNamespace(subpath.module)
+		}
+	}
 	reference := tx.runtimeMember(node.Text())
 	tx.EmitContext().SetOriginal(reference, node)
 	reference.Loc = node.Loc

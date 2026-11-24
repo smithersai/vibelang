@@ -1,0 +1,11 @@
+Bad.region cannot be a member of a schema service: it is a property, and only a call crosses the boundary.
+Bad.size cannot be a member of a schema service: it is an accessor, and only a call crosses the boundary.
+Bad.find cannot be a member of a schema service: it is overloaded, and an Rpc has one payload schema.
+Bad.pick cannot be a member of a schema service: it is generic, and a type parameter has no schema.
+Bad.plain cannot be a member of a schema service: it returns string, and only an Effect or a Stream crosses the boundary.
+Bad.aliased cannot be a member of a schema service: its return type names its channels through Later, and the Rpc's schemas are read from the written type.
+Bad.needs cannot be a member of a schema service: it requires Clock, and a caller's services do not cross the boundary.
+Bad.rest cannot be a member of a schema service: a rest parameter has no single payload field.
+Bad.spread cannot be a member of a schema service: a destructured parameter has no name to key the payload by.
+Whole is a schema service, so its members are written in its body: one Rpc is made from each method.
+Defaulted.defaultValue cannot be a member of a schema service: a schema service has no default value, because its implementation may be on another thread or machine.

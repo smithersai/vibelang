@@ -170,7 +170,7 @@ func implicitRuntimeImport(file *ast.SourceFile) []string {
 	effect, runtime := mayLowerToEffect(file)
 	entry := entryCandidate(file) != nil
 	var modules []string
-	if prelude || entry || runtime || declaresService(file) || mayDeclareEffectFunction(file) {
+	if prelude || entry || runtime || declaresService(file) || mayDeclareEffectFunction(file) || hasWorkerImport(file) {
 		modules = append(modules, runtimeModule)
 	}
 	if root || effect || mayDeclareEffectFunction(file) || file.HasIdentifier("Effect") {

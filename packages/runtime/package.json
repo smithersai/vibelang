@@ -157,6 +157,11 @@
       "import": "./dist/experimental/ResizeObserver.js",
       "default": "./dist/experimental/ResizeObserver.js"
     },
+    "./experimental/Rpc": {
+      "types": "./dist/experimental/Rpc.d.ts",
+      "import": "./dist/experimental/Rpc.js",
+      "default": "./dist/experimental/Rpc.js"
+    },
     "./experimental/Test": {
       "types": "./dist/experimental/Test.d.ts",
       "import": "./dist/experimental/Test.js",

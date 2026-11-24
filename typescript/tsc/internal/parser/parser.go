@@ -112,6 +112,7 @@ type Parser struct {
 	vibelangMutableMember      bool                           // the type member being parsed was written with mutable (vibelang.go)
 	vibelangImplicitReadonly   bool                           // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
 	vibelangSchemaBody         bool                           // declaration body (including nested object types) reports non-fields as EK1505
+	vibelangSchemaServiceWord  core.TextRange                 // the schema of the schema service being parsed, which starts its head (vibelang_schema_service.go)
 	vibelangDurableTasks       map[string]bool                // task declarations parsed in this file (vibelang_durable.go)
 	vibelangDurableWorkflows   map[string]bool                // workflow declarations parsed in this file (vibelang_durable.go)
 	vibelangPendingWorkflows   []pendingDurableWorkflow       // workflow reached thunks finalized after parsing the file (vibelang_durable.go)

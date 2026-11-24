@@ -1,0 +1,12 @@
+export schema service Stats {
+  double(value: number): number!!
+}
+
+export service Plain {
+  triple(value: number): number!!
+}
+
+export default Layer.mergeAll(
+  Layer.succeed(Stats, { double: effect (value) => value * 2 }),
+  Layer.succeed(Plain, { triple: effect (value) => value * 3 })
+)

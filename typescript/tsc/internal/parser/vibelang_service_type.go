@@ -32,7 +32,7 @@ func (p *Parser) parseServiceShapeDeclaration(pos int, jsdoc jsdocScannerInfo, m
 	colon := p.tokenRange()
 	p.nextToken() // :
 	shape := p.parseType()
-	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: "service", Head: core.NewTextRange(word.Pos(), shape.End()), Right: p.sourceRange(shape)}
+	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: "service", Head: core.NewTextRange(p.vibelangServiceHead(word), shape.End()), Right: p.sourceRange(shape)}
 	var members *ast.NodeList
 	if p.token == ast.KindOpenBraceToken {
 		form.Open = p.tokenRange()

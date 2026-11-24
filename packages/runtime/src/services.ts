@@ -87,6 +87,139 @@ export type ReferenceKey<S> = (abstract new () => {}) & Context.Reference<S>
 export const $service = <I, S = I>(key: string): ServiceKey<I, S> =>
   Context.Service<I, S>()(key) as any
 
+// ---------------------------------------------------------------------------
+// VIP-57: schema services and worker imports
+// ---------------------------------------------------------------------------
+
+/**
+ * VIP-57: the static property under which a `schema service` class carries its
+ * Rpc group and the members whose transport failures stay typed. It is
+ * defined non-enumerable on the class, so instances and `Object.keys` never
+ * see it.
+ *
+ * @experimental
+ * @since 0.0.14
+ */
+export const SchemaServiceTypeId = "~vibelang-runtime/SchemaService" as const
+
+/**
+ * VIP-57: what `$schemaService` stores on a class. `rpcs` returns the
+ * compiler's generated `RpcGroup`; core keeps it untyped so it never loads
+ * `effect/rpc`.
+ *
+ * @experimental
+ * @since 0.0.14
+ */
+export interface SchemaServiceInfo {
+  readonly key: string
+  readonly rpcs: () => unknown
+  /** The members whose declared error type includes Effect's `RpcClientError`. */
+  readonly typedTransport: ReadonlyArray<string>
+}
+
+/**
+ * VIP-57: the static side of a compiled `schema service` class: exactly a
+ * `ServiceKey`, plus its `SchemaServiceInfo`.
+ *
+ * @experimental
+ * @since 0.0.14
+ */
+export type SchemaServiceKey<I, S = I> = ServiceKey<I, S> & {
+  readonly [SchemaServiceTypeId]: SchemaServiceInfo
+}
+
+/**
+ * VIP-57: every `schema service` class this runtime has declared, by key. A
+ * worker entry has only its module's default-export layer, so it finds the
+ * services to serve by matching that layer's context against this registry.
+ *
+ * @internal
+ */
+export const schemaServices = new Map<string, Context.Key<any, any> & { readonly [SchemaServiceTypeId]: SchemaServiceInfo }>()
+
+/**
+ * VIP-57: the base of a generated `schema service` class. It is what
+ * `$service(key)` returns, with the thunk of the compiler's `RpcGroup` and the
+ * members whose declared error type includes `RpcClientError` stored under
+ * `SchemaServiceTypeId`.
+ *
+ * @experimental
+ * @since 0.0.14
+ */
+export const $schemaService = <I, S = I>(
+  key: string,
+  rpcs: () => unknown,
+  typedTransport: ReadonlyArray<string> = []
+): SchemaServiceKey<I, S> => {
+  const service = Context.Service<I, S>()(key) as any
+  const info: SchemaServiceInfo = Object.freeze({ key, rpcs, typedTransport: Object.freeze([...typedTransport]) })
+  Object.defineProperty(service, SchemaServiceTypeId, { value: info, enumerable: false, writable: false, configurable: false })
+  schemaServices.set(key, service)
+  return service
+}
+
+/**
+ * VIP-57: the property that marks a worker handle.
+ *
+ * @experimental
+ * @since 0.0.14
+ */
+export const WorkerHandleTypeId = "~vibelang-runtime/WorkerHandle" as const
+
+/**
+ * VIP-57: the value of a `with { type: "worker" }` import, untyped by its
+ * module's layer. `Experimental.Rpc.WorkerHandle<L>` adds that type.
+ *
+ * @experimental
+ * @since 0.0.14
+ */
+export interface WorkerHandleValue {
+  readonly [WorkerHandleTypeId]: typeof WorkerHandleTypeId
+  /** The compiled worker module, or with `entry`, a self-contained worker entry script. */
+  readonly url: URL
+  /** The schema services the module's default-export layer provides. */
+  readonly services: ReadonlyArray<Context.Key<any, any>>
+  /** Whether `url` is already a worker entry script, as a bundler plugin writes it. */
+  readonly entry: boolean
+  /**
+   * Starts the worker itself, for a bundler whose only worker-chunk syntax is
+   * `new Worker(new URL(…, import.meta.url))`. A host calls it in place of
+   * starting `url`.
+   */
+  readonly spawn?: ((id: number) => unknown) | undefined
+}
+
+/**
+ * VIP-57: the binding of `import w from "./m.vibe" with { type: "worker" }`.
+ * `url` names the compiled worker module, whose default export is a `Layer`
+ * providing `services`. A bundler plugin passes `entry` `true` when `url`
+ * names a bundled, self-contained worker entry instead, or passes a function
+ * that starts the worker in place of the URL.
+ *
+ * @experimental
+ * @since 0.0.14
+ */
+export const $worker = (
+  source: URL | ((id: number) => unknown),
+  services: ReadonlyArray<Context.Key<any, any>>,
+  entry?: boolean
+): WorkerHandleValue =>
+  typeof source === "function"
+    // A spawner starts a bundled entry: there is no module URL to hand a generic entry.
+    ? Object.freeze({
+      [WorkerHandleTypeId]: WorkerHandleTypeId,
+      url: new URL("about:blank"),
+      services: Object.freeze([...services]),
+      entry: true,
+      spawn: source
+    })
+    : Object.freeze({
+      [WorkerHandleTypeId]: WorkerHandleTypeId,
+      url: source,
+      services: Object.freeze([...services]),
+      entry: entry === true
+    })
+
 /**
  * D40: the base of a generated service class that declares
  * `static readonly defaultValue = () => shape`. Its static side is an Effect 4

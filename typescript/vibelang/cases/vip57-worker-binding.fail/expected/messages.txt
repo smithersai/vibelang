@@ -1,0 +1,1 @@
+A worker import binds one default name, the worker's handle: import worker from "./stats.vibe" with { type: "worker" }.

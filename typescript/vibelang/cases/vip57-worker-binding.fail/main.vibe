@@ -1,0 +1,12 @@
+// expect: EK5703
+// VIP-57, worker-binding (EK5703): a worker import binds one default name,
+// the worker's handle. Named and namespace bindings, and an import for its
+// effects, bind no handle.
+
+import { Stats } from "./stats.vibe" with { type: "worker" }
+import * as stats from "./stats.vibe" with { type: "worker" }
+import worker, { Stats as Again } from "./stats.vibe" with { type: "worker" }
+import "./stats.vibe" with { type: "worker" }
+import handle from "./stats.vibe" with { type: "worker" }
+
+export const used: readonly unknown[] = [Stats, stats, worker, Again, handle]

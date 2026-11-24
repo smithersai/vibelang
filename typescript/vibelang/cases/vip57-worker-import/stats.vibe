@@ -1,0 +1,19 @@
+import { onMainThread } from "./thread.ts"
+
+export schema Summary { mean: number; max: number }
+export schema error EmptySample {}
+
+export schema service Stats {
+  summarize(values: readonly number[]): Summary!EmptySample
+  onMainThread(): boolean!!
+  countdown(from: number): Stream<number>
+}
+
+export default Layer.succeed(Stats, {
+  summarize: effect (values) => {
+    if (values.length === 0) throw new EmptySample()
+    return { mean: values.reduce((a, b) => a + b, 0) / values.length, max: Math.max(...values) }
+  },
+  onMainThread: effect () => onMainThread(),
+  countdown: (from) => Stream.fromIterable(Array.from({ length: from }, (_, index) => from - index))
+})

@@ -12,6 +12,12 @@ export interface VibeLangOptions {
    * to BUN_OPTIONS for a Bun process. Defaults to false.
    */
   register?: boolean
+  /**
+   * The platform whose worker runner serves a `with { type: "worker" }`
+   * import's entry chunk (VIP-57). Defaults to `"node"` in a server
+   * environment, such as SSR, and to `"browser"` in any other.
+   */
+  workerPlatform?: "node" | "bun" | "browser"
 }
 
 export default function vibelang(options?: VibeLangOptions): Plugin

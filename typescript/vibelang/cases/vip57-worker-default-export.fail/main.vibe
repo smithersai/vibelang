@@ -1,0 +1,17 @@
+// expect: EK5702 TS2739
+// VIP-57, worker-default-export (EK5702): a module imported as a worker
+// exports a Layer by default, and every service the Layer provides is a
+// schema service that the module exports.
+
+import namedOnly from "./named-only.vibe" with { type: "worker" }
+import notLayer from "./not-layer.vibe" with { type: "worker" }
+import plainService from "./plain-service.vibe" with { type: "worker" }
+import unexported from "./unexported.vibe" with { type: "worker" }
+import mixed from "./mixed.vibe" with { type: "worker" }
+import good from "./good.vibe" with { type: "worker" }
+
+// A handle is not the worker's Layer: only Experimental.Rpc.workers provides
+// its services.
+export const direct: Layer.Layer<never> = good
+
+export const handles: readonly unknown[] = [namedOnly, notLayer, plainService, unexported, mixed, good]

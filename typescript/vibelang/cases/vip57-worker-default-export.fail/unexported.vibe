@@ -1,0 +1,5 @@
+schema service Hidden {
+  double(value: number): number!!
+}
+
+export default Layer.succeed(Hidden, { double: effect (value) => value * 2 })

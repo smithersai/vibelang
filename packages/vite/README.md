@@ -151,7 +151,8 @@ add functions or uncovered statements.
 vibelang({
   project: "tsconfig.test.json", // Relative to Vite's root; default: tsconfig.json.
   compiler: "/absolute/path/to/vibelang", // Native binary or Node launcher.
-  register: true // Vitest: processes a test starts load vibelang/register; default: false.
+  register: true, // Vitest: processes a test starts load vibelang/register; default: false.
+  workerPlatform: "node" // Worker imports' runner: "node", "bun" or "browser"; default below.
 })
 ```
 
@@ -168,6 +169,32 @@ absolute path, there too, unless the path contains a space.
 By default, the plugin resolves `vibelang` from the application's root and runs
 the native compiler its Node launcher would run. Without a `compiler` option,
 `VIBELANG_BINARY` selects a native binary.
+
+## Worker imports
+
+A module that imports `import statsWorker from "./stats.vibe" with { type:
+"worker" }` (VIP-57) gets a worker entry for `stats.vibe`: a module that
+imports it and serves its default `Layer` with the platform's `runWorker`. The
+plugin passes the entry's URL to the handle, so `Experimental.Rpc.workers`
+starts the entry directly.
+
+| Where | The entry |
+| --- | --- |
+| `vite build`, client or SSR | A chunk of the same build, named `stats.worker` |
+| `vite dev`, client | Served at `/stats.vibe?vibelang-worker=browser` |
+| `vite dev`, server environment (SSR, Vitest's Node tests) | None: the runtime starts `stats.vibe` itself from its file URL |
+
+The entry is a chunk of the importing build, built by the same plugins, so it
+needs no `worker.plugins`. A Vite worker you write yourself, such as `new
+Worker(new URL("./w.ts", import.meta.url))`, still needs `worker: { plugins:
+() => [vibelang()] }` to compile the `.vibe` modules it imports.
+
+The platform is `"node"` in a server environment and `"browser"` in any other;
+set `workerPlatform` to choose another, such as `"bun"`. Vite's module runner
+executes server modules in its own process, where a thread cannot load them,
+so in a server environment under the dev server the runtime's own Node entry
+imports `stats.vibe`; that thread needs a `.vibe` loader, such as
+`NODE_OPTIONS=--import=vibelang/register`.
 
 ## How it works
 

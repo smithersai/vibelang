@@ -27,6 +27,8 @@ import * as ExperimentalBrowserDocument from "./ExperimentalBrowserDocument.js"
 import * as ExperimentalBrowserWindow from "./ExperimentalBrowserWindow.js"
 import * as ExperimentalBrowserInfo from "./ExperimentalBrowserInfo.js"
 import type * as Request from "../Request.js"
+import type * as Rpc from "../Rpc.js"
+import * as RpcExtension from "../internal/rpcBrowser.js"
 import * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 import * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
 import * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.js"
@@ -53,6 +55,7 @@ export type ExperimentalBrowserServices =
   | MediaQuery.MediaQuery
   | Headers.Headers
   | Request.Request
+  | Rpc.WorkerHost
 
 /**
  * `ExperimentalBrowserCrypto.layer`, which provides the experimental `Crypto` and
@@ -74,5 +77,6 @@ export const layer: Layer.Layer<ExperimentalBrowserServices> = Layer.mergeAll(
   ExperimentalBrowserLocks.layer,
   ExperimentalBrowserMediaQuery.layer,
   ExperimentalBrowserHeaders.layer,
-  ExperimentalBrowserRequest.layer
+  ExperimentalBrowserRequest.layer,
+  RpcExtension.layer
 )

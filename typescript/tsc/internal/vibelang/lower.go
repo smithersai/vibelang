@@ -199,6 +199,8 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		// A platform import names the entry's platform and loads nothing (D312,
 		// entry.go), so it is elided as an import type is.
 		return tx.EmitContext().NewNotEmittedStatement(node)
+	case node.Kind == ast.KindImportDeclaration && tx.plan.workers[node] != nil:
+		return tx.visitWorkerImport(node) // VIP-57 (worker_imports.go)
 	case node.Kind == ast.KindImportDeclaration || node.Kind == ast.KindExportDeclaration:
 		return tx.visitImportOrExport(node)
 	case isPipe(node):

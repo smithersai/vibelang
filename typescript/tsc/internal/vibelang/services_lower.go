@@ -7,12 +7,13 @@ import (
 
 // servicePlan records what the lowering does with services in one file.
 type servicePlan struct {
-	heads      map[*ast.Node]bool   // catch operand factories with a service lookup to suspend
-	lookups    map[*ast.Node]bool   // calls S.member(…) whose callee looks the service up
-	moduleKeys map[*ast.Node]string // the S or p of those calls that name a module, and the key it names (D311)
-	aliases    map[*ast.Node]string // property accesses M.member read through M's export, and the export's name (D311)
-	keys       map[*ast.Node]string // service and control classes, by declaration, and their keys
-	wireOrders map[*ast.Node][]int  // wire calls whose arguments the lowering reorders
+	heads      map[*ast.Node]bool           // catch operand factories with a service lookup to suspend
+	lookups    map[*ast.Node]bool           // calls S.member(…) whose callee looks the service up
+	moduleKeys map[*ast.Node]string         // the S or p of those calls that name a module, and the key it names (D311)
+	aliases    map[*ast.Node]string         // property accesses M.member read through M's export, and the export's name (D311)
+	keys       map[*ast.Node]string         // service and control classes, by declaration, and their keys
+	wireOrders map[*ast.Node][]int          // wire calls whose arguments the lowering reorders
+	workers    map[*ast.Node][]workerImport // worker imports, and the schema service imports they need (worker_imports.go)
 
 	// wireLists holds the wire calls of wireOrders whose spread arguments
 	// list their layers, and those layers (wireArguments).
@@ -20,7 +21,7 @@ type servicePlan struct {
 }
 
 func newServicePlan() servicePlan {
-	return servicePlan{heads: map[*ast.Node]bool{}, lookups: map[*ast.Node]bool{}, moduleKeys: map[*ast.Node]string{}, aliases: map[*ast.Node]string{}, keys: map[*ast.Node]string{}, wireOrders: map[*ast.Node][]int{}, wireLists: map[*ast.Node][]wireArgument{}}
+	return servicePlan{heads: map[*ast.Node]bool{}, lookups: map[*ast.Node]bool{}, moduleKeys: map[*ast.Node]string{}, aliases: map[*ast.Node]string{}, keys: map[*ast.Node]string{}, wireOrders: map[*ast.Node][]int{}, workers: map[*ast.Node][]workerImport{}, wireLists: map[*ast.Node][]wireArgument{}}
 }
 
 // serviceHead reports whether a plain catch operand factory must suspend a
@@ -91,6 +92,9 @@ func (p *servicePlan) planServiceNode(c *checker.Checker, node *ast.Node) {
 	if ast.IsCallExpression(node) {
 		p.planWire(c, node)
 	}
+	if ast.IsImportDeclaration(node) {
+		p.planWorkerImport(c, node)
+	}
 }
 
 // looksUp reports whether node, a property access, is the callee of a call
@@ -152,6 +156,8 @@ func (tx *lowering) visitModuleAlias(node *ast.Node) *ast.Node {
 // kernel operation per abstract method, after the class, with each
 // operation's declared parameter count:
 // runtime.$control(Approval, ["approve"], [1]).
+// A schema service (VIP-57) extends runtime.$schemaService(key, () =>
+// UsersRpcs, [typed]), the same key class holding its Rpc group.
 func (tx *lowering) visitServiceClass(node *ast.Node) *ast.Node {
 	f := tx.Factory()
 	ec := tx.EmitContext()
@@ -186,6 +192,18 @@ func (tx *lowering) visitServiceClass(node *ast.Node) *ast.Node {
 		helper = "$reference"
 		read := f.NewPropertyAccessExpression(f.NewIdentifier(node.Name().Text()), nil /*questionDotToken*/, f.NewIdentifier("defaultValue"), ast.NodeFlagsNone)
 		arguments = append(arguments, tx.generated(f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*type*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), tx.generated(f.NewCallExpression(read, nil, nil, f.NewNodeList(nil), ast.NodeFlagsNone)))))
+	}
+	if group := schemaServiceGroup(node); group != nil && helper == "$service" {
+		// runtime.$schemaService(key, () => StatsRpcs, ["summarize"]) (VIP-57, schema_services.go)
+		helper = "$schemaService"
+		arguments = append(arguments, tx.generated(f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*type*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), f.NewIdentifier(group.Name().Text()))))
+		if typed := schemaServiceTypedTransport(node); len(typed) != 0 {
+			names := make([]*ast.Node, len(typed))
+			for i, name := range typed {
+				names[i] = f.NewStringLiteral(name, ast.TokenFlagsNone)
+			}
+			arguments = append(arguments, f.NewArrayLiteralExpression(f.NewNodeList(names), false /*multiLine*/))
+		}
 	}
 	base := f.NewCallExpression(tx.runtimeMember(helper), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(arguments), ast.NodeFlagsNone)
 	extends := f.NewHeritageClause(ast.KindExtendsKeyword, f.NewNodeList([]*ast.Node{f.NewExpressionWithTypeArguments(base, nil /*typeArguments*/)}))

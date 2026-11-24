@@ -1,0 +1,6 @@
+main.vibe(6,23): error EK5702
+main.vibe(7,22): error EK5702
+main.vibe(8,26): error EK5702
+main.vibe(9,24): error EK5702
+main.vibe(10,19): error EK5702
+main.vibe(15,14): error TS2739

@@ -8,6 +8,7 @@
  * @since 0.0.11
  */
 export * as ExperimentalBunRequest from "./ExperimentalBunRequest.js"
+export * as ExperimentalBunRpc from "./ExperimentalBunRpc.js"
 export * as ExperimentalBunNodeStream from "./ExperimentalBunNodeStream.js"
 export * as ExperimentalBunHeaders from "./ExperimentalBunHeaders.js"
 export * as ExperimentalBunCrypto from "./ExperimentalBunCrypto.js"

@@ -1,0 +1,19 @@
+// expect: EK2109 TS7006
+// VIP-57: every parameter, success type and error type of a schema service
+// member is a durable boundary type (VIP-44). A type with no schema form is
+// EK2109, as in a schema's field.
+
+schema Point { x: number; y: number }
+error Plain { reason: string }
+interface Shape { area: number }
+
+export schema service Geometry {
+  measure(shape: Shape): number!!
+  callback(run: () => void): void!!
+  fails(at: Point): Point!Plain
+  untyped(value): number!!
+  anything(value: unknown): Point!!
+  weak(at: Point): WeakSet<object>!!
+  each(at: Point): Stream<Shape>
+  ok(at: Point, label?: string): readonly Point[]!!
+}

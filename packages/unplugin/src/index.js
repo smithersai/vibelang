@@ -1,5 +1,6 @@
 import { declarationEmitter } from "./declarations.js"
 import { relativeOutput } from "./relative-output.js"
+import { checkPlatform, compilerParser, hasWorkerImports, workerEntryCode, workerEntryId, workerEntryPlatform, workerOutput } from "./worker-output.js"
 import { missingSourceWatcher } from "./missing-watcher.js"
 import { jsxConfigReader } from "./jsx-config.js"
 import { extensionlessImport, missingRelativeInputs } from "./relative-imports.js"
@@ -247,6 +248,12 @@ function sideEffectsOf(file) {
   }
 }
 
+// webpack's or Rspack's target: node for a Node or Electron main target.
+function compilerPlatform(compiler) {
+  const targets = [compiler.options.target].flat().filter((target) => typeof target === "string")
+  return targets.some((target) => /^(?:async-)?node|^electron-(?:main|preload)/.test(target)) ? "node" : "browser"
+}
+
 async function esbuildMessage(formatDiagnostic, diagnostic) {
   return {
     text: formatDiagnostic(diagnostic),
@@ -259,7 +266,13 @@ async function esbuildMessage(formatDiagnostic, diagnostic) {
 
 /** @type {import('./index.d.ts').unplugin} */
 export const unplugin = createUnplugin((options = {}, meta) => {
+  checkPlatform(options.workerPlatform, "vibelang-unplugin")
   let root, project, backend, modules, current, closing, entryDirectory, viteCommand
+  // The platform the bundler targets, for worker entries: Rolldown's
+  // platform, webpack's and Rspack's target; Rollup has none (VIP-57).
+  let targetPlatform = "browser"
+  // Worker entry chunks a Vite server build emitted; resolveFileUrl places them.
+  const serverWorkers = new Set()
 
   function configure(base) {
     if (root) return
@@ -429,6 +442,8 @@ export const unplugin = createUnplugin((options = {}, meta) => {
 
   function resolveFrom(source, importer, directory) {
     const original = cleanId(source)
+    // A worker entry this plugin emitted, by its module's absolute path.
+    if (workerEntryPlatform(source) && isAbsolute(original) && isCompiled(original) && existsSync(original)) return source
     const query = source.slice(original.length)
     const path = outputPath(original, importer, writtenOutput)
     // An absolute id is resolved; webpack sends each result back through this hook.
@@ -473,6 +488,40 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         if (written !== undefined) data.request = written
       })
     })
+  }
+
+  // VIP-57: a worker import's new first argument, the worker entry for module.
+  // Rollup, Rolldown and Vite's build emit the entry as a chunk of this build
+  // and pass its URL; webpack and Rspack bundle a worker chunk only from their
+  // own new Worker(new URL(...)) syntax, so the call receives a spawner.
+  // esbuild and Bun cannot emit a chunk from a plugin.
+  function workerUrl(context, file, module, specifier) {
+    const consumer = context.environment?.config.consumer
+    const platform = options.workerPlatform ?? (meta.framework === "vite" ? (consumer === "server" ? "node" : "browser") : targetPlatform)
+    const local = relative(dirname(file), module).split(sep).join("/")
+    const request = (local.startsWith(".") ? local : "./" + local) + "?vibelang-worker=" + platform
+    if (meta.framework === "rollup" || meta.framework === "rolldown" || (meta.framework === "vite" && viteCommand !== "serve")) {
+      const name = basename(module).replace(/\.vibex?$/, "") + ".worker"
+      const reference = context.emitFile({ type: "chunk", id: workerEntryId(module, platform), name })
+      if (meta.framework === "vite" && consumer === "server") serverWorkers.add(reference)
+      // Vite renders the file URL under its base, such as /assets/x.js, which
+      // the importing module's URL resolves.
+      return { code: `new URL(import.meta.ROLLUP_FILE_URL_${reference}, import.meta.url)` }
+    }
+    if (meta.framework === "vite") {
+      // The dev server serves the entry beside its module; its module runner
+      // has no URL a thread can load, so there the runtime starts the module.
+      if (consumer === "server") return { code: `new URL(${JSON.stringify(pathToFileURL(module).href)})`, entry: false }
+      return { code: `new URL(${JSON.stringify(request)}, import.meta.url)` }
+    }
+    if (meta.framework === "webpack" || meta.framework === "rspack") {
+      const url = `new URL(${JSON.stringify(request)}, import.meta.url)`
+      // Both recognize a Worker imported from worker_threads under any local name.
+      if (platform === "node") return { code: `(id) => new __vibelangWorker(${url})`, prepend: `import { Worker as __vibelangWorker } from "worker_threads"` }
+      return { code: `(id) => new Worker(${url}${platform === "browser" ? `, { type: "module" }` : ""})` }
+    }
+    throw new Error(`vibelang-unplugin: ${file} imports ${JSON.stringify(specifier)} with { type: "worker" }, and ${meta.framework} cannot emit a worker chunk from a plugin. ` +
+      `Bundle it with Rollup, Rolldown, Vite, webpack or Rspack, or run it unbundled, where the runtime starts the worker module itself.`)
   }
 
   let missingWatcher, watchClosed = false, buildNumber = 0
@@ -530,6 +579,8 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         }
         return { code: declaration.code, map: null }
       }
+      const entryPlatform = workerEntryPlatform(id)
+      if (entryPlatform) return { code: workerEntryCode(cleanId(id), entryPlatform), map: null, moduleType: "js" }
       const { project, code, map, inputs, errors, warnings, error } = await loadModule(id)
       // Any project source or the tsconfig can change the contracts this module compiles against.
       const rollupWatch = meta.framework === "rollup" && this.meta?.watchMode && !watchClosed
@@ -571,7 +622,12 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       }
       if (!errors.length) for (const warning of warnings) this.warn(backend.formatDiagnostic(warning))
       if (error) this.error(error)
-      return { code, map, moduleType: "js" }
+      if (!hasWorkerImports(code)) return { code, map, moduleType: "js" }
+      const output = workerOutput({ code, map }, cleanId(id), {
+        parse: compilerParser(backend, compilerPath, debug),
+        replace: ({ module, specifier }) => workerUrl(this, cleanId(id), module, specifier)
+      })
+      return { ...output, moduleType: "js" }
     },
     bun: {
       setup(build) {
@@ -594,6 +650,8 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           if (errors.length) throw new Error(errors.map(backend.formatDiagnostic).join("\n"))
           if (!errors.length) for (const warning of warnings) console.warn(backend.formatDiagnostic(warning))
           if (error) throw new Error(error.message)
+          // Bun.build cannot emit a worker chunk from a plugin: workerUrl throws.
+          if (hasWorkerImports(code)) workerOutput({ code }, cleanId(path), { parse: compilerParser(backend, compilerPath, debug), replace: ({ module, specifier }) => workerUrl({}, cleanId(path), module, specifier) })
           return { contents: code, loader: isJsxModule(cleanId(path)) ? "jsx" : "js" }
         })
       }
@@ -603,13 +661,25 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         // The compiler root can be explicit; relative entries still belong to cwd.
         entryDirectory = resolve(input.cwd || process.cwd())
         configure(entryDirectory)
+        targetPlatform = input.platform === "node" ? "node" : "browser"
         const defaults = ["module", ...(input.platform === "neutral" ? [] : [input.platform ?? "browser"])]
         return { ...input, input: withoutSidecarEntries(input.input), resolve: { ...input.resolve, conditionNames: sourceConditions(input.resolve?.conditionNames ?? defaults) } }
       }
     },
-    vite: { config: sourceConditionConfig, configResolved(config) { viteCommand = config.command; configure(config.root) } },
+    vite: {
+      config: sourceConditionConfig,
+      configResolved(config) { viteCommand = config.command; configure(config.root) },
+      // A server build's base names a URL path, not where Node finds the
+      // chunk: place a worker entry beside the module that imports it.
+      resolveFileUrl({ referenceId, chunkId, fileName, format }) {
+        if (!serverWorkers.has(referenceId) || format !== "es") return
+        const path = relative(dirname(chunkId), fileName).split(sep).join("/")
+        return `new URL(${JSON.stringify(path.startsWith(".") ? path : "./" + path)}, import.meta.url).href`
+      }
+    },
     webpack(compiler) {
       configure(compiler.context)
+      targetPlatform = compilerPlatform(compiler)
       writtenRequests(compiler)
       compiler.options.resolve ??= {}
       compiler.options.resolve.conditionNames = sourceConditions(compiler.options.resolve.conditionNames ?? ["..."])
@@ -625,6 +695,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     },
     rspack(compiler) {
       configure(compiler.context)
+      targetPlatform = compilerPlatform(compiler)
       writtenRequests(compiler)
       compiler.options.resolve ??= {}
       compiler.options.resolve.conditionNames = sourceConditions(compiler.options.resolve.conditionNames ?? ["..."])
@@ -683,6 +754,14 @@ export const unplugin = createUnplugin((options = {}, meta) => {
             })
           }
           if (error) messages.push({ text: error.message })
+          // esbuild cannot emit a worker chunk from a plugin: workerUrl throws.
+          if (!messages.length && hasWorkerImports(code)) {
+            try {
+              workerOutput({ code }, cleanId(path), { parse: compilerParser(backend, compilerPath, debug), replace: ({ module, specifier }) => workerUrl({}, cleanId(path), module, specifier) })
+            } catch (failure) {
+              messages.push({ text: failure.message })
+            }
+          }
           // Inline source-map sources are URLs. Keep percent signs literal
           // when esbuild resolves and combines this map with its JSX output.
           const outputMap = map && isJsxModule(cleanId(path))
