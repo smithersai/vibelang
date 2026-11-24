@@ -1,71 +1,13 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
-
-// moduleRefactorProgram is editorProgram for a source named name, main.vibe
-// or main.vibex, compiled with compilerOptions (a JSON object's members).
-func moduleRefactorProgram(t *testing.T, name, source, compilerOptions string) (*ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
-	t.Helper()
-	dir := t.TempDir()
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(filepath.Join(dir, "node_modules"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	for pkg, target := range editorPackages {
-		if _, err := os.Stat(filepath.Join(root, target)); err != nil {
-			t.Fatalf("editor fixture package %q is unavailable: %v; run sh scripts/setup.sh", pkg, err)
-		}
-		if err := os.Symlink(filepath.Join(root, target), filepath.Join(dir, "node_modules", pkg)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for file, text := range map[string]string{
-		"package.json":  editorPackageJSON,
-		"tsconfig.json": `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true` + compilerOptions + `},"files":["` + name + `"]}`,
-		name:            source,
-	} {
-		if err := os.WriteFile(filepath.Join(dir, file), []byte(text), 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	fs := bundled.WrapFS(osvfs.FS())
-	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
-	if len(errors) != 0 || len(config.Errors) != 0 {
-		t.Fatalf("config: %v %v", errors, config.Errors)
-	}
-	program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
-	file := program.GetSourceFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, name))))
-	if file == nil {
-		t.Fatalf("no source file %s", name)
-	}
-	converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
-		text, ok := fs.ReadFile(name)
-		if !ok {
-			t.Fatalf("missing editor document %s", name)
-		}
-		return lsconv.ComputeLSPLineStarts(text)
-	})
-	return file, ls.NewLanguageService(nil, program, editorTestHost{converters: converters}, string(file.FileName())), converters
-}
 
 // rule-evidence: docs/design/src/001-functions.md#module-declarations | The TypeScript twin and the move refactor use `.ts` for a body in `.vibe` and `.tsx` for one in `.vibex`, preserving its source language variant even when the body has no JSX.
 // rule-evidence: docs/design/src/001-functions.md#module-declarations | In that file, add `export {}` if the unchanged body would otherwise be a script under the project's options.
@@ -117,7 +59,8 @@ func TestMoveModuleRefactorKeepsSourceVariantAndModuleClassification(t *testing.
 		t.Run(tc.name, func(t *testing.T) {
 			offset := strings.Index(tc.source, "/*cursor*/")
 			source := strings.Replace(tc.source, "/*cursor*/", "", 1)
-			file, service, converters := moduleRefactorProgram(t, tc.file, source, tc.options)
+			options := `{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true` + tc.options + `}`
+			_, file, service, converters := editorProgramAt(t, tc.file, options, source, editorPackageJSON, editorPackages)
 			pos, _ := converters.ToLSPPosition(file, core.TextPos(offset))
 			uri := lsconv.FileNameToDocumentURI(file.FileName())
 			only := []lsproto.CodeActionKind{lsproto.CodeActionKindRefactorRewrite}

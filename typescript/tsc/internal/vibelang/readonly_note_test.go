@@ -49,10 +49,17 @@ func TestReadonlyFieldNoteOffersNoMutableMarker(t *testing.T) {
 	}
 	t.Run("ordinary readonly keeps no note", func(t *testing.T) {
 		program, file, _, _ := editorProgram(t, "export function f(s: { readonly n: number }) { s.n = 1 }\n")
+		found := false
 		for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-			if d.Code() == 2540 && len(d.MessageChain()) != 0 {
-				t.Errorf("a written readonly modifier got a note: %v", d.MessageChain()[0].String())
+			if d.Source() == "" && d.Code() == 2540 {
+				found = true
+				if len(d.MessageChain()) != 0 {
+					t.Errorf("a written readonly modifier got a note: %s", d.MessageChain()[0].String())
+				}
 			}
+		}
+		if !found {
+			t.Fatal("missing TS2540 for ordinary readonly assignment")
 		}
 	})
 }

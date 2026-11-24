@@ -2,6 +2,7 @@ package parser_test
 
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"testing"
 )
 
@@ -58,6 +59,13 @@ func TestEffectIsMethodNamesAndShorthandControls(t *testing.T) {
 			if len(file.Statements.Nodes) != 1 || !ast.IsFunctionDeclaration(file.Statements.Nodes[0]) {
 				t.Fatal("lost missing-function recovery")
 			}
+			_, forms := parser.ParseVibeLangSyntax(file.ParseOptions(), source)
+			for _, form := range forms {
+				if form.Kind == parser.VibeSyntaxShorthand && source[form.Word.Pos():form.Word.End()] == "load" {
+					return
+				}
+			}
+			t.Fatal("missing shorthand marker used for EK0101")
 		})
 	}
 }

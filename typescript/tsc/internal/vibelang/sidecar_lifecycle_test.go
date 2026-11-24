@@ -62,7 +62,7 @@ func TestDeletedVibeSourcePrunesSidecarsAndReportsTS2307(t *testing.T) {
 }
 
 func TestNoEmitOnErrorAndSyntaxErrorPreserveSidecars(t *testing.T) {
-	v1 := "export function help(n: number): number { return n + 1 }\nexport function main() { return help(1) }\n"
+	v1 := "export function help(n: number): number { return n + 1 }\nexport function main() { return help(1) }\nexport const read = Effect.try(() => document.title)\n"
 	_, file, _, _ := editorProgram(t, v1)
 	dir := filepath.Dir(file.FileName().AsString())
 	cfg := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"declaration":true,"noEmitOnError":true,"outDir":"./out"},"include":["*.vibe"]}`
@@ -71,8 +71,13 @@ func TestNoEmitOnErrorAndSyntaxErrorPreserveSidecars(t *testing.T) {
 	}
 
 	status1, out1 := runVibeCLI(t, dir)
-	if status1 != tsc.ExitStatusSuccess {
-		t.Fatalf("v1 build failed: %s", out1)
+	if status1 != tsc.ExitStatusSuccess || !strings.Contains(out1, "warning EK4402") {
+		t.Fatalf("want successful build with an EK4402 warning, got status=%v:\n%s", status1, out1)
+	}
+	jsPath := filepath.Join(dir, "out", "main.js")
+	goodJS, err := os.ReadFile(jsPath)
+	if err != nil || len(goodJS) == 0 {
+		t.Fatalf("JavaScript missing after the warning: %v", err)
 	}
 	sidecarPath := filepath.Join(dir, "main.d.vibe.ts")
 	goodBytes, err := os.ReadFile(sidecarPath)
@@ -88,6 +93,9 @@ func TestNoEmitOnErrorAndSyntaxErrorPreserveSidecars(t *testing.T) {
 	status2, out2 := runVibeCLI(t, dir)
 	if status2 == tsc.ExitStatusSuccess || !strings.Contains(out2, "TS2322") {
 		t.Fatalf("expected TS2322 on v2, got status=%v:\n%s", status2, out2)
+	}
+	if js, err := os.ReadFile(jsPath); err != nil || string(js) != string(goodJS) {
+		t.Fatalf("noEmitOnError changed JavaScript on type error: %v", err)
 	}
 	afterV2, err := os.ReadFile(sidecarPath)
 	if err != nil {

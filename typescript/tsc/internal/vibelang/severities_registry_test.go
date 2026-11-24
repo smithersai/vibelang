@@ -142,7 +142,3 @@ func TestAppendixBSeveritySettingsTakeEffect(t *testing.T) {
 		})
 	}
 }
-
-// VIP-34 whole-code config admission: docs/design/vips/0034-compiler-and-tooling.md#d6faf3c867f789ef
-
-// VIP-34 whole-code config admission: docs/design/vips/0034-compiler-and-tooling.md#0daf676a07d3c935

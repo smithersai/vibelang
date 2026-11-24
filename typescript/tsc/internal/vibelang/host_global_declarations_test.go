@@ -105,9 +105,3 @@ func TestHostGlobalLibraryOrigins(t *testing.T) {
 		})
 	}
 }
-
-// VIP-33 platform bans follow declaration origin and preserve local shadowing; rule: docs/design/vips/0033-platform-stdlib.md#858260c113fa8903
-
-// VIP-33 platform bans follow declaration origin and preserve local shadowing; rule: docs/design/vips/0033-platform-stdlib.md#2b05842827a19b9a
-
-// VIP-33 platform bans follow declaration origin and preserve local shadowing; rule: docs/design/vips/0033-platform-stdlib.md#99774dcf506c8546

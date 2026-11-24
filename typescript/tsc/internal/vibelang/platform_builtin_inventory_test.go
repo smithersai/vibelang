@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -10,8 +11,13 @@ import (
 // Node owns the builtin inventory, including undocumented bare names and
 // prefix-only names. Avoid a second expected list that can share our omissions.
 func TestPlatformNodeBuiltinInventory(t *testing.T) {
+	const versionPrefix = "v26." // CI uses Node 26.
+	required := os.Getenv("CI") == "true"
 	node, err := exec.LookPath("node")
 	if err != nil {
+		if required {
+			t.Fatalf("Node 26 is required for the builtin inventory in CI: %v", err)
+		}
 		t.Skip("Node is unavailable for the runtime builtin inventory")
 	}
 	command := exec.Command(node, "-e", `const {builtinModules,isBuiltin}=require("node:module");process.stdout.write(JSON.stringify({version:process.version,names:builtinModules,controls:Object.fromEntries(["_http_custom","_stream_custom","_tls_fake","test","test/reporters","sea","sqlite"].map(name=>[name,isBuiltin(name)]))}))`)
@@ -26,6 +32,12 @@ func TestPlatformNodeBuiltinInventory(t *testing.T) {
 	}
 	if err := json.Unmarshal(output, &inventory); err != nil {
 		t.Fatal(err)
+	}
+	if !strings.HasPrefix(inventory.Version, versionPrefix) {
+		if required {
+			t.Fatalf("builtin inventory requires Node 26 in CI, got %s", inventory.Version)
+		}
+		t.Skipf("builtin inventory targets Node 26, got %s", inventory.Version)
 	}
 	t.Logf("Node %s: %d builtin modules", inventory.Version, len(inventory.Names))
 	if len(inventory.Names) == 0 {

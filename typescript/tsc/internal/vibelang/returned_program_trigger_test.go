@@ -1,6 +1,10 @@
 package vibelang
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+)
 
 // VIP-1 keeps native plain factories; VIP-5 keeps return values unflattened.
 // Own EK4802 diagnoses inferred Effect arguments, not the data returned.
@@ -23,8 +27,8 @@ func TestReturnedProgramTrigger(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, source)
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Source() == diagnosticSource && d.Code() == 4802 {
+			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+				if d.Category() == diagnostics.CategoryError || (d.Source() == diagnosticSource && d.Code() == 4802) {
 					t.Fatalf("returned program is not an inferred argument: %s", d.String())
 				}
 			}

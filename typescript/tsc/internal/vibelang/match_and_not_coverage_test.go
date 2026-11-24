@@ -45,9 +45,7 @@ func TestMatchAndNotCoverage(t *testing.T) {
 		count := 0
 		for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
 			if d.Category() == diagnostics.CategoryError {
-				if d.Code() != 2367 {
-					t.Errorf("unexpected native error: %s", d.String())
-				}
+				t.Errorf("unexpected native error: %s", d.String())
 				count++
 			}
 		}

@@ -9,7 +9,6 @@ import (
 
 // D284 and the 2026-11-04 native-error-class ruling: native spread fields
 // and written static _tag members have no declaration advisory or repair.
-// Query the planner directly too: an editor may send a stale diagnostic.
 // rule-evidence: docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms | A native `Schema.TaggedError` class with spread fields, or a native `Data.TaggedError` or `Schema.TaggedError` class with a user-written static `_tag`, keeps its class form without an error-declaration warning or quick fix.
 func TestNativeErrorClassShapes(t *testing.T) {
 	for _, alias := range []bool{false, true} {

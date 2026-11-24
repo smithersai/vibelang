@@ -40,10 +40,6 @@ func emittedJS(t *testing.T, program *compiler.Program) map[string]string {
 	return out
 }
 
-// A comment between the call and its block has no place in the rewrite, so
-// EK1101 stays and the source comment remains intact.
-// Chapter 007 / interargument comment refusal and dual compatibility: docs/design/src/007-tooling.md#c3c81017075e1310
-
 // A dual block that D188 placed elsewhere keeps its own error and fix
 // (dual_block_migration.go), with no EK1101 beside it.
 // Chapter 007 / interargument comment refusal and dual compatibility: docs/design/src/007-tooling.md#c3c81017075e1310
@@ -66,7 +62,7 @@ func TestTrailingBlockLeavesDualBlocksToTheirMigration(t *testing.T) {
 // The old layer declaration builds a Layer.effect call whose block the source
 // never writes after a call, so it keeps EK2121 and draws no EK1101.
 func TestTrailingBlockSkipsTheLayerDeclaration(t *testing.T) {
-	errors := errorsOf(t, "service Counter { next(): number!! }\nexport layer CounterLive: Counter {\n  const start = 0\n  effect next() { return start }\n}")
+	errors := trailingBlockErrorsOf(t, "service Counter { next(): number!! }\nexport layer CounterLive: Counter {\n  const start = 0\n  effect next() { return start }\n}")
 	for _, d := range errors {
 		if d.Code() == EK1101.Code {
 			t.Fatalf("the layer declaration reports EK1101: %v", errors)
@@ -77,7 +73,7 @@ func TestTrailingBlockSkipsTheLayerDeclaration(t *testing.T) {
 // fork { … } is fork's own block (D166), which the parser reads apart
 // from block params, so it draws no EK1101.
 func TestTrailingBlockLeavesForkBlocks(t *testing.T) {
-	errors := errorsOf(t, "export effect function f() { const g = fork { try yieldNow; return 1 }; return join g }")
+	errors := trailingBlockErrorsOf(t, "export effect function f() { const g = fork { try yieldNow; return 1 }; return join g }")
 	for _, d := range errors {
 		if d.Code() == EK1101.Code {
 			t.Fatalf("fork { … } reports EK1101: %v", errors)
@@ -99,6 +95,15 @@ func legacyTrailingBlockErrorsOf(t *testing.T, source string) []*ast.Diagnostic 
 		}
 	}
 	return errors
+}
+
+func TestTrailingBlockSyntacticDiagnostic(t *testing.T) {
+	for _, d := range trailingBlockErrorsOf(t, trailingBlockPrelude+"export const n = twice() { return 2 }") {
+		if d.Source() == diagnosticSource && d.Code() == EK1101.Code {
+			return
+		}
+	}
+	t.Fatal("ordinary trailing block did not report syntactic EK1101")
 }
 
 func trailingBlockErrorsOf(t *testing.T, source string) []*ast.Diagnostic {

@@ -1,8 +1,9 @@
 package vibelang
 
 import (
-	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -17,11 +18,26 @@ import (
 // TypeScript.
 var flowNarrowings atomic.Int64
 
-func init() {
+// Run each work measurement in its own process so its hook and allocation
+// counters cannot pick up another test's checker or background goroutines.
+func runMatchScale(t *testing.T, measure func()) {
+	t.Helper()
+	const child = "VIBELANG_MATCH_SCALE_CHILD"
+	if os.Getenv(child) != t.Name() {
+		cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+t.Name()+"$", "-test.v")
+		cmd.Env = append(os.Environ(), child+"="+t.Name())
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("isolated scale check: %v\n%s", err, output)
+		}
+		t.Logf("%s", output)
+		return
+	}
 	checker.RegisterFlowNarrowingHook(func(*checker.Checker, *ast.Node, *checker.Type, *ast.Node, bool, func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
 		flowNarrowings.Add(1)
 		return nil
 	})
+	measure()
 }
 
 // variantsSource is a data type of n variants and a function that tests a
@@ -73,7 +89,7 @@ func checkSource(t *testing.T, source string) (allocations, bytes, narrowings in
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
 	flowNarrowings.Store(0)
-	diagnostics := program.GetSemanticDiagnostics(context.Background(), file)
+	diagnostics := program.GetSemanticDiagnostics(t.Context(), file)
 	narrowings = flowNarrowings.Load()
 	runtime.ReadMemStats(&after)
 	for _, d := range diagnostics {
@@ -97,18 +113,20 @@ func checkVariants(t *testing.T, form string, n int) (allocations, narrowings in
 // and typed each arm's matcher, Big.V0, anew through the arms before it.
 // Quadrupling n multiplies quadratic work by 16 and cubic work by 64.
 func TestVariantPatternsScaleQuadratically(t *testing.T) {
-	const small, large, limit = 40, 160, 32
-	for _, form := range []string{"match", "is"} {
-		smallAllocations, smallNarrowings := checkVariants(t, form, small)
-		largeAllocations, largeNarrowings := checkVariants(t, form, large)
-		t.Logf("%s: n=%d allocations=%d narrowings=%d; n=%d allocations=%d narrowings=%d", form, small, smallAllocations, smallNarrowings, large, largeAllocations, largeNarrowings)
-		if ratio := largeAllocations / smallAllocations; largeAllocations >= limit*smallAllocations {
-			t.Errorf("%s: %d variants allocate %d times as much as %d (%d, %d); want under %d", form, large, ratio, small, largeAllocations, smallAllocations, limit)
+	runMatchScale(t, func() {
+		const small, large, limit = 40, 160, 32
+		for _, form := range []string{"match", "is"} {
+			smallAllocations, smallNarrowings := checkVariants(t, form, small)
+			largeAllocations, largeNarrowings := checkVariants(t, form, large)
+			t.Logf("%s: n=%d allocations=%d narrowings=%d; n=%d allocations=%d narrowings=%d", form, small, smallAllocations, smallNarrowings, large, largeAllocations, largeNarrowings)
+			if ratio := largeAllocations / smallAllocations; largeAllocations >= limit*smallAllocations {
+				t.Errorf("%s: %d variants allocate %d times as much as %d (%d, %d); want under %d", form, large, ratio, small, largeAllocations, smallAllocations, limit)
+			}
+			if ratio := largeNarrowings / smallNarrowings; largeNarrowings >= limit*smallNarrowings {
+				t.Errorf("%s: %d variants narrow %d times as often as %d (%d, %d); want under %d", form, large, ratio, small, largeNarrowings, smallNarrowings, limit)
+			}
 		}
-		if ratio := largeNarrowings / smallNarrowings; largeNarrowings >= limit*smallNarrowings {
-			t.Errorf("%s: %d variants narrow %d times as often as %d (%d, %d); want under %d", form, large, ratio, small, largeNarrowings, smallNarrowings, limit)
-		}
-	}
+	})
 }
 
 // A match over n string literals removes a literal from the subject's union
@@ -116,12 +134,14 @@ func TestVariantPatternsScaleQuadratically(t *testing.T) {
 // that made 2000 arms take 95 s of CPU, and match-flow-limit.fail went RED on
 // a busy host against the harness's 120 s limit.
 func TestLiteralPatternNarrowingAllocations(t *testing.T) {
-	const arms, limit = 500, 1024
-	_, bytes, narrowings := checkSource(t, literalsSource(arms))
-	t.Logf("%d arms: %d bytes over %d narrowings", arms, bytes, narrowings)
-	if narrowings == 0 || bytes >= limit*narrowings {
-		t.Errorf("%d arms allocate %d bytes over %d narrowings; want under %d bytes each", arms, bytes, narrowings, limit)
-	}
+	runMatchScale(t, func() {
+		const arms, limit = 500, 1024
+		_, bytes, narrowings := checkSource(t, literalsSource(arms))
+		t.Logf("%d arms: %d bytes over %d narrowings", arms, bytes, narrowings)
+		if narrowings == 0 || bytes >= limit*narrowings {
+			t.Errorf("%d arms allocate %d bytes over %d narrowings; want under %d bytes each", arms, bytes, narrowings, limit)
+		}
+	})
 }
 
 // Exercise the exact budget boundary without allocating millions of union

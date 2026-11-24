@@ -8,16 +8,25 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// A handle clause passes its continuation to each resume in its block. The
+// Recovery of a retired handle clause keeps resume calls navigable. The
 // arguments the parser adds stand where the written arguments start, so every
 // argument of `resume(1)` and `resume()` follows the callee: a language
 // feature that walks the tree by position, such as selection ranges (LSP
 // 3.17: a parent range contains its child's), finds the call's arguments
 // inside the call and after `resume`, never around or before it.
-func TestClauseResumeArgumentsFollowTheirCallee(t *testing.T) {
+func TestRetiredClauseResumeArgumentsFollowTheirCallee(t *testing.T) {
 	t.Parallel()
 	source := "control Ask { ask(): number!! }\n\neffect function run() {\n  try {\n    return try Ask.ask()\n  } handle Ask.ask() {\n    if (false) { try resume() }\n    return try resume(1)\n  }\n}\n"
 	file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+	retired := 0
+	for _, d := range file.Diagnostics() {
+		if d.Source() == "EK" && d.Code() == 3501 {
+			retired++
+		}
+	}
+	if retired != 2 {
+		t.Fatalf("want EK3501 for control and handle, got %v", file.Diagnostics())
+	}
 	var calls []*ast.Node
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {

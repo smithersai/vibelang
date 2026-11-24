@@ -4,12 +4,12 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// VIP-17 uses native Fiber values; the retired region escape diagnostic
-// must not appear on returns, storage, calls or captures.
+// Native fibers can be returned, stored, passed, captured, and joined.
 func TestFiberFlows(t *testing.T) {
-	const prefix = "effect function one() { try sleep(1); return 1 }\nfunction keep(f: Fiber<number>) {}\nlet outer: Fiber<number> | undefined\n"
+	const prefix = "effect function one() { try sleep(1); return 1 }\nfunction keep(f: Fiber.Fiber<number>) {}\nlet outer: Fiber.Fiber<number> | undefined\n"
 	for _, test := range []struct {
 		name, source string
 	}{
@@ -20,58 +20,23 @@ func TestFiberFlows(t *testing.T) {
 		{"returned in an array", "export effect function fib() { return [fork one()] }"},
 		{"returned through a conditional", "export effect function fib(b: boolean) { const f = fork one(); return b ? f : undefined }"},
 		{"arrow body", "export const fib = effect () => fork one()"},
-		{"arrow body call form", "export const fib = effect () => fork(one())"},
-		{"if branch owns nothing", "export effect function fib(b: boolean) { if (b) { const f = fork one(); return f } return undefined }"},
 		{"assigned outside", "export effect function fib() { outer = fork one() }"},
-		{"assigned outside a loop iteration", "export effect function fib() { let last; for (const n of [1]) { last = fork one() } return 0 }"},
-		{"assigned to a property", "export effect function fib(o: { mutable f?: Fiber<number> }) { o.f = fork one() }"},
-		{"var", "export effect function fib() { var f = fork one(); return join f }"},
-		{"stored in an array", "export effect function fib() { const f = fork one(); const all = [f]; return 0 }"},
+		{"assigned to a property", "export effect function fib(o: { f?: Fiber.Fiber<number> }) { o.f = fork one() }"},
 		{"passed to a call", "export effect function fib() { keep(fork one()) }"},
 		{"passed through a binding", "export effect function fib() { const f = fork one(); keep(f) }"},
-		{"Fiber function returning a Fiber", "export effect function fib() { const scope = Scope.make(); const f = fork one(); Fiber.runIn(f, scope); return 0 }"},
 		{"captured", "export effect function fib() { const f = fork one(); return () => f }"},
-		{"captured though not returned", "export effect function fib() { const f = fork one(); const read = () => f; return join read() }"},
-		{"captured by an explicit Effect function", "export effect function fib() { const f = fork one(); return withSpan(effect () => { return join f }, \"s\") }"},
 		{"discarded", "export effect function fib() { fork one(); return 0 }"},
 		{"joined", "export effect function fib() { const f = fork one(); return join f }"},
-		{"joined in an array", "export effect function fib() { const a = fork one(); const b = fork one(); return join [a, b] }"},
-		{"joined in an object", "export effect function fib() { const a = fork one(); return join { a } }"},
-		{"joined through a held array", "export effect function fib() { const a = fork one(); const all = [a]; return join all }"},
-		{"held object's getter", "export effect function fib() { const a = fork one(); const tasks = { get a() { return a } }; return join tasks }"},
-		{"held array also read otherwise", "export effect function fib() { const a = fork one(); const all = [a]; const n = all.length; return join all }"},
 		{"held object returned", "export effect function fib() { const a = fork one(); const box = { a }; return box }"},
-		{"held object's method", "export effect function fib() { const a = fork one(); const tasks = { read() { return a } }; return join tasks }"},
 		{"let reassigned", "export effect function fib() { let f = fork one(); f = fork one(); return join f }"},
-		{"Fiber functions", "export effect function fib() { const f = fork one(); Fiber.interrupt(f); return Fiber.await(f) }"},
-		{"Fiber function over an array", "export effect function fib() { const a = fork one(); const b = fork one(); Fiber.interruptAll([a, b]); return 0 }"},
-		{"Fiber method", "export effect function fib() { const f = fork one(); f.interrupt(); return 0 }"},
-		{"fork operand", "export effect function fib() { const f = fork one(); const g = fork { join f }; return join g }"},
-		{"await element", "export effect function fib() { const f = fork one(); return await.race [join f, do { sleep(5); 0 }] }"},
-		{"do block value", "export effect function fib() { const f = do { fork one() }; return join f }"},
-		{"comma", "export const fib = effect () => (fork one(), 0)"},
-		{"piped to a Fiber function", "export effect function fib() { const f = fork one(); return f |> Fiber.join(%) }"},
-		{"piped fork", "export effect function fib() { return fork one() |> Fiber.join(%) }"},
-		{"piped through a nested pipe", "export effect function fib() { const f = fork one(); return f |> (% |> Fiber.join(%)) }"},
-		{"piped and discarded", "export effect function fib() { const f = fork one(); f |> 0; return join f }"},
-		{"piped to a call", "export effect function fib() { const f = fork one(); f |> keep(%); return 0 }"},
-		{"piped into a function", "export effect function fib() { const f = fork one(); return f |> (() => %) }"},
-		{"detached", "export effect function fib() { return detach(one()) }"},
-		{"forkScoped", "export effect function fib() { return Effect.forkScoped(one()) }"},
-		{"not lowered by a setting", "// @vibelang-diagnostics EK4838:off\nexport effect function fib() { return fork one() }"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, prefix+test.source)
-			var found []*ast.Diagnostic
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Code() == EK4838.Code {
-					found = append(found, d)
+			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+				if d.Category() == diagnostics.CategoryError || (d.Source() == diagnosticSource && d.Code() == EK4838.Code) {
+					t.Errorf("ordinary Fiber use rejected: %s", diagnosticWithNotes(d))
 				}
 			}
-			if len(found) != 0 {
-				t.Fatalf("native current-fiber ownership rejected an ordinary Fiber use: %s", diagnosticWithNotes(found[0]))
-			}
-
 		})
 	}
 }

@@ -67,14 +67,17 @@ func TestSpreadDirectFormAdvisories(t *testing.T) {
 			for _, alias := range []bool{false, true} {
 				for _, style := range []string{"direct", "parenthesized", "nonnull", "stored"} {
 					t.Run(fmt.Sprintf("%s/spread%d/alias%t/%s", api, chain, alias, style), func(t *testing.T) {
-						if api == "provide" && chain >= 2 {
-							t.Skip("native provide logical argument positions: FuzzSpreadDirectFormAdvisories provide-empty-leading/provide-empty-trailing")
-						}
 
 						p, file, _, _ := editorProgram(t, spreadDirectFormSource(api, chain, style, alias))
 						count := 0
+						knownProviderErrors := 0
+						leadingEmptyProvide := api == "provide" && chain == 3
 						for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
 							if d.Category() == diagnostics.CategoryError {
+								if leadingEmptyProvide && d.Source() == diagnosticSource && d.Code() == EK3207.Code {
+									knownProviderErrors++
+									continue
+								}
 								t.Fatalf("invalid fixture: %s", d.String())
 							}
 							if d.Source() == diagnosticSource && d.Code() == spreadDirectFormCode(api) {
@@ -87,6 +90,14 @@ func TestSpreadDirectFormAdvisories(t *testing.T) {
 						want := 1
 						if style == "stored" {
 							want = 0
+						}
+						// #590 tracks the provider guard treating the leading
+						// empty tuple as a logical argument.
+						if leadingEmptyProvide {
+							if knownProviderErrors != 1 {
+								t.Errorf("want one known EK3207, got %d; remove the gap expectation when fixed", knownProviderErrors)
+							}
+							return
 						}
 						if count != want {
 							t.Fatalf("want %d advisory, got %d", want, count)

@@ -44,10 +44,13 @@ func TestSidecarNamesVibexTargetsCompatibilityDeclaration(t *testing.T) {
 					}
 					p := NewProgram(ProgramOptions{Config: config, Host: NewCompilerHost(fs, "/", nil, nil, nil)})
 					written := map[string]string{}
-					p.EmitDeclarationSidecars(t.Context(), func(name, text string) error {
+					result := p.EmitDeclarationSidecars(t.Context(), func(name, text string) error {
 						written[name] = text
 						return nil
 					})
+					if len(result.Diagnostics) != 0 {
+						t.Fatal(result.Diagnostics)
+					}
 					main, ok := written[layout.sidecar]
 					if !ok {
 						t.Fatalf("no sidecar at %s; wrote %v", layout.sidecar, keys(written))
@@ -123,14 +126,17 @@ func FuzzSidecarNamesVibexTarget(f *testing.F) {
 		fs := vfstest.FromMap(files, tspath.CaseSensitive)
 		config, diagnostics := tsoptions.GetParsedCommandLineOfConfigFile("/src/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 		if len(diagnostics) != 0 {
-			t.Skip()
+			t.Fatal(diagnostics)
 		}
 		p := NewProgram(ProgramOptions{Config: config, Host: NewCompilerHost(fs, "/", nil, nil, nil)})
 		written := map[string]string{}
-		p.EmitDeclarationSidecars(t.Context(), func(name, text string) error {
+		result := p.EmitDeclarationSidecars(t.Context(), func(name, text string) error {
 			written[name] = text
 			return nil
 		})
+		if len(result.Diagnostics) != 0 {
+			t.Fatal(result.Diagnostics)
+		}
 		mirror := func(source string) string {
 			if sidecarDir == "" {
 				return source

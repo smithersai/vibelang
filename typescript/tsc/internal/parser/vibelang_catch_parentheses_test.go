@@ -58,8 +58,14 @@ func TestVibeLangParenthesizedCatchHandlerRejectsSuffix(t *testing.T) {
 	for _, suffix := range []string{"()", ".call(null)", "[0]"} {
 		source := "effect function f() { return task catch (() => 7)" + suffix + " }"
 		file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
-		if len(file.Diagnostics()) == 0 {
-			t.Fatalf("handler suffix %q was accepted as a value fallback", suffix)
+		count := 0
+		for _, d := range file.Diagnostics() {
+			if d.Source() == "EK" && d.Code() == parser.VibeLangCatchPrecedenceCode {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Errorf("handler suffix %q: want one EK0512, got %v", suffix, file.Diagnostics())
 		}
 	}
 }

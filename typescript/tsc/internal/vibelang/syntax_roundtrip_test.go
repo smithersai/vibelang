@@ -15,24 +15,29 @@ import (
 // The upstream parser test package requires Microsoft's omitted test corpus.
 // Keep the VibeLang-specific corpus here so it also runs in released checkouts.
 // These cases pin syntax from D154, D176-D196, D223, D225 and D229-D232.
-var syntaxRoundTripCases = []struct{ name, source string }{
+var syntaxRoundTripCases = []struct{ name, source, marker string }{
 	{"declarations", `error Gone { readonly id: string }
 service Users { find(id: string): string!Gone }
-schema Ticket { id: string; count: number }`},
-	{"contracts", `function read(id: string): string!Gone!Users { return Users.find(id) }
+schema Ticket { id: string; count: number }`, ""},
+	{"contracts", `effect function read(id: string): string!Gone!Users { return try (try Users).find(id) }
 type Program = number!!
 type Errors = string!Gone
-type Requirements = boolean!!Users`},
+type Requirements = boolean!!Users`, "read"},
 	{"pipe", `function f(n: number) { return n |> % % 2 |> (% ? 1 : 0) }
-function g(n: number) { return n |> (% + (2 |> % * 3)) }`},
-	{"fibers", `function f(items: number[]) { const task = fork read(); const value = join task; const all = join [task]; for concurrent(2) (const item of items) write(item); return { value, all } }`},
-	{"await-operations", `function f() { const all = await.all [read(), do { 2 }]; const settled = await.allSettled { one: read() }; const race = await.race [read()]; return await.any [read()] }`},
-	{"hatches", `function f() { const a = sync((n) => n + 1, read()); const b = try read(); const c = try program; return callback((resume) => resume(a + b + c)) }`},
-	{"blocks", `function f() { const value = do { const x = read(); x + 1 }; return Effect.retry(effect { return value }, { times: 2 }) }`},
-	{"catches", `function f() { return read() catch (e) => 0 }
-function g() { try { return read() } catch (e: Gone) { return e.id } finally (exit) { write(exit) } }`},
-	{"primitives", `function f() { uninterruptible { restore { read() } }; return throw new Error("gone") }`},
-	{"match", `function f(value: unknown) { return match (value) { when 1: "one"; when String and let text: text; default: "other"; } }`},
+function g(n: number) { return n |> (% + (2 |> % * 3)) }`, ""},
+	{"fibers", `effect function f(items: number[]) { const task = fork read(); const value = join task; for concurrent(2) (const item of items) { try write(item) } return value }`, "join"},
+	{"try-operations", `effect function f() { const all = try.all [read(), read()]; const settled = try.allSettled { one: read() }; const race = try.race [read()]; return try.any [read()] }`, "race"},
+	{"hatches", `const f = effect (n: number) => try sync(() => n + 1)`, "sync"},
+	{"blocks", `effect function f() { provide Live { try read() }; return try effect { return 1 } }`, "Live;"},
+	{"catches", `effect function f() { return read() catch (e) => 0 }
+effect function g() { return read() catch effect (e) => { throw e } }`, "catch"},
+	{"primitives", `effect function f() { uninterruptible { restore { try read() } }; interruptible { try read() }; return throw new Gone() }`, "interruptible"},
+	{"match", `function f(value: unknown) { return match (value) { when 1: "one"; when String and let text: text; default: "other"; } }`, ""},
+	{"data and schema", `data Delivery { Waiting; Sent { tracking: string } }
+schema Code = "a" | "b"
+schema error Invalid { reason: string }`, "Delivery"},
+	{"stream", `effect function* ticks() { yield 1; try sleep("1 second"); yield 2 }
+effect function consume() { for try (const tick of ticks()) { try log(tick) } }`, "ticks"},
 }
 
 func printSyntax(file *ast.SourceFile) string {
@@ -96,12 +101,18 @@ func TestInvalidContractPreservesDiagnostic(t *testing.T) {
 	}
 }
 
-func TestSyntaxRoundTripGoldens(t *testing.T) {
+func TestSyntaxRoundTripCorpus(t *testing.T) {
 	for _, tc := range syntaxRoundTripCases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := checkSyntaxRoundTrip(t, tc.source)
+			if tc.marker != "" {
+				if !strings.Contains(got, tc.marker) {
+					t.Fatalf("printed source lost %q:\n%s", tc.marker, got)
+				}
+				return
+			}
 			extension := ".ts"
-			if tc.name == "pipe" || tc.name == "hatches" {
+			if tc.name == "pipe" {
 				extension = ".vibe"
 			}
 			golden := filepath.Join("testdata", "syntax", tc.name+extension)

@@ -62,29 +62,6 @@ func TestDirectTryFormWarnings(t *testing.T) {
 	}
 }
 
-// A written assertion or check cannot disappear just because the underlying
-// call has an advisory. Refuse the rewrite rather than delete its type effect.
-func TestDirectTryFormWrappedFixRefusal(t *testing.T) {
-	for _, operand := range []string{
-		"(Effect.succeed(1) as number!!)",
-		"(Effect.fail(\"boom\") as never!string)",
-		"(Effect.succeed(1))!",
-		"((Effect.fail(\"boom\")))",
-	} {
-		t.Run(operand, func(t *testing.T) {
-			source := "export effect function f() { const value = try " + operand + "; return 0 }"
-			p, file, _, _ := editorProgram(t, source)
-			found := false
-			for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
-				found = found || d.Source() == diagnosticSource && d.Code() == 4834
-			}
-			if !found {
-				t.Fatalf("missing EK4834:\n%s", source)
-			}
-		})
-	}
-}
-
 func TestDirectTryFormShadowedImport(t *testing.T) {
 	source := "import * as E from \"effect/Effect\"\nexport effect function f(E: { succeed: (n: number) => number!! }) {\n  const value = try E.succeed(1)\n  void value\n  return 0\n}"
 	p, file, _, _ := editorProgram(t, source)

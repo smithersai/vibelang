@@ -10,59 +10,53 @@ import (
 
 type libRethrowsShape struct {
 	name, parameter, call string
-	tracked               bool
 }
 
 var libRethrowsShapes = []libRethrowsShape{
-	{"array-flatMap", "xs:number[]", "xs.flatMap(CB)", true},
-	{"array-findIndex", "xs:number[]", "xs.findIndex(CB)", true},
-	{"array-findLast", "xs:number[]", "xs.findLast(CB)", true},
-	{"array-findLastIndex", "xs:number[]", "xs.findLastIndex(CB)", true},
-	{"array-reduceRight", "xs:number[]", "xs.reduceRight(CB,0)", true},
-	{"array-toSorted", "xs:number[]", "xs.toSorted(CB)", true},
-	{"readonly-array-flatMap", "xs:readonly number[]", "xs.flatMap(CB)", true},
-	{"readonly-array-findIndex", "xs:readonly number[]", "xs.findIndex(CB)", true},
-	{"readonly-array-findLast", "xs:readonly number[]", "xs.findLast(CB)", true},
-	{"readonly-array-findLastIndex", "xs:readonly number[]", "xs.findLastIndex(CB)", true},
-	{"readonly-array-reduceRight", "xs:readonly number[]", "xs.reduceRight(CB,0)", true},
-	{"readonly-array-toSorted", "xs:readonly number[]", "xs.toSorted(CB)", true},
-	{"typed-findIndex", "xs:Uint8Array", "xs.findIndex(CB)", true},
-	{"typed-findLast", "xs:Uint8Array", "xs.findLast(CB)", true},
-	{"typed-findLastIndex", "xs:Uint8Array", "xs.findLastIndex(CB)", true},
-	{"typed-reduceRight", "xs:Uint8Array", "xs.reduceRight(CB,0)", true},
-	{"typed-toSorted", "xs:Uint8Array", "xs.toSorted(CB)", true},
-	{"bigint-findIndex", "xs:BigInt64Array", "xs.findIndex(CB)", true},
-	{"bigint-findLast", "xs:BigInt64Array", "xs.findLast(CB)", true},
-	{"bigint-findLastIndex", "xs:BigInt64Array", "xs.findLastIndex(CB)", true},
-	{"bigint-reduceRight", "xs:BigInt64Array", "xs.reduceRight(CB,0n)", true},
-	{"bigint-toSorted", "xs:BigInt64Array", "xs.toSorted(CB)", true},
-	{"array-forEach", "xs:number[]", "xs.forEach(CB)", true},
-	{"readonly-array-map", "xs:readonly number[]", "xs.map(CB)", true},
-	{"array-from", "xs:number[]", "Array.from(xs,CB)", true},
-	{"map-forEach", "m:Map<string,number>", "m.forEach(CB)", true},
-	{"readonly-map-forEach", "m:ReadonlyMap<string,number>", "m.forEach(CB)", true},
-	{"set-forEach", "s:Set<number>", "s.forEach(CB)", true},
-	{"readonly-set-forEach", "s:ReadonlySet<number>", "s.forEach(CB)", true},
-	{"typed-map", "t:Float64Array", "t.map(CB)", true},
-	{"typed-forEach", "t:Uint8Array", "t.forEach(CB)", true},
-	{"typed-filter", "t:Int16Array", "t.filter(CB)", true},
-	{"typed-find", "t:Uint32Array", "t.find(CB)", true},
-	{"typed-some", "t:Uint8ClampedArray", "t.some(CB)", true},
-	{"typed-every", "t:Int8Array", "t.every(CB)", true},
-	{"typed-sort", "t:Int32Array", "t.sort(CB)", true},
-	{"typed-reduce", "t:Float32Array", "t.reduce(CB,0)", true},
-	{"typed-from", "xs:number[]", "Uint8Array.from(xs,CB)", true},
+	{"array-flatMap", "xs:number[]", "xs.flatMap(CB)"},
+	{"array-findIndex", "xs:number[]", "xs.findIndex(CB)"},
+	{"array-findLast", "xs:number[]", "xs.findLast(CB)"},
+	{"array-findLastIndex", "xs:number[]", "xs.findLastIndex(CB)"},
+	{"array-reduceRight", "xs:number[]", "xs.reduceRight(CB,0)"},
+	{"array-toSorted", "xs:number[]", "xs.toSorted(CB)"},
+	{"readonly-array-flatMap", "xs:readonly number[]", "xs.flatMap(CB)"},
+	{"readonly-array-findIndex", "xs:readonly number[]", "xs.findIndex(CB)"},
+	{"readonly-array-findLast", "xs:readonly number[]", "xs.findLast(CB)"},
+	{"readonly-array-findLastIndex", "xs:readonly number[]", "xs.findLastIndex(CB)"},
+	{"readonly-array-reduceRight", "xs:readonly number[]", "xs.reduceRight(CB,0)"},
+	{"readonly-array-toSorted", "xs:readonly number[]", "xs.toSorted(CB)"},
+	{"typed-findIndex", "xs:Uint8Array", "xs.findIndex(CB)"},
+	{"typed-findLast", "xs:Uint8Array", "xs.findLast(CB)"},
+	{"typed-findLastIndex", "xs:Uint8Array", "xs.findLastIndex(CB)"},
+	{"typed-reduceRight", "xs:Uint8Array", "xs.reduceRight(CB,0)"},
+	{"typed-toSorted", "xs:Uint8Array", "xs.toSorted(CB)"},
+	{"bigint-findIndex", "xs:BigInt64Array", "xs.findIndex(CB)"},
+	{"bigint-findLast", "xs:BigInt64Array", "xs.findLast(CB)"},
+	{"bigint-findLastIndex", "xs:BigInt64Array", "xs.findLastIndex(CB)"},
+	{"bigint-reduceRight", "xs:BigInt64Array", "xs.reduceRight(CB,0n)"},
+	{"bigint-toSorted", "xs:BigInt64Array", "xs.toSorted(CB)"},
+	{"array-forEach", "xs:number[]", "xs.forEach(CB)"},
+	{"readonly-array-map", "xs:readonly number[]", "xs.map(CB)"},
+	{"array-from", "xs:number[]", "Array.from(xs,CB)"},
+	{"map-forEach", "m:Map<string,number>", "m.forEach(CB)"},
+	{"readonly-map-forEach", "m:ReadonlyMap<string,number>", "m.forEach(CB)"},
+	{"set-forEach", "s:Set<number>", "s.forEach(CB)"},
+	{"readonly-set-forEach", "s:ReadonlySet<number>", "s.forEach(CB)"},
+	{"typed-map", "t:Float64Array", "t.map(CB)"},
+	{"typed-forEach", "t:Uint8Array", "t.forEach(CB)"},
+	{"typed-filter", "t:Int16Array", "t.filter(CB)"},
+	{"typed-find", "t:Uint32Array", "t.find(CB)"},
+	{"typed-some", "t:Uint8ClampedArray", "t.some(CB)"},
+	{"typed-every", "t:Int8Array", "t.every(CB)"},
+	{"typed-sort", "t:Int32Array", "t.sort(CB)"},
+	{"typed-reduce", "t:Float32Array", "t.reduce(CB,0)"},
+	{"typed-from", "xs:number[]", "Uint8Array.from(xs,CB)"},
 }
 
 func libRethrowsKeys() []string {
 	var result []string
 	for _, shape := range libRethrowsShapes {
 		for _, site := range []string{"plain", "effect", "caught", "wrapped"} {
-			// A method without a shipped rethrows has its own thrown type in
-			// effect code, and a wrapper thunk is checked by its own rules.
-			if !shape.tracked && (site == "effect" || site == "wrapped") {
-				continue
-			}
 			result = append(result, shape.name+":"+site)
 		}
 	}
@@ -108,15 +102,10 @@ func libRethrowsSource(key string, choice uint8) (string, string, int) {
 	want := 0
 	switch {
 	case choice&2 != 0:
-	case shape.tracked && site == "plain":
+	case site == "plain":
 		want = 401
-	case shape.tracked && site == "effect":
+	case site == "effect":
 		want = 403
-	case shape.tracked:
-	case inline:
-		want = 401
-	default:
-		want = 402
 	}
 	return source + body, library, want
 }

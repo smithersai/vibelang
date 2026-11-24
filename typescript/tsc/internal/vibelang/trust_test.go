@@ -200,7 +200,6 @@ export declare function make(): Schema`,
 // shipped contracts; an unpinned package such as @effect/vitest follows the
 // plain external-package rule (no @throws means unknown), while a written
 // @throws {never} keeps its contract.
-// Chapter 900: EK1011 diagnostic - spec-rule: docs/design/src/900-appendices.md#9784033faf45ac67
 func TestReexportedForeignCallsThrowUnknown(t *testing.T) {
 	t.Parallel()
 	const vitest = `export interface Assertion<T> { toBe(expected: T): void }
