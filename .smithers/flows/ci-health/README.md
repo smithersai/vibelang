@@ -108,7 +108,10 @@ smthrs flow start ci-health --data '{"run":"<run dir>","results":"<results dir>"
 smthrs flow start ci-health --data '{"run":"<run dir>","results":"<results dir>","split":"2026-11-02T00:00:00Z"}'
 ```
 
-Without `split`, the split falls at the middle run.
+Without `split`, the split falls at the middle run. CI records the start time
+in each results file. Older results fall back to their modification time, and
+fixtures can supply times in `times.json`. The report lists unreadable results
+files. If no readable runs match, the flow fails.
 
 Point `results` at a directory where CI runs write `CI_RESULTS` and the graph
 log beside it. Use a new run directory each time: a finished run returns its
@@ -123,8 +126,7 @@ from 2026-10-30 and 2026-10-31, with paths scrubbed and runs renamed.
 A second case, `regression`, runs it over `fixture-regression/`:
 `//packages:compiler-test` and `//:docs-tools` from 22 real cf pre-gates, 10
 on 2026-11-01 and 12 on 2026-11-02 after the migrate suites joined
-compiler-test, two of which timed out. `times.json` gives each run's time; the
-eval sets it as the file's mtime on a copy, which is what `collect` reads.
+compiler-test, two of which timed out. `times.json` gives each run's time.
 
 The `go-cache-archive` eval runs the flow on `fixture-go-cache/`: a real failed build and its same-key successful retry. It checks cache attribution and the absence of fictional test names because compilation failed before tests ran. The duration-regression case remains separate.
 

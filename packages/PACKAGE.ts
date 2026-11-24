@@ -1,3 +1,4 @@
+import { workspaceInputPaths } from "../scripts/testing/workspace-inputs.mjs"
 import { Smithers as S } from "@smthrs/targets"
 import inventory from "./test-inventory.json" with { type: "json" }
 import testGroups from "./test-groups.json" with { type: "json" }
@@ -18,6 +19,8 @@ import { Package as Tsc } from "../typescript/tsc/PACKAGE.ts"
 // and an input of every target that reads node_modules.
 const install = [S.file("runtime/package.json"), S.file("runtime/bun.lock")]
 const experimentInstall = [S.file("//experiments/package.json"), S.file("//experiments/bun.lock")]
+// Cross-package inputs must use absolute file references. A glob is package-scoped.
+const workspaceFiles = (pattern: string) => workspaceInputPaths(pattern).map(file => S.file("//" + file))
 
 const testLabel = (group: string, file: string) =>
   `${group}-test-${file.slice(file.lastIndexOf("/") + 1).replace(/\.test\.[^.]+$/, "").replace(/\./g, "-")}`
@@ -75,6 +78,7 @@ const runtimeTest = (files: readonly string[]) => S.Shell.Test({
     ...(files.includes("runtime/tests/readme-exports.test.ts") ? [S.file("runtime/README.md")] : []),
     ...(files.includes("runtime/tests/package-budget.test.ts") && !files.includes("runtime/tests/package.test.ts") ? [S.file("runtime/tests/package.test.ts")] : []),
     S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/001-functions.md"),
+    S.file("//docs/design/src/002-running.md"), S.file("//docs/design/vips/0044-durable-values.md"),
     S.file("//experiments/tests/conformance/model-laws.ts"), S.file("//experiments/package.json"), S.file("//experiments/bun.lock")],
   tools: [S.Host.bin("bun"), S.Host.bin("node")],
   sandbox: "none",
@@ -147,8 +151,10 @@ const compilerTest = (files: readonly string[], names?: readonly string[]) => S.
     S.file("vite/src/vibe-directive.js"), S.file("unplugin/src/vibe-directive.js"),
     S.file("//typescript/vibelang/lsp-format-shape.mjs"), S.file("//typescript/vibelang/lsp-connection.mjs"),
     S.file("//typescript/vibelang/lsp-framing.mjs"),
-    S.file("//docs/design/vips/0044-durable-values.md"),
-    S.glob("//typescript/vibelang/cases/schema-durable-serialization/**"),
+    S.file("//docs/design/vips/0044-durable-values.md"), S.file("//docs/design/vips/0039-vibex.md"),
+    S.file("//docs/design/vips/0027-declaration-output.md"), S.file("//docs/user/src/setup/developer-tools.md"),
+    S.file("//examples/approval/src/main.vibe"), S.file("//scripts/declaration-api-oracle.mjs"),
+    ...workspaceFiles("typescript/vibelang/cases/schema-durable-serialization/**/*"),
     S.file("//typescript/vibelang/cases/tsforms-schemas/main.vibe"),
     S.file("//typescript/vibelang/cases/tsforms-schemas-fixed/main.vibe"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
@@ -210,8 +216,7 @@ const migratePlainProbe = S.Shell.Test({
 
 const migrateNativeLoadpaths = S.Shell.Test({
   summary: "Check migrated native load paths with the explicitly installed esbuild.",
-  shell: "cd packages/compiler && bun install --frozen-lockfile && cd ../.. && " +
-    "node --test .smithers/flows/migrate/test/native-loadpaths.property.test.mjs",
+  shell: "node --test .smithers/flows/migrate/test/native-loadpaths.property.test.mjs",
   data: [migrationSources, ...install, S.file("compiler/package.json"), S.file("compiler/bun.lock")],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",
@@ -237,7 +242,8 @@ const migrateTestData = [compilerNative, runtimeDist, S.glob("compiler/**"), mig
   S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"),
   S.file("//scripts/testing/migrate-progress.mjs"), S.file("//scripts/testing/migrate-shards.mjs"),
   S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
-  S.file("//docs/user/src/setup/migrating-retired-forms.md"),
+  S.file("//docs/user/src/setup/migrating-retired-forms.md"), S.file("//docs/design/src/000-intro.md"),
+  S.file("//.smithers/instructions/app.md"), S.file("//typescript/tsc/internal/vibelang/prelude_collision_diagnostic.go"),
   S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...install]
 const migrateTestTargets = Object.fromEntries(migrateShards().map(shard => [shard.label, S.Shell.Test({
   summary: `Migration tests: ${shard.file}.`,
@@ -273,8 +279,7 @@ const migrateHelperIdentity = S.Shell.Test({
 // focused label is also a member of the complete migration compatibility suite.
 const migrateSourceChildNative = S.Shell.Test({
   summary: "Compile migrated source-child helpers with the native compiler.",
-  shell: "cd packages/compiler && bun install --frozen-lockfile && cd ../.. && " +
-    "node --test .smithers/flows/migrate/test/source-child-vibe-module.property.test.mjs",
+  shell: "node --test .smithers/flows/migrate/test/source-child-vibe-module.property.test.mjs",
   data: [compilerNative, runtimeDist, migrationSources, ...install, S.file("compiler/package.json"), S.file("compiler/bun.lock"),
     S.file("//docs/design/vips/0040-module-declarations.md")],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
@@ -307,7 +312,7 @@ const migrateToolchainBaseline = S.Shell.Test({
 const migrateQuotedRules = S.Shell.Test({
   summary: "Every migrate corpus quote is text the specification or the flow still states.",
   shell: "node --test .smithers/flows/migrate/test/quoted-rules-exist.test.mjs",
-  data: [migrationSources, S.glob("//docs/design/src/*.md"), S.glob("//docs/design/vips/*.md"), S.glob("//docs/user/src/setup/*.md")],
+  data: [migrationSources, ...workspaceFiles("docs/design/src/*.md"), ...workspaceFiles("docs/design/vips/*.md"), ...workspaceFiles("docs/user/src/setup/*.md")],
   tools: [S.Host.bin("node")],
   sandbox: "none",
   timeout: "1m"
@@ -340,7 +345,7 @@ const pluginTest = (name: "vite" | "unplugin", files: readonly string[], names?:
   shell: `VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang node scripts/testing/run-package-test.mjs ${name} ${files.join(" ")}` + (names ? " " + nodeTestSelection(names) : ""),
   data: [name === "vite" ? vitePrepare : unpluginPrepare, compilerNative, compilerSupport,
     ...files.map(file => S.file(file)), S.glob(`${name}/**`, { exclude: ["**/*.test.mjs"] }),
-    S.file("//scripts/testing/run-package-test.mjs"), S.file("//scripts/testing/package-fixtures.mjs"),
+    S.file("//scripts/testing/projects.mjs"), S.file("//scripts/testing/run-package-test.mjs"), S.file("//scripts/testing/package-fixtures.mjs"),
     S.glob("vite/src/**"), S.file("vite/package.json"), S.file("vite/bun.lock"),
     S.glob("unplugin/src/**"), S.file("unplugin/package.json"), S.file("unplugin/bun.lock"),
     S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/007-tooling.md"), S.file("//docs/design/vips/0039-vibex.md"),
@@ -405,7 +410,8 @@ const typescriptShimTestEntries = testEntries("typescript-shim", inventory["type
   shell: `VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang node --test --test-concurrency=4 ` + nodeTestSelection(names) + files.map(file => "packages/" + file).join(" "),
   data: [compilerNative, runtimeDist, compilerSupport, ...files.map(file => S.file(file)), ...experimentInstall, S.glob("typescript-shim/**", { exclude: ["**/*.test.mjs"] }), ...install,
     S.file("//typescript/vibelang/lsp-connection.mjs"), S.file("//typescript/vibelang/lsp-framing.mjs"),
-    S.file("//typescript/packages/vscode-typescript/src/util.ts"), S.file("//typescript/packages/vscode-typescript/src/tsdkPackage.ts")],
+    S.file("//typescript/packages/vscode-typescript/src/util.ts"), S.file("//typescript/packages/vscode-typescript/src/tsdkPackage.ts"),
+    ...(files.includes("typescript-shim/test/twin.test.mjs") ? workspaceFiles("typescript/vibelang/cases/**/*") : [])],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",
   timeout: "8m"

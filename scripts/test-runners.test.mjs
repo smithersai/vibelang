@@ -19,6 +19,7 @@ const read = (path) => readFileSync(new URL(path, root), "utf8")
 
 // [test files, the file that runs them, the text in it that names them]
 const runs = [
+  ["experiments/**/*.test.*", "PACKAGE.ts", "cd experiments && bun test --timeout 30000"],
   ...buildContractSuites.map(file => [file, "build-contract-inputs.ts", JSON.stringify(file)]),
   ["build-contract-inputs.test.mjs", "PACKAGE.ts", "node --test build-contract-inputs.test.mjs"],
   ["site/scripts/not-found.test.mjs", "docs/tools/site-contrast.test.ts", "test:404"],
@@ -131,7 +132,7 @@ const matcher = glob => ({ test: file => matchesGlob(file, glob) })
 // The checkout's test files, without dependencies, fixtures, build output and other tools' directories. It walks
 // the tree rather than asking jj: a graph mirror has no .jj.
 const ignoredDirs = new Set(["node_modules", "fixtures", ".fixtures", "cases", "corpus", "testdata", "built", "dist", "out", ".cache"])
-const ignoredTops = new Set(["examples", "templates", "prototype", "experiments"])
+const ignoredTops = new Set(["examples", "templates", "prototype"])
 const testFiles = () => {
   const files = []
   const walk = (dir, rel) => {

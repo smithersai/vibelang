@@ -25,7 +25,7 @@ before(() => {
   ownedMapper = mkdtempSync(join(tmpdir(), "vibelang-parity-selection-mapper-"))
   mapper = join(ownedMapper, "vibelang-mapper")
   const build = spawnSync("sh", [join(root, "scripts/native-output.sh"), "build", mapper,
-    "-p", "8", "-trimpath", "-buildvcs=false", "-gcflags=all=-dwarf=false", "./cmd/vibelang-mapper"], {
+    "-p", "8", "-trimpath", "./cmd/vibelang-mapper"], {
     cwd: join(root, "typescript/tsc"), encoding: "utf8", timeout: 900_000,
     env: { ...process.env, CGO_ENABLED: "0" }
   })

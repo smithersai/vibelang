@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -101,4 +101,58 @@ test("regressions reports timeouts after the split even when the median held", (
   const found = regressions(runs, { split: "t5", timedOut: (id, label) => id === "r8" && label === "//x" })
   assert.deepEqual(found.map((r) => [r.label, r.timeouts, r.ratio]), [["//x", 1, 1]])
   assert.deepEqual(regressions(runs, { split: "t5" }), [], "a failure that is not a timeout is not a slowdown")
+})
+
+test("plain reporter test names do not supply infrastructure evidence", () => {
+  for (const header of [
+    "(fail) retries after ENOSPC is reported [1.00ms]",
+    "--- FAIL: TestTimeoutIsPropagated (0.01s)",
+    "✖ kills the child with SIGKILL after the grace period (2ms)",
+    "FAIL    timed-out-case: test command failed",
+  ]) assert.equal(cause([header, "AssertionError: 1 !== 2"]), "assertion")
+  assert.equal(cause(["FAIL    case: process timed out after 50ms"]), "timeout")
+})
+
+test("captured output retains source comments and the tests after them", () => {
+  const log = [
+    "//:t  failed  5.1s  command failed (exit 1): bun test",
+    "// a source comment the assertion diff printed",
+    "//source: another comment with a colon",
+    "(fail) the real failing test [1.00ms]",
+    "//:u  ran  1s",
+    "(fail) another target's failure [1.00ms]",
+  ].join("\n")
+  assert.deepEqual(failedTests(targetLines(log, "//:t")), ["the real failing test"])
+})
+
+test("empty results cannot produce a successful health report", t => {
+  const run = mkdtempSync(join(tmpdir(), "ci-health-empty-"))
+  t.after(() => rmSync(run, { recursive: true, force: true }))
+  start(run, { results: run })
+  assert.equal(collect(run).ok, false)
+  assert.equal(analyze(run).ok, false)
+  assert.equal(report(run).ok, false)
+})
+
+test("collect uses run timestamps across reordered copies and normalizes offset filters", t => {
+  const run = mkdtempSync(join(tmpdir(), "ci-health-timestamps-"))
+  t.after(() => rmSync(run, { recursive: true, force: true }))
+  const results = join(run, "results")
+  mkdirSync(results)
+  const older = join(results, "older-graph.json")
+  const newer = join(results, "newer-graph.json")
+  writeFileSync(older, JSON.stringify({ startedAt: "2026-11-01T00:00:00Z", results: [] }))
+  writeFileSync(newer, JSON.stringify({ results: [] }))
+  writeFileSync(join(results, "times.json"), JSON.stringify({ newer: "2026-11-02T00:00:00Z" }))
+  writeFileSync(join(results, "partial-graph.json"), '{"results":')
+  utimesSync(older, new Date("2026-11-10"), new Date("2026-11-10"))
+  utimesSync(newer, new Date("2026-10-20"), new Date("2026-10-20"))
+  start(run, { results, since: "2026-10-31T18:00:00-07:00", split: "2026-11-01T12:00:00-07:00" })
+  const collected = collect(run)
+  assert.deepEqual(collected.runs.map(row => row.id), ["newer"])
+  assert.equal(collected.split, "2026-11-01T19:00:00.000Z")
+  assert.deepEqual(collected.unreadableFiles, ["partial-graph.json"])
+  analyze(run)
+  report(run)
+  assert.match(readFileSync(join(run, "report.md"), "utf8"), /Unreadable results: 1/)
 })

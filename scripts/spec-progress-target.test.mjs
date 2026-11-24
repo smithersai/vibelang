@@ -41,7 +41,9 @@ test("the spec command forwards required Go settings through the progress proces
   const root = mkdtempSync(join(tmpdir(), "spec-progress-env-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   for (const dir of ["typescript/tsc", "scripts", "bin"]) mkdirSync(join(root, dir), { recursive: true })
-  copyFileSync(new URL("./go-test-progress.mjs", import.meta.url), join(root, "scripts/go-test-progress.mjs"))
+  for (const file of ["go-test-progress.mjs", "is-main.mjs"]) {
+    copyFileSync(new URL("./" + file, import.meta.url), join(root, "scripts", file))
+  }
   // Registration may precede Go execution. Exercise that real helper when the graph uses it.
   const registration = new URL("./gate-tests.mjs", import.meta.url)
   if (existsSync(registration)) copyFileSync(registration, join(root, "scripts/gate-tests.mjs"))
@@ -84,7 +86,7 @@ for (const [name, shared, deadline, status] of [
   const root = mkdtempSync(join(tmpdir(), "spec-progress-deadline-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, "scripts/testing"), { recursive: true })
-  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "root-test-shards.ts", "root-test-fixtures.json", "root-test-shard-groups.json", "site/package.json", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs"]) {
+  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "root-test-shards.ts", "root-test-fixtures.json", "root-test-shard-groups.json", "site/package.json", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs", "scripts/testing/go-build-sources.mjs", "scripts/testing/workspace-inputs.mjs"]) {
     mkdirSync(join(root, file, ".."), { recursive: true })
     copyFileSync(new URL("../" + file, import.meta.url), join(root, file))
   }
@@ -115,7 +117,7 @@ test("spec deadline fixture controls follow a later shared graph limit", t => {
   const root = mkdtempSync(join(tmpdir(), "spec-progress-next-deadline-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, "scripts/testing"), { recursive: true })
-  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "root-test-shards.ts", "root-test-fixtures.json", "root-test-shard-groups.json", "site/package.json", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs"]) {
+  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "root-test-shards.ts", "root-test-fixtures.json", "root-test-shard-groups.json", "site/package.json", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs", "scripts/testing/go-build-sources.mjs", "scripts/testing/workspace-inputs.mjs"]) {
     mkdirSync(join(root, file, ".."), { recursive: true })
     copyFileSync(new URL("../" + file, import.meta.url), join(root, file))
   }
