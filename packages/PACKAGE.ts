@@ -59,14 +59,35 @@ const compilerSupport = S.Filegroup({
   srcs: [S.glob("compiler/**", { exclude: ["**/*.test.mjs"] })]
 })
 
+// Every node:test file in runtime/tests runs here under Node, the oracle its
+// assertions name; bun test also discovers them through Bun's node:test shim.
+// runtime-test-runners checks this list against the directory.
+const runtimeNodeTests = ["entry-exports.node.test.mjs", "binding-iterator.test.mjs",
+  "commonjs-entry-capture.node.test.mjs", "package-source-maps.test.mjs"].map(file => "runtime/tests/" + file)
 const runtimeDist = S.Shell.Build({
-  summary: "Compile the runtime with its pinned TypeScript and verify Node's guarded entry preserves the ABI.",
-  shell: "cd packages/runtime && rm -rf dist && bun run build && cd ../.. && node --test packages/runtime/tests/entry-exports.node.test.mjs",
-  data: [...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**"), S.file("runtime/tests/entry-exports.node.test.mjs")],
+  summary: "Compile the runtime with its pinned TypeScript and run its node:test files under Node.",
+  shell: "cd packages/runtime && rm -rf dist && bun run build && cd ../.. && node --test " + runtimeNodeTests.map(file => "packages/" + file).join(" "),
+  data: [...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**"), S.file("runtime/LICENSE"), S.file("runtime/README.md"),
+    ...runtimeNodeTests.map(file => S.file(file)), S.file("runtime/tests/corpus/alchemy-captured-commonjs-exports.json")],
   tools: [S.Host.bin("bun"), S.Host.bin("node")],
   outDirs: ["runtime/dist"],
   sandbox: "none",
   timeout: "10m"
+})
+
+// Each node:test file runs under Node, and each real-browser file runs where
+// Chromium is required. Reads declarations only, so it rebuilds nothing.
+const runtimeTestRunners = S.Shell.Test({
+  summary: "Runtime node:test files run under Node and browser tests have a target that requires Chromium.",
+  shell: "node --test packages/runtime/tests/test-runners.mjs",
+  data: [S.file("PACKAGE.ts"), S.file("test-inventory.json"), S.file("test-groups.json"), S.file("test-batches.json"),
+    S.file("//scripts/test-node-versions.sh"), S.glob("runtime/tests/**"), migrationSources,
+    S.file("//scripts/testing/package-declarations.mjs"), S.file("//scripts/testing/node-selection.mjs"),
+    S.file("//scripts/testing/migrate-shards.mjs"), S.file("//scripts/testing/workspace-inputs.mjs"),
+    S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock")],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "1m"
 })
 
 // Short assertions share bounded groups; helpers and corpus stay inputs.
@@ -94,6 +115,22 @@ const runtimeKernelContracts = S.Shell.Test({
   tools: [S.Host.bin("bun"), S.Host.bin("node")],
   sandbox: "none",
   timeout: "2m"
+})
+
+// The real-Chromium tests. runtime-test skips them when Chromium is absent.
+// This target installs the runtime's pinned Playwright Chromium, with the
+// system libraries it needs on Linux, and sets VIBELANG_REQUIRE_BROWSER_TESTS=1,
+// so a missing browser fails instead of skipping.
+const runtimeBrowserTestFiles = ["runtime/tests/experimental-browser-services.test.ts", "runtime/tests/experimental-locks.test.ts"]
+const runtimeBrowserTest = S.Shell.Test({
+  summary: "Runtime browser services and Web Locks against a real Chromium.",
+  shell: "cd packages/runtime && bunx playwright install --with-deps chromium && VIBELANG_REQUIRE_BROWSER_TESTS=1 bun test --timeout 60000 " +
+    runtimeBrowserTestFiles.map(file => file.slice("runtime/".length)).join(" "),
+  data: [runtimeDist, ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**"),
+    ...runtimeBrowserTestFiles.map(file => S.file(file)), S.glob("runtime/tests/**", { exclude: ["**/*.test.*"] })],
+  tools: [S.Host.bin("bun")],
+  sandbox: "none",
+  timeout: "10m"
 })
 
 const runtimeReadmeExports = S.Shell.Test({
@@ -438,6 +475,20 @@ const toolingAdapterSources = S.Filegroup({
   ]
 })
 
+// The projector imports prelude names from ts-mapper/prelude.d.ts by Go lists,
+// and the native compiler's effect/Effect globals are generated in Go: the
+// prelude must export every one (VIP-6).
+const tsMapperPreludeNames = S.Shell.Test({
+  summary: "The TypeScript mapper prelude exports every name the projector and the native compiler put in scope.",
+  shell: "node --test packages/ts-mapper/test/prelude-names.test.mjs",
+  data: [S.file("ts-mapper/prelude.d.ts"), S.file("ts-mapper/test/prelude-names.test.mjs"),
+    S.file("//typescript/tsc/internal/vibelangmapper/names.go"), S.file("//typescript/tsc/internal/effectglobals/exports_generated.go"),
+    S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock")],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "1m"
+})
+
 /** Every file in the npm packages, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
@@ -465,6 +516,9 @@ export const Package = S.Package({
     "source-map-tools-test-prepare": sourceMapToolsPrepare,
     "runtime-dist": runtimeDist,
     "runtime-test": runtimeTests,
+    "runtime-browser-test": runtimeBrowserTest,
+    "runtime-test-runners": runtimeTestRunners,
+    "ts-mapper-prelude-names": tsMapperPreludeNames,
     "runtime-package": runtimePackageTest,
     "runtime-kernel-contracts": runtimeKernelContracts,
     "runtime-readme-exports": runtimeReadmeExports,

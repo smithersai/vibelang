@@ -12,7 +12,18 @@ import { isolateAmbientSnapshots } from "./api-identity-ambient.mjs"
 import { alignNominalIdentity } from "./api-identity-nominal.mjs"
 import { ownsFile } from "./api-identity-ownership.mjs"
 
-const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+// The repository root: the nearest directory above this file that holds
+// scripts/api-identity.mjs, this file's source. The migrate flow carries a
+// generated copy in .smithers/flows/migrate/lib, so a fixed ".." would name
+// the flow directory.
+function findRepoRoot(start) {
+  for (let dir = start; ; dir = dirname(dir)) {
+    if (existsSync(join(dir, "scripts/api-identity.mjs"))) return dir
+    if (dirname(dir) === dir) return resolve(start, "..")
+  }
+}
+export const repoRoot = findRepoRoot(dirname(fileURLToPath(import.meta.url)))
+const repo = repoRoot
 const declaration = /\.d\.(?:[cm]?ts|vibex?\.ts)$/
 const slash = x => x.replaceAll("\\", "/")
 
@@ -45,7 +56,7 @@ export function loadTypeScript(dirs = []) {
   for (const dir of [...dirs, join(repo, "docs/tools"), join(repo, "packages/runtime"), join(repo, "experiments")]) {
     try { return loadCompiler(dir) } catch {}
   }
-  throw new Error("TypeScript compiler API unavailable; run (cd docs/tools && bun install --frozen-lockfile)")
+  throw new Error("TypeScript compiler API unavailable; run (cd " + (relative(process.cwd(), join(repo, "docs/tools")) || ".") + " && bun install --frozen-lockfile)")
 }
 
 function filesUnder(dir, includeJson = false, includeSource = false) {
@@ -2533,7 +2544,7 @@ export function formatResult(result) {
 
 function main(args) {
   if (args.includes("--help")) {
-    console.log("node scripts/api-identity.mjs --before <dir|package> --after <dir|package> [--json] [--profile] [--typescript <directory>]")
+    console.log("node " + slash(relative(process.cwd(), fileURLToPath(import.meta.url))) + " --before <dir|package> --after <dir|package> [--json] [--profile] [--typescript <directory>]")
     return 0
   }
   const values = {}

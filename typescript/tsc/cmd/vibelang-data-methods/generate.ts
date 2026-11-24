@@ -40,6 +40,9 @@ const guardSignatures = new Set<string>()
 const effectOverloads = new Set<string>()
 const overloads = new Map<string, Set<string>>()
 let imports: string[] = [], augment: string[] = [], entries: string[] = []
+// The facts the projector's hand-kept tables (data_methods_table.go) record.
+const brandedMembers = new Map<string, Set<string>>(), selfFirstNames = new Map<string, Set<string>>()
+const predicateExports = new Set<string>(), curriedNames = new Set<string>()
 const candidates = new Map<string, string[]>()
 for (const mod of modules) {
  const sf = program.getSourceFile(declarations.get(mod)!)!
@@ -106,6 +109,29 @@ for (const mod of modules) {
  for(const node of branded) for(const member of node.members) if(member.name&&ts.isIdentifier(member.name)) own.add(member.name.text)
 
  const names=[...new Set(methods.map(m=>m.name))].sort()
+ selfFirstNames.set(mod, new Set(names))
+ brandedMembers.set(mod, new Set(own))
+ // Exported spellings of each declared name: `export { catch_ as catch }`.
+ const spellings=new Map<string,string[]>()
+ const spell=(name:string)=>[...(exported.has(name)?[name]:[]),...(spellings.get(name)??[])]
+ for(const s of sf.statements) if(ts.isExportDeclaration(s)&&s.exportClause&&ts.isNamedExports(s.exportClause)&&!s.moduleSpecifier) for(const spec of s.exportClause.elements) {
+  const original=spec.propertyName?.text??spec.name.text
+  if(original!==spec.name.text) spellings.set(original,[...(spellings.get(original)??[]),spec.name.text])
+ }
+ // A curried (data-last) declaration returns a function whose first
+ // parameter is the receiver, as pipe(self, f(args)) needs.
+ const shapes=(name:string,n:ts.Node)=>{
+  if(ts.isParenthesizedTypeNode(n)) {shapes(name,n.type);return}
+  if(ts.isIntersectionTypeNode(n)) {for(const type of n.types)shapes(name,type);return}
+  if(ts.isTypeLiteralNode(n)) {for(const member of n.members)shapes(name,member);return}
+  if(!(ts.isFunctionDeclaration(n)||ts.isCallSignatureDeclaration(n)||ts.isFunctionTypeNode(n))||!n.type)return
+  if(ts.isFunctionTypeNode(n.type)&&n.type.parameters[0]&&ts.isIdentifier(n.type.parameters[0].name)&&takesSelfFirst(mod,name,n.type.parameters[0].name.text)) for(const x of spell(name)) curriedNames.add('effect/'+mod+'#'+x)
+  if(ts.isTypePredicateNode(n.type)&&!n.type.assertsModifier) for(const x of spell(name)) predicateExports.add('effect/'+mod+'#'+x)
+ }
+ for(const s of sf.statements) {
+  if(ts.isFunctionDeclaration(s)&&s.name) shapes(s.name.text,s)
+  if(ts.isVariableStatement(s)) for(const d of s.declarationList.declarations) if(ts.isIdentifier(d.name)&&d.type) shapes(d.name.text,d.type)
+ }
  for (const name of names) {
   if (!candidates.has(name)) candidates.set(name, [])
   candidates.get(name)!.push(mod)
@@ -161,6 +187,46 @@ go += '\n// dataMethodAmbiguous rejects names whose candidate TypeIds coexist (D
 const formatted = Bun.spawnSync(['gofmt'], {stdin: new TextEncoder().encode(go)})
 if(formatted.exitCode !== 0) throw new Error(new TextDecoder().decode(formatted.stderr))
 outputs.set(root+'/typescript/tsc/internal/vibelangmapper/data_methods_candidates.go',new TextDecoder().decode(formatted.stdout))
+// The projector's hand-kept tables must agree with the declarations: a stale
+// own member keeps a D152 call as a member call (issue #460), and a stale
+// method or guard name changes what the projection lowers.
+const tableFile=root+'/typescript/tsc/internal/vibelangmapper/data_methods_table.go'
+const tableText=fs.readFileSync(tableFile,'utf8')
+const goVar=(name:string)=>{const m=tableText.match(new RegExp('\\nvar '+name+' = map\\[[^{]*\\{([\\s\\S]*?)\\n?\\}\\n'));if(!m)throw new Error('missing table '+name+' in '+tableFile);return m[1]}
+const flatKeys=(body:string)=>new Set([...body.matchAll(/"([^"]+)":\s*true/g)].map(m=>m[1]))
+const nestedKeys=(body:string)=>new Map([...body.matchAll(/"(effect\/\w+)":\s*\{([^}]*)\}/g)].map(m=>[m[1],flatKeys(m[2])] as const))
+const drift:string[]=[]
+const compare=(table:string,expected:Set<string>,actual:Set<string>)=>{
+ const extra=[...actual].filter(x=>!expected.has(x)).sort(), missing=[...expected].filter(x=>!actual.has(x)).sort()
+ if(extra.length)drift.push(table+' lists names the declarations do not: '+extra.join(', '))
+ if(missing.length)drift.push(table+' omits declared names: '+missing.join(', '))
+}
+const ownTable=nestedKeys(goVar('dataOwnMembers')), methodTable=nestedKeys(goVar('dataMethods'))
+// An own member decides only for a D152 name, so compare those: a name the
+// value interfaces do not declare must not block the module call.
+for(const [mod,members] of ownTable) {
+ const methods=selfFirstNames.get(mod.slice(7))??new Set(), branded=brandedMembers.get(mod.slice(7))??new Set()
+ const relevant=(set:Set<string>)=>new Set([...set].filter(name=>methods.has(name)&&!['pipe','toString','toJSON'].includes(name)))
+ compare('dataOwnMembers['+mod+'] (D152 names)',relevant(branded),relevant(members))
+}
+for(const [mod,names] of methodTable) compare('dataMethods['+mod+']',selfFirstNames.get(mod.slice(7))??new Set(),names)
+compare('dataGuards',predicateExports,flatKeys(goVar('dataGuards')))
+const methodKeys=new Set([...methodTable].flatMap(([mod,names])=>[...names].map(name=>mod+'#'+name)))
+compare('dataLastMethods',new Set([...curriedNames].filter(key=>methodKeys.has(key))),flatKeys(goVar('dataLastMethods')))
+// Drift recorded when this check landed (#460), to be fixed in
+// data_methods_table.go. The list may only shrink: a new disagreement, or a
+// recorded one that no longer holds, fails --check.
+const knownDrift=new Set([
+ 'dataOwnMembers[effect/Cause] (D152 names) omits declared names: annotate, annotations',
+ 'dataGuards lists names the declarations do not: effect/Exit#hasDies, effect/Exit#hasFails, effect/Exit#hasInterrupts',
+])
+const fresh=drift.filter(line=>!knownDrift.has(line)), resolved=[...knownDrift].filter(line=>!drift.includes(line))
+if(fresh.length||resolved.length) {
+ const message=[...(fresh.length?['data_methods_table.go disagrees with the pinned effect declarations:',...fresh.map(x=>'  '+x)]:[]),
+  ...(resolved.length?['remove from knownDrift in cmd/vibelang-data-methods/generate.ts:',...resolved.map(x=>'  '+x)]:[])].join('\n')
+ if(process.argv.includes('--check'))throw new Error(message)
+ console.error(message)
+}
 for(const [file,text] of outputs) {
  if(process.argv.includes('--check')) {if(fs.readFileSync(file,'utf8')!==text)throw new Error('D252 generated output drift: '+file)}
  else fs.writeFileSync(file,text)

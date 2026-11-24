@@ -2,7 +2,7 @@
 // The standalone migrate flow carries generated copies of the shared checker.
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const mode = process.argv[2]
@@ -22,5 +22,16 @@ for (const name of ["api-identity.mjs", "api-identity-nominal.mjs", "api-identit
   } else {
     mkdirSync(dirname(target), { recursive: true })
     writeFileSync(target, expected)
+  }
+}
+
+// The copy must anchor its fallback paths on the repository, not on its own
+// directory: compare the root each copy resolves with the source's.
+if (mode === "--check" && !process.exitCode) {
+  const source = await import(pathToFileURL(join(root, "scripts/api-identity.mjs")).href)
+  const copy = await import(pathToFileURL(join(root, ".smithers/flows/migrate/lib/api-identity.mjs")).href)
+  if (source.repoRoot !== root || copy.repoRoot !== root) {
+    console.error("api-identity root: source " + source.repoRoot + ", copy " + copy.repoRoot + "; expected " + root)
+    process.exitCode = 1
   }
 }
