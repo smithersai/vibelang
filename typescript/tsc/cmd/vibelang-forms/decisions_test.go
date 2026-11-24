@@ -122,3 +122,109 @@ function g(xs: Items) { xs.forEach((x) => { log(x); read(x) }) }
 		t.Fatalf("decision snapshot:\ngot %s\nwant %s", got, want)
 	}
 }
+
+// A move from a decided form to a choice or a fallback makes the projector
+// ask or guess where it decided before. Its approval must cite the issue that
+// tracks the regression, not only the native compiler's behaviour (#518).
+func TestWeakeningApprovalsCiteAnIssue(t *testing.T) {
+	previous := []string{
+		"a.vibe:1:1 lambda program annotation",
+		"a.vibe:2:1 lambda plain fallback",
+		"a.vibe:3:1 lambda plain hatch",
+	}
+	next := []string{
+		"a.vibe:1:1 lambda plain fallback",
+		"a.vibe:2:1 lambda choice fallback",
+		"a.vibe:3:1 lambda effectFn table",
+	}
+	uncited := []string{
+		"a.vibe:1:1 lambda: program annotation -> plain fallback # the native compiler runs it as before",
+		"a.vibe:2:1 lambda: plain fallback -> choice fallback # another file's function may take either form",
+		"a.vibe:3:1 lambda: plain hatch -> effectFn table # the table names an Effect function",
+	}
+	want := []string{"a.vibe:1:1 lambda: program annotation -> plain fallback (a decided form becomes a choice or fallback: the reason must cite a tracking issue, #N)"}
+	if got := unapprovedMoves(previous, next, uncited); !reflect.DeepEqual(got, want) {
+		t.Fatalf("uncited weakening: %v, want %v", got, want)
+	}
+	for _, reason := range []string{"tracked by #518", "see https://github.com/smithersai/vibelang/issues/518"} {
+		cited := append([]string{"a.vibe:1:1 lambda: program annotation -> plain fallback # " + reason}, uncited[1:]...)
+		if got := unapprovedMoves(previous, next, cited); len(got) != 0 {
+			t.Fatalf("cited weakening %q rejected: %v", reason, got)
+		}
+	}
+	// An HTML entity or a word with a hash is not an issue number.
+	for _, reason := range []string{"see &#518", "c#2 rules"} {
+		cited := append([]string{"a.vibe:1:1 lambda: program annotation -> plain fallback # " + reason}, uncited[1:]...)
+		if got := unapprovedMoves(previous, next, cited); !reflect.DeepEqual(got, want) {
+			t.Fatalf("%q counted as an issue citation: %v", reason, got)
+		}
+	}
+	for entry, weakens := range map[string]bool{
+		"a.vibe:1:1 lambda: program annotation -> plain fallback":    true,
+		"a.vibe:1:1 lambda: effectFn table -> choice fallback":       true,
+		"a.vibe:1:1 block: appended/program table -> choice keyword": true,
+		"a.vibe:1:1 lambda: plain fallback -> choice fallback":       false,
+		"a.vibe:1:1 lambda: choice fallback -> plain fallback":       false,
+		"a.vibe:1:1 lambda: plain fallback -> effectFn table":        false,
+		"a.vibe:1:1 lambda: plain hatch -> effectFn keyword":         false,
+		"no move here": false,
+	} {
+		if got := weakensDecision(entry); got != weakens {
+			t.Errorf("weakensDecision(%q) = %v, want %v", entry, got, weakens)
+		}
+	}
+}
+
+// One move needs one reviewed line: both modes, --write included, refuse an
+// approvals file that names the same move twice (#518).
+func TestDuplicateApprovalsAreRejected(t *testing.T) {
+	approvals := []string{
+		"a.vibe:1:1 lambda: plain fallback -> plain table # checked",
+		"b.vibe:1:1 lambda: plain fallback -> plain table # checked",
+		"a.vibe:1:1   lambda: plain fallback -> plain table # reworded reason",
+		"c.vibe:1:1 lambda: dual fallback -> plain hatch # one",
+		"c.vibe:1:1 lambda: dual fallback -> plain hatch # two",
+		"c.vibe:1:1 lambda: dual fallback -> plain hatch # three",
+	}
+	want := []string{"a.vibe:1:1 lambda: plain fallback -> plain table", "c.vibe:1:1 lambda: dual fallback -> plain hatch"}
+	if got := duplicateApprovals(approvals); !reflect.DeepEqual(got, want) {
+		t.Fatalf("duplicates %v, want %v", got, want)
+	}
+	if got := duplicateApprovals(approvals[:2]); len(got) != 0 {
+		t.Fatalf("distinct approvals reported as duplicates: %v", got)
+	}
+}
+
+// The repository's approvals file carries each move once.
+func TestCommittedApprovalsHaveNoDuplicates(t *testing.T) {
+	approvals, err := readLines(filepath.Join("..", "..", "internal", "vibelangmapper", "forms_decisions_approved.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(approvals) == 0 {
+		t.Fatal("no approvals read")
+	}
+	if got := duplicateApprovals(approvals); len(got) != 0 {
+		t.Fatalf("duplicate approvals: %v", got)
+	}
+}
+
+// The gate both script modes run refuses duplicates before it reads moves,
+// so --write cannot record a snapshot over a doubled approval (#518).
+func TestApprovalGateRefusesDuplicatesBeforeWriting(t *testing.T) {
+	previous := []string{"a.vibe:1:1 lambda plain fallback"}
+	next := []string{"a.vibe:1:1 lambda plain table"}
+	once := []string{"a.vibe:1:1 lambda: plain fallback -> plain table # checked table evidence"}
+	if problem, items := approvalGate(previous, next, once, nil, true, "approved.txt"); problem != "" {
+		t.Fatalf("approved move refused: %s %v", problem, items)
+	}
+	twice := append(once, "a.vibe:1:1 lambda: plain fallback -> plain table # reworded")
+	problem, items := approvalGate(previous, next, twice, nil, true, "approved.txt")
+	if !strings.Contains(problem, "1 decision moves are approved more than once in approved.txt") || !reflect.DeepEqual(items, []string{"a.vibe:1:1 lambda: plain fallback -> plain table"}) {
+		t.Fatalf("duplicate approval: %q %v", problem, items)
+	}
+	problem, items = approvalGate(previous, next, once, once, true, "approved.txt")
+	if !strings.Contains(problem, "1 decisions moved without an approval") || len(items) != 1 {
+		t.Fatalf("historical approval reused: %q %v", problem, items)
+	}
+}

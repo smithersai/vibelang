@@ -83,7 +83,7 @@ func TestCommandProcesses(t *testing.T) {
 		{name: "emit file", args: []string{"--emit", file, "--out", output}},
 		{name: "missing print source", args: []string{"--print", file + ".missing"}, status: 1, stderr: "vibelang-mapper:"},
 		{name: "missing emit source", args: []string{"--emit", file + ".missing"}, status: 1, stderr: "vibelang-mapper:"},
-		{name: "diagnostic", args: []string{"--emit", invalid}, status: 1, stdout: "maybe?.isSome()", stderr: "error EK9101:"},
+		{name: "diagnostic", args: []string{"--emit", invalid}, status: 1, stdout: "maybe?.isSome()", stderr: "error EK9006:"},
 		{name: "unknown argument", args: []string{"--unknown"}, status: 2, stderr: "usage: vibelang-mapper"},
 		{name: "missing argument", args: []string{"--emit"}, status: 2, stderr: "usage: vibelang-mapper"},
 		{name: "wrong output argument", args: []string{"--emit", file, "--wrong", output}, status: 2, stderr: "usage: vibelang-mapper"},

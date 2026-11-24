@@ -67,14 +67,27 @@ const runtimePreludeList = `TaggedError pipe wire fork sync callback Resume runP
 	runSync runCallback detach forkIn uninterruptible restore interruptible customMatcher
 	Experimental`
 
-// builtinGlobals are ECMAScript and shared web-standard global values (D264). Each keeps its meaning
-// in a .vibe file although effect's root exports a module of the same
-// name (the fork's isBuiltinGlobal).
+// builtinGlobals are ECMAScript and shared web-standard global values (D264). An ECMAScript one keeps
+// its meaning in a .vibe file although effect's root exports a module of the
+// same name (the fork's isBuiltinGlobal, which admits only lib.es* values).
+// Request is platform-specific, so bare Request is Effect's module (VIP-14);
+// in a type position the import has no type meaning and the DOM's Request
+// type still applies, as the fork resolves it.
 var builtinGlobals = map[string]bool{
 	"Array": true, "BigInt": true, "Boolean": true, "Function": true, "Number": true, "RegExp": true, "String": true, "Symbol": true,
-	"Request": true, "Response": true, "Headers": true, "URL": true, "URLSearchParams": true,
+	"Response": true, "Headers": true, "URL": true, "URLSearchParams": true,
 	"TextEncoder": true, "TextDecoder": true, "AbortController": true, "AbortSignal": true,
 	"Blob": true, "FormData": true, "structuredClone": true, "fetch": true,
+}
+
+// effectQualifiedModules are the modules the implicit Effect binding carries
+// as members (VIP-14, amended 2026-11-01 and clarified 2026-11-11): those
+// whose bare name means JavaScript's global or TypeScript's type. They are
+// not exports of effect/Effect, so the projection writes each as an aliased
+// import of effect's root module.
+var effectQualifiedModules = map[string]bool{
+	"Array": true, "String": true, "Number": true, "Boolean": true, "BigInt": true, "Symbol": true,
+	"Function": true, "RegExp": true, "Record": true, "Iterable": true,
 }
 
 // typeOnlyPrelude are prelude exports with no value, imported with `type`
@@ -218,6 +231,22 @@ func (n *names) prelude(name string) string {
 		return local
 	}
 	local := n.fresh(name)
+	n.imports[key] = local
+	return local
+}
+
+// qualifiedModule returns the local name of effect's root module, one of
+// effectQualifiedModules, for Effect.<module>. It is always an alias, so
+// the bare name keeps its JavaScript or TypeScript meaning in the file.
+func (n *names) qualifiedModule(module string) string {
+	key := "\x00" + module
+	if local, ok := n.imports[key]; ok {
+		return local
+	}
+	local := n.fresh(module)
+	if local == module {
+		local = n.fresh(module + "_")
+	}
 	n.imports[key] = local
 	return local
 }

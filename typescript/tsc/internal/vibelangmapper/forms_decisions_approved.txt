@@ -6,8 +6,10 @@
 #
 #   <path>:<line>:<col> <kind>: <old result> <old provenance> -> <new result> <new provenance> # reason
 #
-# Entries stay as the history of reviewed moves, one line per move: remove a
-# duplicate, and the entries of a file that no longer exists. Bump
+# A move from a decided form to a choice or a fallback provenance needs a
+# reason that cites its tracking issue (#N). The gate refuses a move approved
+# on more than one line. Entries stay as the history of reviewed moves: remove
+# the entries of a file that no longer exists. Bump
 # vibelangmapper.RulesVersion when the classifier, the generator, or the
 # resolver moved them.
 
