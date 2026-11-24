@@ -54,7 +54,7 @@ export function runProbes(directory, probes, announce = true) {
   if (announce) console.log("probes agree")
 }
 
-export const interimSeverityQuote = "an error code, an interim \x60EK92xx\x60 code (even one printed as a warning) or an unknown code in \x60vibe.severities\x60"
+export const interimSeverityQuote = "an error code, any interim code in the transitional table (including warnings) or an unknown code in \x60vibe.severities\x60"
 
 // Chapter 900, interim configuration: mutate every registered compatibility key and every
 // permitted severity spelling. The oracle is rejection with EK3006 throughout.

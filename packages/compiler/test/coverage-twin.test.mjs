@@ -7,7 +7,7 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
-import { compareTwin } from "../../../typescript/vibelang/test/ch900b-coverage-twin.mjs"
+import { compareTwin } from "../../../typescript/vibelang/test/cov900-twin.mjs"
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const require = createRequire(new URL("../../runtime/package.json", import.meta.url))
 const prefix = 'import { Effect } from "effect"\n'
