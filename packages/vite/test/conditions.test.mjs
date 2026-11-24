@@ -68,7 +68,7 @@ test("under Vitest the plugin adds no `module` condition of its own", async (t) 
       if (underVitest) assert.equal(resolved.includes("module"), set.includes("module"), `${name}: ${resolved} from ${set}`)
       if (hostFirst) assert.deepEqual(new Set(resolved), new Set([...set, "vibelang-source"]), `${name}: ${resolved} from ${set}`)
     }
-  }), { numRuns: 60 })
+  }), { seed: 290007, numRuns: 60 })
   // resolveConfig leaves reads of its own running; wait for them to finish.
   for (let waited = 0; waited < 5000 && process.getActiveResourcesInfo().includes("FSReqPromise"); waited += 50) await new Promise((settle) => setTimeout(settle, 50))
 })

@@ -21,8 +21,7 @@
     "form": "contract",
     "identifier": "mapperLocal",
     "eol": "\n",
-    "incomplete": "function unfinished(",
-    "strictKnownFailures": true
+    "incomplete": "function unfinished("
   },
   "seed": 42,
   "counterexamplePath": "0:0:0:0:0:0:0:0:0:0:1",
@@ -36,7 +35,7 @@
   "diagnostics": "\nM1 mapper-renderings form=contract modules=1\nM1 fork reference\nM1 execute native{\"result\":{\"text\":\"\ud83d\ude00plain\",\"value\":0,\"trace\":[\"B1_TOKEN_0\"]},\"positive\":3,\"negative\":0}\n\nM1 stock check tracing=nonesrc/contracts.ts(4,7): error TS2741: Property '$plain' is missing in type '(n: number) => Effect<number, never, never>' but required in type 'typeof probe'.\n",
   "reason": "D421: a function with an Effect annotation keeps its Effect own form regardless of a pure body. This strict saved input now passes both directions of the callable contract, declarations, source maps and execution with tracing off and on; it remains an ordinary regression.",
   "minimalInput": {
-    "source": "export function f(n: number): number!! { return n }\n",
+    "source": "export effect function f(n: number): number!! { return n }\n",
     "consumer": "import { Effect } from \"effect\"\nimport { f } from \"./main.vibe\"\nconst forward: (n: number) => Effect.Effect<number, never, never> = f\nconst backward: typeof f = forward\n"
   },
   "files": {
@@ -45,6 +44,6 @@
     "tsconfig.native.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"strict\":true,\"skipLibCheck\":true,\"types\":[],\"lib\":[\"ES2022\",\"DOM\"],\"rootDir\":\".\",\"outDir\":\"dist\",\"noEmitOnError\":true,\"rewriteRelativeImportExtensions\":true,\"declaration\":true},\"include\":[\"src/**/*\"],\"vibelang\":{\"tracing\":\"none\"}}",
     "src/main.ts": "import { result } from \"./n0.vibe\"\nconsole.log(JSON.stringify(result))\n",
     "src/contracts.ts": "import { Effect } from \"effect\"\nimport { probe } from \"./n0.vibe\"\nconst forward: (n: number) => Effect.Effect<number, never, never> = probe\nconst backward: typeof probe = forward\nconst notAny: 0 extends (1 & ReturnType<typeof probe>) ? true : false = false\nvoid backward; void notAny\n",
-    "src/n0.vibe": "export const result: { text: string; value: number; trace: string[] } = { text: \"\ud83d\ude00plain\", value: 0, trace: [\"B1_TOKEN_0\"] }\nexport function probe(mapperValue: number): number!! {\n  /* \ud83d\ude00plain */ const mapperLocal: number = mapperValue + 1\n  return mapperLocal\n}\n"
+    "src/n0.vibe": "export const result: { text: string; value: number; trace: string[] } = { text: \"\ud83d\ude00plain\", value: 0, trace: [\"B1_TOKEN_0\"] }\nexport effect function probe(mapperValue: number): number!! {\n  /* \ud83d\ude00plain */ const mapperLocal: number = mapperValue + 1\n  return mapperLocal\n}\n"
   }
 }

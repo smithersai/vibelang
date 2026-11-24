@@ -4,6 +4,7 @@
 // the record has listed the directory, so the check failed with "gained or
 // lost a file" until a second run. The record holds, as its compile is a
 // complete compile of that tree.
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -15,7 +16,7 @@ import { checkLoaderRecord, writeLoaderRecord } from "../project.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
-const skip = !existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`
+const skip = requireOrSkip(!existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`)
 
 for (const layout of [{ name: "beside the source" }, { name: "under vibe.sidecarDir", vibe: { sidecarDir: "types" } }]) {
   test("a loader record holds after its compile writes the first native declaration " + layout.name, { skip }, async (t) => {

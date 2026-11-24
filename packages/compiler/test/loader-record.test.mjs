@@ -4,6 +4,7 @@
 // records every cold process compiled that package's whole project; with the
 // record the emit step writes, a cold process compiles nothing while every
 // input holds, in place or in a moved checkout, and an edit compiles again.
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
@@ -24,11 +25,38 @@ const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/n
 const runtime = join(repo, "packages/runtime")
 const hasBun = spawnSync("bun", ["--version"]).status === 0
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-standalone-cold-emitted-js.json", import.meta.url), "utf8"))
 
 // A file written this close to a compile keeps it out of the cache and the record.
 const settle = () => sleep(120)
+
+test("a loader record retains hidden includes and notices a new hidden source", { skip }, async (t) => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-hidden-record-")))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const project = join(root, "tsconfig.json")
+  mkdirSync(join(root, "src"))
+  mkdirSync(join(root, "node_modules"))
+  symlinkSync(effect, join(root, "node_modules/effect"), "junction")
+  symlinkSync(runtime, join(root, "node_modules/vibelang-runtime"), "junction")
+  writeFileSync(project, JSON.stringify({
+    compilerOptions: { target: "es2022", module: "nodenext", types: [], skipLibCheck: true },
+    include: ["src/**/*", "src/**/.*"]
+  }))
+  writeFileSync(join(root, "src/main.vibe"), "export const main = 1\n")
+  const hidden = join(root, "src/.hidden.vibe")
+  writeFileSync(hidden, "export const hidden = 2\n")
+  await settle()
+  const options = { project, compiler: native }
+  assert.equal(writeLoaderRecord(options).modules, 2)
+  assert.deepEqual(checkLoaderRecord(options), { modules: 2 })
+  rmSync(hidden)
+  assert.match(checkLoaderRecord(options).miss, /gained or lost a file/)
+  assert.equal(writeLoaderRecord(options).modules, 1)
+  assert.deepEqual(checkLoaderRecord(options), { modules: 1 })
+  writeFileSync(hidden, "export const hidden = 2\n")
+  assert.match(checkLoaderRecord(options).miss, /gained or lost a file/)
+})
 
 // The corpus workspace with relative links, so a copy of it is a checkout of
 // its own, its emitted JavaScript, and a compiler that counts its runs.
@@ -73,7 +101,7 @@ process.exit(spawnSync(${JSON.stringify(native)}, process.argv.slice(2), { stdio
 const bun = (at, run) => run(at, "bun", ["--preload", "vibelang/bun", "src/index.ts"])
 const node = (at, run) => run(at, process.execPath, ["--enable-source-maps", "--import", "vibelang/register", "src/index.mjs"])
 
-test("bun build and plain bun read the emitted JavaScript; the loaders compile its package on a cold cache without a record", { skip: skip || (!hasBun && "bun is not on PATH") }, async (t) => {
+test("bun build and plain bun read the emitted JavaScript; the loaders compile its package on a cold cache without a record", { skip: requireOrSkip(skip || (!hasBun && "bun is not on PATH")) }, async (t) => {
   const { root, run, compiles } = await workspace(t)
   assert.deepEqual(run(root, "bun", ["src/index.ts"]).api, "api:pty.create,pty.connect")
   assert.equal(compiles(), 0)
@@ -81,7 +109,7 @@ test("bun build and plain bun read the emitted JavaScript; the loaders compile i
   assert.equal(compiles(), 1, "the cold preload compiles protocol")
 })
 
-test("with its loader record, a cold vibelang/bun or vibelang/register process compiles nothing, in place or moved", { skip: skip || (!hasBun && "bun is not on PATH") }, async (t) => {
+test("with its loader record, a cold vibelang/bun or vibelang/register process compiles nothing, in place or moved", { skip: requireOrSkip(skip || (!hasBun && "bun is not on PATH")) }, async (t) => {
   const { top, root, protocol, compiler, run, compiles } = await workspace(t)
   const written = writeLoaderRecord({ project: join(protocol, "tsconfig.json"), compiler })
   assert.deepEqual(written, { file: loaderRecordFile(join(protocol, "tsconfig.json")), modules: 2 })
@@ -98,7 +126,7 @@ test("with its loader record, a cold vibelang/bun or vibelang/register process c
   assert.equal(compiles(), recorded, "the record moves with the checkout")
 })
 
-test("an edited source, an added module or a changed config compiles again and runs the new source", { skip: skip || (!hasBun && "bun is not on PATH") }, async (t) => {
+test("an edited source, an added module or a changed config compiles again and runs the new source", { skip: requireOrSkip(skip || (!hasBun && "bun is not on PATH")) }, async (t) => {
   const { root, protocol, compiler, run, compiles } = await workspace(t)
   writeLoaderRecord({ project: join(protocol, "tsconfig.json"), compiler })
   let expected = compiles()

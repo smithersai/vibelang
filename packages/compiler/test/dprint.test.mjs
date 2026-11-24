@@ -5,14 +5,16 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import { requireOrSkip } from "./prerequisites.mjs"
 
 // dprint formats .vibe files through the vibelang package's process plugin,
 // npm:vibelang/dprint-plugin.json, which runs the native compiler. These tests
-// need a native build (sh scripts/build-vibelang.sh) and a dprint binary in
-// VIBELANG_DPRINT; dprint downloads its TypeScript plugin once and caches it.
-const native = fileURLToPath(new URL("../native/vibelang", import.meta.url))
-const dprint = process.env.VIBELANG_DPRINT
-const skip = !dprint ? "set VIBELANG_DPRINT to a dprint binary" : !existsSync(native) ? "run sh scripts/build-vibelang.sh" : false
+// require a native build and the dprint dependency. Set DPRINT_CACHE_DIR to
+// use a cache provisioned with the pinned TypeScript plugin.
+const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
+const bundledDprint = fileURLToPath(new URL("../node_modules/dprint/bin.cjs", import.meta.url))
+const dprint = process.env.VIBELANG_DPRINT || bundledDprint
+const skip = requireOrSkip([native, dprint].find(path => !existsSync(path)))
 
 const config = {
   includes: ["**/*.{ts,vibe,vibex}"],
@@ -41,7 +43,7 @@ function project(files) {
   return dir
 }
 
-const run = (dir, ...args) => spawnSync(dprint, args, { cwd: dir, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" } })
+const run = (dir, ...args) => spawnSync(dprint === bundledDprint ? process.execPath : dprint, dprint === bundledDprint ? [dprint, ...args] : args, { cwd: dir, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" } })
 
 test("dprint check fails on an unformatted .vibe file and dprint fmt formats it", { skip }, () => {
   const dir = project({

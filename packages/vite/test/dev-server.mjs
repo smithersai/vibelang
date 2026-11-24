@@ -10,8 +10,9 @@ import { createServer } from "vite"
 // removes its fixture can race the optimizer and fail with ENOTEMPTY. No test
 // loads an optimized dependency, so devServer turns the optimizer off; only
 // scanServer, below, runs it.
-export function devServer(options) {
-  return createServer({ ...options, optimizeDeps: { noDiscovery: true, include: [] } })
+export async function devServer(options, version = "vite") {
+  const create = version === "vite" ? createServer : (await import(version)).createServer
+  return create({ ...options, optimizeDeps: { noDiscovery: true, include: [] } })
 }
 
 // The dependency-scan tests need the optimizer. Their server writes its cache

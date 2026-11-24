@@ -1,3 +1,4 @@
+import { devServer } from "./dev-server.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
@@ -16,7 +17,6 @@ const tsc = require.resolve("typescript/bin/tsc")
 
 for (const version of ["vite", "vite7"]) {
   test(`${version}: JavaScript dependency edits recheck importer contracts and recover`, async () => {
-    const { createServer } = await import(version)
     async function check({ name, extension, depth, typeOnly = false }) {
       const fixtures = join(repo, "packages/vite/test/.fixtures")
       await mkdir(fixtures, { recursive: true })
@@ -24,7 +24,7 @@ for (const version of ["vite", "vite7"]) {
       await mkdir(join(root, "src"))
       await mkdir(join(root, "node_modules"))
       await symlink(join(repo, "packages/compiler"), join(root, "node_modules/vibelang"))
-      await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+      await symlink(join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect"), join(root, "node_modules/effect"))
       await writeFile(join(root, "package.json"), '{"type":"module"}')
       const leaf = name + "." + extension
       const files = ["src/" + leaf]
@@ -52,11 +52,10 @@ for (const version of ["vite", "vite7"]) {
       const unrelated = value => `export const unrelated = ${value}; if(import.meta.hot)import.meta.hot.accept()\n`
       await writeFile(join(root, "src/unrelated.js"), unrelated(1))
       const messages = []
-      const server = await createServer({
+      const server = await devServer({
         root, configFile: false, plugins: [vibelang({ compiler })], logLevel: "silent",
-        optimizeDeps: { noDiscovery: true, include: [] },
         server: { host: "127.0.0.1", port: 0, watch: { usePolling: true, interval: 50 } }
-      })
+      }, version)
       const channel = server.environments.client.hot, send = channel.send.bind(channel)
       channel.send = (...args) => { messages.push(args[0]); return send(...args) }
       const legacy = server.ws.send.bind(server.ws)
@@ -98,7 +97,6 @@ for (const version of ["vite", "vite7"]) {
           assert.equal(response.status, bad ? 500 : 200, response.code)
           if (bad) assert.ok(response.code.includes("TS2322"), response.code)
           else assert.ok(!response.code.includes("this module did not compile"), response.code)
-          await new Promise(resolve => setTimeout(resolve, 75))
         }
         for (const missing of [true, false]) {
           messages.length = 0
@@ -110,7 +108,6 @@ for (const version of ["vite", "vite7"]) {
           else assert.ok(messages.some(message => message?.type === "update") && !messages.some(message => ["error", "full-reload"].includes(message?.type)), JSON.stringify(messages))
           const response = await request("main.vibe")
           assert.equal(response.status, missing ? 500 : 200, response.code)
-          await new Promise(resolve => setTimeout(resolve, 75))
         }
       } finally {
         await server.close()

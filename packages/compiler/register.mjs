@@ -76,7 +76,7 @@ function projectOf(file) {
     return workspaceProject(file, dirname(named), named)
   }
   const project = nearestProject(file)
-  if (project === undefined) throw new Error(`vibelang/register: no tsconfig.json above ${file}`)
+  if (project === undefined) throw failure("ERR_VIBELANG_PROJECT", `vibelang/register: no tsconfig.json above ${file}`)
   return project
 }
 

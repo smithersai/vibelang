@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -18,7 +19,7 @@ const runtime = process.env.VIBELANG_RUNTIME || join(repo, "packages/runtime")
 const bun = process.env.VIBELANG_TEST_BUN || "bun"
 const stock = join(modules, "typescript/bin/tsc")
 const missing = [native, stock, join(modules, "effect"), join(runtime, "dist/index.js")].find(path => !existsSync(path))
-const skip = missing ? "missing test dependency: " + missing : spawnSync(bun, ["--version"]).status !== 0 && "Bun is unavailable"
+const skip = requireOrSkip(missing ? "missing test dependency: " + missing : spawnSync(bun, ["--version"]).status !== 0 && "Bun is unavailable")
 const rule = "Anything TypeScript or the pinned TC39 proposal already defines (evaluation order, binding, types, modules, resolution, declaration emit) is as in TypeScript and is not restated."
 const regression = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-bun-typescript-sibling.json", import.meta.url), "utf8"))
 

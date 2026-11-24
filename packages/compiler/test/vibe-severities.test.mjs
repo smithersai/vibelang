@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -9,7 +10,7 @@ import { fileURLToPath } from "node:url"
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const modules = process.env.EFFECT_NODE_MODULES || join(repo,"experiments/node_modules")
-const skip = !existsSync(native) || !existsSync(join(modules,"effect"))
+const skip = requireOrSkip([native, join(modules, "effect")].find(path => !existsSync(path)))
 function project(t, settings, source) {
  const dir = realpathSync(mkdtempSync(join(tmpdir(),"vibe-severities-")))
  t.after(()=>rmSync(dir,{recursive:true,force:true}))

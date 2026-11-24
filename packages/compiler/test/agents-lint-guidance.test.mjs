@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -10,7 +11,7 @@ import { init } from "../agents.mjs"
 
 const directory = fileURLToPath(new URL("..", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(directory, "native/vibelang")
-const skipNative = !existsSync(native) && "build the native compiler before checking generated lint commands"
+const skipNative = requireOrSkip(!existsSync(native) && "build the native compiler before checking generated lint commands")
 const configs = ["vibe.config.json", "tsconfig.json", "jsconfig.json"]
 function scratch() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-agents-lint-")))

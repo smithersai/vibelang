@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -13,7 +14,7 @@ import { typescriptPlugin } from "../format.mjs"
 // dprint's TypeScript plugin formats the same text as a .ts file under that
 // configuration: vibelang-format must not drop the project's options.
 const native = fileURLToPath(new URL("../native/vibelang", import.meta.url))
-const skip = !existsSync(native) && "run sh scripts/build-vibelang.sh"
+const skip = requireOrSkip(!existsSync(native) && "run sh scripts/build-vibelang.sh")
 const cli = fileURLToPath(new URL("../bin/vibelang-format", import.meta.url))
 const dprintBin = createRequire(import.meta.url).resolve("dprint/bin.cjs")
 

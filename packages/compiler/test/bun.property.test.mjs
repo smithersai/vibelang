@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -101,7 +102,7 @@ function check(input) {
 }
 
 test("Bun preload preserves generated dependency graphs without scanning them (opencode-18)", {
-  skip: !hasBun && "bun is not on PATH"
+  skip: requireOrSkip(!hasBun && "bun is not on PATH")
 }, async t => {
   await checkProperty(fc, {
     name: "bun-dependency-discovery", rule,
@@ -196,7 +197,7 @@ function checkOrigin(input) {
 }
 
 test("createRequire(base) resolves from base under the preload (alchemy-30)", {
-  skip: !hasTestBun && `${testBun} is not a Bun`
+  skip: requireOrSkip(!hasTestBun && `${testBun} is not a Bun`)
 }, async t => {
   await checkProperty(fc, {
     name: "bun-create-require-origin", rule: originRule,
@@ -207,7 +208,7 @@ test("createRequire(base) resolves from base under the preload (alchemy-30)", {
   t.diagnostic(`${testBun}: importer depth, working directory, URL/string/path/other-file bases, subpath exports, main, relative and parent requests; resolve and require`)
 })
 
-// tests-opencode: the preload's CommonJS hook asks vibeImport for every
+// The preload's CommonJS hook asks vibeImport for every
 // require, and vibeImport reads the nearest tsconfig's paths through its
 // extends chain, resolving a package-named config ("@tsconfig/bun/...")
 // with require.resolve, which calls the hook again before the first read is
@@ -308,8 +309,8 @@ function checkExtends(input) {
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
-test("a require under the preload reads each tsconfig of the extends chain once (tests-opencode)", {
-  skip: !hasBun && "bun is not on PATH"
+test("a require under the preload reads each tsconfig of the extends chain once", {
+  skip: requireOrSkip(!hasBun && "bun is not on PATH")
 }, async t => {
   await checkProperty(fc, {
     name: "bun-tsconfig-extends-reentry", rule: extendsRule,

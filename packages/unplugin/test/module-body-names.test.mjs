@@ -3,7 +3,7 @@
 // bundles the new body. Run test/run.sh, which links the fixtures' node_modules.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
@@ -44,7 +44,7 @@ async function project(t) {
 
 for (const [name, bundle, plugin] of [["rollup", rollup, vibelangRollup], ["rolldown", rolldown, vibelangRolldown]]) {
   test(`${name} bundles each body under the compiler's canonical filename, cached by the parent's version (VIP-40)`, async (t) => {
-    assert.ok(rule.includes("unplugin"))
+    assert.ok((await readFile(new URL("../../../docs/design/vips/0040-module-declarations.md", import.meta.url), "utf8")).includes(rule))
     const root = await project(t)
     const emitted = spawnSync(compiler, ["-p", "tsconfig.json", "--outDir", "names", "--pretty", "false"], { cwd: root, encoding: "utf8" })
     assert.equal(emitted.status, 0, emitted.stdout + emitted.stderr)

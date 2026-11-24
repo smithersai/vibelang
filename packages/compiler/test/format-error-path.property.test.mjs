@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -9,7 +10,7 @@ import fc from "fast-check"
 
 const format = new URL("../format.mjs", import.meta.url).href
 const cli = fileURLToPath(new URL("../bin/vibelang-format", import.meta.url))
-const skip = !existsSync(new URL("../dprint-plugin.json", import.meta.url)) && "run sh scripts/build-vibelang.sh"
+const skip = requireOrSkip(!existsSync(new URL("../dprint-plugin.json", import.meta.url)) && "run sh scripts/build-vibelang.sh")
 const corpus = JSON.parse(readFileSync(new URL("./format/corpus/smithers-unattributed-error.json", import.meta.url), "utf8"))
 const failure = corpus.message
 

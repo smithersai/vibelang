@@ -8,7 +8,7 @@ import { test } from "node:test"
 import fc from "fast-check"
 
 const compiler = fileURLToPath(new URL("../", import.meta.url))
-const manifest = fileURLToPath(new URL("./format-plugin-regressions/npm-process-manifest.json", import.meta.url))
+const manifest = fileURLToPath(new URL("./fixtures/npm-dprint-plugin.json", import.meta.url))
 
 // The immutable published manifest exercises npm process references rather than
 // the relative zip references produced by a development build.

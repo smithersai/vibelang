@@ -10,6 +10,7 @@
 // levels up, or an ignored vendor directory inside the package. A row is
 // mapped to its source (a module body to its .vibe file); no row may name an
 // ignored source, and the package own sources stay reported.
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -24,7 +25,7 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const preload = fileURLToPath(new URL("../bun.mjs", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const bun = process.env.VIBELANG_TEST_BUN || "bun"
-const skip = spawnSync(bun, ["--version"]).status !== 0 ? "Bun is required" : spawnSync(compiler, ["--version"]).status !== 0 && "build the native compiler"
+const skip = requireOrSkip(spawnSync(bun, ["--version"]).status !== 0 ? "Bun is required" : spawnSync(compiler, ["--version"]).status !== 0 && "build the native compiler")
 const rule = "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`."
 
 const functions = (name) => `export function ${name}Covered(n: number) { return n + 1 }\nexport function ${name}Missed() { return 0 }\n`

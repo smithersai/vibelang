@@ -1,8 +1,7 @@
-// A probe: an interface property is readonly unless written mutable (D134),
-// so the write below must fail on the mapper side, as it does in the fork.
+// An explicit readonly property rejects writes in both renderings.
 interface Point {
-  x: number
-  mutable y: number
+  readonly x: number
+  y: number
 }
 
 export function move(point: Point) {

@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -14,7 +15,7 @@ const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local
 const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
 const runtime = join(repo, "packages/runtime")
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 
 function project(t, files) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-directive-")))
@@ -129,7 +130,18 @@ test("vibelang format writes a .ts file with the directive and leaves a plain on
 
 test("vibelang lint reads a .ts file with the directive", { skip }, (t) => {
   const vibelang = fileURLToPath(new URL("../bin/vibelang", import.meta.url))
-  const root = project(t, { "src/hello.ts": "// @vibe\nexport const value = 1\n" })
+  const root = project(t, {
+    "src/hello.ts": '// @vibe\nexport effect function pause() { try Effect.sleep(0); return 1 }\n',
+    "src/plain.ts": 'import { Effect } from "effect"\nexport const pause = Effect.sleep(1)\n'
+  })
+  const configPath = join(root, "tsconfig.json")
+  const config = JSON.parse(readFileSync(configPath, "utf8"))
+  config.compilerOptions.plugins = [{ name: "@effect/language-service" }]
+  config.vibe = { severities: { EK3833: "error" } }
+  writeFileSync(configPath, JSON.stringify(config))
   const result = spawnSync(process.execPath, [vibelang, "lint"], { cwd: root, encoding: "utf8", env: { ...process.env, VIBELANG_BINARY: native } })
-  assert.equal(result.status, 0, result.stdout + result.stderr)
+  const output = result.stdout + result.stderr
+  assert.notEqual(result.status, 0, output)
+  assert.match(output, /src[\\/]hello\.ts[^\n]*error EK3833:/)
+  assert.doesNotMatch(output, /plain\.ts/)
 })

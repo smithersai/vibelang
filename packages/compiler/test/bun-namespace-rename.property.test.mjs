@@ -1,6 +1,7 @@
 // Alchemy's old InMemory observation: capture an imported namespace member,
 // then rename and revert the producer while Bun reuses its transpiler cache.
 // This is coverage of the boundary, not a claim to reproduce the full target.
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
@@ -17,7 +18,7 @@ const preload = fileURLToPath(new URL("../bun.mjs", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const bun = process.env.VIBELANG_TEST_BUN || "bun"
 const available = spawnSync(bun, ["--version"]).status === 0
-const skip = !available ? "Bun is required" : spawnSync(compiler, ["--version"]).status !== 0 && "build the native compiler"
+const skip = requireOrSkip(!available ? "Bun is required" : spawnSync(compiler, ["--version"]).status !== 0 && "build the native compiler")
 const corpus = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-pnpm-node-path-namespace.json", import.meta.url), "utf8"))
 
 function inspect(input) {

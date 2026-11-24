@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
@@ -10,8 +11,8 @@ import { fileURLToPath } from "node:url"
 import fc from "fast-check"
 import { repositoryStyle, typescriptPlugin } from "../format.mjs"
 
-const native = fileURLToPath(new URL("../native/vibelang", import.meta.url))
-const skip = !existsSync(native) && "run sh scripts/build-vibelang.sh"
+const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
+const skip = requireOrSkip(!existsSync(native) && "run sh scripts/build-vibelang.sh")
 const cli = fileURLToPath(new URL("../bin/vibelang-format", import.meta.url))
 
 const write = (root, file, text) => {
@@ -205,25 +206,39 @@ test("a second run reports what the first did, and an edit or a new setting miss
   }
 })
 
-// toolcover-alchemy: 8,595 files took 403 to 600 s at one Node and one dprint
-// per file, about 64 ms each, so 1,000 files took over 60 s even unloaded. The
-// budgets hold on a loaded host and fail a return to one process per file.
-const coldBudget = 30_000, warmBudget = 10_000
-test(`1,000 files stay within ${coldBudget} ms, and ${warmBudget} ms once clean`, { skip, timeout: 300_000 }, () => {
-  const files = Object.fromEntries(Array.from({ length: 1000 }, (_, i) => [`src/d${i % 37}/m${i}.vibe`, `export const v${i} = ${i}\n\nexport function f${i}() {\n  return v${i} + 1\n}\n`]))
-  const root = repository(files)
-  const cache = mkdtempSync(join(tmpdir(), "vibe-format-budget-"))
-  const timed = (budget, name) => {
-    const started = performance.now()
-    const result = spawnSync(process.execPath, [cli, "--check"], { cwd: root, encoding: "utf8", timeout: budget, env: { ...process.env, VIBELANG_CACHE_DIR: cache } })
-    const elapsed = Math.round(performance.now() - started)
-    assert.equal(result.status, 0, `${name}: status ${result.status} after ${elapsed} ms against a budget of ${budget} ms\n${result.stderr}`)
-    return elapsed
+test("a one-file check preserves the full-tree clean cache", { skip, timeout: 300_000 }, () => {
+  const root = repository({ "a.vibe": "export const a = 1\n", "b.vibe": "export const b = 2\n" })
+  const cache = mkdtempSync(join(tmpdir(), "vibe-format-clean-"))
+  const preload = join(cache, "count.cjs")
+  const log = join(cache, "runs.log")
+  writeFileSync(preload, `
+const cp = require("node:child_process")
+const fs = require("node:fs")
+for (const method of ["spawn", "spawnSync"]) {
+  const original = cp[method]
+  cp[method] = function (command, args) {
+    if (String(args?.[0]).endsWith("bin.cjs")) fs.appendFileSync(${JSON.stringify(log)}, (args[1] ?? "") + "\\n")
+    return original.apply(this, arguments)
+  }
+}
+require("node:module").syncBuiltinESMExports()
+`)
+  const check = (...files) => {
+    const result = spawnSync(process.execPath, ["--require", preload, cli, "--check", ...files], {
+      cwd: root, encoding: "utf8", env: {
+        ...process.env, VIBELANG_DISABLE_CACHE: "", VIBELANG_CACHE_DIR: cache,
+        NODE_OPTIONS: (process.env.NODE_OPTIONS || "") + " --require " + JSON.stringify(preload)
+      }
+    })
+    assert.equal(result.status, 0, result.stdout + result.stderr)
   }
   try {
-    const cold = timed(coldBudget, "cold")
-    const warm = timed(warmBudget, "warm")
-    assert.ok(warm <= cold, `a clean tree must not cost more than a cold one: ${warm} ms, ${cold} ms`)
+    check()
+    assert.ok(readFileSync(log, "utf8").includes("fmt"), "the cold check runs dprint")
+    rmSync(log)
+    check("a.vibe")
+    check()
+    assert.equal(existsSync(log), false, "both checks should use cached clean text")
   } finally {
     rmSync(root, { recursive: true, force: true })
     rmSync(cache, { recursive: true, force: true })

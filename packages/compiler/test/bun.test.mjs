@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -15,7 +16,7 @@ const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/n
 const runtime = join(repo, "packages/runtime")
 const hasBun = spawnSync("bun", ["--version"]).status === 0
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = !hasBun ? "bun is not on PATH" : missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(!hasBun ? "bun is not on PATH" : missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 
 const tsconfig = (include) => JSON.stringify({
   compilerOptions: {
@@ -562,7 +563,7 @@ test("require() loads a .vibe module's native imports synchronously beside a plu
 
 // ./prompt.txt names no script extension, so the resolvers look for
 // prompt.txt/index.ts, and Bun throws ENOTDIR where Node returns undefined.
-test("the resolvers pass over a relative import of a file that is not a script", { skip: !hasBun && "bun is not on PATH" }, (t) => {
+test("the resolvers pass over a relative import of a file that is not a script", { skip: requireOrSkip(!hasBun && "bun is not on PATH") }, (t) => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bun-text-")))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   writeFileSync(join(root, "prompt.txt"), "hello\n")

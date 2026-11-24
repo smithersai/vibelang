@@ -1,6 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync, rmSync, unlinkSync, utimesSync } from "node:fs"
-import { createHash } from "node:crypto"
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync, rmSync, utimesSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
@@ -123,10 +122,7 @@ test("cached warnings from before incremental UTF-8 decoding are recompiled", as
     const entry = JSON.parse(readFileSync(current, "utf8"))
     entry.format = 9
     entry.warnings[0].text = "damaged Unicode: �"
-    const legacyName = createHash("sha256").update(JSON.stringify([9, entry.version, project, app]))
-      .digest("base64url").slice(0, 32) + ".json"
-    unlinkSync(current)
-    writeFileSync(join(cache.directory, legacyName), JSON.stringify(entry))
+    writeFileSync(current, JSON.stringify(entry))
     const result = await backend.compile(project)
     assert.ok(result.warnings[0].text === text, "a historical corrupt warning must not survive a cache hit")
     const replay = await backend.compile(project)

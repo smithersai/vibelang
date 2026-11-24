@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -16,7 +17,7 @@ const require = createRequire(join(runtime, "package.json"))
 const fc = require("fast-check")
 const { Effect } = require("effect")
 const ts = require(join(modules, "typescript"))
-const skip = [compiler, join(runtime, "dist/index.js")].some(p => !existsSync(p)) && "build compiler and runtime first"
+const skip = requireOrSkip([compiler, join(runtime, "dist/index.js")].some(p => !existsSync(p)) && "build compiler and runtime first")
 const rule = "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 const tick = String.fromCharCode(96)
 const source = [

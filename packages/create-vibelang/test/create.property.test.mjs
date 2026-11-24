@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
 import { test } from "node:test"
 import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
@@ -61,7 +61,7 @@ function checkCreate(f, input) {
     if (called) {
       const installed = JSON.parse(readFileSync(installer.record))
       assert.equal(installed.argv[0], "install")
-      assert.equal(installed.cwd, resolve(app))
+      assert.equal(installed.cwd, realpathSync(app))
       assert.ok(installed.ready)
       assert.deepEqual(installed.manifest, JSON.parse(readFileSync(join(app, "package.json"))))
     }
@@ -75,7 +75,7 @@ function checkCreate(f, input) {
       assert.ok(cd, "missing next-step directory command")
       const reached = run("/bin/sh", ["-c", `${cd}\nexec "$1" -p 'JSON.stringify(process.cwd())'`, "sh", process.execPath], directory, f.env, "printed cd")
       assert.equal(reached.status, 0, reached.output)
-      assert.equal(JSON.parse(reached.stdout), resolve(app))
+      assert.equal(JSON.parse(reached.stdout), realpathSync(app))
       assert.ok(created.stdout.includes(`${input.manager} run start`))
     }
     // Metamorphic: --no-install and no-op --no-git preserve project content;

@@ -4,6 +4,7 @@
 // each seeded violation, fixes land on the .vibe text, and a syntax error is
 // ESLint's parsing error. A module declaration's body (D283) lints as a
 // TypeScript module of its own.
+import { fileURLToPath } from "node:url"
 import { strict as assert } from "node:assert"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -19,7 +20,7 @@ import { repo } from "./helpers.mjs"
 import { allVisitorKeys, problems, walk } from "./tree.mjs"
 
 const fixture = (name) => {
-  const filename = new URL(`./fixtures/${name}`, import.meta.url).pathname
+  const filename = fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url))
   return { filename, code: readFileSync(filename, "utf8") }
 }
 const lint = ({ code, filename }) => new Linter({ configType: "flat", cwd: "/" }).verify(code, config, { filename })

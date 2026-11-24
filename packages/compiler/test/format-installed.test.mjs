@@ -19,15 +19,9 @@ function fixture() {
   }
   cpSync(join(compiler, "bin/vibelang"), join(pkg, "bin/vibelang"))
   symlinkSync(join(compiler, "node_modules"), join(pkg, "node_modules"), "dir")
-  // Use the shipped manifest and its real platform-tarball checksums.
-  // A made-up npm reference tests package integrity rather than resolution.
-  const packed = spawnSync("npm", ["pack", "vibelang@latest", "--json", "--ignore-scripts", "--pack-destination", root], { cwd: root, encoding: "utf8", timeout: 60000 })
-  assert.equal(packed.status, 0, packed.stdout + packed.stderr)
-  const archive = JSON.parse(packed.stdout)[0].filename
-  const manifest = spawnSync("tar", ["-xOf", join(root, archive), "package/dprint-plugin.json"], { encoding: "utf8", timeout: 60000 })
-  assert.equal(manifest.status, 0, manifest.stderr)
-  assert.ok(JSON.parse(manifest.stdout)[platform].reference.startsWith("npm:"))
-  writeFileSync(join(pkg, "dprint-plugin.json"), manifest.stdout)
+  const manifest = readFileSync(new URL("./fixtures/npm-dprint-plugin.json", import.meta.url), "utf8")
+  assert.ok(JSON.parse(manifest)[platform].reference.startsWith("npm:"))
+  writeFileSync(join(pkg, "dprint-plugin.json"), manifest)
   return { root, pkg }
 }
 

@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -51,7 +52,7 @@ function exportFiles(input) {
 }
 
 test("migration package exports reach each renamed module and revert independently (opencode-3)", {
-  skip: !hasBun && "bun is not on PATH"
+  skip: requireOrSkip(!hasBun && "Bun is required") && "bun is not on PATH"
 }, async () => {
   await checkProperty(fc, {
     name: "migrate-package-exports", rule, regressions, numRuns: 50,

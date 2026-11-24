@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
@@ -8,7 +9,7 @@ import { checkProperty } from "../../../scripts/testing/property.mjs"
 
 const launcher = fileURLToPath(new URL("../bin/vibelang", import.meta.url))
 const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
-const skip = !existsSync(native) && "run sh scripts/build-vibelang.sh"
+const skip = requireOrSkip(!existsSync(native) && "run sh scripts/build-vibelang.sh")
 
 function checkHelp(args) {
   const result = spawnSync(process.execPath, [launcher, ...args], {

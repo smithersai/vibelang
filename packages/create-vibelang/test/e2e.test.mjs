@@ -1,10 +1,12 @@
 // Uses the current checkout's compiler, runtime and Vite plugin. Run the
 // documented workspace setup first, then node --test test/e2e.test.mjs.
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
+import { on } from "node:events"
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { delimiter, join } from "node:path"
+import { createInterface } from "node:readline"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
@@ -20,13 +22,51 @@ function run(command, args, cwd, extraEnv = {}) {
   return { ...result, output: result.stdout + result.stderr }
 }
 
+async function checkDev(app) {
+  const source = join(app, "src/main.vibe")
+  const original = readFileSync(source, "utf8")
+  const child = spawn(process.execPath, ["scripts/dev.mjs"], {
+    cwd: app, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, VIBELANG_BINARY: binary, PATH: join(app, "node_modules/.bin") + delimiter + process.env.PATH }
+  })
+  let stderr = ""
+  child.stderr.setEncoding("utf8").on("data", chunk => { stderr += chunk })
+  child.on("error", error => { stderr += error.message })
+  const closed = new Promise(resolve => child.once("close", resolve))
+  const lines = createInterface({ input: child.stdout })
+  try {
+    let watching = false, edited = false
+    for await (const [line] of on(lines, "line", {
+      signal: AbortSignal.timeout(60_000), close: ["close"]
+    })) {
+      if (line.includes("dev: compiler is watching")) watching = true
+      if (watching && !edited && line.includes("Hello, VibeLang!")) {
+        edited = true
+        writeFileSync(source, original.replace('greet("VibeLang")', 'greet("watch edit")'))
+      }
+      if (edited && line.includes("Hello, watch edit!")) return
+    }
+    assert.fail("starter dev exited before the edit was rendered\n" + stderr)
+  } finally {
+    lines.close()
+    if (child.pid && child.exitCode === null && child.signalCode === null) {
+      try {
+        if (process.platform === "win32") child.kill()
+        else process.kill(-child.pid, "SIGTERM")
+      } catch (error) { if (error.code !== "ESRCH") throw error }
+    }
+    await closed
+    writeFileSync(source, original)
+  }
+}
+
 // The test is deliberately opt-in until workspace setup builds the compiler
 // and runtime. CLI unit tests remain runnable in an unpacked npm package.
 test("a scaffold installs, tests source without a build, builds, starts, and reports assertion positions", {
   skip: !existsSync(binary) || !existsSync(join(root, "packages/runtime/dist/index.js"))
     ? "run the documented workspace setup to build the compiler and runtime" : false,
   timeout: 180_000
-}, (t) => {
+}, async (t) => {
   const scratch = mkdtempSync(join(tmpdir(), "vibelang-scaffold-e2e-"))
   t.after(() => rmSync(scratch, { recursive: true, force: true }))
   const app = join(scratch, "hello app")
@@ -80,6 +120,7 @@ test("a scaffold installs, tests source without a build, builds, starts, and rep
   assert.deepEqual(generated, [], "the first commit tracks generated files")
   rmSync(join(app, ".git"), { recursive: true, force: true })
   assert.doesNotMatch(greeting, /\.vibe["']/)
+  await checkDev(app)
 
   // A TypeScript entry point need not be imported by any .vibe file.
   writeFileSync(join(app, "src/t5.vibe"), `export effect function clampAll(values: ReadonlyArray<number>) {

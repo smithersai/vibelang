@@ -58,7 +58,7 @@ test("esbuild builds explicit JSX sources and module queries like TypeScript JSX
         await mkdir(join(root, "src"), { recursive: true })
         await mkdir(join(root, "node_modules"))
         await symlink(join(repo, "packages/compiler"), join(root, "node_modules/vibelang"))
-        await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+        await symlink(join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect"), join(root, "node_modules/effect"))
         await writeFile(join(root, "package.json"), '{"type":"module"}')
         const config = {
           compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [], jsx, jsxFactory: "h", rewriteRelativeImportExtensions: true },
@@ -172,7 +172,7 @@ test("JSX output resolution preserves competing TypeScript source priority", asy
     try {
       await mkdir(join(root, "node_modules"))
       await symlink(join(repo, "packages/compiler"), join(root, "node_modules/vibelang"))
-      await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+      await symlink(join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect"), join(root, "node_modules/effect"))
       await writeFile(join(root, "package.json"), '{"type":"module"}')
       await writeFile(join(root, "tsconfig.json"), JSON.stringify({
         compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [], jsx: "react", rewriteRelativeImportExtensions: true },
@@ -205,7 +205,7 @@ for (const framework of ["rollup", "webpack", "rspack"]) test(framework + " buil
   try {
     await mkdir(join(root, "node_modules"))
     await symlink(join(repo, "packages/compiler"), join(root, "node_modules/vibelang"))
-    await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+    await symlink(join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect"), join(root, "node_modules/effect"))
     await writeFile(join(root, "package.json"), '{"type":"module"}')
     await writeFile(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [], jsx: "react", jsxFactory: "h", rewriteRelativeImportExtensions: true }, include: ["*.vibex", "*.d.ts"] }))
     await writeFile(join(root, "jsx.d.ts"), "declare namespace JSX { interface IntrinsicElements { span: { children?: unknown } } }\n")

@@ -1,6 +1,7 @@
 // opencode-32: a migrated package's `default` export names its emitted
 // JavaScript, which the `bun build` CLI and plain Node read; the loaders run
 // the .vibe source instead (emitted-js.mjs).
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -18,7 +19,7 @@ const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/n
 const runtime = join(repo, "packages/runtime")
 const hasBun = spawnSync("bun", ["--version"]).status === 0
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 
 function write(root, files) {
   for (const [path, text] of Object.entries(files)) {
@@ -47,7 +48,7 @@ function workspace(t) {
     "packages/app/main.cjs": 'console.log(require("@demo/schema/skill").Skill)\n',
     "packages/app/same.mjs": 'import { id } from "@demo/schema/skill"\nimport { id as relative } from "../schema/src/skill.vibe"\nconsole.log(id === relative)\n',
     // opencode-46: protocol's script, a .ts file, reads one schema module by
-    // its package export and by its path; m5 lost this carry and had two.
+    // its package export and by its path.
     "packages/app/same.ts": `import { id } from "@demo/schema/skill"\nimport { id as absolute } from "${join(root, "packages/schema/src/skill.vibe")}"\nconsole.log(id === absolute, require.resolve("@demo/schema/skill").includes(".vibelang/js"))\n`
   })
   mkdirSync(join(root, "node_modules/@demo"), { recursive: true })
@@ -111,7 +112,7 @@ test("node reads a migrated package's emitted JavaScript, and node --import vibe
   assert.equal(same.out, "true", same.err)
 })
 
-test("bun build reads the emitted JavaScript, and the vibelang/bun preload runs the .vibe source for import and require", { skip: skip || (!hasBun && "bun is not on PATH") }, (t) => {
+test("bun build reads the emitted JavaScript, and the vibelang/bun preload runs the .vibe source for import and require", { skip: requireOrSkip(skip || (!hasBun && "bun is not on PATH")) }, (t) => {
   const { root, run } = workspace(t)
   assert.equal(run("bun", ["main.mjs"]).out, "from-emitted-js")
   const imported = run("bun", ["--preload", "vibelang/bun", "main.mjs"])
@@ -144,7 +145,7 @@ test("native emitted-source: loader identity follows the native source extension
     }), { numRuns: 100 })
 })
 
-test("RD-017: Bun preload preserves the source's complete live export surface", { skip: skip || (!hasBun && "bun is not on PATH") }, (t) => {
+test("RD-017: Bun preload preserves the source's complete live export surface", { skip: requireOrSkip(skip || (!hasBun && "bun is not on PATH")) }, (t) => {
   const { root, run } = workspace(t)
   for (const hasDefault of [true, false]) {
     write(root, {
@@ -163,7 +164,7 @@ test("RD-017: Bun preload preserves the source's complete live export surface", 
   }
 })
 
-test("RD-018: Node and Bun load the Vibe source beside an independent JSX-preserve sibling", { skip: skip || (!hasBun && "bun is not on PATH") }, (t) => {
+test("RD-018: Node and Bun load the Vibe source beside an independent JSX-preserve sibling", { skip: requireOrSkip(skip || (!hasBun && "bun is not on PATH")) }, (t) => {
   const { root, run } = workspace(t)
   const schema = join(root, "packages/schema")
   write(root, {
@@ -193,7 +194,7 @@ test("RD-018: Node and Bun load the Vibe source beside an independent JSX-preser
   }
 })
 
-test("RD-017: native Bun TypeScript and CommonJS export surfaces stay unchanged", { skip: !hasBun && "bun is not on PATH" }, (t) => {
+test("RD-017: native Bun TypeScript and CommonJS export surfaces stay unchanged", { skip: requireOrSkip(!hasBun && "Bun is required") && "bun is not on PATH" }, (t) => {
   const { root, run } = workspace(t)
   const variants = [
     ["ts", 'export type { default } from "./types.ts"; export let current = 0; export function bump() { current++; }'],

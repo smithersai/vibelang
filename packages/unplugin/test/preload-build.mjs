@@ -47,20 +47,29 @@ try {
     const file = join(root, "out/bundle.mjs")
     const watcher = api.watch({ ...request, output: { file, format: "es" } })
     try {
-      await new Promise((accept, reject) => {
-        const timer = setTimeout(() => reject(new Error("Rolldown watch did not produce a bundle")), 30000)
-        watcher.on("event", async event => {
-          if (event.code === "BUNDLE_END") {
-            await event.result.close()
-            clearTimeout(timer)
-            accept()
-          } else if (event.code === "ERROR") {
-            clearTimeout(timer)
-            reject(event.error)
-          }
-        })
+      let next
+      let bundle
+      watcher.on("event", event => {
+        if (event.code === "BUNDLE_END") bundle = event.result
+        else if (event.code === "END" && bundle) {
+          const built = bundle
+          bundle = undefined
+          next?.resolve(built)
+        } else if (event.code === "ERROR") next?.reject(event.error)
       })
-      answers.push(await valueOf(await readFile(file, "utf8")))
+      async function readBundle(edit) {
+        const { promise, resolve, reject } = Promise.withResolvers()
+        next = { resolve, reject }
+        const timer = setTimeout(() => reject(new Error("Rolldown watch did not produce a bundle")), 60000)
+        try {
+          if (edit) await writeFile(join(root, "src/leaf.vibe"), "export const answer: number = 99\n")
+          const result = await promise
+          await result.close()
+          return await valueOf(await readFile(file, "utf8"))
+        } finally { clearTimeout(timer) }
+      }
+      answers.push(await readBundle(false))
+      answers.push(await readBundle(true))
     } finally { await watcher.close() }
   } else if (mode === "recovery") {
     await writeFile(join(root, "src/leaf.vibe"), 'export const answer: number = "bad"\n')

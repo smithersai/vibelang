@@ -1,3 +1,4 @@
+import { devServer } from "./dev-server.mjs"
 // opencode Storybook: the stories package runs Vite for components that live
 // in other workspace packages. A .vibex module is served as x.vibex.jsx, which
 // is not on disk, so Vite resolved its bare imports from the stories root and
@@ -34,7 +35,7 @@ async function fixture(t, { name, subpath = "", depth = 1 }) {
     await writeFile(join(at, "index.d.ts"), "export declare const answer: number\n")
   }
   for (const [name, target] of [["vibelang", "packages/compiler"], ["vibelang-runtime", "packages/vite/test/.fixtures/vibelang-runtime"]]) await symlink(join(repo, target), join(lib, "node_modules", name))
-  await symlink(join(repo, "experiments/node_modules/effect"), join(lib, "node_modules/effect"))
+  await symlink(join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect"), join(lib, "node_modules/effect"))
   await writeFile(join(lib, "package.json"), JSON.stringify({ name: "lib", private: true, type: "module", dependencies: { [name]: "*" } }))
   await writeFile(join(lib, "tsconfig.json"), JSON.stringify({
     compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [], jsx: "preserve", jsxFactory: "h" },
@@ -52,13 +53,12 @@ async function fixture(t, { name, subpath = "", depth = 1 }) {
 }
 
 async function transformed(t, version, root, file) {
-  const { createServer } = await import(version)
-  const server = await createServer({
-    root, configFile: false, logLevel: "silent", optimizeDeps: { noDiscovery: true, include: [] },
+  const server = await devServer({
+    root, configFile: false, logLevel: "silent",
     plugins: [vibelang()],
     oxc: { jsx: { runtime: "classic", pragma: "h" } },
     server: { watch: null, fs: { strict: false } },
-  })
+  }, version)
   t.after(() => server.close())
   return server.transformRequest("/@fs" + file)
 }

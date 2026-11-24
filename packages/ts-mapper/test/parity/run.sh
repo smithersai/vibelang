@@ -37,7 +37,6 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 package="$(cd "$here/../.." && pwd)"
 root="$(cd "$package/../.." && pwd)"
-node --test "$here/../build-inputs.test.mjs"
 out="$here/out"
 ts7_version="${TS7_VERSION:-$(node -e 'process.stdout.write(require(process.argv[1]).devDependencies.typescript)' "$package/package.json")}"
 
@@ -72,7 +71,7 @@ effect_version="$(bun -e 'console.log(require(process.argv[1]).version)' "$effec
 # can reach the repository package's node_modules (catch-match exposed this).
 mapper_package="$out/work"
 rm -rf "$mapper_package/node_modules" "$mapper_package/bin" "$out/runtime-build"
-mkdir -p "$mapper_package/node_modules" "$mapper_package/bin" "$out/runtime-build/node_modules"
+mkdir -p "$mapper_package/node_modules" "$mapper_package/bin"
 cp "$package/package.json" "$package/prelude.d.ts" "$mapper_package/"
 cp "$out/bin/vibelang-mapper" "$mapper_package/bin/"
 ln -s "$effect_real" "$mapper_package/node_modules/effect"
@@ -80,15 +79,9 @@ ln -s "$effect_real" "$mapper_package/node_modules/effect"
 # Build from copied sources: all generated runtime files and dependency
 # links belong to the harness, and both compilers use this same runtime.
 runtime="$mapper_package/node_modules/vibelang-runtime"
-mkdir -p "$runtime"
-cp "$root/packages/runtime/package.json" "$runtime/"
-cp -R "$root/packages/runtime/src" "$root/packages/runtime/tsconfig.json" "$out/runtime-build/"
-# The experimental platform layers (D313) need the optional @effect/platform-*
-# packages and Node's types, which this build does not install.
-rm -rf "$out/runtime-build/src/experimental/platform-"* "$out/runtime-build/src/experimental/internal/node"*
-ln -s "$effect_real" "$out/runtime-build/node_modules/effect"
+source "$here/../runtime-fixture.sh"
 echo "parity: build packages/runtime copy with the fork" >&2
-"$out/bin/tsc" -p "$out/runtime-build/tsconfig.json" --outDir "$runtime/dist"
+build_runtime_fixture "$root/packages/runtime" "$out/runtime-build" "$runtime" "$out/bin/tsc"
 
 if [ -n "${TS7_DIR:-}" ]; then
   stock_dir="$TS7_DIR"

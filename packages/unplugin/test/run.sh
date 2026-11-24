@@ -7,6 +7,8 @@
 #
 # Usage: sh packages/unplugin/test/run.sh [node --test options]
 #
+# Install prerequisites first with sh scripts/ci.sh --prepare-only.
+#
 # Environment:
 #   VIBELANG_BINARY        a native vibelang compiler; skips the Go build
 #   EFFECT_NODE_MODULES  a node_modules directory that holds effect 4.1.1
@@ -25,6 +27,11 @@ fi
 export VIBELANG_BINARY
 if [ "${VIBELANG_TEST_PREPARE_ONLY:-}" = 1 ]; then
 	exec node "$repo/scripts/testing/prepare-package-tests.mjs" unplugin
+fi
+
+if [ ! -d "$package/node_modules/rollup" ] || [ ! -d "$repo/packages/vite/node_modules/vite" ]; then
+    echo "test: run sh scripts/ci.sh --prepare-only to install unplugin test dependencies" >&2
+    exit 1
 fi
 
 effect_modules=${EFFECT_NODE_MODULES:-$repo/experiments/node_modules}
@@ -60,16 +67,6 @@ ln -s "$built" "$modules/vibelang-runtime"
 ln -s "$repo/packages/compiler" "$modules/vibelang"
 # A fixture program that imports vibelang-unplugin/deferred resolves this package.
 ln -s "$package" "$modules/vibelang-unplugin"
-
-# bunfig.toml's minimumReleaseAge applies only to fresh manifests; a warm
-# manifest cache skips it (https://github.com/oven-sh/bun/issues/45831).
-# Keep --no-cache until that is fixed.
-# The compiler peer may be unpublished; fixtures use this checkout.
-# Adapter comparisons import the sibling Vite plugin as well.
-(cd "$repo/packages/vite" && bun install --frozen-lockfile --no-cache --omit peer)
-(cd "$package" && bun install --frozen-lockfile --no-cache --omit peer)
-rm -rf "$package/node_modules/vibelang"
-ln -s "$repo/packages/compiler" "$package/node_modules/vibelang"
 
 cd "$package"
 # A test that runs past five minutes fails with its name; none takes a minute.

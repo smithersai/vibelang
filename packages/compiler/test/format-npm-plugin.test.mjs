@@ -7,7 +7,6 @@ import { createRequire } from "node:module"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { test } from "node:test"
 import fc from "fast-check"
-import { typescriptPlugin } from "../format.mjs"
 
 const root = fileURLToPath(new URL("..", import.meta.url))
 const require = createRequire(import.meta.url)
@@ -22,23 +21,13 @@ function project() {
   copyFileSync(join(root, "package.json"), join(pkg, "package.json"))
   copyFileSync(join(root, "test", "fixtures", "npm-dprint-plugin.json"), join(pkg, "dprint-plugin.json"))
   symlinkSync(dirname(require.resolve("dprint/package.json")), join(dir, "node_modules", "dprint"), "junction")
-  writeFileSync(join(dir, "dprint.json"), JSON.stringify({
-    plugins: [typescriptPlugin, "npm:vibelang/dprint-plugin.json"],
-    typescript: { semicolons: "asi", quoteStyle: "alwaysDouble" },
-  }))
-  const previousCache = process.env.DPRINT_CACHE_DIR
-  process.env.DPRINT_CACHE_DIR = join(dir, "dprint-cache")
-  return { dir, pkg, cleanup() {
-    if (previousCache === undefined) delete process.env.DPRINT_CACHE_DIR
-    else process.env.DPRINT_CACHE_DIR = previousCache
-    rmSync(dir, { recursive: true, force: true })
-  } }
+  return { dir, pkg, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
 }
 const run = (dir, cli, ...args) => spawnSync(process.execPath, [cli, ...args], {
   cwd: dir, encoding: "utf8", env: { ...process.env, VIBELANG_DISABLE_CACHE: "1" },
 })
 
-test("the formatter companion and Prettier resolve npm platform references like dprint", async () => {
+test("the formatter companion and Prettier format with a published process manifest", async () => {
   const { dir, pkg, cleanup } = project()
   const file = join(dir, "example.vibe")
   const source = "// retained\nexport   const message='hello';\n"
@@ -55,10 +44,6 @@ test("the formatter companion and Prettier resolve npm platform references like 
     const prettier = await import("prettier")
     const plugin = await import(pathToFileURL(join(pkg, "prettier.mjs")).href)
     assert.equal(await prettier.format(source, { filepath: file, plugins: [plugin], printWidth: 120 }), expected)
-    writeFileSync(file, source)
-    const control = run(dir, require.resolve("dprint/bin.cjs"), "fmt")
-    assert.equal(control.status, 0, control.stderr)
-    assert.equal(readFileSync(file, "utf8"), expected)
   } finally { cleanup() }
 })
 

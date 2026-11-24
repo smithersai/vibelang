@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { chmodSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -10,7 +11,7 @@ import { parseDiagnostics } from "../agents.mjs"
 
 const launcher = fileURLToPath(new URL("../bin/vibelang", import.meta.url))
 const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
-const skipNative = !existsSync(native) && "build the native compiler before running the project diagnostic controls"
+const skipNative = requireOrSkip(!existsSync(native) && "build the native compiler before running the project diagnostic controls")
 
 function fixture(t, config = { files: ["witness.vibe"] }) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-agents-project-diagnostics-")))
@@ -61,6 +62,16 @@ test("diagnostic parsing retains locationless messages and their continuation li
   assert.equal(diagnostics[1].column, 3)
   assert.equal(diagnostics[1].code, "TS2322")
   assert.equal(diagnostics[2].severity, "warning")
+})
+
+test("Windows compiler diagnostics retain their edited-file location", () => {
+  const root = String.raw`C:\repo`
+  const file = String.raw`C:\repo\src\a.vibe`
+  const output = "C:/repo/src/a.vibe(1,14): error TS2322: Wrong type.\r\n  Expected a number.\r\n"
+  assert.deepEqual(parseDiagnostics(output, root), [{
+    file, line: 1, column: 14, severity: "error", code: "TS2322",
+    message: "Wrong type.\n  Expected a number."
+  }])
 })
 
 for (const command of ["check", "hook"]) {

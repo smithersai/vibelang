@@ -9,8 +9,7 @@ const repo=fileURLToPath(new URL("../../../",import.meta.url))
 const binary=process.env.VIBELANG_BINARY||join(repo,"packages/compiler/native/vibelang")
 // Chapter 007 / npm and local native call signatures share throws contracts: docs/design/src/007-tooling.md#e3561675cbf5674a
 for(const location of ["local","npm"])for(const contract of ["unannotated","never","RangeError"])for(const bridge of [false,true]){
- const foreignTest=!bridge&&contract!=="never"?test.todo:test
- foreignTest("Chapter 007 / "+location+" "+contract+" "+(bridge?"wrapped":"direct")+" foreign call",t=>{
+ test("Chapter 007 / "+location+" "+contract+" "+(bridge?"wrapped":"direct")+" foreign call",t=>{
   const root=mkdtempSync(join(tmpdir(),"chapter007-foreign-"));t.after(()=>rmSync(root,{recursive:true,force:true}))
   mkdirSync(join(root,"node_modules"));symlinkSync(join(process.env.EFFECT_NODE_MODULES||join(repo,"experiments/node_modules"),"effect"),join(root,"node_modules/effect"))
   symlinkSync(join(repo,"packages/runtime"),join(root,"node_modules/vibelang-runtime"))

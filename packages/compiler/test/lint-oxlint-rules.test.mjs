@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -11,9 +12,9 @@ import { fileURLToPath } from "node:url"
 // such as floating-effect is proved here and not in the lint package's Go tests.
 const launcher = fileURLToPath(new URL("../bin/vibelang", import.meta.url))
 const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
-const skip = !existsSync(native) && "run sh scripts/build-vibelang.sh"
+const skip = requireOrSkip(!existsSync(native) && "run sh scripts/build-vibelang.sh")
 const runtime = fileURLToPath(new URL("../../runtime/", import.meta.url))
-const skipRuntime = skip || (!existsSync(join(runtime, "dist")) && "build packages/runtime")
+const skipRuntime = requireOrSkip(skip || (!existsSync(join(runtime, "dist")) && "build packages/runtime"))
 
 // VIP-38: "`vibelang lint` accepts compiler options and files only, never an
 // Oxlint config or lint-specific flags", and "the existing Effect

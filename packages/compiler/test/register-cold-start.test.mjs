@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -9,7 +10,7 @@ import { fileURLToPath } from "node:url"
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const register = fileURLToPath(new URL("../register.mjs", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
-const skip = !existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`
+const skip = requireOrSkip(!existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`)
 
 const tsconfig = JSON.stringify({
   compilerOptions: {

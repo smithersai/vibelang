@@ -10,6 +10,7 @@
 // while its source declares that body. The compiler writes the declarations;
 // the property checks their names against the encoding and the record against
 // the discovery rule, for names with Unicode, escapes and case twins.
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -24,7 +25,7 @@ import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
-const skip = !existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`
+const skip = requireOrSkip(!existsSync(native) && `run typescript/vibelang/smoke.sh first; missing ${native}`)
 
 const encodingRule = "Encoding keeps `a`–`z`, `0`–`9` and `_`; every other Unicode code point becomes `-`, its code point in lowercase hexadecimal without leading zeros, and `-`, without case folding or Unicode normalization."
 const discoveryRule = "So is a [module body](001-functions.md#module-declarations)'s declaration written beside a sidecar, such as `src/main.vibe.parse.d.ts`, while its source declares that body"

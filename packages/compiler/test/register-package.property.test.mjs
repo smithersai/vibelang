@@ -7,6 +7,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import fc from "fast-check"
+import { linkDependency, unpackPackage } from "./packed-fixture.mjs"
 
 const compiler = fileURLToPath(new URL("..", import.meta.url))
 const require = createRequire(new URL("../../runtime/package.json", import.meta.url))
@@ -29,7 +30,10 @@ test("packed public entries support strict imports without inventing exports", {
   mkdirSync(consumer)
   writeFileSync(join(consumer, "package.json"), '{"private":true,"type":"module"}')
   const [packed] = JSON.parse(run(npm, ["pack", "--ignore-scripts", "--json", "--pack-destination", root], compiler))
-  run(npm, ["install", "--ignore-scripts", "--omit=optional", "--legacy-peer-deps", "--no-audit", "--no-fund", join(root, packed.filename), "typescript@" + ts.version], consumer)
+  const modules = join(consumer, "node_modules")
+  unpackPackage(join(root, packed.filename), join(modules, "vibelang"))
+  linkDependency(modules, "dprint", join(compiler, "node_modules"))
+  linkDependency(modules, "typescript", fileURLToPath(new URL("../../runtime/node_modules", import.meta.url)))
   const manifest = JSON.parse(readFileSync(join(consumer, "node_modules/vibelang/package.json"), "utf8"))
   const targets = value => typeof value === "string" ? [value] : Object.values(value).flatMap(targets)
   const entries = Object.entries(manifest.exports).filter(([, value]) => targets(value).some(path => /\.(?:mjs|cjs|js)$/.test(path)))
@@ -142,12 +146,9 @@ test("packed public entries support strict imports without inventing exports", {
     }
   })
   await t.test("the parser and formatter fit their hosts without package type dependencies", () => {
-    const eslintTools = JSON.parse(readFileSync(new URL("./eslint/package.json", import.meta.url), "utf8")).devDependencies
-    const compilerTools = JSON.parse(readFileSync(join(compiler, "package.json"), "utf8")).devDependencies
-    const runtimeTools = JSON.parse(readFileSync(new URL("../../runtime/package.json", import.meta.url), "utf8")).devDependencies
-    run(npm, ["install", "--ignore-scripts", "--omit=optional", "--legacy-peer-deps", "--no-audit", "--no-fund",
-      "eslint@" + eslintTools.eslint, "typescript-eslint@" + eslintTools["typescript-eslint"],
-      "prettier@" + compilerTools.prettier, "typescript@" + runtimeTools.typescript], consumer)
+    const eslintModules = fileURLToPath(new URL("./eslint/node_modules", import.meta.url))
+    for (const name of ["eslint", "typescript-eslint"]) linkDependency(modules, name, eslintModules)
+    linkDependency(modules, "prettier", join(compiler, "node_modules"))
     const file = join(consumer, "hosts.mts")
     writeFileSync(file, [
       'import type { Linter } from "eslint"',

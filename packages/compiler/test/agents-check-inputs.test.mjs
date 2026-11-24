@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -10,7 +11,7 @@ import fc from "fast-check"
 const directory = fileURLToPath(new URL("..", import.meta.url))
 const launcher = join(directory, "bin/vibelang")
 const native = process.env.VIBELANG_BINARY || join(directory, "native/vibelang")
-const skipNative = !existsSync(native) && "build the native compiler before checking mixed file inputs"
+const skipNative = requireOrSkip(!existsSync(native) && "build the native compiler before checking mixed file inputs")
 function scratch() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-agents-inputs-")))
   writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true, noEmit: true, types: [], skipLibCheck: true }, vibe: { effectGlobals: false, effectModules: false }, files: ["present.vibe"] }))

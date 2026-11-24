@@ -1,6 +1,6 @@
 // All formatter entry points use the shipped dprint process plugin.
-import { findBinary, resolveNativeBinary } from "./binary.mjs"
-import { createHash } from "node:crypto"
+import { resolveNativeBinary } from "./binary.mjs"
+import { createHash, randomUUID } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { fileHasVibeDirective, hasVibeDirective } from "./source.mjs"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync, globSync as expandGlob, readFileSync, symlinkSync, statSync } from "node:fs"
@@ -235,6 +235,7 @@ function discoverable(config) {
 // plugin, the style and the text, so a rebuilt compiler, a changed setting or an
 // edit misses. VIBELANG_DISABLE_CACHE=1 turns it off and VIBELANG_CACHE_DIR
 // moves it, as for the compile cache; a cache it cannot use only costs time.
+const cleanTextLimit = 100_000
 function cleanTexts() {
   const none = { has: () => false, save() {} }
   const location = cacheDirectory()
@@ -248,13 +249,17 @@ function cleanTexts() {
     const known = new Set(text.split("\n").filter(Boolean))
     return {
       has: key => known.has(key),
-      save(keys) {
-        if (keys.size === known.size && [...keys].every(key => known.has(key))) return
+      save(keys, partial) {
+        if (partial && [...keys].every(key => known.has(key))) return
+        const wanted = partial ? new Set([...known, ...keys]) : keys
+        if (wanted.size === known.size && [...wanted].every(key => known.has(key))) return
+        const temporary = `${file}.${randomUUID()}.tmp`
         try {
-          const temporary = `${file}.${process.pid}`
-          writeFileSync(temporary, [...keys].join("\n"))
+          writeFileSync(temporary, [...wanted].slice(-cleanTextLimit).join("\n"))
           renameSync(temporary, file)
-        } catch {}
+        } catch {
+          try { rmSync(temporary, { force: true }) } catch {}
+        }
       }
     }
   } catch { return none }
@@ -383,6 +388,7 @@ export function formatFiles(args, command = "vibelang-format") {
   const batched = formatBatch(files, clean)
   const keys = new Set()
   let failed = false
+  let complete = false
   try {
     for (const file of files) {
       try {
@@ -403,6 +409,7 @@ export function formatFiles(args, command = "vibelang-format") {
         throw new Error(file + ": " + error.message, { cause: error })
       }
     }
-  } finally { clean.save(keys) }
+    complete = true
+  } finally { clean.save(keys, paths.length > 0 || !complete) }
   return failed ? 1 : 0
 }

@@ -21,8 +21,7 @@
     "form": "plain",
     "identifier": "mapperLocal",
     "eol": "\n",
-    "incomplete": "function unfinished(",
-    "strictKnownFailures": true
+    "incomplete": "function unfinished("
   },
   "seed": 42,
   "counterexamplePath": "3:1:1:1:1:1:1:1:1:1:1:1:1:1",

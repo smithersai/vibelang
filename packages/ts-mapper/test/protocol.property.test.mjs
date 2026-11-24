@@ -22,7 +22,6 @@ const arbitrary = fc.record({ project: projectArbitrary(fc),
   eol: fc.constantFrom("\n", "\r\n"),
   incomplete: fc.constantFrom("function unfinished(", "export const unfinished = (", "function unfinished() { return 1 +") })
 let diagnostics = "", failureDiagnostics = ""
-const coverage = {}
 const trace = stage => { diagnostics = (diagnostics + `\nM1 ${stage}`).slice(-12000); process.stderr.write(`M1 ${stage}\n`) }
 
 function run(binary, args, root, stage) {
@@ -47,10 +46,10 @@ function project(input) {
   const effectful = input.form !== "plain", failure = input.form === "failure"
   const contract = effectful ? `number!${failure ? "MapperFailure" : ""}!` : "number"
   // Chapters 10/13/17: explicit contracts, hatch inputs and typed failures.
-  files[entry] += `${failure ? "export error MapperFailure { value: number }\n" : ""}export function probe(mapperValue: number): ${contract} {\n` +
+  files[entry] += `${failure ? "export error MapperFailure { value: number }\n" : ""}export ${effectful ? "effect " : ""}function probe(mapperValue: number): ${contract} {\n` +
     (failure ? "  if (mapperValue < 0) throw new MapperFailure({ value: mapperValue })\n" : "") +
     `  /* 😀${input.project.modules[0].text} */ const ${input.identifier}: number = ` +
-    (input.form === "hatch" ? "sync((x: number) => x + 1, mapperValue)" : "mapperValue + 1") +
+    (input.form === "hatch" ? "try sync(() => mapperValue + 1)" : "mapperValue + 1") +
     `\n  return ${input.identifier}\n}\n`
   const from = JSON.stringify("./" + entry.slice(4))
   const type = effectful ? `Effect.Effect<number, ${failure ? "MapperFailure" : "never"}, never>` : "number"
@@ -216,32 +215,13 @@ async function renderings(root, input, p) {
   {
     // Retain contracts and observations through the production mapper.
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify(config))
-    const check = () => run(stock, ["-p", "tsconfig.json", "--outDir", "stock", "--runExternalCode", ...args], root, `stock check`)
-    let checked = check()
-    // Historical D421 mismatch: an Effect annotation with a pure body gained a required
-    // $plain member. The strict saved contract-member regression now passes without
-    // this fallback; generated projects continue checking the callable signature,
-    // execution and mappings after this specific mismatch.
-    if (!input.strictKnownFailures && input.form === "contract" && checked.status !== 0 &&
-        /error TS2741: Property '\$plain' is missing/.test(checked.stdout)) {
-      trace("known contract-member regression; checking the callable signature")
-      writeFileSync(join(root, "src/contracts.ts"), p.files["src/contracts.ts"].replace("typeof probe = forward", "(n: number) => ReturnType<typeof probe> = forward"))
-      checked = check()
-    }
+    const checked = run(stock, ["-p", "tsconfig.json", "--outDir", "stock", "--runExternalCode", ...args], root, "stock check")
     if (checked.status !== 0) {
-      const errors = checked.stdout.split("\n").filter(line => line.includes("error "))
-      // Historical D366/D416 refusal-code mismatch. The strict saved inline-refusal
-      // regression now requires EK9005; broader generated projects continue after
-      // this specific legacy diagnostic.
-      const knownInline = !input.strictKnownFailures && input.project.modules.some((node, i) =>
-        node.inline && (!i || !node.typescript)) && errors.length > 0 &&
-        errors.every(line => /error EK9001: The TypeScript 7 mapper does not lower this VibeLang form yet;/.test(line))
-      if (knownInline) trace("known inline-refusal diagnostic-code regression")
-      else assert.match(checked.stdout + checked.stderr, /(?:EK|TS)9005\b/, "fork-accepted input requires stock acceptance or an explicit EK9005 refusal")
-      coverage[`${input.form}:refused`] = (coverage[`${input.form}:refused`] || 0) + 1
-      return
+      const output = checked.stdout + checked.stderr
+      const errors = output.split("\n").filter(line => /\berror [A-Z]+\d+:/.test(line))
+      assert.ok(errors.length > 0 && errors.every(line => /\berror (?:EK|TS)9005:/.test(line)), output)
+      return false
     }
-    coverage[`${input.form}:accepted`] = (coverage[`${input.form}:accepted`] || 0) + 1
     for (const file of Object.keys(p.files).filter(file => file.endsWith(".vibe"))) {
       const emitted = run(mapper, ["--emit", join(root, file), "--out", join(root, "stock", file.replace(/\.vibe$/, ".js"))], root, `mapper emit ${file}`)
       assert.equal(emitted.status, 0, emitted.stdout + emitted.stderr)
@@ -255,8 +235,23 @@ async function renderings(root, input, p) {
       "contract-native.ts", "contract-stock.ts"], root, "emitted declaration contracts")
     assert.equal(declarations.status, 0, declarations.stdout + declarations.stderr)
     assert.deepEqual(execute(root, p, "stock"), expected)
+    return true
   }
 }
+
+test("the stock mapper accepts and emits a plain project", async () => {
+  for (const [key, value] of Object.entries({ work, mapper, stock, compiler })) assert.ok(value, `missing ${key}; run bash test/e2e.sh`)
+  const input = {
+    project: { modules: [{ typescript: false, inline: false, value: 0, text: "plain", padding: 0 }],
+      directory: "src", dotted: false, query: "", edit: 1, options: false },
+    form: "plain", identifier: "mapperLocal", eol: "\n"
+  }
+  const root = mkdtempSync(join(resolve(work), "M1-")), p = project(input)
+  try {
+    write(root, p.files)
+    assert.equal(await renderings(root, input, p), true, "a plain project must render")
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
 
 for (const [name, rule, check] of [["mapper-positions", spansRule, positions], ["mapper-renderings", renderRule, renderings]]) {
   test(name, async () => {
@@ -274,6 +269,5 @@ for (const [name, rule, check] of [["mapper-positions", spansRule, positions], [
         }
         finally { rmSync(root, { recursive: true, force: true }) }
       } })
-    process.stderr.write(`M1 accepted-form coverage ${JSON.stringify(coverage)}\n`)
   })
 }

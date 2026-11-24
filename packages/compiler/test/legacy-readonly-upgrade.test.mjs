@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -8,7 +9,7 @@ import { fileURLToPath } from "node:url"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const binary = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
-const skip = !existsSync(binary) && "build the native compiler first"
+const skip = requireOrSkip(!existsSync(binary) && "build the native compiler first")
 
 function project(t) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-legacy-readonly-")))

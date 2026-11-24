@@ -3,6 +3,7 @@
 // require.resolve, a dynamic import or require: Bun 1.4.4 calls a plugin's
 // onResolve for each) ran a JavaScript callback. opencode's TUI plugin test
 // resolved effect/package.json about four million times: 34 s instead of 1 s.
+import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -20,7 +21,7 @@ const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/n
 const runtime = join(repo, "packages/runtime")
 const hasBun = spawnSync("bun", ["--version"]).status === 0
 const missing = [native, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
-const skip = !hasBun ? "bun is not on PATH" : missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`
+const skip = requireOrSkip(!hasBun ? "bun is not on PATH" : missing !== undefined && `run typescript/vibelang/smoke.sh first; missing ${missing}`)
 
 const relative = fc.tuple(fc.constantFrom("./", "../", "../../"), fc.stringMatching(/^[a-z][a-z0-9._-]{0,8}$/)).map(([p, n]) => p + n)
 const absolute = fc.oneof(fc.stringMatching(/^\/[a-z][a-z0-9/._-]{0,12}$/), fc.tuple(fc.constantFrom("C:", "d:"), fc.constantFrom("\\", "/"), fc.stringMatching(/^[a-z]{1,6}$/)).map((parts) => parts.join("")))

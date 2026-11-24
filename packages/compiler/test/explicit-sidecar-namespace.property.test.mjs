@@ -1,3 +1,4 @@
+import { requireOrSkip } from "./prerequisites.mjs"
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { spawnSync } from "node:child_process"
@@ -15,7 +16,7 @@ const ts = require("typescript"), fc = require("fast-check")
 const binary = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "packages/runtime/node_modules")
 const corpus = JSON.parse(readFileSync(new URL("./property-regressions/opencode-explicit-sidecar-namespace.json", import.meta.url)))
-const nativeOptions = { skip: !existsSync(binary) && "build the native compiler or set VIBELANG_BINARY" }
+const nativeOptions = { skip: requireOrSkip(!existsSync(binary) && "build the native compiler or set VIBELANG_BINARY") }
 if (process.env.VIBELANG_FUZZ_REQUIRE === "1") assert.ok(existsSync(binary), "required native compiler")
 const hash = text => createHash("sha256").update(text).digest("hex")
 let evidence = ""
