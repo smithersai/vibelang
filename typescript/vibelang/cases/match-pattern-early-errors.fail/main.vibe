@@ -1,0 +1,35 @@
+// expect: EK0707
+// Chapter 004: the early errors of the pinned draft's patterns are EK0707. A
+// required element or an elided position cannot follow an optional element,
+// not takes no unparenthesized not, a rest pattern is not a bare name, and
+// >> starts no relational pattern.
+const rest = (value: unknown) => false
+export function requiredAfterOptional(x: unknown) {
+  return match (x) { when [1, 2?, 3]: "hit"; default: "miss"; }
+}
+export function elisionAfterOptional(x: unknown) {
+  return match (x) { when [1, 2?, , ]: "hit"; default: "miss"; }
+}
+export function doubleNot(x: unknown) {
+  return match (x) { when not not 1: "hit"; default: "miss"; }
+}
+export function objectRest(x: unknown) {
+  return match (x) { when { a: 1, ...rest }: "hit"; default: "miss"; }
+}
+export function listRest(x: unknown) {
+  return match (x) { when [1, ...rest]: "hit"; default: "miss"; }
+}
+export function shift(x: number) {
+  return match (x) { when >> 1: "hit"; default: "miss"; }
+}
+// The valid forms beside them report nothing.
+export function valid(x: unknown) {
+  return match (x) {
+    when [1, 2?, 3?]: "optional";
+    when [1, 2?, ...]: "rest";
+    when not (not 1): "not";
+    when { a: 1, ...let others }: others;
+    when { a: 2, ...(rest) }: "matcher";
+    default: "miss";
+  }
+}

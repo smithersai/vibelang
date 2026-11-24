@@ -7,21 +7,24 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// Pattern matching (D206-D225) adopts the match expression and the is
-// operator of the TC39 pattern matching proposal (stage 1). The parser writes
-// them as TypeScript that the checker already narrows: typeof, in, ===,
-// Array.isArray, and the runtime's $is, with each binding a const. A
-// built-in matcher, String or Option.Some, is a $is call too, which the
-// checker narrows and the lowering writes as typeof or the module's guard
-// when the matcher resolves to the built-in (BuiltinMatchers). A match reads
-// its subject once, into a const that its tests read (subjectPath):
+// Pattern matching (chapter 004, VIP-7) adopts the match expression and the
+// is operator of the TC39 pattern matching proposal, pinned in
+// docs/design/vips/tc39-pattern-matching. The parser writes them as
+// TypeScript that the checker already narrows: typeof, in, ===,
+// Array.isArray, and the runtime's $is, with each binding a let or const
+// cell, as the pattern wrote it. A built-in matcher, String or Option.Some,
+// is a $is call too, which the checker narrows and the lowering writes as
+// typeof or the module's guard when the matcher resolves to the built-in
+// (BuiltinMatchers). A match reads its subject once, into a const that its
+// tests read (subjectPath):
 //
 //	match (e) {                              (() => {
 //	  when NotFound and { let id }:            const $match1 = e
-//	    `no user ${id}`;                       { if ($is(NotFound, $match1) && (typeof $match1 === "function" || typeof $match1 === "object") && $match1 !== null && "id" in $match1) { const id = $match1.id; return `no user ${id}` } }
+//	    `no user ${id}`;                       { if ($is(NotFound, $match1) && (typeof $match1 === "function" || typeof $match1 === "object") && $match1 !== null && "id" in $match1) { let id = $match1.id; return `no user ${id}` } }
 //	  when Timeout: "retry";                   { if ($is(Timeout, $match1)) { return "retry" } }
 //	}                                          return $noMatch($match1)
 //	                                         })()
@@ -33,24 +36,22 @@ import (
 // $noMatch, whose argument's narrowed type tells the checker which cases no
 // arm handles (EK4701, match.go in package vibelang).
 //
-// A data variant's pattern (D307) tests the variant with $is, which the
-// checker narrows and the lowering writes as the data type's own $is guard
-// (data.go in package vibelang), then reads the fields it lists:
+// A data variant is matched by its tag with an object pattern,
+// when { _tag: "Sent", let tracking }. The retired variant form,
+// when Delivery.Sent { let tracking }, is read for recovery only
+// (patternVariant): the checker reports it (EK0702).
 //
-//	when Delivery.Sent { let tracking }:     if ($is(Delivery.Sent, d)) { const tracking = d.tracking; ... }
+// x is P is a boolean expression. When P binds names, each binding becomes a
+// let statement of the binding's lexical home, and the is becomes one boolean
+// expression whose tests assign the names as they succeed (hoistVibeLangIs):
 //
-// The variant fixes the fields, so a field the pattern binds needs no in
-// test, and an optional one the value leaves out binds undefined.
+//	if (x is { id: let id }) log(id)
+//	                                         let $is1; let id; if (($is1 = x, true) && typeof $is1 === "object" && $is1 !== null && "id" in $is1 && (id = $is1.id, true)) log(id)
 //
-// x is P is a boolean expression. When P binds names, the if or while
-// statement whose condition joins it with && is rewritten so the bindings are
-// in scope in its body:
-//
-//	if (exit is Exit.Failure(let cause)) log(cause)
-//	                                         { const $is1 = exit; if (Exit.isFailure($is1)) { const cause = $is1.cause; log(cause) } }
-//
-// A pattern form VibeLang does not support yet becomes a call of
-// $patternError, which the checker reports (EK4703-EK4705).
+// A mistake in the grammar becomes a call of $patternError, which the
+// checker reports: EK0701 for an arm that does not end in ;, EK0705 for an is
+// binding with no lexical home, and EK0707 for every other pattern early
+// error, combinators that share a level without parentheses among them.
 
 // patternKind is the kind of a pattern as written.
 type patternKind int
@@ -62,7 +63,7 @@ const (
 	patternArray                        // [items, ...rest]
 	patternObject                       // { clauses, ...rest }
 	patternExtractor                    // a variable pattern with an argument list: expr(items, ...rest)
-	patternVariant                      // a variant and its fields: expr { clauses, ...rest } (D307)
+	patternVariant                      // the retired variant form, read for recovery: expr { clauses, ...rest }
 	patternAnd                          // items joined by and
 	patternOr                           // items joined by or
 	patternNot                          // not items[0]
@@ -94,7 +95,7 @@ type pattern struct {
 	clauses       []objectClause
 	parenthesized bool
 	operator      ast.Kind // a relational pattern's operator
-	code          int      // a $patternError code: the form, or 4705 for combinators sharing a level
+	code          int      // a $patternError code: the form, or 4705 for combinators sharing a level (reported as EK0707)
 	detail        string   // the $patternError detail
 }
 
@@ -184,7 +185,32 @@ type matchCompile struct {
 // expression: in a .vibe file, match ( subject ) { on one line, then when,
 // default, or }. The sequence is a TypeScript syntax error today.
 func (p *Parser) isStartOfVibeLangMatch() bool {
-	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "match" && p.isVibeLangFile() && p.lookAhead((*Parser).scanStartOfVibeLangMatch)
+	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "match" && p.isVibeLangFile() && p.lookAheadToVibeLangMatch()
+}
+
+// matchStartKey is a match word and the context its lookahead reads the
+// subject in.
+type matchStartKey struct {
+	pos                                                   int
+	flags                                                 ast.NodeFlags
+	fiber, nativeAwait, noBlockParams, asi, deniedTrailer bool
+}
+
+// lookAheadToVibeLangMatch runs scanStartOfVibeLangMatch at the current
+// token, once for each context. The scan reads the whole subject, which the
+// parse then reads again, so a match( nested in the subject would double the
+// work at every level without the verdict the scan of its parent left here.
+func (p *Parser) lookAheadToVibeLangMatch() bool {
+	key := matchStartKey{p.scanner.TokenStart(), p.contextFlags, p.vibelangFiberContext, p.vibelangNativeAwaitContext, p.vibelangNoBlockParams, p.vibeLangExpressionASI, p.vibelangDeniedTrailingBlock}
+	if starts, ok := p.vibelangMatchStarts[key]; ok {
+		return starts
+	}
+	starts := p.lookAhead((*Parser).scanStartOfVibeLangMatch)
+	if p.vibelangMatchStarts == nil {
+		p.vibelangMatchStarts = map[matchStartKey]bool{}
+	}
+	p.vibelangMatchStarts[key] = starts
+	return starts
 }
 
 func (p *Parser) scanStartOfVibeLangMatch() bool {
@@ -222,7 +248,7 @@ func (p *Parser) scanStartOfVibeLangAsyncMatch() bool {
 	defer func() { p.contextFlags = saved }()
 	p.setContextFlags(ast.NodeFlagsAwaitContext, true)
 	p.setContextFlags(ast.NodeFlagsYieldContext, false)
-	return p.scanStartOfVibeLangMatch()
+	return p.lookAheadToVibeLangMatch()
 }
 
 // parseVibeLangAsyncMatch parses async match (subject) { … } in the
@@ -251,6 +277,16 @@ func (p *Parser) isMatchWord(word string) bool {
 	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == word
 }
 
+// nextMatchWord reads past match, when, and, or or not, a word the grammar
+// spells literally: an escaped spelling is TS1260, as nextToken reports for a
+// keyword token such as is.
+func (p *Parser) nextMatchWord() {
+	if p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape() {
+		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
+	}
+	p.nextToken()
+}
+
 // parseVibeLangMatch parses match (subject) { when pattern: value; ... default: value; }.
 func (p *Parser) parseVibeLangMatch() *ast.Node {
 	return p.parseVibeLangMatchWith(nil, p.nodePos())
@@ -260,7 +296,7 @@ func (p *Parser) parseVibeLangMatch() *ast.Node {
 // caller has read; pos is where the expression starts.
 func (p *Parser) parseVibeLangMatchWith(async *ast.Node, pos int) *ast.Node {
 	info := &matchInfo{pos: pos, anchor: p.tokenRange(), async: async}
-	p.nextToken() // match
+	p.nextMatchWord() // match
 	p.parseExpected(ast.KindOpenParenToken)
 	info.subject = p.parseExpressionAllowIn()
 	p.parseExpected(ast.KindCloseParenToken)
@@ -290,11 +326,11 @@ func (p *Parser) parseVibeLangMatchWith(async *ast.Node, pos int) *ast.Node {
 			if sawDefault {
 				armError("The default arm comes last. Move this arm before it.")
 			}
-			p.nextToken()
+			p.nextMatchWord() // when
 			arm.pattern = p.parseMatchPattern()
 		default:
 			armError("An arm starts with when or default.")
-			p.nextToken()
+			p.skipToMatchArm()
 			continue
 		}
 		armForm.Head = core.NewTextRange(arm.anchor.Pos(), p.nodePos())
@@ -303,11 +339,7 @@ func (p *Parser) parseVibeLangMatchWith(async *ast.Node, pos int) *ast.Node {
 		} else {
 			armError("Write : after the pattern, when P: value;.")
 		}
-		if p.token == ast.KindThrowKeyword {
-			arm.value = p.parseVibeLangThrow(true) // VIP-7's direct throw arm
-		} else {
-			arm.value = p.parseAssignmentExpressionOrHigher()
-		}
+		arm.value = p.parseMatchArmBody()
 		arm.end = p.nodePos()
 		armForm.Value = p.sourceRange(arm.value)
 		switch p.token {
@@ -345,6 +377,76 @@ func (p *Parser) parseVibeLangMatchWith(async *ast.Node, pos int) *ast.Node {
 	return node
 }
 
+// parseMatchArmBody parses ArmBody (Appendix A): Expression[+In], the comma
+// operator included, or VIP-5's throw Expression. The body allows in whatever
+// surrounds the match, a for initializer too, as an argument list does.
+func (p *Parser) parseMatchArmBody() *ast.Node {
+	saved := p.contextFlags
+	defer func() { p.contextFlags = saved }()
+	p.setContextFlags(ast.NodeFlagsDisallowInContext|ast.NodeFlagsDecoratorContext, false)
+	if p.token == ast.KindThrowKeyword {
+		return p.parseVibeLangThrow(true) // VIP-7's direct throw arm
+	}
+	pos := p.nodePos()
+	value := p.parseAssignmentExpressionOrHigher()
+	// A comma before the next arm or the closing brace is a mistaken
+	// separator (EK0701), which no expression can continue.
+	for p.token == ast.KindCommaToken && !p.lookAhead((*Parser).nextTokenStartsMatchArm) {
+		comma := p.parseTokenNode()
+		value = p.makeBinaryExpression(value, comma, p.parseAssignmentExpressionOrHigher(), pos)
+	}
+	return value
+}
+
+// nextTokenStartsMatchArm reports whether what follows the current token is
+// the closing brace of a match, default and a colon, or when, a pattern and
+// a colon. An expression ends at none of them: after when(x) it has no colon.
+func (p *Parser) nextTokenStartsMatchArm() bool {
+	p.nextToken()
+	switch {
+	case p.token == ast.KindCloseBraceToken:
+		return true
+	case p.token == ast.KindDefaultKeyword:
+		p.nextToken()
+	case p.isMatchWord("when"):
+		p.nextToken()
+		p.parseMatchPattern()
+	default:
+		return false
+	}
+	return p.token == ast.KindColonToken
+}
+
+// skipToMatchArm reads past the tokens of what starts no arm, to the next ;
+// of the match, which it reads too, or to the when, default or closing brace
+// that follows, so one mistake reports once. Brackets in between keep their
+// contents.
+func (p *Parser) skipToMatchArm() {
+	depth := 0
+	for first := true; p.token != ast.KindEndOfFile; first = false {
+		switch p.token {
+		case ast.KindOpenBraceToken, ast.KindOpenParenToken, ast.KindOpenBracketToken:
+			depth++
+		case ast.KindCloseParenToken, ast.KindCloseBracketToken:
+			depth = max(depth-1, 0)
+		case ast.KindCloseBraceToken:
+			if depth == 0 {
+				return
+			}
+			depth--
+		case ast.KindSemicolonToken:
+			if depth == 0 {
+				p.nextToken()
+				return
+			}
+		}
+		if depth == 0 && !first && (p.token == ast.KindDefaultKeyword || p.isMatchWord("when")) {
+			return
+		}
+		p.nextToken()
+	}
+}
+
 // combinatorWord returns "and" or "or" when the current token is that word.
 func (p *Parser) combinatorWord() string {
 	if p.isMatchWord("and") {
@@ -358,7 +460,8 @@ func (p *Parser) combinatorWord() string {
 
 // parseMatchPattern parses a pattern: unary patterns joined by and, or by or.
 // Combinators of different kinds cannot share a level (the proposal requires
-// parentheses), which is EK4705.
+// parentheses): the pattern carries the internal code 4705, which the checker
+// reports as EK0707.
 func (p *Parser) parseMatchPattern() *pattern {
 	first := p.parseMatchUnaryPattern()
 	word := p.combinatorWord()
@@ -374,7 +477,7 @@ func (p *Parser) parseMatchPattern() *pattern {
 		if w != word {
 			mixed = true
 		}
-		p.nextToken()
+		p.nextMatchWord() // and, or
 		item := p.parseMatchUnaryPattern()
 		if item.kind == patternNot && !item.parenthesized {
 			mixed = true
@@ -387,12 +490,19 @@ func (p *Parser) parseMatchPattern() *pattern {
 	return result
 }
 
-// parseMatchUnaryPattern parses not pattern, or a primary pattern.
+// parseMatchUnaryPattern parses not pattern, or a primary pattern. The
+// operand of not is no combined pattern (the pinned draft's early error), so
+// not not P needs parentheses as not P and Q does.
 func (p *Parser) parseMatchUnaryPattern() *pattern {
 	if p.isMatchWord("not") && p.lookAhead((*Parser).nextTokenStartsPattern) {
 		anchor := p.tokenRange()
-		p.nextToken()
-		return &pattern{kind: patternNot, anchor: anchor, items: []*pattern{p.parseMatchUnaryPattern()}}
+		p.nextMatchWord() // not
+		operand := p.parseMatchUnaryPattern()
+		result := &pattern{kind: patternNot, anchor: anchor, items: []*pattern{operand}}
+		if operand.kind == patternNot && !operand.parenthesized {
+			result.code = 4705
+		}
+		return result
 	}
 	return p.parseMatchPrimaryPattern()
 }
@@ -496,8 +606,16 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 			p.reScanGreaterThanToken()
 		}
 		operator := p.token
+		operatorText := p.scanner.TokenText()
 		p.nextToken()
 		expr := p.parseMatchRelationOperand(operator)
+		if operator != ast.KindGreaterThanToken && operator != ast.KindGreaterThanEqualsToken && strings.HasPrefix(operatorText, ">") {
+			// The rescan read >>, >>>, >>= or >>>=, none of them relational.
+			if p.token == ast.KindOpenParenToken && !p.hasPrecedingLineBreak() {
+				p.parseArgumentList()
+			}
+			return &pattern{kind: patternInvalid, anchor: anchor, code: 707, detail: operatorText + " starts no pattern. A relational pattern compares with <, <=, > or >=. Compute anything else in a guard: when let v and if (…): …."}
+		}
 		if p.token == ast.KindOpenParenToken && !p.hasPrecedingLineBreak() {
 			// The pinned operand is a literal, a member expression or its
 			// signed form, never a call. Read the arguments, so the arm
@@ -516,9 +634,8 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 			return result
 		}
 		if p.token == ast.KindOpenBraceToken && !p.hasPrecedingLineBreak() {
-			// Delivery.Sent { let tracking }: a variant and its fields (D307).
-			// After any other matcher, a syntax error before, the checker
-			// reports the field list (EK4706).
+			// Delivery.Sent { let tracking }: the retired variant form, read
+			// for recovery. The checker reports the matcher (EK0702).
 			result := p.parseMatchObjectPattern(p.tokenRange())
 			result.kind, result.anchor, result.expr = patternVariant, anchor, expr
 			return result
@@ -618,11 +735,23 @@ func (p *Parser) parseMatchMetaProperty() *ast.Node {
 // extractor's argument list, between open and close, into result.
 func (p *Parser) parseMatchListPattern(result *pattern, close ast.Kind) {
 	p.nextToken() // [ or (
+	// The pinned draft's early errors: after an optional element, every
+	// element is optional and no position is elided. The first one that is
+	// not reports for the list.
+	sawOptional, afterOptional := false, (*pattern)(nil)
+	defer func() {
+		if afterOptional != nil {
+			result.items = append(result.items, afterOptional)
+		}
+	}()
 	for p.token != close && p.token != ast.KindEndOfFile {
 		if p.token == ast.KindCommaToken {
 			// An Elision: a comma where an element would start skips one
 			// position, which the list must have; the comma after an element
 			// separates and skips none, as in an array literal.
+			if sawOptional && afterOptional == nil {
+				afterOptional = &pattern{kind: patternInvalid, anchor: p.tokenRange(), code: 707, detail: "A list pattern cannot skip a position after an optional element. Write an optional element there, such as let _?."}
+			}
 			result.items = append(result.items, &pattern{kind: patternElision, anchor: p.tokenRange()})
 			p.nextToken()
 			continue
@@ -632,6 +761,9 @@ func (p *Parser) parseMatchListPattern(result *pattern, close ast.Kind) {
 			result.hasRest = true
 			if p.token != close && p.token != ast.KindCommaToken {
 				result.rest = p.parseMatchPattern()
+				if invalid := invalidRest(result.rest); invalid != nil {
+					result.items = append(result.items, invalid)
+				}
 			}
 			if p.token != close {
 				// The rest element comes last, with no comma after it. Read what
@@ -658,6 +790,9 @@ func (p *Parser) parseMatchListPattern(result *pattern, close ast.Kind) {
 		item := p.parseMatchPattern()
 		if p.parseOptional(ast.KindQuestionToken) {
 			item.optional = true
+			sawOptional = true
+		} else if sawOptional && afterOptional == nil {
+			afterOptional = &pattern{kind: patternInvalid, anchor: item.anchor, code: 707, detail: "A required element cannot follow an optional one in a list pattern. Make it optional too, P?, or move it before the optional elements."}
 		}
 		result.items = append(result.items, item)
 		if !p.parseOptional(ast.KindCommaToken) {
@@ -672,6 +807,28 @@ func misplacedRest(at core.TextRange) *pattern {
 	return &pattern{kind: patternInvalid, anchor: at, code: 707, detail: "A rest pattern comes last, with nothing after it."}
 }
 
+// nextTokenEndsPatternKey reports whether the token after the current one
+// ends a property key of an object pattern, so let, const or var before it
+// is that key, as in { let: 1 }, and not the keyword of a binding.
+func (p *Parser) nextTokenEndsPatternKey() bool {
+	switch p.nextToken() {
+	case ast.KindColonToken, ast.KindQuestionToken, ast.KindCommaToken, ast.KindCloseBraceToken:
+		return true
+	}
+	return false
+}
+
+// invalidRest returns the invalid pattern for rest, the pattern after ..., when
+// it is a bare name or property path (the pinned draft's early error for a
+// MemberExpressionPattern there): ...rest reads as destructuring, and would
+// call rest as a matcher and bind nothing. It returns nil for any other rest.
+func invalidRest(rest *pattern) *pattern {
+	if rest == nil || rest.kind != patternValue || rest.parenthesized || rest.expr.Kind == ast.KindRegularExpressionLiteral || rest.expr.Kind == ast.KindPrefixUnaryExpression {
+		return nil
+	}
+	return &pattern{kind: patternInvalid, anchor: rest.anchor, code: 707, detail: "A rest pattern cannot be a bare name, which would be called as a matcher and bind nothing. Bind the rest with ...let name, or parenthesize a matcher: ...(matcher)."}
+}
+
 // parseMatchObjectPattern parses { key, let name, key: pattern, [key]: pattern, ...pattern },
 // where a key or a binding may be written key? to pass when the property is absent.
 func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
@@ -683,10 +840,13 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			p.nextToken()
 			result.hasRest = true
 			result.rest = p.parseMatchPattern()
+			if invalid := invalidRest(result.rest); invalid != nil {
+				result.items = append(result.items, invalid)
+			}
 			if p.token != ast.KindCloseBraceToken {
 				result.items = append(result.items, misplacedRest(p.tokenRange()))
 			}
-		case p.token == ast.KindLetKeyword || p.token == ast.KindConstKeyword || p.token == ast.KindVarKeyword:
+		case (p.token == ast.KindLetKeyword || p.token == ast.KindConstKeyword || p.token == ast.KindVarKeyword) && !p.lookAhead((*Parser).nextTokenEndsPatternKey):
 			binding := p.parseMatchPrimaryPattern()
 			binding.name.Flags |= ast.NodeFlagsVibeLangShorthandBinding
 			key := p.vibelangSynthesized(p.factory.NewIdentifier(binding.name.Text()), binding.name.Loc)
@@ -721,9 +881,6 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 				// with a string key so its sub-pattern and recovery still run.
 				result.items = append(result.items, &pattern{kind: patternInvalid, anchor: key.Loc, code: 707, detail: "A pattern key cannot be a bigint literal. Write the computed key [" + key.Text() + "]:."})
 				clause.key = p.mString(key.Text(), key.Loc)
-			} else if key.Kind == ast.KindComputedPropertyName {
-				clause.key = key.Expression()
-				clause.computed = !isLiteralKey(clause.key)
 			} else if (ast.IsIdentifier(key) || ast.IsStringLiteral(key)) && key.Text() == "__proto__" {
 				// The pinned draft: "It is a Syntax Error if PropertyName is a
 				// LiteralPropertyName and PropName of PropertyName is "__proto__"".

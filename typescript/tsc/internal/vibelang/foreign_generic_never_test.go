@@ -2,7 +2,6 @@ package vibelang
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"strings"
 	"testing"
@@ -34,29 +33,6 @@ func TestForeignGenericNever(t *testing.T) {
 					}
 					source := "import {read} from './lib.js';export " + effect + "function probe(){return " + call + "}"
 					program, file, _, _ := requirementIdentityProgram(t, source, map[string]string{"lib.ts": lib})
-					// The failure-spec oracle separately retains the non-call admission gap.
-					if bound.throwing && !plain && (shape.key == "constructor" || shape.key == "tag") {
-						checker, done := program.GetTypeCheckerForFile(t.Context(), file)
-						defer done()
-						var invocation *ast.Node
-						var visit func(*ast.Node) bool
-						visit = func(node *ast.Node) bool {
-							if ast.IsNewExpression(node) || ast.IsTaggedTemplateExpression(node) {
-								invocation = node
-								return true
-							}
-							return node.ForEachChild(visit)
-						}
-						file.AsNode().ForEachChild(visit)
-						if invocation == nil {
-							t.Fatal("missing native invocation")
-						}
-						got, written := foreignThrowsContract(checker, invocation)
-						if !written || got != "RangeError" {
-							t.Fatalf("contract = %q, written = %t; want RangeError", got, written)
-						}
-						return
-					}
 					errors := 0
 					for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 						if d.Category() != diagnostics.CategoryError {
@@ -70,7 +46,7 @@ func TestForeignGenericNever(t *testing.T) {
 						if !bound.throwing || d.Source() != diagnosticSource || d.Code() != code {
 							t.Errorf("unexpected diagnostic: %s", d.String())
 						}
-						if bound.throwing && !plain && !strings.Contains(d.String(), "RangeError") {
+						if bound.throwing && !strings.Contains(d.String(), "'RangeError'") {
 							t.Errorf("uninstantiated diagnostic: %s", d.String())
 						}
 					}

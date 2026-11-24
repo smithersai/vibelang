@@ -79,6 +79,17 @@ for (const [flag, text] of [["-o", "table\\n"], ["-decisions", "decisions\\n"]])
 }
 `
   put("bin/generator.mjs", transport, 0o755)
+  // check-forms-table.sh reads the snapshot and approvals at the merge base in both
+  // modes. This git answers only those two questions, from the files under base/.
+  put("base/typescript/tsc/internal/vibelangmapper/forms_decisions.txt", "decisions\n")
+  put("base/typescript/tsc/internal/vibelangmapper/forms_decisions_approved.txt", "approval\n")
+  put("bin/git", `#!/bin/sh
+case "$3" in
+  merge-base) [ -n "$FORMS_TEST_NO_BASE" ] && exit 1; echo ${"b".repeat(40)} ;;
+  show) exec cat "$2/base/\${4#*:}" ;;
+  *) echo "unexpected git $*" >&2; exit 2 ;;
+esac
+`, 0o755)
   put("bin/bun", "#!/bin/sh\nexit 0\n", 0o755)
   put("bin/go", "#!/bin/sh\necho unexpected-go >&2\nexit 93\n", 0o755)
   const env = { ...process.env, PATH: join(root, "bin") + ":" + process.env.PATH,
@@ -96,9 +107,40 @@ for (const write of [false, true]) test("prepared generator preserves arguments 
   const [args] = f.trace()
   assert.equal(args[args.indexOf("-repo") + 1], f.root)
   assert.equal(args[args.indexOf("-node-modules") + 1], f.env.FORMS_NODE_MODULES)
-  assert.equal(args.includes("-previous"), write)
-  assert.equal(args.includes("-approved"), write)
+  // Both modes gate on the merge base: the committed snapshot and approvals there,
+  // and the working copy's approvals, of which only the new lines count.
+  const value = flag => args[args.indexOf(flag) + 1]
+  for (const flag of ["-previous", "-approved", "-previous-approved"]) assert.ok(args.includes(flag), flag + " in " + args)
+  assert.equal(value("-approved"), join(f.root, "typescript/tsc/internal/vibelangmapper/forms_decisions_approved.txt"))
+  assert.notEqual(value("-previous"), join(f.root, "typescript/tsc/internal/vibelangmapper/forms_decisions.txt"))
   assert.match(run.stdout, write ? /check-forms-table: wrote/ : /check-forms-table: ok/)
+})
+
+test("the gate reads the merge base's snapshot and approvals, not the working copy's", t => {
+  const f = fixture(t)
+  f.put("base/typescript/tsc/internal/vibelangmapper/forms_decisions.txt", "base decisions\n")
+  f.put("base/typescript/tsc/internal/vibelangmapper/forms_decisions_approved.txt", "base approval\n")
+  const probe = String.raw`
+import { readFileSync } from "node:fs"
+for (const [flag, want] of [["-previous", "base decisions\n"], ["-previous-approved", "base approval\n"], ["-approved", "approval\n"]]) {
+  const got = readFileSync(args[args.indexOf(flag) + 1], "utf8")
+  if (got !== want) { process.stderr.write(flag + " read " + JSON.stringify(got) + "\n"); process.exit(5) }
+}
+`
+  f.put("bin/generator.mjs", readFileSync(join(f.root, "bin/generator.mjs"), "utf8") + probe, 0o755)
+  for (const write of [false, true]) {
+    const run = f.run(write ? ["--write"] : [])
+    assert.equal(run.status, 0, run.stdout + run.stderr)
+  }
+})
+
+for (const write of [false, true]) test("a missing merge base stops " + (write ? "write" : "check") + " mode before generation", t => {
+  const f = fixture(t)
+  const run = f.run(write ? ["--write"] : [], { FORMS_TEST_NO_BASE: "1" })
+  assert.equal(run.status, 1, run.stdout + run.stderr)
+  assert.match(run.stderr, /cannot find the merge base/)
+  assert.ok(!existsSync(f.env.FORMS_TEST_TRACE), "the generator must not run without a base")
+  assert.equal(readFileSync(join(f.root, "typescript/tsc/internal/vibelangmapper/forms_decisions.txt"), "utf8"), "decisions\n")
 })
 
 test("a prepared executable still detects a changed committed table and decisions", t => {
@@ -275,8 +317,7 @@ test("retry retains a standalone overlay and its approval arguments", t => {
   assert.equal(calls.length, 2)
   assert.deepEqual(calls[0].slice(1), calls[1].slice(1))
   assert.ok(calls[1].includes("-overlay"))
-  assert.ok(calls[1].includes("-previous"))
-  assert.ok(calls[1].includes("-approved"))
+  for (const flag of ["-previous", "-approved", "-previous-approved"]) assert.ok(calls[1].includes(flag), flag)
 })
 
 

@@ -32,8 +32,10 @@ func TestErrorStaticMembers(t *testing.T) {
 func TestErrorStaticMembersOnlyDeclarations(t *testing.T) {
 	source := "error E { id: string; get message() { return this.id } }\nschema error S { id: string }\nclass C extends Data.TaggedError(\"C\") { static x = 1 }\nclass D extends Schema.TaggedError<D>()(\"D\", {}) { static x = 1 }\n"
 	program, file, _, _ := editorProgram(t, source)
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Code() == 1302 {
+	// Every declaration compiles: an error of another code would leave the
+	// static rule unreached.
+	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+		if d.Category() == diagnostics.CategoryError {
 			t.Errorf("valid class: %s", d.String())
 		}
 	}

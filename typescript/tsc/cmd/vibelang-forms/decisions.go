@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -203,11 +204,18 @@ func freshApprovals(previous, current []string) []string {
 func unapprovedMoves(previous, next, approvals []string) []string {
 	before, after := decisionSiteOrder(previous), decisionSiteOrder(next)
 	approved := map[string]bool{}
+	uncited := map[string]bool{}
 	for _, approval := range approvals {
 		entry, reason, ok := strings.Cut(approval, " #")
-		if ok && strings.TrimSpace(reason) != "" {
-			approved[strings.Join(strings.Fields(entry), " ")] = true
+		if !ok || strings.TrimSpace(reason) == "" {
+			continue
 		}
+		entry = strings.Join(strings.Fields(entry), " ")
+		if weakensDecision(entry) && !issueCitation.MatchString(reason) {
+			uncited[entry] = true
+			continue
+		}
+		approved[entry] = true
 	}
 	var moved []string
 	for group, oldSites := range before {
@@ -218,11 +226,72 @@ func unapprovedMoves(previous, next, approvals []string) []string {
 				continue
 			}
 			entry := now.key + ": " + old.result + " -> " + now.result
-			if !approved[strings.Join(strings.Fields(entry), " ")] {
+			key := strings.Join(strings.Fields(entry), " ")
+			if uncited[key] {
+				moved = append(moved, entry+" (a decided form becomes a choice or fallback: the reason must cite a tracking issue, #N)")
+			} else if !approved[key] {
 				moved = append(moved, entry)
 			}
 		}
 	}
 	sort.Strings(moved)
 	return moved
+}
+
+// issueCitation matches a tracking issue in an approval's reason: #518 or
+// an issues/518 URL.
+var issueCitation = regexp.MustCompile(`(^|[^\w&])#[0-9]+\b|/issues/[0-9]+\b`)
+
+// weakensDecision reports whether an approval entry, "site kind: old -> new",
+// moves a decided form (neither choice nor fallback provenance) to a choice
+// or a fallback. Such a move makes the projector guess or ask where it
+// decided before, so its approval must name the issue that tracks it (#518).
+func weakensDecision(entry string) bool {
+	_, move, ok := strings.Cut(entry, ": ")
+	if !ok {
+		return false
+	}
+	old, now, ok := strings.Cut(move, " -> ")
+	if !ok {
+		return false
+	}
+	undecided := func(decision string) bool {
+		fields := strings.Fields(decision)
+		return len(fields) == 0 || fields[0] == "choice" || fields[len(fields)-1] == "fallback"
+	}
+	return !undecided(old) && undecided(now)
+}
+
+// duplicateApprovals returns each approval entry, the text before " #", that
+// the file holds more than once. One move needs one reviewed line; a second
+// copy, often with a reworded reason, only hides which review applies.
+func duplicateApprovals(approvals []string) []string {
+	seen := map[string]int{}
+	var duplicates []string
+	for _, approval := range approvals {
+		entry, _, _ := strings.Cut(approval, " #")
+		entry = strings.Join(strings.Fields(entry), " ")
+		if seen[entry]++; seen[entry] == 2 {
+			duplicates = append(duplicates, entry)
+		}
+	}
+	sort.Strings(duplicates)
+	return duplicates
+}
+
+// approvalGate checks a fresh decision snapshot against the previous one and
+// the approvals file at path. It returns the problem and its items, or ""
+// when the snapshot may be recorded. Both modes of
+// scripts/check-forms-table.sh, --write included, run it.
+func approvalGate(previous, next, approvals, historical []string, haveHistory bool, path string) (string, []string) {
+	if duplicates := duplicateApprovals(approvals); len(duplicates) > 0 {
+		return fmt.Sprintf("%d decision moves are approved more than once in %s; keep one line, with one reason, for each", len(duplicates), path), duplicates
+	}
+	if haveHistory {
+		approvals = freshApprovals(historical, approvals)
+	}
+	if moved := unapprovedMoves(previous, next, approvals); len(moved) > 0 {
+		return fmt.Sprintf("%d decisions moved without an approval; add each line, with a reason after #, to %s", len(moved), path), moved
+	}
+	return "", nil
 }

@@ -1,0 +1,14 @@
+// expect: TS1260
+// ECMA-262 5.1.5: a terminal of the grammar is not written with an escape.
+// match, when, not, and and or report TS1260, as the keyword is does.
+export function words(x: unknown) {
+  const a = m\u0061tch (x) { when 1: "one"; default: "other"; }
+  const b = match (x) { wh\u0065n 1: "one"; default: "other"; }
+  const c = x \u0069s 1
+  const d = match (x) { when n\u006ft 1: "one"; default: "other"; }
+  const e = match (x) { when 1 \u0061nd 1: "one"; default: "other"; }
+  const f = match (x) { when 1 \u006fr 2: "one"; default: "other"; }
+  return [a, b, c, d, e, f]
+}
+// An escaped name stays a name.
+export const wh\u0065n = 1, n\u006ft = 2

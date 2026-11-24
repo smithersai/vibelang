@@ -141,7 +141,10 @@ func (p *Parser) parseVibeLangCatchHandlerWorker() *ast.Node {
 		// they are, so the checker reports EK0509 and its fix removes async,
 		// rather than a call of async followed by a stray =>. An async
 		// function expression is the handler itself for the same reason.
-		if p.lookAhead(func(p *Parser) bool { p.nextToken(); return p.token == ast.KindFunctionKeyword && !p.hasPrecedingLineBreak() }) {
+		if p.lookAhead(func(p *Parser) bool {
+			p.nextToken()
+			return p.token == ast.KindFunctionKeyword && !p.hasPrecedingLineBreak()
+		}) {
 			return p.parseFunctionExpression(false /*effect*/)
 		}
 		if arrow := p.tryParseParenthesizedArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/); arrow != nil {

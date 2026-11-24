@@ -1,4 +1,4 @@
-// expect-result: {"elision":["miss","hit","miss","miss"],"leading":["hit","miss"],"internal":["hit","miss"],"trailing":["hit","miss","miss"],"both":["pair","pair","other"],"optional":["hit","hit","miss","miss","miss"],"required":["miss","hit","miss"],"present":"miss","extractor":["none","some","other"],"rest":["hit","hit","miss"]}
+// expect-result: {"elision":["miss","hit","miss","miss"],"leading":["hit","miss"],"internal":["hit","miss"],"trailing":["hit","miss","miss"],"both":["pair","pair","other"],"optional":["hit","hit","miss","miss","miss"],"present":"miss","extractor":["none","some","other"],"rest":["hit","hit","miss"]}
 // Chapter 004, Elisions and Optional elements: each Elision consumes its full
 // number of commas, excluding a list-separator comma, and every skipped position
 // must exist. An absent optional element consumes zero values; a present
@@ -23,9 +23,6 @@ function both(xs: readonly unknown[]) {
 function optional(xs: readonly unknown[]) {
   return match (xs) { when [1?, 2?]: "hit"; default: "miss"; }
 }
-function required(xs: readonly unknown[]) {
-  return match (xs) { when [1?, 2]: "hit"; default: "miss"; }
-}
 function rest(xs: readonly unknown[]) {
   return match (xs) { when [1?, ...]: "hit"; default: "miss"; }
 }
@@ -41,7 +38,6 @@ export effect function main() {
     trailing: [trailing([1, 2]), trailing([1]), trailing([1, 2, 3])],
     both: [both([1]), both([1, 2]), both([1, 3])],
     optional: [optional([]), optional([1, 2]), optional([2]), optional([1, 3]), optional([1, 2, 3])],
-    required: [required([2]), required([1, 2]), required([1])],
     present: match ([undefined]) { when [1?]: "hit"; default: "miss"; },
     extractor: [fixed(Option.none()), fixed(Option.some(1)), fixed(Option.some(2))],
     rest: [rest([]), rest([1, 2, 3]), rest([2])]

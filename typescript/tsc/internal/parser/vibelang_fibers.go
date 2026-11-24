@@ -10,21 +10,24 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// The fiber forms of a .vibe file (D166-D180) parse into calls of the
-// prelude's fork and of the runtime's $await, $select, and $forConcurrent, so
-// the checker, the analyzer, and the lowering treat them as the calls they
+// The fiber forms of a .vibe file (chapter 002, VIP-17 and VIP-19) parse into
+// calls of the prelude's fork and of the runtime's $join and $forConcurrent,
+// so the checker, the analyzer, and the lowering treat them as the calls they
 // abbreviate.
 //
 //	fork getUser(id)                  fork(getUser(id))
-//	fork { poll(queue) }              fork(() => { poll(queue) })
-//	await user                        $await(user)
+//	join fiber                        $join(fiber)
 //	for concurrent(8) (const id of ids) save(id)
 //	                                  $forConcurrent(ids, 8, (id) => { save(id) })
 //
-// select parses as a labeled block that races its cases and runs the winner's
-// statements; see parseVibeLangSelect. The calls are not flagged NodeFlagsVibeLang,
-// which marks the schema declaration's Schema.Struct calls (schemas.go);
-// vibelang/fibers.go knows them by their synthesized callee.
+// Retired forms are read for recovery only, so each reports its code and the
+// rest of the file still parses: fork with a bare block, fork { … }, which the
+// grammar registry marks pending; the legacy await forms, await user as
+// $await(user) and the await.all family (EK1802); and the select block
+// (EK4607), which parses as a labeled block (parseVibeLangSelect). The calls
+// are not flagged NodeFlagsVibeLang, which marks the schema declaration's
+// Schema.Struct calls (schemas.go); vibelang/fibers.go knows them by their
+// synthesized callee.
 
 // tokenRange returns the range of the current token, without its leading trivia.
 func (p *Parser) tokenRange() core.TextRange {
@@ -644,11 +647,6 @@ func isFunctionOrClassBoundary(node *ast.Node) bool {
 // with ordinary token separation, as await follows for in for await.
 func (p *Parser) isVibeLangConcurrentFor() bool {
 	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "concurrent" && p.isVibeLangFile() && p.lookAhead((*Parser).nextTokenIsOpenParen)
-}
-
-func (p *Parser) nextTokenIsOpenParenOnSameLine() bool {
-	p.nextToken()
-	return p.token == ast.KindOpenParenToken && !p.hasPrecedingLineBreak()
 }
 
 // nextTokenStartsConcurrentDeclaration recognizes both valid declarations

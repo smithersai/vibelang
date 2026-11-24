@@ -1887,7 +1887,7 @@ func getReferencedSymbolsForSymbol(ctx context.Context, program *compiler.Progra
 	// Compute the meaning from the location and the symbol it references
 	searchMeaning := ast.SemanticMeaningAll
 	if options.use != referenceUseRename {
-		searchMeaning = getIntersectingMeaningFromDeclarations(node, symbol, ast.SemanticMeaningAll)
+		searchMeaning = getIntersectingMeaningFromDeclarations(node, symbol, ast.SemanticMeaningAll) | writtenNameMeaning(symbol)
 	}
 	state := newState(ctx, program, sourceFiles, sourceFilesSet, node, checker, searchMeaning, options)
 

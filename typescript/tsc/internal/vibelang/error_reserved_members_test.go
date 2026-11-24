@@ -75,8 +75,10 @@ func TestErrorReservedNonPayloadMemberControls(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, source+"\n")
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Code() == 2117 {
+			// Each control compiles: an error of another code would leave
+			// the reserved-member rule unreached.
+			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+				if d.Category() == diagnostics.CategoryError {
 					t.Errorf("unrelated source was rejected: %s", d.String())
 				}
 			}

@@ -131,6 +131,7 @@ type Parser struct {
 	vibelangAsyncMatches       []*ast.Node                    // async match source boundaries
 	vibelangAsyncMatchJumps    map[*ast.Node]bool             // source jumps already diagnosed as EK0706
 	vibelangMatches            map[*ast.Node]*matchInfo       // match expressions as written, by their call or statement (vibelang_match.go)
+	vibelangMatchStarts        map[matchStartKey]bool         // what the match lookahead found at each match word and context (vibelang_match.go)
 	vibelangMatchMemberArms    map[*ast.Node][]MatchMemberArm // normalized tagged-member coverage
 	vibelangMatchKeyTypes      map[*ast.Node]*ast.Node        // original computed key expressions by generated declaration
 	vibelangIsBindings         map[*ast.Node]*isInfo          // is expressions whose patterns bind names, by their markers (vibelang_match.go)

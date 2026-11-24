@@ -670,10 +670,15 @@ func (a *analyzer) runsAsEffect(fn *ast.Node) bool {
 // knownThrowsText names what a call known to throw throws. A written
 // @throws type that names no class, such as {typeof sentinel} or {"default"},
 // makes the call known to throw unknown; the message shows the written
-// contract, as EK0403 does, rather than unknown.
+// contract, as EK0403 does, rather than unknown. A contract that names a type
+// parameter, @throws {T}, shows the type this call gives it: RangeError for
+// call<RangeError>(), not T.
 func knownThrowsText(c *checker.Checker, node *ast.Node, failures []*checker.Type) string {
 	if len(failures) == 1 && failures[0] == c.GetUnknownType() {
 		if t := callTrust(c, node); !t.unknown && strings.TrimSpace(t.unreachable) != "" {
+			if bound, written := foreignThrowsContract(c, node); written && bound != "" {
+				return bound
+			}
 			return strings.TrimSpace(t.unreachable)
 		}
 	}

@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"slices"
 	"strconv"
 	"testing"
 
@@ -16,7 +17,8 @@ func TestErrorRejectedMemberKeepsTypeScriptErrorsOutside(t *testing.T) {
 			codes = append(codes, d.Source()+strconv.Itoa(int(d.Code())))
 		}
 	}
-	if len(codes) != 2 || codes[0] != "EK1304" && codes[1] != "EK1304" {
+	slices.Sort(codes)
+	if !slices.Equal(codes, []string{"2322", "EK1304"}) {
 		t.Fatalf("got %v, want EK1304 and the getter's TS2322", codes)
 	}
 }

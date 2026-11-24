@@ -128,17 +128,16 @@ func main() {
 			if err != nil {
 				fail(err)
 			}
+			var historical []string
 			if *previousApproved != "" {
-				historical, err := readLines(*previousApproved)
-				if err != nil {
+				if historical, err = readLines(*previousApproved); err != nil {
 					fail(err)
 				}
-				approvals = freshApprovals(historical, approvals)
 			}
-			if moved := unapprovedMoves(prev, lines, approvals); len(moved) > 0 {
-				fmt.Fprintf(os.Stderr, "vibelang-forms: %d decisions moved without an approval; add each line, with a reason after #, to %s:\n", len(moved), *approved)
-				for _, m := range moved {
-					fmt.Fprintln(os.Stderr, "  "+m)
+			if problem, items := approvalGate(prev, lines, approvals, historical, *previousApproved != "", *approved); problem != "" {
+				fmt.Fprintln(os.Stderr, "vibelang-forms: "+problem+":")
+				for _, item := range items {
+					fmt.Fprintln(os.Stderr, "  "+item)
 				}
 				os.Exit(1)
 			}

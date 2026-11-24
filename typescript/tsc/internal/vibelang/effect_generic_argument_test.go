@@ -3,6 +3,8 @@ package vibelang
 import (
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 func TestEffectIntoPlainGeneric(t *testing.T) {
@@ -79,9 +81,13 @@ func TestEffectIntoPlainGeneric(t *testing.T) {
 			}
 			program, file, _, _ := editorProgram(t, source)
 			count := 0
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
 				if d.Code() == EK4802.Code {
 					count++
+				} else if test.want == 0 && d.Category() == diagnostics.CategoryError {
+					// An accepted form compiles: an unresolved import or a
+					// type error would make the row pass for another reason.
+					t.Errorf("the accepted form does not compile: %s", d.String())
 				}
 			}
 			if count != test.want {

@@ -399,6 +399,17 @@ func (p *projector) visit(node *ast.Node, e env) {
 		p.plan.replace(p.tokenStart(name), name.End(), p.names.prelude(name.Text()))
 		p.visitList(node.TypeArguments(), e)
 		return
+	case p.isEffectQualifiedModule(node):
+		// VIP-14: Effect.Array is effect's Array module through the implicit
+		// Effect, which effect/Effect does not export.
+		var module *ast.Node
+		if node.Kind == ast.KindQualifiedName {
+			module = node.AsQualifiedName().Right
+		} else {
+			module = node.Name()
+		}
+		p.plan.replace(p.tokenStart(node), node.End(), p.names.qualifiedModule(module.Text()))
+		return
 	case node.Kind == ast.KindPropertySignature || node.Kind == ast.KindIndexSignature:
 		p.readonlyMember(node, e)
 		return
@@ -1010,6 +1021,28 @@ func (p *projector) isModuleMember(callee *ast.Node) bool {
 		return (from == "effect" || strings.HasPrefix(from, "effect/")) && p.names.declarations[name] == 1
 	}
 	return preludeNames[name] && !builtinGlobals[name] && !p.names.declared[name] && name[0] >= 'A' && name[0] <= 'Z'
+}
+
+// isEffectQualifiedModule reports whether node, a member access or a
+// qualified name, is Effect.<module> for one of effectQualifiedModules
+// through the implicit Effect. A written Effect, imported or declared at any
+// depth, keeps its TypeScript meaning, which has no such member (VIP-14).
+func (p *projector) isEffectQualifiedModule(node *ast.Node) bool {
+	var left, right *ast.Node
+	switch node.Kind {
+	case ast.KindPropertyAccessExpression:
+		if node.QuestionDotToken() != nil {
+			return false
+		}
+		left, right = node.Expression(), node.Name()
+	case ast.KindQualifiedName:
+		left, right = node.AsQualifiedName().Left, node.AsQualifiedName().Right
+	default:
+		return false
+	}
+	return ast.IsIdentifier(left) && left.Text() == "Effect" && left.Flags&ast.NodeFlagsReparsed == 0 &&
+		ast.IsIdentifier(right) && right.Flags&ast.NodeFlagsReparsed == 0 && effectQualifiedModules[right.Text()] &&
+		!p.names.declared["Effect"] && !p.names.topLevel["Effect"]
 }
 
 // mayBeServiceKey reports whether receiver, the object of a member call, is

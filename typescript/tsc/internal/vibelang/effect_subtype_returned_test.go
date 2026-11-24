@@ -3,6 +3,8 @@ package vibelang
 import (
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // VIP-5 keeps returned Effect subtypes as success data. Own EK4802
@@ -29,13 +31,19 @@ func TestReturnedEffectSubtypeIsData(t *testing.T) {
 		{"plain thunk", "export const f = Effect.suspend(() => make())\n", false},
 		{"no context", "export const f = effect () => make()\n", false},
 		{"written number", "export const f = effect (): number!! => try make()\n", false},
+		// The control: the same analysis reports an Effect inferred for a
+		// plain generic parameter, so the rows above hold more than silence.
+		{"inferred argument", "declare const job: Effect.Effect<number>\nfunction keep<T>(value: T): T { return value }\nexport const f = effect { const value = keep(job); return 1 }\n", true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, prelude+c.source)
 			var reported []string
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
 				if d.Source() == diagnosticSource && d.Code() == EK4802.Code {
 					reported = append(reported, d.String())
+				} else if d.Category() == diagnostics.CategoryError {
+					// An unrelated error can stop the analysis before EK4802.
+					t.Errorf("the fixture does not compile: %s", d.String())
 				}
 			}
 			if c.reported != (len(reported) == 1) || len(reported) > 1 {

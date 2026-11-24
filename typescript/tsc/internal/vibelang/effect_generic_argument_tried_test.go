@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // Ruling 2026-11-04 (proxy, on alchemy's 05:38Z EK4802 question): EK4802
@@ -45,10 +47,14 @@ func TestEffectIntoPlainGenericRunCall(t *testing.T) {
 			program, file, _, _ := editorProgram(t, source)
 			count := 0
 			var where []string
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
 				if d.Code() == EK4802.Code && strings.Contains(d.MessageText(), "infers an Effect in a plain function's generic parameter") {
 					count++
 					where = append(where, fmt.Sprint(d.Pos()))
+				} else if test.want == 0 && d.Category() == diagnostics.CategoryError {
+					// A silent row compiles: an error elsewhere would make it
+					// pass for another reason.
+					t.Errorf("the accepted form does not compile: %s", d.String())
 				}
 			}
 			if count != test.want {

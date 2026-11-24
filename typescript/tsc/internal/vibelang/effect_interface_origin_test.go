@@ -28,8 +28,8 @@ func TestEffectInterfaceRootArity(t *testing.T) {
 			if arity == 3 && len(diagnostics) != 0 {
 				t.Fatalf("genuine root module rejected: %v", diagnostics)
 			}
-			if arity != 3 && len(diagnostics) == 0 {
-				t.Fatal("incompatible Effect arity must produce a diagnostic")
+			if arity != 3 && (len(diagnostics) != 1 || diagnostics[0].Source() != diagnosticSource || diagnostics[0].Code() != 1011) {
+				t.Fatalf("incompatible Effect arity must be EK1011 alone: %v", diagnostics)
 			}
 		})
 	}

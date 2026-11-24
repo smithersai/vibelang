@@ -11,7 +11,7 @@ export effect function main() {
     7 is predicate, -1 is predicate,
     match (7) { when predicate: true; default: false; },
     1 is holder.predicate, 7 is holder["predicate"],
-    7 is not not predicate, 7 is optionalPredicate
+    7 is not (not predicate), 7 is optionalPredicate
   ]
   const extracted = [
     match (7) { when extractor(let n): n; default: 0; },

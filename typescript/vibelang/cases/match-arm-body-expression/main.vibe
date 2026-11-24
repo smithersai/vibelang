@@ -1,0 +1,31 @@
+// expect-result: {"comma":["one",1],"keys":["one","two"],"forIn":1,"rest":[{"b":2},"no"]}
+// Appendix A: ArmBody is Expression[+In], so an arm takes the comma operator
+// and, in a for initializer, the in operator. The pinned MatchProperty reads
+// let, const and var as property keys when a key ends after them, and a rest
+// pattern binds with ...let name.
+function comma(x: unknown) {
+  let n = 0
+  const r = match (x) { when 1: n++, "one"; default: "other"; }
+  return [r, n]
+}
+function keys(x: unknown) {
+  const r = match (x) { when { let: 1 }: "one"; default: "other"; }
+  const q = match (x) { when { const: 2 }: "two"; default: "other"; }
+  return [r, q]
+}
+function forIn(o: object) {
+  let out = 0
+  for (let i = match (1 as number) { when 1: "x" in o ? 5 : 0; default: 0; }; i < 6; i++) out++
+  return out
+}
+function rest(x: unknown) {
+  return match (x) { when { a: 1, ...let others }: others; default: "no"; }
+}
+export effect function main() {
+  return {
+    comma: comma(1),
+    keys: keys({ let: 1, const: 2 }),
+    forIn: forIn({ x: 1 }),
+    rest: [rest({ a: 1, b: 2 }), rest({ a: 2 })]
+  }
+}

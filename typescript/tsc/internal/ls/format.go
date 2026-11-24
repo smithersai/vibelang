@@ -5,6 +5,7 @@ import (
 	"context"
 	"iter"
 	"slices"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -73,16 +74,27 @@ func (l *LanguageService) ProvideFormatDocumentUsing(
 	text := file.Text()
 	formatted, err := formatter(ctx, file.FileName().AsString(), text)
 	if err != nil {
+		if selection != nil {
+			// A buffer that does not parse is the usual state while typing or
+			// selecting. A bounded request then has nothing to change.
+			edits := []*lsproto.TextEdit{}
+			return lsproto.TextEditsOrNull{TextEdits: &edits}, nil
+		}
 		return lsproto.TextEditsOrNull{}, err
 	}
 	changes := []core.TextChange{}
 	if formatted != text {
-		changes = append(changes, sharedFormatterChange(text, formatted))
+		if selection == nil {
+			changes = append(changes, sharedFormatterChange(text, formatted))
+		} else {
+			changes = sharedFormatterLineChanges(text, formatted)
+		}
 	}
 	edits := l.toLSProtoTextEdits(file, changes)
 	if selection != nil {
 		// The shared plugin formats complete programs. Never let a range or
-		// on-type request change text outside the user's selected region.
+		// on-type request change text outside the user's selected region:
+		// keep the line changes that lie inside it.
 		edits = slices.DeleteFunc(edits, func(edit *lsproto.TextEdit) bool {
 			return lsproto.ComparePositions(edit.Range.Start, selection.Start) < 0 ||
 				lsproto.ComparePositions(edit.Range.End, selection.End) > 0
@@ -118,6 +130,94 @@ func sharedFormatterChange(before, after string) core.TextChange {
 	}
 	return core.TextChange{TextRange: core.NewTextRange(start, oldEnd), NewText: after[start:newEnd]}
 }
+
+// sharedFormatterLineChanges returns the changes from before to after by
+// line, so a bounded request can keep the ones inside its selection when text
+// outside it is unformatted too: one change for each line of a run of
+// differing lines whose count the formatter kept, and one for a run it split
+// or joined. Each change is trimmed as sharedFormatterChange trims the whole
+// text.
+func sharedFormatterLineChanges(before, after string) []core.TextChange {
+	oldLines, newLines := strings.SplitAfter(before, "\n"), strings.SplitAfter(after, "\n")
+	head := 0
+	for head < len(oldLines) && head < len(newLines) && oldLines[head] == newLines[head] {
+		head++
+	}
+	oldEnd, newEnd := len(oldLines), len(newLines)
+	for oldEnd > head && newEnd > head && oldLines[oldEnd-1] == newLines[newEnd-1] {
+		oldEnd--
+		newEnd--
+	}
+	rows, columns := oldEnd-head, newEnd-head
+	if rows*columns > sharedFormatterLineLimit {
+		// The table of a very large rewrite costs more than a bounded
+		// request is worth: one change, as for the whole document.
+		return []core.TextChange{sharedFormatterChange(before, after)}
+	}
+	// common[i][j] is the length of the longest common subsequence of the
+	// lines from i and from j.
+	common := make([]int32, (rows+1)*(columns+1))
+	for i := rows - 1; i >= 0; i-- {
+		for j := columns - 1; j >= 0; j-- {
+			switch {
+			case oldLines[head+i] == newLines[head+j]:
+				common[i*(columns+1)+j] = common[(i+1)*(columns+1)+j+1] + 1
+			default:
+				common[i*(columns+1)+j] = max(common[(i+1)*(columns+1)+j], common[i*(columns+1)+j+1])
+			}
+		}
+	}
+	oldOffset, newOffset := 0, 0
+	for _, line := range oldLines[:head] {
+		oldOffset += len(line)
+	}
+	newOffset = oldOffset
+	var changes []core.TextChange
+	oldStart, newStart := oldOffset, newOffset
+	add := func(at int, from, to string) {
+		if from != to {
+			change := sharedFormatterChange(from, to)
+			changes = append(changes, core.TextChange{TextRange: core.NewTextRange(at+change.Pos(), at+change.End()), NewText: change.NewText})
+		}
+	}
+	flush := func() {
+		from, to := before[oldStart:oldOffset], after[newStart:newOffset]
+		fromLines, toLines := strings.SplitAfter(from, "\n"), strings.SplitAfter(to, "\n")
+		if len(fromLines) != len(toLines) {
+			add(oldStart, from, to)
+			return
+		}
+		// The formatter kept the run's line count: each line is its own
+		// change, so a selection of some of the run's lines formats them.
+		at := oldStart
+		for i, line := range fromLines {
+			add(at, line, toLines[i])
+			at += len(line)
+		}
+	}
+	for i, j := 0, 0; i < rows || j < columns; {
+		switch {
+		case i < rows && j < columns && oldLines[head+i] == newLines[head+j]:
+			flush()
+			oldOffset += len(oldLines[head+i])
+			newOffset += len(newLines[head+j])
+			oldStart, newStart = oldOffset, newOffset
+			i++
+			j++
+		case j == columns || i < rows && common[(i+1)*(columns+1)+j] >= common[i*(columns+1)+j+1]:
+			oldOffset += len(oldLines[head+i])
+			i++
+		default:
+			newOffset += len(newLines[head+j])
+			j++
+		}
+	}
+	flush()
+	return changes
+}
+
+// sharedFormatterLineLimit bounds the line table of sharedFormatterLineChanges.
+const sharedFormatterLineLimit = 4 << 20
 
 // getFormattingEditsForMappedRange formats each formatting-enabled verbatim intersection with originalRange.
 // Duplicate formatting projections are unsupported. If mappings overlap anyway, each original-text position

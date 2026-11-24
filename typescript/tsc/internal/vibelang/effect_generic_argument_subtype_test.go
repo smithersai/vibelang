@@ -1,6 +1,10 @@
 package vibelang
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+)
 
 func TestEffectSubtypeIntoPlainGeneric(t *testing.T) {
 	for _, test := range []struct {
@@ -33,9 +37,13 @@ export effect function main(value: Effect.Effect<number> | Effect.Effect<string>
 		t.Run(test.name, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, test.source)
 			count := 0
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
 				if d.Code() == EK4802.Code {
 					count++
+				} else if test.want == 0 && d.Category() == diagnostics.CategoryError {
+					// An accepted form compiles: an unresolved import or a
+					// type error would make the row pass for another reason.
+					t.Errorf("the accepted form does not compile: %s", d.String())
 				}
 			}
 			if count != test.want {

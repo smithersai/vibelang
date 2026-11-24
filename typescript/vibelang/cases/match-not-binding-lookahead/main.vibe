@@ -6,7 +6,7 @@ const helpers = { not }
 export function probe() { return match(5) { when not(let x): x; default: 0; } }
 function partial(s: unknown) { return match(s) { when not { value: let x }: "miss"; default: "hit"; } }
 function boundAfterNot() { const hit = 7 is not(let value); return [hit, value] }
-function boundAfterDoubleNot() { const hit = 7 is not not(let value); return [hit, value] }
+function boundAfterDoubleNot() { const hit = 7 is not (not(let value)); return [hit, value] }
 export function main() { return Effect.succeed([
   probe(),
   match(5) { when helpers.not(let x): x; default: 0; },
