@@ -107,3 +107,19 @@ test("a file the repository's own code finds by its name stays .ts (alchemy-49)"
   const { errors } = validatePlan({ version: 1, batches: [{ files: [named.path], reason: "entry" }] }, inventory)
   assert.ok(errors.some((e) => e.includes("packages/alchemy/src/Entrypoint.ts finds by its name")), errors.join("\n"))
 })
+
+test("issue 530: a stalled level holds only the cycle; its importers follow it", () => {
+  const l = levels([
+    file("a.ts", { imports: ["b.ts"] }), file("b.ts", { imports: ["a.ts"] }),
+    file("c.ts", { imports: ["a.ts"] }), file("d.ts", { imports: ["c.ts"] })
+  ])
+  assert.deepEqual(["a.ts", "b.ts", "c.ts", "d.ts"].map(p => l.get(p)), [0, 0, 1, 2])
+})
+
+test("issue 530: a cycle that imports another cycle comes after it", () => {
+  const l = levels([
+    file("c.ts", { imports: ["d.ts", "a.ts"] }), file("d.ts", { imports: ["c.ts"] }),
+    file("a.ts", { imports: ["b.ts"] }), file("b.ts", { imports: ["a.ts"] })
+  ])
+  assert.deepEqual(["a.ts", "b.ts", "c.ts", "d.ts"].map(p => l.get(p)), [0, 0, 1, 1])
+})

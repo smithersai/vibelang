@@ -170,22 +170,23 @@ process.exit(0)
 `
 
 // Imports each specifier in a fresh process; a crash or a hang marks the entry that was running.
-async function loadEntries({ runtime, specs, consumer, env, tune }) {
+// `exec` and `now` are seams for tests: the time cap is otherwise a race with the clock.
+export async function loadEntries({ runtime, specs, consumer, env, tune, exec = run, now = Date.now }) {
   const results = {}
   if (!specs.length) return { results, perProcess: 0 }
   const perProcess = specs.length <= tune.aloneUpTo ? 1 : runtime === "node" ? tune.nodeBatch : tune.bunBatch
-  const until = Date.now() + (runtime === "node" ? tune.nodeCapSeconds : tune.bunCapSeconds) * 1000
+  const until = now() + (runtime === "node" ? tune.nodeCapSeconds : tune.bunCapSeconds) * 1000
   let count = 0
   const pass = async (items, size, limitMs = tune.processMs) => {
     const queue = [...items]
     const worker = async () => {
       while (queue.length) {
-        if (Date.now() > until) { for (const spec of queue.splice(0)) results[spec] ??= { capped: true }; return }
+        if (now() > until) { for (const spec of queue.splice(0)) results[spec] ??= { capped: true }; return }
         const batch = queue.splice(0, size)
         const id = runtime + "-" + (++count)
         const list = join(consumer, id + ".json"), out = join(consumer, id + ".ndjson")
         writeFileSync(list, JSON.stringify(batch)); writeFileSync(out, "")
-        const process_ = await run([runtime, quote(join(consumer, "load.mjs")), quote(list), quote(out)].join(" "), { cwd: consumer, env, timeoutMs: limitMs })
+        const process_ = await exec([runtime, quote(join(consumer, "load.mjs")), quote(list), quote(out)].join(" "), { cwd: consumer, env, timeoutMs: limitMs })
         const started = []
         for (const line of readFileSync(out, "utf8").split("\n").filter(Boolean)) {
           const record = JSON.parse(line)
@@ -204,17 +205,20 @@ async function loadEntries({ runtime, specs, consumer, env, tune }) {
     }
     while (queue.length) await Promise.all(Array.from({ length: Math.min(tune.parallel, Math.ceil(queue.length / size)) }, worker))
   }
-  await pass(specs, perProcess)
-  if (perProcess > 1) {
-    const failed = Object.keys(results).filter(spec => results[spec].err)
-    for (const spec of failed) delete results[spec]
-    await pass(failed, 1)
+  // A rerun the cap stops before it starts keeps the first result: a failure
+  // or a hang stays one, not "the load cap ran out".
+  const rerun = async (items, limitMs) => {
+    const first = Object.fromEntries(items.map(spec => [spec, results[spec]]))
+    for (const spec of items) delete results[spec]
+    await pass(items, 1, limitMs)
+    for (const spec of items) if (results[spec]?.capped) results[spec] = first[spec]
   }
+  await pass(specs, perProcess)
+  if (perProcess > 1) await rerun(Object.keys(results).filter(spec => results[spec].err))
   // A slow load is not a hang: rerun each alone with the longer limit, and keep its time.
   const hung = Object.keys(results).filter(spec => results[spec].err?.startsWith("HANG "))
   if (hung.length && tune.hangRetryFactor > 1) {
-    for (const spec of hung) delete results[spec]
-    await pass(hung, 1, tune.processMs * tune.hangRetryFactor)
+    await rerun(hung, tune.processMs * tune.hangRetryFactor)
     for (const spec of hung) if (results[spec]?.names) results[spec].slowMs = results[spec].ms
   }
   return { results, perProcess }
@@ -344,7 +348,8 @@ function compareRuntime({ runtime, base, head, dir, name, headEntries, refuse, o
     // Its loss is one exports-lost refusal, not one per runtime as well.
     if (!(key in headEntries)) continue
     const result = after[spec]
-    if (result?.capped) { out.unverified.push({ package: dir, runtime, specifier: spec, reason: "the load cap ran out before this entry" }); continue }
+    // An entry the baseline loaded within its cap is unproven now: refused, not passed.
+    if (result?.capped) { refuse("load-capped", { runtime, specifier: spec }, `${spec} loaded under ${runtime} in the baseline, and the load cap ran out before it was tried`); continue }
     if (!ok(result)) {
       const error = result?.err ?? "the entry no longer has a target this runtime can import"
       refuse("load-failed", { runtime, specifier: spec, error }, `${spec} loaded under ${runtime} in the baseline and now fails: ${error}`)
@@ -362,9 +367,9 @@ function compareRuntime({ runtime, base, head, dir, name, headEntries, refuse, o
  * Compares two snapshots. A regression is a named refusal: a local dependency
  * that stops the pack installing, an install, pack or load that worked and now
  * fails, a lost export name, a specifier lost or added, or an export target
- * newly missing from the pack. A gained name, a capped entry, a tracked file a
- * pack script changed and a release the registry does not have yet are reported,
- * not refused.
+ * newly missing from the pack, or an entry the baseline loaded that the load
+ * cap stopped. A gained name, a tracked file a pack script changed and a release
+ * the registry does not have yet are reported, not refused.
  */
 export function comparePackLoads(baseline, candidate) {
   if (!baseline) return { state: "not-run", ok: true, reason: "the baseline has no pack results: its setup ran before this check; rerun setup to compare packs" }
@@ -374,7 +379,7 @@ export function comparePackLoads(baseline, candidate) {
     reason: Array.isArray(baseline.private) ? baseline.reason : (baseline.reason ?? "the baseline's pack check did not finish") + "; fix it and rerun setup, or no batch's packs can be compared" }
   if (!candidate || candidate.state !== "complete") return { state: "not-run", ok: false, reason: (candidate?.reason ?? "the candidate was not packed") + "; the batch's packs were not compared" }
   const refusals = []
-  const out = { unverified: [], namesGained: [], slowLoads: [], baselineFailures: [], newPackages: [] }
+  const out = { namesGained: [], slowLoads: [], baselineFailures: [], newPackages: [] }
   const summaries = {}
   for (const [dir, head] of Object.entries(candidate.packages)) {
     const base = baseline.packages[dir]

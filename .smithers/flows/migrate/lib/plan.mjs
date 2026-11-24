@@ -62,12 +62,26 @@ export function levels(files) {
   let current = 0
   while (remaining.length) {
     const ready = remaining.filter((p) => deps.get(p).every((d) => level.has(d)))
-    const next = ready.length ? ready : remaining // a cycle: place what is left together
+    const next = ready.length ? ready : sinkCycle(remaining, deps)
     for (const p of next) level.set(p, current)
     remaining = remaining.filter((p) => !level.has(p))
     current++
   }
   return level
+}
+
+// On a stall, one cycle whose imports outside it are all placed: the first file
+// whose unplaced imports all lead back to it, with everything it reaches.
+function sinkCycle(remaining, deps) {
+  const open = new Set(remaining)
+  const reach = (from) => {
+    const seen = new Set(), stack = [from]
+    while (stack.length) for (const d of deps.get(stack.pop())) if (open.has(d) && !seen.has(d)) { seen.add(d); stack.push(d) }
+    return seen
+  }
+  const reaches = new Map(remaining.map((p) => [p, reach(p)]))
+  const root = remaining.find((p) => [...reaches.get(p)].every((d) => reaches.get(d).has(p)))
+  return [root, ...[...reaches.get(root)].filter((d) => d !== root)]
 }
 
 const tested = (f) => f.testedBy.length > 0 || (f.coverage ?? 0) > 0

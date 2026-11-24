@@ -257,7 +257,7 @@ function candidates(ts, source, bindings) {
   return found
 }
 
-function specifierRename(file, old, next, renames, declarationImportStyle) {
+function specifierRename(file, old, next, renames) {
   const before = splitSpecifier(old), after = splitSpecifier(next)
   if (before.suffix !== after.suffix) return false
   old = before.path
@@ -270,10 +270,9 @@ function specifierRename(file, old, next, renames, declarationImportStyle) {
     ext === ".jsx" ? [path.slice(0, -4) + ".tsx"] : [path]
   const rename = renames.find(r => sources.includes(r.from))
   if (!rename || !samePathRename(rename)) return false
-  const targetExt = posix.extname(rename.to)
-  const permitted = declarationImportStyle === "js" ? (targetExt === ".vibex" ? ".jsx" : ".js") :
-    declarationImportStyle === "ts" ? (targetExt === ".vibex" ? ".tsx" : ".ts") : targetExt
-  return next === old.slice(0, -ext.length) + permitted
+  // A test names a migrated module by its source name; no option selects
+  // another spelling (rules.md: setup removes declarationImportStyle).
+  return next === old.slice(0, -ext.length) + posix.extname(rename.to)
 }
 const samePathRename = r => (r.from.endsWith(".ts") && r.to === r.from.slice(0, -3) + ".vibe") ||
   (r.from.endsWith(".tsx") && r.to === r.from.slice(0, -4) + ".vibex")
@@ -456,7 +455,7 @@ function selectGlob(glob, pats, root, file, options, globRoot) {
  * runs from before setup, so each bridge is an added file; it is setup's own
  * only while its bytes are the ones setup wrote.
  */
-export function verifyTestDiff({ ts, before, after, renames, bridges = [], generatedFiles = [], declarationImportStyle = "vibe", glob, scratch, cwd = ".", globRoot, parseVibe }) {
+export function verifyTestDiff({ ts, before, after, renames, bridges = [], generatedFiles = [], glob, scratch, cwd = ".", globRoot, parseVibe }) {
   renames = renames.filter(r => samePathRename(r) && Object.hasOwn(before, r.from) && !Object.hasOwn(after, r.from) && Object.hasOwn(after, r.to) && !Object.hasOwn(before, r.to))
   const result = { ok: true, files: [] }
   let trees
@@ -511,8 +510,7 @@ export function verifyTestDiff({ ts, before, after, renames, bridges = [], gener
             before: x.node.getText(), after: y.node.getText() }
           try {
             if (x.kind === "specifier") {
-              const style = typeof declarationImportStyle === "function" ? declarationImportStyle(file) : declarationImportStyle
-              if (!specifierRename(file, x.node.text, y.node.text, renames, style))
+              if (!specifierRename(file, x.node.text, y.node.text, renames))
                 throw new Error("specifier is not the same-path rename of a migrated module")
             } else if (x.kind === "path") {
               hunk.resolved = provePathRename({ ts, file, old: x.node, next: y.node, a, b, before, after, renames })

@@ -9,8 +9,8 @@ import { Minimatch } from "./vendor/minimatch.mjs"
 
 export const REFUSAL = "path-to-converted-file"
 
-const code = /\.(?:[cm]?[jt]sx?|vibe)$/
-const declaration = /\.d\.(?:vibe\.)?[cm]?ts$/
+const code = /\.(?:[cm]?[jt]sx?|vibex?)$/
+const declaration = /\.d\.(?:vibex?\.)?[cm]?ts$/
 const textData = /\.(?:ya?ml|toml|sh)$/
 const jsonData = /\.jsonc?$/
 const toolJson = /(?:^|\/)(?:package-lock|tsconfig[^/]*|jsconfig[^/]*|vibe\.config|turbo|biome|\.oxlintrc|\.eslintrc)\.jsonc?$/
@@ -250,7 +250,7 @@ function regexOf(text) {
 function globMatcher(glob, file, index, anyGlob = false) {
   if (glob.startsWith("!") || glob.length > 200 || !/[*?{]/.test(glob)) return null
   const last = glob.slice(glob.lastIndexOf("/") + 1)
-  if (!anyGlob && (!/[*?]/.test(last) || !/\bts\b|\.[cm]ts\b/.test(last))) return null
+  if (!anyGlob && (!/[*?]/.test(last) || !/\btsx?\b|\.[cm]ts\b/.test(last))) return null
   const cached = index.globs.get(glob + "\0" + file)
   if (cached !== undefined) return cached
   let matcher = null
@@ -436,7 +436,7 @@ const REMEDY = "keep the module TypeScript with `revert`, or change the caller i
 /** Every non-import reference in one source file that can reach a converted module. */
 export function scanSource(ts, text, file, index) {
   const json = jsonData.test(file)
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, json ? ts.ScriptKind.JSON : ts.ScriptKind.TS)
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, json ? ts.ScriptKind.JSON : /\.(?:[jt]sx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const env = { source, file, bindings: bindingsOf(ts, source) }
   const synthetic = syntheticPathOperands(ts, source, file)
   const refusals = [], reports = [], consumed = new Set(), found = new Set()
@@ -445,7 +445,8 @@ export function scanSource(ts, text, file, index) {
   const lineOf = node => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
   const shown = node => node.getText(source).replace(/\s+/g, " ").slice(0, 160)
   const refuse = (node, move, kind, reason) => {
-    const line = lineOf(node), key = [move.from, line, kind].join("\0")
+    // One converted module, one refusal: its .ts and .mts spellings are twins.
+    const line = lineOf(node), key = [move.to, line, kind].join("\0")
     if (found.has(key)) return
     found.add(key)
     refusals.push({ refusal: REFUSAL, module: move.from, to: move.to, file, line, kind, expression: shown(node), reason: reason + "; " + REMEDY })
@@ -747,11 +748,12 @@ export function checkConvertedPaths({ ts, tracked, read, owned, generated }) {
   const renames = convertedModules(tracked)
   const index = {
     renames,
-    modules: renames.filter(r => r.from.endsWith(".ts")),
+    // convertedModules pairs each target with the source kinds it can come from: .tsx for .vibex, .ts and .mts for .vibe.
+    modules: renames,
     byFrom: new Map(renames.map(r => [r.from, r])),
     live: new Set(tracked),
     converted: new Set(renames.map(r => r.to)),
-    moveOfVibe: new Map(renames.filter(r => r.from.endsWith(".ts")).map(r => [r.to, r])),
+    moveOfVibe: new Map(renames.filter(r => !r.from.endsWith(".mts")).map(r => [r.to, r])),
     packages: packageContext(tracked, read),
     globs: new Map()
   }

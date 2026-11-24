@@ -120,10 +120,10 @@ test("property: random allowed and forbidden test hunks obey detail 272", () => 
 // docs/design/src/900-appendices.md#fec6bab552afb170 — Chapter 900: fixture and declaration-import-style renames.
 // docs/design/src/900-appendices.md#ea561cd7dfcbc03a — Chapter 900: fixture and declaration-import-style renames.
 test("specifier styles and TSX renames keep the same module identity", () => {
-  for (const [old, next, style] of [["X.ts", "X.js", "js"], ["X.js", "X.vibe", "vibe"], ["X.js", "X.ts", "ts"]]) {
+  for (const [old, next, ok] of [["X.ts", "X.vibe", true], ["X.js", "X.vibe", true], ["X.ts", "X.js", false], ["X.js", "X.ts", false]]) {
     const a = 'import "../src/' + old + '"'
     const b = 'import "../src/' + next + '"'
-    assert.equal(check(a, b, { declarationImportStyle: style }).ok, true)
+    assert.equal(check(a, b).ok, ok, old + " -> " + next)
   }
   assert.equal(check('import "../src/X.tsx"', 'import "../src/X.vibex"', {
     before: { "src/X.tsx": "", "test/x.test.ts": 'import "../src/X.tsx"' },

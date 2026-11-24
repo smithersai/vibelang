@@ -69,7 +69,7 @@ A test's `Bun.spawn` or `Bun.spawnSync` child that runs `bun test` in a fixture 
 
 Test result titles that enumerate a renamed source path retain that source's base-name identity (Decision B). Comparison uses recorded renames, including unambiguous package-relative paths, and keeps the raw test receipts. Failed, missing, extra duplicate and skipped cases retain their statuses; an unrecorded path or a declaration sidecar is never mapped to a source.
 
-#Migration compile and revert steps refresh project references after source changes. They follow the reverse reference closure, clear each affected project's effective `outDir`, `declarationDir` and build-info artifacts, then rebuild the reference roots before checking dependents. A progress receipt beside `reference-refresh-compile.log` or `reference-refresh-revert.log` records planned projects, cleared outputs and rebuild success or failure. It writes `state: "planning"` before discovering outputs, and records `planningMs` when planning succeeds or fails. Indexed path containment avoids rescanning every source and output for each artifact. Output paths that overlap tracked files, configurations or the sources of a project being rebuilt, or that leave the repository, are refused before deletion. JavaScript and declaration files the repository does not track count as outputs even when an unrelated configuration lists them, such as a root `tsconfig.base.json` with `allowJs` and no `include`. Unrelated tooling configurations that extend generated framework files do not block this refresh. A configuration in the affected reference graph or one of its build dependencies still fails before deletion, and its error names the configuration and TypeScript diagnostic code.
+Migration compile and revert steps refresh project references after source changes. They follow the reverse reference closure, clear each affected project's effective `outDir`, `declarationDir` and build-info artifacts, then rebuild the reference roots before checking dependents. A progress receipt beside `reference-refresh-compile.log` or `reference-refresh-revert.log` records planned projects, cleared outputs and rebuild success or failure. It writes `state: "planning"` before discovering outputs, and records `planningMs` when planning succeeds or fails. Indexed path containment avoids rescanning every source and output for each artifact. Output paths that overlap tracked files, configurations or the sources of a project being rebuilt, or that leave the repository, are refused before deletion. JavaScript and declaration files the repository does not track count as outputs even when an unrelated configuration lists them, such as a root `tsconfig.base.json` with `allowJs` and no `include`. Unrelated tooling configurations that extend generated framework files do not block this refresh. A configuration in the affected reference graph or one of its build dependencies still fails before deletion, and its error names the configuration and TypeScript diagnostic code.
 
 ## Publication routes
 
@@ -471,7 +471,7 @@ The agent steps read `MIGRATE_AGENT` through Effect `Config`; without it, they f
 
 ### The eval
 
-`eval.ts` runs the flow, unmocked and with no agent, on a real Effect package, `fixture/canonical` (`fixture/README.md` says where it comes from), and compares four scores with `baseline.json`: the share of the scope's modules that end the run as `.vibe`, no new failing or missing test, unchanged published declarations, and a recorded batch. The step key includes the staged compiler's digest, so a compiler change that drops a score reads as a regression.
+`eval.ts` runs the flow, unmocked and with no agent, on a real Effect package, `fixture/canonical` (`fixture/README.md` says where it comes from), and compares five scores with `baseline.json`: the share of the scope's modules that end the run as `.vibe`, the share of verify's checks that ran and passed, no new failing or missing test, unchanged published declarations, and a recorded batch. A check whose receipt says `state: "not-run"` counts as neither passed nor failed, unless verify failed the batch on it. The eval also exits 1 while `declarations` or `recorded` scores 0, because a baseline at 0 cannot show a drop: the fixture does not yet reach either, so the eval fails until it does. The step key includes the staged compiler's digest, so a compiler change that drops a score reads as a regression.
 
 ```sh
 sh scripts/build-vibelang.sh && (cd packages/runtime && bun install && bun run build)
@@ -485,9 +485,10 @@ The migrate flow can move a zero-argument optional host call, such as `process.g
 
 `context.md` is the repair agent's system prompt. `build-context.mjs` generates it, so it is never edited by hand:
 
-- `rules.md`, this flow's own rules: the current call rule (a call runs where it stands; only a function literal defers it), every VibeLang form, wrapping Effect mindfully, platform access only through services, Effect's modules or `Experimental.*`, hatches only for real Promise and callback libraries, identical declarations, every test kept.
+- `rules.md`, this flow's own rules: the current call rule (calling an `effect` function returns its Effect unrun; `try` runs it), every VibeLang form, wrapping Effect mindfully, platform access only through services, Effect's modules or `Experimental.*`, hatches only for real Promise and callback libraries, identical declarations, every test kept.
 - The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md`.
-- The convert flow's cheat sheet and worked examples (`../convert/`).
+- The convert flow's worked examples (`../convert/examples/`), which `docs/tools/convert-examples-compile.test.ts` compiles. The convert flow's cheat sheet is left out: the skill gives every form, and the cheat sheet had drifted from it (issue #506).
+- The Replacements table of `docs/user/src/platform/platform-globals.md`.
 - Codemod formats only the files its write-ahead journal authored, including remaining TypeScript importers whose `.ts` specifier grows to `.vibe`. Protected tests and fixtures are excluded. The `formatted` receipt names every formatted file, exit status and `source-format.log`; `platform.formatted` retains the sibling subset. Revert formats only the files its reverse edits authored and records `revert-format.log`, so shortening a specifier also restores the target style. Unrelated local changes stay untouched.
 - Tests remain unchanged; their unconfigured source bundle graphs stay TypeScript. Inventory records `bundledBy` and `bundleReason` for each reached module, naming the test or test-only helper, line, input entry and bundler (decided detail 272). Static literal inputs, including `new URL(..., import.meta.url)` through `Path.fromFileUrl`, are followed through runtime imports, workspace export maps and aliases. Type-only edges and emitted JavaScript entry points are boundaries. For a plain inline `Bun.build({ packages: "external", … })` call, package imports are boundaries too, including private package imports beginning with `#`. Relative imports and TypeScript path aliases still belong to the source graph. This proof accepts no resolver plugins or literal plugins whose resolver hooks only throw; mutable options, resolver rewrites, configuration mutations and opaque plugin factories keep conservative handling. The graph is tracked separately for each bundle policy, so another call that bundles the same entry still retains its dependencies. A native adapter already supplied unconditionally by an ESM source plugin factory is proved through its exports, so that bundle needs no deferral. The draft reports each retained module, explicit plans cannot select it, and ordinary/one-pass rename guards recheck the current tests before writing. Inputs that cannot be resolved statically produce `bundleWarnings` for review; they are not certified as source-free.
 - `--route-bundled-imports` permits planning modules in unchanged source bundle graphs, including a whole-scope pass from `plan --scope`. The plan and rename stages apply the same configured routing policy. After conversion, native TypeScript value edges to migrated modules are routed automatically, including opaque esbuild entry arguments and bare Node children; see Native consumers of converted modules below. Tests and type-only edges keep their spelling. The emitted graph mirrors the package, so a native module reached through both source and emitted graphs can have two instances. Consumer runtime and API gates still decide whether the batch can record. `revert` restores routed edges first; the next emit routes remaining converted modules again.
@@ -580,7 +581,7 @@ The codemod leaves the code as TypeScript wrote it. The repair agent makes these
 
 Each rewrite keeps the program's meaning and type, or the repair does not make it. Where a diagnostic has a note that starts `No quick fix:`, the note says what the rewrite would change.
 
-#Match return-type hints keep checked type context: an untyped binding, including
+Match return-type hints keep checked type context: an untyped binding, including
 a destructured binding, gains an annotation. In another expression position,
 a local typed binding inside `do` preserves the result contract. The rewrite
 never inserts an `as` assertion for the hint.
@@ -796,12 +797,12 @@ goes under `slowLoads` with its time. A target the pack does not hold fails as
 | `pack-failed`, `pack-install-failed` | The package packed or installed in the baseline and now does not. |
 | `load-failed` | The specifier loaded under that runtime in the baseline and now fails, for example `export * from "./x.vibe"` under Bun with no preload. |
 | `load-names-lost` | The specifier still loads and no longer exports these names. |
+| `load-capped` | The specifier loaded under that runtime in the baseline, and the runtime's load cap ran out before it was tried. An entry that failed or hung keeps that result when the cap stops its rerun. |
 | `exports-lost`, `exports-added` | The pack stopped answering a specifier, or newly answers one, for example an exact `./X/internal` key that outranks a `./*/internal: null` block, or a `./Boot/*` wildcard that matches `X.d.vibe.ts`. |
 | `export-target-missing` | The specifier's target is no longer in the pack. |
 
 A gained name goes under `namesGained`, a load that needed the longer limit under
-`slowLoads`, an entry the load cap did not reach under `unverified`, and a failure
-the baseline has too under `baselineFailures`. None of these fails the batch. `report.json` lists each batch's result under `packLoad`.
+`slowLoads`, and a failure the baseline has too under `baselineFailures`. None of these fails the batch. `report.json` lists each batch's result under `packLoad`.
 
 The check never passes silently. It costs the most of any gate, so it runs last and
 only when every other check passed; otherwise `packLoad.state` is `not-run` with the

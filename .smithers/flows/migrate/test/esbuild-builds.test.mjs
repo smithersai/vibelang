@@ -207,3 +207,25 @@ test("wireEsbuildBuilds wires the scripts and sources of packages that reach mig
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+// #527: a name resolves by scope, so a second function's same-named options get the plugin too.
+test("addEsbuildPlugin follows each function's own options const", () => {
+  const text = `import { build } from "esbuild"
+
+export async function client() {
+  const options = { entryPoints: ["client.ts"], bundle: true }
+  await build(options)
+}
+export async function server() {
+  const options = { entryPoints: ["server.ts"], bundle: true }
+  await build(options)
+}
+`
+  const { text: wired, refusals } = wire(text, "scripts/build.ts")
+  assert.deepEqual(refusals, [])
+  assert.equal(wired.match(/plugins: \[vibelang\(\)\]/g).length, 2, wired)
+  assert.equal(syntaxErrors(wired), 0)
+  // A name declared twice in one scope is no single literal: its call is refused with its line.
+  const twice = `import { build } from "esbuild"\nvar options = { bundle: true }\nvar options = { bundle: false }\nawait build(options)\n`
+  assert.deepEqual(wire(twice).refusals.map(r => r.line), [4])
+})

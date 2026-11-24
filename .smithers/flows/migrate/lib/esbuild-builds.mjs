@@ -65,24 +65,33 @@ export function addEsbuildPlugin(text, ts, { fileName = "build.ts" } = {}) {
 
   // Every identifier the module declares, so the plugin's name does not shadow one.
   const declared = new Set()
-  const declarations = new Map()
-  const references = new Map()
+  const references = []
   const visitNames = (node) => {
     if (ts.isIdentifier(node)) {
       const parent = node.parent
       const isDeclaration = (parent.name === node && (ts.isVariableDeclaration(parent) || ts.isFunctionDeclaration(parent) || ts.isParameter(parent) || ts.isClassDeclaration(parent) || ts.isImportSpecifier(parent) || ts.isImportClause(parent) || ts.isNamespaceImport(parent) || ts.isBindingElement(parent)))
       const isName = (ts.isPropertyAccessExpression(parent) && parent.name === node) || (ts.isPropertyAssignment(parent) && parent.name === node) || (ts.isImportSpecifier(parent) && parent.propertyName === node) || ts.isPropertySignature(parent) || ts.isMethodDeclaration(parent)
-      if (isDeclaration) {
-        declared.add(node.text)
-        if (!declarations.has(node.text)) declarations.set(node.text, parent)
-      } else if (!isName) {
-        if (!references.has(node.text)) references.set(node.text, [])
-        references.get(node.text).push(node)
-      }
+      if (isDeclaration) declared.add(node.text)
+      else if (!isName) references.push(node)
     }
     ts.forEachChild(node, visitNames)
   }
   visitNames(source)
+  // Names resolve by scope: two functions may each declare their own `options`.
+  // A name the binder cannot tie to one declaration is followed nowhere, so its call is refused.
+  let checker
+  const symbolOf = (node) => {
+    if (!checker) {
+      const host = ts.createCompilerHost({ noLib: true, noResolve: true, allowJs: true })
+      host.getSourceFile = (file) => file === source.fileName ? source : undefined
+      checker = ts.createProgram([source.fileName], { noLib: true, noResolve: true, allowJs: true, allowNonTsExtensions: true }, host).getTypeChecker()
+    }
+    return checker.getSymbolAtLocation(node)
+  }
+  const declarationOf = (node) => {
+    const all = symbolOf(node)?.declarations
+    return all?.length === 1 ? all[0] : undefined
+  }
   const name = plugin ?? ["vibelang", "vibelangEsbuild", "vibelangPlugin"].find((candidate) => !declared.has(candidate))
   const call = `${name}()`
 
@@ -90,7 +99,7 @@ export function addEsbuildPlugin(text, ts, { fileName = "build.ts" } = {}) {
   const stringValue = (node) => {
     node = unwrap(node)
     if (node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))) return node.text
-    const declaration = node && ts.isIdentifier(node) ? declarations.get(node.text) : undefined
+    const declaration = node && ts.isIdentifier(node) ? declarationOf(node) : undefined
     if (!declaration || !ts.isVariableDeclaration(declaration) || !(declaration.parent.flags & ts.NodeFlags.Const)) return undefined
     const value = unwrap(declaration.initializer)
     return value && (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) ? value.text : undefined
@@ -118,22 +127,22 @@ export function addEsbuildPlugin(text, ts, { fileName = "build.ts" } = {}) {
   }
   findCalls(source)
   const optionsOf = new Set(calls.map((node) => node.arguments[0]).filter(Boolean))
-  // Whether every use of a local name is the options of an esbuild call (as itself, or as the callee of a call that is).
-  const onlyOptions = (local) => (references.get(local) ?? []).every((ref) => {
+  // Whether every use of a local binding is the options of an esbuild call (as itself, or as the callee of a call that is).
+  const onlyOptions = (local) => references.filter((ref) => ref.text === local.text && symbolOf(ref) === symbolOf(local)).every((ref) => {
     let node = ref
     if (ts.isCallExpression(node.parent) && node.parent.expression === node) node = node.parent
     while (node.parent && (ts.isParenthesizedExpression(node.parent) || ts.isAsExpression(node.parent) || ts.isSatisfiesExpression?.(node.parent))) node = node.parent
     return optionsOf.has(node)
   })
   const constLiteral = (local) => {
-    const declaration = declarations.get(local)
+    const declaration = declarationOf(local)
     if (!declaration || !ts.isVariableDeclaration(declaration) || !(declaration.parent.flags & ts.NodeFlags.Const)) return undefined
     const value = unwrap(declaration.initializer)
     return value && ts.isObjectLiteralExpression(value) ? value : undefined
   }
   // The object literals a local helper returns, or undefined when it returns anything else.
   const helperLiterals = (local) => {
-    const declaration = declarations.get(local)
+    const declaration = declarationOf(local)
     let fn
     if (declaration && ts.isFunctionDeclaration(declaration)) fn = declaration
     else if (declaration && ts.isVariableDeclaration(declaration) && declaration.parent.flags & ts.NodeFlags.Const) {
@@ -167,9 +176,9 @@ export function addEsbuildPlugin(text, ts, { fileName = "build.ts" } = {}) {
       return node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ? spreadKind(node.right, seen) : worst(spreadKind(node.left, seen), spreadKind(node.right, seen))
     }
     if (node.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(node) && node.text === "undefined") || node.kind === ts.SyntaxKind.FalseKeyword) return "none"
-    if (ts.isIdentifier(node) && !seen.has(node.text)) {
-      const literal = constLiteral(node.text)
-      return literal ? spreadKind(literal, new Set([...seen, node.text])) : "unknown"
+    if (ts.isIdentifier(node) && !seen.has(declarationOf(node))) {
+      const literal = constLiteral(node)
+      return literal ? spreadKind(literal, new Set([...seen, declarationOf(node)])) : "unknown"
     }
     return "unknown"
   }
@@ -219,10 +228,10 @@ export function addEsbuildPlugin(text, ts, { fileName = "build.ts" } = {}) {
       refuse(node, `the call has no options; ${byHand}`)
     } else if (ts.isObjectLiteralExpression(options)) {
       editObject(options, node)
-    } else if (ts.isIdentifier(options) && constLiteral(options.text) && onlyOptions(options.text)) {
-      editObject(constLiteral(options.text), node)
-    } else if (ts.isCallExpression(options) && ts.isIdentifier(options.expression) && helperLiterals(options.expression.text) && onlyOptions(options.expression.text)) {
-      for (const literal of helperLiterals(options.expression.text)) editObject(literal, node)
+    } else if (ts.isIdentifier(options) && constLiteral(options) && onlyOptions(options)) {
+      editObject(constLiteral(options), node)
+    } else if (ts.isCallExpression(options) && ts.isIdentifier(options.expression) && helperLiterals(options.expression) && onlyOptions(options.expression)) {
+      for (const literal of helperLiterals(options.expression)) editObject(literal, node)
     } else {
       refuse(node, `its options, ${options.getText(source).slice(0, 60)}, are not an object literal this edit can follow; ${byHand}`)
     }

@@ -147,3 +147,47 @@ export const slug = (path) => (path === "." || path === "" ? "root" : path.repla
 export const batchName = (index) => String(index + 1).padStart(2, "0")
 
 export const unique = (values) => [...new Set(values)]
+
+/**
+ * Splits one command over files into shell commands whose text stays below
+ * limit bytes. Linux limits the single bash -c argument (128 KiB) as well as
+ * total argv bytes; count escaped UTF-8 bytes and keep room below it.
+ */
+export function chunkCommands(prefix, files, limit = 64 * 1024) {
+  const head = prefix.map(quote).join(" ")
+  const commands = []
+  let command = head
+  for (const file of files) {
+    const arg = " " + quote(file)
+    if (command !== head && Buffer.byteLength(command + arg) > limit) {
+      commands.push(command)
+      command = head
+    }
+    command += arg
+  }
+  if (command !== head) commands.push(command)
+  return commands
+}
+
+/**
+ * A runner for chunked file commands sharing one log: each chunk writes
+ * log.part-N and log keeps every chunk's receipt. Each call returns the
+ * first nonzero exit code of its chunks; every chunk still runs.
+ */
+export function chunkedRunner(log) {
+  let part = 0
+  const receipts = []
+  return async (prefix, files, cwd) => {
+    let code = 0
+    for (const command of chunkCommands(prefix, files)) {
+      const chunkLog = log && log + ".part-" + (++part)
+      const result = await run(command, { cwd, log: chunkLog })
+      code ||= result.code
+      if (log) {
+        receipts.push(readFileSync(chunkLog, "utf8"))
+        writeFileSync(log, receipts.join("\n"))
+      }
+    }
+    return code
+  }
+}

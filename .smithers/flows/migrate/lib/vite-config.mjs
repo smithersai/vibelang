@@ -218,39 +218,50 @@ export function wireNativeViteConfigs({ root, packages, configs, manifests, ts, 
  * Point each Vite invocation of scripts at a renamed config (foldkit-78): a
  * named --config follows the rename in the form it was written, and a config
  * Vite would discover by name is named explicitly, since Vite never looks for
- * vite.config.vibe. Returns the scripts and one edit per changed script.
+ * vite.config.vibe. Returns the scripts and one edit per changed invocation,
+ * in script order: { script, module, before, after, from, to, at }. before
+ * and after are the whole script around that one change, so applying a
+ * script's edits in order replays it; from and to are the replaced span and
+ * at is where to starts in after, which restoreViteScripts locates.
  */
 export function nativeConfigScripts(scripts = {}, { root, dir, renames }) {
   const toOf = new Map(renames.map(r => [r.from, r.to]))
   const edits = []
   const next = Object.fromEntries(Object.entries(scripts).map(([name, command]) => {
     let cwd = dir
-    let module
-    const text = command.split(/(&&|\|\||;)/).map(part => {
+    const parts = command.split(/(&&|\|\||;)/)
+    const out = [...parts]
+    parts.forEach((part, index) => {
       const cd = /^\s*cd\s+([\w./-]+)\s*$/.exec(part)
-      if (cd) { cwd = posix.normalize(posix.join(cwd, cd[1])); return part }
+      if (cd) { cwd = posix.normalize(posix.join(cwd, cd[1])); return }
       const call = viteCall.exec(part)
-      if (!call) return part
+      if (!call) return
       const at = call.index + call[0].length
+      let module, start, from, to
       const named = namedConfig.exec(part.slice(at))
       if (named) {
         const value = named[1] ?? named[2] ?? named[3]
-        const to = toOf.get(posix.normalize(posix.join(cwd, value)))
-        if (!to) return part
-        module = to
-        const start = at + named.index + named[0].lastIndexOf(value)
-        return part.slice(0, start) + value.replace(/\.m?ts$/, ".vibe") + part.slice(start + value.length)
+        module = toOf.get(posix.normalize(posix.join(cwd, value)))
+        if (!module) return
+        start = at + named.index + named[0].lastIndexOf(value)
+        from = value
+        to = value.replace(/\.m?ts$/, ".vibe")
+      } else {
+        const file = configNames.map(f => posix.join(cwd, f)).find(f => toOf.has(f) || existsSync(join(root, f)))
+        module = file && toOf.get(file)
+        if (!module) return
+        const relConfig = posix.relative(cwd, module)
+        const formattedConfig = /[\s"'\\$`|&;()<>*?[\]{}#!~]/.test(relConfig) ? quote(relConfig) : relConfig
+        start = at
+        from = ""
+        to = " --config " + formattedConfig
       }
-      const file = configNames.map(f => posix.join(cwd, f)).find(f => toOf.has(f) || existsSync(join(root, f)))
-      const to = file && toOf.get(file)
-      if (!to) return part
-      module = to
-      const relConfig = posix.relative(cwd, to)
-      const formattedConfig = /[\s"'\\$`|&;()<>*?[\]{}#!~]/.test(relConfig) ? quote(relConfig) : relConfig
-      return part.slice(0, at) + " --config " + formattedConfig + part.slice(at)
-    }).join("")
-    if (text !== command) edits.push({ script: name, before: command, after: text, module })
-    return [name, text]
+      const before = out.join("")
+      out[index] = part.slice(0, start) + to + part.slice(start + from.length)
+      const offset = out.slice(0, index).join("").length + start
+      edits.push({ script: name, before, after: out.join(""), module, from, to, at: offset })
+    })
+    return [name, out.join("")]
   }))
   return { scripts: next, edits }
 }
@@ -272,17 +283,39 @@ export function rewriteViteScripts(root, renames, { read = file => readFileSync(
   return edits
 }
 
-/** Revert's part: each script the codemod pointed at module's .vibe config names its original config again. Returns the edits undone. */
+/**
+ * Revert's part: each Vite invocation the codemod pointed at module's .vibe
+ * config names its original config again. Only that invocation's span
+ * changes, so a script that also runs Vite on another renamed config keeps
+ * it. Returns the edits applied; throws when a recorded span is gone.
+ */
 export function restoreViteScripts(root, edits, module) {
   const vibe = vibePath(module)
   const undone = edits.filter(edit => edit.module === vibe)
-  for (const edit of undone) {
+  const manifests = new Map()
+  // Latest first: an invocation's offset was recorded after the earlier ones.
+  for (const edit of [...undone].reverse()) {
     const path = join(root, edit.manifest)
-    if (!existsSync(path)) continue
-    const pkg = JSON.parse(readFileSync(path, "utf8"))
-    if (pkg.scripts?.[edit.script] !== edit.after) continue
-    pkg.scripts[edit.script] = edit.before
-    writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
+    if (!manifests.has(path)) {
+      if (!existsSync(path)) throw new Error(`cannot restore Vite script ${edit.manifest}#${edit.script}: the manifest is gone`)
+      manifests.set(path, JSON.parse(readFileSync(path, "utf8")))
+    }
+    const pkg = manifests.get(path)
+    const current = pkg.scripts?.[edit.script]
+    const missing = () => new Error(`cannot restore Vite script ${edit.manifest}#${edit.script}: it no longer names ${vibe}`)
+    if (typeof current !== "string") throw missing()
+    if (typeof edit.to !== "string") {
+      // A receipt from before spans were recorded restores the whole script.
+      if (current !== edit.after) throw missing()
+      pkg.scripts[edit.script] = edit.before
+      continue
+    }
+    let found = -1
+    for (let i = current.indexOf(edit.to); i !== -1; i = current.indexOf(edit.to, i + 1))
+      if (found === -1 || Math.abs(i - edit.at) < Math.abs(found - edit.at)) found = i
+    if (found === -1 || edit.to === "") throw missing()
+    pkg.scripts[edit.script] = current.slice(0, found) + edit.from + current.slice(found + edit.to.length)
   }
+  for (const [path, pkg] of manifests) writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
   return undone
 }

@@ -217,8 +217,10 @@ export function rewriteReferences(root, renames, files, { read = file => existsS
       return whole
     })
     // Shell commands and configuration command values retain their existing path support.
+    // In a code file a bare `event.ts` is a member access, not a path: there only
+    // quoted literals, above, name a module.
     // Offsets below refer to the original source; collect edits before applying.
-    source.replace(token, (from, stem, extension, offset) => {
+    if (!code.test(file)) source.replace(token, (from, stem, extension, offset) => {
       if (quoted.some(m => m.index <= offset && offset < m.index + m[0].length)) return from
       if (comments.some(([start, end]) => start <= offset && offset < end)) return from
       if (imports.some(i => offset >= i.start && offset < i.end)) return from
