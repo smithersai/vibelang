@@ -244,12 +244,21 @@ const migrateTestData = [compilerNative, runtimeDist, S.glob("compiler/**"), mig
   S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
   S.file("//docs/user/src/setup/migrating-retired-forms.md"), S.file("//docs/design/src/000-intro.md"),
   S.file("//.smithers/instructions/app.md"), S.file("//typescript/tsc/internal/vibelang/prelude_collision_diagnostic.go"),
-  S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...install]
+  // Inputs the tests read outside the flow; package-inputs.test.mjs keeps this list complete.
+  S.file("//.smithers/package.json"), S.file("//.smithers/bun.lock"), S.file("PACKAGE.ts"),
+  S.file("//docs/design/src/002-running.md"), S.file("//docs/design/src/003-failures.md"), S.file("//docs/design/src/005-services.md"),
+  S.file("//docs/design/vips/0027-declaration-output.md"), S.file("//docs/design/vips/0039-vibex.md"),
+  S.file("//docs/design/vips/0040-module-declarations.md"),
+  S.file("//docs/user/src/setup/developer-tools.md"), S.file("//docs/user/src/setup/release-notes.md"),
+  S.file("//docs/user/src/setup/existing-project.md"), S.file("//docs/user/src/setup/vibelang-cli.md"),
+  S.file("//docs/user/src/setup/vite.md"),
+  S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...experimentInstall, ...install]
 const migrateTestTargets = Object.fromEntries(migrateShards().map(shard => [shard.label, S.Shell.Test({
   summary: `Migration tests: ${shard.file}.`,
   shell: migrateShardShell(shard),
   data: [...migrateTestData, ...(shard.parallel ? [S.file("//scripts/testing/parallel-property.mjs")] : [])],
-  tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj"), S.Host.bin("pnpm"), S.Host.bin("npm"),
+    S.Host.bin("git"), S.Host.bin("tar"), S.Host.bin("patch")],
   sandbox: "none",
   timeout: "10m"
 })]))

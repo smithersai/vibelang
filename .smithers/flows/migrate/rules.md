@@ -6,8 +6,8 @@ You migrate an existing Effect TypeScript codebase to VibeLang one batch of file
 
 For a scope-list pass, use the shared flow commands: `plan --scope`,
 `rename`, `check` and `settle`, all with `--run`. Keep one batch
-of all listed `.ts` modules; defer `.tsx` with its JSX cause. Never substitute
-a repository-specific driver or paths.
+of all listed `.ts`, `.mts` and `.tsx` modules: `.ts` and `.mts` become `.vibe`,
+and `.tsx` becomes `.vibex`. Never substitute a repository-specific driver or paths.
 
 A failing dependency is retried before its importers: select the sink components
 of the failing-module dependency graph, including paths through healthy files.

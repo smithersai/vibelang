@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { emitDeclarations } from "../lib/declarations.mjs"
-import { assertFinished, check, newErrors, parseDiagnostics, styleProblems, summarize } from "../lib/diagnostics.mjs"
+import { assertFinished, check, newErrors, parseDiagnostics, sourceIdentity, styleProblems, summarize } from "../lib/diagnostics.mjs"
 
 const output = `src/users.vibe(8,60): error EK1002: Effect.gen expects a JavaScript generator, but in VibeLang function* declares a producer.
   Write the body as an ordinary function: remove Effect.gen, function*, and yield*.
@@ -186,4 +186,11 @@ test("styleProblems retains all warning refusals", () => {
     ""
   ].join("\n"))
   assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), [])
+})
+
+test("issue 507: newErrors pairs a .tsx baseline error with the same error in its .vibex", () => {
+  const error = file => ({ category: "error", file, code: "TS1", message: "m" })
+  assert.equal(newErrors([error("src/A.tsx")], [error("src/A.vibex")]).length, 0)
+  assert.equal(sourceIdentity("src/A.tsx"), sourceIdentity("src/A.vibex"))
+  assert.equal(sourceIdentity("src/A.mts"), sourceIdentity("src/A.vibe"))
 })

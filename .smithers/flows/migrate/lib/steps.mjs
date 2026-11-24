@@ -72,7 +72,7 @@ import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { wireNodeTests } from "./node-tests.mjs"
 import { bindCompilerArtifact, compilerArtifactOf, readToolchain } from "./toolchain.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
-import { appendJsonl, batchName, isDeclarationFile, must, packageKey, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
+import { appendJsonl, batchName, chunkedRunner, isDeclarationFile, must, packageKey, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
 import { importerPaths } from "./importer-files.mjs"
 
 export const flowDir = fileURLToPath(new URL("../", import.meta.url))
@@ -275,13 +275,13 @@ async function runtimeEffect(config) {
  * formatter (Wire.formatterOf), so its format check passes on them. A
  * formatter that fails leaves the files as written and returns its exit code.
  */
-async function formatWritten(t, files, log) {
+export async function formatWritten(t, files, log) {
   const formatter = Wire.formatterOf(readJsonIf(join(t, "package.json"), {}))
   const targets = Wire.formattable(files).filter((file) => existsSync(join(t, file)))
   if (!formatter || !targets.length) return { formatter: formatter?.join(" ") ?? null, files: [], code: 0 }
   const [tool, ...args] = formatter
   const local = join(t, "node_modules/.bin", tool)
-  const { code } = await sh([existsSync(local) ? local : tool, ...args, ...targets].map(quote).join(" "), { cwd: t, log })
+  const code = await chunkedRunner(log)([existsSync(local) ? local : tool, ...args], targets, t)
   return { formatter: formatter.join(" "), files: targets, code }
 }
 
@@ -332,32 +332,11 @@ export async function formatVibe(config, files, log) {
   }
   const done = []
   let code = 0
-  let part = 0
-  const receipts = []
-  // Linux limits the single bash -c argument as well as total argv bytes.
-  // Count escaped UTF-8 bytes, keeping room below its 128 KiB limit.
+  const chunked = chunkedRunner(log)
+  // Run every group even after a failure; keep the first nonzero exit.
   const format = async (prefix, files, cwd) => {
-    const head = prefix.map(quote).join(" ")
-    const commands = []
-    let command = head
-    for (const file of files) {
-      const arg = " " + quote(file)
-      if (command !== head && Buffer.byteLength(command + arg) > 64 * 1024) {
-        commands.push(command)
-        command = head
-      }
-      command += arg
-    }
-    if (command !== head) commands.push(command)
-    for (const command of commands) {
-      const chunkLog = log && log + ".part-" + (++part)
-      const result = await sh(command, { cwd, log: chunkLog })
-      code ||= result.code
-      if (log) {
-        receipts.push(readFileSync(chunkLog, "utf8"))
-        writeFileSync(log, receipts.join("\n"))
-      }
-    }
+    const result = await chunked(prefix, files, cwd)
+    code ||= result
   }
   for (const [dprintConfig, group] of byConfig) {
     await format([group.dprint, "fmt", "--config", posix.basename(dprintConfig)], group.files, join(t, posix.dirname(dprintConfig)))
@@ -1802,18 +1781,29 @@ export async function revert(options) {
   return (await revertMany({ ...options, files: [{ file: options.file, reason: options.reason }] }))[0]
 }
 
+/**
+ * Every phase of a bulk revert is rerunnable. Requests are validated before
+ * anything changes; the journal (revert-journal.json in the batch) names each
+ * requested module before its first mutation, marks it restored once its .ts
+ * is back, and keeps each bookkeeping receipt as it lands. A rerun accepts a
+ * module the journal says is restored with bookkeeping pending, skips the
+ * steps it already took, and finishes the rest. reverted.json is written
+ * before the reference refresh, which can still fail on a configuration
+ * error; the module then leaves the journal.
+ */
 export async function revertMany(options) {
   const { p, config, plan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
   const aliases = aliasesOf(config)
-  const snippets = await captureTrackedSourceSnippets(config.target, { ts: () => typeScriptOf(config) })
   const requests = options.files ?? []
   if (!requests.length) throw new Error("revert needs at least one file")
-  sourceDeclarationImports(config,{restore:true})
-  bundledImports(config, { restore: true })
-  const seen = new Set(), prepared = [], layouts = new Map()
+  const journalPath = join(p.batch(b), "revert-journal.json")
+  const journal = readJsonIf(journalPath, { modules: {} })
+  const saveJournal = () => Object.keys(journal.modules).length ? writeJson(journalPath, journal) : rmSync(journalPath, { force: true })
   const progress = (stage, fields = {}) => appendJsonl(join(p.batch(b), "logs", "revert-progress.jsonl"), { at: new Date().toISOString(), stage, ...fields })
   progress("prepare", { files: requests.length })
+  // Validate the entire request before the first mutation.
+  const seen = new Set(), checked = []
   for (const item of requests) {
     const { file, reason = options.reason } = typeof item === "string" ? { file: item } : item
     if (typeof file !== "string" || !/\.(?:ts|tsx|mts|vibe|vibex)$/.test(file) || isDeclarationFile(file) || !reason) throw new Error("revert needs module paths and a cause")
@@ -1821,10 +1811,26 @@ export async function revertMany(options) {
     const vibe = /\.vibex?$/.test(file) ? file : vibePath(file), ts = plan.batches.flatMap(batch => batch.files).find(source => vibePath(source) === vibe) ?? vibe.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts")
     if (seen.has(ts)) throw new Error("duplicate revert: " + file)
     seen.add(ts)
+    const entry = journal.modules[ts]
+    if (entry?.state === "restored" && entry.vibe === vibe && !existsSync(join(config.target, vibe)) && existsSync(join(config.target, ts))) {
+      checked.push({ ts, vibe, reason, source: { batch: entry.sourceBatch }, pending: true })
+      continue
+    }
     if (!existsSync(join(config.target, vibe))) throw new Error("missing .vibe module (already reverted?): " + vibe)
     const source = await revertSource(config.target, p, plan, b, ts, vibe)
     const original = source.original ? Buffer.from(source.original.bytes, "base64") : await Jj.fileAt(config.target, source.revision, ts)
     if (original === null) throw new Error("missing revert source: " + ts)
+    checked.push({ ts, vibe, reason, source, original, pending: false })
+  }
+  const snippets = await captureTrackedSourceSnippets(config.target, { ts: () => typeScriptOf(config) })
+  for (const item of checked) if (!item.pending) journal.modules[item.ts] = { vibe: item.vibe, sourceBatch: item.source.batch, state: "requested", steps: {} }
+  saveJournal()
+  sourceDeclarationImports(config,{restore:true})
+  bundledImports(config, { restore: true })
+  const prepared = [], layouts = new Map()
+  for (const item of checked) {
+    if (item.pending) { prepared.push(item); continue }
+    const { vibe } = item
     const owner = config.packages.filter(pkg => pkg.dir === "." || vibe.startsWith(pkg.dir + "/")).sort((a, b) => b.dir.length - a.dir.length)[0]
     const project = owner && join(config.target, owner.dir, owner.tsconfig)
     const api = loadTypeScript([config.target, fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))])
@@ -1835,12 +1841,13 @@ export async function revertMany(options) {
     const settings = layouts.get(project)
     const declaration = settings ? sidecarPath(join(config.target, vibe), settings) : undefined
     const bodyDeclarations = moduleDeclarationFiles(api, join(config.target, vibe), readFileSync(join(config.target, vibe), "utf8"), declaration)
-    prepared.push({ ts, vibe, reason, source, original, bodyDeclarations, declaration })
+    prepared.push({ ...item, bodyDeclarations, declaration })
     progress("prepared", { file: vibe, completed: prepared.length, files: requests.length })
   }
-  progress("restore", { files: prepared.length, projects: layouts.size })
+  const fresh = prepared.filter(item => !item.pending)
+  progress("restore", { files: fresh.length, projects: layouts.size })
   const groups = new Map()
-  for (const item of prepared) {
+  for (const item of fresh) {
     if (item.source.original) {
       durableWrite(join(config.target, item.ts), item.original, item.source.original.mode)
       rmSync(join(config.target, item.vibe), { force: true })
@@ -1854,49 +1861,61 @@ export async function revertMany(options) {
     await Jj.restore(config.target, revision, items.slice(i, i + 100).flatMap(x => [x.ts, x.vibe]))
   }
   // Check before rewriting: jj may exit successfully without restoring a missing path.
-  progress("cleanup", { files: prepared.length })
-  for (const { ts, vibe, original, bodyDeclarations, declaration } of prepared) {
-    if (existsSync(join(config.target, vibe)) || !existsSync(join(config.target, ts)) || !readFileSync(join(config.target, ts)).equals(Buffer.from(original))) throw new Error("revert did not restore " + vibe)
+  // A module that returned is journaled as restored before any failure throws.
+  progress("cleanup", { files: fresh.length })
+  const missing = []
+  for (const { ts, vibe, original, bodyDeclarations, declaration } of fresh) {
+    if (existsSync(join(config.target, vibe)) || !existsSync(join(config.target, ts)) || !readFileSync(join(config.target, ts)).equals(Buffer.from(original))) { missing.push(vibe); continue }
     // Body declarations are compiler outputs owned by this source's parsed
     // module declarations. Keep similarly named declarations with no such body.
     for (const declaration of bodyDeclarations) rmSync(declaration, { force: true })
     rmSync(join(config.target, vibe.replace(/\.(vibex?)$/, ".d.$1.ts")), { force: true })
     if (declaration) rmSync(declaration, { force: true })
+    journal.modules[ts].state = "restored"
   }
+  saveJournal()
+  if (missing.length) throw new Error("revert did not restore " + missing[0])
   await Jj.trackFiles(config.target, prepared.map(item => item.ts))
   const results = []
   for (const { ts, reason, source } of prepared) {
+    const entry = journal.modules[ts]
+    // Each receipt is journaled as it lands, so a rerun never undoes an edit twice.
+    const step = async (name, take) => {
+      if (!Object.hasOwn(entry.steps, name)) { entry.steps[name] = (await take()) ?? null; saveJournal() }
+      return entry.steps[name]
+    }
     const cm = readJsonIf(p.codemod(source.batch)) ?? readJsonIf(p.codemodState(source.batch)) ?? {}
     const split = cm.platform?.splits?.find(s => s.file === ts)
-    restorePrivateResolverExports(config.target, split)
+    await step("privateResolverExports", () => { restorePrivateResolverExports(config.target, split); return true })
     if (split?.platform) rmSync(join(config.target, split.platform), { force: true })
     // The compiler's companion of the module, which an earlier toolchain's
     // `vibelang --fix` wrote, goes with the .vibe file it served.
     const companion = compilerCompanionOf(vibePath(ts))
     if (companion && isCompilerCompanion(config.target, companion)) rmSync(join(config.target, companion), { force: true })
     const recordedBuildEntries = cm.buildEntries?.edits ?? []
-    const buildEntryEdits = recordedBuildEntries.some(edit => edit.source === ts)
-      ? restoreBuildEntrypoints(config.target, recordedBuildEntries, ts, typeScriptOf(config)) : []
+    const buildEntryEdits = await step("buildEntryEdits", () => recordedBuildEntries.some(edit => edit.source === ts)
+      ? restoreBuildEntrypoints(config.target, recordedBuildEntries, ts, typeScriptOf(config)) : [])
     // A private helper plan can be durable before the step's result exists.
     const pending = readJsonIf(p.codemodState(source.batch))?.exportEdits ?? []
     const recordedExports = [...(cm.exportEdits ?? [])]
     for (const edit of pending) if (edit.privateCompanion && !recordedExports.some(e =>
       e.module === edit.module && e.manifest === edit.manifest && e.key === edit.key && e.privateCompanion === edit.privateCompanion))
       recordedExports.push(edit)
-    const exportEdits = restoreExports(config.target, recordedExports, ts)
-    const scriptEdits = restoreViteScripts(config.target, cm.scriptEdits ?? [], ts)
-    const packageScriptEdits = restoreScripts(config.target, cm.packageScriptEdits ?? [], ts)
+    const exportEdits = await step("exportEdits", () => restoreExports(config.target, recordedExports, ts))
+    const scriptEdits = await step("scriptEdits", () => restoreViteScripts(config.target, cm.scriptEdits ?? [], ts))
+    const packageScriptEdits = await step("packageScriptEdits", () => restoreScripts(config.target, cm.packageScriptEdits ?? [], ts))
     // Every consumer gets back the specifier the repository wrote, a
     // TypeScript one, an earlier VibeLang one, and one this batch converted:
     // VibeLang resolves ./x, ./x.js and an alias to x.ts as TypeScript does,
     // and an inferred declaration prints the written name (detail 272), so
     // revert leaves what a codemod that never converted x would (t3code
     // Mobile: 87 specifiers in 53 converted consumers came back as ./x.ts).
-    const importEdits = restoreSpecifiers(config.target, cm.importEdits ?? [], ts, aliases)
-    const refEdits = restoreReferences(config.target, cm.refEdits ?? [], ts)
-    const referenceEdits = []
-    const history = (plan?.batches ?? []).map((_, i) => readJsonIf(p.codemod(batchName(i))) ?? readJsonIf(p.codemodState(batchName(i)))).filter(Boolean)
-    if (history.some(result => result.referenceEdits?.length)) {
+    const importEdits = [...await step("importEdits", () => restoreSpecifiers(config.target, cm.importEdits ?? [], ts, aliases))]
+    const refEdits = await step("refEdits", () => restoreReferences(config.target, cm.refEdits ?? [], ts))
+    const referenceEdits = await step("referenceEdits", async () => {
+      const referenceEdits = []
+      const history = (plan?.batches ?? []).map((_, i) => readJsonIf(p.codemod(batchName(i))) ?? readJsonIf(p.codemodState(batchName(i)))).filter(Boolean)
+      if (!history.some(result => result.referenceEdits?.length)) return referenceEdits
       const api = loadTypeScript([
         ...(config.toolchain.kind === "staged" ? [config.toolchain.dir] : []),
         config.target, ...config.packages.map(pkg => join(config.target, pkg.dir)),
@@ -1916,16 +1935,21 @@ export async function revertMany(options) {
       const rewired = rewriteSourceLiterals(api, text, ts, current, { selectors: false, exactContexts: contexts, inventory: await Jj.trackedFiles(config.target) })
       if (rewired.edits.length) writeFileSync(join(config.target, ts), rewired.text)
       referenceEdits.push(...rewired.edits)
-    }
+      return referenceEdits
+    })
     results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, ...(buildEntryEdits.length ? { buildEntryEdits } : {}), importEdits, scriptEdits, ...(packageScriptEdits.length ? { packageScriptEdits } : {}), referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
   }
   progress("rewrite", { files: results.length })
   const restored = results.flatMap(result => result.importEdits)
   const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases, { preserve: restored })
-  for (const result of results) result.importEdits.push(...importEdits.filter(e => {
-    const vibe = vibePath(result.file)
-    return (resolveRelative(e.file, e.from, new Set([vibe])) ?? resolveAliased(e.file, e.from, new Set([vibe]), aliases)?.target) === vibe
-  }))
+  for (const result of results) {
+    const vibe = vibePath(result.file), entry = journal.modules[result.file]
+    // An earlier attempt's rewrites stay in the receipt; this one adds its own.
+    entry.rewrittenImports = [...(entry.rewrittenImports ?? []), ...importEdits.filter(e =>
+      (resolveRelative(e.file, e.from, new Set([vibe])) ?? resolveAliased(e.file, e.from, new Set([vibe]), aliases)?.target) === vibe)]
+    result.importEdits.push(...entry.rewrittenImports)
+  }
+  saveJournal()
   const rewritten = [...new Set(results.flatMap(result =>
     [result.importEdits, result.referenceEdits, result.refEdits, result.scriptEdits, result.exportEdits]
       .flatMap(edits => (edits ?? []).map(edit => edit.file)).filter(Boolean)
@@ -1941,10 +1965,16 @@ export async function revertMany(options) {
   // at a time, and its next check reports what remains.
   const sourceSnippets = refreshSourceSnippets(config.target, snippets, { ts: () => typeScriptOf(config), renames: prepared.map(({ vibe, ts }) => ({ from: vibe, to: ts })) })
   for (const result of results) result.sourceSnippets = sourceSnippets
+  // The reverts are complete on disk: record them before the refresh, which
+  // can still fail on a configuration error.
+  const earlier = readJsonIf(p.reverted(b), [])
+  writeJson(p.reverted(b), [...earlier, ...results])
+  for (const { ts } of prepared) delete journal.modules[ts]
+  saveJournal()
   progress("references", { files: results.length })
   const referenceRefresh = await refreshReferences(config, results.map(result => result.file), join(p.batch(b), "logs", "reference-refresh-revert.log"), { diagnosticsAllowed: true })
   for (const result of results) result.referenceRefresh = referenceRefresh
-  writeJson(p.reverted(b), [...readJsonIf(p.reverted(b), []), ...results])
+  writeJson(p.reverted(b), [...earlier, ...results])
   progress("complete", { files: results.length })
   return results
 }

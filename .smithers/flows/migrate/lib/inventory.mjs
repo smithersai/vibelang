@@ -33,12 +33,16 @@ export function listSources(root, dir) {
 }
 
 /**
- * The source file names a module's own code writes as a string, by the first
- * non-test file that writes each: alchemy's CLI defaults to "alchemy.run.ts",
+ * The source file names a module's own code writes as a string, with each
+ * non-test file that writes it: alchemy's CLI defaults to "alchemy.run.ts",
  * so a project's alchemy.run.ts is found by that name. A test's string, an
- * index file (found by its directory) and a path are no such lookup.
+ * index file (found by its directory) and a path are no such lookup. A name
+ * joined to the writer's own directory, join(import.meta.dirname, "x.ts"),
+ * reaches that directory only; any other reaches the writer's package and the
+ * packages that depend on it.
  */
 const bareFilename = new RegExp("[\"'`][^\"'`/\r\n]*\\.(?:ts|mts|cts)[\"'`]")
+const indexFile = /^index\.[cm]?ts$/
 function namedFiles(texts, root) {
   const names = new Map()
   let ts
@@ -48,13 +52,29 @@ function namedFiles(texts, root) {
       fileURLToPath(new URL("../../../../docs/tools/", import.meta.url)),
       fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
     const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.getScriptKindFromFileName(path))
+    // join(__dirname, "lib", "x.ts"): the directory the name is joined to, when every earlier part is known.
+    const joinedDirectory = (node, call) => {
+      if (!ts.isCallExpression(call) || call.arguments.at(-1) !== node) return null
+      const callee = ts.isPropertyAccessExpression(call.expression) ? call.expression.name.text : ts.isIdentifier(call.expression) ? call.expression.text : ""
+      if (!["join", "resolve"].includes(callee) || call.arguments.length < 2) return null
+      const parts = []
+      for (const argument of call.arguments.slice(0, -1)) {
+        const text = argument.getText(source)
+        if (text === "__dirname" || text === "import.meta.dirname") { if (parts.length) return null; parts.push(posix.dirname(path)) }
+        else if (ts.isStringLiteralLike(argument) && parts.length && !posix.isAbsolute(argument.text)) parts.push(argument.text)
+        else return null
+      }
+      return posix.join(...parts)
+    }
     const visit = node => {
       if (ts.isStringLiteralLike(node)) {
         const name = node.text, parent = node.parent
         const specifier = ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent) ||
           ts.isExternalModuleReference(parent) || ts.isLiteralTypeNode(parent) ||
           ts.isCallExpression(parent) && parent.expression.kind === ts.SyntaxKind.ImportKeyword
-        if (!specifier && [".ts", ".mts", ".cts"].some(ext => name.endsWith(ext)) && !name.includes("/") && !name.includes(String.fromCharCode(92)) && !names.has(name)) names.set(name, path)
+        if (!specifier && [".ts", ".mts", ".cts"].some(ext => name.endsWith(ext)) && !indexFile.test(name) && !name.includes("/") && !name.includes(String.fromCharCode(92))) {
+          names.set(name, [...names.get(name) ?? [], { writer: path, directory: joinedDirectory(node, parent) }])
+        }
       }
       ts.forEachChild(node, visit)
     }
@@ -91,7 +111,20 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
   for (const pkg of packages) for (const dir of pkg.sources) for (const path of listSources(root, posix.join(pkg.dir, dir))) files.push({ path, package: pkg.dir })
   const known = new Set(files.map((f) => f.path))
   const texts = new Map(files.map(({ path }) => [path, readFileSync(join(root, path), "utf8")]))
-  const namedBy = namedFiles(texts, root)
+  const named = namedFiles(texts, root)
+  const packageOf = new Map(files.map(f => [f.path, f.package]))
+  const manifests = new Map()
+  const manifest = dir => {
+    if (!manifests.has(dir)) { let json = null; try { json = readJson(join(root, dir, "package.json")) } catch {} manifests.set(dir, json) }
+    return manifests.get(dir)
+  }
+  const dependsOn = (dir, on) => {
+    const name = manifest(on)?.name, json = manifest(dir)
+    return Boolean(name && json) && ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"].some(field => json[field]?.[name] !== undefined)
+  }
+  const namedBy = (path, pkg) => named.get(posix.basename(path))?.find(({ writer, directory }) => directory !== null
+    ? posix.join(directory, posix.basename(path)) === path
+    : packageOf.get(writer) === pkg || dependsOn(pkg, packageOf.get(writer)))?.writer ?? null
   // A package's tool config and scripts name modules too: read them for named globs.
   const scanned = [...new Set(packages.flatMap(pkg => listSources(root, pkg.dir)))]
   const selectors = [...enumerations, ...namedSelectors(scanned, file => texts.get(file) ?? readFileSync(join(root, file), "utf8"))]
@@ -111,7 +144,7 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
       package: pkg,
       ...(enumeratedBy.length ? { enumeratedBy } : {}),
       test: isTestFile(path) || isFixtureFile(path),
-      namedBy: namedBy.get(posix.basename(path)) ?? null,
+      namedBy: namedBy(path, pkg),
       bytes: statSync(join(root, path)).size,
       lines: text.split("\n").length,
       tokens: tokens[join(root, path)] ?? null,

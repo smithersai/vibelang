@@ -9,11 +9,14 @@
 // (settle), verify, record and report.
 //
 // Scorers: migrated, the share of the scope's modules that end the run as
-// .vibe; checks, the share of verify's checks that pass; tests, verify found no
-// new failing or missing test; declarations, verify found the published
-// declarations unchanged; recorded, record committed the batch.
+// .vibe; checks, the share of verify's checks that ran and pass (a check whose
+// receipt says not-run is outside the share); tests, verify found no new failing
+// or missing test; declarations, verify found the published declarations
+// unchanged; recorded, record committed the batch. eval-scores.mjs holds the
+// scoring, and a 0 for declarations or recorded fails the eval: a baseline of 0
+// cannot show a drop.
 //
-//   bun .smithers/flows/migrate/eval.ts            run, compare with baseline.json, exit 1 on a drop
+//   bun .smithers/flows/migrate/eval.ts            run, compare with baseline.json, exit 1 on a drop or a promised 0
 //   bun .smithers/flows/migrate/eval.ts --update   run and record baseline.json
 //
 // It stages the toolchain from this checkout, so build it first:
@@ -33,6 +36,7 @@ import migrate, { layer } from "./flow.ts";
 import * as Jj from "./lib/jj.mjs";
 import { stageToolchain } from "./lib/toolchain.mjs";
 import { must } from "./lib/util.mjs";
+import { checksScore, unmetPromises, verifyChecks } from "./eval-scores.mjs";
 import { execute } from "../in-process.ts";
 import { stepKey } from "../step-key.mjs";
 
@@ -45,7 +49,7 @@ type Input = { readonly fixture: string; readonly test: string };
 type Output = {
   readonly scope: number;
   readonly migrated: number;
-  readonly checks: { readonly passed: ReadonlyArray<string>; readonly failed: ReadonlyArray<string> };
+  readonly checks: { readonly passed: ReadonlyArray<string>; readonly failed: ReadonlyArray<string>; readonly notRun: ReadonlyArray<string> };
   readonly testsPass: boolean;
   readonly declarationsSame: boolean;
   readonly commit: string | null;
@@ -58,10 +62,7 @@ const score = (id: string, f: (output: Output) => number) =>
   Scorer.make({ id: `migrate/${id}`, version: "1", name: id, score: ({ output }) => Effect.succeed({ score: f(output as Output) }) });
 
 const migrated = score("migrated", (o) => (o.scope === 0 ? 0 : o.migrated / o.scope));
-const checks = score("checks", (o) => {
-  const total = o.checks.passed.length + o.checks.failed.length;
-  return total === 0 ? 0 : o.checks.passed.length / total;
-});
+const checks = score("checks", (o) => checksScore(o.checks));
 const tests = score("tests", (o) => (o.testsPass ? 1 : 0));
 const declarations = score("declarations", (o) => (o.declarationsSame ? 1 : 0));
 const recorded = score("recorded", (o) => (o.commit ? 1 : 0));
@@ -94,10 +95,7 @@ async function migrateFresh(input: Input): Promise<Output & { readonly compiler:
     return {
       scope: scope.length,
       migrated: scope.filter((f) => existsSync(join(repo, f.replace(/\.tsx$/, ".vibex").replace(/\.ts$/, ".vibe")))).length,
-      checks: {
-        passed: Object.keys(verify?.checks ?? {}).filter((name) => verify.checks[name] === true),
-        failed: Object.keys(verify?.checks ?? {}).filter((name) => verify.checks[name] !== true)
-      },
+      checks: verifyChecks(verify),
       testsPass: verify?.checks?.tests === true,
       declarationsSame: verify?.checks?.declarations === true,
       commit: record?.commit ?? null,
@@ -135,13 +133,16 @@ const program = Effect.gen(function* () {
     if (run.cases.some((result) => result.error !== undefined)) return yield* Effect.die("a case did not finish; no baseline recorded");
     writeFileSync(baselineFile, Baseline.write(yield* Baseline.fromRun(run)));
     console.log("migrate eval: baseline recorded");
+    for (const unmet of unmetPromises(run.observations)) console.log(`migrate eval: ${unmet} scored 0; the eval fails until it does not`);
     return 0;
   }
   const comparison = yield* Regression.compare(yield* Baseline.load(readFileSync(baselineFile, "utf8")), run);
   console.log(Report.markdown(comparison));
   const { exitCode, summary } = Gate.ciGrade(yield* Gate.check(comparison));
   console.log(summary);
-  return exitCode;
+  const unmet = unmetPromises(run.observations);
+  for (const name of unmet) console.log(`migrate eval: ${name} scored 0, so the eval cannot detect a regression in it`);
+  return unmet.length > 0 ? Math.max(exitCode, 1) : exitCode;
 }).pipe(Effect.provide(Layer.succeed(CaseExecutor.CaseExecutor)(executor)));
 
 process.exitCode = await Effect.runPromise(program);

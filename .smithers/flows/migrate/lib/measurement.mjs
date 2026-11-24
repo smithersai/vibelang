@@ -1,8 +1,8 @@
 // One job owns all three measurements, so provider and load cannot differ by side.
 import { prepareBuilds } from "./builds.mjs"
 import { packRepository } from "./pack-policy.mjs"
-import { existsSync, mkdirSync, rmSync, cpSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { existsSync, mkdirSync, rmSync, cpSync, realpathSync } from "node:fs"
+import { isAbsolute, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import * as Jj from "./jj.mjs"
 import * as Wire from "./wire.mjs"
@@ -31,11 +31,29 @@ async function mainRevision(config) {
   throw new Error("main comparison requires a main bookmark or --main <revision>")
 }
 
+/**
+ * Forget and remove what a killed or failed measurement of this batch left: each
+ * `migrate-tests-` workspace whose root lies under out, and the side directories.
+ */
+async function clearLeftovers(target, out) {
+  const real = path => { try { return realpathSync(path) } catch { return resolve(path) } }
+  const under = (base, path) => { const r = relative(base, path); return r !== "" && !r.startsWith("..") && !isAbsolute(r) }
+  const inside = path => under(resolve(out), resolve(path)) || under(real(out), real(path))
+  const listed = await must("jj workspace list -T " + quote('name ++ "\\n"'), { cwd: target })
+  for (const workspace of listed.stdout.split("\n").filter(name => name.startsWith("migrate-tests-"))) {
+    const root = await must("jj workspace root --name " + quote(workspace), { cwd: target }).then(r => r.stdout.trim(), () => null)
+    if (root && inside(root)) await must("jj workspace forget " + quote(workspace), { cwd: target })
+  }
+  for (const name of ["main", "previous"]) rmSync(join(out, name), { recursive: true, force: true })
+}
+
 export async function measureTests(config, { run, batch }) {
   const out = join(resolve(run), "measure", batch), job = "tests-" + Date.now() + "-" + process.pid
   mkdirSync(out, { recursive: true })
+  await clearLeftovers(config.target, out)
   const main = await mainRevision(config), previous = await Jj.commitId(config.target)
   const names = [], sides = []
+  let failure = null
   try {
     for (const [name, revision] of [["main",main.revision],["previous",previous]]) {
       const target = join(out,name), workspace = "migrate-" + job + "-" + name
@@ -68,11 +86,17 @@ export async function measureTests(config, { run, batch }) {
       previous:previousDiff,main:mainDiff,ok:previousDiff.ok && mainDiff.ok }
     writeJson(join(out,"comparison.json"),receipt)
     return receipt
+  } catch (error) {
+    failure = { error }
+    throw error
   } finally {
+    // Clean every workspace even when one step fails, and never hide the measurement's own error.
+    const errors = []
     for (const {workspace,target} of names.reverse()) {
-      await must("jj workspace forget " + quote(workspace),{cwd:config.target})
-      rmSync(target,{recursive:true,force:true})
+      try { await must("jj workspace forget " + quote(workspace),{cwd:config.target}) } catch (error) { errors.push(error) }
+      try { rmSync(target,{recursive:true,force:true}) } catch (error) { errors.push(error) }
     }
+    if (errors.length && !failure) throw new AggregateError(errors, "measurement cleanup failed: " + errors.map(e => e.message).join("; "))
   }
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

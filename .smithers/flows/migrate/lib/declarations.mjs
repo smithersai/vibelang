@@ -11,7 +11,7 @@ import { compareApiIdentityInWorker as compareApiIdentity, publishedEntrypoints 
 import { apiProjection } from "./api-projection.mjs"
 import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
 import { sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
-import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
+import { assertFinished, parseDiagnostics, sourceIdentity } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
 import { dependencyEmitPathSubstitution } from "./dependency-emit-paths.mjs"
 import { quotedModuleEmitSubstitution, recordQuotedModuleReferences } from "./quoted-module-emit.mjs"
@@ -1293,8 +1293,7 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
 export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline, cwd, moduleReferences = [], pathSubstitutions = [], modulePathSubstitutions = [] } = {}) {
   const current = diagnostics.filter(d => d.category === "error")
   const recorded = baseline && Number.isInteger(baseline.code) && Array.isArray(baseline.diagnostics)
-  const source = d => (d.file ?? "").replace(/\.(?:ts|tsx|mts|cts|vibe|vibex)$/, "")
-  const key = d => JSON.stringify([source(d), d.code, d.message, d.notes ?? []])
+  const key = d => JSON.stringify([sourceIdentity(d.file), d.code, d.message, d.notes ?? []])
   const originals = recorded ? baseline.diagnostics.filter(d => d.category === "error") : []
   const remaining = new Map()
   if (recorded) for (const d of originals) {
@@ -1316,7 +1315,7 @@ export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline, cwd,
     if (current.length !== originals.length) return true
     for (const entry of remaining.values()) {
       const original = entry.diagnostic
-      if (!entry.count || source(original) !== source(d) ||
+      if (!entry.count || sourceIdentity(original.file) !== sourceIdentity(d.file) ||
         JSON.stringify(original.notes ?? []) !== JSON.stringify(d.notes ?? [])) continue
       const proof = dependencyEmitPathSubstitution(original, d, { cwd })
       const moduleProof = proof ? null : quotedModuleEmitSubstitution(original, d, { baseline, diagnostics, moduleReferences })

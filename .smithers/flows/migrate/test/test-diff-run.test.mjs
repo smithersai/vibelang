@@ -162,15 +162,18 @@ test("verify fails a batch even when all target tests and compiler checks pass",
   assert.equal(bad.ok, false)
   assert.equal(bad.checks.testEdits, false)
 }, { probeCompiler: true, initial: { "package.json": '{"private":true}', "tsconfig.json": '{"include":["src/**/*"]}' } }))
-test("specifier proof reads declarationImportStyle from the importer's inherited config", async () => fixture(async ({ root, target, base, renames }) => {
+// #538: setup removes the retired declarationImportStyle option; a tsconfig
+// that still carries it cannot widen the permitted test edits.
+test("a retired declarationImportStyle cannot permit a ./X.ts to ./X.js test edit", async () => fixture(async ({ root, target, base, renames }) => {
   put(target, "tsconfig.base.json", '{"compilerOptions":{"declarationImportStyle":"js"}}')
   put(target, "tsconfig.json", '{"extends":"./tsconfig.base.json"}')
   put(target, "test/x.test.ts", 'import { f } from "../src/X.js"\nexpect(f()).toBe(1)\n')
-  const result = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "style-proof") })
-  assert.equal(result.ok, true, JSON.stringify(result))
+  const refused = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "style-proof") })
+  assert.equal(refused.ok, false, JSON.stringify(refused))
+  assert.match(JSON.stringify(refused.files), /specifier is not the same-path rename of a migrated module/)
   put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(1)\n')
-  const wrong = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "style-proof") })
-  assert.equal(wrong.ok, false)
+  const source = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "style-proof") })
+  assert.equal(source.ok, true, JSON.stringify(source))
 }))
 test("changed binary fixtures cannot compare equal through UTF-8 replacement characters", async () => fixture(async ({ root, target, renames }) => {
   put(target, "fixtures/data.bin", Buffer.from([255]))

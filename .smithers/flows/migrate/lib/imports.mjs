@@ -21,15 +21,46 @@ const stringEnd = (text, at, quote) => {
   return at
 }
 
+// A `/` starts a regular expression, not a division, after one of these
+// characters or keywords, or at the start of the text. `<` and a lone `>` are
+// left out: in JSX they precede `</tag>`.
+const regexAfter = new Set("(,=:[!&|?{};+-*%~^")
+const regexKeywords = new Set(["return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do", "else", "yield", "await"])
+
+// Where a regular expression ends, from just after its opening slash; `at`
+// when its line holds no closing slash.
+const regexEnd = (text, at) => {
+  let inClass = false
+  for (let i = at; i < text.length && text[i] !== "\n"; i++) {
+    if (text[i] === "\\") i++
+    else if (text[i] === "[") inClass = true
+    else if (text[i] === "]") inClass = false
+    else if (text[i] === "/" && !inClass) return i + 1
+  }
+  return at
+}
+
 /**
- * The ranges of text's comments. A string, template text and an unterminated
- * block comment hold none; a regular expression is read as code, so one that
- * looks like a comment hides at most the rest of its line.
+ * The ranges of text's comments. A string, template text, a regular expression
+ * and an unterminated block comment hold none. Whether a `/` starts a regular
+ * expression is read from the code before it, as a lexer does, so a regular
+ * expression such as `/\/*$/` opens no comment. The guess can be wrong only
+ * where a lexer needs the grammar: after `)` (`if (x) /re/`) a `/` is read as a
+ * division, and after `++` or `--` as a regular expression.
  */
 export function commentRanges(text) {
   const ranges = []
   const holes = [] // the brace depth at each open template hole, ${
   let depth = 0
+  let last = -1 // the index of the last character of code, outside comments
+  const startsRegex = () => {
+    if (last < 0) return true
+    const c = text[last]
+    if (regexAfter.has(c)) return true
+    if (c === ">") return text[last - 1] === "="
+    const word = /[\w$]+$/.exec(text.slice(Math.max(0, last - 15), last + 1))?.[0]
+    return Boolean(word) && regexKeywords.has(word)
+  }
   // Returns the index after a template's closing backtick or a hole's ${.
   const template = (at) => {
     for (let i = at; i < text.length; i++) {
@@ -55,14 +86,23 @@ export function commentRanges(text) {
         ranges.push([i, end + 2])
         i = end + 2
       }
-    } else if (c === "'" || c === '"') i = stringEnd(text, i + 1, c)
-    else if (c === "`") i = template(i + 1)
-    else if (c === "}" && holes.at(-1) === depth) {
+    } else if (c === "/" && startsRegex()) {
+      i = regexEnd(text, i + 1)
+      last = i - 1
+    } else if (c === "'" || c === '"') {
+      i = stringEnd(text, i + 1, c)
+      last = i - 1
+    } else if (c === "`") {
+      i = template(i + 1)
+      last = i - 1
+    } else if (c === "}" && holes.at(-1) === depth) {
       holes.pop()
       i = template(i + 1)
+      last = i - 1
     } else {
       if (c === "{") depth++
       if (c === "}") depth--
+      if (!/\s/.test(c)) last = i
       i++
     }
   }

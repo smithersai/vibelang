@@ -256,3 +256,16 @@ test("property: tool selectors retain their directory across glob and quoting sp
     assert.deepEqual(scan({ "rules/data.yml": yaml.replace("language: " + language, "language: json") }), [])
   }), { seed: 268034, numRuns: 120 })
 })
+
+// #527: the walk's folder is its own argument's, not the first URL in the file.
+test("a walk enumerates the folder its own argument names, and each walk in a file is reported", () => {
+  const found = scan({ "test/all.test.ts": 'const fixtures = new URL("./fixtures/", import.meta.url)\nfor (const f of readdirSync(join(import.meta.dirname, "../src")).filter(f => f.endsWith(".ts"))) await import("../src/" + f)\n' })
+  assert.deepEqual(found.map(f => [f.kind, f.directory, f.line]), [["walk", "src", 2]])
+  const two = scan({
+    "pkg/package.json": "{}",
+    "pkg/test/load.test.ts": 'const a = readdirSync(new URL("../lib/", import.meta.url)).filter(n => n.endsWith(".ts"))\n' +
+      'const b = readdirSync(fileURLToPath(new URL("../tools", import.meta.url))).filter(n => n.endsWith(".ts"))\n' +
+      'const c = readdirSync(process.argv[2]).filter(n => n.endsWith(".ts"))\n'
+  })
+  assert.deepEqual(two.map(f => [f.directory, f.line]), [["pkg/lib", 1], ["pkg/tools", 2], ["pkg", 3]])
+})

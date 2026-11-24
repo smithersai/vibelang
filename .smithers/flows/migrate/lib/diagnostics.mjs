@@ -115,10 +115,12 @@ export function warningExceptions(diagnostics, files) {
     compare(a.name, b.name) || compare(a.reason, b.reason) || compare(a.message, b.message))
 }
 
+/** A file's identity across the migration's renames: x.ts and x.mts to x.vibe, x.tsx to x.vibex. */
+export const sourceIdentity = (file) => (file ?? "").replace(/\.(?:ts|tsx|mts|cts|vibe|vibex)$/, "")
+
 /** Errors that the baseline did not have, compared by file, code and message. */
 export function newErrors(baseline, current) {
-  // A file keeps its identity across the rename to .vibe.
-  const key = (d) => `${(d.file ?? "").replace(/\.(?:ts|mts|vibe)$/, "")}\0${d.code}\0${d.message}`
+  const key = (d) => `${sourceIdentity(d.file)}\0${d.code}\0${d.message}`
   const seen = new Map()
   for (const d of baseline.filter((d) => d.category === "error")) seen.set(key(d), (seen.get(key(d)) ?? 0) + 1)
   const added = []

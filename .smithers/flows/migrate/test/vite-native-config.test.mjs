@@ -161,3 +161,29 @@ test("foldkit-78: Vite invocations of a renamed config name the .vibe file, and 
     assert.equal(viteConfigSource.test(base), vite && (extension === ".ts" || extension === ".mts"))
   }), { seed: 190079, numRuns: 100 })
 })
+
+// #535: one script running Vite on two renamed configs records one edit per
+// invocation, and reverting either config restores only its own name.
+test("reverting one of two renamed configs in one script restores only that config's name", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-vite-two-"))
+  try {
+    const script = "vite build --config a.config.ts && vite build --config b.config.ts"
+    const renames = [{ from: "a.config.ts", to: "a.config.vibe" }, { from: "b.config.ts", to: "b.config.vibe" }]
+    const { scripts, edits } = nativeConfigScripts({ build: script }, { root, dir: ".", renames })
+    assert.equal(scripts.build, "vite build --config a.config.vibe && vite build --config b.config.vibe")
+    assert.deepEqual(edits.map(e => e.module), ["a.config.vibe", "b.config.vibe"])
+    const receipts = edits.map(e => ({ manifest: "package.json", ...e }))
+    write(root, "package.json", JSON.stringify({ scripts }) + "\n")
+    assert.deepEqual(restoreViteScripts(root, receipts, "a.config.ts").map(e => e.module), ["a.config.vibe"])
+    assert.equal(readJson(join(root, "package.json")).scripts.build, "vite build --config a.config.ts && vite build --config b.config.vibe")
+    restoreViteScripts(root, receipts, "b.config.ts")
+    assert.equal(readJson(join(root, "package.json")).scripts.build, script)
+    // Reverting b first leaves a's rename in place.
+    write(root, "package.json", JSON.stringify({ scripts }) + "\n")
+    restoreViteScripts(root, receipts, "b.config.ts")
+    assert.equal(readJson(join(root, "package.json")).scripts.build, "vite build --config a.config.vibe && vite build --config b.config.ts")
+    // A recorded edit that can no longer be located throws instead of reporting it undone.
+    write(root, "package.json", JSON.stringify({ scripts: { build: "vite build" } }) + "\n")
+    assert.throws(() => restoreViteScripts(root, receipts, "a.config.ts"), /no longer names a\.config\.vibe/)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})

@@ -63,3 +63,13 @@ test("directory slash imports use canonical repository keys", () => {
   assert.equal(resolveRelative("pkg/a.vibe", "./", new Set(["pkg/index.vibe"])), "pkg/index.vibe")
   assert.equal(resolveRelative("pkg/a.vibe", "../", new Set(["index.ts"])), "index.ts")
 })
+
+// #527: a regular expression holding `/*` opens no comment.
+test("parseImports reads a regular expression that holds /* as code, not a comment", () => {
+  const text = 'const trim = (p: string) => p.replace(/\\/*$/, "")\nexport { leaf } from "./leaf.js"\nconst m = await import("./other.js")\n/** doc */\nexport const x = 1\n'
+  assert.deepEqual(parseImports(text).map(i => i.specifier), ["./leaf.js", "./other.js"])
+  const after = ["x = /^\\/*/", "f(/[/*]/g)", "return /\\/*/", "x => /a\\/*/", "({ re: /\\/*/ })"]
+  for (const code of after) assert.deepEqual(parseImports(`${code}\nimport "./a.js"\n/** doc */\n`).map(i => i.specifier), ["./a.js"], code)
+  // A division is not a regular expression, and a real comment still hides its import.
+  assert.deepEqual(parseImports('const half = a / 2 /* import "./hidden.js" */\nimport "./b.js"\n').map(i => i.specifier), ["./b.js"])
+})

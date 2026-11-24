@@ -6,6 +6,7 @@
 // the plan keeps the .ts modules it enumerates as .ts, because a selector of
 // *.ts files no longer selects x.vibe (decided detail 268).
 import { existsSync, readFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { dirname, join, posix, relative } from "node:path"
 import { sidecarSettings, sidecarRootLayout } from "./sidecar-config.mjs"
 export { removeSupersededSidecars, sidecarSettings } from "./sidecar-config.mjs"
@@ -19,15 +20,103 @@ const code = /\.(?:[cm]?[jt]sx?)$/
 const tsGlob = /(["'`])((?:[^"'`\s]*\/)?\*{1,2}(?:\/\*)?\.(?:ts|\{[^}"'`]*\bts\b[^}"'`]*\}))\1/g
 // A .ts filter on names a walk lists.
 const tsFilter = /\.endsWith\(\s*(["'`])\.ts\1\s*\)|\/\\\.ts\$\/|\/\\\.\(\?:?[^/]*\bts\b[^/]*\)\$\/|extname\([^()]*\)\s*===?\s*(["'`])\.ts\2/
-const walks = /\b(?:readdirSync|readdir|opendirSync|opendir|globSync|glob|Glob|walk|walkSync|scandir)\b/
-// A literal folder the walk starts at: new URL("../coding/", import.meta.url)
-// or join(import.meta.dirname | __dirname, "coding").
-const urlRoot = /new\s+URL\(\s*(["'`])([^"'`]+)\1\s*,\s*import\.meta\.url\s*\)/
-const joinRoot = /\b(?:join|resolve)\(\s*(?:import\.meta\.dirname|__dirname)\s*,\s*(["'`])([^"'`]+)\1/
+const walkNames = ["readdirSync", "readdir", "opendirSync", "opendir", "globSync", "glob", "Glob", "walk", "walkSync", "scandir"]
+const walks = new RegExp(`\\b(?:${walkNames.join("|")})\\b`)
+// A glob's first argument is a pattern; it walks its `cwd` option.
+const globNames = new Set(["globSync", "glob", "Glob"])
 // The selector already knows the sidecars or the .vibe sources.
 const vibeAware = /\.d\.vibe\.ts|endsWith\(\s*["'`]\.vibe["'`]|\\\.vibe\b|\*\.vibe\b|\{[^}]*\bvibe\b[^}]*\}/
 
 const lineOf = (text, index) => text.slice(0, index).split("\n").length
+
+// The flow's own TypeScript, as the codemod loads it, when the caller passes none.
+const defaultTypeScript = () => {
+  for (const dir of ["../../../../packages/runtime/", "../../../../docs/tools/"]) {
+    try { return createRequire(new URL(dir + "package.json", import.meta.url))("typescript") } catch {}
+  }
+  throw new Error("no TypeScript compiler API to read walks; run (cd packages/runtime && bun install --frozen-lockfile)")
+}
+
+/**
+ * The folder each walk call in source starts at, relative to the file's own
+ * folder, or null where its argument is no literal root: new URL("../coding/",
+ * import.meta.url), join(import.meta.dirname | __dirname, "coding"), either
+ * through a const, or a parameter every other caller passes the same root.
+ */
+function walkRoots(ts, file, text) {
+  const kind = /\.tsx$/.test(file) ? ts.ScriptKind.TSX : /\.[cm]?jsx?$/.test(file) ? (/x$/.test(file) ? ts.ScriptKind.JSX : ts.ScriptKind.JS) : ts.ScriptKind.TS
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind)
+  const nameOf = node => ts.isIdentifier(node) ? node.text : ts.isPropertyAccessExpression(node) ? node.name.text : undefined
+  const literal = node => ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) ? node.text : null
+  const metaDir = node => ts.isIdentifier(node) && node.text === "__dirname" ||
+    ts.isPropertyAccessExpression(node) && ["dirname", "dir"].includes(node.name.text) && ts.isMetaProperty(node.expression)
+  const metaUrl = node => ts.isPropertyAccessExpression(node) && node.name.text === "url" && ts.isMetaProperty(node.expression)
+  const declarations = new Map()
+  const calls = []
+  const visit = node => {
+    if ((ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isFunctionDeclaration(node)) && node.name && ts.isIdentifier(node.name)) {
+      if (!declarations.has(node.name.text)) declarations.set(node.name.text, [])
+      declarations.get(node.name.text).push(node)
+    }
+    if (ts.isCallExpression(node) || ts.isNewExpression(node)) calls.push(node)
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  const declared = name => declarations.get(name)?.length === 1 ? declarations.get(name)[0] : null
+  const rootOf = (node, seen) => {
+    while (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isNonNullExpression(node) || ts.isAwaitExpression(node)) node = node.expression
+    if (metaDir(node)) return "."
+    if (ts.isPropertyAccessExpression(node) && node.name.text === "pathname") return rootOf(node.expression, seen)
+    if (ts.isNewExpression(node) && nameOf(node.expression) === "URL" && node.arguments?.length === 2 && metaUrl(node.arguments[1])) return literal(node.arguments[0])
+    if (!ts.isCallExpression(node) && !ts.isIdentifier(node)) return null
+    if (ts.isCallExpression(node)) {
+      const callee = nameOf(node.expression)
+      if (callee === "fileURLToPath" && node.arguments.length === 1) return rootOf(node.arguments[0], seen)
+      if (!["join", "resolve"].includes(callee) || !node.arguments.length) return null
+      const base = rootOf(node.arguments[0], seen)
+      if (base === null) return null
+      // A part the code computes names a folder under the root: the root covers it.
+      const parts = []
+      for (const part of node.arguments.slice(1)) { const text = literal(part); if (text === null) break; parts.push(text) }
+      return posix.join(base, ...parts)
+    }
+    const declaration = declared(node.text)
+    if (!declaration || seen.has(declaration)) return null
+    seen = new Set(seen).add(declaration)
+    if (ts.isVariableDeclaration(declaration)) {
+      const constant = ts.isVariableDeclarationList(declaration.parent) && declaration.parent.flags & ts.NodeFlags.Const
+      return constant && declaration.initializer ? rootOf(declaration.initializer, seen) : null
+    }
+    if (!ts.isParameter(declaration)) return null
+    // A parameter: the roots every caller outside the function passes.
+    const fn = declaration.parent, index = fn.parameters.indexOf(declaration)
+    const name = fn.name && ts.isIdentifier(fn.name) ? fn.name.text : ts.isVariableDeclaration(fn.parent) && ts.isIdentifier(fn.parent.name) ? fn.parent.name.text : undefined
+    if (!name || declaration.dotDotDotToken || declared(name) !== (ts.isFunctionDeclaration(fn) ? fn : fn.parent)) return null
+    const roots = new Set()
+    for (const call of calls) {
+      if (!ts.isCallExpression(call) || !ts.isIdentifier(call.expression) || call.expression.text !== name) continue
+      let inside = false
+      for (let up = call.parent; up && !inside; up = up.parent) inside = up === fn
+      if (inside) continue
+      if (!call.arguments[index]) return null
+      roots.add(rootOf(call.arguments[index], seen))
+    }
+    return roots.size === 1 ? [...roots][0] : null
+  }
+  const found = []
+  for (const call of calls) {
+    const callee = nameOf(call.expression)
+    if (!walkNames.includes(callee)) continue
+    let start = call.arguments?.[0]
+    if (globNames.has(callee)) {
+      const options = call.arguments?.[1]
+      const cwd = options && ts.isObjectLiteralExpression(options) && options.properties.find(p => ts.isPropertyAssignment(p) && nameOf(p.name) === "cwd")
+      start = cwd?.initializer
+    }
+    found.push({ index: call.getStart(source), root: start ? rootOf(start, new Set()) : null })
+  }
+  return found
+}
 
 // A glob that walks folders for a file name or a compound suffix, as drizzle-kit's
 // schema: ["./src/**/*.sql.ts", "./src/**/sql.ts"]. A sidecar never matches it, so
@@ -65,9 +154,11 @@ export function namedSelectors(files, read) {
  * The places tracked code enumerates *.ts files. files are the repository's
  * tracked paths; read returns a file's text. Each finding has the
  * enumerating file, its line, what matched, and the folder it enumerates
- * (repository-relative), else the enumerating file's package folder.
+ * (repository-relative), else the enumerating file's package folder. A walk
+ * filtered by .ts is found for each walk call in the file, at the folder its
+ * own argument names. ts is TypeScript's compiler API.
  */
-export function tsEnumerations(files, read) {
+export function tsEnumerations(files, read, ts = undefined) {
   const findings = []
   const tracked = new Set(files)
   const packageOf = (file) => {
@@ -130,11 +221,17 @@ export function tsEnumerations(files, read) {
       const base = glob.startsWith(".") ? here : packageOf(file)
       findings.push({ file, line: lineOf(text, match.index), match: glob, kind: "glob", directory: posix.normalize(posix.join(base, prefix)) })
     }
-    const filter = tsFilter.exec(text)
-    if (filter && walks.test(text)) {
-      const literal = urlRoot.exec(text) ?? joinRoot.exec(text)
-      const directory = literal ? posix.normalize(posix.join(here, literal[2])).replace(/\/$/, "") : packageOf(file)
-      findings.push({ file, line: lineOf(text, filter.index), match: filter[0], kind: "walk", directory })
+    const filters = [...text.matchAll(new RegExp(tsFilter.source, "g"))]
+    if (filters.length && walks.test(text)) {
+      ts ??= defaultTypeScript()
+      const roots = walkRoots(ts, file, text)
+      // A walk name the parser finds no call of still walks somewhere: the whole package.
+      for (const { index, root } of roots.length ? roots : [{ index: filters[0].index, root: null }]) {
+        // The filter the walk's names reach: the first after the walk, else the last before it.
+        const filter = filters.find(m => m.index >= index) ?? filters.at(-1)
+        const directory = root === null ? packageOf(file) : posix.normalize(posix.join(here, root)).replace(/\/$/, "")
+        findings.push({ file, line: lineOf(text, filter.index), match: filter[0], kind: "walk", directory })
+      }
     }
   }
   return [...new Map(findings.map(finding => [JSON.stringify([finding.file, finding.kind, finding.directory, finding.match]), finding])).values()]

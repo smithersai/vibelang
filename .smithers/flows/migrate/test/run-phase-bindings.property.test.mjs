@@ -77,3 +77,21 @@ test("run-phase: a shadowed fn factory is not an established Effect function", (
   const shape = originalFunctions(ts, "const Effect={fn:()=>()=>7};export const f=Effect.fn() ").get("f")
   assert.notEqual(shape?.kind, "effect")
 })
+
+// #526: a member read is not an escape. Only the namespace leaving or a
+// member write voids the proof.
+test("run-phase: a member read such as Effect.void keeps every proof", () => {
+  const head = 'import { Effect } from "effect";\n'
+  for (const [fn, verdict] of [["export const f = () => Effect.succeed(load())", "eager"],
+    ["export const f = () => Effect.gen(function*(){ return 7 })", "ok"]]) {
+    assert.equal(phase(head + fn), verdict)
+    for (const read of ["const noop = Effect.void;", "export const g = Effect.void;", "const h = (x: any) => Effect.map(x, Effect.succeed);",
+      "const k = () => Effect.gen(function*(){ yield* Effect.void });", "const l = [Effect.never, { a: Effect.void }];"]) {
+      assert.equal(phase(head + read + "\n" + fn), verdict, read)
+    }
+  }
+  for (const escape of ["const alias = Effect;", "mutate(Effect);", "(Effect as any).gen = () => 7;", "Effect.gen = (() => 7) as any;",
+    "delete (Effect as any).gen;", "[(Effect as any).gen] = [() => 7];", "({ a: (Effect as any).gen } = { a: () => 7 });"]) {
+    assert.notEqual(phase(head + escape + "\nexport const f = () => Effect.gen(function*(){ return 7 })"), "ok", escape)
+  }
+})

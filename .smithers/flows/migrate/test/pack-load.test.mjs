@@ -13,7 +13,7 @@ import { recordDeclarationSurface } from "../lib/declarations.mjs"
 import { packRepository } from "../lib/pack-policy.mjs"
 import { compareDistLists } from "../lib/dist-list.mjs"
 import * as Jj from "../lib/jj.mjs"
-import { comparePackLoads, exportSpecifiers, packLoadBaseline, packLoadSnapshot, verifyPackLoad } from "../lib/pack-load.mjs"
+import { comparePackLoads, exportSpecifiers, loadEntries, packLoadBaseline, packLoadSnapshot, verifyPackLoad } from "../lib/pack-load.mjs"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
 import { must, quote, slug, writeJson } from "../lib/util.mjs"
 
@@ -414,7 +414,7 @@ test("comparePackLoads property: a regression is always refused by name, and any
       assert.equal(found("load-failed"), expectFailed, `${runtime} ${s} ${JSON.stringify([b, h])}`)
       const lost = b?.names && h?.names ? b.names.filter(n => !h.names.includes(n)) : []
       assert.equal(found("load-names-lost"), lost.length > 0)
-      if (b?.names && h?.capped) assert.ok(diff.unverified.some(u => u.runtime === runtime && u.specifier === s), "capped is reported, not passed silently")
+      assert.equal(found("load-capped"), Boolean(b?.names && specifierKept && h?.capped), "a capped entry the baseline loaded is refused, not passed silently")
       if (lost.length) assert.deepEqual(diff.refusals.find(r => r.kind === "load-names-lost" && r.runtime === runtime && r.specifier === s).names, lost)
     }
     const baseSpecs = Object.keys(entriesOf(bn, bb)), headSpecs = Object.keys(entriesOf(cn, cb))
@@ -423,3 +423,31 @@ test("comparePackLoads property: a regression is always refused by name, and any
     assert.equal(diff.ok, diff.refusals.length === 0)
   }), { numRuns: 400 })
 })
+
+// #526: the cap stopping a rerun must not relabel the first pass's failure or hang as capped.
+test("loadEntries: with nodeCapSeconds 0, a failure or hang from the shared pass survives the rerun it stops, and still refuses", inTemp("pack-cap-", async consumer => {
+  let time = 0
+  const exec = async command => {
+    const [list, out] = command.split(" ").slice(-2).map(arg => arg.slice(1, -1))
+    const lines = []
+    for (const spec of JSON.parse(readFileSync(list, "utf8"))) {
+      lines.push({ start: spec })
+      if (spec === "p/bad") lines.push({ spec, err: "ERR_MODULE_NOT_FOUND x", ms: 1 })
+      else if (spec !== "p/hang") lines.push({ spec, names: ["a"], ms: 1 })
+    }
+    writeFileSync(out, lines.map(line => JSON.stringify(line) + "\n").join(""))
+    time += 1000
+    return { code: lines.at(-1).spec ? 0 : null, timedOut: !lines.at(-1).spec, stdout: "", stderr: "" }
+  }
+  const tune = { aloneUpTo: 1, nodeBatch: 4, nodeCapSeconds: 0, processMs: 1000, hangRetryFactor: 4, parallel: 1 }
+  const { results } = await loadEntries({ runtime: "node", specs: ["p", "p/bad", "p/hang"], consumer, env: {}, tune, exec, now: () => time })
+  assert.deepEqual(results["p"].names, ["a"])
+  assert.match(results["p/bad"].err, /^ERR_MODULE_NOT_FOUND/)
+  assert.match(results["p/hang"].err, /^HANG /)
+  const record = node => ({ dir: "packages/p", name: "p", install: { rc: 0 }, localDeps: {}, node, entries: { ".": {}, "./bad": {}, "./hang": {} }, ms: {} })
+  const snap = node => ({ state: "complete", packages: { "packages/p": record(node) } })
+  const loaded = { names: ["a"] }
+  const diff = comparePackLoads(snap({ "p": loaded, "p/bad": loaded, "p/hang": loaded }), snap(results))
+  assert.equal(diff.ok, false)
+  assert.deepEqual(diff.refusals.map(r => [r.kind, r.specifier]), [["load-failed", "p/bad"], ["load-failed", "p/hang"]])
+}))

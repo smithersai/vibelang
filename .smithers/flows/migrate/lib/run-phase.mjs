@@ -277,17 +277,25 @@ function effectMember(ts, expression) {
   } else return null
   if (clause.isTypeOnly || !modules.has(module)) return null
   if (!stable.has(symbol)) {
+    // `import * as E from "effect"` names the namespace `E.Effect`: its members are one level deeper.
+    const memberDepth = ts.isNamespaceImport(declaration) && clause.parent.moduleSpecifier.text === "effect" ? 2 : 1
     let safe = true
     const visit = node => {
       if (!safe || ts.isTypeNode(node)) return
       if (ts.isIdentifier(node) && checker.getSymbolAtLocation(node) === symbol && node !== declaration.name) {
-        let use = node
+        let use = node, depth = 0
         while ((ts.isPropertyAccessExpression(use.parent) && use.parent.expression === use) ||
-          ts.isParenthesizedExpression(use.parent) || ts.isAsExpression(use.parent) || ts.isNonNullExpression(use.parent)) use = use.parent
+          ts.isParenthesizedExpression(use.parent) || ts.isAsExpression(use.parent) || ts.isNonNullExpression(use.parent)) {
+          use = use.parent
+          if (ts.isPropertyAccessExpression(use)) depth++
+        }
         // Namespace escapes and writes invalidate a textual proof. No alias
-        // analysis guess: each use must be a direct member call.
+        // analysis guess: the namespace itself never leaves (`mutate(Effect)`,
+        // `const alias = Effect`) and no member is written (`Effect.gen = …`).
+        // A member read (`Effect.void`, `Effect.succeed` as a value) is neither.
         const parent = use.parent
-        if (!(ts.isCallExpression(parent) && parent.expression === use)) safe = false
+        const called = ts.isCallExpression(parent) && parent.expression === use
+        if (!called && (depth < memberDepth || written(ts, use))) safe = false
       }
       ts.forEachChild(node, visit)
     }
@@ -295,6 +303,24 @@ function effectMember(ts, expression) {
     stable.set(symbol, safe)
   }
   return stable.get(symbol) ? { module, name: member.name.text } : null
+}
+
+// A member expression written in place: assigned, updated, deleted, or a
+// target inside a destructuring assignment.
+function written(ts, node) {
+  if (ts.isDeleteExpression(node.parent)) return true
+  if ((ts.isPrefixUnaryExpression(node.parent) || ts.isPostfixUnaryExpression(node.parent)) &&
+    [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.parent.operator)) return true
+  let target = node
+  while (ts.isArrayLiteralExpression(target.parent) || ts.isObjectLiteralExpression(target.parent) ||
+    ts.isSpreadElement(target.parent) || ts.isSpreadAssignment(target.parent) || ts.isParenthesizedExpression(target.parent) ||
+    (ts.isPropertyAssignment(target.parent) && target.parent.initializer === target)) target = target.parent
+  const parent = target.parent
+  if (ts.isBinaryExpression(parent) && parent.left === target) {
+    const kind = parent.operatorToken.kind
+    return kind >= ts.SyntaxKind.FirstAssignment && kind <= ts.SyntaxKind.LastAssignment
+  }
+  return (ts.isForOfStatement(parent) || ts.isForInStatement(parent)) && parent.initializer === target
 }
 
 // Property reads, spreads and computed keys can invoke author code.

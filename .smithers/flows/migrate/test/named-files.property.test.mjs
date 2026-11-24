@@ -45,11 +45,35 @@ test("a module is held back exactly when non-test code writes its bare file name
   }), { seed: 360036, numRuns: 300 })
 })
 
-test("directory and module resolution do not pin index files, but an explicit filename does", () => {
-  const files = { "pkg/app/index.ts": effect, "pkg/cli.ts": "import \"index.ts\"; import \"./app\";\n" }
-  assert.deepEqual(candidates(inventoryOf(files)).map(f => f.path), ["pkg/app/index.ts"])
-  files["pkg/cli.ts"] = "export const entry = \"index.ts\"\n"
-  assert.deepEqual(candidates(inventoryOf(files)).map(f => f.path), [])
+test("issue 530: directory and module resolution, and an index file's name, do not pin index files", () => {
+  const files = { "pkg/src/a/index.ts": effect, "pkg/cli.ts": "import \"index.ts\"; import \"./src/a\";\n" }
+  assert.deepEqual(candidates(inventoryOf(files)).map(f => f.path), ["pkg/src/a/index.ts"])
+  files["pkg/cli.ts"] = "export const entry = \"index.ts\"\nexport const match = (file: string) => file.endsWith(\"index.mts\")\n"
+  assert.deepEqual(candidates(inventoryOf(files)).map(f => f.path), ["pkg/src/a/index.ts"])
+})
+
+const inventoryOfPackages = (files, packages) => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-named-"))
+  try {
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true })
+      writeFileSync(join(root, path), text)
+    }
+    return buildInventory({ root, packages: packages.map(dir => ({ dir, sources: ["."] })) })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+}
+
+test("issue 530: a name pins files its writer's package or a dependent package can reach, or the directory it joins", () => {
+  const files = {
+    "tool/package.json": '{"name":"tool"}', "tool/cli.ts": 'export const entry = "types.ts"\n', "tool/types.ts": effect,
+    "app/package.json": '{"name":"app","devDependencies":{"tool":"*"}}', "app/src/types.ts": effect,
+    "other/package.json": '{"name":"other"}', "other/src/types.ts": effect
+  }
+  assert.deepEqual(candidates(inventoryOfPackages(files, ["tool", "app", "other"])).map(f => f.path), ["other/src/types.ts"])
+  const joined = { "pkg/cli.ts": 'import { join } from "node:path"\nexport const worker = join(import.meta.dirname, "jobs", "worker.ts")\n', "pkg/jobs/worker.ts": effect, "pkg/worker.ts": effect }
+  assert.deepEqual(candidates(inventoryOfPackages(joined, ["pkg"])).map(f => f.path), ["pkg/worker.ts"])
 })
 test("comments, embedded code strings, regexes and type-only filename literals are not lookups", () => {
   for (const source of ["// \"worker.ts\"\nexport const text = \"not a filename\"", "export const text = 'code: \"worker.ts\"'", "export const pattern = /\"worker.ts\"/", "export type Name = \"worker.ts\"", "export { name } from \"worker.ts\"", "export const module = import(\"worker.ts\")"]) assert.deepEqual(candidates(inventoryOf({ "pkg/worker.ts": effect, "pkg/cli.ts": source })).map(f => f.path), ["pkg/worker.ts"], source)
