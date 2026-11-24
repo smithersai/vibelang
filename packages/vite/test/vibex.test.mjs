@@ -186,7 +186,7 @@ test("Vite serves a .vibex module output only for a module query and only beside
   }), { numRuns: 40, seed: 18140 })
 })
 
-// drive-t3code-apps 21:51Z (Web58 on SDK 616): the dependency scan runs no
+// The dependency scan runs no
 // plugin load, so its own filter must admit a .vibex module body's .jsx output,
 // or the scanner reads the absent file and fails before any test starts.
 for (const name of ["constants", "$throw$ts"]) {

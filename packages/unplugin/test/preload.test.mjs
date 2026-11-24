@@ -32,11 +32,10 @@ async function fixture(t, item = corpus[0], value = item.answer) {
   return root
 }
 
-async function run(host, config, { preload = true, twice = false } = {}) {
-  const flag = host === "bun" ? "--preload" : "--import"
+async function run(config, { preload = true, twice = false } = {}) {
   const entry = `vibelang-unplugin/${config.bundler}/register`
-  const args = [...(preload ? [flag, entry] : []), ...(twice ? [flag, entry] : []), runner, JSON.stringify(config)]
-  const result = await runChild(host === "bun" ? "bun" : process.execPath, args, {
+  const args = [...(preload ? ["--import", entry] : []), ...(twice ? ["--import", entry] : []), runner, JSON.stringify(config)]
+  const result = await runChild(process.execPath, args, {
     cwd: config.root, env: { ...process.env, VIBELANG_UNPLUGIN_DEBUG: "1" }
   })
   const line = result.stdout.trim().split("\n").at(-1)
@@ -53,48 +52,44 @@ function succeeded(result, expected = [42]) {
 }
 
 for (const item of corpus) {
-  for (const host of ["node"]) {
-    test(item.key + ": unchanged " + host + " call fails before preload and passes after it", async t => {
-      const root = await fixture(t, item)
-      const without = await run(host, { root, bundler: item.bundler }, { preload: false })
-      assert.equal(without.ok, false)
-      assert.match(without.message, /parse|loader|Unexpected|Expected|PARSE_ERROR/i)
-      succeeded(await run(host, { root, bundler: item.bundler }))
-    })
-    test(item.bundler + ": " + host + " retains an explicit native plugin and caller options", async t => {
-      const root = await fixture(t, item)
-      const result = await run(host, { root, bundler: item.bundler, explicit: true }, { twice: true })
-      succeeded(result)
-      assert.equal(result.calls, 1)
-      assert.equal((result.trace.match(/registered .* source bundles/g) || []).length, 1)
-    })
-    test(item.bundler + ": " + host + " CommonJS require uses the native adapter", async t => {
-      const root = await fixture(t, item)
-      succeeded(await run(host, { root, bundler: item.bundler, access: "require" }))
-    })
-    test(item.bundler + ": " + host + " recovers after a source diagnostic", async t => {
-      const root = await fixture(t, item)
-      succeeded(await run(host, { root, bundler: item.bundler, mode: "recovery" }), [99])
-    })
-  }
+  test(item.key + ": unchanged node call fails before preload and passes after it", async t => {
+    const root = await fixture(t, item)
+    const without = await run({ root, bundler: item.bundler }, { preload: false })
+    assert.equal(without.ok, false)
+    assert.match(without.message, /parse|loader|Unexpected|Expected|PARSE_ERROR/i)
+    succeeded(await run({ root, bundler: item.bundler }))
+  })
+  test(item.bundler + ": node retains an explicit native plugin and caller options", async t => {
+    const root = await fixture(t, item)
+    const result = await run({ root, bundler: item.bundler, explicit: true }, { twice: true })
+    succeeded(result)
+    assert.equal(result.calls, 1)
+    assert.equal((result.trace.match(/registered .* source bundles/g) || []).length, 1)
+  })
+  test(item.bundler + ": node CommonJS require uses the native adapter", async t => {
+    const root = await fixture(t, item)
+    succeeded(await run({ root, bundler: item.bundler, access: "require" }))
+  })
+  test(item.bundler + ": node recovers after a source diagnostic", async t => {
+    const root = await fixture(t, item)
+    succeeded(await run({ root, bundler: item.bundler, mode: "recovery" }), [99])
+  })
 }
 
 test("Rolldown build() shortcut receives the native adapter", async t => {
   const root = await fixture(t)
-  succeeded(await run("node", { root, bundler: "rolldown", mode: "shortcut" }))
+  succeeded(await run({ root, bundler: "rolldown", mode: "shortcut" }))
 })
 
 test("Rolldown watch() retains its synchronous watcher API", async t => {
   const root = await fixture(t)
-  succeeded(await run("node", { root, bundler: "rolldown", mode: "watch" }))
+  succeeded(await run({ root, bundler: "rolldown", mode: "watch" }))
 })
 
-for (const host of ["node"]) {
-  test("esbuild: " + host + " default import and rebuild context retain native loading", async t => {
-    const root = await fixture(t)
-    succeeded(await run(host, { root, bundler: "esbuild", access: "default", mode: "context" }), [42, 99])
-  })
-}
+test("esbuild: node default import and rebuild context retain native loading", async t => {
+  const root = await fixture(t)
+  succeeded(await run({ root, bundler: "esbuild", access: "default", mode: "context" }), [42, 99])
+})
 
 test("property: untouched bundle calls load native graphs across bundlers and APIs", async t => {
   await fc.assert(fc.asyncProperty(fc.record({
@@ -104,6 +99,6 @@ test("property: untouched bundle calls load native graphs across bundlers and AP
     explicit: fc.boolean(), value: fc.integer({ min: 0, max: 100000 })
   }), async input => {
     const root = await fixture(t, corpus.find(item => item.bundler === input.bundler), input.value)
-    succeeded(await run(input.host, { ...input, root }), [input.value])
+    succeeded(await run({ ...input, root }), [input.value])
   }), { seed: 110526, numRuns: 24, endOnFailure: true })
 })

@@ -55,10 +55,9 @@ function runVitest(root, failing = false) {
   })
 }
 
-// The servers watch by polling. inotify instances are counted per user,
-// and on the shared build hosts every lane's watchers draw on one pool of
-// 128, so an inotify watcher can fail to start and a test would wait for
-// file events that never come.
+// The servers watch by polling. inotify instances are counted per user, and
+// parallel test targets draw on one pool (128 by default), so an inotify
+// watcher can fail to start and a test would wait for file events that never come.
 const watch = { usePolling: true, interval: 50 }
 
 async function until(check) {

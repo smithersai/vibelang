@@ -6,7 +6,6 @@ import { devServer } from "./dev-server.mjs"
 import vibelang from "../src/index.js"
 
 export const keyOf = input => [input.prefix,input.depth,input.query || "none"].join(":")
-export const allInputs = () => ["~","@app"].flatMap(prefix=>[0,1,2].flatMap(depth=>["","?raw"].map(query=>({prefix,depth,query}))))
 export async function inspect(input,literal) {
   const root=realpathSync(mkdtempSync(join(tmpdir(),"vibelang-alias-property-")))
   let server

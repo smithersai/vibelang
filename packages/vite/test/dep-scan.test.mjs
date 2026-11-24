@@ -4,7 +4,7 @@ import { rmSync } from "node:fs"
 import test from "node:test"
 import { fixtureRoot, scanProject } from "./dep-scan.mjs"
 
-// drive2-opencode's reduction of opencode's app stories (Vite 7.3.6): a cold
+// A reduction of opencode's app stories (Vite 7.3.6): a cold
 // scan found [] and the first request found effect/Schema, which only the
 // emitted JavaScript of value.vibe imports.
 test("a cold dependency scan finds the bare imports a .vibe module's JavaScript adds", async (t) => {

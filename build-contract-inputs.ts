@@ -15,6 +15,7 @@ export const buildContractSuites = [
   "scripts/source-map-tool-coverage.test.mjs",
   "scripts/package-test-inventory.test.mjs",
   "scripts/package-test-fixtures.test.mjs",
+  "scripts/plugin-test-inputs.test.mjs",
 ] as const
 
 export const buildContractExclusions = buildContractSuites

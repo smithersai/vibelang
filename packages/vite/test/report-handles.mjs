@@ -1,7 +1,7 @@
 // run.sh imports this into every test file. node --test --test-force-exit
 // ends a file once its tests are done, even if a handle still holds the
 // event loop: one did after every test passed, and the merge gate waited
-// 860 s for vite-test (mq-10301555-49). This names the handles a file's
+// 860 s for vite-test. This names the handles a file's
 // tests left open, beyond those open before they ran, so the leak can be
 // found and closed.
 import { basename } from "node:path"

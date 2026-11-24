@@ -401,6 +401,10 @@ const pluginTest = (name: "vite" | "unplugin", files: readonly string[], names?:
     S.glob("vite/src/**"), S.file("vite/package.json"), S.file("vite/bun.lock"),
     S.glob("unplugin/src/**"), S.file("unplugin/package.json"), S.file("unplugin/bun.lock"),
     S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/007-tooling.md"), S.file("//docs/design/vips/0039-vibex.md"),
+    // scripts/plugin-test-inputs.test.mjs checks that every document a plugin test reads is listed.
+    S.file("//docs/design/src/005-services.md"), S.file("//docs/design/vips/0027-declaration-output.md"),
+    S.file("//docs/design/vips/0040-module-declarations.md"), S.file("//docs/design/vips/0042-vibelang-in-ts-files-open.md"),
+    S.file("//docs/design/vips/0059-eval-declarations.md"), S.file("//docs/user/src/setup/vite.md"),
     migrationSources, ...experimentInstall, ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",

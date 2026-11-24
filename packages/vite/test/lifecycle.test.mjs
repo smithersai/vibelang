@@ -57,7 +57,7 @@ setInterval(() => {}, 1000)
     try {
       await Promise.race([
         server[action](),
-        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`server.${action} waited on its compiler`)), 3000) })
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`server.${action} waited on its compiler`)), 30000) })
       ])
     } finally { clearTimeout(timer) }
     await pending

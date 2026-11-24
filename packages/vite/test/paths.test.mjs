@@ -18,7 +18,7 @@ function project(t, files) {
   return root
 }
 
-// drive-t3code-apps 22:10Z: apps/web's `~/…` imports, `"~/*": ["./src/*"]`,
+// A t3code web app's `~/…` imports, `"~/*": ["./src/*"]`,
 // resolved from its .ts modules under `resolve: { tsconfigPaths: true }` but
 // not from a .vibe module, so its browser tests could not load
 // previewWebviewConfigState and openPreviewSession.
