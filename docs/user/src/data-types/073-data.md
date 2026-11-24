@@ -163,19 +163,7 @@ effect function decodeDocument(text: string) {
 DocumentDecodeError true
 ```
 
-## Rules and diagnostics
-
-| Code | Cause | Fix |
-| --- | --- | --- |
-| `EK1601` | Variant field named `_tag` | Rename the field; `_tag` is generated from the variant name. |
-| `EK1602` | Variant named `$is` or `$match` | Rename the variant; Effect reserves those helpers. |
-| `EK1603` | `export default data D { ... }` | Declare `data D { ... }`, then `export { D as default }`. |
-| `EK1604` | `data` declaration missing `{ ... }` body | Add braces, or parenthesize an expression statement `(data as T)`. |
-| `EK1605` | Missing separator between variants or fields on one line | Add `;`, `,`, or a newline. |
-| `EK1606` | Malformed variant (`A(x: number)`, method, or non-identifier name) | Use `A { x: number }`. |
-| `EK1607` | `data` in an ambient `declare` context | Use native TypeScript `declare` types and constants. |
-| `EK2126` / `EK2801` / `EK2803` | Constrained, >4, or defaulted generic parameters | Use at most 4 unconstrained type parameters without defaults. |
-| `EK2127` | Accessing a nonexistent variant (`Delivery.Snet`) | Use a declared variant name. |
+See [Data declarations](../../../design/src/006-data.md#data-declarations) for the grammar and diagnostics.
 
 ## Coming from Effect
 

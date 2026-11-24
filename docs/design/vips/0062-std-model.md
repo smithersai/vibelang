@@ -113,7 +113,7 @@ A model call, stream or decision made inside a durable task gets its own journal
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - A decision model answers typed questions about one input in one call: [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
 - Only `Experimental.Model` is new in both examples. [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).

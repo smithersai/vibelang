@@ -15,7 +15,7 @@ service Users {
 
 // compiles to exactly Effect's class
 class Users extends Context.Service<Users, {
-  find(id: string): Effect<User, NotFound>
+  find(id: string): Effect.Effect<User, NotFound>
 }>()("@acme/app/src/users#Users") {}
 ```
 
@@ -53,7 +53,6 @@ class Users extends Context.Service<Users, {
 - **Amended 2026-10-30: outer generic capture.** The generic-service diagnostic also rejects a resolved written Shape contract that depends on a free type parameter from an enclosing scope. Follow aliases, constraints, defaulted type arguments and callable thrown contracts; erased type arguments must not specialize one runtime key. A member's own generic parameters are allowed when their contracts do not depend on an outer parameter. A concrete parameter-independent shape inside a generic function remains allowed, as do unrelated generic value computations.
 
 ```vibe es
-// compiler-gap: pending VIP-9
 service NodeKey { static readonly key = "test/NodeKey"; next?: NodeKey.Shape }
 function bad<T>() {
   service Store { static readonly key = "test/Store"; value: T } // expect-error: EK3005; the Shape depends on outer T
@@ -82,7 +81,7 @@ const referenceShapeExit = Effect.runSyncExit(Effect.gen(function* () {
 })) // Success(true)
 ```
 
-- **Amended 2026-10-30, corrected 2026-11-03 under VIP-34’s preservation rule: migration warnings.** The transitional compiler reports `EK4854` for a safe migration from the retired abstract-class spelling to `service`, retaining its contract and key, and `EK4855` for a preserving migration of the legacy `static readonly default = shape` to an equivalent native `Context.Service` class. Retain the original key, eager initialization, cached value identity, field and type reads, mutable shape members and missing-provider failure; refuse when those cannot be preserved. Adopting `defaultValue` and `Context.Reference` fallback is an explicit semantic change, not this mechanical repair. An abstract class keeps ordinary TypeScript semantics until explicitly migrated. These warnings retain their emitted compatibility codes until a coordinated compiler/documentation renumber; the existing safe-fix and refusal rules apply.
+- **Amended 2026-10-30, corrected 2026-11-03 for manual migration: migration warnings.** The transitional compiler reports `EK4854` for a safe migration from the retired abstract-class spelling to `service`, retaining its contract and key, and `EK4855` for a preserving migration of the legacy `static readonly default = shape` to an equivalent native `Context.Service` class. Retain the original key, eager initialization, cached value identity, field and type reads, mutable shape members and missing-provider failure; refuse when those cannot be preserved. Adopting `defaultValue` and `Context.Reference` fallback is an explicit semantic change, not this mechanical repair. An abstract class keeps ordinary TypeScript semantics until explicitly migrated. These warnings retain their emitted compatibility codes until a coordinated compiler/documentation renumber.
 
 - **Amended 2026-10-30: incomplete declaration diagnostics.** A recognized service declaration missing its required body is `EK0906`. Every custom `service` declaration in a native TypeScript ambient source context is unsupported (`EK0907`), before missing-body recovery for that declaration. This includes explicit `declare service` and inherited ambientness through nested namespaces, ambient external modules, `declare global` and native declaration-file contexts wherever the source syntax can otherwise occur. `export`, a complete body, an explicit key or a default does not escape that ambientness. Determine the context from source semantics, not the declaration's spelling; preserve ordinary native ambient classes/consts, imported real keys and generated `.d.ts` output. Use the intended runtime declaration or import the real service key; do not synthesize an ambient service or an empty implementation. Ordinary TypeScript ambient class/const declarations keep their rules. These codes label existing rejections; they add no admitted syntax.
 

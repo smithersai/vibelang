@@ -258,12 +258,14 @@ The stock-TypeScript mapper reports `EK9001` when it cannot represent a source f
 
 VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available. Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.
 
+For a manual migration, edit only files owned by the project. Preserve comments, evaluation order, observable behavior, types and declaration output. If you cannot establish equivalence, leave the source in place until you can review the behavior and make an explicit change.
+
 ### Trailing-block migration
 
 | Code | Trigger | Repair |
 | --- | --- | --- |
 | `EK1101` | A rejected trailing block | Pass the block as the last argument: `Layer.effect(Users) { … }` becomes `Layer.effect(Users, effect { … })`; `it.effect("loads") { … }` becomes `it.effect("loads", effect () => { … })`; a plain callback becomes `() => { … }`. |
-| `TS2345`, `TS2554`, `TS2769`, or transitional `EK1023` | A legacy Effect-dual trailing block; `EK1023` applies when appending the block type-checks with changed meaning | The versioned dual migration runs first, preserves the original data-first or curried argument position and emits no duplicate `EK1101`. |
+| `TS2345`, `TS2554`, `TS2769`, or transitional `EK1023` | A legacy Effect-dual trailing block; `EK1023` applies when appending the block type-checks with changed meaning | Keep the original data-first or curried argument position when moving the block. The compiler reports no duplicate `EK1101`. |
 
 Use the pinned legacy source, compiler and options to determine the block's kind and argument position, never the callee's parameter type alone. Preserve runtime behavior and comments; printed comment placement and equivalent arrow layout may differ. Retain a comment between the call and its rejected trailing block when changing the source ([VIP-11](../vips/0011-trailing-blocks-denied.md#amendments)).
 
@@ -338,7 +340,7 @@ For these retirements and the mutable-marker, receiver-method and prelude-shorth
 
 `EK2601` rejects the retired side-effect markers `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser`, even without `main`: `legacy platform entry marker: write an explicit runner`.
 
-Only a marked module is migration input. An eligible legacy startup is an exported, non-default, zero-parameter function declaration `main` with a body and no checker-resolved top-level runner call under the pinned legacy compiler and options. The migration removes the marker and expands eligible startup as follows:
+Only a marked module is migration input. An eligible legacy startup is an exported, non-default, zero-parameter function declaration `main` with a body and no checker-resolved top-level runner call under the pinned legacy compiler and options. To migrate manually, remove the marker and expand eligible startup as follows:
 
 | Marker | Explicit runner | Legacy service layer |
 | --- | --- | --- |
@@ -382,7 +384,7 @@ Pinned defaults are `diagnostics: true`, `includeSuggestionsInTsc: true`, `ignor
 
 Append `{ "name": "@effect/language-service" }` to the selected project's own `compilerOptions.plugins`. Copy inherited plugin entries before appending; never edit an external base. Retain explicit disables, severities, JSONC comments and unrelated settings under the [ownership and preservation rules](#explicit-source-changes).
 
-The legacy shortcut activated the whole default plugin even for an `"off"` key. Add no per-rule suppression or ignore flags: the plain entry must preserve diagnostic inclusion, categories, exit status and emission, except for `EK3012` itself. Refuse an unprovable replacement. With the entry present, migration is idempotent and reports no `EK3012`. Retire implicit severity-key activation only when this migration is available and verified against the legacy release ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)).
+The legacy shortcut activated the whole default plugin even for an `"off"` key. Add no per-rule suppression or ignore flags: the plain entry must preserve diagnostic inclusion, categories, exit status and emission, except for `EK3012` itself. Refuse an unprovable replacement. With the entry present, the compiler reports no `EK3012`. Retire implicit severity-key activation once the migration is verified against the legacy release ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)).
 
 ### VibeLang warnings
 

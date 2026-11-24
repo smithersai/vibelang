@@ -104,7 +104,7 @@ function extract(value: Option.Option<string>) {
   }
 }
 
-const certain = Option.getOrThrow(Option.some("known"))
+const certain = Option.getOrElse(Option.some("known"), () => "fallback")
 ```
 
 ```output

@@ -1,6 +1,8 @@
 # Preserve cleanup defects during typed failure recovery
 
-**Status:** drafted, not filed. **Target:** Effect runtime.
+> **Withdrawn 2026-11-23.** The report reproduced on Effect 4.0.5. On 4.1.1, both reasons are defects and typed recovery leaves the failure in place. VibeLang lowers ordinary typed recovery to `Effect.catch`.
+
+**Status:** withdrawn, never filed. **Target:** Effect runtime.
 **Version:** `effect@4.0.5`. **Kind:** recovery-policy proposal.
 
 ## Behavior and reproduction
@@ -17,8 +19,8 @@ const after = Effect.runSyncExit(
   Effect.catch(body, () => Effect.succeed("recovered"))
 )
 console.log(Exit.isFailure(before) && before.cause.reasons.map(r => r._tag))
-// ["Fail", "Die"]
-console.log(after) // Success("recovered"); the cleanup defect is gone
+// Effect 4.1.1: ["Die", "Die"]
+console.log(after._tag) // Effect 4.1.1: Failure
 ```
 
 Existing reproduction:
@@ -28,7 +30,7 @@ Existing reproduction:
 policy. `internal/effect.ts`'s `findError` selects the first Fail reason, and
 `Effect.catch` replaces the entire cause with the handler's result.
 
-## Expected behavior
+## Original proposed behavior
 
 Provide a typed recovery operation that recovers only causes made entirely of
 expected failures. A cause containing a Die or Interrupt should pass through
@@ -38,12 +40,9 @@ whether the handler receives the first failure or all of them.
 This is a request for an explicit policy, not a claim that the present
 `Effect.catch` implementation contradicts its public contract.
 
-## Why it matters to VibeLang
+## Historical VibeLang rationale
 
-Source `catch` handles expected failures only. If it recovers a body failure and
-silently drops a release defect, the program appears successful after broken
-cleanup. The kernel's `catchExpected` re-fails mixed causes unchanged (D13,
-D46), so generated code cannot lower this construct to ordinary `Effect.catch`.
+The former kernel used `catchExpected` to re-fail mixed causes unchanged (D13, D46). Under the Effect 4.0.5 behavior, lowering recovery directly to `Effect.catch` could make a failure look successful after broken cleanup.
 
 ## Suggested fix
 

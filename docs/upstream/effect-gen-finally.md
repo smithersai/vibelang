@@ -2,11 +2,11 @@
 
 **Status:** drafted, not filed. **Target:** Effect runtime.
 
-**Title:** `Effect.gen` / `Effect.fn` never run JavaScript `finally`, `catch`, or `using` cleanup on failure or interruption (4.0.5); the language service calls `try/finally` valid cleanup
+**Title:** `Effect.gen` / `Effect.fn` never run JavaScript `finally`, `catch`, or `using` cleanup on failure or interruption (4.1.1); the language service calls `try/finally` valid cleanup
 
-**Version:** effect 4.0.5.
+**Version:** effect 4.1.1.
 
-**What happens.** The generator frame created by `Effect.gen`, `Effect.fn`, `Effect.fnUntraced`, and `Effect.fnUntracedEager` (`fromIteratorUnsafe`, `internal/effect.ts:1413-1445`) defines only a success continuation. When a yielded effect fails, or the fiber is interrupted while suspended inside the generator, the frame is popped and the generator object is dropped. Nothing calls `iterator.throw()` or `iterator.return()`. JavaScript `catch`, `finally`, and `using` disposal inside the body therefore never run on those paths.
+**What happens.** The generator frame created by `Effect.gen`, `Effect.fn`, `Effect.fnUntraced`, and `Effect.fnUntracedEager` (`fromIteratorUnsafe`, `internal/effect.ts:1473`) defines only a success continuation. When a yielded effect fails, or the fiber is interrupted while suspended inside the generator, the frame is popped and the generator object is dropped. Nothing calls `iterator.throw()` or `iterator.return()`. JavaScript `catch`, `finally`, and `using` disposal inside the body therefore never run on those paths.
 
 ```ts
 import { Effect, Fiber } from "effect"

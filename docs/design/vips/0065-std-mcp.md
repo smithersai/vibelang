@@ -76,7 +76,7 @@ A `command` needs `ChildProcessSpawner`: Node, Bun or a sandbox. A `url` needs `
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - Serving a toolkit is Effect's API, unchanged: [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
 - `Experimental.McpClient`, in scope with no import and named after the Effect module it extends ([VIP-33](0033-platform-stdlib.md)). [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).

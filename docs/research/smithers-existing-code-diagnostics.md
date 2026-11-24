@@ -2,13 +2,15 @@
 
 > Status: The `EK9206` regression below was resolved in `a67560eee` (VIP-1 explicit effects); the reduced witness now compiles without `EK9206` (reporting only the advisory `EK4834` warning on `fail`).
 
-Verdict: **EK9206 is a regression at these sites. EK4402 is intended, but the existing-code rejection must remain a warning until the preserving `--fix-migration-only` repair ships.** This is a specification ruling, with no compiler, codemod, or live migration-tree fix.
+Historical verdict: **EK9206 is a regression at these sites. EK4402 is intended, but the existing-code rejection must remain a warning until the preserving `--fix-migration-only` repair ships.** This is a specification ruling, with no compiler, codemod, or live migration-tree fix.
+
+The [current platform-access rules](../design/src/005-services.md#the-platform-standard-library) govern `EK4402`. The repair flags below describe a historical prototype. VibeLang ships no quick fixes or codemods of its own before its first release.
 
 ## EK9206: regression
 
 The reported `Command.test.vibe` sites are at 155:49, 161:47, 169:54, 228:53 and 289:66 in the migration replay. Each is an `is Exit.Failure` expression. They contain no source self-call or mutually recursive source functions. The checker is treating its own inference reentry as evidence of source recursion.
 
-Appendix B, [900:1142](../design/src/900-appendices.md#appendix-b-diagnostics), describes interim EK9206 as:
+Appendix B, [the diagnostic registry](../design/src/900-appendices.md#appendix-b-diagnostics), describes interim EK9206 as:
 
 > error: a recursive function has a success type that depends on its own result, or the legacy partial-contract inference cannot break its call cycle
 

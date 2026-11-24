@@ -1,7 +1,7 @@
 # Warn on JavaScript cleanup inside Effect generators
 
 **Status:** drafted, not filed. **Target:** Effect language service.
-**Runtime reproduced:** `effect@4.0.5`.
+**Runtime reproduced:** `effect@4.1.1`.
 
 ## Behavior and reproduction
 
@@ -41,9 +41,7 @@ to Effect finalizers, rather than describe that syntax as valid cleanup.
 ## Why it matters to VibeLang
 
 Developers migrating from Effect generators need accurate cleanup guidance.
-VibeLang lowers `finally` to `Effect.onExit` and resource ownership to
-Scopes. The language cannot carry an unsafe generator cleanup pattern into
-generated code.
+VibeLang effect functions use explicit Effect finalizers such as `onExit` and `ensuring`, or Scope for resource ownership. JavaScript `try/finally` remains available in ordinary TypeScript code.
 
 ## Suggested fix
 

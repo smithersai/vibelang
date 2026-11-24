@@ -22,7 +22,7 @@ true
 
 `die` terminates the fiber with a defect. Pass an `Error` instance so failure reports keep a stack trace. Implicit JavaScript runtime errors (such as dereferencing `undefined`) also become defects.
 
-An explicit `throw` in an `effect` function is always a typed failure in `E`, never a defect. A `throw` in a plain function is `EK0401`; make the function `effect` for a typed failure. In an `async` function, `throw` rejects the Promise. When calling a throwing JS/Effect helper like `Option.getOrThrow` or `Schema.decodeUnknownSync`, wrap it in `Effect.try` (and `orDie` if failure is a bug) — or prefer the typed Effect equivalents (`fromOption`, `Schema.decodeUnknownEffect`):
+Use `throw` inside an `effect` function for a typed failure, and `try die(error)` for a defect. Prefer a typed Effect such as `fromOption` when you expect a value to be missing.
 
 ```vibe
 // run: try Console.log(try firstLabel(["one"])); try Console.log(try firstLabel([]))

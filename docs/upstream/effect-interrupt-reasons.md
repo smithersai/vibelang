@@ -1,6 +1,8 @@
 # Explain repeated Interrupt reasons introduced by tracing
 
-**Status:** drafted, not filed. **Target:** Effect runtime and diagnostics docs.
+> **Withdrawn 2026-11-23.** Effect 4.1.1 reports one interrupt reason for each tested case: `Effect.gen`, a single `Effect.fn`, nested `Effect.fn` calls, and `withSpan`. The old counts below describe 4.0.5.
+
+**Status:** withdrawn, never filed. **Target:** Effect runtime and diagnostics docs.
 **Version:** `effect@4.0.5`. **Kind:** diagnostic representation proposal.
 
 ## Behavior and reproduction
@@ -20,7 +22,7 @@ if (Exit.isFailure(exit)) {
   console.log(exit.cause.reasons.filter(r => r._tag === "Interrupt").length)
   console.log(Cause.interruptors(exit.cause).size)
 }
-// Tracing can produce several reasons for the same single interruptor.
+// Effect 4.1.1: one reason, then one interruptor.
 ```
 
 Run the [existing comparison](../../experiments/scripts/runtime-facts/q3-fn-interrupt-reasons.ts):
@@ -37,7 +39,7 @@ observations. Adding tracing should not make a
 single interruption appear to be several unrelated cancellation events.
 Retain useful stack annotations even when grouping reasons by interruptor.
 
-## Why it matters to VibeLang
+## Historical VibeLang rationale
 
 Tracing is opt-in, and enabling it changes the number of reasons developers
 see. Abandonment must retain every real pending interruption and cleanup

@@ -1,6 +1,8 @@
 # Prototype segmented storage for captured continuations
 
-**Status:** drafted, not filed. **Target:** Effect runtime.
+> **Withdrawn 2026-11-23 after VIP-35 denied control handlers.** The performance proposal and measurements below document historical continuation work.
+
+**Status:** withdrawn, never filed. **Target:** Effect runtime.
 **Version examined:** `effect@4.0.5`. **Kind:** performance proposal (G17),
 dependent on the [supported-prompt proposal](effect-prompt-primitive.md).
 
@@ -44,9 +46,9 @@ Capturing a segment should detach or share opaque chunks without copying all
 its frames. The normal Effect run loop and finalizer unwinding must stay fast,
 and resume and abandon must retain one-shot, same-fiber ownership.
 
-## Why it matters to VibeLang
+## Historical VibeLang rationale
 
-Deep nested producers and recursive handlers pay for copies at each perform.
+Deep nested producers and recursive handlers in the prototype paid for copies at each perform.
 The kernel cannot substitute a segmented `_stack` itself while Effect's
 runtime expects an array. Ordinary service calls use in-place evidence and do
 not need this optimization.

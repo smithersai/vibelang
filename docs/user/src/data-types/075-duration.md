@@ -33,9 +33,9 @@ Unit constructors document scale directly at the call site, and `infinity` / `ne
 
 ```vibe
 // run: try Console.log(Duration.toMillis(milliseconds), String(try Effect.try(() => Duration.toNanosUnsafe(nanoseconds))), Duration.toSeconds(text), Option.isSome(checked), Option.isNone(Duration.fromInput("invalid" as Duration.Input)))
-const milliseconds = Duration.fromInputUnsafe(240)
-const nanoseconds = Duration.fromInputUnsafe(240n)
-const text = Duration.fromInputUnsafe("3 seconds")
+const milliseconds = Duration.millis(240)
+const nanoseconds = Duration.nanos(240n)
+const text = Duration.seconds(3)
 const checked = Duration.fromInput("3 seconds")
 ```
 
@@ -109,10 +109,10 @@ effect function waitBeforeRetry() {
 ## Converting and formatting
 
 ```vibe
-// run: try Console.log(Duration.format(Duration.millis(6250)), String(Duration.infinity), String(try Effect.try(() => Duration.toNanosUnsafe(Duration.millis(2)))))
+// run: try Console.log(Duration.format(Duration.millis(6250)), String(Duration.infinity), String(Option.getOrNull(Duration.toNanos(Duration.millis(2)))))
 Duration.format(Duration.millis(6250)) // "6s 250ms"
 String(Duration.infinity) // "Infinity"
-Duration.toNanosUnsafe(Duration.millis(2)) // 2000000n
+Duration.toNanos(Duration.millis(2)) // Some(2000000n)
 ```
 
 ```output

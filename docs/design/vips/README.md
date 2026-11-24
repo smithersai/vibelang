@@ -1,6 +1,6 @@
 # VibeLang improvement proposals
 
-Will, VibeLang's owner, decides each VibeLang language decision as a VIP, one at a time. Nothing is part of the language until an accepted VIP or one of its public amendments states it; old VibeLang is only a reference. The most fundamental decisions come first, and the most controversial come next. Each accepted VIP is recorded here with Will's words. Where an accepted VIP or its public amendment disagrees with the specification, the VIP wins until the specification is rewritten to match it. Authorized clarifications are recorded in public amendments to the relevant VIP and its affected chapter, including the applicable pinned references and explicit reconciliation notes. VIPs never contradict each other: a later VIP that changes an earlier one also updates it.
+Will, VibeLang's owner, decides each VibeLang language decision as a VIP, one at a time. Nothing is part of the language until an accepted VIP or one of its public amendments states it; old VibeLang is only a reference. The most fundamental decisions come first, and the most controversial come next. Accepted VIPs record Will’s words when available. Some proposals record acceptance under his standing approval of recommendations. Where an accepted VIP or its public amendment disagrees with the specification, the VIP wins until the specification is rewritten to match it. Authorized clarifications are recorded in public amendments to the relevant VIP and its affected chapter, including the applicable pinned references and explicit reconciliation notes. VIPs never contradict each other: a later VIP that changes an earlier one also updates it.
 
 VibeLang ships no quick fixes or codemods of its own before its first release; they are tech debt, and they may come back after release. TypeScript's own code fixes stay. This rule replaces the earlier rule that every retirement ship a codemod and pass a retirement gate. Will, on the language's principles: “since vibelang hasn't been released yet if we have implemented --fix already thats tech debt. Maybe we do that after we release but it shouldn't be in the principles and it shouldn't be in the language yet.” Asked whether that applies to VibeLang now: “If we added --fix ourselves yes it shoudln't be there maybe we add it later but it's tech debt. If --fix was already in ts obviously it should still be there for ts though”.
 
@@ -78,7 +78,7 @@ Will's ruling of 2026-11-11 limits the alpha to the core VIPs and reopens the bu
 
 > "we need to dispatch [an] agent to get these experimental mark the VIP as not accepted and as open proposals please."
 
-Each of VIPs 55 to 72 needs Will's own approval to be accepted again. The alpha's supported language is the 33 accepted VIPs numbered 1 to 41. VIPs 43 and 44 stay accepted by Will and are outside the alpha's supported set.
+At that point, each of VIPs 55 to 72 needed Will’s own approval to be accepted again. The acceptance table above records his 2026-11-23 rulings. The alpha's supported language is the 33 accepted VIPs numbered 1 to 41. VIPs 43 and 44 stay accepted by Will and are outside the alpha's supported set.
 
 The specification as a whole is accepted when four independent reviewers each answer LGTM with a grade of A- or better on the same revision. Will's acceptance rule counts A-.
 
@@ -116,6 +116,6 @@ Listed for a future decision; not part of the language.
 
 ## The built-in set
 
-VIPs 55 to 72 were accepted on 2026-11-09 under Will's standing approval of that date, which the 2026-11-11 acceptance ruling supersedes. On 2026-11-11 Will limited the alpha to the core VIPs, and all 18 became open proposals, listed under [Open](#open): none is part of the language. What is already built from them stays in the release as experimental only. Each VIP's Status line says whether an experimental implementation exists, names it, and says how to opt in.
+VIPs 55 to 72 were accepted on 2026-11-09 under Will's standing approval of that date, which the 2026-11-11 acceptance ruling supersedes. On 2026-11-11 Will limited the alpha to the core VIPs and reopened all 18 proposals. He accepted them on 2026-11-23, as recorded in the acceptance table above. Each VIP’s status line records the implementation and its availability.
 
 The [built-in set index](reviews/2026-11-09-built-in-set-index.md) and [comparative review and adopted decisions](reviews/2026-11-09-built-in-set.md) accompany VIPs 55–72. Each records the maintainers' decisions separately from Will's words.

@@ -1,5 +1,7 @@
 # Continuation prior art for EffectScript
 
+> Historical research from before the October 2026 VIP rewrite. This page uses ‘EffectScript’ for the project now called VibeLang and may use ‘VibeLang’ for the earlier design. See the [current specification](../design/src/000-intro.md).
+
 Research notes, 2026-10-15. Scope: one-shot delimited continuations, effect handlers, and coroutine runtimes, read for a language whose core is a one-shot delimited continuation runtime on Effect 4 (`effect@4.0.5`: fibers, `Context` services, `Scope` resources, interruption).
 
 Conventions:

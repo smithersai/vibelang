@@ -1,6 +1,8 @@
 # Support one-shot delimited continuations on an Effect fiber
 
-**Status:** drafted, not filed. **Target:** Effect runtime.
+> **Withdrawn 2026-11-23 after VIP-35 denied control handlers.** The API proposal and measurements below document historical continuation work.
+
+**Status:** withdrawn, never filed. **Target:** Effect runtime.
 **Version examined:** `effect@4.0.5`. **Kind:** API proposal (G1).
 
 ## Current behavior and minimal evidence
@@ -43,10 +45,10 @@ Abandonment must run finalizers and preserve real pending interruptions and
 cleanup failures. A capturing fiber must release its unconsumed transfers
 before publishing its exit.
 
-## Why it matters to VibeLang
+## Historical VibeLang rationale
 
-Control handlers and producers use this operation without another scheduler
-or DI container. The kernel currently reads `_stack`, `interruptible`,
+The control-handler and producer prototype used this operation without another scheduler
+or DI container. The prototype kernel read `_stack`, `interruptible`,
 `_interruptedCause`, `_deferredInterrupt`, and private frame protocol keys.
 Every Effect upgrade requires revalidating these undocumented seams.
 
@@ -58,8 +60,7 @@ are preferable to exposing mutable arrays. Define ownership, rejection of
 double consumption, finalizer unwinding, and fiber affinity as part of the API.
 Do not infer these guarantees from a raw stack splice alone.
 
-Use T1-T17, K11-K14, and the conformance tests as a concrete discussion suite;
-run `cd experiments && bun test`. K11 requires tail resumption after clause
+The prototype used T1–T17, K11–K14 and the conformance tests to check the proposed semantics. K11 requires tail resumption after clause
 frames have completed, and K12-K13 cover interruption and ownership edges.
 For root suspension, consider a resumer that reports a lost race, as T5/K10
 do, so adapters retain ownership of undelivered resources. This is a capability

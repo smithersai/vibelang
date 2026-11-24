@@ -2,7 +2,7 @@
 
 > **Historical, not normative.** This is the previous specification, kept as reference. The language is defined by the accepted VIPs (`docs/design/vips/`) and the specification in `docs/design/src/`.
 
-The record of every design decision, with its reason and evidence, begun 2026-10-16. The specification (`src/`) is the normative text (D360): where this log and the specification disagree, the specification wins and this log is corrected. A decision that a later one replaces says so in its first line, and the later one names it. Evidence paths are relative to the repository root.
+This log records decisions begun on 2026-10-16. Per-decision supersession notes belong to the historical log, with an added cross-reference on D134. The [VIP cross-reference](LATER-DECISIONS.md#vip-changes-to-archived-decisions) lists major changes since then. Consult the [VIP index](../vips/README.md) and [current specification](../src/000-intro.md) for decisions made since the rewrite. Evidence paths are relative to the repository root.
 
 ## Declarations: TypeScript syntax only
 

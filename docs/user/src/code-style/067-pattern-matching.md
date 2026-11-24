@@ -96,7 +96,7 @@ true true false
 ## Fixing the return type
 
 ```vibe
-// run: const rendered = try Effect.try(() => [display(3), display(true), display(false)]); try Console.log(...rendered)
+// run: const rendered = [display(3), display(true), display(false)]; try Console.log(...rendered)
 function display(input: number | boolean): string {
   return match (input) {
     when Number: (input as number).toFixed(1);

@@ -1,5 +1,7 @@
 # Native TypeScript compiler: upstream and Effect prior art
 
+> Historical research from before the October 2026 VIP rewrite. This page uses ‘EffectScript’ for the project now called VibeLang and may use ‘VibeLang’ for the earlier design. See the [current specification](../design/src/000-intro.md).
+
 Research for EffectScript. Observed 2026-10-15. GitHub and npm timestamps are UTC.
 All reads were non-mutating except a shallow scratch clone (see [Method](#method)).
 
