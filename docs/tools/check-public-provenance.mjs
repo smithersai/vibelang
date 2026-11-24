@@ -102,6 +102,8 @@ export function provenance(file, text) {
     for (const allowed of productAllowed) rest = rest.replace(allowed, "")
     rest = rest.replace(hostingUrlAllowed, "")
     if (repositoryPage(file)) rest = rest.replace(repositoryPathAllowed, "")
+    // Contributors copy the CLI invocation for a build label from this guide.
+    if (file === "CONTRIBUTING.md") rest = rest.replace(/\bsmthrs(?= (?:ci|run) \/\/)/g, "")
     if (product.test(rest) && !productPages.has(file)) problems.push(`${i + 1}: the hosting product's name`)
     if (branchLink.test(line)) problems.push(`${i + 1}: a link to the vibe branch instead of main`)
   })

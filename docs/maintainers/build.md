@@ -95,6 +95,14 @@ failure summary and cancellation handling. Run the real-pipe regressions with
 `write`/`drain` contract, complete output hashes, fragmented Unicode and both
 passing and failing checks.
 
+## Running suites directly
+
+The Go suites run from `typescript/tsc/`. Install Effect with `(cd experiments && bun install)` (or set `EFFECT_NODE_MODULES` to its `node_modules` directory). Install the runtime dependencies with `(cd packages/runtime && bun install)`, and install the stock compiler that `packages/ts-mapper/package.json` pins in `devDependencies` with `v=$(node -p 'require("./packages/ts-mapper/package.json").devDependencies.typescript') && npm install --prefix packages/ts-mapper/test/.cache/typescript-$v --no-audit --no-fund typescript@$v` from the repository root. The recursive-declaration controls also need the historical stock baseline named in `typescript/tsc/internal/vibelangfuzz/recursive_parity_baseline.go`, installed at that helper's cache directory. The runtime install supplies its own TypeScript inference baseline. Install `packages/compiler` test dependencies with `(cd packages/compiler && bun install)` for the formatter oracle. Preserve package-manager links in `node_modules/.bin` when copying installs. Mapper tests build their own compiler and runtime scope. Root discovery supports Go's `-trimpath`; when running a moved test binary outside the checkout, set `TYPESCRIPT_REPO_ROOT` to the absolute `typescript/tsc/` directory. Upstream parser, formatter and tsoptions fixture checks additionally use `typescript/tsc/testdata/fixtures/` (including `compiler/` and `typescript/tests/baselines/reference/config/commandLineParsing/`) and `typescript/tsc/testdata/baselines/reference/`, which this checkout omits; restore the matching upstream testdata checkout to run them. A test missing these optional fixtures or dependencies skips with the exact missing path and setup instruction.
+
+`packages/ts-mapper/` is `vibelang-ts-mapper`, an experimental, unpublished TypeScript 7.1 content mapper through which stock `tsc` and TypeScript's language server check `.vibe` and `.vibex` files. `bash packages/ts-mapper/test/e2e.sh` builds it, installs the TypeScript its `package.json` pins, and checks, emits and runs projects with it; `KEEP=1` keeps the projects. A project enables it with a top-level `"contentMappers": [{ "package": "vibelang-ts-mapper", "extensions": [".vibe", ".vibex"] }]` in `tsconfig.json`. Set `compilerOptions.jsx` as for a `.tsx` project; the mapper preserves JSX in its TSX projection and includes JSX options in its cache key. TypeScript runs a mapper only when allowed: `tsc --runExternalCode`, `runExternalCode: true` in a language server's initialization options, or, in VS Code, a trusted workspace with `js/ts.contentMappers.enabled` on. Stock `tsc` writes declarations for `.vibe` files (`greet.d.vibe.ts`) but no JavaScript. When `vibelang` or `vibelang-mapper --emit` writes that JavaScript, add `"outputExtensions": { ".vibe": ".js" }` to the entry and set `rewriteRelativeImportExtensions`, as `packages/ts-mapper/test/emit-fixture` does: `tsc` then imports `./greet.js` and writes `greet.d.ts`. `TS_CONTENT_MAPPER_DEBUG=1` makes `tsc` log the protocol and the mapper's stderr.
+
+Runtime `main` subprocess failures emit a `[runtime-child]` JSON record with the host, elapsed milliseconds, explicit timeout, signal and output byte counts. `timeoutReported` is Bun's child-timeout flag; Bun can terminate a child at the enclosing test deadline while this flag is `false`. Source, arguments, paths and output contents are omitted. Reproduce the bounded timeout regression with `(cd packages/runtime && bun test tests/subprocess.property.test.ts)`.
+
 ## Remote contributor checks
 
 `scripts/remote.sh <command...>` synchronizes the current workspace to a
@@ -1763,8 +1771,13 @@ The `//packages:migrate-lost-wrapper` gate runs the wrapper-loss suite when migr
   installs its own. Its targets are declared in `packages/PACKAGE.ts`.
 - **`:tree` is coarse.** Any change reruns the repository-wide checks. Naming
   what each one reads would let a case change skip the docs checks.
-- **Not yet in the graph.** `ts-mapper`, the editors, the examples and
-  `scripts/e2e.sh` run outside it. The `create-vibelang` install/build,
+- **Contributor checks.** Select `smthrs ci //:e2e` and `smthrs ci //:examples` explicitly.
+  Both install and run real projects. The pull request check runs the end-to-end
+  target followed by the compiler case targets and reports both outcomes.
+  `smthrs run //:setup` installs the local starter. `smthrs run //:site-build`
+  invokes the docs deployment script in dry-run mode. For publication, follow
+  [Docs site deployment](release-builds.md#docs-site-deployment).
+- **Not yet in the graph.** The standalone mapper and editor scripts run outside it. The `create-vibelang` install/build,
   package-manager property and formatting fixtures also require their own
   setup. Its dependency-free CLI unit suite runs separately in
   `//:create-cli`, keyed on the CLI, template,

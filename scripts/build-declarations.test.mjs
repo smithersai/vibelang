@@ -6,6 +6,28 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 
+test("contributor labels select the script targets and every compiler shard", () => {
+  const root = fileURLToPath(new URL("../", import.meta.url))
+  const cli = join(root, ".smithers/node_modules/.bin/smthrs")
+  const rules = {
+    "//:setup": "Shell.Run", "//:e2e": "Shell.Test", "//:examples": "Shell.Test",
+    "//:site-build": "Shell.Run", "//packages:compiler-test": "Suite"
+  }
+  for (const [label, rule] of Object.entries(rules)) {
+    const run = spawnSync(cli, ["graph", label, "--workspace", root, "--format", "json"], {
+      cwd: root, encoding: "utf8", timeout: 60000
+    })
+    assert.ifError(run.error)
+    assert.equal(run.status, 0, run.stdout + run.stderr)
+    const graph = JSON.parse(run.stdout)
+    assert.equal(graph.targets.find(target => target.label === label)?.target, rule, label)
+    if (label === "//packages:compiler-test") {
+      assert.deepEqual(graph.edges.filter(edge => edge.from === label).map(edge => edge.to).sort(),
+        [1, 2, 3, 4].map(shard => "//packages:compiler-test-" + shard))
+    }
+  }
+})
+
 test("the real build graph loads the documentation table checks", () => {
   const root = fileURLToPath(new URL("../", import.meta.url))
   const cli = fileURLToPath(new URL("../.smithers/node_modules/.bin/smthrs", import.meta.url))

@@ -203,6 +203,12 @@ const compilerSuite = (shard: number) => S.Suite({
   tests: [...compilerTestEntries.filter(([, , index]) => index % COMPILER_TEST_SHARDS === shard - 1).map(([, target]) => target),
     ...(shard === 1 ? [Tsc["go-vibelangfmt"]] : [])]
 })
+const compilerShards = {
+  "compiler-test-1": compilerSuite(1),
+  "compiler-test-2": compilerSuite(2),
+  "compiler-test-3": compilerSuite(3),
+  "compiler-test-4": compilerSuite(4)
+}
 
 // The migrate and convert flows stage this compiler and runtime as a
 // toolchain. Their per-file targets can be scheduled on independent workers.
@@ -527,10 +533,8 @@ export const Package = S.Package({
     "tooling-adapter-srcs": toolingAdapterSources,
     "migrate-toolchain-baseline": migrateToolchainBaseline,
     "migrate-quoted-rules": migrateQuotedRules,
-    "compiler-test-1": compilerSuite(1),
-    "compiler-test-2": compilerSuite(2),
-    "compiler-test-3": compilerSuite(3),
-    "compiler-test-4": compilerSuite(4),
+    ...compilerShards,
+    "compiler-test": S.Suite({ tests: Object.values(compilerShards) }),
     "compiler-eslint-test": compilerEslintTest,
     "migrate-helper-identity": migrateHelperIdentity,
     "migrate-source-child-native": migrateSourceChildNative,

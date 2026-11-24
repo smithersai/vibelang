@@ -2,11 +2,11 @@
   "version": 2,
   "flow": "docs",
   "source": ".smithers/flows/docs/flow.ts",
-  "digest": "c466faefadfba02ab2c9ebe92cde1c312ebf362a17940653da73b12c67b50786",
+  "digest": "48f7b2415a6f07bf7e52ef39e7aadeda0a9dd594b2edcb790c291369d3f8c586",
   "inputs": [
     {
       "path": ".smithers/flows/docs/project.ts",
-      "sha256": "cf574288692d51b702f14397343d6c42f2b0473fcad8963387bd83e2c7986d56"
+      "sha256": "f22cc82c862bdbf51bf5c76ba2632d3357af6abe0852501ac5ec5d5462538803"
     },
     {
       "path": ".smithers/flows/docs/render.ts",
@@ -26,19 +26,19 @@
     },
     {
       "path": ".smithers/package.json",
-      "sha256": "decca53d206b5d741cbf00891620f6dba582f47b4f071adf43a89a8b7c33f36d"
+      "sha256": "1c334d8a1d7f406c581701c20edb2423e2cf0b499babbf622658df9d1cd3e780"
     },
     {
       "path": ".smithers/bun.lock",
-      "sha256": "66696626bdf66009fe16753052bc96bb57cea16704379eea8ef7594f34823d72"
+      "sha256": "ca68847e2c2812c053d04e483afa2df8ed98e5118adeb4bd43697a0ef9b40492"
     },
     {
       "path": "README.md",
-      "sha256": "1758bad07b12ed193823111fdfe0565a9b340695398ed97848fdb8de5bee127c"
+      "sha256": "c79cdfe7cb75b0d0c6d4ada321887be4bad0e7a41fbe0d81eab77916d2848909"
     },
     {
       "path": "docs/user/llms-essentials.md",
-      "sha256": "8c79e08384d6a50d25f856521450cb492bd24362c0b003bb40fb733c75d41dcb"
+      "sha256": "af372625d5d1a37742df7b9307591556790485c567d15a9b7f141556fddb21d3"
     },
     {
       "path": "packages/compiler/skills/vibelang/SKILL.md",
@@ -47,10 +47,10 @@
   ],
   "outputs": {
     "README.md": {
-      "sha256": "0f5e47a8d897848efeac0f2152133e48750776eb8617507c455648e471f2440d"
+      "sha256": "6c8fa9d095a58e87757e3e83e0f757fd10a2932d2b07ecb9b180250a04bb24ff"
     },
     "CONTRIBUTING.md": {
-      "sha256": "f0e12ec29240ca185970d2e5ce74c24541b97ed8c95a93f2a536582829b875a0"
+      "sha256": "7d00a6bb1e4b0b76567ff08cd1f08f357f0e4a4e1f20aa243e7d05fb164870c2"
     },
     "MAINTAINERS.md": {
       "sha256": "bed364db23b1e776274f8278b48854a54533fb9ff42c4faafef9d858c9eaa437"
@@ -59,7 +59,7 @@
       "sha256": "caca9c24bf6dad921f171eb0dffc84b9278498e7951410b96945874611b11d70"
     },
     "templates/app/AGENTS.md": {
-      "sha256": "ac902292810ecd20a6dc3b36c4fbeda24128b4742d3d0b42231fec043ecad490"
+      "sha256": "c7179e8d50c735c6047ec71571084c696bc2bd78d5e7fcf802832e7f48c226a4"
     }
   }
 }

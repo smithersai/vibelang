@@ -87,6 +87,8 @@ test("the repository's own pages are checked: top-level files, the security poli
 test("a generated top-level page fails on the product's name in its prose", () => {
   const contributing = text => provenance("CONTRIBUTING.md", text).map(problem => problem.replace(/^\d+: /, ""))
   assert.deepEqual(contributing("The optional Smithers build graph retains its dependency's Node 26.4 runtime declaration.\n"), ["the hosting product's name"])
+  assert.deepEqual(contributing("Run `smthrs ci //:e2e` or `smthrs run //:setup`."), [])
+  assert.equal(reasons("Run `smthrs ci //:e2e`.").length, 1)
   assert.deepEqual(provenance("packages/runtime/README.md", "Built with smthrs.\n").length, 1)
   assert.deepEqual(provenance("packages/vite/README.md", "Their features require the corresponding compiler lanes.\n").length, 1)
 })

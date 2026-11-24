@@ -35,9 +35,11 @@ test("process exit replacements clarify status codes beside the compiler-backed 
   expect(note).toMatch(/Return normally for exit 0,[\s\S]*fail for exit 1,[\s\S]*interrupt for exit 130/)
 })
 
-test("the contributor compiler-semantics command installs runtime dependencies first", () => {
-  const row = read("CONTRIBUTING.md").split("\n").find(line => line.startsWith("| Compiler semantics |")) || ""
-  expect(row).toMatch(/cd packages\/runtime && bun install.*cd typescript && sh vibelang\/smoke\.sh/)
+test("contributors prepare the runtime before selecting the compiler case targets", () => {
+  const guide = read("CONTRIBUTING.md")
+  expect(guide.split("## Test your change")[0]).toContain("sh scripts/ci.sh --prepare-only")
+  expect(guide).toContain("| Compiler semantics | `smthrs ci //typescript/vibelang/...` |")
+  expect(read("scripts/ci.sh")).toMatch(/for dir in [^;]*\bpackages\/runtime\b[^;]*; do install/)
 })
 
 test("Bun starter instructions distinguish package manager and Node runtime", () => {

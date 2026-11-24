@@ -679,6 +679,31 @@ const declarationPreservation = S.Shell.Test({
 })
 
 const targets = {
+  setup: S.Shell.Run({
+    summary: "Install the checkout compiler, runtime, starter and editor extension.",
+    shell: "sh scripts/setup.sh",
+    data: [tree], tools: [go, bun, node, S.Host.bin("npm")],
+    manual: true, sandbox: "none", timeout: "30m"
+  }),
+  e2e: S.Shell.Test({
+    summary: "Set up a local starter, scaffold an app and verify its build, output and tests.",
+    shell: "sh scripts/e2e.sh",
+    data: [tree], tools: [go, bun, node, S.Host.bin("npm")],
+    exclusive: true, sandbox: "none", timeout: "30m"
+  }),
+  examples: S.Shell.Test({
+    summary: "Build the examples with the checkout compiler and compare their output.",
+    shell: "VIBELANG=$PWD/packages/compiler/native/vibelang VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh scripts/check-examples.sh",
+    data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
+    tools: [bun, node, S.Host.bin("npm")],
+    exclusive: true, sandbox: "none", timeout: "30m"
+  }),
+  "site-build": S.Shell.Run({
+    summary: "Build and check the docs site against the published release.",
+    shell: "sh scripts/deploy-docs.sh --dry-run",
+    data: [tree], tools: [bun, node, S.Host.bin("npm"), S.Host.bin("tar")],
+    manual: true, sandbox: "none", timeout: "30m"
+  }),
   // Root ownership keeps template globs in scope without introducing a new
   // package boundary that would narrow the repository-wide tree checks.
   "docs-failure-contracts": check(
@@ -1675,6 +1700,11 @@ const targets = {
     timeout: "30m"
   }),
   "docs-check": check("Generated docs, tracked-leak and case-collision checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),
+  "release-notes": check(
+    "Check the candidate release notes before submitting a change.",
+    "VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs/tools/release-docs.test.mjs",
+    [], [node]
+  ),
   // The compiler corpus runs as `//typescript/vibelang/...`, one cached target
   // per case, through the binary users run.
   ...Object.fromEntries(goVibelangBinaries.map(({ target }, index) => [`go-vibelang-compile-${index + 1}`, target])),

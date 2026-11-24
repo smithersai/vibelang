@@ -15,21 +15,17 @@ VibeLang ships no quick fixes or codemods of its own before its first release. T
 
 ## Set up
 
-From a checkout, with Go, Bun and Node on your `PATH`:
+From the repository root, with Go, Bun, npm and Node 26.4 or later on your `PATH`:
 
 ```sh
-sh scripts/setup.sh
+sh scripts/ci.sh --prepare-only
+export PATH="$PWD/.smithers/node_modules/.bin:$PATH"
+smthrs run //:setup
 ```
 
-The tested toolchain is Go 1.26 (setup downloads the Go 1.27 the compiler requires), Bun 1.4.1 and Node 22.22.3 (22.x) or Node 24.11.1 or later. The optional [build graph](docs/maintainers/build.md), which `sh scripts/ci.sh` runs, declares Node 26.4 or later for its targets; published packages and the starter require Node 22.22.3. Setup builds the native compiler into `packages/compiler/native/vibelang`, packs the runtime, builds the editor extension, and installs a local starter in `~/.bun-create/vibelang`. Setup prepares the complete replacement before moving an existing local starter; if preparation fails, the previous starter stays available. Apps you then create with `bun create vibelang my-app` depend on this checkout. After you change the compiler or runtime, rerun setup, then run `bun update vibelang-runtime vibelang vibelang-vite` in those apps. Remove `~/.bun-create/vibelang` to scaffold from npm again.
+The tested toolchain is Go 1.26 (setup downloads the Go 1.27 the compiler requires), Bun 1.4.1 and Node 22.22.3 (22.x) or Node 24.11.1 or later. The [build graph](docs/maintainers/build.md) uses Node 26.4 or later. Setup builds the native compiler into `packages/compiler/native/vibelang`, packs the runtime, builds the editor extension, and installs a local starter in `~/.bun-create/vibelang`. Setup prepares the complete replacement before moving an existing local starter; if preparation fails, the previous starter stays available. Apps you then create with `bun create vibelang my-app` depend on this checkout. After you change the compiler or runtime, rerun setup, then run `bun update vibelang-runtime vibelang vibelang-vite` in those apps. Remove `~/.bun-create/vibelang` to scaffold from npm again.
 
-The compiler cases and the doc snippet check also need the pinned packages in `experiments/` and `docs/tools/`. Install them once:
-
-```sh
-(cd experiments && bun install)
-(cd docs/tools && bun install)
-node scripts/share-effect.mjs
-```
+Preparation installs the pinned build tools and dependencies, shares the Effect install and prepares the stock TypeScript baselines. Rerun it when their lockfiles or versions change.
 
 ## Find your way around
 
@@ -55,27 +51,21 @@ node scripts/share-effect.mjs
 
 | Change | Check |
 | --- | --- |
-| Install, compiler, runtime or starter | `sh scripts/e2e.sh` |
-| Compiler semantics | `(cd packages/runtime && bun install) && (cd typescript && sh vibelang/smoke.sh --jobs 8)` |
-| Compiler package | `(cd packages/compiler && node --test test/*.test.mjs)` |
-| Doc code blocks | `bun docs/tools/check-snippets.ts` |
-| Examples | `sh scripts/check-examples.sh` |
-| Continuation kernel | `(cd experiments && bun run test)` |
-| These docs | `(cd .smithers && bun install && bun run docs:check)` |
+| Install, compiler, runtime or starter | `smthrs ci //:e2e` |
+| Compiler semantics | `smthrs ci //typescript/vibelang/...` |
+| Compiler package | `smthrs ci //packages:compiler-test` |
+| Doc code blocks | `smthrs ci //:snippets` |
+| Examples | `smthrs ci //:examples` |
+| Continuation kernel | `smthrs ci //:kernel-laws` |
+| These docs | `smthrs ci //:docs-check` |
 
 The doc snippet checker preserves expected syntax errors and checks sibling examples independently when a syntax error suppresses the page's type check. It retains imports and global declaration context. An example that imports syntax-invalid source fails with the dependency named. Use `--keep` to retain the page, syntax-probe and per-example compiler logs.
 
-For a focused check on a fresh checkout, run `sh scripts/ci.sh --prepare-only` from the repository root. It uses the complete check's frozen lockfiles, shares the Effect install and prepares both stock TypeScript baselines. Then run the desired build or test command; preparation does not select graph targets. Provisioned `node_modules` symlinks remain owned by their provider.
+For upstream Go fixtures, the experimental mapper and focused runtime debugging, see [Running suites directly](docs/maintainers/build.md#running-suites-directly).
 
-The Go suites run from `typescript/tsc/`. Install Effect with `(cd experiments && bun install)` (or set `EFFECT_NODE_MODULES` to its `node_modules` directory). Install the runtime dependencies with `(cd packages/runtime && bun install)`, and install the stock compiler that `packages/ts-mapper/package.json` pins in `devDependencies` with `v=$(node -p 'require("./packages/ts-mapper/package.json").devDependencies.typescript') && npm install --prefix packages/ts-mapper/test/.cache/typescript-$v --no-audit --no-fund typescript@$v` from the repository root. The recursive-declaration controls also need the historical stock baseline named in `typescript/tsc/internal/vibelangfuzz/recursive_parity_baseline.go`, installed at that helper's cache directory. The runtime install supplies its own TypeScript inference baseline. Install `packages/compiler` test dependencies with `(cd packages/compiler && bun install)` for the formatter oracle. Preserve package-manager links in `node_modules/.bin` when copying installs. Mapper tests build their own compiler and runtime scope. Root discovery supports Go's `-trimpath`; when running a moved test binary outside the checkout, set `TYPESCRIPT_REPO_ROOT` to the absolute `typescript/tsc/` directory. Upstream parser, formatter and tsoptions fixture checks additionally use `typescript/tsc/testdata/fixtures/` (including `compiler/` and `typescript/tests/baselines/reference/config/commandLineParsing/`) and `typescript/tsc/testdata/baselines/reference/`, which this checkout omits; restore the matching upstream testdata checkout to run them. A test missing these optional fixtures or dependencies skips with the exact missing path and setup instruction.
+Run the cached build graph locally with `smthrs ci //...`; [the build graph](docs/maintainers/build.md) lists its targets and cache inputs. The merge queue runs its selected checks on build hosts and through `.github/workflows/mq-pregate.yml`, dispatched with the `mq-pregate` repository event.
 
-`packages/ts-mapper/` is `vibelang-ts-mapper`, an experimental, unpublished TypeScript 7.1 content mapper through which stock `tsc` and TypeScript's language server check `.vibe` and `.vibex` files. `bash packages/ts-mapper/test/e2e.sh` builds it, installs the TypeScript its `package.json` pins, and checks, emits and runs projects with it; `KEEP=1` keeps the projects. A project enables it with a top-level `"contentMappers": [{ "package": "vibelang-ts-mapper", "extensions": [".vibe", ".vibex"] }]` in `tsconfig.json`. Set `compilerOptions.jsx` as for a `.tsx` project; the mapper preserves JSX in its TSX projection and includes JSX options in its cache key. TypeScript runs a mapper only when allowed: `tsc --runExternalCode`, `runExternalCode: true` in a language server's initialization options, or, in VS Code, a trusted workspace with `js/ts.contentMappers.enabled` on. Stock `tsc` writes declarations for `.vibe` files (`greet.d.vibe.ts`) but no JavaScript. When `vibelang` or `vibelang-mapper --emit` writes that JavaScript, add `"outputExtensions": { ".vibe": ".js" }` to the entry and set `rewriteRelativeImportExtensions`, as `packages/ts-mapper/test/emit-fixture` does: `tsc` then imports `./greet.js` and writes `greet.d.ts`. `TS_CONTENT_MAPPER_DEBUG=1` makes `tsc` log the protocol and the mapper's stderr.
-
-Runtime `main` subprocess failures emit a `[runtime-child]` JSON record with the host, elapsed milliseconds, explicit timeout, signal and output byte counts. `timeoutReported` is Bun's child-timeout flag; Bun can terminate a child at the enclosing test deadline while this flag is `false`. Source, arguments, paths and output contents are omitted. Reproduce the bounded timeout regression with `(cd packages/runtime && bun test tests/subprocess.property.test.ts)`.
-
-Run the cached build graph locally with `sh scripts/ci.sh`; [the build graph](docs/maintainers/build.md) lists its targets and cache inputs. The merge queue runs its selected checks on build hosts and through `.github/workflows/mq-pregate.yml`, dispatched with the `mq-pregate` repository event.
-
-For each pull request, a maintainer runs `sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`, and records the results in the pull request.
+Each pull request runs the end-to-end and compiler case checks against its head commit. Open the `vibelang/pr-check` check in the pull request to see both results and their logs.
 
 The compiler package tests include a native ESLint tree-oracle check, independent of the optional plugin install: contextual `effect` modifiers are syntax, while a binding, parameter or method named `effect` must retain its identifier node. Function names and parameters named with contextual words such as `match` or `service` also require their written identifiers. It also knocks out written names to verify the oracle catches missing nodes.
 
@@ -88,7 +78,7 @@ The end-to-end check runs setup, then scaffolds, installs, builds, runs and test
 3. Describe the behavior before and after, any syntax or API break, and the commands you ran with their results.
 4. Open a draft for early feedback. Maintainers land their own work on `vibe`. `main` advances only to a commit on `vibe` whose post-merge checks passed, with no failing commit below it. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge.
 
-Before submitting, fetch and rebase onto current `vibe`, then run `VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs/tools/release-docs.test.mjs` from the repository root. Describe each user-facing symptom and its corrected behavior in plain words, once. This checks duplicate fixes and internal-only wording even while the candidate is unreleased. It uses the recorded publication data; no registry query is needed for this per-change check.
+Before submitting, fetch and rebase onto current `vibe`, then run `smthrs ci //:release-notes` from the repository root. Describe each user-facing symptom and its corrected behavior in plain words, once. This checks duplicate fixes and internal-only wording even while the candidate is unreleased. It uses the recorded publication data; no registry query is needed for this per-change check.
 
 After publishing, finalize that release's heading and record npm's actual version with `node docs/tools/release-history.mjs --record`, then start a `## <next version> (unreleased)` section in [the release notes](docs/user/src/setup/release-notes.md), with a `### Bugs fixed since <last published version>` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.
 
@@ -106,4 +96,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>3,242 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,322 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

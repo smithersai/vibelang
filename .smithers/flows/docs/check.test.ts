@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { test, expect } from "bun:test";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { digestSync } from "@smthrs/crypto";
 import { generate, readSources, repository, smithers } from "./generate.ts";
@@ -79,19 +80,49 @@ test("the shipped skill numbers each language rule once and in order", async () 
   expect(numbers).toEqual(Array.from({ length: 12 }, (_, index) => index + 1));
 });
 
-test("contributing describes actual CI entrypoints and maintainer-run PR checks", async () => {
+test("contributing gives a graph command for every check and names the pull request check run", async () => {
   const output = render(await readSources())["CONTRIBUTING.md"]!
   const workflow = await readFile(join(repository, ".github/workflows/mq-pregate.yml"), "utf8")
   const event = /^\s+types: \[([^\]]+)\]/m.exec(workflow)![1]!
   expect(workflow).toContain("repository_dispatch:")
   expect(await readFile(join(repository, "scripts/ci.sh"), "utf8")).toContain("smthrs")
-  expect(output).toContain("`sh scripts/ci.sh`")
+  const rows = output.split("## Test your change\n\n")[1]!.split("\n\n")[0]!.split("\n").slice(2)
+  expect(rows).toHaveLength(7)
+  for (const row of rows) expect(row).toMatch(/\| `smthrs ci \/\/[^\s`]+` \|$/)
   expect(output).toContain("`.github/workflows/mq-pregate.yml`")
   expect(output).toContain("`" + event + "`")
   expect(output).toContain("[the build graph](docs/maintainers/build.md)")
   expect(output).not.toContain("The repository has no CI or commit statuses.")
-  expect(output).toContain("For each pull request, a maintainer runs")
-  expect(output).toContain("`sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`")
+  const pr = Bun.YAML.parse(await readFile(join(repository, ".github/workflows/pr-check.yml"), "utf8"))
+  expect(pr.on).toHaveProperty("pull_request")
+  expect(pr.permissions).toEqual({ contents: "read" })
+  expect(pr.jobs.check.steps[0].with.ref).toBe("${{ github.event.pull_request.head.sha }}")
+  expect(pr.jobs.check.steps.at(-1).run).toBe("bun .smithers/flows/pr-check/run.ts")
+  expect(output).toContain("`" + pr.jobs.check.name + "`")
+  expect(output).not.toContain("records the results in the pull request")
+})
+
+test("the pull request check reports both graph results and fails if either fails", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "vibelang-pr-check-"))
+  try {
+    const bin = join(cwd, ".smithers/node_modules/.bin")
+    await mkdir(bin, { recursive: true })
+    await writeFile(join(bin, "smthrs"), '#!/bin/sh\n[ "$1" = ci ] && [ "$2" != "$FAIL_LABEL" ]\n', { mode: 0o755 })
+    for (const failed of ["", "//:e2e", "//typescript/vibelang/..."]) {
+      const summary = join(cwd, "summary")
+      await writeFile(summary, "")
+      const run = spawnSync(process.execPath, [join(smithers, "flows/pr-check/run.ts")], {
+        cwd, encoding: "utf8", env: { ...process.env, FAIL_LABEL: failed, GITHUB_STEP_SUMMARY: summary }
+      })
+      expect(run.status, run.stderr).toBe(failed ? 1 : 0)
+      const report = await readFile(summary, "utf8")
+      for (const label of ["//:e2e", "//typescript/vibelang/..."]) {
+        expect(report).toContain(`- ${label === failed ? "Failed" : "Passed"} \`${label}\``)
+      }
+    }
+  } finally {
+    await rm(cwd, { recursive: true, force: true })
+  }
 })
 
 test("maintainer docs describe staged landings, outside reviews, and every release platform", async () => {
@@ -138,7 +169,9 @@ test("Go-only mapper setup installs dependencies where execution tests resolve t
   const manifest = JSON.parse(await readFile(join(repository, runtime!, "package.json"), "utf8"))
   expect(manifest.devDependencies.effect).toBe(manifest.peerDependencies.effect)
   const contributing = render(await readSources())["CONTRIBUTING.md"]!
-  const setup = contributing.split("The Go suites run from")[1]!.split("\n\n")[0]!
+  expect(contributing).toContain("(docs/maintainers/build.md#running-suites-directly)")
+  const guide = await readFile(join(repository, "docs/maintainers/build.md"), "utf8")
+  const setup = guide.split("The Go suites run from")[1]!.split("\n\n")[0]!
   expect(setup).toContain("`(cd " + runtime + " && bun install)`")
   expect(setup).toContain("`(cd experiments && bun install)`")
   expect(setup).toContain("`packages/ts-mapper/package.json`")
@@ -147,13 +180,13 @@ test("Go-only mapper setup installs dependencies where execution tests resolve t
 test("contributor release-note guidance runs the strict guard before submission", async () => {
   const contributing = render(await readSources())["CONTRIBUTING.md"]!
   const pullRequests = contributing.split("\n## Pull requests\n")[1]!.split("\n## ")[0]!
-  const command = /\x60(VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs\/tools\/release-docs\.test\.mjs)\x60/.exec(pullRequests)?.[1]
-  expect(command, "per-change guidance includes the strict offline command").toBeDefined()
+  expect(pullRequests).toContain("`smthrs ci //:release-notes`")
+  const graph = await readFile(join(repository, "PACKAGE.ts"), "utf8")
+  const command = /"release-notes": check\(\s*"[^"]+",\s*"([^"]+)"/.exec(graph)?.[1]
+  expect(command).toBe("VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs/tools/release-docs.test.mjs")
   expect(pullRequests).toContain("Before submitting")
   expect(pullRequests).toContain("plain words")
   expect(pullRequests).toContain("once")
-  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises")
-  const { tmpdir } = await import("node:os")
   const fixture = await mkdtemp(join(tmpdir(), "release-note-guidance-"))
   try {
     for (const name of ["release-docs.test.mjs", "release-docs.mjs", "release-publication-checks.mjs", "release-history.mjs"]) {
