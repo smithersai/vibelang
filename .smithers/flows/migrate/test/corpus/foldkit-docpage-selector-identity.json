@@ -1,6 +1,7 @@
 {
   "key": "migrate:selector-selected-set-identity",
-  "source": "foldkit docPage.test.ts selector; accepted 04:40Z ruling requires exact selected logical names/counts, excluding generated sidecars",
+  "source": "foldkit docPage.test.ts selector",
+  "quote": "a file selector may gain `.vibe` and exclude `*.d.vibe.ts` only when the verifier proves the same selected base names and count",
   "file": "src/docPage.test.ts",
   "text": "const pageSources = import.meta.glob('../page/**/*.ts')\n",
   "files": ["page/demo.ts", "page/already.vibe", "src/docPage.test.ts"]

@@ -105,9 +105,16 @@ test("generated return wrappers keep the callback channel inside the returned Ef
     }), { seed: 11717065, numRuns: 100 })
 })
 
+test("the returned-callback rules are quoted from the README and rules.md", () => {
+  const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8")
+  assert.ok(readme.includes("A plain function that directly returns `Effect.callback<A, E>` also declares `E`"))
+  assert.ok(readme.includes("This proof requires one matching function on each side, accepts an expression body or a single `return`, and never lends the channel to a nested callback."))
+  assert.ok(readFileSync(new URL("../rules.md", import.meta.url), "utf8").includes("The style gate exempts the tag advisory `EK4804` only when the written failure type is the global `Error` that the original declared for the same function."))
+})
+
 test("generated callback channels, owner names and requirements preserve only the original written failure", native, async () => {
-  // foldkit agent 22:20Z ruling: "a function returning Effect.callback<T, E> declares channel E";
-  // 18:45Z global-Error ruling still requires the same written channel, count and owner.
+  // The rules: README.md, the EK4804 exemption for a function returning Effect.callback<A, E>,
+  // and rules.md, "Gate rules the flow's tests quote": the same written Error on both sides.
   await fc.assert(fc.asyncProperty(fc.constantFrom("Error", "TypeError", "Error | TypeError", "never"),
     fc.constantFrom("Error", "TypeError", "Error | TypeError", "never"), fc.boolean(),
     fc.constantFrom("acquire", "open", "connect"), fc.boolean(), async (oldChannel, newChannel, scope, name, nested) => {

@@ -150,9 +150,13 @@ test("a nested function cannot borrow an unrelated top-level Error contract", na
   assert.equal((await decide(before, after)).accepted.size, 0)
 })
 
-// drive-foldkit-examples 23:15Z and drive-foldkit-node 23:15Z: the producer of a
-// preserved Error is often private, an inline catch callback, or one member of
-// a union channel; none of those appears in the published declaration.
+// foldkit's examples and node packages: the producer of a preserved Error is
+// often private, an inline catch callback, or one member of a union channel;
+// none of those appears in the published declaration. The rule: README.md, the
+// EK4804 exemption for a private function whose channel the original only inferred.
+test("the private-producer Error rule is quoted from the README", () => {
+  assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes("A private function whose channel the original only inferred qualifies when the original function failed with a `new Error` with the same message, through `Effect.fail`, a `try` `catch` or `mapError`, as many times as the native function does."))
+})
 const at = (line, column) => ({ file: "main.vibe", line, column, category: "warning", code: "EK4804", message: "This failure is a global Error, which has no _tag for a catch or a match to tell it apart by.", notes: [] })
 // The compiler reports the advisory at the catch callback, as the drive's result.json shows (line 5, column 12 with its comment line).
 const catchAt = text => { const lines = text.split(/\r?\n/); const line = lines.findIndex(l => l.includes("catch: ")) + 1; return at(line, lines[line - 1].indexOf("catch: ") + "catch: ".length + 1) }

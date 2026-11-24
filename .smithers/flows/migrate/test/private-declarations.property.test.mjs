@@ -18,7 +18,10 @@ const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-private-declarations.json", import.meta.url), "utf8"))
 const t3code = JSON.parse(readFileSync(new URL("./corpus/t3code-private-workspace-declarations.json", import.meta.url), "utf8"))
 
-// foldkit agent's accepted 18:45Z ruling: "Declaration identity applies to published packages only."
+// The rule: README.md, "Declaration identity applies only to published packages."
+test("the published-packages declaration rule is quoted from the README", () => {
+  assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes("Declaration identity applies only to published packages. `verify` reports a package marked `\"private\": true` as `declarations: \"not published\"`"))
+})
 async function fixture(manifest, { before = corpus.before, after = corpus.after, diagnostic = "", command = "true", includePrivate = false, emitDiagnostic = "", extraDeclaration = true } = {}) {
   manifest = { version: "1.0.0", ...manifest }
   const root = mkdtempSync(join(tmpdir(), "migrate-private-dts-"))

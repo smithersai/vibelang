@@ -11,6 +11,9 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-docpage-selector-identity.json", import.meta.url)))
 const renames = [{ from: "page/demo.ts", to: "page/demo.vibe" }]
+test("the corpus's selected-set rule is quoted from rules.md", () => {
+  assert.ok(readFileSync(new URL("../rules.md", import.meta.url), "utf8").includes(corpus.quote))
+})
 test("foldkit-67: refuses a selector that silently adds an existing native page", () => {
   const result = selectors.rewriteSourceLiterals(ts, corpus.text, corpus.file, renames, { inventory: corpus.files })
   assert.equal(result.text, corpus.text)
