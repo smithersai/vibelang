@@ -1,3 +1,4 @@
+import { goBuildSources } from "./scripts/testing/go-build-sources.mjs"
 import { Smithers as S } from "@smthrs/targets"
 import { createRootTestInputs, minimizeRootTestInputs, rootTestGroups, rootTestShards, rootTestTargetName, rootShardName, rootTestInputPatterns, rootTestBuildNeeds, shellQuote } from "./root-test-shards.ts"
 import { fuzzTopics } from "./fuzz-topics.ts"
@@ -426,9 +427,7 @@ const fuzzShardTargets = Object.fromEntries(fuzzShardPlans.map(({ label, pkg, sl
 // functions of internal/vibelang/<topic>_test.go and <topic>_*_test.go. The
 // merge gate runs a topic for a change to a source or test file of
 // internal/vibelang the topic names (ls/gate-cases.sh), where //:go-vibelang
-// runs only post-merge: c87f85092cc6 changed fix.go and main 0d0c6b46ee6e went
-// RED on TestFixReachesFixedPoint. Post-merge names its labels, so these
-// targets run only when selected.
+// runs only post-merge. These topic targets run only when selected.
 const vibelangTopicTargets = Object.fromEntries(
   [...vibelangTopics].map(([topic, names]) => [
     `go-vibelang-topic-${topic}`,
@@ -583,7 +582,7 @@ const grammarAdmissionCheck = check(
 const foreignCallExamples = S.Shell.Test({
   summary: "VIP-4 unknown-call rules and prelude examples agree, with regression and generated mutations.",
   shell: "node --test docs/tools/spec-foreign-call-contract.test.mjs",
-  data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-foreign-call-contract*.mjs", "docs/tools/package.json", "docs/tools/bun.lock"])] })],
+  data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-foreign-call-contract*.mjs", "docs/tools/package.json", "docs/tools/bun.lock", "docs/user/src/setup/existing-project.md", "docs/user/src/vibelang-features/114-vibelang-for-effect-users.md", "packages/compiler/skills/vibelang/SKILL.md"])] })],
   tools: [node],
   sandbox: "none",
   timeout: "5m"
@@ -598,7 +597,7 @@ const sidecarRootContract = S.Shell.Test({
   timeout: "5m"
 })
 
-const goTestProgress = S.Filegroup({ srcs: [...S.glob(["scripts/go-test-progress.mjs"])] })
+const goTestProgress = S.Filegroup({ srcs: [...S.glob(["scripts/go-test-progress.mjs", "scripts/is-main.mjs"])] })
 
 const buildContractInputs = createBuildContractInputs(S)
 const buildContracts = check(
@@ -608,7 +607,8 @@ const buildContracts = check(
   [go, node],
   "5m",
   {},
-  [buildContractInputs]
+  [buildContractInputs, S.file("scripts/testing/go-build-sources.mjs"),
+    ...goBuildSources().map(file => S.file("//" + file))]
 )
 
 const apiIdentityFiles = createApiIdentityInputs(S, Packages.tree)
@@ -717,13 +717,18 @@ const targets = {
     shell: "bun test --timeout 60000 docs/tools/coverage-census.test.ts",
     data: [tree], tools: [bun], sandbox: "none", timeout: "2m"
   }),
+  "kernel-laws": check(
+    "Continuation kernel laws and conformance tests.",
+    "cd experiments && bun test --timeout 30000",
+    [], [bun, node], "10m"
+  ),
   "spec-foreign-call-contract": foreignCallExamples,
   "spec-sidecar-roots": sidecarRootContract,
   "spec-object-pattern-counterpart": S.Shell.Test({
     summary: "Executable object-pattern counterparts retain callable objects, property presence and read order.",
     shell: "node docs/tools/spec-object-pattern-counterpart.mjs && node --test docs/tools/spec-object-pattern-counterpart.test.mjs",
     data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-object-pattern-counterpart*.mjs"])] })],
-    tools: [bun],
+    tools: [node],
     sandbox: "none",
     timeout: "5m"
   }),
@@ -760,7 +765,7 @@ const targets = {
   "spec-rule-judge-test": S.Shell.Test({
     summary: "Rule judge quote validation, revision collection, failure and retry properties.",
     shell: "node --test scripts/spec-rule-judge.test.mjs",
-    data: [S.file("//scripts/spec-rule-judge.mjs"), S.file("//scripts/spec-rule-judge.test.mjs"), S.file("//scripts/spec-rule-judge/score.mjs")],
+    data: [S.file("//scripts/spec-rule-judge.mjs"), S.file("//scripts/spec-rule-judge.test.mjs"), S.file("//scripts/spec-rule-judge/score.mjs"), S.file("//.smithers/evals/spec-rule-judge/cases.json")],
     tools: [node, S.Host.bin("jj")],
     sandbox: "none",
     timeout: "1m"
@@ -1560,7 +1565,7 @@ const targets = {
       "docs/tools/spec-catch-pipe-input.test.mjs", "docs/tools/spec-sidecar-roots.test.mjs",
       "docs/tools/spec-schema-jsdoc.test.mjs", "docs/tools/spec-direct-try-advisories.test.mjs",
       "docs/tools/spec-sidecar-input-protection.test.mjs",
-      "docs/tools/fixtures/**", "scripts/testing/spec-path.mjs", "packages/compiler/eslint.mjs",
+      "docs/tools/fixtures/**", "scripts/testing/spec-path.mjs", "packages/compiler/*.mjs", "packages/compiler/skills/vibelang/SKILL.md", "site/scripts/built-site.mjs",
       "docs/tools/spec-sidecar-final-path.test.mjs",
       "docs/tools/spec-async-throws.test.mjs",
       "docs/tools/spec-constructor-static-contract.test.mjs",
@@ -1738,9 +1743,6 @@ const targets = {
   ),
   // Keep the original public label as a group of all independent checks.
   "go-vibelangfuzz": S.Suite({ tests: Object.values(fuzzShardTargets) }),
-  // The registry test alone, for spec-push (~/vibe/mq/mq.py SPEC_LINT_TARGETS; fix-main-red 2026-11-03): spec-direct
-  // commits gave Appendix B 15 codes the registry lacked, and only post-merge's //:spec-tests saw it. spec-push
-  // tolerates a target main carries red, so a target of one test still blocks while //:spec-tests is red for others.
   "go-failure-aliases": goVibelang(
     "Failure aliases retain their declaration-site tags without admitting ordinary throwing calls.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -count=1 -timeout 5m -trimpath -run '^(TestFailuresSpec|FuzzFailuresSpec)$/^(alias-declaration-tag-not-admitted|foreign-alias-tag-.*)$' ./internal/vibelangfuzz/`,
@@ -1749,7 +1751,7 @@ const targets = {
   ),
   "go-generator-return-contracts": goVibelang(
     "Generator result-contract documentation retains its native forms.",
-    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -short -count=1 -timeout 10m -trimpath -run '^(TestEffectFnBareReturnContracts|TestEffectFnBareReturnContractsQuoted)$' ./internal/vibelang/ ./internal/vibelangfuzz/`,
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -short -count=1 -timeout 10m -trimpath -run '^TestEffectFnBareReturnContractsQuoted$' ./internal/vibelangfuzz/`,
     [Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]],
     "15m"
   ),
@@ -1793,7 +1795,7 @@ const targets = {
     [node, bun],
     "10m",
     {},
-    [Vibelang.tree, S.Filegroup({srcs: [...S.glob(["scripts/api-identity*.mjs", "docs/design/src/001-functions.md", "docs/design/vips/0027-declaration-output.md"])]})]
+    [Vibelang.tree, S.Filegroup({srcs: [...S.glob(["scripts/api-identity*.mjs", "docs/design/src/001-functions.md", "docs/design/vips/0027-declaration-output.md", "docs/tools/package.json", "docs/tools/bun.lock"])]})]
   ),
   "emission-snapshots": check(
     "Coverage-preserving and native tail delegation emitters keep their exact JavaScript, declarations and runtime observations.",
@@ -1865,7 +1867,7 @@ const targets = {
   "spec-diagnostic-blocks": S.Shell.Test({
     summary: "Retained diagnostic assignments have explicit exceptions and removing an exception rejects its own code.",
     shell: "node --test --test-name-pattern='retained diagnostic assignments|outside its VIP' docs/tools/spec-rules.test.mjs",
-    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/package.json", "docs/tools/bun.lock"])] })],
+    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/spec-lint.ts", "docs/tools/spec-native-source-resolution.ts", "docs/tools/package.json", "docs/tools/bun.lock"])] })],
     tools: [node],
     sandbox: "none",
     timeout: "1m"
@@ -1873,7 +1875,7 @@ const targets = {
   "spec-example-prerequisites": S.Shell.Test({
     summary: "Active JSX examples use normal compiler outcomes and explicit prerequisites remain code-specific.",
     shell: "node --test --test-name-pattern='VIP-39 Preconditions|code-specific prerequisite|active JSX examples' docs/tools/spec-rules.test.mjs",
-    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/package.json", "docs/tools/bun.lock", "typescript/tsc/internal/diagnostics/diagnosticMessages.json", "typescript/tsc/internal/tsoptions/declarations_generated.go"])] })],
+    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/spec-lint.ts", "docs/tools/spec-native-source-resolution.ts", "docs/tools/package.json", "docs/tools/bun.lock", "typescript/tsc/internal/diagnostics/diagnosticMessages.json", "typescript/tsc/internal/tsoptions/declarations_generated.go"])] })],
     tools: [node],
     sandbox: "none",
     timeout: "1m"
@@ -1881,7 +1883,7 @@ const targets = {
   "spec-diagnostic-authority": S.Shell.Test({
     summary: "Legacy migration diagnostics cite accepted authority while denied proposals remain rejected.",
     shell: "node --test --test-name-pattern='legacy layer migration cites|current resource warning|denied-VIP amendments' docs/tools/spec-rules.test.mjs",
-    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/package.json", "docs/tools/bun.lock", "typescript/tsc/internal/diagnostics/diagnosticMessages.json", "typescript/tsc/internal/tsoptions/declarations_generated.go"])] })],
+    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/spec-lint.ts", "docs/tools/spec-native-source-resolution.ts", "docs/tools/package.json", "docs/tools/bun.lock", "typescript/tsc/internal/diagnostics/diagnosticMessages.json", "typescript/tsc/internal/tsoptions/declarations_generated.go"])] })],
     tools: [node],
     sandbox: "none",
     timeout: "2m"
@@ -1889,7 +1891,7 @@ const targets = {
   "spec-proposed-diagnostics": S.Shell.Test({
     summary: "Proposed diagnostic fixtures use unassigned codes and preserve every published assignment.",
     shell: "node --test --test-name-pattern='pending diagnostic authorities stay unresolved|published compiler assignment remains assigned' docs/tools/spec-rules.test.mjs",
-    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/package.json", "docs/tools/bun.lock", "typescript/tsc/internal/diagnostics/diagnosticMessages.json", "typescript/tsc/internal/tsoptions/declarations_generated.go"])] })],
+    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/spec-lint.ts", "docs/tools/spec-native-source-resolution.ts", "docs/tools/package.json", "docs/tools/bun.lock", "typescript/tsc/internal/diagnostics/diagnosticMessages.json", "typescript/tsc/internal/tsoptions/declarations_generated.go"])] })],
     tools: [node],
     sandbox: "none",
     timeout: "2m"

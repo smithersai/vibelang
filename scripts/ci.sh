@@ -66,4 +66,15 @@ case " $* " in
   *" //packages:compiler-native "*)
     case " $* " in *" //:starter-templates "*) ;; *) set -- "$@" //:starter-templates ;; esac ;;
 esac
-exec .smithers/node_modules/.bin/smthrs ci "$@" --workspace "$root" --ui plain ${CI_RESULTS:+--results-file "$CI_RESULTS"}
+if [ -z "${CI_RESULTS:-}" ]; then
+  exec .smithers/node_modules/.bin/smthrs ci "$@" --workspace "$root" --ui plain
+fi
+started_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+status=0
+.smithers/node_modules/.bin/smthrs ci "$@" --workspace "$root" --ui plain --results-file "$CI_RESULTS" || status=$?
+# Failed runs can still have complete results. Preserve malformed or missing
+# results for ci-health to diagnose, and keep the graph's original exit status.
+if [ -f "$CI_RESULTS" ]; then
+  node scripts/testing/stamp-ci-results.mjs "$CI_RESULTS" "$started_at" || { [ "$status" -ne 0 ] || status=1; }
+fi
+exit "$status"

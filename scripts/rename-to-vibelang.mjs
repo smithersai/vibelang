@@ -490,9 +490,9 @@ function main() {
   const mapper = `internal/${BRAND_LOWER}mapper`
   const tsc = join(root, "typescript", "tsc")
   if (existsSync(join(tsc, mapper, "testdata", "stock"))) {
-    const command = `UPDATE_STOCK_GOLDENS=1 go test -count=1 -run '^TestStockProjectionGoldens$' ./${mapper}/`
+    const command = `UPDATE_STOCK_GOLDENS=1 go test -trimpath -count=1 -run '^TestStockProjectionGoldens$' ./${mapper}/`
     process.stdout.write(`rename-to-vibelang: (cd typescript/tsc && ${command})\n`)
-    const result = spawnSync("go", ["test", "-count=1", "-run", "^TestStockProjectionGoldens$", `./${mapper}/`], {
+    const result = spawnSync("go", ["test", "-trimpath", "-count=1", "-run", "^TestStockProjectionGoldens$", `./${mapper}/`], {
       cwd: tsc,
       encoding: "utf8",
       env: { ...goEnv, GOFLAGS: "", UPDATE_STOCK_GOLDENS: "1" },

@@ -27,30 +27,48 @@ const once = (run, step, work) => {
 // A results file: { results: [{ label, status, key, durationMs }] }.
 // A target that replayed from the cache did not run, so its time means nothing.
 export function parseRun(id, text, at) {
-  let results
+  let results, startedAt
   try {
-    results = JSON.parse(text).results
+    const run = JSON.parse(text)
+    results = run.results
+    startedAt = run.startedAt
   } catch {
     return null // a run cut off while writing
   }
   if (!Array.isArray(results)) return null
-  return { id, at, targets: results.filter((r) => r.key).map((r) => ({ label: r.label, status: r.status, key: r.key, ms: r.durationMs ?? 0 })) }
+  return { id, at: startedAt === undefined ? at : isoTime(startedAt), targets: results.filter((r) => r.key).map((r) => ({ label: r.label, status: r.status, key: r.key, ms: r.durationMs ?? 0 })) }
+}
+
+const isoTime = (value) => {
+  const time = new Date(value)
+  if (typeof value !== "string" || !Number.isFinite(time.getTime())) throw new Error(`Invalid run time: ${value}`)
+  return time.toISOString()
 }
 
 // collect reads every results file at the top of dir, oldest first.
-export const collect = (run) => once(run, "collect", ({ results, since }) => {
-  const runs = []
-  let unreadable = 0
+export const collect = (run) => once(run, "collect", ({ results, since, split }) => {
+  const runs = [], unreadableFiles = []
+  const cutoff = since ? isoTime(since) : ""
+  const boundary = split ? isoTime(split) : ""
+  const timesFile = path.join(results, "times.json")
+  const times = existsSync(timesFile) ? read(timesFile) : {}
   for (const name of readdirSync(results).filter((n) => n.endsWith("-graph.json")).sort()) {
     const file = path.join(results, name)
-    const at = statSync(file).mtime.toISOString()
-    if (since && at < since) continue
-    const parsed = parseRun(name.slice(0, -"-graph.json".length), readFileSync(file, "utf8"), at)
-    if (parsed) runs.push(parsed)
-    else unreadable++
+    const id = name.slice(0, -"-graph.json".length)
+    try {
+      const at = isoTime(times[id] ?? statSync(file).mtime.toISOString())
+      const parsed = parseRun(id, readFileSync(file, "utf8"), at)
+      if (!parsed) unreadableFiles.push(name)
+      else if (parsed.at >= cutoff) runs.push(parsed)
+    } catch {
+      unreadableFiles.push(name)
+    }
   }
   runs.sort((a, b) => a.at.localeCompare(b.at))
-  return { ok: runs.length > 0, runs, unreadable, summary: `${runs.length} runs, ${unreadable} unreadable` }
+  const unreadable = unreadableFiles.length
+  const summary = `${runs.length} runs, ${unreadable} unreadable` +
+    (runs.length === 0 && unreadable ? `: ${unreadableFiles.join(", ")}` : "")
+  return { ok: runs.length > 0, runs, split: boundary, unreadable, unreadableFiles, summary }
 })
 
 const median = (xs) => {
@@ -238,7 +256,13 @@ const evidence = lines => {
   }
   for (const line of lines) {
     const record = /^\[(node-test|migrate-test)\] (.*)$/s.exec(line)
-    if (!record) { flush(); diagnostics.push(line); continue }
+    if (!record) {
+      flush()
+      const caseFailure = /^FAIL {4}\S+: (.*)$/.exec(line)
+      const testFailure = /^\s*(\(fail\)|✖|--- FAIL:)/.exec(line)
+      diagnostics.push(caseFailure ? "(fail) " + caseFailure[1] : testFailure?.[1] ?? line)
+      continue
+    }
     let item
     try { item = JSON.parse(record[2]) } catch { flush(); continue }
     if (record[1] === "node-test" && item?.event === "output" && typeof item.message === "string") {
@@ -271,7 +295,7 @@ export function targetLines(log, label) {
   const out = []
   let captured = false
   for (const line of log.split("\n")) {
-    if (line.startsWith("//")) {
+    if (line.startsWith(prefix) || /^\/\/(?:\S*:\S+: |\S+  (?:ran|hit|failed|skipped)\b)/.test(line)) {
       captured = line.startsWith(failed)
       if (line.startsWith(prefix)) out.push(line.slice(prefix.length))
       // A supervisor can fail before there is any prefixed test output.
@@ -288,7 +312,9 @@ export function targetLines(log, label) {
 // analyze attributes each flaky target to its tests and causes through the
 // logs of the runs where it failed.
 export const analyze = (run) => once(run, "analyze", ({ results, split }) => {
-  const { runs } = read(paths(run).collect)
+  const collected = read(paths(run).collect)
+  if (!collected.ok) return { ok: false, summary: collected.summary }
+  const { runs } = collected
   const logs = new Map()
   const log = (id) => {
     if (!logs.has(id)) {
@@ -326,7 +352,7 @@ export const analyze = (run) => once(run, "analyze", ({ results, split }) => {
     tests: Object.entries(t.tests).map(([name, test]) => ({ name, ...test })).sort((a, b) => b.failures - a.failures)
   }))
   const timedOut = (id, label) => diagnosticLines(targetLines(log(id), label)).some((l) => /timed out after/.test(l))
-  const regressed = regressions(runs, { split, timedOut })
+  const regressed = regressions(runs, { split: collected.split ?? (split ? isoTime(split) : ""), timedOut })
   const returned = intermittent(runs, (id, label) => failedTests(targetLines(log(id), label)))
   return { ok: true, runs: runs.length, flaky: ranked, intermittent: returned, slow: slow(runs), regressed, summary: `${ranked.length} flaky targets, ${returned.length} intermittent tests, ${regressed.length} slower over ${runs.length} runs` }
 })
@@ -353,7 +379,10 @@ const day = (iso) => iso.slice(0, 16).replace("T", " ")
 // report writes report.md and the ranking a follow-up reads.
 export const report = (run) => once(run, "report", () => {
   const a = read(paths(run).analyze)
+  if (a.ok === false) return { ok: false, summary: a.summary }
+  const { unreadable, unreadableFiles = [] } = (existsSync(paths(run).collect) ? read(paths(run).collect) : {})
   const lines = [`# CI health: ${a.runs} runs`, ""]
+  if (unreadable) lines.push(`Unreadable results: ${unreadable}`, "", ...unreadableFiles.map(name => `- ${cell(name)}`), "")
   lines.push("## Flaky targets", "", "The same key, so the same declared inputs, both passed and failed.", "")
   lines.push("| Target | Keys | Failures | Passes | Last failed | Causes | Unattributed output | Next step |", "| --- | --- | --- | --- | --- | --- | --- | --- |")
   for (const t of a.flaky) {

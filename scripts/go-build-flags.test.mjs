@@ -12,6 +12,7 @@
 // typescript/Herebyfile.mjs and typescript/tsc/ are upstream TypeScript's and
 // keep their own flags.
 import { test } from "node:test"
+import { goBuildSources } from "./testing/go-build-sources.mjs"
 import assert from "node:assert/strict"
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
 import { spawnSync } from "node:child_process"
@@ -20,32 +21,12 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const root = fileURLToPath(new URL("..", import.meta.url))
-const scripts = [
-  "scripts/build-vibelang.sh",
-  "typescript/PACKAGE.ts",
-  "PACKAGE.ts",
-  "typescript/vibelang/smoke.sh",
-  "typescript/vibelang/lsp-smoke.sh",
-  "packages/vite/test/run.sh",
-  "packages/unplugin/test/run.sh",
-  "packages/compiler/test/eslint/run.sh",
-  "packages/ts-mapper/test/e2e.sh",
-  "packages/ts-mapper/test/parity/run.sh",
-  "packages/ts-mapper/test/parity/parity.ts",
-  "typescript/VIBELANG.md",
-]
-const read = (file) => readFileSync(root + file, "utf8")
-
-test("no build or test script passes -gcflags", () => {
-  const found = scripts.flatMap((file) =>
-    read(file).split("\n").flatMap((line, i) => (/-gcflags[= ]/.test(line) ? [`${file}:${i + 1}`] : [])))
-  assert.deepEqual(found, [])
-})
+const read = (file) => readFileSync(join(root, file), "utf8")
 
 // Decode declaration strings before reading their shell quotes. In particular,
 // escaped selector quotes must not turn a selector's && into a command boundary.
 function shellSource(text, file) {
-  if (!file.endsWith(".ts")) return text
+  if (file.endsWith(".sh")) return text
   return [...text.matchAll(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\x60(?:\\.|[^\x60\\])*\x60/g)]
     .map(([literal]) => literal.slice(1, -1).replace(/\\(["'\x60\\])/g, "$1").replace(/\\n/g, "\n"))
     .join("")
@@ -119,46 +100,52 @@ function trimpathSetting(word) {
 // GOFLAGS supplies defaults in order. Its quotes surround whole arguments;
 // quoted linker payloads cannot change a compilation flag. The inherited
 // GOFLAGS expansion supplies no proof; its appended literal setting does.
-function hasTrimpath(value) {
-  let enabled = false
+function environmentFlags(value) {
   const literal = value.replace(/\$\{GOFLAGS:\+\$GOFLAGS \}/g, "")
-  for (const [word] of literal.matchAll(/'[^']*'|"[^"]*"|[^\t\n\r ]+/g)) {
-    const field = /^['"]/.test(word) ? word.slice(1, -1) : word
-    enabled = trimpathSetting(field) ?? enabled
-  }
-  return enabled
+  const words = [...literal.matchAll(/'[^']*'|"[^"]*"|[^\t\n\r ]+/g)]
+    .map(([word]) => /^['"]/.test(word) ? word.slice(1, -1) : word)
+  return compileFlags(words)
 }
 const valueFlags = new Set(["-run", "-bench", "-fuzz", "-gcflags", "-ldflags", "-tags",
-  "-o", "-p", "-timeout", "-count", "-cpu", "-coverpkg", "-mod", "-modfile", "-overlay"])
+  "-asmflags", "-buildmode", "-o", "-p", "-timeout", "-count", "-cpu", "-coverpkg", "-mod", "-modfile", "-overlay"])
 
-function explicitTrimpath(words) {
-  let enabled
+function compileFlags(words) {
+  const forbidden = []
+  let trimpath
   for (let i = 0; i < words.length; i++) {
     if (words[i] === "--" || words[i] === "-args" || words[i] === "--args") break
-    enabled = trimpathSetting(words[i]) ?? enabled
+    const option = words[i].replace(/^--/, "-").split("=", 1)[0]
+    if (/^-(?:gcflags|race|tags|asmflags|buildmode)$/.test(option)) forbidden.push(option)
+    trimpath = trimpathSetting(words[i]) ?? trimpath
     if (valueFlags.has(words[i].replace(/^--/, "-"))) i++
   }
-  return enabled
+  return { trimpath, forbidden }
 }
 
 test("every go build or go test line compiles with -trimpath", () => {
-  const missing = scripts.flatMap((file) => {
+  const missing = goBuildSources(root).flatMap((file) => {
     const text = read(file)
+    const argvIssues = [...text.matchAll(/\b(?:spawnSync|spawn|execFileSync|execFile)\(\s*(?:["']go["']\s*,\s*\[\s*["'](build|test|run)["']|["']sh["']\s*,\s*\[\s*join\([^\n]*?["'][^"']*native-output\.sh["']\),\s*["'](build)["']\s*,\s*\w+)([^\]]*)\]/g)]
+      .flatMap(([, verb, native, args]) => {
+        const flags = [...args.matchAll(/["']([^"']*)["']/g)].map(([, arg]) => arg)
+        const { trimpath, forbidden } = compileFlags(flags)
+        return [
+          ...(!trimpath ? [file + ": " + (native ? "native-output.sh build" : "go " + verb) + " requires -trimpath"] : []),
+          ...forbidden.map(flag => file + ": disallowed compile flag " + flag),
+        ]
+      })
     // Literal environment fragments in template commands retain their scope.
     const environments = new Map([...text.matchAll(/const\s+(\w+)\s*=\s*["']([A-Z_]\w*=[^"'\\]*)["']/g)]
       .map(([, name, assignment]) => [name, assignment]))
-    let fenced = false
-    let exportedGoflags = { exported: false, trimpath: false }
+    let exportedGoflags = { exported: false, flags: environmentFlags("") }
     let scopes = []
     let prefix = ""
-    return text.split("\n").flatMap((line, i) => {
-      if (line.startsWith("```")) fenced = !fenced
-      if (file.endsWith(".md") && !fenced) return []
+    return argvIssues.concat(text.split("\n").flatMap((line, i) => {
       if (/^\s*(#|\/\/)/.test(line)) return []
       const commandLine = prefix + line
       prefix = /"\s*\+\s*$|\\$/.test(line) ? commandLine.replace(/\\$/, "") : ""
       if (prefix) return []
-      let environment = file.endsWith(".sh") ? { ...exportedGoflags } : { exported: false, trimpath: false }
+      let environment = file.endsWith(".sh") ? { ...exportedGoflags } : { exported: false, flags: environmentFlags("") }
       const failed = []
       let invocation = 0
       if (!file.endsWith(".sh")) scopes = []
@@ -176,38 +163,39 @@ test("every go build or go test line compiles with -trimpath", () => {
         if (words[0] === "export") {
           const setting = words.find(word => word.startsWith("GOFLAGS="))
           if (setting) {
-            environment.trimpath = hasTrimpath(setting.slice("GOFLAGS=".length))
+            environment.flags = environmentFlags(setting.slice("GOFLAGS=".length))
             environment.exported = true
           } else if (words.includes("GOFLAGS")) environment.exported = true
           continue
         }
         if (words[0] === "unset" && words.includes("GOFLAGS")) {
-          environment = { exported: false, trimpath: false }
+          environment = { exported: false, flags: environmentFlags("") }
           continue
         }
-        let program = words[0] === "env" || words[0] === "command" ? 1 : 0
-        let inline = environment.exported && environment.trimpath
+        let program = 0
+        while (/^(?:if|then|elif|else|do|!|exec|command|env)$/.test(words[program] ?? "")) program++
+        let inline = environment.exported ? environment.flags : environmentFlags("")
         let setting = null
-        if (words[0] === "env" && words[program] === "-u" && words[program + 1] === "GOFLAGS") {
-          inline = false
+        if (words[program - 1] === "env" && words[program] === "-u" && words[program + 1] === "GOFLAGS") {
+          inline = environmentFlags("")
           program += 2
         }
         while (/^\w+=/.test(words[program] ?? "")) {
           if (words[program].startsWith("GOFLAGS=")) {
-            setting = hasTrimpath(words[program].slice("GOFLAGS=".length))
+            setting = environmentFlags(words[program].slice("GOFLAGS=".length))
             inline = setting
           }
           program++
         }
         if (program === words.length) {
-          if (setting !== null) environment.trimpath = setting
+          if (setting !== null) environment.flags = setting
           continue
         }
         // The progress observer forwards the remaining argv and environment
         // unchanged. Audit its Go child with the same command-local settings.
         if (words[program] === "node" &&
             /^(?:\.\/)?(?:\.\.\/)*scripts\/go-test-progress\.mjs$/.test(words[program + 1] ?? "")) program += 2
-        const go = words[program] === "go" && /^(build|test)$/.test(words[program + 1] ?? "")
+        const go = words[program] === "go" && /^(build|test|run)$/.test(words[program + 1] ?? "")
         const nativeProgram = program + (words[program] === "sh" ? 1 : 0)
         const native = /(?:^|\/)native-output\.sh$/.test(words[nativeProgram] ?? "") &&
           words[nativeProgram + 1] === "build"
@@ -216,7 +204,15 @@ test("every go build or go test line compiles with -trimpath", () => {
           invocation++
           // CLI options override GOFLAGS defaults, even when they disable a
           // setting. An omitted CLI flag retains the effective environment.
-          if (!(explicitTrimpath(flags) ?? inline)) {
+          const checked = compileFlags(flags)
+          // These tests specifically exercise the Go race detector.
+          const raceProbe = (file === "PACKAGE.ts" || file === "typescript/vibelang/smoke.sh") &&
+            go && words[program + 1] === "test" && flags.includes("./internal/vibelang/") &&
+            flags.some(flag => /^TestDeclarationEmitInParallel(?:\|TestLoweringInParallel)?$/.test(flag))
+          for (const flag of new Set([...inline.forbidden, ...checked.forbidden])) {
+            if (flag !== "-race" || !raceProbe) failed.push(file + ":" + (i + 1) + ": disallowed compile flag " + flag)
+          }
+          if (!(checked.trimpath ?? inline.trimpath)) {
             const name = go ? "go " + words[program + 1] : "native-output.sh build"
             failed.push(file + ":" + (i + 1) + ": " + name + " invocation " + invocation +
               " requires -trimpath or exported GOFLAGS")
@@ -225,7 +221,7 @@ test("every go build or go test line compiles with -trimpath", () => {
       }
       if (file.endsWith(".sh")) exportedGoflags = environment
       return failed
-    })
+    }))
   })
   assert.deepEqual(missing, [])
 })
@@ -235,30 +231,35 @@ test("every go build or go test line compiles with -trimpath", () => {
 function auditNativeSource(t, source, target = "typescript/PACKAGE.ts") {
   const dir = mkdtempSync(join(tmpdir(), "go-build-flags-"))
   t.after(() => rmSync(dir, { recursive: true, force: true }))
-  for (const file of scripts) {
-    const path = join(dir, file)
-    mkdirSync(dirname(path), { recursive: true })
-    writeFileSync(path, file === target ? source : "")
+  const targetPath = join(dir, target)
+  mkdirSync(dirname(targetPath), { recursive: true })
+  writeFileSync(targetPath, source)
+  // The copied suite loads this declaration at module initialization.
+  if (target !== "typescript/PACKAGE.ts") {
+    mkdirSync(join(dir, "typescript"), { recursive: true })
+    writeFileSync(join(dir, "typescript/PACKAGE.ts"), "")
   }
+  mkdirSync(join(dir, "scripts/testing"), { recursive: true })
+  writeFileSync(join(dir, "scripts/testing/go-build-sources.mjs"),
+    readFileSync(new URL("testing/go-build-sources.mjs", import.meta.url)))
   const audit = join(dir, "scripts/go-build-flags.test.mjs")
+  const pidFile = join(dir, "audit.pid")
   writeFileSync(audit, readFileSync(new URL(import.meta.url), "utf8") +
-    '\nconsole.log("AUDIT_FIXTURE_PID " + process.pid)\n')
+    "\nwriteFileSync(" + JSON.stringify(pidFile) + ", String(process.pid))\n")
   const env = { ...process.env }
   delete env.NODE_TEST_CONTEXT
   const result = spawnSync(process.execPath, [
-    "--test", "--experimental-test-isolation=none", "--test-name-pattern=^every go build or go test line", audit
+    "--test", "--test-reporter=spec", "--experimental-test-isolation=none", "--test-name-pattern=^every go build or go test line", audit
   ], { encoding: "utf8", timeout: 15_000, env })
   assert.ifError(result.error)
   assert.match(result.stdout, /every go build or go test line compiles with -trimpath/)
-  return result
+  return { ...result, auditPid: Number(readFileSync(pidFile, "utf8")) }
 }
 
 test("trimpath fixtures run the actual audit in one isolated process", t => {
   const result = auditNativeSource(t, "go test -trimpath ./fixture\n", "scripts/build-vibelang.sh")
   assert.equal(result.status, 0, result.stdout + result.stderr)
-  const pid = result.stdout.match(/AUDIT_FIXTURE_PID (\d+)/)
-  assert.ok(pid, "the real audit must report its executing process")
-  assert.equal(Number(pid[1]), result.pid, "the isolated fixture must not start another test worker")
+  assert.equal(result.auditPid, result.pid, "the isolated fixture must not start another test worker")
 })
 
 const nativeSource = read("typescript/PACKAGE.ts")
@@ -581,3 +582,19 @@ for (const [name, environment, flags, status, childStatus] of [
     const audit = auditNativeSource(t, shell + "\n", "scripts/build-vibelang.sh")
     assert.equal(audit.status, status, audit.stdout + audit.stderr)
   })
+
+test("trimpath audit discovers a new script and rejects compilation variants", t => {
+  const result = auditNativeSource(t, [
+    "go run ./one",
+    "go build -trimpath -race ./two",
+    "go test -trimpath -tags=debug ./three",
+    "go test -trimpath -run '-race' ./four",
+    "GOFLAGS='-trimpath -asmflags=all=-S' go build ./five",
+  ].join("\n"), "new-tool/run.sh")
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /new-tool\/run.sh:1: go run invocation 1 requires -trimpath/)
+  assert.match(result.stdout, /new-tool\/run.sh:2: disallowed compile flag -race/)
+  assert.match(result.stdout, /new-tool\/run.sh:3: disallowed compile flag -tags/)
+  assert.doesNotMatch(result.stdout, /new-tool\/run.sh:4:/)
+  assert.match(result.stdout, /new-tool\/run.sh:5: disallowed compile flag -asmflags/)
+})

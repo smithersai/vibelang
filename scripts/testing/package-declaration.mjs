@@ -1,3 +1,5 @@
+import * as goBuildInputs from "./go-build-sources.mjs"
+import * as workspaceInputs from "./workspace-inputs.mjs"
 import * as rootShards from "../../root-test-shards.ts"
 import * as apiInputs from "../../api-inputs.ts"
 import * as buildContractInputs from "../../build-contract-inputs.ts"
@@ -14,7 +16,7 @@ const identity = spec => spec
 // does not validate SDK behavior; build-declarations.test.mjs loads the real SDK.
 export function declarationFixture(file, { env = {}, bindings = {}, source = readFileSync(new URL("../../" + file, import.meta.url), "utf8") } = {}) {
   const context = {
-    ...apiInputs, ...buildContractInputs, ...migrateInputs, ...rootShards,
+    ...goBuildInputs, ...workspaceInputs, ...apiInputs, ...buildContractInputs, ...migrateInputs, ...rootShards,
     fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]],
       ["migration", ["FuzzMigrationFormatterFixedPoint", "FuzzMigrationJSXRoutes"]]]),
     vibelangTopics: new Map([["inventory", ["TestInventoryFirst", "TestInventorySecond"]]]),

@@ -28,7 +28,7 @@
 import { Baseline, CaseExecutor, Gate, Regression, Report, Runner, Suite } from "@smthrs/evals";
 import { Binding, Scorer } from "@smthrs/scorers";
 import { Effect, Exit, Layer } from "effect";
-import { cpSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -284,22 +284,6 @@ const regressed = score("regressed", (i, o) => {
   return regressionScore(i.regressed, o.regressed);
 });
 
-// A checkout gives every fixture file one mtime; a fixture's times.json, when
-// it has one, sets each run's time on a copy.
-function results(fixture: string, scratch: string): string {
-  const dir = join(here, fixture);
-  let times: Record<string, string>;
-  try {
-    times = JSON.parse(readFileSync(join(dir, "times.json"), "utf8"));
-  } catch {
-    return dir;
-  }
-  const copy = join(scratch, "results");
-  cpSync(dir, copy, { recursive: true });
-  for (const [id, at] of Object.entries(times)) utimesSync(join(copy, `${id}-graph.json`), new Date(at), new Date(at));
-  return copy;
-}
-
 // Compare the actual Markdown renderer's cells with literal source names.
 function literalTable(markdown: string, heading: string, next: string, names: ReadonlyArray<string>): boolean {
   const section = markdown.split(`## ${heading}\n`)[1]?.split(`## ${next}\n`)[0];
@@ -323,7 +307,7 @@ async function report(input: Input): Promise<Output> {
   const scratch = mkdtempSync(join(tmpdir(), "ci-health-eval-"));
   const run = join(scratch, "run");
   try {
-    const exit = await execute(health, layer, { run, results: results(input.fixture, scratch), split: input.split });
+    const exit = await execute(health, layer, { run, results: join(here, input.fixture), split: input.split });
     if (Exit.isFailure(exit)) throw new Error(String(exit.cause));
     const read = (step: string) => JSON.parse(readFileSync(join(run, `${step}.json`), "utf8"));
     const result = read("report"), analysis = read("analyze");

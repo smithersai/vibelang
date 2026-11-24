@@ -8,7 +8,7 @@ import { run as steps, start } from "./lib/steps.mjs";
 // causes are behind them. Every step reads and writes the run directory, so a stopped execution
 // resumes where it stopped. No step calls a model. README.md describes the run.
 
-const implementationVersion = "ci-health/v14";
+const implementationVersion = "ci-health/v15";
 
 const Outcome = Schema.Struct({ step: Schema.String, ok: Schema.Boolean, summary: Schema.String });
 
@@ -32,6 +32,7 @@ const step = (name: keyof typeof steps, run: string) =>
   Effect.try({
     try: () => {
       const result = steps[name](run) as { ok: boolean; summary: string };
+      if (!result.ok) throw new Error(result.summary);
       return { step: name, ok: result.ok, summary: result.summary };
     },
     catch: (error) => new StepFailed({ step: name, message: error instanceof Error ? error.message : String(error) })

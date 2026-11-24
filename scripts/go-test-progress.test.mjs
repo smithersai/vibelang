@@ -406,7 +406,7 @@ func main() {
   if <-done != nil { os.Exit(1) }
 }
 `)
-  const built = spawnSync("go", ["build", "-p", "8", "-o", binary, source], {
+  const built = spawnSync("go", ["build", "-p", "8", "-trimpath", "-o", binary, source], {
     env: { ...process.env, GOMAXPROCS: "2", GOWORK: "off" }, encoding: "utf8", timeout: 280_000
   })
   assert.equal(built.status, 0, built.stdout + built.stderr)

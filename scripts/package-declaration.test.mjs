@@ -78,7 +78,7 @@ for (const module of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/test
       const files = [
         "PACKAGE.ts", "typescript/PACKAGE.ts", "packages/PACKAGE.ts",
         "api-inputs.ts", "build-contract-inputs.ts", "root-test-shards.ts", "root-test-fixtures.json", "root-test-shard-groups.json", "site/package.json", "scripts/testing/package-declaration.mjs",
-        "scripts/testing/migrate-shards.mjs",
+        "scripts/testing/migrate-shards.mjs", "scripts/testing/go-build-sources.mjs", "scripts/testing/workspace-inputs.mjs",
         ...consumers.map(name => "scripts/" + name + ".test.mjs"),
         "scripts/build-vibelang.sh", "scripts/native-output.sh", "scripts/release/warning-fixture.test.mjs",
         "packages/compiler/test/eslint/run.sh", "packages/vite/test/run.sh",
