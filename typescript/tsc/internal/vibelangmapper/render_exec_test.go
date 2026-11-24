@@ -340,12 +340,14 @@ func TestEmitCorpusSyntax(t *testing.T) {
 			for _, d := range diagnostics {
 				assert.Assert(t, d.Code != CodeExecSyntax, "%v", diagnostics)
 			}
-			if node, err := exec.LookPath("node"); err == nil {
-				cmd := exec.Command(node, "--check", "--input-type=module")
-				cmd.Stdin = strings.NewReader(js)
-				output, err := cmd.CombinedOutput()
-				assert.NilError(t, err, "%s", output)
+			node, err := exec.LookPath("node")
+			if err != nil {
+				t.Skip("node is unavailable, so the emitted JavaScript's syntax is unchecked")
 			}
+			cmd := exec.Command(node, "--check", "--input-type=module")
+			cmd.Stdin = strings.NewReader(js)
+			output, err := cmd.CombinedOutput()
+			assert.NilError(t, err, "%s", output)
 		})
 	}
 }
@@ -465,9 +467,7 @@ func TestThrowCauseRuntime(t *testing.T) {
 	assert.NilError(t, err)
 	scope := mapperTestScope(t, root)
 	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node is unavailable")
-	}
+	assert.NilError(t, err)
 	// Use a local fixture: the language corpus awaits D253's separate
 	// annotation migration, while this test exercises Cause boundaries.
 	source := `import { map as mapReasons } from "effect/Array"
@@ -571,9 +571,7 @@ func TestProducerDepthRuntime(t *testing.T) {
 	assert.NilError(t, err)
 	scope := mapperTestScope(t, root)
 	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node is unavailable")
-	}
+	assert.NilError(t, err)
 	source := `import { hooks } from "vibelang-runtime/kernel"
 effect function* count() { for (let i = 0; i < 100000; i++) yield i }
 export effect function scenario() {
@@ -601,9 +599,7 @@ func TestHatchMappingRuntime(t *testing.T) {
 	assert.NilError(t, err)
 	scope := mapperTestScope(t, root)
 	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node is unavailable")
-	}
+	assert.NilError(t, err)
 	source := `const cold = BigDecimal.make(2n, 0).multiply(BigDecimal.make(3n, 0))
 export effect function scenario() {
  const zero = try sync(BigDecimal.fromNumberUnsafe(0))

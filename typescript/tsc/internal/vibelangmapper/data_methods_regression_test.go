@@ -82,7 +82,7 @@ func TestD252RegressionBareMethodBlock(t *testing.T) {
 	// The page now shows the VIP language, which the census skips until the
 	// compiler implements the VIPs its pending line names.
 	if strings.Contains(block, "// pending: VIP-") {
-		return
+		t.Skip("the docs block names a pending VIP, so its projection is unchecked")
 	}
 	projected := Project("import { lines } from \"./opaque.js\";\n"+block, testContext)
 	assertParses(t, projected.Text)

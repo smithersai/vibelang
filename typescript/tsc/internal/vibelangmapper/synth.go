@@ -526,7 +526,6 @@ func (w *printer) invokedBlock(n *ast.Node, e env) bool {
 	w.mark(editRun, partOpen, "")
 	w.mark(editProgram, partOpen, "")
 	inner := newEffectEnv()
-	inner.continuation = e.continuation
 	w.node(arrow.Body(), inner)
 	w.mark(editProgram, partClose, "")
 	w.mark(editRun, partClose, "")

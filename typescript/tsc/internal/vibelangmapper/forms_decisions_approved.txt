@@ -6,44 +6,16 @@
 #
 #   <path>:<line>:<col> <kind>: <old result> <old provenance> -> <new result> <new provenance> # reason
 #
-# Entries stay as the history of reviewed moves. Bump vibelangmapper.RulesVersion
-# when the classifier, the generator, or the resolver moved them.
+# Entries stay as the history of reviewed moves, one line per move: remove a
+# duplicate, and the entries of a file that no longer exists. Bump
+# vibelangmapper.RulesVersion when the classifier, the generator, or the
+# resolver moved them.
 
 # rules 2: a method keyed by a well-known symbol is plain (D94), and the generator reads a mapped type's template, so handle's Clauses<S, H> makes every clause an Effect function.
 typescript/vibelang/cases/ch06-disposable/ch06-disposable.vibe:10:5 lambda: dual fallback -> plain protocol # a well-known symbol's method is plain: the language calls it (D94)
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:116:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:129:14 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:67:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:90:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
 typescript/vibelang/cases/decl-service/main.vibe:36:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/vibelang-control/main.vibe:20:14 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/vibelang-control/main.vibe:28:60 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ek2005.fail/main.vibe:21:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ek2005.fail/main.vibe:27:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ek2005.fail/main.vibe:33:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ek4201.fail/main.vibe:46:16 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handle-optional-args/main.vibe:15:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handle-optional-args/main.vibe:23:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handlers/main.vibe:116:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handlers/main.vibe:145:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handlers/main.vibe:31:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handlers/main.vibe:33:10 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handlers/main.vibe:52:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handlers/main.vibe:67:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handlers/main.vibe:85:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handlers/main.vibe:92:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/handlers/main.vibe:99:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ref6-fork.fail/ref6-fork.fail.vibe:15:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:28:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:30:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:42:7 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:46:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:53:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:73:5 lambda: plain fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:89:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
 typescript/vibelang/cases/scopes-callback.fail/main.vibe:11:18 lambda: plain fallback -> plain protocol # a well-known symbol's method is plain: the language calls it (D94)
 typescript/vibelang/cases/scopes-using/main.vibe:29:5 lambda: dual fallback -> plain protocol # a well-known symbol's method is plain: the language calls it (D94)
-typescript/vibelang/cases/stack-depth/stack-depth.vibe:54:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
 
 # rules 3: no silent defaults. A lambda passed to another file's function needs a choice (it may be overloaded on the form); a fallback dual whose one call is not known to return an Effect needs a choice (the dual defers the call); a plain annotation on a body that throws needs a choice; a hatch's TypeScript is plain (D148); catchTags' handler record is classified.
 typescript/vibelang/cases/callbacks-result-unions/main.vibe:25:18 lambda: plain fallback -> choice fallback # a function from another file may take either form by overload (lambda-forms' attach): the user chooses
@@ -57,7 +29,6 @@ typescript/vibelang/cases/vibelang-hatches/main.vibe:38:44 lambda: plain table -
 typescript/vibelang/cases/ek1001-top-level.fail/main.vibe:27:24 lambda: dual fallback -> choice fallback # the dual would defer port(), a call of a Config value, which is not known to return an Effect: the user chooses
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:52:11 lambda: dual fallback -> choice fallback # a function from another file may take either form by overload: the user chooses
 typescript/vibelang/cases/ek2003-bare-return.fail/main.vibe:16:21 lambda: plain annotation -> choice annotation # a plain return annotation cannot throw a failure (the fork reports EK9203)
-typescript/vibelang/cases/ek4202.fail/main.vibe:14:16 lambda: dual fallback -> choice fallback # a function from another file (helpers.ts) may take either form by overload: the user chooses
 typescript/vibelang/cases/hatches-inputs/main.vibe:40:30 lambda: dual fallback -> plain hatch # a hatch's first argument is TypeScript (D148): its lambdas are plain
 typescript/vibelang/cases/hatches-inputs/main.vibe:41:12 lambda: dual fallback -> plain hatch # a hatch's first argument is TypeScript (D148): its lambdas are plain
 typescript/vibelang/cases/lambda-forms/main.vibe:10:19 lambda: plain fallback -> choice fallback # a function from another file may take either form by overload (lambda-forms' attach): the user chooses
@@ -78,7 +49,6 @@ typescript/vibelang/cases/lambda-forms/main.vibe:26:17 lambda: choice fallback -
 typescript/vibelang/cases/producers/main.vibe:171:20 lambda: choice fallback -> plain annotation # 809cf132 annotated it, answering EK9100
 typescript/vibelang/cases/ref2-provider-graph/ref2-provider-graph.vibe:86:23 lambda: choice fallback -> plain annotation # 809cf132 annotated it, answering EK9100
 typescript/vibelang/cases/scopes-using/main.vibe:185:15 lambda: choice fallback -> effectFn annotation # 809cf132 annotated it, answering EK9100
-typescript/vibelang/cases/tracing-all/main.vibe:21:18 lambda: choice fallback -> effectFn annotation # 809cf132 annotated it, answering EK9100
 
 # cases: migrate fifteen cases to L1, L2, L8, D249 and D251: the author answered EK9100 at each site with an annotation (a written return type), so the choice became that annotation.
 typescript/vibelang/cases/blocks-throw-expression/main.vibe:42:15 lambda: choice fallback -> effectFn annotation # get: string!NotFound! answers EK9100; the fork already lowered it to an Effect function
@@ -86,10 +56,8 @@ typescript/vibelang/cases/callbacks-result-unions/main.vibe:25:18 lambda: choice
 typescript/vibelang/cases/callbacks-result-unions/main.vibe:26:20 lambda: choice fallback -> effectFn annotation # (n): boolean!! answers EK9100; the fork already emitted an Effect callback
 typescript/vibelang/cases/decl-provide-service-methods/main.vibe:13:5 lambda: choice fallback -> effectFn annotation # count(): number!! answers EK9100; the fork already lowered it to an Effect function
 typescript/vibelang/cases/failures-throw/main.vibe:72:17 lambda: choice fallback -> effectFn annotation # doubled: number!InvalidId! answers EK9100; the fork already lowered it to an Effect function
-typescript/vibelang/cases/handlers/main.vibe:141:20 lambda: choice fallback -> plain annotation # hooks.onResume: void answers EK9100; the fork already kept it an ordinary arrow
 typescript/vibelang/cases/programs/main.vibe:49:15 lambda: choice fallback -> effectFn annotation # job: string!! answers EK9100; the fork already lowered it to an Effect function
 typescript/vibelang/cases/regions-jumps/main.vibe:95:3 lambda: choice fallback -> effectFn annotation # bump: number!! answers EK9100; the fork already lowered it to an Effect function
-typescript/vibelang/cases/stack-depth/stack-depth.vibe:45:20 lambda: choice fallback -> plain annotation # hooks.onResume: void answers EK9100; the fork already kept it an ordinary arrow
 typescript/vibelang/cases/contracts/main.vibe:60:22 lambda: effectFn annotation -> plain annotation # twice: number replaces Effect<number, never, never>; the fork already kept it a plain arrow, (n: number) => number in expected/main.d.ts
 
 # D260 runtime cases write their plain contracts for the projector; no runtime behavior changes. The original unannotated arrow also runs in noemit-on-error's project checks.
@@ -188,7 +156,6 @@ typescript/vibelang/cases/ek4402-services.fail/main.vibe:17:24 lambda: choice fa
 typescript/vibelang/cases/ek4402-services.fail/main.vibe:18:26 lambda: choice fallback -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
 typescript/vibelang/cases/ek4402-services.fail/main.vibe:19:24 lambda: choice fallback -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
 typescript/vibelang/cases/ek4402-services.fail/main.vibe:20:20 lambda: choice fallback -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
-typescript/vibelang/cases/entry-main-runner-names/main.vibe:3:27 lambda: plain fallback -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
 typescript/vibelang/cases/held-nested-effect/main.vibe:3:24 lambda: plain fallback -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
 typescript/vibelang/cases/order-using-disposer-once/main.vibe:23:16 lambda: choice fallback -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
 typescript/vibelang/cases/plain-contract-exceptions/a.vibe:23:25 lambda: plain fallback -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
@@ -200,8 +167,6 @@ typescript/vibelang/cases/platform-scope.fail/main.vibe:26:21 lambda: choice fal
 typescript/vibelang/cases/program-name-as-data.fail/main.vibe:15:17 lambda: plain fallback -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
 typescript/vibelang/cases/returned-union-as-data.fail/main.vibe:21:17 lambda: plain fallback -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
 typescript/vibelang/cases/vibelang-prelude/main.vibe:16:16 lambda: plain table -> plain annotation # D500: the case now writes the plain annotation an unannotated literal no longer has
-typescript/vibelang/cases/order-try-hatch-adapter/main.vibe:12:12 lambda: plain fallback -> plain annotation # D511: the returned mapper is a value of its type, so the case writes the plain annotation that keeps it plain
-typescript/vibelang/cases/order-try-hatch-mapper/main.vibe:11:12 lambda: plain fallback -> plain annotation # D511: the returned mapper is a value of its type, so the case writes the plain annotation that keeps it plain
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:67:19 lambda: plain table -> choice fallback # D513: Function is a plain destination, so the table marks describe(name: string | Function) position 0 plain and the mapper resolver needs a choice for the factory; the checker still compiles the literal plain
 typescript/vibelang/cases/tsforms-match-fixed/main.vibe:46:21 lambda: plain fallback -> plain annotation # EK4839's Match.type fix writes the arrow's return type, which makes it plain under D500 (integ10)
 typescript/vibelang/cases/effect-value-as-data.fail/main.vibe:51:24 lambda: factory annotation -> effectFn annotation # VIP-2 codemod: this factory's returned program literal is now an effect block, so the text-only projector no longer reads it as a factory; behavior unchanged
@@ -272,9 +237,6 @@ typescript/vibelang/cases/blocks-block-params/main.vibe:59:19 block: appended/ef
 typescript/vibelang/cases/blocks-block-params/main.vibe:66:21 block: appended/effectFn annotation -> appended/program annotation # a block parameter passes a program, as f(args, effect { ... }) does; its kind no longer depends on inference (VIP-1, VIP-2)
 typescript/vibelang/cases/catch-expression/main.vibe:64:26 lambda: effectFn table -> program table # exit takes an Effect and this argument is an effect block, a program (VIP-2)
 typescript/vibelang/cases/contextual-named-programs/main.vibe:22:19 lambda: plain fallback -> plain annotation # stays plain; the case now writes the return annotation (VIP-1: its kind is its missing marker)
-typescript/vibelang/cases/fork-escape-capture.fail/main.vibe:47:30 block: appended/effectFn annotation -> appended/program annotation # a block parameter passes a program, as f(args, effect { ... }) does; its kind no longer depends on inference (VIP-1, VIP-2)
-typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:54:25 block: appended/effectFn annotation -> appended/program annotation # a block parameter passes a program, as f(args, effect { ... }) does; its kind no longer depends on inference (VIP-1, VIP-2)
-typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:78:48 block: appended/effectFn annotation -> appended/program annotation # a block parameter passes a program, as f(args, effect { ... }) does; its kind no longer depends on inference (VIP-1, VIP-2)
 typescript/vibelang/cases/written-forms/forms.vibe:18:21 lambda: plain annotation -> plain table # stays plain; the evidence is the table, not an annotation on the exported arrow (VIP-1)
 typescript/vibelang/cases/ek4401-fix-fixed/lib.vibe:51:22 lambda: plain annotation -> choice fallback # plain without its annotation: a function's kind is its marker, so --fix no longer writes infer _ (VIP-1)
 typescript/vibelang/cases/ek4401-fix-fixed/lib.vibe:52:23 lambda: plain annotation -> plain fallback # plain without its annotation: a function's kind is its marker, so --fix no longer writes infer _ (VIP-1)
@@ -325,9 +287,6 @@ typescript/vibelang/cases/decl-layer/main.vibe:26:46 block: appended/program tab
 typescript/vibelang/cases/decl-layer/main.vibe:40:39 block: appended/program table -> lambda program table # VIP-11 codemod spells the appended block as an explicit argument and preserves its program form
 typescript/vibelang/cases/decl-provide/main.vibe:19:43 block: appended/program table -> lambda program table # VIP-11 codemod spells the appended block as an explicit argument and preserves its program form
 typescript/vibelang/cases/entry-platform-layer-services.fail/platform.test.vibe:7:31 block: appended/effectFn table -> lambda effectFn table # VIP-11 codemod spells the appended block as an explicit argument and preserves its effectFn form
-typescript/vibelang/cases/fork-escape-capture.fail/main.vibe:47:30 block: appended/effectFn annotation -> lambda effectFn annotation # VIP-11 codemod spells the appended block as an explicit argument and preserves its effectFn form
-typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:54:25 block: appended/effectFn annotation -> lambda effectFn annotation # VIP-11 codemod spells the appended block as an explicit argument and preserves its effectFn form
-typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:78:48 block: appended/effectFn annotation -> lambda effectFn annotation # VIP-11 codemod spells the appended block as an explicit argument and preserves its effectFn form
 typescript/vibelang/cases/layer-effect-member-contract.fail/main.vibe:16:45 block: appended/program table -> lambda program table # VIP-11 codemod spells the appended block as an explicit argument and preserves its program form
 typescript/vibelang/cases/layer-effect-member-contract.fail/main.vibe:22:50 block: appended/program table -> lambda program table # VIP-11 codemod spells the appended block as an explicit argument and preserves its program form
 typescript/vibelang/cases/layer-effect-member-contract.fail/main.vibe:24:47 block: appended/program table -> lambda program table # VIP-11 codemod spells the appended block as an explicit argument and preserves its program form
@@ -507,7 +466,6 @@ typescript/vibelang/cases/catch-absorbed-tag/main.vibe:21:4 lambda: program tabl
 typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:16:4 lambda: program table -> choice fallback # VIP-5: removing redundant `try` makes the explicit `effect` block the `catch` head; it loses the `try` program-argument table context and takes the resolver fallback. Native output and channel checks pass.
 typescript/vibelang/cases/optional-callback-runs/main.vibe:15:16 lambda: plain fallback -> effectFn fallback # VIP-1/VIP-5: `scaled` is explicitly `effect`; guarding its optional program gives a known Effect result. Site relocated from `16:16`.
 typescript/vibelang/cases/cov-ch004-not-prefix/main.vibe:15:17 lambda: dual fallback -> plain fallback # VIP-7: not(let x) is an admitted synchronous negated binding test; its fallback value is plain.
-typescript/vibelang/cases/cov-ch004-not-prefix/main.vibe:15:17 lambda: dual fallback -> plain fallback # VIP-7 permits binding initialization under not; accepting the pattern restores the plain value-returning probe tree used by syntax fallback.
 
 # Removed typescript/vibelang/cases/cov-ch900a-ek1501.fail/main.vibe:2:28 block appended/plain fallback: VIP-15/16 recover the rejected declaration body rather than classifying it as a trailing call block.
 
@@ -612,7 +570,6 @@ typescript/vibelang/cases/catch-narrowing.fail/main.vibe:30:58 lambda: effectFn 
 typescript/vibelang/cases/catch-narrowing/main.vibe:27:64 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/catch-narrowing/main.vibe:31:24 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/catch-narrowing/main.vibe:32:63 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/catch-plain-throw-warning/main.vibe:15:46 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/catch-program-operand/main.vibe:12:53 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/catch-program-operand/main.vibe:17:49 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/catch-program-operand/main.vibe:36:26 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -673,18 +630,6 @@ typescript/vibelang/cases/ch07-concurrency/ch07-concurrency.vibe:70:49 lambda: e
 typescript/vibelang/cases/ch08-producers/ch08-producers.vibe:62:9 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ch08-producers/ch08-producers.vibe:68:19 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ch08-producers/ch08-producers.vibe:78:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-approve-all-forked.fail/ch09-approve-all-forked.fail.vibe:12:34 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:104:7 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:116:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:129:14 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:137:11 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:141:9 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:145:12 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:151:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:158:11 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:67:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:90:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:98:11 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ch10-effect-gen.fail/ch10-effect-gen.fail.vibe:16:18 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ch10-typescript/ch10-typescript.vibe:99:9 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ch12-contracts/ch12-contracts.vibe:108:9 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -755,7 +700,6 @@ typescript/vibelang/cases/decl-error-family/main.vibe:47:42 lambda: effectFn tab
 typescript/vibelang/cases/decl-error-family/main.vibe:57:39 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/decl-error-positional/main.vibe:37:42 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/decl-error-positional/main.vibe:38:40 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/decl-handle/main.vibe:159:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/decl-layer-blocks.fail/main.vibe:12:5 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/decl-layer-blocks/main.vibe:22:3 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/decl-layer-blocks/main.vibe:31:5 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -884,9 +828,6 @@ typescript/vibelang/cases/ek1005-runners.fail/main.vibe:72:22 lambda: dual fallb
 typescript/vibelang/cases/ek2001-anonymous-member.fail/main.vibe:12:11 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek2001-anonymous-member.fail/main.vibe:21:11 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek2001-anonymous-member.fail/main.vibe:28:11 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ek2005.fail/main.vibe:21:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ek2005.fail/main.vibe:27:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ek2005.fail/main.vibe:33:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek2102-by-name-self-call.fail/main.vibe:14:17 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek3201-runner-services.fail/main.vibe:18:48 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek3201-runner-services.fail/main.vibe:28:21 lambda: program table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -894,11 +835,6 @@ typescript/vibelang/cases/ek3201-runner-services.fail/main.vibe:34:21 lambda: ef
 typescript/vibelang/cases/ek3201-runner-services.fail/main.vibe:39:23 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek3201-runner-services.fail/main.vibe:44:31 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek3201-runner-services.fail/main.vibe:48:43 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ek4201.fail/main.vibe:15:34 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ek4201.fail/main.vibe:42:46 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ek4201.fail/main.vibe:43:39 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ek4201.fail/main.vibe:44:42 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ek4201.fail/main.vibe:46:16 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek4301-union-data-member-generic/main.vibe:13:17 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek4301-union-data-member-generic/main.vibe:16:21 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ek4401-fix-fixed/lib.vibe:10:24 lambda: choice fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -918,7 +854,6 @@ typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:13:26 lambda: plain
 typescript/vibelang/cases/entry-main-services.fail/services.vibe:10:55 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/entry-platform-layer-services.fail/platform.test.vibe:7:31 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/entry-platform-layer-services.fail/services.vibe:6:55 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/entry-platform-layer/provide.vibe:9:39 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/explicit-operation-spans/main.vibe:3:18 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/explicit-type-argument-lambda/main.vibe:8:25 lambda: choice fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/factory-conditional-running-arm/main.vibe:10:14 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -945,52 +880,16 @@ typescript/vibelang/cases/foldkit-config-effect-calls/main.vibe:15:28 lambda: du
 typescript/vibelang/cases/foldkit-config-effect-calls/main.vibe:9:21 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/fork-arrow-body/main.vibe:23:17 lambda: effectFn fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/fork-arrow-body/main.vibe:27:17 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-capture.fail/main.vibe:13:10 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-capture.fail/main.vibe:27:5 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-capture.fail/main.vibe:35:11 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-capture.fail/main.vibe:41:16 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-capture.fail/main.vibe:47:30 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:25:39 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:54:25 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:71:18 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:78:48 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/fork-escape-fixes/main.vibe:14:22 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-return.fail/main.vibe:59:24 lambda: choice fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/fork-escape-return.fail/main.vibe:60:28 lambda: choice fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/fork-operand-legacy-fixed/main.vibe:11:15 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/fork-operand-legacy.fail/main.vibe:13:15 lambda: program table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/fork-program-operand.fail/main.vibe:12:15 lambda: program table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/generator-method-runs-effect.fail/main.vibe:24:11 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/generic-callees/main.vibe:17:25 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/generic-callees/main.vibe:20:13 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-optional-args/main.vibe:15:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-optional-args/main.vibe:23:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result.fail/main.vibe:113:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result.fail/main.vibe:117:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result.fail/main.vibe:126:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result.fail/main.vibe:130:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result.fail/main.vibe:133:6 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result/main.vibe:71:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result/main.vibe:75:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result/main.vibe:85:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result/main.vibe:89:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-result/main.vibe:92:6 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handle-resume-values/main.vibe:93:8 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:116:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:119:10 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:145:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:31:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:33:10 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:52:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:67:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:85:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:92:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:93:6 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/handlers/main.vibe:99:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/held-conditional-initializer/main.vibe:10:14 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/held-conditional-initializer/main.vibe:5:15 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/held-pipe-initializer-returned/main.vibe:5:14 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/held-pipe-initializer.fail/main.vibe:7:14 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/held-pipe-initializer/main.vibe:7:14 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/hygiene-direct-module-names/main.vibe:12:25 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/hygiene-named-function-expression/main.vibe:18:16 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -1109,7 +1008,6 @@ typescript/vibelang/cases/pipe-generic-stages/main.vibe:43:103 lambda: effectFn 
 typescript/vibelang/cases/pipe-legacy-aliased.fail/main.vibe:22:10 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/pipe-legacy-aliased.fail/main.vibe:23:13 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/pipe-legacy-aliased.fail/main.vibe:24:10 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/pipe-lookahead-legacy.fail/main.vibe:10:15 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/pipe-programs/main.vibe:24:15 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/pipe-returned-exit/main.vibe:10:34 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/pipe-returned-exit/main.vibe:14:17 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -1239,14 +1137,6 @@ typescript/vibelang/cases/ref4-callbacks/ref4-callbacks.vibe:32:34 lambda: effec
 typescript/vibelang/cases/ref4-callbacks/ref4-callbacks.vibe:54:9 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ref5-programs-as-data/ref5-programs-as-data.vibe:25:10 lambda: dual fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/ref5-programs-as-data/ref5-programs-as-data.vibe:36:18 lambda: program table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ref6-fork.fail/ref6-fork.fail.vibe:15:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:28:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:30:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:42:7 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:46:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:53:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:73:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/ref6-handlers/ref6-handlers.vibe:89:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/regions-jumps/main.vibe:95:3 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/regions/regions.vibe:44:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/rerun-parameter-assignment/main.vibe:2:24 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -1399,7 +1289,6 @@ typescript/vibelang/cases/service-value-lambdas/main.vibe:21:87 lambda: effectFn
 typescript/vibelang/cases/service-value-lambdas/main.vibe:23:21 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/service-value-lambdas/main.vibe:25:21 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/service-value-lambdas/main.vibe:4:23 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/stack-depth/stack-depth.vibe:54:5 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/stream-pull-using/main.vibe:13:7 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/stream-pull-using/main.vibe:16:70 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/super-assignment-targets/child.vibe:53:12 lambda: choice fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -1438,8 +1327,6 @@ typescript/vibelang/cases/vibelang-bare-functions/main.vibe:20:15 lambda: plain 
 typescript/vibelang/cases/vibelang-bare-functions/main.vibe:30:36 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/vibelang-concise-comments/main.vibe:13:25 lambda: choice fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/vibelang-concise-comments/main.vibe:16:27 lambda: choice fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/vibelang-control/main.vibe:20:14 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/vibelang-control/main.vibe:28:80 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/vibelang-hatches-shadow/main.vibe:15:27 lambda: effectFn annotation -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/vibelang-infer/main.vibe:22:82 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 typescript/vibelang/cases/vibelang-layer-programs/main.vibe:24:11 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
@@ -1513,8 +1400,6 @@ typescript/vibelang/cases/catch-expression-context/main.vibe:54:34 lambda: effec
 typescript/vibelang/cases/catch-expression/main.vibe:35:25 lambda: effectFn table -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/catch-narrowing.fail/main.vibe:28:58 lambda: effectFn table -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/catch-narrowing.fail/main.vibe:31:58 lambda: effectFn table -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
-typescript/vibelang/cases/catch-plain-throw-warning/main.vibe:12:46 lambda: effectFn table -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
-typescript/vibelang/cases/catch-plain-throw-warning/main.vibe:14:55 lambda: choice fallback -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/ch05-programs/ch05-programs.vibe:136:9 lambda: effectFn service -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/ch05-programs/ch05-programs.vibe:140:11 lambda: effectFn service -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/ch14-callbacks/ch14-callbacks.vibe:28:33 lambda: effectFn annotation -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
@@ -1547,8 +1432,6 @@ typescript/vibelang/cases/ek4301-union-data-member-generic/main.vibe:12:25 lambd
 typescript/vibelang/cases/ek4401-fix-fixed/lib.vibe:6:14 lambda: effectFn annotation -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/ek4401-fix.fail/lib.vibe:42:11 lambda: choice fallback -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/ek4401-fix.fail/lib.vibe:7:14 lambda: effectFn annotation -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
-typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:25:40 lambda: dual fallback -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
-typescript/vibelang/cases/fork-escape-fork-capture.fail/main.vibe:5:19 lambda: program table -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/generator-method-runs-effect.fail/main.vibe:25:11 lambda: dual fallback -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/held-pipe-initializer-top/main.vibe:4:14 lambda: effectFn annotation -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
 typescript/vibelang/cases/hygiene-direct-shadow/main.vibe:22:111 lambda: effectFn table -> effectFn keyword # VIP-1: this explicitly written effect lambda or method determines its callable kind before destination inference.
@@ -1848,10 +1731,6 @@ typescript/vibelang/cases/rewrite-void-match-arm/main.vibe:8:24 lambda: plain fa
 typescript/vibelang/cases/rewrite-void-match-arm/main.vibe:9:18 lambda: effectFn table -> effectFn keyword # VIP-1: written `effect` fixes callable kind before the contextual return target; preserve every observed occurrence.
 
 # Published VIP-5 closed-handler recovery; baseline/fixed forms outputs are byte-identical.
-typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:16:24 lambda: effectFn table -> plain fallback # VIP-5 EK0512 rejects the unparenthesized ?? continuation; the published parser's fallback recovery keeps this nested source function plain.
-typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:17:24 lambda: effectFn table -> plain fallback # VIP-5 EK0512 rejects .call after a closed function handler; the published fallback recovery no longer contextually converts its nested function.
-typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:18:23 lambda: effectFn table -> plain fallback # VIP-5 EK0512 rejects element access after a closed function handler; its nested recovery function has no contextual Effect signature.
-typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:19:25 lambda: effectFn table -> plain fallback # VIP-5 EK0512 rejects calling a closed function handler; its nested recovery function remains an ordinary function.
 examples/approval/src/main.vibe:14:24 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect modifier is decisive; preserve explicit keyword provenance from 18f822cc.
 examples/approval/src/main.vibe:22:5 lambda: effectFn service -> effectFn keyword # VIP-1: the written effect modifier is decisive; preserve explicit keyword provenance from 18f822cc.
 examples/foldkit-app/src/main.vibe:42:28 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect modifier is decisive; preserve explicit keyword provenance from 18f822cc.
@@ -1960,90 +1839,26 @@ typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: pla
 typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.
 
 # Argument-forwarding fixture 401fa44101e5 writes explicit effect declarations.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
 
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # The published source already spells explicit effect arrows/methods; parent and candidate reproduce this stale table row.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # The published source already spells explicit effect arrows/methods; parent and candidate reproduce this stale table row.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # The published source already spells explicit effect arrows/methods; parent and candidate reproduce this stale table row.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # The published source already spells explicit effect arrows/methods; parent and candidate reproduce this stale table row.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # The published source already spells explicit effect arrows/methods; parent and candidate reproduce this stale table row.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # The published source already spells explicit effect arrows/methods; parent and candidate reproduce this stale table row.
 
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
 
 typescript/vibelang/cases/cov2-002b-destructure-j-close-object/main.vibe:6:44 lambda: plain fallback -> removed # VIP-2: statement-lowered array default keeps the outward return in its source function and removes the generated callback.
 typescript/vibelang/cases/cov2-002b-destructure-j-close-result/main.vibe:6:44 lambda: plain fallback -> removed # VIP-2: statement-lowered array default keeps the outward return in its source function and removes the generated callback.
 typescript/vibelang/cases/cov2-002b-destructure-j-close-throws/main.vibe:6:44 lambda: plain fallback -> removed # VIP-2: statement-lowered array default keeps the outward return in its source function and removes the generated callback.
-typescript/vibelang/cases/cov2-002b-destructure-j-close-empty/main.vibe:6:44 lambda: plain fallback -> removed # VIP-2: statement-lowered array default keeps the outward return in its source function and removes the generated callback.
 
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
 
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
 
 # VIP-1 mixed-prefix recovery moves rejected arrow spans to the first modifier; classification stays plain fallback.
 typescript/vibelang/cases/coverage-ch001-dual-modifiers.fail/main.vibe:4:11 lambda: plain fallback -> plain fallback # Source span moves from column 24 to column 11 because mixed-prefix recovery includes both written modifiers; the rejected lambda keeps its previous classification.
 typescript/vibelang/cases/coverage-ch001-dual-modifiers.fail/main.vibe:5:11 lambda: plain fallback -> plain fallback # Source span moves from column 24 to column 11 because mixed-prefix recovery includes both written modifiers; the rejected lambda keeps its previous classification.
 
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
 
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
 
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
-typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # VIP-1: unchanged upstream fixture writes effect explicitly; record keyword provenance, preserving parameter forwarding and default/destructuring behavior.
 typescript/vibelang/cases/ek2102-by-name-self-call.fail/main.vibe:16:17 lambda: effectFn annotation -> effectFn fallback # VIP-3 retires the infer-slot return annotation; the explicit effect lambda keeps its kind and now uses the syntax fallback.
 typescript/vibelang/cases/match-computed-presence/main.vibe:10:41 lambda: plain fallback -> effectFn fallback # VIP-7 computed keys are captured with `$propertyKey` once; its generated is-pattern IIFE now contains a call, so the inventory conservatively records effectFn fallback. Runtime remains the immediate boolean wrapper; covered by match-computed-presence.
 typescript/vibelang/cases/match-computed-presence/main.vibe:12:39 lambda: plain fallback -> effectFn fallback # VIP-7 computed keys are captured with `$propertyKey` once; its generated is-pattern IIFE now contains a call, so the inventory conservatively records effectFn fallback. Runtime remains the immediate boolean wrapper; covered by match-computed-presence.
 
-typescript/vibelang/cases/match-computed-presence/main.vibe:10:41 lambda: plain fallback -> effectFn fallback # VIP-7 computed keys are captured with `$propertyKey` once; its generated is-pattern IIFE now contains a call, so the inventory conservatively records effectFn fallback. Runtime remains the immediate boolean wrapper; covered by match-computed-presence.
 
-typescript/vibelang/cases/match-computed-presence/main.vibe:12:39 lambda: plain fallback -> effectFn fallback # VIP-7 computed keys are captured with `$propertyKey` once; its generated is-pattern IIFE now contains a call, so the inventory conservatively records effectFn fallback. Runtime remains the immediate boolean wrapper; covered by match-computed-presence.
-typescript/vibelang/cases/ek2102-by-name-self-call.fail/main.vibe:16:17 lambda: effectFn annotation -> effectFn fallback # VIP-3 retires the infer-slot return annotation; the explicit effect lambda keeps its kind and now uses the syntax fallback.
 typescript/vibelang/cases/factory-contracts.fail/main.vibe:11:44 lambda: dual fallback -> choice fallback # VIP-10 explicit Needed lookup exposes a pause in this unowned, unannotated compatibility block; choiceFor conservatively requests a choice while the explicit effect block retains its TS2322 requirement failure.
 typescript/vibelang/cases/platform-services/main.vibe:25:20 lambda: plain fallback -> choice fallback # VIP-10 explicit Digest.Digest lookup exposes the pause in an exported callback with no owner call or return annotation; the syntax-only compatibility resolver correctly keeps the fallback conservative.
 typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: plain fallback -> effectFn fallback # VIP-10 makes the Path lookup explicit; this locally called callback pauses on acquisition even though join returns a plain string, so it remains an Effect function.
@@ -2059,36 +1874,12 @@ typescript/vibelang/cases/catch-expression/main.vibe:39:11 lambda: effectFn tabl
 typescript/vibelang/cases/catch-expression/main.vibe:40:11 lambda: effectFn table -> dual fallback # docs/design/src/002-running.md:129 (VIP-5): explicit Effect block preserves firstOf recovery; the previously approved wrapper moved from 39:11 on rebase.
 
 # Explicit service lookups and written effect arrows preserve their selected forms.
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # The catch handler now writes effect explicitly.
-typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # The service implementation now writes an effect arrow for its Effect-valued member.
-typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # The lookup helper now writes effect explicitly.
 
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # VIP-1: the existing catch mapper has an explicit effect keyword, which determines its function kind.
-typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the existing service implementation arrow has an explicit effect keyword, which determines its function kind.
-typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the existing underRoot arrow has an explicit effect keyword, which determines its function kind.
 
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # The catch handler explicitly writes effect, which decides its callable kind under VIP-1.
-typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # The provided find implementation explicitly writes effect, matching its service contract under VIP-1.
-typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # The underRoot factory explicitly writes effect; its service lookup does not decide its kind under VIP-1.
 
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect modifier selects the handler's function kind.
-typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect modifier selects the service implementation's function kind.
-typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the written effect modifier selects the lambda's function kind.
 
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 
-typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
 
-typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # VIP-5: this catch handler explicitly writes effect, so its written function kind takes precedence over table inference.
-typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the service implementation explicitly writes an effect lambda, which determines its function kind.
-typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the existing effect modifier determines this lambda's function kind before fallback inference.
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # The source explicitly writes an Effect arrow; keyword provenance is required by VIP-1.
-typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # The source explicitly writes an Effect arrow; keyword provenance is required by VIP-1.
-typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # The source explicitly writes an Effect arrow; keyword provenance is required by VIP-1.
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect arrow supplies its Effect-function kind directly; keyword classification takes precedence over the contextual table after native Effect recognition.
-typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect arrow is an Effect function, including a service implementation; a plain fallback must not override that keyword.
-typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the written effect arrow fixes the Effect-function kind directly rather than through fallback inference.
 typescript/vibelang/cases/match-collection-extractor-specialization/main.vibe:59:15 lambda: plain table -> plain fallback # The local Map matcher returns a plain string tuple; fallback preserves its plain function form.
 typescript/vibelang/cases/cov-ch004-iterator-record/main.vibe:7:18 lambda: dual fallback -> plain fallback # VIP-7: generated match-cache observation and lifecycle calls are synchronous; this pattern predicate retains the source plain function form.
 typescript/vibelang/cases/cov-ch004-not-prefix/main.vibe:17:17 lambda: dual fallback -> plain fallback # VIP-7: generated match-cache observation and lifecycle calls are synchronous; this pattern predicate retains the source plain function form.
@@ -2316,14 +2107,6 @@ typescript/vibelang/cases/vip5-coverage-historical-handlers/main.vibe:14:40 lamb
 typescript/vibelang/cases/decl-catch/main.vibe:38:11 lambda: dual fallback -> effectFn keyword # VIP-5: this explicitly invoked effect function constructs the cold nested catch operand and preserves its return completion.
 typescript/vibelang/cases/decl-catch/main.vibe:39:13 lambda: choice fallback -> effectFn keyword # VIP-5: this explicitly invoked effect function constructs the cold nested catch operand and preserves its return completion.
 typescript/vibelang/cases/decl-catch/main.vibe:58:11 lambda: choice fallback -> effectFn keyword # VIP-5: this explicitly invoked effect function constructs the cold nested catch operand and preserves its return completion.
-typescript/vibelang/cases/fork-arrow-body/main.vibe:14:10 lambda: choice fallback -> program keyword # The explicit effect block is a program under VIP-2 and retains the cleanup callback's native behavior.
-typescript/vibelang/cases/fork-named-region/main.vibe:15:10 lambda: choice fallback -> program keyword # The explicit effect block is a program under VIP-2 and retains the cleanup callback's native behavior.
-typescript/vibelang/cases/fork-named-region/main.vibe:71:10 lambda: choice fallback -> program keyword # The explicit effect block is a program under VIP-2 and retains the finalizer's native behavior.
-typescript/vibelang/cases/service-member-run-head/main.vibe:9:47 lambda: effectFn table -> program keyword # The written effect block is a program under VIP-2, independently of the surrounding service-call inference.
-typescript/vibelang/cases/fork-arrow-body/main.vibe:14:10 lambda: choice fallback -> program keyword # The cleanup callback returns an explicit effect block, an Effect program under VIP-2.
-typescript/vibelang/cases/fork-named-region/main.vibe:15:10 lambda: choice fallback -> program keyword # The cleanup callback returns an explicit effect block, an Effect program under VIP-2.
-typescript/vibelang/cases/fork-named-region/main.vibe:71:10 lambda: choice fallback -> program keyword # The cleanup callback returns an explicit effect block, an Effect program under VIP-2.
-typescript/vibelang/cases/service-member-run-head/main.vibe:9:47 lambda: effectFn table -> program keyword # The nested catch operand is a written effect block, an Effect program under VIP-2.
 
 typescript/vibelang/cases/decl-old-declarations/main.vibe:16:3 lambda: effectFn keyword -> effectFn keyword # The preserving layer codemod relocates the Names method from line 18 without changing its Effect function classification.
 typescript/vibelang/cases/decl-old-declarations/main.vibe:19:43 lambda: block appended/program table -> lambda program table # The preserving layer codemod replaces a synthesized setup block with an explicit effect argument.
@@ -2334,9 +2117,6 @@ typescript/vibelang/cases/fork-coverage-owners/main.vibe:18:21 lambda: program k
 typescript/vibelang/cases/cov2-002b-owner-syntax/main.vibe:6:30 lambda: program keyword -> program table # The case parses now that named fork owners exist, so this operand gets its ordinary table decision.
 
 typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The shadowing all(): boolean[] method explicitly returns an ordinary array, so its written return annotation selects a plain method.
-typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The shadowed object method has an explicit boolean[] return annotation, so it is plain regardless of its all name.
-typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # the local all method declares boolean[], so its annotation decides plain
-typescript/vibelang/cases/try-all-effect-instance/main.vibe:4:22 lambda: choice fallback -> plain annotation # The ordinary object method has a written boolean[] return annotation and no effect modifier.
 
 # Native global callback; compatibility cases select the runtime adapter explicitly.
 typescript/vibelang/cases/hatches-inputs/main.vibe:57:31 lambda: plain hatch -> effectFn table # Explicit runtime import checks the legacy adapter through its declared callback type; the runtime case preserves its values and cleanup.

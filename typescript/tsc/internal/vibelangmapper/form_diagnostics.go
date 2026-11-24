@@ -12,12 +12,11 @@ func FormDiagnostics(file *ast.SourceFile) []Diagnostic {
 			p.services[statement.Name().Text()] = statement
 		}
 	}
-	var visit func(*ast.Node, bool)
-	visit = func(n *ast.Node, effect bool) {
+	var visit func(*ast.Node)
+	visit = func(n *ast.Node) {
 		if isErasedProofSyntax(n) {
 			return
 		}
-		bodyEffect := effect
 		if ast.IsPropertyAccessExpression(n) && p.sourceDataMethodAccess(n) {
 			p.checkDataMethodAccess(n)
 			call := n.Parent
@@ -32,37 +31,16 @@ func FormDiagnostics(file *ast.SourceFile) []Diagnostic {
 				p.choice(p.forms.Block(n), block)
 			}
 		}
-		if p.isPlainHatchFunction(n) {
-			bodyEffect = false
-		} else if isLambda(n) || isProjectedFunction(n) || ast.IsMethodDeclaration(n) && ast.IsClassLike(n.Parent) {
-			// The written modifier alone decides the kind (VIP-1).
-			bodyEffect = n.Flags&ast.NodeFlagsVibeLangEffect != 0
-		} else if isProducer(n) {
-			bodyEffect = true
-		} else if ast.IsArrowFunction(n) && n.Parent != nil && ast.IsCallExpression(n.Parent) && blockArgument(n.Parent) == n {
-			bodyEffect = p.forms.Block(n.Parent).Form != FormPlain
-		} else if ast.IsFunctionLike(n) && n.Body() != nil {
-			bodyEffect = false
-		}
-
 		if awaitOperationHelper(n) != "" {
 			p.retiredAwaitDiagnostic(n)
 			return
 		}
-
 		n.ForEachChild(func(child *ast.Node) bool {
-			childEffect := effect
-			if n.Body() != nil {
-				childEffect = false
-				if child == n.Body() {
-					childEffect = bodyEffect
-				}
-			}
-			visit(child, childEffect)
+			visit(child)
 			return false
 		})
 	}
-	file.AsNode().ForEachChild(func(n *ast.Node) bool { visit(n, false); return false })
+	file.AsNode().ForEachChild(func(n *ast.Node) bool { visit(n); return false })
 	return p.diagnostics
 }
 

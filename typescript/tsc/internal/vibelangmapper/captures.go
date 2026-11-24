@@ -102,10 +102,6 @@ func (w *printer) isFunction(n *ast.Node) bool {
 		checking = "(void " + w.patternText(subject, env{}) + ", "
 	}
 	opening, closing := "(("+w.identifier(name)+") => ", ")("+w.patternText(subject, env{})+")"
-	if ast.IsBlock(arrow.Body()) {
-		opening += "{ " + w.patternText(arrow.Body().Statements()[0], env{}) + "return "
-		closing = "; }" + closing
-	}
 	w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{checking, opening}})
 	w.node(body, env{})
 	w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{")", closing}})

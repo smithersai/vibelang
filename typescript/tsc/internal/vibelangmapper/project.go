@@ -144,8 +144,6 @@ type env struct {
 	effect bool
 	// frame is the generator an Effect body's code is in.
 	frame *frame
-	// continuation names a handle clause's continuation inside the clause.
-	continuation string
 	// producer reports that the generator is a producer's (producers.go):
 	// yield emits, and a try statement stays the generator's own.
 	producer bool
@@ -448,9 +446,6 @@ func (p *projector) visit(node *ast.Node, e env) {
 	}
 	if e.effect {
 		switch {
-		case isTailResume(node) && e.continuation != "":
-			p.tailResume(node, e)
-			return
 		case node.Kind == ast.KindReturnStatement && e.frame.region != nil:
 			p.returnStatement(node, e)
 			return
@@ -473,9 +468,6 @@ func (p *projector) visit(node *ast.Node, e env) {
 			return
 		case isJumpTarget(node):
 			p.jumpTarget(node, e)
-			return
-		case node.Kind == ast.KindTryStatement && node.Flags&ast.NodeFlagsVibeLang != 0 && !e.producer:
-			p.handleStatement(node, e)
 			return
 		case isProvideBlock(node) && !e.producer:
 			p.provideBlock(node, e)

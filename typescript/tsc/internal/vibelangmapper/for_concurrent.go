@@ -138,6 +138,8 @@ func concurrentHeadPattern(fn, body *ast.Node) (*ast.Node, []*ast.Node) {
 // concurrentCopy moves a lowered header subtree to its helper argument.
 // Replaying semantic edits, rather than rendered text, preserves both
 // renderings, including temporaries and nested Effect calls in the limit.
+// The source text between them moves with its original range, so the
+// limit and the binding keep their source mapping (#461).
 func (p *projector) concurrentCopy(node *ast.Node, at int, e env) {
 	first := len(p.plan.edits)
 	p.visit(node, e)
@@ -147,14 +149,17 @@ func (p *projector) concurrentCopy(node *ast.Node, at int, e env) {
 	cursor := p.tokenStart(node)
 	for _, ed := range edits {
 		if ed.pos > cursor {
-			p.plan.insert(at, p.text[cursor:ed.pos])
+			p.plan.move(at, p.text, cursor, ed.pos)
 		}
 		cursor = ed.end
+		if ed.atom && !ed.moved {
+			ed.moved, ed.from, ed.to = true, ed.pos, ed.end
+		}
 		ed.pos, ed.end = at, at
 		p.plan.edits = append(p.plan.edits, ed)
 	}
 	if cursor < node.End() {
-		p.plan.insert(at, p.text[cursor:node.End()])
+		p.plan.move(at, p.text, cursor, node.End())
 	}
 }
 

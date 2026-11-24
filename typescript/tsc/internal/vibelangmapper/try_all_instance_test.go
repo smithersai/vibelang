@@ -20,21 +20,21 @@ func TestTryAllProjectEffectInstanceRuntime(t *testing.T) {
 	}
 	scope := mapperTestScope(t, root)
 	text := string(source)
-			js, _, diagnostics := Emit(text, testContext)
-			if len(diagnostics) != 0 {
-				t.Fatalf("diagnostics: %v\n%s", diagnostics, js)
-			}
-			dir := t.TempDir()
-			if err := os.Symlink(filepath.Join(scope, "node_modules"), filepath.Join(dir, "node_modules")); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.MkdirAll(filepath.Join(dir, "app"), 0755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(filepath.Join(dir, "app/main.mjs"), []byte(js), 0600); err != nil {
-				t.Fatal(err)
-			}
-			runner := `import assert from "node:assert/strict"
+	js, _, diagnostics := Emit(text, testContext)
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics: %v\n%s", diagnostics, js)
+	}
+	dir := t.TempDir()
+	if err := os.Symlink(filepath.Join(scope, "node_modules"), filepath.Join(dir, "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "app"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "app/main.mjs"), []byte(js), 0600); err != nil {
+		t.Fatal(err)
+	}
+	runner := `import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import { createRequire } from "node:module"
@@ -48,12 +48,12 @@ const result = await Effect.runPromiseExit(main())
 assert.equal(result._tag, "Success")
 assert.deepEqual(result.value, Array(22).fill(true))
 `
-			if err := os.WriteFile(filepath.Join(dir, "run.mjs"), []byte(runner), 0600); err != nil {
-				t.Fatal(err)
-			}
-			cmd := exec.CommandContext(t.Context(), "node", "--no-warnings", "run.mjs")
-			cmd.Dir = dir
-			if output, err := cmd.CombinedOutput(); err != nil {
-				t.Fatalf("runtime: %v\n%s\n%s", err, output, js)
-			}
+	if err := os.WriteFile(filepath.Join(dir, "run.mjs"), []byte(runner), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "node", "--no-warnings", "run.mjs")
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("runtime: %v\n%s\n%s", err, output, js)
+	}
 }

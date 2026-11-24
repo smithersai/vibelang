@@ -151,12 +151,20 @@ func restoreTryOperandMarks(file *ast.SourceFile, text string, marks []tryOperan
 	if len(marks) == 0 {
 		return
 	}
+	// Index the marks by kind and end, so each node checks only its own.
+	type at struct {
+		kind ast.Kind
+		end  int
+	}
+	keywords := map[at][]int{}
+	for _, mark := range marks {
+		key := at{mark.kind, mark.end}
+		keywords[key] = append(keywords[key], scanner.SkipTrivia(text, mark.keyword))
+	}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		for _, mark := range marks {
-			if node.Kind == mark.kind && node.End() == mark.end && scanner.SkipTrivia(text, mark.keyword) == scanner.SkipTrivia(text, node.Pos()) {
-				node.Flags |= ast.NodeFlagsVibeLangTry
-			}
+		if starts, ok := keywords[at{node.Kind, node.End()}]; ok && slices.Contains(starts, scanner.SkipTrivia(text, node.Pos())) {
+			node.Flags |= ast.NodeFlagsVibeLangTry
 		}
 		return node.ForEachChild(visit)
 	}

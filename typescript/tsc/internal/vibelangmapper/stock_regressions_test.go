@@ -17,8 +17,10 @@ func TestStockProjectionGoldens(t *testing.T) {
 	}
 	for name, source := range cases {
 		t.Run(name, func(t *testing.T) {
-			dir, stock := stockBuiltinProject(t)
-			requireStockTypeScript(t, stock)
+			// Compare goldens before the stock-compiler skip: the comparison
+			// needs no compiler (#597).
+			checking := ""
+			rewritten := false
 			for rendering, projection := range map[string]Projection{"checking": Project(source, testContext), "executable": Executable(source, testContext)} {
 				if len(projection.Diagnostics) != 0 {
 					t.Fatalf("%s: %v", rendering, projection.Diagnostics)
@@ -31,6 +33,8 @@ func TestStockProjectionGoldens(t *testing.T) {
 					if err := os.WriteFile(golden, []byte(projection.Text), 0644); err != nil {
 						t.Fatal(err)
 					}
+					rewritten = true
+					continue
 				}
 				want, err := os.ReadFile(golden)
 				if err != nil {
@@ -40,10 +44,18 @@ func TestStockProjectionGoldens(t *testing.T) {
 					t.Fatalf("%s golden differs:\n%s", rendering, projection.Text)
 				}
 				if rendering == "checking" {
-					if err := os.WriteFile(filepath.Join(dir, "main.ts"), []byte(projection.Text), 0600); err != nil {
-						t.Fatal(err)
-					}
+					checking = projection.Text
 				}
+			}
+			// A rewritten golden would compare equal to itself, so the run
+			// cannot pass.
+			if rewritten {
+				t.Fatal("goldens rewritten; rerun without UPDATE_STOCK_GOLDENS")
+			}
+			dir, stock := stockBuiltinProject(t)
+			requireStockTypeScript(t, stock)
+			if err := os.WriteFile(filepath.Join(dir, "main.ts"), []byte(checking), 0600); err != nil {
+				t.Fatal(err)
 			}
 			if err := os.WriteFile(filepath.Join(dir, "names.ts"), []byte(`export const name = "Ada"`), 0600); err != nil {
 				t.Fatal(err)

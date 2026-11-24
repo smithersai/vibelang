@@ -21,9 +21,9 @@ import (
 //     (D10), and never applies a checker-only witness, such as the second
 //     call of a type guard in `((yield* $run(g(x))), g(x))`.
 //
-// This phase implements the checking rendering. The executable rendering
-// is a placeholder that drops witnesses and implements no other kind; the
-// plan carries no checking-only text it would have to undo.
+// checking (below) implements the checking rendering. executable drops
+// checker-only witnesses and renders every other kind with renderExec
+// (render_exec.go).
 
 // editKind is what an edit means. Kinds come in parts: an open and a close
 // edit around source text, and sometimes a middle one.
@@ -108,6 +108,8 @@ const (
 	// editPatternFlow gives stock TypeScript the subject/tuple relationship
 	// guaranteed by D215, while execution retains the parser's original test.
 	editPatternFlow
+	// editKindCount counts the kinds above; it is not a kind.
+	editKindCount
 )
 
 // part says which part of a kind an edit is.
@@ -143,6 +145,12 @@ type edit struct {
 	fields []string
 	// atom gives a spelling-changing source token one whole-span mapping.
 	atom bool
+	// moved reports that the edit stands for original text in [from, to)
+	// that the walk moved to pos, out of source order. A moved syntax edit
+	// whose text is that original text gets a Verbatim segment, and a moved
+	// atom keeps its token's mapping.
+	moved    bool
+	from, to int
 }
 
 // helperRef writes a reference to a projection helper in edit text. Each
@@ -208,6 +216,13 @@ func (l *plan) insert(pos int, text string) {
 // replace records syntax text to replace the original text in [pos, end).
 func (l *plan) replace(pos int, end int, text string) {
 	l.edits = append(l.edits, edit{pos: pos, end: end, text: text})
+}
+
+// move records original text in [from, to) to insert before the original
+// character at pos, mapped back to [from, to): text that a lowering places
+// out of source order, such as a for concurrent loop's limit and binding.
+func (l *plan) move(pos int, original string, from int, to int) {
+	l.edits = append(l.edits, edit{pos: pos, end: pos, text: original[from:to], moved: true, from: from, to: to})
 }
 
 // replaceAtom records a token whose projected spelling differs from its source.
@@ -420,14 +435,52 @@ func (r checking) resolve(text string) string {
 	}
 }
 
-// String names k, as reports and the executable rendering's errors do.
-func (k editKind) String() string {
-	return [...]string{"syntax", "witness", "run", "effect body", "contract", "program", "fail", "service call",
-		"value call", "region", "record", "dispatch", "using", "dual", "scoped", "program value", "producer", "emit", "each", "service base", "control", "scope region", "hatch", "data method", "region var", "pattern flow"}[k]
+// editKindNames names each kind, keyed by its constant so that adding a
+// kind cannot shift the names of the others.
+var editKindNames = map[editKind]string{
+	editSyntax:         "syntax",
+	editSettledCall:    "settled call",
+	editSettledMap:     "settled map",
+	editSettledElement: "settled element",
+	editWitness:        "witness",
+	editRun:            "run",
+	editEffectBody:     "effect body",
+	editContract:       "contract",
+	editProgram:        "program",
+	editFail:           "fail",
+	editServiceCall:    "service call",
+	editValueCall:      "value call",
+	editBuiltinCall:    "builtin call",
+	editPlainCall:      "plain call",
+	editRegion:         "region",
+	editRecord:         "record",
+	editDispatch:       "dispatch",
+	editUsing:          "using",
+	editDual:           "dual",
+	editScoped:         "scoped",
+	editProgramValue:   "program value",
+	editProducer:       "producer",
+	editEmit:           "emit",
+	editEach:           "each",
+	editServiceBase:    "service base",
+	editControl:        "control",
+	editScopeRegion:    "scope region",
+	editHatch:          "hatch",
+	editDataMethod:     "data method",
+	editRegionVar:      "region var",
+	editPatternFlow:    "pattern flow",
 }
 
-// executable is the executable rendering, a placeholder: it leaves out
-// checker-only witnesses and implements no other kind yet.
+// String names k, as reports and the executable rendering's errors do.
+func (k editKind) String() string {
+	if name, ok := editKindNames[k]; ok {
+		return name
+	}
+	return "editKind(" + strconv.Itoa(int(k)) + ")"
+}
+
+// executable is the executable rendering: it leaves out checker-only
+// witnesses and renders every other kind with renderExec.
 type executable struct{}
 
 func (executable) text(e edit) (string, bool) {
@@ -454,7 +507,8 @@ func pick(p part, open, middle, close string) string {
 // opens before an inner one and closes after it. Each stretch of original
 // text between edits is copied verbatim and gets a Verbatim segment with
 // every language feature; a spelling-changing token gets an Atom segment,
-// and other rendered text is synthesized and gets none. ok
+// original text the walk moved (plan.move) gets a Verbatim segment at its
+// original range, and other rendered text is synthesized and gets none. ok
 // is false when two edits overlap, a projector bug; the caller then passes
 // the file through unchanged.
 func (l *plan) render(r rendering, original string, prefix func() string) (text string, segments []spanmap.Segment, overlap int, ok bool) {
@@ -473,11 +527,24 @@ func (l *plan) render(r rendering, original string, prefix func() string) (text 
 		if t, keep := r.text(e); keep {
 			start := core.TextPos(body.Len())
 			body.WriteString(t)
-			if e.atom && t != "" {
+			from, to := e.pos, e.end
+			if e.moved {
+				from, to = e.from, e.to
+			}
+			switch {
+			case e.atom && t != "":
 				segments = append(segments, spanmap.Segment{
 					VirtualStart: start, VirtualEnd: core.TextPos(body.Len()),
-					OriginalStart: core.TextPos(e.pos), OriginalEnd: core.TextPos(e.end),
+					OriginalStart: core.TextPos(from), OriginalEnd: core.TextPos(to),
 					Kind: spanmap.KindAtom, Features: spanmap.FeatureAll,
+				})
+			case e.moved && e.kind == editSyntax && t != "" && to <= len(original) && t == original[from:to]:
+				// Moved text precedes or follows its neighbours out of
+				// source order, so it is never merged with them.
+				segments = append(segments, spanmap.Segment{
+					VirtualStart: start, VirtualEnd: core.TextPos(body.Len()),
+					OriginalStart: core.TextPos(from), OriginalEnd: core.TextPos(to),
+					Kind: spanmap.KindVerbatim, Features: spanmap.FeatureAll,
 				})
 			}
 		}
