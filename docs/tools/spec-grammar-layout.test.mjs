@@ -52,3 +52,10 @@ test("chapter production citations use stable Appendix A links", () => {
     }
   }
 })
+
+test("Appendix A recognizes the same-line schema service declaration", () => {
+  const text = readFileSync(root + "900-appendices.md", "utf8")
+  assert.match(text, /^DeclarationStart = .*SchemaServiceStart/m)
+  assert.match(text, /^SchemaServiceStart = "schema" \[no LineTerminator here\] "service" \[no LineTerminator here\] BindingIdentifier$/m)
+  assert.match(text, /^SchemaServiceDeclaration = SchemaServiceStart /m)
+})

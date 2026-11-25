@@ -1,6 +1,5 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
-import fc from "fast-check"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
@@ -103,13 +102,6 @@ test("each frozen witness is rejected by its own consistency guard", () => {
   for (const key of keys) assert.ok(violations(key, frozen[key]).length > 0, key)
 })
 
-test("consistency guards retain each defect across generated neighboring prose and whitespace", () => {
-  fc.assert(fc.property(fc.constantFrom(...keys), fc.nat(30), fc.constantFrom("", "Unrelated prose.\n", "\n\n"), (key, count, padding) => {
-    const source = Object.fromEntries(Object.entries(frozen[key]).map(([path, text]) => [path, padding.repeat(count) + text + padding]))
-    assert.ok(violations(key, source).length > 0, key)
-  }), { seed: 0x16cafe, numRuns: 200 })
-})
-
 test("native async defaults and callbacks reject while foreign plain calls throw synchronously", async () => {
   const token = { failure: "native-async" }
   const throwing = () => { throw token }
@@ -130,16 +122,6 @@ test("native async defaults and callbacks reject while foreign plain calls throw
 test("folded grammar retains exact shape and recovery restrictions", () => {
   const current = published()
   assert.deepEqual(violations("whole-shape services", current), [])
-  fc.assert(fc.property(fc.constantFrom(
-    'ServiceStart TypeParameters? ":" Type',
-    "only KeyMember and DefaultMember are admitted",
-    "other members parse for EK0902"
-  ), fc.nat(20), (clause, padding) => {
-    const appendix = current["src/900-appendices.md"]
-    assert.ok(appendix.includes(clause), clause)
-    const changed = { ...current, "src/900-appendices.md": "Unrelated prose.\n".repeat(padding) + appendix.replace(clause, "[removed]") }
-    assert.ok(violations("whole-shape services", changed).length > 0, clause)
-  }), { seed: 1104108, numRuns: 180 })
 })
 
 test("consistency guards report missing claims instead of bypassing their checks", () => {

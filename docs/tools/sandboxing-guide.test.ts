@@ -22,7 +22,7 @@ test("the sandbox inspection example runs and retains its written error channel"
   } finally { rmSync(temp, { recursive: true, force: true }) }
 })
 
-test("sandbox inspection restores single and mixed failure causes", () => {
+test("Platform control: sandbox inspection restores single and mixed failure causes", () => {
   // The guide: "failCause(cause) restores the original failure model, with every expected failure, defect, and interruption in the cause".
   fc.assert(fc.property(fc.array(fc.tuple(fc.boolean(), fc.string()), { minLength: 1, maxLength: 6 }), entries => {
     const causes = entries.map(([defect, value]) => defect ? Cause.die(value) : Cause.fail(value))

@@ -2,17 +2,8 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
 import fc from "fast-check"
-import { lexer } from "marked"
+import { deferredSupport } from "./docs-claims.mjs"
 
-// These guides' runnable examples exercise service declarations, defaultValue
-// references and provide blocks. Their prose must not defer those same forms.
-function deferredSupport(markdown: string): string[] {
-  return lexer(markdown).flatMap(token => {
-    if (token.type !== "paragraph") return []
-    const prose = token.text.replaceAll("`", "").replace(/\s+/g, " ")
-    return /\bsupport for [^.!?]*\bnew\b[^.!?]*\b(?:arrives|will arrive)\b/i.test(prose) ? [prose] : []
-  })
-}
 
 for (const page of ["025-services", "027-layers"]) {
   test(page + " describes its runnable forms as available", () => {

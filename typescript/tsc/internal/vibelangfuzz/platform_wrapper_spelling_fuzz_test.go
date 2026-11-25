@@ -18,7 +18,7 @@ import (
 )
 
 func TestPlatformWrapperSpellingQuoted(t *testing.T) {
-	chapterSays(t, "005-services.md", "A wrapper changes how a failure is represented, not whether the platform may be called.")
+	chapterSays(t, "005-services.md", "A wrapper changes how a failure is represented. Code that needs the platform lives in a `.ts` file or a `module` body")
 	chapterSays(t, "005-services.md", "Only value positions are `EK4402`: a type query such as `type Timer = ReturnType<typeof setTimeout>` is erased and allowed, as `import type` is.")
 	chapterSays(t, "005-services.md", "A local binding, an import or an Effect module in scope (`Option`, `FileSystem`, `Headers`, `Worker`) shadows the global first, and a project's own `declare var fetch` is not a host declaration.")
 }

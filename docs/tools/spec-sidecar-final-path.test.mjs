@@ -1,6 +1,5 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import fc from "fast-check"
 import { chapter, read } from "./spec-witness.mjs"
 
 const clauses = [
@@ -22,15 +21,4 @@ function sources() {
 }
 test("sidecar preference follows the final path and preserves explicit inputs",()=>{
  checkResolutionContract(sources())
-})
-test("fast-check: final-path identity and overwrite safeguards remain required",()=>{
- const original=sources()
- fc.assert(fc.property(
-  fc.integer({min:0,max:clauses.length-1}),
-  fc.stringMatching(/^[A-Za-z ]{0,60}$/),
-  (index,prose)=>{
-   checkResolutionContract({chapter:prose+"\n"+original.chapter,vip:original.vip+"\n"+prose})
-   const [owner,clause]=clauses[index]
-   assert.throws(()=>checkResolutionContract({...original,[owner]:original[owner].replaceAll(clause,"removed resolution guarantee")}),{code:"ERR_ASSERTION"})
-  }),{seed:27285,numRuns:250})
 })

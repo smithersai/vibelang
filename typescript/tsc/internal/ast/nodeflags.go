@@ -71,6 +71,8 @@ const (
 	NodeFlagsVibeLangSpec  NodeFlags = 1 << 44 // If node is a function declaration marked spec (VIP-43), as in `spec function f()`: checked as a plain function, used only from proofs, and erased from JavaScript and declarations
 	NodeFlagsVibeLangProof NodeFlags = 1 << 45 // If node is a proof block, `proof { … }` (VIP-43), erased from JavaScript, or the call of a proof statement in a proof context, such as `assume(P)`, which the checker types against that statement's own signature
 
+	NodeFlagsVibeLangIsHolder NodeFlags = 1 << 48 // Parser-created parentheses enclosing the complete source is expression with bindings.
+
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsAwaitUsing  = NodeFlagsConst | NodeFlagsUsing // Variable declaration (NOTE: on a single node these flags would otherwise be mutually exclusive)

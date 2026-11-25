@@ -14,7 +14,7 @@ const rows = new Map([...page.matchAll(/^\| \[(\d+)\]\(https:\/\/vibelang\.sh\/v
   .map(m => [Number(m[1]), { slug: m[2], status: m[3] }]))
 const vips = new Map(readdirSync(join(repo, "docs/design/vips")).filter(f => /^\d{4}-.+\.md$/.test(f)).map(f => {
   const text = read("docs/design/vips/" + f)
-  const status = text.match(/^\*\*Status:\*\*\s*(accepted|denied|open)\b/im)![1].toLowerCase()
+  const status = text.match(/^\*\*Status:\*\*\s*(accepted|denied|open|rfp|revised)\b/im)![1].toLowerCase()
   return [Number(f.slice(0, 4)), { file: f, text, status, line: text.match(/^\*\*Status:\*\*.*$/m)![0] }]
 }))
 const runtimeIndex = read("packages/runtime/src/experimental/index.ts")
@@ -34,6 +34,8 @@ test("each row's status agrees with its VIP's Status line", () => {
     const vip = vips.get(n)!
     if (status === "Supported") expect([n, vip.status, n <= 41]).toEqual([n, "accepted", true])
     else if (status.startsWith("Accepted, not in the alpha")) expect([n, vip.status, n > 41]).toEqual([n, "accepted", true])
+    else if (/^(Accepted \(|Implemented on `main`)/.test(status)) expect(vip.status).toBe("accepted")
+    else if (/^(RFP|Revised)\b/.test(status)) expect(vip.status).toBe(status.split(" ")[0].toLowerCase())
     else if (status === "Denied") expect([n, vip.status]).toEqual([n, "denied"])
     else if (status.startsWith("Superseded by VIP-")) expect([n, vip.status, /^\*Superseded by \[VIP-/m.test(vip.text)]).toEqual([n, "denied", true])
     else if (status.startsWith("Experimental, needs the opt-in:")) {
@@ -78,14 +80,14 @@ test("each open no-code row's module is neither exported nor gated", () => {
   expect(existsSync(join(repo, "packages/compiler/vibe-directive.mjs"))).toBe(true)
 })
 
-test("the spec intro's chapter lists name only supported VIPs", () => {
+test("the spec intro chapter lists name accepted VIPs", () => {
   const intro = read("docs/design/src/000-intro.md")
   const chapters = intro.split("## Chapters\n\n")[1].split("\n\n")[0]
   const listed = new Set<number>()
   for (const line of chapters.split("\n")) for (const m of line.matchAll(/VIP-(\d+)(?: to VIP-(\d+))?/g))
     for (let n = Number(m[1]); n <= Number(m[2] ?? m[1]); n++) listed.add(n)
   expect(listed.size).toBeGreaterThan(20)
-  for (const n of listed) expect([n, rows.get(n)?.status]).toEqual([n, "Supported"])
+  for (const n of listed) expect(vips.get(n)?.status, "VIP-" + n).toBe("accepted")
 })
 
 test("the 0.0.13 bug list names nothing from the open built-in set", () => {
@@ -93,4 +95,11 @@ test("the 0.0.13 bug list names nothing from the open built-in set", () => {
   const bugs = notes.split("\n## 0.0.13\n")[1].split("\n### Bugs fixed since 0.0.12\n")[1].split("\n### ")[0]
   const leak = /Experimental\.(Durable|Human|Test|Eval|Scorer|Memory|Fuzz|FuzzSimulation)\b|`(task|workflow)`|\bEK55\d\d\b|\bEK3013\b|\bVIP-(5[5-9]|6\d|7[0-2])\b/
   expect(bugs.split("\n").filter(line => leak.test(line))).toEqual([])
+})
+
+test("VIPs 56 through 59 distinguish main implementation from the published alpha", () => {
+  for (const n of [56, 57, 58, 59]) {
+    expect(rows.get(n)?.status).toStartWith("Implemented on `main`")
+    expect(vips.get(n)?.line).toMatch(/implemented|built 2026/i)
+  }
 })

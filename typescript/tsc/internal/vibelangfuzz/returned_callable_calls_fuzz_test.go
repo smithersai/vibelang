@@ -197,9 +197,9 @@ func TestReturnedCallableCallsQuoted(t *testing.T) {
 }
 
 // TestReturnedCallableCallsWitness compiles the Smithers minimum: plain
-// runners that call Effect.runSyncWith(c)(e) and Effect.runSync(e). Neither
-// signature carries a tag, so both calls stay ordinary calls, and both
-// declarations carry the generated @throws {never}.
+// runners that call Effect.runSyncWith(c)(e) and Effect.runSync(e). The
+// direct runner can throw unknown. Catching that exception keeps both
+// exported functions nonthrowing.
 func TestReturnedCallableCallsWitness(t *testing.T) {
 	TestReturnedCallableCallsQuoted(t)
 	raw, err := os.ReadFile(filepath.Join(repoTestdata(), "corpus", "smithers-runsyncwith-curried.json"))
@@ -210,7 +210,11 @@ func TestReturnedCallableCallsWitness(t *testing.T) {
 	if err := json.Unmarshal(raw, &witness); err != nil {
 		t.Fatal(err)
 	}
-	returnedCallableCompare(t, NewWorkspace(t), witness.Source, "witness:smithers-runsyncwith-curried", map[string]string{"main.vibe": witness.Main}, nil, []string{"never", "never"})
+	w := NewWorkspace(t)
+	returnedCallableCompare(t, w, witness.Source, "witness:smithers-runsyncwith-curried", map[string]string{"main.vibe": witness.Main}, []string{"EK0401"}, nil)
+	handled := strings.Replace(witness.Main, "runDirect<A, E>(e: A!E)", "runDirect<A, E>(e: A!E, fallback: A)", 1)
+	handled = strings.Replace(handled, "return Effect.runSync(e)", "try { return Effect.runSync(e) } catch { return fallback }", 1)
+	returnedCallableCompare(t, w, witness.Source, "witness:smithers-runsyncwith-caught", map[string]string{"main.vibe": handled}, nil, []string{"never", "never"})
 }
 
 func FuzzReturnedCallableCalls(f *testing.F) {

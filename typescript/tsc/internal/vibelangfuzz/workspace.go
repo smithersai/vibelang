@@ -132,7 +132,7 @@ func Missing(tb testing.TB, format string, args ...any) {
 }
 
 // platformNode is the package the entry statement of a main that names the
-// Node platform provides (D312, Chapter 11: it "names @effect/platform-node's
+// Node platform provides (Chapter 11: it "names @effect/platform-node's
 // bundle"), and the runtime's experimental platform-node module imports.
 const platformNode = "@effect/platform-node"
 
@@ -157,7 +157,8 @@ func installPackages(dir, effect, runtime string) error {
 		return err
 	}
 	var pkg struct {
-		Files []string `json:"files"`
+		Files        []string          `json:"files"`
+		Dependencies map[string]string `json:"dependencies"`
 	}
 	if err := json.Unmarshal(manifest, &pkg); err != nil {
 		return err
@@ -187,7 +188,13 @@ func installPackages(dir, effect, runtime string) error {
 			return err
 		}
 	}
-	return installPackage(modules, filepath.Join(runtime, "node_modules"), platformNode, false)
+	from := filepath.Join(runtime, "node_modules")
+	for _, dependency := range slices.Sorted(maps.Keys(pkg.Dependencies)) {
+		if err := installPackage(modules, from, dependency, false); err != nil {
+			return err
+		}
+	}
+	return installPackage(modules, from, platformNode, false)
 }
 
 // installPackage installs the package name from the node_modules

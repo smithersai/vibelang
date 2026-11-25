@@ -19,7 +19,7 @@ import (
 const declarationLineBreakQuote = "when the next token after the name is `{`, however many line breaks precede it, or `<`, `extends` or `implements` on the name's line, the declaration continues; otherwise it ends as a TypeScript statement does"
 const declarationContextQuote = "After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration"
 const declarationDataQuote = "DataDeclaration = DataStart TypeParameters?"
-const declarationSchemaQuote = "SchemaDeclaration = SchemaStart \"{\" Field* \"}\""
+const declarationSchemaQuote = "SchemaDeclaration = SchemaStart TypeParameters? \"{\" SchemaMember* \"}\""
 
 func TestDeclarationLineBreakQuoted(t *testing.T) { declarationLineBreakChapter(t) }
 

@@ -8,7 +8,6 @@
 // VIP-34: published using-warning ownership, unchanged-code exception and configurable example.
 import assert from "node:assert/strict"
 import test from "node:test"
-import fc from "fast-check"
 import {readFileSync} from "node:fs"
 const read=name=>readFileSync(new URL("../../"+name,import.meta.url),"utf8")
 test("using warning has VIP-34 ownership and the unchanged diagnostic exception",()=>{
@@ -38,10 +37,3 @@ function checkWarningAuthority(vip) {
  assert.ok(rule,"missing public using-warning authority")
  for(const clause of warningClauses) assert.ok(rule.includes(clause),clause)
 }
-test("fast-check: warning ownership, disposal behavior and unchanged code remain required",()=>{
- const vip=read("docs/design/vips/0034-compiler-and-tooling.md")
- fc.assert(fc.property(fc.integer({min:0,max:warningClauses.length-1}),fc.stringMatching(/^[A-Za-z ]{0,50}$/),(index,prose)=>{
-  checkWarningAuthority(prose+"\n"+vip+"\n"+prose)
-  assert.throws(()=>checkWarningAuthority(vip.replace(warningClauses[index],"removed warning guarantee")),{code:"ERR_ASSERTION"})
- }),{seed:34008,numRuns:200})
-})

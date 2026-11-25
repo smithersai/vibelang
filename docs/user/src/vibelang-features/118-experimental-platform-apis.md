@@ -828,6 +828,25 @@ The outcomes stay distinct all the way to the exit code:
 
 A gate exits `0` only when every case cleared it, `1` when anything above failed or a score fell below `min`, `mean` or a `perCase` threshold, and `5` when it could not decide: an inconclusive scorer, no scores at all, or an invalid threshold. A `5` is a broken harness, not a result. `tolerance` ignores a move no larger than it, which a model-graded score needs.
 
+To run this example from the command line, put `export default greeting` in
+`greet.eval.vibe`. Run `vibelang eval --list` to see its suites and cases,
+then `vibelang eval --update` to create `greet.eval.baseline.json`. Review
+and commit that file. CI can now run `vibelang eval` or select a file or directory
+with `vibelang eval src/greet.eval.vibe`. The exit status is 0 for a pass,
+1 for a failed gate or case, 2 for incorrect arguments and 5 for an undecided run.
+
+The default command replays model calls. To record a missing language-model
+call, export the model layer as `live` and run `vibelang eval --live`.
+Review the sibling `greet.eval.recording.json` before committing it.
+Use `--live --trials N` to run each case multiple times. Decision-model
+calls replay from the `calls` array in `greet.eval.decisions.json`,
+using the fixture format of `Experimental.Test.decisions`.
+
+A score belongs to its suite, case, target and scorer. The target identity is the
+declared key of a task or workflow, or the name of a plain function. Renaming
+the target gives its cases new baseline entries. Existing baselines without a
+target tag still compare using their original keys until the next `--update`.
+
 A baseline never updates itself. `Experimental.Eval.baseline` records scores only, and writing the file is a separate act with a diff to review.
 
 ### Scorers

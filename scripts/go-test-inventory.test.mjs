@@ -1,4 +1,5 @@
 import { declarationTargets } from "./testing/package-declaration.mjs"
+import { vibelangTopics } from "../vibelang-topics.ts"
 import assert from "node:assert/strict"
 import { readdirSync, readFileSync } from "node:fs"
 import { test } from "node:test"
@@ -68,4 +69,33 @@ test("inventory selectors respect Go package boundaries and active declarations"
   assert.deepEqual(selections("", '// "fake": goTest("unused", "./internal/forgotten/...", "internal/forgotten")'), [])
   assert.deepEqual(selections("", '    "actual": goTest("real", "./internal/vibelangfmt/...", "internal/vibelangfmt"),'),
     [{ pattern: "./internal/vibelangfmt/...", inputs: "internal/vibelangfmt" }])
+})
+
+test("literal Go test selectors name declarations in their selected package", () => {
+  const packages = new Map()
+  const missing = []
+  let checked = 0
+  for (const [label, target] of Object.entries(declarationTargets("PACKAGE.ts", { bindings: { vibelangTopics } }))) {
+    if (typeof target.shell !== "string") continue
+    // A whole-name selector or alternation immediately followed by one Go package.
+    // Subtest selectors and regular expressions have different matching rules.
+    const selectors = target.shell.matchAll(/-run '\^\(?((?:Test|Fuzz)\w+(?:\|(?:Test|Fuzz)\w+)*)\)?\$' (\.\/internal\/[\w/]+)(?=\s*(?:&&|$))/g)
+    for (const [, names, pkg] of selectors) {
+      if (!packages.has(pkg)) {
+        const dir = new URL("typescript/tsc/" + pkg.replace(/\/$/, "") + "/", root)
+        const declarations = new Set()
+        for (const file of readdirSync(dir).filter(name => name.endsWith("_test.go"))) {
+          const source = readFileSync(new URL(file, dir), "utf8")
+          for (const [, name] of source.matchAll(/^func ((?:Test|Fuzz)\w+)\(/gm)) declarations.add(name)
+        }
+        packages.set(pkg, declarations)
+      }
+      for (const name of names.split("|")) {
+        if (!packages.get(pkg).has(name)) missing.push(label + " selects undeclared " + pkg + "." + name)
+        checked++
+      }
+    }
+  }
+  assert.deepEqual(missing, [])
+  assert.ok(checked > 0, "no literal Go selectors found")
 })

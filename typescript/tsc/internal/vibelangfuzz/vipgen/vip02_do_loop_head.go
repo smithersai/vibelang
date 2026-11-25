@@ -105,6 +105,7 @@ func doLoopHead(g *Gen, s *Scope) Stmt {
 	reference := fmt.Sprintf("const %s = (await import(\"node:module\")).createRequire(import.meta.resolve(\"effect\"))(\"typescript\");\nconst %s = new Function(\"return \" + %s.transpileModule(\x60%s\x60, { compilerOptions: { target: %s.ScriptTarget.ES2022, module: %s.ModuleKind.ESNext } }).outputText)();", ts, name, ts, native, ts, ts)
 	observed := g.Name("observed")
 	bind := "\nconst " + observed + " = " + name + "()"
+	source = strings.Replace(source, "return JSON.stringify(", "return stringifyObservation(", 1)
 	g.AddDecl(&Code{V: source + bind, E: reference + bind})
 	return &forOfCloseObservation{Observed: observed}
 }

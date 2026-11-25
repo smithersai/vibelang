@@ -91,7 +91,7 @@ function shapes() {
   return out
 }
 
-test("the stated counterpart matches native construction for every shape and patch mode", () => {
+test("Platform control: the stated counterpart matches native construction for every shape and patch mode", () => {
   let oldDiffers = 0
   for (const [pre, spreads, post] of shapes()) {
     for (const mode of ["count", "reverse", "throw"]) {

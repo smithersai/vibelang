@@ -25,7 +25,7 @@ const platformHatchTarget = "FuzzPlatformHatchSymbols"
 
 var platformHatchQuotes = []struct{ chapter, text string }{
 	{"005-services.md", "During migration, `EK4402` in a formerly accepted `sync`, `callback`, `Effect.try` or `Effect.tryPromise` callback is a warning."},
-	{"005-services.md", "The restriction and preserving repair still apply; unwrapped host access and Node value imports remain errors."},
+	{"005-services.md", "After that migration tier retires, the wrapped access is an error. Unwrapped host access and Node value imports are already errors."},
 	{"900-appendices.md", "VIP-33 reports host clock and randomness reads as `EK4402` by resolved host origin."},
 }
 

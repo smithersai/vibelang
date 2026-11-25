@@ -33,8 +33,8 @@ func TestEffectObjectSlotsPreserveCallableBodies(t *testing.T) {
 	for _, source := range []string{
 		"function f(): number!! { return 1 }",
 		"function f(): number!{} { return 1 }",
-		"function f(): number!string! { return 1 }",
-		"function f(): number!string! {}",
+		"function f(): number!string { return 1 }",
+		"function f(): number!string {}",
 		"function f(): number!({ x: 1 }) { return 1 }",
 		"function f(): number!string!({ service: number }) { return 1 }",
 		"function f(): number!({ x: 1 })!({ service: number }) { return 1 }",
@@ -50,10 +50,10 @@ func TestEffectObjectSlotsPreserveCallableBodies(t *testing.T) {
 		})
 	}
 	for _, source := range []string{
-		"class T { method(): number!string! { return 1 } }",
-		"const value = { method(): number!string! { return 1 } }",
-		"const value = function(): number!string! { return 1 }",
-		"const value = (): number!string! => 1",
+		"class T { method(): number!string { return 1 } }",
+		"const value = { method(): number!string { return 1 } }",
+		"const value = function(): number!string { return 1 }",
+		"const value = (): number!string => 1",
 	} {
 		t.Run(source, func(t *testing.T) {
 			file := parseVibe(t, source)
@@ -88,7 +88,7 @@ func TestEffectObjectSlotsPreserveFollowingBlocks(t *testing.T) {
 		dangling  bool
 	}{
 		{"type T = number!\n{}", ast.KindNeverKeyword, true},
-		{"type T = number!string!\n{}", ast.KindStringKeyword, false},
+		{"type T = number!string\n{}", ast.KindStringKeyword, false},
 		{"type T = number!/*\n*/{}", ast.KindNeverKeyword, true},
 	} {
 		t.Run(test.source, func(t *testing.T) {
@@ -136,5 +136,14 @@ func TestEffectOptionalObjectSlotBoundary(t *testing.T) {
 				t.Fatal("changed empty channels")
 			}
 		})
+	}
+}
+
+func TestEffectExplicitErrorRequiresFinalSlot(t *testing.T) {
+	for _, source := range []string{"type T = number!string!", "function f(): number!string! {}", "const f = (): number!string! => 1", "type T = number!string!\n{}"} {
+		ds := parseVibe(t, source).Diagnostics()
+		if len(ds) != 1 || ds[0].Code() != 17019 {
+			t.Errorf("%s: want TS17019, got %v", source, ds)
+		}
 	}
 }

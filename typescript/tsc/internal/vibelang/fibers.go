@@ -509,7 +509,7 @@ func concurrentContinueEscapes(node, body *ast.Node) bool {
 			if call := parser.VibeLangConcurrentCall(target); call != nil {
 				return outside && call != body.Parent.Parent
 			}
-			return outside && ast.IsIterationStatement(target, false /*lookInLabeledStatements*/)
+			return outside && (ast.IsBlock(target) || ast.IsIterationStatement(target, false /*lookInLabeledStatements*/))
 		}
 	}
 	return false

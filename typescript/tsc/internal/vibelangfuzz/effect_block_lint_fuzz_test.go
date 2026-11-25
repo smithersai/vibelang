@@ -10,19 +10,19 @@ import (
 // FuzzEffectBlockLint enforces Appendix A, EffectBlock: "The braces hold a
 // function body, as `(effect () => { … })()` does", so `effect { return 1 }`
 // is a whole expression whose braces are its syntax. Chapter 7 assigns
-// `effecttsgo/unnecessaryArrowBlock` (D240's port, EK4823) to an arrow whose
+// `effecttsgo/unnecessaryArrowBlock` (EK38123) to an arrow whose
 // block only returns a value; an effect block parses as an arrow but has no
 // concise form, so the rule never reports one. The input picks a context (a
 // top-level constant, an Effect function's `try`, a call argument in an
 // Effect function, an `if` branch, an array, an object, a nested block, a
-// plain function's return, a class field) and a body (a lone return of a
-// value, of a `try`, of a nested block, with a comment, over lines; two
-// statements; a real arrow inside; an effect arrow a block defines and
-// runs). A call at the top level runs a program (EK1001), so no context
-// calls there. The oracle counts the arrows the generator writes: each real
-// arrow whose block only returns draws the code once, and no effect block
-// draws it. alchemy's InMemory, Foldkit, Redis Protocol and Model each need a
-// single-return effect block (corpus alchemy-effect-block-arrow-lint).
+// plain function's return, a class field, or nested effect-block depths) and a
+// body (a lone return of a value, of a `try`, of a nested block, with a
+// comment, over lines; two statements; a real arrow inside; an effect arrow a
+// block defines and runs; or a bare effect arrow). The oracle counts the
+// arrows the generator writes: each real arrow whose block only returns draws
+// the code once, and no effect block draws it. alchemy's InMemory, Foldkit,
+// Redis Protocol and Model each need a single-return effect block (corpus
+// alchemy-effect-block-arrow-lint).
 // Chapter 007 / discarded cold Effect blocks report floatingEffect: docs/design/src/007-tooling.md#206c25a2bc17dc81
 // Chapter 007 / discarded cold Effect blocks report floatingEffect: docs/design/src/007-tooling.md#1347710ba586effe
 func FuzzEffectBlockLint(f *testing.F) {
@@ -42,7 +42,7 @@ func FuzzEffectBlockLint(f *testing.F) {
 }
 
 // TestEffectBlockLintQuoted fails when a chapter rewords a sentence the
-// oracle quotes (RULES.md 9).
+// oracle quotes.
 func TestEffectBlockLintQuoted(t *testing.T) { effectBlockLintChapters(t) }
 
 var effectBlockLintQuotes = map[string][]string{
@@ -82,6 +82,9 @@ var effectBlockContexts = []effectBlockContext{
 	{"nested", "export const outer = effect {\n  const inner = X\n  return try inner\n}", 1},
 	{"plain-return", "export function make(): number!! {\n  return X\n}", 1},
 	{"class-field", "export class Holder {\n  readonly run = X\n}", 1},
+	{"depth-1", "export const program = effect { return try X }", 1},
+	{"depth-2", "export const program = effect { return try effect { return try X } }", 1},
+	{"depth-3", "export const program = effect { return try effect { return try effect { return try X } } }", 1},
 }
 
 // An effectBlockBody is X: blocks counts its effect blocks and arrows the
@@ -100,10 +103,11 @@ var effectBlockBodies = []effectBlockBody{
 	{"two-statements", "effect {\n  const n = 1\n  return n\n}", 1, 0},
 	{"arrow-inside", "effect {\n  const add = (n: number): number => { return n + 1 }\n  return add(1)\n}", 1, 1},
 	{"effect-arrow", "effect {\n  const four = effect () => { return 4 }\n  return try four()\n}", 1, 1},
+	{"bare-effect-arrow", "(effect (n: number) => { return n + 1 })(1)", 0, 1},
 }
 
 // parseEffectBlockLint reads the keyed form, `effect-block-lint:<context>/<body>`,
-// so a saved corpus file keeps what it tests (RULES.md 11), and otherwise
+// so a saved corpus file keeps what it tests, and otherwise
 // picks both from the first two bytes.
 func parseEffectBlockLint(data []byte) (effectBlockContext, effectBlockBody) {
 	if rest, ok := strings.CutPrefix(string(data), "effect-block-lint:"); ok {
@@ -152,7 +156,7 @@ func CheckEffectBlockLint(t *testing.T, w *Workspace, ctx effectBlockContext, bo
 	reports, others := 0, []string{}
 	for _, d := range r.Diagnostics {
 		switch {
-		case IsEK(d) && (d.Code() == 4823 || d.Code() == 38123):
+		case IsEK(d) && d.Code() == 38123:
 			reports++
 		case d.Category().Name() == "error":
 			others = append(others, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))

@@ -12,7 +12,7 @@ import (
 
 const migrationReferenceTarget = "FuzzMigrationReferencePlan"
 const migrationReferenceQuote = "They follow the reverse reference closure"
-const migrationReferencePreservation = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
+const migrationReferencePreservation = diagnosticsNoRewriteQuote
 
 func TestMigrationReferencePlanQuoted(t *testing.T) {
 	chapterSays(t, "007-tooling.md", migrationReferencePreservation)

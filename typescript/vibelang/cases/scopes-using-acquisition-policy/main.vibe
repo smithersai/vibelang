@@ -1,4 +1,3 @@
-import * as $nativeTryEffect from "effect/Effect";
 // An acquisition decides whether its acquire step can be interrupted, inside
 // using as outside it, since using adds no mask: using is one Effect program
 // for every initializer, which runs it with the interruptibility in force
@@ -48,18 +47,12 @@ const short = "300 millis"
 // the deadline ended.
 effect function deadline(work: (seen: string[]) => void!!) {
   const seen: string[] = []
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  effect {
     try Effect.timeout(effect { return try work(seen) }, "100 millis")
     seen.push("finished")
-  
-;return { kind: "normal" } as const;
-}, effect (e) => {
+  } catch effect (e) => {
     seen.push(e._tag)
-  
-;return { kind: "normal" } as const;
-});
-
-}
+  }
   return seen
 }
 

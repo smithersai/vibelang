@@ -23,6 +23,7 @@ var (
 	grammarAdmissionCasesRead struct {
 		files, derived, syntax, noDerivation, skipped int
 		stops                                         []string
+		err                                           error
 	}
 )
 
@@ -35,9 +36,10 @@ func grammarAdmissionCases(t testing.TB) []grammarAdmissionCase {
 	grammarAdmissionCasesOnce.Do(func() {
 		root := filepath.Join("..", "..", "..", "vibelang", "cases")
 		var files []string
-		filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		r := &grammarAdmissionCasesRead
+		r.err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
-				return nil
+				return err
 			}
 			if d.IsDir() && d.Name() == "node_modules" {
 				return filepath.SkipDir
@@ -47,11 +49,17 @@ func grammarAdmissionCases(t testing.TB) []grammarAdmissionCase {
 			}
 			return nil
 		})
+		if r.err != nil {
+			return
+		}
 		sort.Strings(files)
-		r := &grammarAdmissionCasesRead
 		for _, f := range files {
 			data, err := os.ReadFile(f)
-			if err != nil || len(data) > grammarAdmissionCaseLimit {
+			if err != nil {
+				r.err = err
+				return
+			}
+			if len(data) > grammarAdmissionCaseLimit {
 				r.skipped++
 				continue
 			}
@@ -72,6 +80,9 @@ func grammarAdmissionCases(t testing.TB) []grammarAdmissionCase {
 			}
 		}
 	})
+	if err := grammarAdmissionCasesRead.err; err != nil {
+		t.Fatal(err)
+	}
 	if len(grammarAdmissionCasesList) == 0 {
 		t.Fatal("no compiler case program derives from Appendix A")
 	}
@@ -126,11 +137,8 @@ func grammarAdmissionFurthest(r grammarReading) (int, bool) {
 	return far, r.p.count() > 0
 }
 
-// TestGrammarAdmissionCases surveys the compiler cases through the admission
-// oracle. It reports and never fails on a missing derivation: the oracle's
-// seeds are the programs that derive, and a program that does not is a lab
-// gap or a pending admission key, both tracked outside this test. Set
-// VIBELANG_ADMISSION_CASES_REPORT to print every stop.
+// TestGrammarAdmissionCases requires all grammar gaps to be accounted for.
+// VIBELANG_ADMISSION_CASES_REPORT prints their stopping tokens for comparison.
 func TestGrammarAdmissionCases(t *testing.T) {
 	cases := grammarAdmissionCases(t)
 	r := grammarAdmissionCasesRead
@@ -139,6 +147,27 @@ func TestGrammarAdmissionCases(t *testing.T) {
 		for _, line := range r.stops {
 			fmt.Println("NODERIV\t" + line)
 		}
+	}
+
+	baseline, err := os.ReadFile(filepath.Join(repoTestdata(), "grammar_admission_no_derivation.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	known := map[string]bool{}
+	for _, line := range strings.Split(strings.TrimSpace(string(baseline)), "\n") {
+		if line != "" && !strings.HasPrefix(line, "#") {
+			known[line] = true
+		}
+	}
+	for _, stop := range r.stops {
+		name, _, _ := strings.Cut(stop, "\t")
+		if !known[name] {
+			t.Errorf("case accepted without an Appendix A derivation: %s", stop)
+		}
+		delete(known, name)
+	}
+	for name := range known {
+		t.Errorf("case no longer has an admission gap: remove %s from the baseline", name)
 	}
 }
 

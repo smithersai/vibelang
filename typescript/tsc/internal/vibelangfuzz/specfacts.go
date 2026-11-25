@@ -93,7 +93,7 @@ func codesIn(text string) []int32 {
 // Current registry sources may never fall back to retired chapters.
 func currentSpecText(chapter string) string {
 	path := SpecPath(chapter)
-	if filepath.Dir(path) != filepath.Join(Root(), specDirs[0]) {
+	if filepath.Dir(path) != filepath.Join(Root(), specDir) {
 		panic("diagnostic registry requires the current specification: " + chapter)
 	}
 	data, err := os.ReadFile(path)

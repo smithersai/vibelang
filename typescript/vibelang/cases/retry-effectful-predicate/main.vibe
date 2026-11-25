@@ -1,11 +1,10 @@
-import * as $nativeTryEffect from "effect/Effect";
 // Effectful callbacks can take their debug names from reserved or quoted keys.
 error Busy { attempt: number }
 
 effect function retryWhileBusy() {
   let attempts = 0
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
-    return { kind: "return:" as const, value: (try retry(effect {
+  return effect {
+    return (try retry(effect {
       attempts++
       throw new Busy({ attempt: attempts })
     }, {
@@ -14,12 +13,10 @@ effect function retryWhileBusy() {
         try sleep("1 millis")
         return error.attempt < 3
       }
-    })) };
-  }, effect (error) => {
-    return { kind: "return:" as const, value: (attempts) };
-  });
-return $nativeTryCompletion.value;
-}
+    }))
+  } catch effect (error) => {
+    return (attempts)
+  }
 }
 
 // expect-result: {"attempts":3,"reserved":2,"quoted":3,"strict":4,"generator":5,"named":"async"}

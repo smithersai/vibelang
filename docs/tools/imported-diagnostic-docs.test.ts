@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import fc from "fast-check"
-import { readFileSync, readdirSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { readFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { checkDiagnosticDocs, importedLintRules, undocumentedCodes } from "./check-diagnostic-docs"
@@ -51,15 +51,10 @@ test("the generated reference retains every message variant and fails on an unre
 })
 
 
-test("every reserved or emitted identity has guidance outside release history", async () => {
+test("every registered diagnostic has a definition row in Appendix B", async () => {
   const { loadIdentity } = await import("./diagnostic-identity.mjs")
-  const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
-    const file = join(dir, entry.name)
-    return entry.isDirectory() ? walk(file) : file.endsWith(".md") && entry.name !== "release-notes.md" ? [readFileSync(file, "utf8")] : []
-  })
-  const pages = walk(join(repo, "docs/user/src"))
-  const registered = [...loadIdentity(repo).registered.keys()]
-  const documented = new Set(pages.flatMap(page => [...page.matchAll(/\bEK[0-9]+\b/g)].map(match => match[0])))
+  const { registered: messages, appendix } = loadIdentity(repo)
+  const registered = [...messages.keys()]
   expect(registered.length).toBeGreaterThan(0)
-  expect(registered.filter(code => !documented.has(code))).toEqual([])
+  expect(registered.filter(code => !appendix.has(code))).toEqual([])
 })

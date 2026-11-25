@@ -106,6 +106,7 @@ return JSON.stringify([trace,cells.map((f):number=>f()),x,y]);
 	}
 	reference := fmt.Sprintf("const %s=(await import(\"node:module\")).createRequire(import.meta.resolve(\"effect\"))(\"typescript\");\nconst %s=new Function(\"return \"+%s.transpileModule(`%s`,{compilerOptions:{target:%s.ScriptTarget.ES2022,module:%s.ModuleKind.ESNext}}).outputText)();",
 		ts, name, ts, nativeSource, ts, ts)
+	source = strings.Replace(source, "return JSON.stringify(", "return stringifyObservation(", 1)
 	g.AddDecl(&Code{V: source, E: reference})
 	return &forOfHeadTDZCall{Name: name}
 }

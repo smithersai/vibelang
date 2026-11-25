@@ -1,0 +1,9 @@
+// expect: EK4304
+// rule-evidence: docs/design/src/900-appendices.md#body | A proof block there is rule 4304.
+theorem nested(x: number) {
+  proof {
+    assert(x === x)
+  }
+  assert(x >= x)
+}
+export const one = 1

@@ -58,7 +58,7 @@
 // Chapter 2: A failure propagates to the enclosing Effect, as Zig's `try x` means `x catch |err| return err`.
 // docs/design/src/002-running.md#4de1a44f272d4052
 import { Effect, Exit, Fiber, Stream, Scope, Context, Layer, Config } from "effect"
-const nativeRun = Effect.runSync(Effect.succeed(11))
+const nativeRun = (() => { try { return Effect.runSync(Effect.succeed(11)) } catch { return -1 } })()
 service Counter { value: number }
 export effect function main() {
  const events: string[] = []

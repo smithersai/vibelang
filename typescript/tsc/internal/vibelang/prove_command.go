@@ -26,7 +26,8 @@ import (
 
 // vibelang prove (VIP-43, Appendix F "The proof command"): check the
 // program, lower each module with a root for LemmaScript, run LemmaScript's
-// lsc with Dafny on it, and report each root.
+// lsc with Dafny on it, audit what LemmaScript generated (prove_audit.go),
+// and report each root.
 
 // The pinned releases (Appendix F "Steps").
 const (
@@ -141,7 +142,7 @@ func ProveCommand(ctx context.Context, sys tsc.System, args []string) int {
 			return 1
 		}
 	}
-	proofDirectory := filepath.Join(configDirectory, "proofs")
+	proofDirectory := proofDirectoryOf(parsed.CompilerOptions(), configDirectory)
 	if problem := checkProofDirectory(program, proofDirectory); problem != "" {
 		report(proveDiagnostic(nil, nil, EK4316, problem))
 		return 1
@@ -150,15 +151,41 @@ func ProveCommand(ctx context.Context, sys tsc.System, args []string) int {
 		report(proveDiagnostic(nil, nil, EK4316, "the proof directory can't be written: "+err.Error()))
 		return 1
 	}
-	// Steps 5 and 7.
+	// Steps 5 to 7.
 	proved := map[*ast.Node]bool{}
 	for _, module := range modules {
-		ok := runLemmaScript(ctx, lsc, proofDirectory, module, func(d *ast.Diagnostic) { report(d) })
+		ok := proveModule(ctx, lsc, proofDirectory, module, func(d *ast.Diagnostic) { report(d) })
 		for _, root := range module.Roots {
 			proved[root.Node] = ok
 		}
 	}
 	return printProofSummary(sys, configDirectory, modules, proved, lemmaScriptVersion, dafnyVersion)
+}
+
+// proofDirectoryOf returns the proof directory (Appendix F "Files"):
+// vibe.proofDir, which the config loader has resolved to an absolute path,
+// and by default proofs in the selected config's directory.
+func proofDirectoryOf(options *core.CompilerOptions, configDirectory string) string {
+	if options != nil && options.VibeLang != nil && options.VibeLang.ProofDir != "" {
+		return filepath.FromSlash(options.VibeLang.ProofDir)
+	}
+	return filepath.Join(configDirectory, "proofs")
+}
+
+// proveModule runs steps 5 to 7 for module: lsc info --typed for Dafny's
+// names, lsc regen, and the audit. It reports what failed and returns
+// whether every root of module is proved.
+func proveModule(ctx context.Context, lsc string, proofDirectory string, module ProofModule, report func(*ast.Diagnostic)) bool {
+	info, problem := runLemmaScriptInfo(ctx, lsc, proofDirectory, module)
+	if problem != "" {
+		report(proveDiagnostic(module.Roots[0].File, nil, EK4317, problem))
+		return false
+	}
+	stage, ok := runLemmaScript(ctx, lsc, proofDirectory, module, info, report)
+	if stage == "" || stage == "resolve" {
+		return false // LemmaScript or Dafny rejected the lowering: nothing to audit
+	}
+	return runProofAudit(ctx, proofDirectory, module, info, report) && ok
 }
 
 // proveConfigFile finds the selected config, as the compiler does.
@@ -333,9 +360,10 @@ type lemmaScriptRun struct {
 // dafnyError matches a Dafny error line: P.dfy(L,C): Error: M.
 var dafnyError = regexp.MustCompile(`^(.*\.dfy)\((\d+),(\d+)\): Error: (.*)$`)
 
-// runLemmaScript runs lsc regen on module's lowering file, reports what
-// failed, and returns whether every root of module is proved.
-func runLemmaScript(ctx context.Context, lsc string, proofDirectory string, module ProofModule, report func(*ast.Diagnostic)) bool {
+// runLemmaScript runs lsc regen on module's lowering file and reports what
+// failed. It returns the stage of the run's record, or "" without one, and
+// whether Dafny verified every member.
+func runLemmaScript(ctx context.Context, lsc string, proofDirectory string, module ProofModule, info lemmaScriptInfo, report func(*ast.Diagnostic)) (string, bool) {
 	lowering := module.Source + ".ts"
 	cmd := exec.CommandContext(ctx, "node", lsc, "regen", "--backend=dafny", lowering)
 	cmd.Dir = proofDirectory
@@ -349,17 +377,17 @@ func runLemmaScript(ctx context.Context, lsc string, proofDirectory string, modu
 	switch {
 	case !found:
 		report(proveDiagnostic(file, nil, EK4317, firstLine(output.String())))
-		return false
+		return "", false
 	case run.Stage == "ok" && !run.Partial:
-		return true
+		return run.Stage, true
 	case run.Stage == "resolve":
 		report(proveDiagnostic(file, nil, EK4317, firstDafnyError(output.String())))
 	case run.Stage == "conflict" || run.Stage == "diff":
 		report(proveDiagnostic(file, nil, EK4318, module.Source+".dfy"))
 	default:
-		reportDafnyErrors(proofDirectory, module, output.String(), report)
+		reportDafnyErrors(proofDirectory, module, info, output.String(), report)
 	}
-	return false
+	return run.Stage, false
 }
 
 // lastLemmaScriptRun returns the last regen record for lowering.
@@ -401,13 +429,20 @@ func firstDafnyError(text string) string {
 
 // reportDafnyErrors reports rule 4315 for each Dafny error in output, at the
 // declaration whose Dafny member holds its line (Appendix F "Source
-// locations").
-func reportDafnyErrors(proofDirectory string, module ProofModule, output string, report func(*ast.Diagnostic)) {
+// locations"). info gives each declaration's Dafny name.
+func reportDafnyErrors(proofDirectory string, module ProofModule, info lemmaScriptInfo, output string, report func(*ast.Diagnostic)) {
 	dfy, _ := os.ReadFile(filepath.Join(proofDirectory, filepath.FromSlash(module.Source)+".dfy"))
 	lines := strings.Split(string(dfy), "\n")
 	declarations := map[string]ProofDeclaration{}
 	for _, root := range module.Roots {
-		declarations[root.Name] = root
+		declarations[info.dafnyName(root.Name)] = root
+	}
+	// A theorem that is not proved names the procedures it knows nothing of.
+	noted := func(at ProofDeclaration, text string) string {
+		if at.Note != "" {
+			return text + ". " + at.Note
+		}
+		return text
 	}
 	reported := false
 	for _, line := range strings.Split(output, "\n") {
@@ -422,12 +457,12 @@ func reportDafnyErrors(proofDirectory string, module ProofModule, output string,
 				at = d
 			}
 		}
-		report(proveDiagnostic(at.File, at.Node.Name(), EK4315, at.Name, m[4]))
+		report(proveDiagnostic(at.File, at.Node.Name(), EK4315, at.Name, noted(at, m[4])))
 		reported = true
 	}
 	if !reported {
 		at := module.Roots[0]
-		report(proveDiagnostic(at.File, at.Node.Name(), EK4315, at.Name, firstLine(output)))
+		report(proveDiagnostic(at.File, at.Node.Name(), EK4315, at.Name, noted(at, firstLine(output))))
 	}
 }
 

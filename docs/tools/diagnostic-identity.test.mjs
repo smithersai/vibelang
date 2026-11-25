@@ -57,7 +57,6 @@ test("disabled messages, qualified severity aliases and named parser codes count
   assert.throws(() => compilerCodes(source("var EK1234 = message(unknown.Code, errorCategory, text)")), /unresolved/)
 })
 
-// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34).
 function nativeConstantSources(name, code, foreign, qualified, alias, grouped, raw, form, reverse) {
  const owner=qualified?"typescript/tsc/internal/codes":"typescript/tsc/internal/vibelang"
  const quote=raw?String.fromCharCode(96):'"'
@@ -332,7 +331,6 @@ test("the native editor category cannot hide a fatal diagnostic from the content
  assert.deepEqual(auditCategories(compilerCategories(split),new Map([["EK9100","warning: editor choice"],["EK9005","error: fatal projection"]])),[])
 })
 
-// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | TypeScript's own diagnostics keep their `TS` codes.
 function mapperForwarderSources(argument, foreignCode, ordinals, reverse) {
  const sources=[
   ...source('var d = message(4804, warningCategory, "retained")'),

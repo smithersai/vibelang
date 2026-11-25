@@ -5,7 +5,7 @@ import { chapter, read, block, run } from "./spec-witness.mjs"
 
 const parse = source => new Script(source)
 
-test("native ordinary arrow heads inherit Await, including default and binding patterns", () => {
+test("Platform control: native ordinary arrow heads inherit Await, including default and binding patterns", () => {
   for (const arrow of ["await => 1", "(await) => 1", "({ await }) => 1", "([await]) => 1", "(...await) => 1",
     "async await => 1", "async (await) => 1", "async ({ await }) => 1", "async ([await]) => 1", "async (...await) => 1",
     "(x = await 1) => x", "async (x = await 1) => x"]) {

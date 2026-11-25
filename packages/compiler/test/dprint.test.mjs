@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -8,13 +9,18 @@ import { fileURLToPath } from "node:url"
 import { requireOrSkip } from "./prerequisites.mjs"
 
 // dprint formats .vibe files through the vibelang package's process plugin,
-// npm:vibelang/dprint-plugin.json, which runs the native compiler. These tests
-// require a native build and the dprint dependency. Set DPRINT_CACHE_DIR to
-// use a cache provisioned with the pinned TypeScript plugin.
+// npm:vibelang/dprint-plugin.json, which runs the native compiler and asks
+// dprint to format TypeScript projections through the TypeScript plugin. These
+// tests require a native build, the dprint dependency and the pinned
+// TypeScript plugin as a local file (the @dprint/typescript package's
+// plugin.wasm, or VIBELANG_DPRINT_TYPESCRIPT_PLUGIN). They never download it.
 const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/vibelang", import.meta.url))
 const bundledDprint = fileURLToPath(new URL("../node_modules/dprint/bin.cjs", import.meta.url))
 const dprint = process.env.VIBELANG_DPRINT || bundledDprint
-const skip = requireOrSkip([native, dprint].find(path => !existsSync(path)))
+const typescriptPlugin = process.env.VIBELANG_DPRINT_TYPESCRIPT_PLUGIN || fileURLToPath(new URL("../node_modules/@dprint/typescript/plugin.wasm", import.meta.url))
+const typescriptPluginSha256 = "cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a" // dprint-plugin-typescript 0.93.4
+const skip = requireOrSkip([native, dprint, typescriptPlugin].find(path => !existsSync(path)))
+if (!skip) assert.equal(createHash("sha256").update(readFileSync(typescriptPlugin)).digest("hex"), typescriptPluginSha256, typescriptPlugin + " is not dprint-plugin-typescript 0.93.4")
 
 const config = {
   includes: ["**/*.{ts,vibe,vibex}"],
@@ -24,7 +30,7 @@ const config = {
   newLineKind: "lf",
   typescript: { semiColons: "asi", quoteStyle: "alwaysDouble", trailingCommas: "never", operatorPosition: "maintain", "arrowFunction.useParentheses": "force" },
   plugins: [
-    "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a",
+    typescriptPlugin,
     "npm:vibelang/dprint-plugin.json"
   ]
 }

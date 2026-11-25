@@ -61,6 +61,7 @@ export function sentences(path: string, markdown: string, { includeGrammarCensus
       line => /^#{1,6}\s/.test(line) ? line : "") : section
   )
   const lines = markdown.split(/\r?\n/)
+  let backgroundDepth = 0
   let recordDepth = 0, record = false
   let fence = "", section = "", paragraph: { text: string; line: number }[] = [], comment = false
   const flush = () => {
@@ -111,9 +112,16 @@ export function sentences(path: string, markdown: string, { includeGrammarCensus
       const depth = original.match(/^#+/)![0].length
       if (recordDepth && depth <= recordDepth) { recordDepth = 0; record = false }
       section = slug(heading[1])
+      if (backgroundDepth && depth <= backgroundDepth) backgroundDepth = 0
+      if (!backgroundDepth && path.startsWith("docs/design/vips/") &&
+          ["alternatives", "summary", "prior-art", "evidence", "open-questions"].includes(section)) backgroundDepth = depth
       if (/^docs\/design\/vips\/\d+[^/]*\.md$/.test(path) && section === "wills-words") {
         recordDepth = depth; record = true
       } else if (recordDepth && /^(?:Amended|Clarified)\b/i.test(heading[1])) record = false
+      continue
+    }
+    if (backgroundDepth || (/^\s*\|/.test(original) && /^\s*\|?\s*:?-+:?\s*\|/.test(lines[i + 1] ?? ""))) {
+      flush()
       continue
     }
     if (!original.trim() || /^\s*(?:\[[^\]]+\]:|---+$|\|?\s*:?-+:?\s*\|)/.test(original)) { flush(); continue }

@@ -1,5 +1,4 @@
 // expect: TS7023 TS7024
-import * as $nativeTryEffect from "effect/Effect";
 // A call cycle without return annotations has no type to start from, so
 // f and g need a written contract: TypeScript's TS7023, as for their
 // Effect.gen twins. Deferring the recursive operand in a callback also
@@ -25,14 +24,10 @@ export effect function g(n: number) {
 
 // With g's contract written, f's catch types its variable as X | Y.
 export effect function h(n: number): Effect<number, Y, never> {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
-    return { kind: "return:" as const, value: try k(n) };
-  }, effect (e) => {
-    if (e instanceof X) return { kind: "return:" as const, value: -1 };
+  return k(n) catch effect (e) => {
+    if (e instanceof X) return -1
     throw e
-  });
-return $nativeTryCompletion.value;
-}
+  }
 }
 
 export effect function k(n: number): Effect<number, X | Y, never> {

@@ -1,0 +1,12 @@
+// expect: EK0401
+export function uncaught(): number {
+  return Effect.runSync(Effect.fail("boom"))
+}
+
+export function caught(): number {
+  try {
+    return Effect.runSync(Effect.fail("boom"))
+  } catch {
+    return 0
+  }
+}

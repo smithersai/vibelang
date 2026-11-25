@@ -31,7 +31,6 @@ func TestPendingLines(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	targets := fuzzTargets(t)
 	tests := testFunctions(t)
 	for target, companions := range pendingCompanions {
 		for _, test := range append([]string{target}, companions...) {
@@ -48,7 +47,7 @@ func TestPendingLines(t *testing.T) {
 			t.Errorf("%s is listed twice", id)
 		}
 		seen[id] = true
-		if !targets[e.Target] {
+		if !tests[e.Target] {
 			t.Errorf("%s: no target %s in this package", id, e.Target)
 		}
 		if name, ok := strings.CutPrefix(e.Key, "corpus:"); ok {

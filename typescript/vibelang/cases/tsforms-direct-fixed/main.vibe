@@ -2,7 +2,6 @@
 // Effect.succeed and Effect.fail that try runs draw EK4834 (D288): a running
 // Effect.succeed(x) is x, and a running Effect.fail(e) fails as throw e does.
 // A call no try runs builds a program and draws nothing.
-// tsforms-direct-fixed is what vibelang --fix writes.
 error Missing { id: number }
 
 effect function find(id: number) {

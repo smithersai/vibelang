@@ -104,6 +104,9 @@ func FuzzAsyncSelfReferenceRefactor(f *testing.F) {
 		files := map[string]string{"main.vibe": source}
 		result := toolsCompile(t, w, "FuzzAsyncSelfReferenceRefactor", files)
 		defer result.Remove()
+		if !toolsErrorFree(result) {
+			t.Fatalf("invalid original: %v\n%s", toolsErrorCounts(result), Archive(files))
+		}
 		e := &toolsEditor{t: t, ctx: t.Context(), sessions: sessions, session: sessions.get(t), w: w, r: result, files: files, archive: Archive(files), main: "main.vibe", uri: toolsURI(result.Dir, "main.vibe")}
 		var err error
 		e.run("didOpen", func() {

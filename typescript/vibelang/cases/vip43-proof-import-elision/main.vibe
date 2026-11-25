@@ -1,5 +1,8 @@
 // An import that only proof code uses is elided, as for the program
 // without the proof forms: Appendix F, Erasure, "import elision included".
+// helper and other are transparent functions of .vibe modules: a function of
+// a .ts file is an impure trusted function, a procedure, which a spec
+// function (4314) and an assertion (4308) can't call.
 import { helper } from "./helper.js"
 import { other } from "./other.js"
 import { kept } from "./kept.js"

@@ -88,6 +88,11 @@ bun test docs/tools/check-snippets.test.ts docs/tools/first-run.test.ts docs/too
 sh scripts/deploy-docs.sh --dry-run
 ```
 
+The docs-tools installation prepares the pinned JSX framework reference used by
+`vibex-census-framework.test.mjs`. For a toolchain provisioned with an existing
+dependency directory, run `bun run --cwd docs/tools prepare:frameworks` during
+setup. Test imports read the prepared reference without contacting the registry.
+
 ## Running examples
 
 ```sh

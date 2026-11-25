@@ -43,7 +43,7 @@ test("the TestClock guide config runs the starter and deadline example", async (
     process.env.VIBELANG_BINARY = compiler
     try {
       const output = await run(["node", join(repo, "docs/tools/node_modules/vitest/vitest.mjs"), "run"], app)
-      expect(output).toContain("4 passed")
+      expect(output).toMatch(/\bTests\s+4 passed\b/)
     } finally {
       if (originalBinary === undefined) delete process.env.VIBELANG_BINARY
       else process.env.VIBELANG_BINARY = originalBinary

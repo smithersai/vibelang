@@ -35,3 +35,5 @@ export type { Clock, Opt, Opt2 }
 
 type ManualEntity = { value: number }
 export const manualNonNull = (null as unknown as ManualEntity | undefined)!
+
+export type MissingFinalSlot = User!NotFound!

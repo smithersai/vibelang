@@ -1,0 +1,16 @@
+// rule-evidence: docs/design/src/900-appendices.md#trusted-functions | - a pure trusted function: a `declare function` with one signature, in a `.vibe` or `.vibex` module;
+declare function matchesPattern(text: string, pattern: string): boolean
+
+theorem patternIsDeterministic(text: string, pattern: string) {
+  assert(matchesPattern(text, pattern) === matchesPattern(text, pattern))
+}
+
+theorem sumNonNegative(xs: readonly number[]) {
+  assume(xs.every((x) => x >= 0))
+  if (xs.length > 0) {
+    const first = xs[0]
+    assert(first >= 0)
+  } else assert(xs.length === 0)
+}
+
+export const one = 1

@@ -1,0 +1,11 @@
+// expect: EK4307 TS2554
+// rule-evidence: docs/design/src/900-appendices.md#proof-statements | In a proof context `by` is reserved: a second argument to `assert`, such as `by.induction(xs)`, and any other reference to `by` are rule 4307.
+declare const by: { induction(xs: readonly number[]): boolean }
+theorem tactic(xs: readonly number[]) {
+  assert(xs.length >= 0, by.induction(xs))
+}
+theorem named(xs: readonly number[]) {
+  const step = by.induction(xs)
+  assert(step || !step)
+}
+export const one = 1

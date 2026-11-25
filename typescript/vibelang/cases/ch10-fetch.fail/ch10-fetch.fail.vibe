@@ -4,7 +4,7 @@
 // Effect.tryPromise wraps is TypeScript, as the try hatch it replaced was
 // (VIP-5), so only the call outside it is EK4402.
 
-class HttpError extends TaggedError("HttpError")<{ readonly url: string; readonly cause: unknown }> {}
+error HttpError { url: string; cause: unknown }
 
 effect function fetchJson(url: string) {
   const pending = fetch(url)

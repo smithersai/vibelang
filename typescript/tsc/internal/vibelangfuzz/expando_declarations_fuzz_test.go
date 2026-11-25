@@ -38,7 +38,7 @@ func FuzzExpandoDeclarations(f *testing.F) {
 }
 
 // TestExpandoDeclarationsQuoted fails when a chapter rewords a sentence the
-// oracle quotes (RULES.md 9).
+// oracle quotes.
 func TestExpandoDeclarationsQuoted(t *testing.T) { expandoDeclarationChapters(t) }
 
 var expandoDeclarationQuotes = map[string][]string{
@@ -125,7 +125,7 @@ func (e expandoDeclarations) key() string {
 
 // parseExpandoDeclarations reads the keyed form,
 // `expando:<host>:<property>.<form>.<value>,…`, so a saved corpus file keeps
-// what it tests (RULES.md 11), and otherwise reads the choices from the bytes.
+// what it tests, and otherwise reads the choices from the bytes.
 func parseExpandoDeclarations(data []byte) expandoDeclarations {
 	e := expandoDeclarations{host: expandoHosts[0]}
 	if rest, ok := strings.CutPrefix(string(data), "expando:"); ok {
@@ -210,7 +210,7 @@ func (e expandoDeclarations) consumer() string {
 	var b strings.Builder
 	b.WriteString("import * as Source from \"./source.js\"\n")
 	b.WriteString("import * as Vibe from \"./vibe/main.js\"\n")
-	b.WriteString("type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false\n")
+	b.WriteString("type Same<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false\n")
 	for i, property := range e.properties() {
 		fmt.Fprintf(&b, "export const p%d: Same<typeof Source.f.%s, typeof Vibe.f.%s> = true\n", i, property, property)
 	}

@@ -1,9 +1,11 @@
 import { test, expect } from "bun:test"
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs"
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { spawnSync } from "node:child_process"
 import { pathToFileURL } from "node:url"
+
+import { contrastEnvironment } from "./site-contrast-stage"
 
 const commands = ["install", "infrastructure", "typecheck", "build", "browser"]
 
@@ -101,11 +103,8 @@ test("diagnostics preserve escaped and Unicode environment values in real childr
   }
 })
 
-test("the production audit uses stage receipts and keeps its registry and scratch isolation", () => {
-  const source = readFileSync(join(import.meta.dir, "site-contrast.test.ts"), "utf8")
-  expect(source).toContain("await contrastStage(command, site, env)")
-  expect(source).toContain('scratchSite(resolve(import.meta.dir, "../.."))')
-  expect(source).toContain("delete env.VIBELANG_SITE_RELEASE_FILE")
-  expect(source).toContain("delete env.VIBELANG_RELEASE_VERSION")
-  expect(source).toContain("builtInstallProblems(")
+test("the audit isolates release metadata and selects the build environment", () => {
+  const parent = { PATH: "/bin", VIBELANG_RELEASE_VERSION: "old", VIBELANG_SITE_RELEASE_FILE: "stale" }
+  expect(contrastEnvironment(["bun", "run", "build"], parent, "/registry", "/site")).toEqual({ PATH: "/registry:/bin", NODE_ENV: "production" })
+  expect(contrastEnvironment(["npm", "ci"], parent, "/registry", "/site")).toEqual({ PATH: "/bin" })
 })

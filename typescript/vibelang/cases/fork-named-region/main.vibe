@@ -1,5 +1,3 @@
-import * as $nativeTryEffect1 from "effect/Effect";
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"events":["if: after","if without braces: after","bare: after","loop: after","do: after","try: finally","stop if","stop if without braces","stop bare","stop loop 1","stop loop 2","stop do","stop try"]}
 // Branches, blocks, loop iterations, do expressions and cleanup callbacks
 // preserve the current parent fiber. A child's owner ends when that fiber
@@ -7,16 +5,12 @@ import * as $nativeTryEffect from "effect/Effect";
 const events: string[] = []
 
 effect function ticker(name: string, started: Deferred.Deferred<void>) {
-  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
+  try Effect.onExit(effect {
     try Deferred.succeed(started, undefined)
     while (true) try sleep("1 millis")
-  
-;return { kind: "normal" } as const;
-}, () => effect {
+  }, () => effect {
     events.push(`stop ${name}`)
-  });
-
-}
+  })
 }
 
 effect function branch(flag: boolean) {
@@ -63,16 +57,12 @@ effect function doBlock() {
 
 effect function guarded() {
   const started = try Deferred.make<void>()
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.onExit(effect {
+  try Effect.onExit(effect {
     fork ticker("try", started)
     try started.await()
-  
-;return { kind: "normal" } as const;
-}, () => effect {
+  }, () => effect {
     events.push("try: finally")
-  });
-
-}
+  })
 }
 
 export effect function main() {

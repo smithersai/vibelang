@@ -14,7 +14,7 @@ import (
 
 func TestMigrationModuleClosureNarrowingQuoted(t *testing.T) {
 	chapterSays(t, "001-functions.md", "changes no diagnostic, type, emitted statement, declaration or run-time observation.")
-	chapterSays(t, "007-tooling.md", "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.")
+	chapterSays(t, "007-tooling.md", diagnosticsNoRewriteQuote)
 }
 
 func FuzzMigrationModuleClosureNarrowing(f *testing.F) {

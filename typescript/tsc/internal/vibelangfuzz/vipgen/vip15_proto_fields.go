@@ -114,6 +114,6 @@ func (p *protoFieldDecode) observations(w *Writer) {
 		}
 		values += fmt.Sprintf(", Object.hasOwn(%s, \"__proto__\"), %s[\"__proto__\"]", instance, instance)
 	}
-	w.Write("return JSON.stringify([" + values + "])")
+	w.Write("return stringifyObservation([" + values + "])")
 }
 func (*protoFieldDecode) Ends() bool { return false }

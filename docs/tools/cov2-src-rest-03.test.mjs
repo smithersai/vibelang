@@ -85,8 +85,6 @@ test.todo("Chapter 007: Bare try construction lint: direct Effect.succeed and Ef
 // docs/design/src/007-tooling.md#56a2c1d3b1737147 — Chapter 007: Bare try recovery lint.
 test.todo("Chapter 007: Bare try recovery lint: direct catch, catchTag, and catchTags operands report EK4835 with catch effect advice [docs/design/src/007-tooling.md#56a2c1d3b1737147]")
 
-// docs/design/src/007-tooling.md#7c5e40755383ee77 — Chapter 007: Bare try provide lint.
-test.todo("Chapter 007: Bare try provide lint: direct provide and provideService operands report EK4836 with an order-preserving provide statement fix [docs/design/src/007-tooling.md#7c5e40755383ee77]")
 
 // docs/design/src/007-tooling.md#f4c94ea6f77d6680 — Chapter 007: Direct-operand lint witness.
 test.todo("Chapter 007: Direct-operand lint witness: only the first documented demo line warns [docs/design/src/007-tooling.md#f4c94ea6f77d6680]")
@@ -117,3 +115,6 @@ test.todo("Chapter 008: Operand evaluation order: lowering temporaries preserve 
 
 // docs/design/src/008-runtime.md#a89698a84179c77a — Chapter 008: Complete execution oracle.
 test.todo("Chapter 008: Complete execution oracle: compare the entire canonical Exit and finalizer trace rather than only success values [docs/design/src/008-runtime.md#a89698a84179c77a]")
+
+// docs/design/src/007-tooling.md#7c5e40755383ee77
+test.todo("Direct provide and provideService operands report EK4836 and advise using a provide statement in the same evaluation order.")

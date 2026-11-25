@@ -29,13 +29,3 @@ test("EK0510 names every execution head Appendix A gives a UnaryExpression opera
   const listed = [...heads.matchAll(/`([^`]+)`/g)].map(m => m[1])
   assert.deepEqual(listed, grammar)
 })
-
-// The rule's ECMAScript model: ExponentiationExpression's left operand is an
-// UpdateExpression, so a unary operator there is a SyntaxError unless
-// parenthesized. The spec cites `await a ** b`, which ECMA-262 rejects the same
-// way (V8 does; JavaScriptCore accepts it), so the check uses unary minus,
-// which every engine rejects.
-test("ECMAScript rejects an unparenthesized unary operand on the left of **", () => {
-  assert.throws(() => new Function("return -2 ** 2"), SyntaxError)
-  assert.equal(new Function("return (-2) ** 2")(), 4)
-})

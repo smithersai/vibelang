@@ -1,5 +1,3 @@
-import * as $nativeTryEffect1 from "effect/Effect";
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"found":"Ada","missing":"NotFound","lazy":"Ada","picked":"short","tooLong":"TooLong","arrow":"Bo"}
 error NotFound { id: string }
 error TooLong { length: number }
@@ -14,13 +12,7 @@ effect function lookup(id: string) {
 }
 
 effect function missing() {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
-    return { kind: "return:" as const, value: (try lookup("9")) };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: (e._tag) };
-  });
-return $nativeTryCompletion.value;
-}
+  return lookup("9") catch (e) => e._tag
 }
 
 // The right side of ?? runs only when the left side is nullish.
@@ -35,17 +27,11 @@ effect function label(text: string) {
 }
 
 effect function tooLong() {
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
-    return { kind: "return:" as const, value: (try label("much too long")) };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: (e._tag) };
-  });
-return $nativeTryCompletion1.value;
-}
+  return label("much too long") catch (e) => e._tag
 }
 
 effect function arrow() {
-  const get = effect (id: string): string!NotFound! => find(id) ?? throw new NotFound({ id })
+  const get = effect (id: string): string!NotFound => find(id) ?? throw new NotFound({ id })
   return try get("2")
 }
 

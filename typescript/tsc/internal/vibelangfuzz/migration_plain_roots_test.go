@@ -145,7 +145,13 @@ func FuzzMigrationPlainRoots(f *testing.F) {
 		if structuredKey != "" {
 			ExpectPending(t, migrationPlainRootsTarget, structuredKey)
 		}
-		if len(errors) > 0 {
+		// Synchronous runSync may throw unknown. Plain roots must handle
+		// it, while an async root may reject its promise.
+		if source == known && strings.HasPrefix(key, "runSync:") && !strings.HasPrefix(key, "runSync:async-") {
+			if !slices.Equal(errors, []string{"EK0401"}) {
+				t.Fatalf("plain runSync root %s: want EK0401, got %v", key, errors)
+			}
+		} else if len(errors) > 0 {
 			Gap(t, migrationPlainRootsTarget, "root:"+key, "Chapter1: %q; %q. Native TypeScript counterpart passes, Vibe callable reports %v\n%s", migrationPlainRootsQuote, migrationPlainRootsNestedQuote, errors, source)
 		}
 		ExpectPending(t, migrationPlainRootsTarget, "root:"+key)

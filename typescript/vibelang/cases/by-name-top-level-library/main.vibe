@@ -5,7 +5,7 @@ effect function work() {
 }
 
 const running: Fiber.Fiber<number> = Effect.runFork(Effect.provide(work(), Logger.layer([])))
-const total: number = Effect.runSync(Effect.provide(Effect.succeed(7), Logger.layer([])))
+const total: number = (() => { try { return Effect.runSync(Effect.provide(Effect.succeed(7), Logger.layer([]))) } catch { return -1 } })()
 const pending: Promise<{ left: number; right: number }> = Effect.runPromise(Effect.all({
   left: Effect.succeed(1),
   right: Effect.succeed(2)
@@ -14,5 +14,6 @@ const pending: Promise<{ left: number; right: number }> = Effect.runPromise(Effe
 Effect.runPromise(effect {
   try Console.log(typeof try Fiber.join(running))
   try Console.log(total)
-  try Console.log(JSON.stringify(try sync((value: Promise<{ left: number; right: number }>) => value, pending)))
+  const result = try Effect.promise(() => pending)
+  try Console.log(try Effect.try(() => JSON.stringify(result)))
 })

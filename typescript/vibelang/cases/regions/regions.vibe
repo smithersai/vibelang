@@ -1,3 +1,4 @@
+// Migration-output regression for abrupt completions through catch and cleanup.
 import * as $nativeTryEffect from "effect/Effect";
 // Chapter 24: return, break, and continue leave try/catch/finally and `using`
 // regions through completion records. Checked against JavaScript's semantics.

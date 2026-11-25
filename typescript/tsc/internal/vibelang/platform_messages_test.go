@@ -275,8 +275,7 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		}},
 		{"gap", `export const run = () => document.title`, []string{
 			"document.title is platform code, which VibeLang code does not use directly.",
-			noServiceYet, "Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's.",
-			"Move the platform code into a .ts module and expose it through an Effect; wrapping it inside a .vibe file does not grant host access.",
+			"Use the experimental Document service:   try (try Experimental.Document.Document).current", provideExperimentalBrowser,
 		}},
 		{"clock", `export const run = () => Date.now()`, nil},
 		{"monotonic clock", `export const run = () => performance.now()`, []string{

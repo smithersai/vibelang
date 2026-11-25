@@ -26,8 +26,8 @@ func VibeLangYieldOutsideProducer(node *ast.Node) bool {
 		if n.Kind == ast.KindArrowFunction && n.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0 && n.Flags&ast.NodeFlagsVibeLangEffect == 0 {
 			continue // do, catch head and item wrappers keep the source activation.
 		}
-		// Moved defaults keep their source positions before the body.
-		return n.Flags&ast.NodeFlagsVibeLangEffect != 0 && (ast.GetFunctionFlags(n)&ast.FunctionFlagsGenerator == 0 || node.Pos() < n.Body().Pos())
+		// Moved defaults keep their parameter positions. The generated body's span includes them.
+		return n.Flags&ast.NodeFlagsVibeLangEffect != 0 && (ast.GetFunctionFlags(n)&ast.FunctionFlagsGenerator == 0 || node.Pos() < n.ParameterList().End())
 	}
 	return false
 }
@@ -57,7 +57,7 @@ func vibeLangYieldInsideProducer(node *ast.Node) bool {
 			n.Flags&ast.NodeFlagsVibeLangEffect == 0 && flags&ast.FunctionFlagsAsync == 0 {
 			continue
 		}
-		return n.Flags&ast.NodeFlagsVibeLangEffect != 0 && flags&ast.FunctionFlagsGenerator != 0 && flags&ast.FunctionFlagsAsync == 0 && node.Pos() >= n.Body().Pos()
+		return n.Flags&ast.NodeFlagsVibeLangEffect != 0 && flags&ast.FunctionFlagsGenerator != 0 && flags&ast.FunctionFlagsAsync == 0 && node.Pos() >= n.ParameterList().End()
 	}
 	return false
 }

@@ -53,6 +53,9 @@ func (p *Parser) scanStartOfVibeLangDeclaration() bool {
 	if word == "spec" {
 		return p.scanStartOfSpecFunction() // spec function f() (VIP-43, vibelang_proofs.go)
 	}
+	if word == "theorem" {
+		return p.scanStartOfTheorem() // theorem t() (VIP-43, vibelang_proofs.go)
+	}
 	if !isVibeLangDeclarationWord(word) {
 		return false
 	}
@@ -84,7 +87,7 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	// Declaration introducers follow TypeScript contextual type, including
 	// its native prohibition on Unicode escapes in keyword tokens.
 	word := p.scanner.TokenValue()
-	if (word == "error" || word == "schema" || word == "service" || word == "data" || word == "task" || word == "workflow" || word == "spec") &&
+	if (word == "error" || word == "schema" || word == "service" || word == "data" || word == "task" || word == "workflow" || word == "spec" || word == "theorem") &&
 		(p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape()) {
 		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
 	}
@@ -100,6 +103,8 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	switch word {
 	case "spec":
 		return p.parseSpecFunctionDeclaration(pos, jsdoc, modifiers) // VIP-43, vibelang_proofs.go
+	case "theorem":
+		return p.parseTheoremDeclaration(pos, jsdoc, modifiers) // VIP-43, vibelang_proofs.go
 	case "error":
 		return p.parseErrorDeclaration(pos, jsdoc, modifiers, false /*schema*/)
 	case "service":
@@ -278,7 +283,7 @@ func (p *Parser) vibelangReadonly(modifiers *ast.ModifierList, anchor core.TextR
 // Result!Error!Dependencies:
 //
 //	User!NotFound!Db   Effect.Effect<User, NotFound, Db>
-//	User!NotFound!     Effect.Effect<User, NotFound, never>
+//	User!NotFound      Effect.Effect<User, NotFound, never>
 //	User!!Db           Effect.Effect<User, never, Db>
 //	User!!             Effect.Effect<User, never, never>
 //
@@ -316,7 +321,7 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 	}
 	omittedError := p.lookAhead(func(p *Parser) bool {
 		p.nextToken()
-		return p.token == ast.KindExclamationToken && !p.hasPrecedingLineBreak()
+		return p.scanner.ReScanExclamationToken() == ast.KindExclamationToken && !p.hasPrecedingLineBreak()
 	})
 	errors := p.parseVibeLangSlot(true)
 	// Only here can an equality token begin the second shorthand bang.
@@ -324,7 +329,7 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 		p.token = p.scanner.ReScanExclamationToken()
 	}
 	var dependencies *ast.Node
-	omitted := p.token != ast.KindExclamationToken
+	omitted := p.token != ast.KindExclamationToken || p.hasPrecedingLineBreak()
 	if omitted {
 		// Stand on the last character of the errors, so the type arguments
 		// stay in source order and the list does not seem to end in a comma.
@@ -337,9 +342,26 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 		p.nextToken()
 		dependencies = p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindNeverKeyword), last)
 	} else {
-		// Required requirements admit object types in type positions. Keep an
-		// implementation's existing body-brace boundary until migrated.
-		dependencies = p.parseVibeLangSlot(!omittedError && !p.vibelangCallableReturnType)
+		last := p.scanner.TokenRange()
+		allowObject := !omittedError
+		if allowObject && p.vibelangCallableReturnType {
+			allowObject = p.lookAhead(func(p *Parser) bool {
+				if p.nextToken() != ast.KindOpenBraceToken || p.hasPrecedingLineBreak() {
+					return false
+				}
+				before := len(p.diagnostics)
+				literal := p.parseTypeLiteral()
+				// A lone empty block can be the implementation body. A second
+				// block or an arrow makes even an empty requirement unambiguous.
+				return len(p.diagnostics) == before && (len(literal.AsTypeLiteralNode().Members.Nodes) != 0 ||
+					p.token == ast.KindOpenBraceToken || p.token == ast.KindEqualsGreaterThanToken)
+			})
+		}
+		dependencies = p.parseVibeLangSlot(allowObject)
+		if !omittedError && dependencies.End() == last.End() {
+			start := scanner.SkipTrivia(p.sourceText, result.Pos())
+			p.parseErrorAtRange(last, diagnostics.X_0_at_the_end_of_a_type_is_not_valid_TypeScript_syntax_Did_you_mean_to_write_1, "!", p.sourceText[start:errors.End()])
+		}
 	}
 	span := core.NewTextRange(result.Pos(), dependencies.End())
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxEffectType, Range: core.NewTextRange(scanner.SkipTrivia(p.sourceText, result.Pos()), dependencies.End())})
@@ -392,11 +414,14 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 // neither a slot on its line nor a second ! (an equality token rescans to one).
 func (p *Parser) nextIsDanglingVibeLangBang() bool {
 	p.nextToken()
+	if p.hasPrecedingLineBreak() {
+		return true
+	}
 	switch p.token {
 	case ast.KindExclamationToken, ast.KindExclamationEqualsToken, ast.KindExclamationEqualsEqualsToken:
 		return false
 	}
-	return p.hasPrecedingLineBreak() || !p.isStartOfVibeLangSlot()
+	return !p.isStartOfVibeLangSlot()
 }
 
 // isStartOfVibeLangSlot reports whether the current token starts a slot type:

@@ -1,4 +1,3 @@
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: 14
 export error Missing
 export service Need { value(): number!! }
@@ -14,9 +13,7 @@ export effect function twice(x: number) {
 }
 
 export effect function contracted(x: number): number!Missing!Need {
-  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect { return { kind: "return:" as const, value: (try twice(x)) }; }, () => effect { try twice(x) });
-return $nativeTryCompletion.value;
-}
+  return try Effect.onExit(effect { return (try twice(x)) }, () => effect { try twice(x) })
 }
 
 export class Chain {

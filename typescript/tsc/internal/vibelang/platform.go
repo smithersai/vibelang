@@ -301,8 +301,8 @@ var platformAPIs = map[string]platformAPI{
 	"navigator.hardwareConcurrency": {note: "Effect has no browser hardware-concurrency service; read navigator.hardwareConcurrency in a .ts adapter. The availableParallelism member of the Experimental.Process.Process service reports a Node or Bun process and is not provided by the browser layer."},
 	"navigator":                     {note: "Effect has no service for the browser's navigator; navigator.clipboard, geolocation, permissions, and locks have services."},
 	"navigator.*":                   {note: "Effect has no service for the browser's other navigator properties; read them in a .ts file."},
-	"document":                      {note: documentGap},
-	"window":                        {note: windowGap},
+	"document":                      {service: "ExperimentalDocument"},
+	"window":                        {service: "ExperimentalWindow"},
 	"location":                      {note: domGap},
 	"history":                       {note: domGap},
 	"requestAnimationFrame":         {service: "ExperimentalAnimations"},
@@ -388,8 +388,6 @@ const (
 	cryptoFamilies = "effect/crypto has a service for each WebCrypto family: Digest, Mac, Signature, Cipher, Aead, Kdf, KeyAgreement and KeyWrap."
 	signatureKeys  = "try Signature.privateKey(Signature.ed25519, bytes) and try Signature.publicKey(Signature.ed25519, bytes) make the keys from their bytes."
 	aeadKeys       = "try Aead.key(Aead.aes256Gcm, bytes) makes the key; Aead also has ChaCha20-Poly1305, and Cipher has AES-CTR and AES-CBC."
-	windowGap      = "Effect has no service for the DOM; try (try Experimental.Window.Window).current gives an API that takes it the page's Window, and other UI code belongs in a .ts or .tsx file, such as a React component's."
-	documentGap    = "Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's."
 	domGap         = "Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's."
 	frameGap       = "Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file."
 	dialogGap      = "Effect has no service for the browser's dialogs; a terminal program asks with try (try Terminal.Terminal).readLine."

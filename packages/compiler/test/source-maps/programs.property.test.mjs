@@ -477,8 +477,8 @@ test("erased service metadata is distinct from a generated helper property", asy
 })
 
 test("generated programs keep their tokens at both ends", async () => {
-  const seed = process.env.FC_SEED ?? String(Date.now() | 0)
-  console.log(`source-map-programs seed=${seed}`)
+  // A fixed seed keeps runs reproducible; FC_SEED explores other inputs.
+  const seed = process.env.FC_SEED ?? "480710"
   await checkProperty(fc, {
     name: "source-map-programs",
     env: { ...process.env, FC_SEED: seed },

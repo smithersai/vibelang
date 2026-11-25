@@ -11,9 +11,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// Foldkit-104 (corrected from the duplicate foldkit-103): instanceof HTMLElement and new MutationObserver were rejected,
-// but nearby DOM constructors were admitted. VIP-33 derives the ban from host
-// declarations, independently of which constructors the compiler lists today.
+// VIP-33 derives the DOM/platform constructor ban from host declarations,
+// independently of which constructors the compiler lists today.
 // No constructor is executed: this is an admission oracle, with TypeScript
 // controls; runtime comparisons remain in FuzzVIPDifferential.
 var platformConstructors = []struct {

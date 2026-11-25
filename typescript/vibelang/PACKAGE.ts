@@ -1,3 +1,4 @@
+import { workspaceInputPaths } from "../../scripts/testing/workspace-inputs.mjs"
 import { readdirSync, existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -18,10 +19,28 @@ const cases = readdirSync(casesDir)
   .filter((name) => existsSync(join(casesDir, name, "tsconfig.json")))
   .sort()
 
+// The native controls use the older Effect pin from the specification.
+const referenceDir = "typescript/vibelang/.cache/stock-reference"
+const referenceInstall = S.Shell.Build({
+  summary: "Install the locked stock TypeScript and Effect case controls.",
+  shell: `mkdir -p ${referenceDir} && cp typescript/vibelang/cases/reference-install/package*.json ${referenceDir}/ && ` +
+    `cd ${referenceDir} && npm ci --ignore-scripts --no-audit --no-fund && ` +
+    `node -e 'require("node:fs").writeFileSync("reference-ready.json", JSON.stringify(require("./package.json").dependencies))'`,
+  data: [S.file("cases/reference-install/package.json"), S.file("cases/reference-install/package-lock.json")],
+  tools: [S.Host.bin("npm"), S.Host.bin("node")],
+  outDirs: [".cache/stock-reference"],
+  sandbox: "none",
+  timeout: "5m"
+})
+const referenceEnv = "VIP7_REFERENCE_CACHE=$PWD/vibelang/.cache/stock-reference " +
+  "EFFECT_TWIN_NODE_MODULES=$PWD/vibelang/.cache/stock-reference/node_modules " +
+  "VIBELANG_MATCH_REFERENCE_NODE_MODULES=$PWD/vibelang/.cache/stock-reference/node_modules "
+
 // What every case reads besides its own directory. EFFECT_NODE_MODULES is
 // experiments/node_modules, installed from experiments/bun.lock (the merge
 // queue links it to a shared install of the same pinned Effect release).
 const shared = [
+  referenceInstall,
   Typescript.compiler,
   Packages["compiler-native"],
   Packages["runtime-dist"],
@@ -29,7 +48,9 @@ const shared = [
   S.file("//packages/runtime/bun.lock"),
   S.file("//experiments/package.json"),
   S.file("//experiments/bun.lock"),
-  S.file("harness.mjs"),
+  S.glob("*.mjs"),
+  S.glob("test/**"),
+  S.glob("tests/**"),
   S.file("harness-command.mjs"),
   S.file("late-start-scheduler.mjs"),
   S.file("lsp-connection.mjs"),
@@ -52,11 +73,13 @@ const shared = [
 // dots become `_`.
 const label = (name: string) => name.replaceAll(".", "_")
 
+const workspaceFiles = (pattern: string) => workspaceInputPaths(pattern).map(path => S.file("//" + path))
+
 const targets: Record<string, ReturnType<typeof S.Shell.Test>> = {}
 for (const name of cases) {
   targets[label(name)] = S.Shell.Test({
     summary: `Compile and run the compiler case ${name}.`,
-    shell: "cd typescript && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
+    shell: "cd typescript && " + referenceEnv + "EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
       `VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --allow-stale --isolated --verbose ${name}`,
     data: [
       ...shared,
@@ -64,7 +87,7 @@ for (const name of cases) {
       ...(name === "imported-diagnostic-reference" ? [
         S.file("//docs/design/src/007-tooling.md"),
         S.file("//docs/design/inventory/lint-codes.json"),
-        S.glob("//typescript/tsc/internal/effecttsgo/internal/rules/*.go")
+        ...workspaceFiles("typescript/tsc/internal/effecttsgo/internal/rules/*.go")
       ] : []),
       ...(name === "error-nominal-literal-key-migration" || name === "error-nominal-fieldless-key-migration"
         ? [S.file("error-key-migration.mjs")] : []),
@@ -82,7 +105,7 @@ for (const name of cases) {
 const startupCases = ["uninterruptible-using", "fork-named-region", "fork-arrow-body", "scopes-fork", "ch07-concurrency"]
 targets["fork-late-start"] = S.Shell.Test({
   summary: "Fork lifetime checks wait for child readiness under delayed scheduling.",
-  shell: "cd typescript && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
+  shell: "cd typescript && " + referenceEnv + "EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
     "VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --allow-stale --isolated --late-start --verbose " + startupCases.join(" "),
   data: [...shared, ...startupCases.map((name) => S.glob(`cases/${name}/**`))],
   tools: [S.Host.bin("node")],
@@ -168,7 +191,7 @@ targets["case-advice-examples"] = S.Shell.Test({
   data: [
     S.file("case-advice-examples.test.mjs"),
     S.glob("cases/*/expected/messages.txt"),
-    S.glob("//typescript/tsc/internal/vibelang/*.go")
+    ...workspaceFiles("typescript/tsc/internal/vibelang/*.go")
   ],
   tools: [S.Host.bin("node")],
   sandbox: "none",
@@ -178,4 +201,4 @@ targets["case-advice-examples"] = S.Shell.Test({
 /** Every file in typescript/vibelang, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
-export const Package = S.Package({ targets: { ...targets, tree } })
+export const Package = S.Package({ targets: { ...targets, tree, "stock-reference": referenceInstall } })

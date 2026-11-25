@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// RULES9: a chapter edit must invalidate the actual Node property oracle in the spec gate.
+// Chapter 1: a chapter edit must invalidate the actual Node property oracle in the spec gate.
 func TestOxlintNamespaceContractQuoted(t *testing.T) {
 	const quote = "TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc` and TypeDoc understand imports of `.vibe` files."
 	if !strings.Contains(SpecText("001-functions.md"), quote) {

@@ -16,9 +16,8 @@ func TestParallelLoweringQuoted(t *testing.T) {
 }
 
 // parallelLoweringModule is module i of a project in which each file gives the
-// checker something to record while it plans the file. Foldkit's dom/domBehavior
-// wrote Effect.Array across its modules, and the build stopped with "concurrent
-// map read and map write" in the lowering (foldkit-8).
+// checker something to record while it plans the file. Multiple modules
+// referencing Effect.Array concurrently must not race on lowering maps.
 func parallelLoweringModule(key string, i int) (string, bool) {
 	switch key {
 	case "value":

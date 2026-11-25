@@ -78,7 +78,7 @@ func FuzzNativePreludeWithoutRuntime(f *testing.F) {
 		case "contract":
 			source = "export declare const load: (id: string) => number!!\n"
 		case "explicit":
-			source = "import { Effect as Fx } from 'effect'\nexport const value = Fx.runSync(Fx.succeed(7))\n"
+			source = "import { Effect as Fx } from 'effect'\nexport const value = (() => { try { return Fx.runSync(Fx.succeed(7)) } catch { return 0 } })()\n"
 		case "shadow":
 			source = "const Effect = { local: 7 as const }\nexport const value: 7 = Effect.local\n"
 		case "disabled", "disabled-all":

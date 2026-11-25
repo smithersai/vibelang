@@ -1,0 +1,47 @@
+// expect: EK4308
+// rule-evidence: docs/design/src/900-appendices.md#transparent-functions-and-procedures | In a verification expression, a call to a procedure appears only in the initializer of a `const` that is a direct statement of a theorem body (4308).
+import { scale } from "./helper.js"
+
+// A loop makes countDown a procedure: proofs see its ensures, not its body.
+export function countDown(n: number): number {
+  proof {
+    ensures((r) => r <= n || r === 0)
+  }
+  let i = n
+  while (i > 0) {
+    i = i - 1
+  }
+  return i
+}
+
+theorem inAssert(n: number) {
+  assert(countDown(n) <= n || countDown(n) === 0)
+}
+theorem inHypothesis(n: number) {
+  assume(countDown(n) === 0)
+  assert(n === n)
+}
+theorem inCondition(n: number) {
+  if (countDown(n) === 0) assert(n === n)
+}
+theorem inNestedConst(n: number) {
+  if (n > 0) {
+    const reached = countDown(n)
+    assert(reached <= n || reached === 0)
+  }
+}
+theorem impureTrusted(n: number) {
+  assert(scale(n) === scale(n))
+}
+export function holder(n: number): number {
+  proof {
+    ensures((r) => r === n || countDown(n) === 0)
+  }
+  return n
+}
+// The one place a procedure call may stand: a const of the theorem body.
+theorem allowed(n: number) {
+  const reached = countDown(n)
+  const scaled = scale(n)
+  assert(reached <= n || reached === 0 || scaled === scaled)
+}

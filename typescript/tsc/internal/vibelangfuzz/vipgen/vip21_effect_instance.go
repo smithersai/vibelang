@@ -56,12 +56,12 @@ func producerProjectInstance(g *Gen, mode int) Stmt {
  effect function $P$owns(owner:number,item:number) { const current=try $P$ns.fiberId; const child=try $P$ns.forkChild($P$ns.succeed(item)); const okay=owner<current&&current<child.id; try Fiber.join(child); return okay; }
  $DECLARATION$
  const $P$anchor=try $P$ns.forkChild(effect { const $P$owner=try $P$ns.fiberId; const stream=$STREAM$; $MUTATE$ return try Stream.runCollect(stream); });
- const values=try Fiber.join($P$anchor); ev($LABEL$+JSON.stringify([values.length,values.every(x=>x)])); }`
+ const values=try Fiber.join($P$anchor); ev($LABEL$+stringifyObservation([values.length,values.every(x=>x)])); }`
 	ref := `{ const $P$ns=Effect;
  function $P$owns(owner,item) { return $P$ns.gen(function* () { const current=yield* $P$ns.fiberId; const child=yield* $P$ns.forkChild($P$ns.succeed(item)); const okay=owner<current&&current<child.id; yield* Fiber.join(child); return okay; }); }
  $REFBODY$ $REFERENCE$
  const $P$anchor=yield* $P$ns.forkChild($P$ns.gen(function* () { const $P$owner=yield* $P$ns.fiberId; const stream=$STREAM$; $MUTATE$ return yield* Stream.runCollect(stream); }));
- const values=yield* Fiber.join($P$anchor); ev($LABEL$+JSON.stringify([values.length,values.every(x=>x)])); }`
+ const values=yield* Fiber.join($P$anchor); ev($LABEL$+stringifyObservation([values.length,values.every(x=>x)])); }`
 	replace := strings.NewReplacer("$DECLARATION$", declaration, "$REFBODY$", refBody, "$REFERENCE$", reference, "$STREAM$", stream, "$MUTATE$", mutate)
 	vibe, ref = replace.Replace(vibe), replace.Replace(ref)
 	replace = strings.NewReplacer("$P$", g.Name("producer"), "$COUNT$", strconv.Itoa(2+g.Intn(3)), "$LABEL$", strconv.Quote(g.Label()+":"))

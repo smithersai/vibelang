@@ -1,6 +1,6 @@
 {
   "property": "KnipPublicJSDoc",
-  "rule": "Chapter0/7: Knip preserves the TypeScript public-JSDoc attachment behavior; lane migfix-t3code",
+  "rule": "Chapter0/7: Knip preserves the TypeScript public-JSDoc attachment behavior",
   "input": {
     "form": "type",
     "layout": "direct",

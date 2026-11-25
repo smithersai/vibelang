@@ -21,10 +21,9 @@ import (
 // from the prelude or an explicit import. The twin is the `Effect.gen` form the
 // sentence and Chapter 1's table name, written independently of the compiler;
 // the declarations of the .vibe and of the twin under stock tsc must agree
-// under the migration identity gate's canonicalization. t3code's server
-// migration kept 0 of 50 modules because `export default effect { … }`
-// declared `declare function _default(): void` (inbox migrate-t3code
-// 2026-11-01T03:10Z, 47 modules).
+// under the migration identity gate's canonicalization (regression:
+// `export default effect { … }` previously declared
+// `declare function _default(): void`).
 func FuzzEffectBlockDeclarationTwin(f *testing.F) {
 	startShortBudget(f)
 	effectBlockTwinChapters(f)
@@ -55,7 +54,7 @@ func FuzzEffectBlockDeclarationTwin(f *testing.F) {
 }
 
 // TestEffectBlockDeclarationTwinQuoted fails when a chapter rewords a sentence
-// the oracle quotes (RULES.md 9).
+// the oracle quotes.
 func TestEffectBlockDeclarationTwinQuoted(t *testing.T) { effectBlockTwinChapters(t) }
 
 var effectBlockTwinQuotes = map[string][]string{
@@ -125,7 +124,7 @@ func (e effectBlockTwin) key() string {
 }
 
 // parseEffectBlockTwin reads the keyed form, `block-twin:<export>:<body>:<imports>`,
-// so a saved corpus file keeps what it tests (RULES.md 11), and otherwise reads
+// so a saved corpus file keeps what it tests, and otherwise reads
 // the choice from the bytes.
 func parseEffectBlockTwin(data []byte) effectBlockTwin {
 	e := effectBlockTwin{export: effectBlockTwinExports[0], body: effectBlockTwinBodies[0]}

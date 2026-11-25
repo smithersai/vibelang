@@ -32,12 +32,6 @@ assert.equal(negativeZeroExit._tag, "Success")
 assert.equal(negativeZeroExit.value, "negative")
 assert.equal(unsignedZeroExit._tag, "Success")
 assert.deepEqual(unsignedZeroExit.value, ["zero", "zero", "negative one"])
-for (const zero of [+0, -0, -0.0, +0e0, -0x0]) {
-  assert.equal(Object.is(zero, 0) && Object.is(zero, -0), false)
-  assert.equal(zero === 0, true)
-}
-assert.equal(Object.is(-0n, 0n), true)
-assert.equal(Object.is(-1, -1), true)
 `)
   assert.equal(result.status, 0, result.stderr || result.stdout)
 })

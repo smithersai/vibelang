@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process"
 import { Effect } from "effect"
 import { main } from "./out/main.js"
 const here=dirname(fileURLToPath(import.meta.url))
-const cache=resolve(here,"../../../.cache/do-flat-reference")
+const cache=process.env.VIP7_REFERENCE_CACHE || resolve(here,"../../../.cache/do-flat-reference")
 await ensurePinnedReference(cache)
 mkdirSync(resolve(here,"typescript/node_modules"),{recursive:true})
 rmSync(resolve(here,"typescript/node_modules/effect"),{recursive:true,force:true})

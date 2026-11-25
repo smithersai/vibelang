@@ -174,11 +174,11 @@ func TestLowerProofsCopiesReachedDeclarations(t *testing.T) {
 import { external } from "./c.js"
 declare function matches(text: string, pattern: string): boolean
 spec function valid(s: Score, text: string): boolean {
-  return clampScore(s.value) <= limit && matches(text, "x") && external(s.value) >= 0
+  return clampScore(s.value) <= limit && matches(text, "x")
 }
 export function use(s: Score): number {
   proof { assume(valid(s, "a")) }
-  return s.value
+  return external(s.value)
 }
 `,
 		"b.vibe": `export const limit = 10

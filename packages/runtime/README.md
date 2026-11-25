@@ -375,7 +375,13 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/Trigger` | Start workflows on a schedule or deliver verified webhooks |
 | `vibelang-runtime/experimental/WorkQueue` | Offer keyed work to a worker and wait for its durable result |
 | `vibelang-runtime/experimental/Model` | Select a model provider and replay recorded calls and streams in workflows |
-| `vibelang-runtime/experimental/Agent` | Discover installed coding agents and run a configured agent over the Agent Client Protocol |
+| `vibelang-runtime/experimental/Agent` | Run typed model cell loops (`Agent.run`, `Agent.stream`), discover installed coding agents, and run configured agents over ACP |
+| `vibelang-runtime/experimental/Rpc` | Provide and call `schema service` RPC groups across worker threads, processes, and remote hosts |
+| `vibelang-runtime/experimental/Tools` | Standard capability-checked filesystem, shell, HTTP, web, and LSP tools and toolkits |
+| `vibelang-runtime/experimental/McpClient` | Connect to stdio and Streamable HTTP MCP servers as allowlisted toolkits |
+| `vibelang-runtime/experimental/Sandbox` | Run isolated commands and jobs behind standard platform services (`directory`, `command`, `container`, `kubernetes`, `interpreter`) |
+| `vibelang-runtime/experimental/Secrets` | Resolve secrets at an HTTPS egress proxy using HMAC placeholders and response scrubbing |
+| `vibelang-runtime/experimental/Otlp` | Export scrubbed, bounded logs, metrics, and traces over OTLP |
 
 ### Open-proposal modules (opt-in)
 

@@ -43,7 +43,12 @@ func FuzzRecursiveLegacySlots(f *testing.F) {
 			want := []string{}
 			if partial {
 				annotation = "Effect.Effect<number,Neg,infer R>"
-				want = []string{"EK4857", "EK9206"}
+				want = []string{"EK4857"}
+				// A boolean operand reads the already-written success type.
+				// Only the call argument and generic call reenter inference.
+				if shape%3 != 1 {
+					want = append(want, "EK9206")
+				}
 			}
 			source := strings.Repeat("// recursive slot control\n", int(variation%3)) + "error Neg {n:number}\nexport effect function " + name + generic + params + ":" + annotation + "{if(n<0)throw new Neg({n});" + body + "}\n"
 			r, err := w.Compile(t.Context(), Single(source))

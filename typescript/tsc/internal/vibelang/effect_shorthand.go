@@ -41,6 +41,9 @@ func shorthandName(file *ast.SourceFile, node *ast.Node) *ast.Node {
 	if file == nil || !ast.IsFunctionDeclaration(node) || node.Name() == nil || !isVibeLangFile(file) {
 		return nil
 	}
+	if isTheorem(node) {
+		return nil // theorem t() { … } is a theorem's own form (VIP-43, theorem.go)
+	}
 	name := node.Name()
 	// Comments between export and the modifier are not a function keyword.
 	// Scan the declaration head with TypeScript's trivia-aware scanner.

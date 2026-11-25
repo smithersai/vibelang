@@ -39,6 +39,7 @@ func FuzzObjectMemberKeyContext(f *testing.F) {
 		}
 	}
 	w := NewWorkspace(f)
+	node := vipNode(f, w)
 	f.Fuzz(func(t *testing.T, shape, scope, key string) {
 		normalize := func(value string, domain []string) string {
 			for _, v := range domain {
@@ -125,6 +126,19 @@ func FuzzObjectMemberKeyContext(f *testing.F) {
 			Gap(t, "FuzzObjectMemberKeyContext", corpus, "Chapter001: %s: got %d EK0501, want%d\n%s", objectKeyContextQuote, got, want, actual)
 		}
 
+		if want == 0 {
+			wantTrace := `["resolve"]`
+			if key == "coercion" {
+				wantTrace = `["resolve","coerce"]`
+			}
+			for _, file := range []string{"out/main.js", "out/native.js"} {
+				out := node.RunObserved(result, file, "main")
+				if out.Kind != "success" || string(out.Value) != "1" ||
+					string(out.BeforeCall) != "[]" || string(out.AfterCall) != "[]" || string(out.Trace) != wantTrace {
+					Gap(t, "FuzzObjectMemberKeyContext", corpus, "%s should return 1 and trace %s only when run: %+v\n%s", file, wantTrace, out, Archive(files))
+				}
+			}
+		}
 		ExpectPending(t, "FuzzObjectMemberKeyContext", corpus)
 		ExpectPending(t, "FuzzObjectMemberKeyContext", specCorpusKey(t))
 	})

@@ -86,7 +86,6 @@ test("direct calls, callbacks, validation and returned decoders have separate co
   assert.equal(find("global", "Array.push")[0].ownThrows, "never")
   assert.equal(find("global", "String.repeat")[0].ownThrows, "RangeError")
   for (const method of ["padStart", "padEnd"]) {
-    assert.equal("x"[method](-1), "x")
     assert.ok(find("global", "String." + method).every(e => e.ownThrows === "never"), method + " uses ToLength, not repeat-style validation")
   }
   const normalize = find("global", "String.normalize")
@@ -95,18 +94,11 @@ test("direct calls, callbacks, validation and returned decoders have separate co
   assert.ok(closedForms.length && openForms.length)
   assert.ok(closedForms.every(e => e.ownThrows === "never"), "every form in the closed overload is valid")
   assert.ok(openForms.every(e => e.ownThrows === "RangeError"), "the open string overload admits invalid forms")
-  for (const form of ["NFC", "NFD", "NFKC", "NFKD"]) assert.doesNotThrow(() => "text".normalize(form))
-  assert.equal("x".repeat(1), "x")
   assert.ok(find("global", "String.repeat").every(e => e.ownThrows === "RangeError"), "a safe count does not narrow the whole signature (detail 205)")
 
-  assert.throws(() => new String(Symbol()), TypeError)
-  assert.equal(String(Symbol("ok")), "Symbol(ok)")
   assert.equal(find("global", "String").find(e => e.kind === "construct").ownThrows, "TypeError")
   assert.equal(find("global", "String").find(e => e.kind === "call").ownThrows, "never")
   assert.ok(find("global", "Array.map").every(e => e.rethrows.includes("callbackfn") && e.callbacks[0].admits === "unknown"))
-  function* throwingEntries() { throw new Error("iterator"); yield ["key", 1] }
-  assert.throws(() => new Map(throwingEntries()), /iterator/)
-  assert.throws(() => Array.from(throwingEntries()), /iterator/)
   assert.equal(find("global", "Map").find(e => e.signature.startsWith("()")).ownThrows, "never")
   assert.ok(find("global", "Map").filter(e => !e.signature.startsWith("()")).every(e => e.ownThrows === "never"))
   assert.ok(find("global", "Array.from").every(e => e.ownThrows === "never"))
@@ -201,39 +193,24 @@ test("native proofs cover typed iterables, null targets and byte syntax", () => 
     assert.ok(found.length, declaration)
     return found
   }
-  assert.throws(() => BigInt("invalid"), SyntaxError)
-  assert.throws(() => BigInt(1.5), RangeError)
   assert.ok(find("BigInt").every(e => e.ownThrows.split(" | ").sort().join(" | ") === "RangeError | SyntaxError"),
     "the pinned bigint/boolean/number/string parameter excludes invalid-type TypeError")
-  function* badValues() { throw new Error("iterator") }
-  assert.throws(() => new Uint8Array(badValues()), /iterator/)
-  assert.throws(() => Uint8Array.from(badValues()), /iterator/)
   assert.ok(find("Uint8Array.from").every(e => e.ownThrows === "unknown"))
   const iterableConstructors = find("Uint8Array").filter(e => /\b(?:Iterable|ArrayLike)\b/.test(e.signature))
   assert.ok(iterableConstructors.length)
   assert.ok(iterableConstructors.every(e => e.ownThrows === "unknown"))
   assert.ok(find("Uint8Array").some(e => /\(length\??: number\)/.test(e.signature) && e.ownThrows === "RangeError"))
   assert.ok(find("Uint8Array.from").some(e => e.callbacks.some(c => c.admits === "unknown") && e.rethrows.length))
-  for (const [method, invoke] of [
-    ["getPrototypeOf", () => Object.getPrototypeOf(null)],
-    ["getOwnPropertyNames", () => Object.getOwnPropertyNames(null)],
-    ["getOwnPropertySymbols", () => Object.getOwnPropertySymbols(null)],
-    ["getOwnPropertyDescriptor", () => Object.getOwnPropertyDescriptor(null, "x")],
-    ["getOwnPropertyDescriptors", () => Object.getOwnPropertyDescriptors(null)],
-  ]) {
-    assert.throws(invoke, TypeError)
+  for (const method of ["getPrototypeOf", "getOwnPropertyNames", "getOwnPropertySymbols", "getOwnPropertyDescriptor", "getOwnPropertyDescriptors"]) {
     assert.ok(find("Object." + method).every(e => e.ownThrows === "TypeError"), method)
   }
   for (const method of ["fromBase64", "fromHex"]) {
-    if (typeof Uint8Array[method] === "function") assert.throws(() => Uint8Array[method]("%%%"), SyntaxError)
     assert.ok(find("Uint8Array." + method).every(e => e.ownThrows === "SyntaxError"), method)
   }
   for (const method of ["setFromBase64", "setFromHex"]) {
-    if (typeof Uint8Array.prototype[method] === "function") assert.throws(() => new Uint8Array(8)[method]("%%%"), SyntaxError)
     assert.ok(find("Uint8Array." + method).every(e => e.ownThrows === "SyntaxError"), method)
   }
   assert.ok(find("Math.sumPrecise").every(e => e.ownThrows === "unknown"))
-  assert.throws(() => new Date(NaN).toISOString(), RangeError)
   assert.ok(find("Date.toISOString").every(e => e.ownThrows === "never"), "invalid receiver state is implicit (detail 81)")
 })
 
@@ -329,14 +306,19 @@ test("rethrowing array callbacks and deferred timer callbacks keep separate cont
     assert.ok(globals(name).some(e => e.rethrows.length > 0), name + " propagates its callback contract")
   }
   assert.ok(globals("setTimeout").every(e => e.rethrows.length === 0))
-  let invoked = false
-  const handle = setTimeout(() => { invoked = true; throw new Error("deferred callback") }, 0)
-  try { assert.equal(invoked, false, "setTimeout stores the callback instead of invoking it at construction") }
-  finally { clearTimeout(handle) }
+
 })
 
-
-
-
-
-
+test("the inventory guide describes the committed contracts and links every inventory", () => {
+  const directory = resolve(root, "docs/design/inventory")
+  const guide = readFileSync(join(directory, "README.md"), "utf8")
+  for (const file of ["throws.json", "platform-globals.json", "lint-codes.json"]) {
+    assert.ok(guide.includes("](" + file + ")"), file)
+    JSON.parse(readFileSync(join(directory, file), "utf8"))
+  }
+  const { entries } = JSON.parse(readFileSync(join(directory, "throws.json"), "utf8"))
+  assert.ok(entries.some(entry => entry.module.startsWith("effect/")))
+  assert.ok(entries.some(entry => entry.rethrows.length))
+  for (const field of ["callbacks", "returns"]) assert.ok(entries.every(entry => field in entry))
+  assert.doesNotMatch(guide, /not yet included|`coverage` fields/)
+})

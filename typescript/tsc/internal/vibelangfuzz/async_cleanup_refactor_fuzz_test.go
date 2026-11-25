@@ -75,9 +75,15 @@ func FuzzAsyncCleanupRefactor(f *testing.F) {
 		}
 		cursor := strings.Index(source, "ASYNC")
 		source = strings.Replace(source, "ASYNC", "async", 1)
-		files := map[string]string{"main.vibe": source}
+		config := strings.Replace(DefaultConfig, `"target": "ES2022",`,
+			`"target": "ES2022", "lib": ["ES2022", "DOM", "ESNext.Disposable"],`, 1)
+		config = strings.TrimSuffix(config, "\n}") + `, "files": ["main.vibe"]}`
+		files := map[string]string{"main.vibe": source, "tsconfig.json": config}
 		result := toolsCompile(t, w, "FuzzAsyncCleanupRefactor", files)
 		defer result.Remove()
+		if !toolsErrorFree(result) {
+			t.Fatalf("invalid original: %v\n%s", toolsErrorCounts(result), Archive(files))
+		}
 		e := &toolsEditor{t: t, ctx: t.Context(), sessions: sessions, session: sessions.get(t), w: w, r: result, files: files, archive: Archive(files), main: "main.vibe", uri: toolsURI(result.Dir, "main.vibe")}
 		var err error
 		e.run("didOpen", func() {

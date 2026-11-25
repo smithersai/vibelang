@@ -1,4 +1,5 @@
 import { requireOrSkip } from "./prerequisites.mjs"
+import { pastRacyWindow, tree } from "./cache-harness.mjs"
 import { loaderScope } from "../loader-scope.mjs"
 import { strict as assert } from "node:assert"
 import { spawn, spawnSync } from "node:child_process"
@@ -11,7 +12,6 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import fc from "fast-check"
-import { setTimeout as sleep } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
 import { compileProjectSync, projects } from "../project.mjs"
 
@@ -30,8 +30,10 @@ const options = {
 const tsconfig = (extra = {}) => JSON.stringify({ compilerOptions: options, include: ["src/**/*"], ...extra })
 
 // A source file's timestamp near a compile's start keeps the compile out of the
-// cache (it may have changed while the compiler read it). Wait past that.
-const settle = () => sleep(120)
+// cache (it may have changed while the compiler read it). Wait until every
+// live fixture's newest observed stamp is past that window.
+const live = new Set()
+const settle = () => pastRacyWindow([...live].flatMap(tree))
 
 const sources = {
   "package.json": '{"type":"module"}',
@@ -53,7 +55,8 @@ const sources = {
 // directory of its own.
 async function fixture(t, files = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cache-test-")))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  live.add(root)
+  t.after(() => { live.delete(root); rmSync(root, { recursive: true, force: true }) })
   const app = join(root, "app")
   mkdirSync(join(app, "node_modules"), { recursive: true })
   symlinkSync(realpathSync(effect), join(app, "node_modules/effect"))

@@ -85,7 +85,7 @@ func softKeywordObservation(g *Gen, s *Scope) Stmt {
 	g.AddDecl(&Code{V: "const " + name + "Entry = (() => { " + binding + v + "; return " + name + "; })();", E: referenceDecl})
 	call := name + "Entry()"
 	if shape.EffectResult() {
-		call = "Effect.runSync(" + call + ")"
+		call = "(() => { const exit = Effect.runSyncExit(" + call + "); return exit._tag === \"Success\" ? exit.value : \"unexpected failure\" })()"
 		g.UseEffect()
 	}
 	return &Code{V: "ev(" + fmt.Sprintf("%q", shape.Key()) + "); ev(String(" + call + "))",

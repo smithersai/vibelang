@@ -960,6 +960,7 @@ func (p *Parser) parseVibeLangIs(subject *ast.Node, pos int) *ast.Node {
 		held = p.mBinary(errors[i], ast.KindCommaToken, held, marker.Loc)
 	}
 	holder := p.mParens(held, marker.Loc)
+	holder.Flags |= ast.NodeFlagsVibeLangIsHolder
 	p.vibelangIsHolders[marker] = holder
 	return holder
 }
@@ -2626,7 +2627,9 @@ func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 		}
 		body = p.mBlock(statements, span)
 	}
-	parameter := p.vibelangSpanning(p.factory.NewParameterDeclaration(nil, nil, p.mTemp(name, info.anchor), nil, nil, nil), info.anchor)
+	// The captured subject precedes every pattern test, including cache setup at is.
+	parameterAt := info.subject.Loc
+	parameter := p.vibelangSpanning(p.factory.NewParameterDeclaration(nil, nil, p.mTemp(name, parameterAt), nil, nil, nil), parameterAt)
 	arrow := p.vibelangProgramArrow([]*ast.Node{parameter}, body, info.anchor)
 	callee := p.mParens(arrow, arrow.Loc)
 	call := p.vibelangSpanning(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(info.subject.Loc, []*ast.Node{info.subject}), ast.NodeFlagsNone), core.NewTextRange(pos, p.nodePos()))

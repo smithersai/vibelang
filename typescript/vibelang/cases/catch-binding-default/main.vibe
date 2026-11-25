@@ -3,7 +3,7 @@
 // (D13), as a failure of the catch block does. Its declaration says so.
 export error Fallback
 
-effect function fallback(): number!Fallback! { throw new Fallback() }
+effect function fallback(): number!Fallback { throw new Fallback() }
 
 export effect function read(found?: number) {
   return effect {

@@ -9,7 +9,7 @@ error NotFound { id: string }
 const calls = [0, 0, 0, 0]
 const failure = { reason: "identity" }
 
-effect function find(id: string): string!NotFound! {
+effect function find(id: string): string!NotFound {
   if (id !== "ok") throw new NotFound({ id })
   return "ok"
 }

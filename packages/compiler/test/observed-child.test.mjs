@@ -2,12 +2,15 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { observedChild } from "./observed-child.mjs"
 
+// hangDeadline only stops a hung child; no passing case comes near it.
+const hangDeadline = 60_000
+
 function run(script, extra = {}) {
   const lines = []
-  const options = { encoding: "utf8", timeout: 2000, ...extra }
+  const options = { encoding: "utf8", timeout: hangDeadline, ...extra }
   const result = observedChild(process.execPath, ["-e", script], options, "revision=2 bun cached", line => lines.push(line))
   assert.equal(lines.length, 2)
-  assert.equal(lines[0], 'child revision=2 bun cached started {"timeoutMs":2000}')
+  assert.equal(lines[0], 'child revision=2 bun cached started {"timeoutMs":' + options.timeout + '}')
   const prefix = "child revision=2 bun cached finished "
   assert.ok(lines[1].startsWith(prefix))
   const record = JSON.parse(lines[1].slice(prefix.length))
@@ -35,8 +38,10 @@ test("nonzero and signal exits keep the termination reason and partial output", 
   assert.equal(signaled.record.stderr, "before signal")
 })
 
+// This child never exits, so the test must time it out. The timeout is long
+// enough for Node to start and write before it fires on a loaded machine.
 test("a timed-out real child retains stage, partial output, signal and error code", () => {
-  const { result, record } = run('process.stdout.write("compiler started"); process.stderr.write("waiting on preload"); setInterval(() => {}, 1000)')
+  const { result, record } = run('process.stdout.write("compiler started"); process.stderr.write("waiting on preload"); setInterval(() => {}, 1000)', { timeout: 5_000 })
   assert.equal(result.error.code, "ETIMEDOUT")
   assert.equal(record.error, "ETIMEDOUT")
   assert.equal(record.signal, "SIGTERM")
@@ -46,7 +51,7 @@ test("a timed-out real child retains stage, partial output, signal and error cod
 
 test("an unavailable executable still records the failed stage", () => {
   const lines = []
-  const result = observedChild("/vibelang-test-no-such-executable", [], { encoding: "utf8", timeout: 2000 }, "revision=0 node fresh", line => lines.push(line))
+  const result = observedChild("/vibelang-test-no-such-executable", [], { encoding: "utf8", timeout: hangDeadline }, "revision=0 node fresh", line => lines.push(line))
   assert.equal(result.error.code, "ENOENT")
   assert.match(lines[0], /^child revision=0 node fresh started /)
   const record = JSON.parse(lines[1].split(" finished ")[1])

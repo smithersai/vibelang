@@ -1,5 +1,3 @@
-import * as $nativeTryEffect1 from "effect/Effect";
-import * as $nativeTryEffect from "effect/Effect";
 // fork starts a fiber that the current fiber owns (VIP-17), as Effect.forkChild
 // does: the child runs until it ends or its parent does, and the parent's end
 // interrupts it and waits for its cleanup. No block, loop body or function
@@ -29,18 +27,14 @@ effect function resource(name: string) {
 // enters this try and runs no finally. Each caller awaits a Deferred signalled
 // inside the try, so cleanup is installed before the owner can exit.
 effect function ticker(name: string, started: Deferred.Deferred<void>) {
-  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
+  try Effect.onExit(effect {
     try Deferred.succeed(started, undefined)
     while (true) {
       try Effect.sleep("1 millis")
     }
-  
-;return { kind: "normal" } as const;
-}, () => effect {
+  }, () => effect {
     events.push(`stop ${name}`)
-  });
-
-}
+  })
 }
 
 effect function compute(n: number) {
@@ -164,17 +158,11 @@ export effect function main() {
   const l = phase("loop", try perIteration())
   const f = phase("failing", try failingChild())
   let failedBlock = "none"
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
+  effect {
     try failingBlock()
-  
-;return { kind: "normal" } as const;
-}, effect (e) => {
+  } catch effect (e) => {
     failedBlock = e._tag
-  
-;return { kind: "normal" } as const;
-});
-
-}
+  }
   phase("failedBlock", failedBlock)
   const s = phase("scoped", try scopedBackground())
   const o = phase("outlives", try scopedCaller())

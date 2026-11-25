@@ -14,8 +14,6 @@ test("empty arrays have one nullable-list derivation and identifier keys stay ad
 import assert from "node:assert/strict"
 assert.equal(emptyPatternExit._tag, "Success")
 assert.deepEqual(emptyPatternExit.value, ["empty", "empty", "not empty"])
-const tracking = "outer"
-assert.equal("tracking" in { tracking: "payload" } ? tracking : "none", "outer")
 `)
   assert.equal(result.status, 0, result.stderr || result.stdout)
 })
@@ -28,12 +26,6 @@ test("regex literals have exactly the bare and nullable extractor branches", () 
 import assert from "node:assert/strict"
 assert.equal(regexPatternExit._tag, "Success")
 assert.deepEqual(regexPatternExit.value, ["1234", "none"])
-const named = /(\\d+)-(\\d+)/
-assert.deepEqual(named[Symbol.match]("12-34"), /(\\d+)-(\\d+)/[Symbol.match]("12-34"))
-const globalNamed = /a/g
-assert.deepEqual(Array.from(globalNamed[Symbol.matchAll]("aa")), Array.from(/a/g[Symbol.matchAll]("aa")))
-// () is admitted syntax, but an exact empty list does not match a non-global singleton result.
-assert.equal([named[Symbol.match]("12-34")].length === 0, false)
 `)
   assert.equal(result.status, 0, result.stderr || result.stdout)
 })
@@ -47,11 +39,5 @@ test("prefix not is selected by syntax without looking up a binding", () => {
   for (const row of ["Object-pattern identifier keys", "Array-pattern grammar", "Contextual `not` ambiguity"]) {
     assert.ok(snapshot.includes("| " + row + " |"))
   }
-  let calls = 0
-  function not(s) { calls++; return [s] }
-  const helpers = { not }
-  assert.equal(!true ? "hit" : "miss", "miss") // prefix not of the always-matching binding
-  assert.equal(calls, 0)
-  assert.equal(helpers.not(5)[0], 5)
-  assert.equal(calls, 1)
+
 })

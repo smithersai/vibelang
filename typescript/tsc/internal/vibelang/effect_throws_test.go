@@ -95,7 +95,6 @@ var effectThrowsReviewedNever = map[string]bool{
 	"effect/dist/Effect:failSync":                                                  true,
 	"effect/dist/Effect:requestUnsafe":                                             true,
 	"effect/dist/Effect:requestUnsafe()":                                           true,
-	"effect/dist/Effect:runSync":                                                   true,
 	"effect/dist/Equal:byReferenceUnsafe":                                          true,
 	"effect/dist/Fiber:Fiber.interruptUnsafe":                                      true,
 	"effect/dist/Fiber:Fiber.pollUnsafe":                                           true,

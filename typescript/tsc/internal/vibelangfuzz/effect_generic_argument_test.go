@@ -143,8 +143,9 @@ var effectTryOperandContexts = []struct{ key, body string }{
 
 const effectTryOperandDirect = 3
 
-// Oracle (ruling 2026-11-04): a direct try operand never draws EK4802; the
-// same call escaping without try draws it unless its position is declared.
+// Oracle (Chapter 2, effectTryOperandQuote): a direct try operand never draws
+// EK4802; the same call escaping without try draws it unless its position is
+// declared.
 func FuzzTryOperandEffectArgumentDiagnostics(f *testing.F) {
 	startShortBudget(f)
 	shapes := effectTryOperandShapes()

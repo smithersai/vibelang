@@ -8,7 +8,7 @@ import (
 
 func TestFileSchemaBoundaryQuoted(t *testing.T) {
 	for _, quote := range []string{
-		"A wrapper changes how a failure is represented, not whether the platform may be called.",
+		"no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too",
 		"A local binding, an import or an Effect module in scope",
 	} {
 		if !strings.Contains(SpecText("005-services.md"), quote) {

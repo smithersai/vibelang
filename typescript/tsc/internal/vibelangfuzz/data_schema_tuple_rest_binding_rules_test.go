@@ -6,7 +6,7 @@ import "strings"
 // These are static type and grammar oracles; runtime Exits use the paired case.
 func dataSchemaTupleRestBindingRules() []dataRule {
 	const chapter = "006-data.md"
-	const quote = "selected by ordinary type lookup and alias resolution, not by spelling."
+	const quote = "selected by ordinary type lookup and alias resolution."
 	const nativeGrammarQuote = "Where a VIP is silent, its TypeScript or pinned TC39 counterpart applies."
 	var rules []dataRule
 	for _, binding := range []struct{ key, decl, use string }{

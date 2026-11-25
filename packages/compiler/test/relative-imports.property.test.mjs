@@ -11,7 +11,7 @@ import { extensionlessImport } from "../relative-imports.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
-const rule = "packages/compiler/relative-imports.mjs: extensionlessImport's Node10 and Bundler resolution contract"
+const rule = "packages/compiler/relative-imports.mjs: extensionlessImport's Bundler resolution contract"
 const regressions = new URL("./property-regressions/", import.meta.url)
 const extensions = ["ts", "tsx", "vibe", "d.ts", "js", "jsx"]
 const stems = ["app/x", "app/x/index", "app/sub/x", "app/sub/x/index", "app/index", "index", "app"]
@@ -25,7 +25,8 @@ const tree = fc.record({
     { weight: 4, arbitrary: fc.constantFrom("./x", "./x/", "./x/index", "./sub/x", ".", "./", "..") },
     { weight: 1, arbitrary: fc.constantFrom(...namedSpecifiers) })
 })
-const modes = ["bundler", "node10"]
+// TypeScript 7 removed moduleResolution node10 (TS5108), so Bundler is the only mode.
+const modes = ["bundler"]
 const cache = new Map()
 let compilerRuns = 0
 let diagnostics = ""
@@ -33,7 +34,7 @@ let diagnostics = ""
 function config(moduleResolution) {
   return JSON.stringify({ compilerOptions: {
     module: "ESNext", moduleResolution, noLib: true, types: [], allowJs: true,
-    allowImportingTsExtensions: true, ignoreDeprecations: "6.0"
+    allowImportingTsExtensions: true
   }, files: ["app/main.vibe"] }) + "\n"
 }
 
@@ -80,16 +81,10 @@ function resolutions(input) {
       const last = lines.findIndex((line, i) => i > first && line.startsWith(`======== Module name '${input.specifier}' `))
       assert.ok(last > first, `incomplete import trace\n${diagnostics}`)
       const trace = lines.slice(first, last + 1).join("\n")
-      const selected = trace.includes(`Explicitly specified module resolution kind: '${mode === "bundler" ? "Bundler" : "Node10"}'.`)
-      // TS5108: current compiler versions remove Node10 and silently resolve using Bundler instead.
-      // Exclude that unsupported mode from the property; compare it automatically if Node10 returns.
-      const unsupported = !selected && mode === "node10" &&
-        run.stdout.includes("error TS5108: Option 'moduleResolution=node10' has been removed.") &&
-        trace.includes("Module resolution kind is not specified, using 'Bundler'.")
-      assert.ok(selected || unsupported, `compiler did not use ${mode}\n${diagnostics}`)
+      assert.ok(trace.includes("Explicitly specified module resolution kind: 'Bundler'."), `compiler did not use ${mode}\n${diagnostics}`)
       const found = /was successfully resolved to '([^']+)'/.exec(lines[last])?.[1]
       assert.ok(found !== undefined || lines[last].includes("was not resolved"), diagnostics)
-      return { mode, unsupported, actual: actual === undefined ? undefined : relative(root, actual),
+      return { mode, actual: actual === undefined ? undefined : relative(root, actual),
         resolved: found === undefined ? undefined : relative(root, found),
         packageRead: trace.includes("Found 'package.json' at '"), trace: trace.replaceAll(root, "<tree>") }
     })
@@ -106,7 +101,6 @@ test("relative-imports: extensionless resolution agrees with the compiler", asyn
       for (const result of resolutions(input)) {
         diagnostics = `${JSON.stringify(input)}\n${result.trace}`
         const context = `${result.mode}: ${JSON.stringify(input)}`
-        if (result.unsupported) continue
         if (namedSpecifiers.includes(input.specifier) || result.packageRead) {
           // Explicit extensions and package entry points belong to the host loader.
           assert.equal(result.actual, undefined, context)
@@ -117,8 +111,5 @@ test("relative-imports: extensionless resolution agrees with the compiler", asyn
       }
     }
   })
-  t.diagnostic(`${cache.size} distinct trees/specifiers; ${compilerRuns} compiler runs across both modes`)
-  if ([...cache.values()].some(results => results.some(result => result.unsupported))) {
-    t.diagnostic("Node10 comparisons excluded: TS5108 removes node10; its trace selects Bundler instead")
-  }
+  t.diagnostic(`${cache.size} distinct trees/specifiers; ${compilerRuns} compiler runs`)
 })

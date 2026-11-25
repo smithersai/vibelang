@@ -10,7 +10,7 @@ import (
 )
 
 const generatedOutputNamesTarget = "FuzzMigrationGeneratedOutputNames"
-const generatedOutputNamesQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
+const generatedOutputNamesQuote = diagnosticsNoRewriteQuote
 
 func TestMigrationGeneratedOutputNamesQuoted(t *testing.T) {
 	chapterSays(t, "007-tooling.md", generatedOutputNamesQuote)

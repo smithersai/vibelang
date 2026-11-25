@@ -47,7 +47,7 @@ test("the Creating Effects guide limits synchronous rethrows to synchronous invo
   assert.match(text, /An `async` function's `throw` rejects its Promise\./)
 })
 
-test("fast-check: native async declarations, arrows and methods reject callback failures", async () => {
+test("Platform control: fast-check: native async declarations, arrows and methods reject callback failures", async () => {
   const invokers = [
     async function declared(f) { return f() },
     async f => f(),

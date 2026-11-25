@@ -115,7 +115,10 @@ func (p *Program) pruneStaleOwnedSidecars(selected map[tspath.PathKey]bool, outp
 					continue
 				}
 				candidate := tspath.CombinePaths(dir, name)
-				if selected != nil && selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(candidate))] {
+				path := tspath.RootedFilePathFromNormalized(candidate)
+				// A blocked output can still have a receipt from an earlier build.
+				// Preserve it just as the emitter preserves the explicit input.
+				if selected[p.PathKeyForFileName(path)] || p.IsEmitBlocked(path) {
 					continue
 				}
 				_ = p.pruneOwnedSidecar(candidate, output)

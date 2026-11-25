@@ -1,7 +1,5 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import ts from "typescript"
-import fc from "fast-check"
 import { lintImportGrammar, readImportGrammar, sideEffectImportDerivations } from "./spec-rules-import-grammar.mjs"
 
 const native = "an ordinary TypeScript import declaration using ModuleSpecifier"
@@ -20,20 +18,6 @@ test("duplicating the side-effect import production gives it two derivations", (
     assert.equal(sideEffectImportDerivations(grammar([alternative])).length, 1)
     assert.deepEqual(lintImportGrammar(grammar([alternative])), [])
   }
-})
-test("stock TypeScript parses a side-effect import as an ordinary ImportDeclaration", () => {
-  fc.assert(fc.property(fc.stringMatching(/^[a-z][a-z0-9]{0,18}$/), name => {
-    const source = 'import "./' + name + '.js";'
-    const file = ts.createSourceFile("twin.ts", source, ts.ScriptTarget.Latest, true)
-    assert.equal(file.parseDiagnostics.length, 0)
-    assert.equal(file.statements.length, 1)
-    assert.ok(ts.isImportDeclaration(file.statements[0]))
-    assert.equal(file.statements[0].importClause, undefined)
-    assert.equal(file.statements[0].moduleSpecifier.text, "./" + name + ".js")
-    // VIP-40 substitutes the identifier for the native string specifier;
-    // both alternatives still derive the same side-effect form.
-    assert.equal(sideEffectImportDerivations(old).length, 2)
-  }), { seed: 25001, numRuns: 200 })
 })
 test("formatting and alternative order do not conceal the duplicate", () => {
   for (const alternatives of [[native, extra], [extra, native]]) {

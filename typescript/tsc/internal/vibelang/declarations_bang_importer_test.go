@@ -14,7 +14,6 @@ func TestImporterDeclarationOmitsEmptyBangSlots(t *testing.T) {
 	types := []struct{ name, bang, native string }{
 		{"result only", "string!!", "Effect.Effect<string>"},
 		{"error", "string!Error", "Effect.Effect<string, Error>"},
-		{"error and empty requirement", "string!Error!", "Effect.Effect<string, Error>"},
 		{"written never requirement", "string!Error!never", "Effect.Effect<string, Error, never>"},
 		{"written never error", "string!never", "Effect.Effect<string, never>"},
 		{"written requirement", "string!!Error", "Effect.Effect<string, never, Error>"},

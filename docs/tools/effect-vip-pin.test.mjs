@@ -19,7 +19,7 @@ test("VIP module and resource references use the accepted Effect pin", () => {
   assert.ok(vip("0008-using-denied.md").includes("## Effect's scope functions (effect " + pin + ")"))
 })
 
-// rule-evidence: docs/design/vips/0032-effect-version.md#9b6571022cf245d5 | **Amended 2026-11-03: the pin is `effect` 4.1.1; the `4.1` minimum means the pin never moves below `4.1`** (Will: "Effect 4.1 has been released please update accordingly and make 4.1 the earliest version we support now").
+// rule-evidence: docs/design/vips/0032-effect-version.md#9b6571022cf245d5 | **Amended 2026-11-03: the pin is `effect` 4.1.1; the `4.1` minimum means the pin never moves below `4.1`**.
 test("VIP-32: the published peers, the runtime guard and the compiler check the accepted pin, never below 4.1", () => {
   const pin = effectPin(vip("0032-effect-version.md"))
   const repo = (file) => readFileSync(new URL("../../" + file, import.meta.url), "utf8")

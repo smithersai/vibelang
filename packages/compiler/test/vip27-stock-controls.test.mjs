@@ -1,8 +1,6 @@
-// VIP-27 native TypeScript resolution and import-permission controls.
-// VIP-27 native TypeScript resolution and import-permission controls: docs/design/vips/0027-declaration-output.md#e8244e4d37693cf3
-// VIP-27 native TypeScript resolution and import-permission controls: docs/design/vips/0027-declaration-output.md#e03f739b15d58bc8
-// VIP-27 native TypeScript resolution and import-permission controls: docs/design/vips/0027-declaration-output.md#a05d3dce267ca5ae
-// VIP-27 native TypeScript resolution and import-permission controls: docs/design/vips/0027-declaration-output.md#9f15e96798b741ea
+// Stock TypeScript controls: suffix search and arbitrary-extension import
+// permission. These test stock TypeScript, not the vibelang compiler, so they
+// are not evidence for any VibeLang rule.
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -11,9 +9,9 @@ import test from "node:test"
 import fc from "fast-check"
 import ts from "../../../docs/tools/node_modules/typescript/lib/typescript.js"
 
-// VIP-27 native resolution controls: explicit arbitrary extensions work without
-// moduleSuffixes. Both suffix orders can shadow an unchanged .tsx module.
-test("VIP-27 TypeScript suffix search can select a sidecar before an unchanged TSX source", () => {
+// Explicit arbitrary extensions work without moduleSuffixes. Both suffix
+// orders can shadow an unchanged .tsx module.
+test("stock TypeScript suffix search can select a sidecar before an unchanged TSX source", () => {
   fc.assert(fc.property(fc.constantFrom("runtime", "odd name", "Ω"), fc.constantFrom(["", ".d.vibe"], [".d.vibe", ""]), (name, suffixes) => {
     const root = mkdtempSync(join(tmpdir(), "vip27-suffix-"))
     try {
@@ -34,7 +32,7 @@ test("VIP-27 TypeScript suffix search can select a sidecar before an unchanged T
   }), { seed: 27258, numRuns: 18 })
 })
 
-test("VIP-27 stock consumers require arbitrary-extension permission and retain native .ts gates", () => {
+test("stock TypeScript consumers require arbitrary-extension permission and retain native .ts gates", () => {
   for (const arbitrary of [false, true]) {
     const root = mkdtempSync(join(tmpdir(), "vip27-native-gates-"))
     try {

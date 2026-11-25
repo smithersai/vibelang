@@ -28,9 +28,7 @@ import (
 //     it throws, or "unknown" when the thrown value is arbitrary/caller-supplied.
 //     In effect code it reports EK0403 and must be wrapped with Effect.try; in
 //     plain code it reports EK0401 unless caught.
-//   - Every other callable in the pinned packages (including Effect runners such
-//     as Effect.runSync, which runners.go gates inside effect code, and
-//     non-throwing *Unsafe accessors that only skip Effect wrapping) is typed
+//   - Every other callable in the pinned packages (including non-throwing *Unsafe accessors that only skip Effect wrapping) is typed
 //     "never": no wrapper is needed, and any unexpected exception is a defect.
 //   - A declaration missing from effectThrowsTable (for instance, a new export
 //     added after an Effect bump) is never silently trusted: it falls back to
@@ -49,6 +47,8 @@ var effectPinnedPackages = []string{effectRootModule, "@effect/platform-browser"
 // or NetAddress.NetAddressError, or global), or "unknown" when it may throw an
 // arbitrary value. Every other declaration in the table throws never.
 var effectThrowsCurated = map[string]string{
+	"effect/dist/Effect:runSync": "unknown",
+
 	// Schema, SchemaParser, SchemaBinary, and Runner synchronous decoders/encoders/asserts.
 	"effect/dist/Schema:decodeUnknownSync()":               "SchemaError",
 	"effect/dist/Schema:decodeSync()":                      "SchemaError",

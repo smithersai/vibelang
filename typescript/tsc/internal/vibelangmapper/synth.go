@@ -666,7 +666,7 @@ func (p *projector) isSource(n *ast.Node) bool {
 }
 
 func (p *projector) checkSource(n *ast.Node) bool {
-	if n.Flags&ast.NodeFlagsReparsed != 0 || n.End() <= n.Pos() {
+	if n.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLangIsHolder) != 0 || n.End() <= n.Pos() {
 		return false
 	}
 	start := p.tokenStart(n)
@@ -794,7 +794,7 @@ func (p *projector) isMatchForm(node *ast.Node) bool {
 		return startsWord(p.text[start:], "match") || startsWord(p.text[start:], "do") || startsWord(p.text[start:], "throw") ||
 			!strings.HasPrefix(p.text[p.tokenStart(callee):], "(")
 	case ast.KindParenthesizedExpression:
-		if !at("(") {
+		if node.Flags&ast.NodeFlagsVibeLangIsHolder != 0 || !at("(") {
 			return true
 		}
 		// An is that binds names is a holder spanning its subject and

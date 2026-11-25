@@ -1,0 +1,23 @@
+// rule-evidence: docs/design/src/900-appendices.md#theorem-lowering | - **Method form**, otherwise: each `const` that is a direct statement of the theorem body stays a statement, in place.
+export function linearSearch(xs: readonly number[], target: number): number {
+  proof {
+    ensures((r) => r < xs.length)
+    ensures((r) => r < 0 || xs[r] === target)
+  }
+  let i = 0
+  while (i < xs.length) {
+    proof {
+      invariant(0 <= i && i <= xs.length)
+      invariant(!xs.slice(0, i).includes(target))
+      decreases(xs.length - i)
+    }
+    if (xs[i] === target) return i
+    i += 1
+  }
+  return -1
+}
+
+theorem searchFinds(xs: readonly number[], target: number) {
+  const index = linearSearch(xs, target)
+  if (index >= 0) assert(xs[index] === target)
+}

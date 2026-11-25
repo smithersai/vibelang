@@ -1,9 +1,12 @@
-// expect-result: [[9,9],10,11,12,[9,14],[[10],[16]]]
+// expect-result: [[9,9],10,11,12,[9,14],[[10],[16]],17]
 import { Stream } from "effect"
 
 function plain(read: () => number = () => value, value: number = do { if (false) return -1; 1 }) {
   value = 9
   return [value, read()]
+}
+function patterned({ read = () => value } = {}, value: number = do { if (false) return -1; 1 }) {
+  return read()
 }
 const arrow = (read: () => number = () => value, value: number = do { if (false) return -1; 2 }) => {
   value = 10
@@ -34,5 +37,5 @@ export effect function main() {
   const second = try built
   const items = try Stream.runCollect(stream)
   const more = try Stream.runCollect(stream)
-  return [plain(), arrow(), try promise(() => asynchronous()), new Box().read(), [first, second], [[...items], [...more]]]
+  return [plain(), arrow(), try promise(() => asynchronous()), new Box().read(), [first, second], [[...items], [...more]], patterned(undefined, 17)]
 }

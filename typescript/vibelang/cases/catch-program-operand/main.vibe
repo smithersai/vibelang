@@ -4,9 +4,9 @@
 // reach the handler, and the expression's value is what it succeeds with.
 error Missing
 
-effect function latestTitle(): string!Missing! { throw new Missing() }
-effect function cachedTitle(): string!Missing! { return "cached" }
-effect function noCache(): string!Missing! { throw new Missing() }
+effect function latestTitle(): string!Missing { throw new Missing() }
+effect function cachedTitle(): string!Missing { return "cached" }
+effect function noCache(): string!Missing { throw new Missing() }
 
 export effect function nested() {
   const title = effect { return latestTitle() catch effect () => try cachedTitle() } catch () => "Untitled issue"

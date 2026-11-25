@@ -11,24 +11,21 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangestree"
 )
 
-const estreeWarningQuote = "A warning does not itself rewrite code, and a warning-only run exits zero."
-const estreeThrowWarningQuote = "The invalid-punctuator lookahead also applies to comma separators."
+const estreeThrowCommaQuote = "The invalid-punctuator lookahead also applies to comma separators."
 
-func estreeWarningsQuoted(t testing.TB) {
+func estreeThrowCommaQuoted(t testing.TB) {
 	t.Helper()
-	for chapter, quote := range map[string]string{"007-tooling.md": estreeWarningQuote, grammarAppendix: estreeThrowWarningQuote} {
-		if !strings.Contains(SpecText(chapter), quote) {
-			t.Fatalf("%s no longer says %q", chapter, quote)
-		}
+	if !strings.Contains(SpecText(grammarAppendix), estreeThrowCommaQuote) {
+		t.Fatalf("%s no longer says %q", grammarAppendix, estreeThrowCommaQuote)
 	}
 }
-func TestESTreeWarningsQuoted(t *testing.T) { estreeWarningsQuoted(t) }
+func TestESTreeThrowCommaQuoted(t *testing.T) { estreeThrowCommaQuoted(t) }
 
 //go:embed testdata/corpus/t3code-crypto-throw-comma.vibe
 var t3codeCryptoThrowComma string
 
-func TestT3CodeCryptoWarningESTree(t *testing.T) {
-	estreeWarningsQuoted(t)
+func TestT3CodeCryptoThrowCommaESTree(t *testing.T) {
+	estreeThrowCommaQuoted(t)
 	tree, failure := vibelangestree.Parse("crypto.vibe", strings.ReplaceAll(t3codeCryptoThrowComma, "throw badArgument()", "(throw badArgument())"))
 	if failure != nil {
 		t.Fatalf("parenthesized minimized source: %v", failure)
@@ -41,7 +38,7 @@ func TestT3CodeCryptoWarningESTree(t *testing.T) {
 
 // Grouping admits the throw expression; ungrouped commas and unrelated
 // syntax failures keep their own UTF-16 diagnostic locations.
-func FuzzESTreeWarningSeverity(f *testing.F) {
+func FuzzESTreeThrowComma(f *testing.F) {
 	startShortBudget(f)
 	keys := []string{"t3code-crypto-property", "array-element", "call-argument", "object-property", "join-operand"}
 	for _, key := range keys {
@@ -50,7 +47,7 @@ func FuzzESTreeWarningSeverity(f *testing.F) {
 		}
 	}
 	f.Fuzz(func(t *testing.T, key string, mode uint8) {
-		estreeWarningsQuoted(t)
+		estreeThrowCommaQuoted(t)
 		var expression string
 		switch key {
 		case "t3code-crypto-property":
@@ -98,11 +95,11 @@ func FuzzESTreeWarningSeverity(f *testing.F) {
 			offset := strings.Index(source, "throw ")
 			want := len(utf16.Encode([]rune(source[:offset])))
 			if failure == nil || failure.Index != want || !strings.Contains(failure.Message, "can't be followed by ,") {
-				Gap(t, "FuzzESTreeWarningSeverity", gapKey, "want throw-comma rejection at %d, got %v", want, failure)
+				Gap(t, "FuzzESTreeThrowComma", gapKey, "want throw-comma rejection at %d, got %v", want, failure)
 			}
 		} else if suffix == "" {
 			if failure != nil {
-				Gap(t, "FuzzESTreeWarningSeverity", gapKey, "parenthesized source must produce an AST: %v", failure)
+				Gap(t, "FuzzESTreeThrowComma", gapKey, "parenthesized source must produce an AST: %v", failure)
 				return
 			}
 			var program map[string]any
@@ -113,7 +110,7 @@ func FuzzESTreeWarningSeverity(f *testing.F) {
 			offset := strings.Index(source, "broken = ") + len("broken = ")
 			want := len(utf16.Encode([]rune(source[:offset])))
 			if failure == nil || failure.Index != want || !strings.Contains(failure.Message, "Expression expected") {
-				Gap(t, "FuzzESTreeWarningSeverity", gapKey, "want actual expression error at UTF-16 offset %d, got %v", want, failure)
+				Gap(t, "FuzzESTreeThrowComma", gapKey, "want actual expression error at UTF-16 offset %d, got %v", want, failure)
 			}
 		}
 	})

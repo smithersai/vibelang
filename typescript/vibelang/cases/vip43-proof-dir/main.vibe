@@ -1,0 +1,10 @@
+// rule-evidence: docs/design/src/900-appendices.md#files | The proof directory is `vibe.proofDir`, resolved as [Configuration](#configuration) says, and by default `proofs` in the selected config's directory.
+spec function double(n: number): number {
+  return n + n
+}
+
+theorem doubleIsEven(n: number) {
+  assert(double(n) === 2 * n)
+}
+
+export const one = 1

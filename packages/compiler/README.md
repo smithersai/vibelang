@@ -122,8 +122,9 @@ A long-running process compiles a project again when it imports a `.vibe`
 module that changed after the project compiled, or that did not exist yet, so
 a watcher that re-imports an edited file under a new URL gets its new code. The
 errors carry a `code`, as Node's module errors do: `ERR_VIBELANG_COMPILE` when
-the loaded source has errors or a project-wide error prevents compilation, and
-`ERR_VIBELANG_PROJECT` when no project includes the module.
+the loaded source has errors or a project-wide error prevents compilation,
+`ERR_VIBELANG_PROJECT` when no project includes the module, and
+`ERR_VIBELANG_OUTPUT` when the project includes the module but supplies no loader output.
 
 ### The compile cache
 
@@ -200,6 +201,15 @@ node -e 'import("vibelang/project").then(p => console.log(p.writeLoaderRecord({ 
 A project with a type error gets no record.
 
 A private project compile that fails checking or declaration serialization leaves existing compatibility declarations unchanged: it creates no sidecars and removes no previous layout. Sidecar writes and cleanup are published only after checking and declaration serialization succeed. A loader can still serve an unaffected module from its private JavaScript output.
+
+## Run eval suites
+
+Default-export an `Experimental.Eval.suite` or an array of suites from a
+`*.eval.vibe` or `*.eval.vibex` file. Enable `vibe.experimental: ["builtins"]`
+in the project config. Use `vibelang eval --list` to list cases and
+`vibelang eval [path...]` to run them against committed baselines.
+The default run replays model recordings. Use `--live` to record missing
+language-model calls and `--update` to write baselines beside the eval files.
 
 ## Run Playwright with .vibe modules
 
@@ -438,7 +448,7 @@ it tracks native sources, dependencies, configs and compiler changes. Await
 `close()` when finished. Module loader hooks do not change `readFile` or
 directory enumeration.
 
-`findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package. The override must select a compiler executable; selecting the package's JavaScript launcher reports an error instead of starting it recursively.
+`findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package. If no compiler is installed, it throws an error with code `ERR_VIBELANG_BINARY`. The override must select a compiler executable; selecting the package's JavaScript launcher reports an error instead of starting it recursively.
 
 `isVibeLangFile(file)` says whether a file is VibeLang source: a `.vibe` or `.vibex` file, or a TypeScript source whose first line is `// @vibe`. `hasVibeDirective(file, text)` answers from text you already hold. Virtual module IDs containing a NUL byte are not filesystem paths: `isVibeLangFile(file)` and `fileHasVibeDirective(file)` return `false` without reading them.
 

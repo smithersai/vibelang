@@ -29,7 +29,7 @@
   },
   {
     "key": "severity-code-admission",
-    "claim": "an interim `EK92xx` code, even one printed as a warning, or an unknown code is a config error",
+    "claim": "any interim code in the [transitional table](900-appendices.md#transitional-compiler-diagnostics), including warnings, or an unknown code is a config error",
     "sources": [
       {
         "file": "0030-config-files.md",

@@ -11,7 +11,7 @@ import (
 )
 
 const genericNavigationTarget = "FuzzSchemaGenericTypeNavigation"
-const genericNavigationQuote = "The generic built-ins `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution, not by spelling."
+const genericNavigationQuote = "The built-in names in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution."
 
 func TestSchemaGenericTypeNavigationQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("006-data.md"), genericNavigationQuote) {

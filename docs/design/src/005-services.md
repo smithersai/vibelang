@@ -853,11 +853,11 @@ The grammar is [TaskDeclaration](900-appendices.md#taskdeclaration) and [Workflo
 
 ## Durable waits (VIP-56)
 
-[VIP-56](../vips/0056-durable-waits.md#decision) specifies replayable timers, typed signals and human answers as workflow plan nodes. Signals use their declared schema to encode the journaled value and decode it on delivery. The timer, signal and human-answer runtime APIs are implemented. Compiler lowering of these calls to workflow plan nodes remains pending.
+[VIP-56](../vips/0056-durable-waits.md#decision) specifies replayable timers, typed signals and human answers as workflow plan nodes. Signals use their declared schema to encode the journaled value and decode it on delivery. The timer, signal and human-answer runtime APIs are implemented. The compiler recognizes waits in workflows, records race outcomes and checks the workflow deadline.
 
 ## Typed services across worker and remote boundaries (VIP-57)
 
-[VIP-57](../vips/0057-workers-remote.md#decision) specifies `schema service` and imports with `with { type: "worker" }`. A schema service uses the ordinary service key and layer for local calls and derives an RPC group for its methods that return an Effect or a Stream. Parameters, successes or stream elements, and failures cross a worker or transport through their schemas. A worker import loads a handle to a module whose default layer provides schema services. Implementation of the syntax and compiler and bundler support remains pending.
+[VIP-57](../vips/0057-workers-remote.md#decision) specifies `schema service` and imports with `with { type: "worker" }`. A schema service uses the ordinary service key and layer for local calls and derives an RPC group for its methods that return an Effect or a Stream. Parameters, successes or stream elements, and failures cross a worker or transport through their schemas. A worker import loads a handle to a module whose default layer provides schema services. The compiler lowers worker imports and the Vite and unplugin integrations emit worker entries.
 
 ## Accepted standard-library VIPs
 

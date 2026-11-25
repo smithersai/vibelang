@@ -32,13 +32,12 @@ func TestNativeReferenceIndirectDeclarationExport(t *testing.T) {
 				t.Fatal(ds)
 			}
 			p := NewProgram(ProgramOptions{Config: cfg, Host: NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
-			if sf := p.GetSourceFile("/core/lib/Stage.d.ts"); sf != nil {
-				if got := p.GetSourceOfProjectReferenceIfOutputIncluded(sf); got != tspath.RootedFilePath("/core/src/Stage"+ext) {
-					t.Errorf("mapped source %q, want original source", got)
-				}
+			sf := p.GetSourceFile("/core/lib/Stage.d.ts")
+			if sf == nil {
+				t.Fatal("missing referenced declaration /core/lib/Stage.d.ts")
 			}
-			for _, ref := range p.GetResolvedProjectReferences() {
-				t.Log("reference roots", ref.FileNames())
+			if got := p.GetSourceOfProjectReferenceIfOutputIncluded(sf); got != tspath.RootedFilePath("/core/src/Stage"+ext) {
+				t.Errorf("mapped source %q, want original source", got)
 			}
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), nil) {
 				t.Error(d.String())

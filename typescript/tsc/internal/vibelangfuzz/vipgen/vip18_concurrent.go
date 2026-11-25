@@ -534,7 +534,9 @@ func (p *SettledMapObservation) print(w *Writer, vibe bool) {
       if ($P$matches(this)) $P$iterators++;
       return Reflect.apply($P$iterator, this, []);
     };
-    $P$exits = $P$ns.runSync($P$work);
+    const result = $P$ns.runSyncExit($P$work);
+    if (result._tag === "Failure") { ev($LABEL$ + ":unexpected failure"); return 0; }
+    $P$exits = result.value;
   } finally {
     $P$prototype.map = $P$map;
     $P$prototype[Symbol.iterator] = $P$iterator;

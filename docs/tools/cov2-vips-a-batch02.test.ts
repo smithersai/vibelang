@@ -1,4 +1,4 @@
-// Rule-specific pending obligations from the cov2-vips-a assignment.
+// Rule-specific pending obligations.
 // Pending because focused compiler and Effect TypeScript witnesses remain unverified.
 // These declarations make no claim that the compiler fails or conforms.
 import { test } from "bun:test"
@@ -43,8 +43,6 @@ test.todo("VIP-4 npm and local foreign contract parity: An npm package's functio
 // VIP-5: plain handler throw error
 test.todo("VIP-5 plain handler throw error: **Amended 2026-10-31: a `throw` in a plain handler is `EK0401`** (VIP-4).")
 
-// VIP-5: catch effect typed failure quick fix
-test.todo("VIP-5 catch effect typed failure quick fix: The quick fix is `catch effect`, which makes the throw a typed failure.")
 
 // rule-evidence: docs/design/vips/0005-try-runs-effects.md#b455bd20a1d066e0
 // VIP-5: retired EK0511 warning
@@ -86,8 +84,6 @@ test.todo("VIP-7 arrow field and enum binding homes: A concise arrow body's bind
 // VIP-7: unbraced statement binding diagnostics
 test.todo("VIP-7 unbraced statement binding diagnostics: **Amended 2026-11-03: unbraced statement bodies (replaces the 2026-10-31 amendment).** The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` or a labeled statement, when it is not a Block, cannot be the lexical home of an `is` pattern binding: report `EK0705`, matching TypeScript's `TS1156` for a `let` declaration in that position.")
 
-// VIP-7: brace wrapping quick fix
-test.todo("VIP-7 brace wrapping quick fix: The quick fix and `vibelang --fix` wrap that statement body in braces.")
 
 // rule-evidence: docs/design/vips/0007-match.md#3db8070047219592
 // VIP-7: else if binding home
@@ -105,11 +101,11 @@ test.todo("VIP-7 within pattern duplicate and or exception: **Amended 2026-10-31
 // VIP-7: same home redeclarations
 test.todo("VIP-7 same home redeclarations: Two top-level patterns that bind one name in the same lexical home are a redeclaration, as two `let` declarations are: `TS2451`, or `TS2300` beside a parameter.")
 
-// VIP-7: extractor length warning and fixes
-test.todo("VIP-7 extractor length warning and fixes: **Amended 2026-10-29: a lint for extractors that can never match.** When a class or fixed pattern's extracted list has a statically known length and an extractor without a rest pattern has a different number of arguments, VibeLang reports a VIP-38 lint warning (`EK0703`), with the quick fixes `when X:` and `when X(let e):`.")
+// VIP-7: extractor length warning
+test.todo("VIP-7 extractor length warning: **Amended 2026-10-29: a lint for extractors that can never match.** When a class or fixed pattern's extracted list has a statically known length and an extractor without a rest pattern has a different number of arguments, VibeLang reports a VIP-38 lint warning (`EK0703`).")
 
-// VIP-7: class extractor warning and fixes
-test.todo("VIP-7 class extractor warning and fixes: It is `EK0704`, with the quick fixes `when C:` and, when the arguments bind the constructor's parameter properties, `when C and { p1: let a, p2: let b }:`.")
+// VIP-7: ordinary class extractor diagnostic
+test.todo("VIP-7 ordinary class extractor diagnostic: Using an extractor on an ordinary class without an own matcher reports EK0704.")
 
 // rule-evidence: docs/design/vips/0007-match.md#6ddc62088e0f9b97
 // VIP-7: literal string tagged object exhaustiveness

@@ -82,9 +82,8 @@ func FuzzEffectArrowHeads(f *testing.F) {
 		want := head[0] != head[1]
 		switch key {
 		case "ordinary-call":
-			// A declared plain function: the pre-flip compiler infers every
-			// function with a body as effectful, so a top-level call to it
-			// would be EK1001 for a reason unrelated to the arrow head.
+			// A declared plain function named `effect` exercises ordinary call
+			// parsing rather than an arrow head.
 			source = prefix + "declare function effect(x: number): number; const value = effect(1)"
 		case "generic-call":
 			source = prefix + "declare function effect<T>(x: T): T; const value = effect<number>(1)"

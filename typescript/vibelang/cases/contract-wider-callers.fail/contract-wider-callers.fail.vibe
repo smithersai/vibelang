@@ -12,7 +12,7 @@ effect function longForm(): number!Gone!Needed {
 }
 
 // R = never, but the call needs Needed.
-export effect function needsNothing(): number!Gone! {
+export effect function needsNothing(): number!Gone {
   return try longForm()
 }
 

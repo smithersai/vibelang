@@ -1,6 +1,3 @@
-import * as $nativeTryEffect2 from "effect/Effect";
-import * as $nativeTryEffect1 from "effect/Effect";
-import * as $nativeTryEffect from "effect/Effect";
 import * as $effectPrograms from "effect/Effect"
 // using in an Effect function makes its block a Scope region (D14, D47):
 // only the block's using acquisitions get the region's Scope, and they
@@ -149,13 +146,7 @@ effect function interruptibleAcquire() {
 }
 
 effect function deadline(program: () => Effect<string, never, never>) {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
-    return { kind: "return:" as const, value: (try Effect.timeout($effectPrograms.suspend(program), "5 millis")) };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: (e._tag) };
-  });
-return $nativeTryCompletion.value;
-}
+  return Effect.timeout($effectPrograms.suspend(program), "5 millis") catch (e) => e._tag
 }
 
 // A Scope region inside try: the release runs before the catch.
@@ -202,30 +193,18 @@ function phase<A>(name: string, result: A) {
 export effect function main() {
   const o = phase("ordered", try ordered())
   let failed = "none"
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
+  effect {
     try failing()
-  
-;return { kind: "normal" } as const;
-}, effect (e) => {
+  } catch effect (e) => {
     failed = e._tag
-  
-;return { kind: "normal" } as const;
-});
-
-}
+  }
   phase("failed", failed)
   let timedOut = "none"
-  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
+  effect {
     try Effect.timeout(effect { return try slow() }, "5 millis")
-  
-;return { kind: "normal" } as const;
-}, effect (e) => {
+  } catch effect (e) => {
     timedOut = e._tag
-  
-;return { kind: "normal" } as const;
-});
-
-}
+  }
   phase("timedOut", timedOut)
   const l = phase("loop", try loop())
   const lb = phase("labeled", try labeled())

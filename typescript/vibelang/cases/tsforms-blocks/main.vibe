@@ -2,7 +2,7 @@
 // Effect.withSpan and Effect.provide have safe EK4836 rewrites.
 // Effect.provideService keeps its native call: a Layer changes scope.
 // Its warning explains why there is no automatic block rewrite.
-// tsforms-blocks-fixed is what vibelang --fix writes.
+// See the manual form in tsforms-blocks-fixed.
 service Region {
   name(): string!!
 }

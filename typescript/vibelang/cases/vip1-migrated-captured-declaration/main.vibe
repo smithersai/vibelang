@@ -7,5 +7,5 @@
 import * as $effectPrograms from "effect/Effect"
 effect function job(){return 1;}
 effect function step(){return 1;}
-const value = Effect.runSync($effectPrograms.suspend(step))
+const value = (() => { try { return Effect.runSync($effectPrograms.suspend(step)) } catch { return -1 } })()
 export effect function main(){return [try Effect.all([$effectPrograms.suspend(job), ($effectPrograms.suspend(job))]), value]}

@@ -1,4 +1,3 @@
-import * as $nativeTryEffect from "effect/Effect";
 // Calling an effect function builds its Effect and runs nothing (VIP-1), so
 // fork(fetchReport()) and Effect.retry(fetchReport()) pass a program with no
 // by-name rule. A plain function's call evaluates where it stands, so a runner
@@ -26,13 +25,7 @@ effect function fast() {
 }
 
 effect function deadline() {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
-    return { kind: "return:" as const, value: (try Effect.timeout(slow(), "20 millis")) };
-  }, effect (error) => {
-    return { kind: "return:" as const, value: (error._tag) };
-  });
-return $nativeTryCompletion.value;
-}
+  return Effect.timeout(slow(), "20 millis") catch (error) => error._tag
 }
 
 function subtotal() {
@@ -40,7 +33,11 @@ function subtotal() {
 }
 
 // subtotal() runs inside the program that runSync starts.
-const total = Effect.runSync(Effect.sync(() => subtotal()))
+function runSubtotal(): number {
+  try { return Effect.runSync(Effect.sync(subtotal)) }
+  catch { return -1 }
+}
+const total = runSubtotal()
 
 // expect-result: {"report":"report after 3 attempts","winner":"fast","timed":"TimeoutError","joined":"fast","both":["fast","fast"],"logged":true,"attempts":3,"fastRuns":5,"total":56}
 export effect function main() {

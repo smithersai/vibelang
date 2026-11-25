@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -8,7 +9,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
 )
 
-// Spec functions and proof blocks (VIP-43, Appendix F). The parser flags a
+// Theorems, spec functions and proof blocks (VIP-43, Appendix F). The parser
+// flags a theorem, theorem t() { … }, with ast.NodeFlagsVibeLangSpec and
+// ast.NodeFlagsVibeLangProof together (theorem.go checks it), a
 // spec function, spec function f() { … }, with ast.NodeFlagsVibeLangSpec, a
 // proof block, proof { … }, with ast.NodeFlagsVibeLangProof, and the call of
 // each proof statement in a proof block with ast.NodeFlagsVibeLangProof too
@@ -49,16 +52,17 @@ func init() {
 	fileChecks = append(fileChecks, checkProofForms)
 }
 
-// mayHoldProofForms is a fast filter: a file without the words spec and proof
-// holds neither form.
+// mayHoldProofForms is a fast filter: a file without the words theorem, spec
+// and proof holds none of the forms.
 func mayHoldProofForms(file *ast.SourceFile) bool {
 	text := file.Text()
-	return strings.Contains(text, "spec") || strings.Contains(text, "proof")
+	return strings.Contains(text, "spec") || strings.Contains(text, "proof") || strings.Contains(text, "theorem")
 }
 
 // isSpecFunction reports whether node is a function declaration marked spec.
+// A theorem carries the spec flag too, with the proof flag (isTheorem).
 func isSpecFunction(node *ast.Node) bool {
-	return node != nil && node.Kind == ast.KindFunctionDeclaration && node.Flags&ast.NodeFlagsVibeLangSpec != 0
+	return node != nil && node.Kind == ast.KindFunctionDeclaration && node.Flags&ast.NodeFlagsVibeLangSpec != 0 && node.Flags&ast.NodeFlagsVibeLangProof == 0
 }
 
 // isProofBlock reports whether node is a proof block, proof { … }.
@@ -79,7 +83,7 @@ func isProofStatement(node *ast.Node) (string, bool) {
 	return call.Expression().Text(), true
 }
 
-// newProofEraser erases spec functions and proof blocks from the emitted
+// newProofEraser erases theorems, spec functions and proof blocks from the emitted
 // JavaScript. It runs before the lowering, so no lowering sees them.
 func newProofEraser(opts *transformers.TransformOptions, file *ast.SourceFile) *transformers.Transformer {
 	if !isVibeLangFile(file) || !mayHoldProofForms(file) {
@@ -94,7 +98,7 @@ type proofEraser struct {
 }
 
 func (tx *proofEraser) visit(node *ast.Node) *ast.Node {
-	if isSpecFunction(node) || isProofBlock(node) {
+	if isSpecFunction(node) || isTheorem(node) || isProofBlock(node) {
 		if isStatementListHome(node.Parent) {
 			return nil
 		}
@@ -116,27 +120,38 @@ func isStatementListHome(node *ast.Node) bool {
 	return false
 }
 
-// checkProofForms checks the spec functions and proof blocks of file.
+// checkProofForms checks the theorems, spec functions and proof blocks of
+// file.
 func checkProofForms(c *checker.Checker, file *ast.SourceFile) {
 	if !isVibeLangFile(file) || !mayHoldProofForms(file) {
 		return
 	}
-	var specs []*ast.Node
+	t := newTransparency(c)
+	var specs, theorems []*ast.Node
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
-		if isSpecFunction(n) {
+		switch {
+		case isTheorem(n):
+			theorems = append(theorems, n)
+			checkProofDeclarationPlace(c, n)
+			checkTheorem(c, t, n)
+		case isSpecFunction(n):
 			specs = append(specs, n)
+			checkProofDeclarationPlace(c, n)
 			checkSpecFunctionHead(c, n)
-		} else if isProofBlock(n) {
-			checkProofBlock(c, n)
+		case isProofBlock(n):
+			checkProofBlock(c, t, n)
 		}
 		return n.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-	if len(specs) > 0 {
-		checkSpecReferences(c, file, specs)
-		checkSpecTransparency(c, specs)
+	if len(specs) > 0 || len(theorems) > 0 {
+		checkSpecReferences(c, file, specs, theorems)
 	}
+	if len(specs) > 0 {
+		checkSpecTransparency(c, t, specs)
+	}
+	markTheoremsReferenced(c, file, theorems)
 }
 
 // checkSpecFunctionHead reports EK4302 for each modifier or overload of fn.
@@ -188,7 +203,7 @@ func isOverloaded(c *checker.Checker, fn *ast.Node) bool {
 // of a .vibe or .vibex module that is not effect, async or a generator and has
 // no overloads. Otherwise it returns nil.
 func checkedFunction(c *checker.Checker, fn *ast.Node) *ast.Node {
-	if fn == nil || fn.Kind != ast.KindFunctionDeclaration || fn.Name() == nil || fn.Body() == nil {
+	if fn == nil || fn.Kind != ast.KindFunctionDeclaration || fn.Name() == nil || fn.Body() == nil || isTheorem(fn) {
 		return nil
 	}
 	if fn.Parent == nil || fn.Parent.Kind != ast.KindSourceFile || !isVibeLangFile(fn.Parent.AsSourceFile()) {
@@ -265,7 +280,7 @@ func isLeadingStatement(statement *ast.Node, list *ast.Node) bool {
 
 // checkProofBlock checks block's place (4304), statements (4305), proof
 // statements (4306), use of by (4307) and contracts (4309).
-func checkProofBlock(c *checker.Checker, block *ast.Node) {
+func checkProofBlock(c *checker.Checker, t *transparency, block *ast.Node) {
 	owner := proofBlockOwner(c, block)
 	if owner == nil {
 		report(c, block, EK4304)
@@ -274,6 +289,7 @@ func checkProofBlock(c *checker.Checker, block *ast.Node) {
 	role := roleOfProofBlock(block, owner)
 	checkProofStatements(c, block.Statements(), owner, role, true /*direct*/)
 	checkProofBy(c, block)
+	checkVerificationExpressions(c, t, block.Statements(), false /*theorem*/)
 }
 
 // checkProofStatements checks statements, the statements of a proof block or
@@ -448,11 +464,11 @@ func isReferenceName(id *ast.Node) bool {
 	return true
 }
 
-// inProofUse reports whether node is in a proof block or a spec function,
-// where a spec function may be used.
+// inProofUse reports whether node is in a proof block, a theorem or a spec
+// function, where a spec function may be used.
 func inProofUse(node *ast.Node) bool {
 	for n := node.Parent; n != nil; n = n.Parent {
-		if isProofBlock(n) || isSpecFunction(n) {
+		if isProofBlock(n) || isSpecFunction(n) || isTheorem(n) {
 			return true
 		}
 	}
@@ -460,25 +476,32 @@ func inProofUse(node *ast.Node) bool {
 }
 
 // checkSpecReferences reports EK4310 at each reference to one of specs
-// outside proof blocks and spec functions.
-func checkSpecReferences(c *checker.Checker, file *ast.SourceFile, specs []*ast.Node) {
+// outside proof contexts and spec functions, and at every reference to one
+// of theorems.
+func checkSpecReferences(c *checker.Checker, file *ast.SourceFile, specs []*ast.Node, theorems []*ast.Node) {
+	// symbols maps a spec function's symbol to false and a theorem's to true.
 	symbols := map[*ast.Symbol]bool{}
 	names := map[string]bool{}
-	for _, fn := range specs {
+	for i, fn := range slices.Concat(specs, theorems) {
 		if symbol := c.GetSymbolOfDeclaration(fn); symbol != nil && fn.Name() != nil {
-			symbols[symbol] = true
+			symbols[symbol] = symbols[symbol] || i >= len(specs)
 			names[fn.Name().Text()] = true
 		}
 	}
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
-		if ast.IsIdentifier(n) && names[n.Text()] && !isSpecFunction(n.Parent) && isReferenceName(n) && !inProofUse(n) {
+		if ast.IsIdentifier(n) && names[n.Text()] && !(n.Parent != nil && n.Parent.Kind == ast.KindFunctionDeclaration && n.Parent.Name() == n) && isReferenceName(n) {
 			symbol := c.GetSymbolAtLocation(n)
 			if n.Parent != nil && n.Parent.Kind == ast.KindExportSpecifier {
 				symbol = c.GetExportSpecifierLocalTargetSymbol(n.Parent)
 			}
-			if symbol != nil && symbols[symbol] {
-				report(c, n, EK4310, n.Text())
+			if theorem, ok := symbols[symbol]; ok && symbol != nil {
+				switch {
+				case theorem:
+					report(c, n, theoremReference, n.Text())
+				case !inProofUse(n):
+					report(c, n, EK4310, n.Text())
+				}
 			}
 		}
 		return n.ForEachChild(visit)
@@ -490,8 +513,7 @@ func checkSpecReferences(c *checker.Checker, file *ast.SourceFile, specs []*ast.
 // transparent (Appendix F "Transparent functions and procedures"): it has a
 // loop, a let, an assignment, ++ or --, or a proof block that asserts, or it
 // calls a checked function that is a procedure.
-func checkSpecTransparency(c *checker.Checker, specs []*ast.Node) {
-	t := newTransparency(c)
+func checkSpecTransparency(c *checker.Checker, t *transparency, specs []*ast.Node) {
 	for _, fn := range specs {
 		if fn.Body() == nil {
 			continue
@@ -502,7 +524,7 @@ func checkSpecTransparency(c *checker.Checker, specs []*ast.Node) {
 			continue
 		}
 		for _, call := range t.calls(fn) {
-			if callee := t.callee(call); callee != nil && !t.transparent(callee) {
+			if callee := t.opaqueCallee(call); callee != nil {
 				report(c, call.Expression(), EK4314, "it calls "+callee.Name().Text()+", which is a procedure")
 				break
 			}
@@ -513,7 +535,9 @@ func checkSpecTransparency(c *checker.Checker, specs []*ast.Node) {
 // transparency classifies checked functions as transparent or procedures.
 // The transparent functions are the largest set of checked functions whose
 // bodies have no opaque use and that call only transparent checked functions,
-// besides other callees, so recursion is transparent.
+// besides pure trusted functions and standard-library methods, so recursion
+// is transparent. An impure trusted function is a procedure, and so is a
+// checked function that calls one.
 type transparency struct {
 	c      *checker.Checker
 	result map[*ast.Node]bool
@@ -604,6 +628,60 @@ func (t *transparency) callee(call *ast.Node) *ast.Node {
 	return checkedFunction(t.c, declaration)
 }
 
+// impureTrusted returns the declaration call calls when it is an impure
+// trusted function (Appendix F "Trusted functions"): a named function
+// declaration of a TypeScript or JavaScript file outside the default library.
+func (t *transparency) impureTrusted(call *ast.Node) *ast.Node {
+	signature := t.c.GetResolvedSignature(call)
+	if signature == nil || signature.Declaration() == nil {
+		return nil
+	}
+	declaration := signature.Declaration()
+	if declaration.Kind != ast.KindFunctionDeclaration || declaration.Name() == nil {
+		return nil
+	}
+	file := ast.GetSourceFileOfNode(declaration)
+	if file == nil || isVibeLangFile(file) || t.c.Program().IsSourceFileDefaultLibrary(file.PathKey()) {
+		return nil
+	}
+	return declaration
+}
+
+// opaqueCallee returns the declaration call calls when a proof never sees
+// its body: a checked function or spec function that is not transparent, or
+// an impure trusted function. It returns nil for every other callee.
+func (t *transparency) opaqueCallee(call *ast.Node) *ast.Node {
+	if callee := t.callee(call); callee != nil {
+		if t.transparent(callee) {
+			return nil
+		}
+		return callee
+	}
+	return t.impureTrusted(call)
+}
+
+// procedure returns the declaration call calls when it is a procedure: a
+// checked function that is not transparent, or an impure trusted function.
+// A spec function is never one: a spec function that is not transparent is
+// rule 4314's error, reported once at the function and not at each call.
+func (t *transparency) procedure(call *ast.Node) *ast.Node {
+	if callee := t.opaqueCallee(call); callee != nil && !isSpecFunction(callee) {
+		return callee
+	}
+	return nil
+}
+
+// callsImpureTrusted reports whether fn's body calls an impure trusted
+// function.
+func (t *transparency) callsImpureTrusted(fn *ast.Node) bool {
+	for _, call := range t.calls(fn) {
+		if t.impureTrusted(call) != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // transparent reports whether fn, a checked function, is transparent.
 func (t *transparency) transparent(fn *ast.Node) bool {
 	if result, ok := t.result[fn]; ok {
@@ -628,7 +706,7 @@ func (t *transparency) transparent(fn *ast.Node) bool {
 	}
 	candidate := map[*ast.Node]bool{}
 	for _, g := range reached {
-		candidate[g] = len(t.opaqueUses(g)) == 0
+		candidate[g] = len(t.opaqueUses(g)) == 0 && !t.callsImpureTrusted(g)
 	}
 	for changed := true; changed; {
 		changed = false

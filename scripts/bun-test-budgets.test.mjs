@@ -16,14 +16,14 @@ const budget = (command) => {
 }
 const invocations = (text) => [...text.matchAll(/bun test\b[^"'`\n&|;)]*/g)].map((m) => m[0])
 
-const packageFiles = ["PACKAGE.ts", "packages/PACKAGE.ts", "typescript/PACKAGE.ts", "typescript/tsc/PACKAGE.ts", "typescript/vibelang/PACKAGE.ts"]
+const graphAndProbeFiles = [".smithers/flows/effect-bump/lib/steps.mjs", "PACKAGE.ts", "packages/PACKAGE.ts", "typescript/PACKAGE.ts", "typescript/tsc/PACKAGE.ts", "typescript/vibelang/PACKAGE.ts"]
 // Package scripts the graph, the validation script or the docs build run.
 const manifests = ["experiments/package.json", "packages/runtime/package.json", "docs/tools/package.json", ".smithers/package.json"]
 
-test("every bun test in a PACKAGE.ts shell passes --timeout", () => {
+test("every bun test in a graph shell or upgrade probe passes --timeout", () => {
   let seen = 0
-  for (const file of packageFiles) {
-    for (const command of invocations(read(file))) {
+  for (const file of graphAndProbeFiles) {
+    for (const command of invocations(read(file).replace(/^\s*\/\/.*$/gm, ""))) {
       seen++
       assert.ok(budget(command), `${file}: \`${command.trim()}\` runs at Bun's 5 s default`)
     }

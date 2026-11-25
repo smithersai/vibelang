@@ -87,7 +87,9 @@ try {
   // --strict refuses implicit trust (EK4319); a declare function stays trusted.
   const strict = project("strict", {
     "helper.ts": "export function scale(n: number): number { return n * 2 }\n",
-    "main.vibe": 'import { scale } from "./helper.js"\ndeclare function pure(n: number): number\nspec function scaled(n: number): number { return scale(n) + pure(n) }\nexport function use(n: number): number {\n  proof { ensures((r) => r === scaled(n) - scaled(n) + n) }\n  return n\n}\n',
+    // scale is a .ts function, an impure trusted function: a procedure, which
+    // code may call and a spec function may not (EK4314).
+    "main.vibe": 'import { scale } from "./helper.js"\ndeclare function pure(n: number): number\nspec function scaled(n: number): number { return pure(n) + n }\nexport function use(n: number): number {\n  proof { ensures((r) => r === scaled(n) - scaled(n) + n) }\n  const doubled = scale(n)\n  return doubled - doubled + n\n}\n',
   })
   r = prove(strict)
   assert.equal(r.status, 0, r.text)

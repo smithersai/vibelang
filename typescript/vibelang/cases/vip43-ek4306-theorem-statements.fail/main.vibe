@@ -1,0 +1,15 @@
+// expect: EK4306
+// rule-evidence: docs/design/src/900-appendices.md#body | `ensures`, `invariant` and `decreases` in a theorem are rule 4306.
+theorem contract(x: number) {
+  ensures((r) => r === x)
+  assert(x === x)
+}
+theorem looped(x: number) {
+  invariant(x >= 0)
+  assert(x === x)
+}
+theorem measured(x: number) {
+  assert(x === x)
+  if (x > 0) decreases(x)
+}
+export const one = 1

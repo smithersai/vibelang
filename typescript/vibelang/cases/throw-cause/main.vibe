@@ -1,5 +1,3 @@
-
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"caught":"expected","defect":["Die"],"combined":["Fail","Die"],"escaped":["Fail"],"value":"cause object"}
 // Effect.failCause fails with every reason a cause holds, as in Effect code;
 // `throw` fails with the value it is given, so a Cause thrown as unknown is
@@ -19,18 +17,15 @@ effect function combined() {
 }
 
 effect function caught() {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  return effect {
     try fail()
-    return { kind: "return:" as const, value: "missing" };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: match (e) {
+    return "missing"
+  } catch effect (e) => {
+    return match (e) {
       when Expected: "expected";
       default: throw e;
     }
- };
-  });
-return $nativeTryCompletion.value;
-}
+  }
 }
 
 function value() {

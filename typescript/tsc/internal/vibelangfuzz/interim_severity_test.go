@@ -13,7 +13,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-const interimSeverityQuote = "an interim `EK92xx` code, even one printed as a warning"
+const interimSeverityQuote = "any interim code in the [transitional table](900-appendices.md#transitional-compiler-diagnostics), including warnings"
 
 func TestInterimSeverityRulesQuoted(t *testing.T) {
 	severityInheritanceQuoted(t)

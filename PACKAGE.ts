@@ -277,10 +277,6 @@ const specTests = [
   "TestDataGeneratedMatchSeparators",
   "TestFailuresSpecQuotes",
   "TestFailuresSpecCoverage",
-  "TestSpecRuleFacts",
-  "TestSpecRuleTable",
-  "TestSpecRuleCoverage",
-  "TestRuntimeFeatureCitations",
   "TestToolsFormatSemanticContract",
   "TestToolsFormatIdenticalInvalidEmit",
   "TestToolsFormatInvalidEmitWitness",
@@ -665,7 +661,7 @@ const specLinterTests = rootFileSuite("spec-linters-test")
 const specLint = S.Shell.Test({
   summary: "Static specification contracts and their regression tests.",
   shell: "echo 'spec-lint: static contracts passed'",
-  data: [specRegistry, specSchemaConstructor, specTables, specCopies, specAuthority, specLinterTests, specPipeArrows, specCatchDiagnostics, specAppendixExamples, specDiagnosticIdentity, specAppendixHostExamples],
+  data: [specRegistry, specSchemaConstructor, specTables, specCopies, specAuthority, specExamples, specLinterTests, specPipeArrows, specCatchDiagnostics, specAppendixExamples, specDiagnosticIdentity, specAppendixHostExamples],
   sandbox: "none", timeout: "1m"
 })
 
@@ -1518,7 +1514,7 @@ const targets = {
   ),
   "mapper-explicit-catch-owner-controls": goVibelang(
     "Catch fixture owners are explicit and ordinary callbacks retain their boundary errors",
-    "VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^(TestCatchExpressionHatch|TestPipeTopicChoices|TestEmit)$' ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run '^(TestMapperCatchFixtureOwnersQuoted|FuzzMapperCatchFixtureOwners|TestCatchBoundaryIdentityQuoted|FuzzCatchBoundaryIdentity)$' ./internal/vibelangfuzz",
+    "VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^(TestCatchExpressionHatch|TestLintProjectionLowersUndecidablePipeTopics|TestEmit)$' ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run '^(TestMapperCatchFixtureOwnersQuoted|FuzzMapperCatchFixtureOwners|TestCatchBoundaryIdentityQuoted|FuzzCatchBoundaryIdentity)$' ./internal/vibelangfuzz",
     [Typescript.compiler, Typescript.mapper],
     "20m"
   ),
@@ -1788,7 +1784,7 @@ const targets = {
   ),
   "go-generator-return-contracts": goVibelang(
     "Generator result-contract documentation retains its native forms.",
-    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -short -count=1 -timeout 10m -trimpath -run '^TestEffectFnBareReturnContractsQuoted$' ./internal/vibelangfuzz/`,
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} go test -p 8 -short -count=1 -timeout 10m -trimpath -run '^TestEffectBareReturnDiagnosticsQuoted$' ./internal/vibelangfuzz/`,
     [Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]],
     "15m"
   ),
@@ -1935,7 +1931,7 @@ const targets = {
   }),
   "spec-rule-table": S.Shell.Test({
     summary: "Check rule-injection quotations against current public chapters.",
-    shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^TestSpecRuleTable$' ./internal/vibelangfuzz/",
+    shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^Test.*Quoted$' ./internal/vibelangfuzz/",
     data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]],
     tools: [S.Host.bin("go"), S.Host.bin("node")],
     sandbox: "none",

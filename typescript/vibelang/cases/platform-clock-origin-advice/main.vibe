@@ -3,11 +3,11 @@ import { Clock, Effect } from "effect"
 
 let reads = 0
 let ticks = 0n
-const clock: Clock.Clock = {
-  ...Effect.runSync(Clock.Clock),
-  monotonicTimeNanos: Effect.sync(() => { reads++; return 123_456_789_000_000n + ticks++ * 12_500_000n })
-}
 export effect function main() {
+  const clock: Clock.Clock = {
+    ...(try Clock.Clock),
+    monotonicTimeNanos: Effect.sync(() => { reads++; return 123_456_789_000_000n + ticks++ * 12_500_000n })
+  }
   const before = reads
   const program = effect {
     const startNanos = try Clock.monotonicTimeNanos

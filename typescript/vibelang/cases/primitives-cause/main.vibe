@@ -1,9 +1,8 @@
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"typed":"NotFound","defect":"Die","rethrown":"Boom","onlyCause":"Fail","untyped":"Expected"}
 error NotFound { id: string }
 error Boom
 
-effect function find(id: string): string!NotFound! {
+effect function find(id: string): string!NotFound {
   if (id === "missing") throw new NotFound({ id })
   if (id === "bug") try die(new Error("bug"))
   return id
@@ -29,15 +28,13 @@ effect function defect() {
 }
 
 effect function rethrown() {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  return effect {
     const outcome = try exit(boom())
     if (outcome._tag === "Failure") try Effect.failCause(outcome.cause)
-    return { kind: "return:" as const, value: ("no") };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: (e._tag) };
-  });
-return $nativeTryCompletion.value;
-}
+    return ("no")
+  } catch effect (e) => {
+    return (e._tag)
+  }
 }
 
 effect function onlyCause() {

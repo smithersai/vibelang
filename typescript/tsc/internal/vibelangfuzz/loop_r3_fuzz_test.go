@@ -178,9 +178,10 @@ func FuzzRestoreItemPlacement(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer result.Remove()
 		errs := r3Errors(result.Diagnostics)
 		if r.want == "" {
-			if slices.Contains(errs, "EK2202") || slices.Contains(errs, "EK2111") {
+			if len(errs) != 0 {
 				Gap(t, "FuzzRestoreItemPlacement", "valid:"+r.name, "002-running: %s should stay legal, got %v:\n%s", r.name, errs, source)
 			}
 			return

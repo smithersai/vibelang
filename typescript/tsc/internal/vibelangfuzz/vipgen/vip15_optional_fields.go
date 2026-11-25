@@ -158,14 +158,14 @@ func (d *optionalSchemaDecode) print(w *Writer) {
 			if form == "Error" {
 				obj = "{ _tag: " + fmt.Sprintf("%q", d.Name+"Error") + ", ..." + obj + " }"
 			}
-			values = append(values, "JSON.stringify(Schema.decodeUnknownExit("+d.Name+form+")("+obj+"), (_key, value) => value === undefined ? \"$undefined\" : value)")
+			values = append(values, "stringifyObservation(Schema.decodeUnknownExit("+d.Name+form+")("+obj+"), (_key, value) => value === undefined ? \"$undefined\" : value)")
 		}
 	}
 	for _, array := range []string{"[]", "[undefined]", "[" + valid + "]", "[null]"} {
-		values = append(values, "JSON.stringify(Schema.decodeUnknownExit("+d.Name+"Tuple)("+array+"), (_key, value) => value === undefined ? \"$undefined\" : value)")
+		values = append(values, "stringifyObservation(Schema.decodeUnknownExit("+d.Name+"Tuple)("+array+"), (_key, value) => value === undefined ? \"$undefined\" : value)")
 	}
 	values = append(values, d.Name+"Data.Ready({})._tag")
-	w.Write("ev(JSON.stringify([" + strings.Join(values, ", ") + "]))")
+	w.Write("ev(stringifyObservation([" + strings.Join(values, ", ") + "]))")
 }
 
 // These probes use FuzzVIPDifferential's generator, Node worker and comparison.

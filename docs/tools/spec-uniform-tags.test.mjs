@@ -22,9 +22,6 @@ assert.equal(sharedTagPattern({ _tag: "A", x: 1 }), 1)
 assert.equal(sharedTagPattern({ _tag: "A", y: 2 }), 1)
 assert.equal(sameTagExit._tag, "Success")
 assert.deepEqual(sameTagExit.value, [1, 1])
-// Covering A alone leaves B on a member whose tag is a union.
-const recognizeA = (s) => s._tag === "A"
-assert.equal(recognizeA({ _tag: "B" }), false)
 `)
   assert.equal(result.status, 0, result.stderr || result.stdout)
 })

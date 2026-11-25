@@ -4,6 +4,8 @@
   "type": "module",
   "description": "Checks documentation and builds Markdown copies and llms.txt for vibelang.sh.",
   "scripts": {
+    "prepare:frameworks": "node test/vibex-frameworks/prepare.mjs",
+    "postinstall": "bun run prepare:frameworks",
     "check:snippets": "bun test --timeout 60000 first-run.test.ts && bun check-snippets.ts --run",
     "check:diagnostics": "bun check-diagnostic-docs.ts",
     "check:content": "bun check-smithers-content.ts",

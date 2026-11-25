@@ -339,7 +339,11 @@ function witness() {
 			Quote:   "Each field's type is mapped as in a `schema` declaration, optional properties included. Every field is readonly, as in `error`, so no field gets `Schema.mutableKey`.",
 			Vibe: `schema error Invalid { reason?: string }
 function witness() {
-  return [Schema.encodeSync(Invalid)(new Invalid({})), Schema.encodeSync(Invalid)(new Invalid({ reason: "r" })), Schema.is(Invalid)({ _tag: "Invalid", reason: 1 })]
+  try {
+    return [Schema.encodeSync(Invalid)(new Invalid({})), Schema.encodeSync(Invalid)(new Invalid({ reason: "r" })), Schema.is(Invalid)({ _tag: "Invalid", reason: 1 })]
+  } catch (error) {
+    return ["unexpected schema failure", String(error)]
+  }
 }`,
 			Effect: `class Invalid extends Schema.TaggedError()("Invalid", { reason: Schema.optional(Schema.String) }) {}
 function witness() {
@@ -354,8 +358,12 @@ function witness() {
 			Quote:   "Fields, methods and getters may be interleaved, as in a TypeScript class.",
 			Vibe: `schema error Bad { n: number; get doubled() { return this.n * 2 }; m: number; sum() { return this.n + this.m } }
 function witness() {
-  const e = Schema.decodeUnknownSync(Bad)({ _tag: "Bad", n: 3, m: 4 })
-  return [e.doubled, e.sum()]
+  try {
+    const e = Schema.decodeUnknownSync(Bad)({ _tag: "Bad", n: 3, m: 4 })
+    return [e.doubled, e.sum()]
+  } catch (error) {
+    return ["unexpected schema failure", String(error)]
+  }
 }`,
 			Effect: `class Bad extends Schema.TaggedError()("Bad", { n: Schema.Number, m: Schema.Number }) { get doubled() { return this.n * 2 }; sum() { return this.n + this.m } }
 function witness() {

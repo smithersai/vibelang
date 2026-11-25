@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-const lintPluginMigrationQuote = "With the entry present, migration is idempotent and reports no `EK3012`."
+const lintPluginMigrationQuote = "With the entry present, the compiler reports no `EK3012`."
 
 func TestLintPluginMigrationQuoted(t *testing.T) {
 	quote := lintPluginMigrationQuote

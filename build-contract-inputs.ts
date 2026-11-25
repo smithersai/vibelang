@@ -48,6 +48,7 @@ export const buildContractFiles = [
   "docs/tools/package.json",
   "docs/tools/bun.lock",
   ".smithers/package.json",
+  ".smithers/flows/effect-bump/lib/steps.mjs",
   "scripts/build-vibelang.sh",
   "scripts/check-forms-table.sh",
   "scripts/warm-go-cache.sh",

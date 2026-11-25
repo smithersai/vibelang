@@ -58,7 +58,7 @@ func FuzzAsyncReturnAdoption(f *testing.F) {
 		case "generic":
 			typ = "T"
 		case "callable-then":
-			typ = "{ then: () => void }"
+			typ = "PromiseLike<object>"
 		case "unknown-then":
 			typ = "{ then: unknown }"
 		// A primitive-typed property may be a getter. Promise adoption
@@ -115,6 +115,9 @@ func FuzzAsyncReturnAdoption(f *testing.F) {
 		files := map[string]string{"main.vibe": source}
 		r := toolsCompile(t, w, "FuzzAsyncReturnAdoption", files)
 		defer r.Remove()
+		if !toolsErrorFree(r) {
+			t.Fatalf("invalid original: %v\n%s", toolsErrorCounts(r), Archive(files))
+		}
 		e := &toolsEditor{t: t, ctx: t.Context(), sessions: sessions, session: sessions.get(t), w: w, r: r, files: files, archive: Archive(files), main: "main.vibe", uri: toolsURI(r.Dir, "main.vibe")}
 		var err error
 		e.run("didOpen", func() {

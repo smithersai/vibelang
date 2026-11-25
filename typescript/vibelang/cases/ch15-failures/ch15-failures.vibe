@@ -1,12 +1,3 @@
-
-import * as $nativeTryEffect4 from "effect/Effect";
-
-import * as $nativeTryEffect3 from "effect/Effect";
-
-
-import * as $nativeTryEffect1 from "effect/Effect";
-
-import * as $nativeTryEffect from "effect/Effect";
 // Chapter 15. Failures, defects, interruption, and cleanup.
 import { Exit, Scope } from "effect"
 import { TestClock } from "effect/testing"
@@ -57,16 +48,14 @@ effect function writeRows(file: TempFile, rows: ReadonlyArray<string>) {
 
 effect function exportReport(id: string) {
   using tmp = try (try TempFiles).create()
-  { const $nativeTryCompletion = try $nativeTryEffect.onExit($nativeTryEffect.catch(effect {
+  return try Effect.onExit(Effect.catch(effect {
     try writeRows(tmp, try (try Reports).rows(id))
-    return { kind: "return:" as const, value: try (try Storage).upload(tmp) };
+    return try (try Storage).upload(tmp)
   }, effect (e) => {                    // e: UploadError
-    return { kind: "return:" as const, value: try (try Storage).queueRetry(id) };
+    return try (try Storage).queueRetry(id)
   }), () => effect {
     try (try Metrics).increment("exports")
-  });
-return $nativeTryCompletion.value;
-}
+  })
 }
 
 effect function exportWithDeadline(id: string) {
@@ -82,15 +71,13 @@ effect function exportWithShortDeadline(id: string) {
 // TypeError is a defect. (A plain function's catch is JavaScript's and would
 // catch it, VIP-1, so this one is an effect function.)
 effect function defectThroughCatch() {
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
+  return effect {
     const broken: any = undefined
-    return { kind: "return:" as const, value: broken.name };
-  }, effect (e) => {
+    return broken.name
+  } catch effect (e) => {
     events.push("catch saw a defect")      // must not run
-    return { kind: "return:" as const, value: "caught" };
-  });
-return $nativeTryCompletion1.value;
-}
+    return "caught"
+  }
 }
 
 // A cause holding both an expected failure and a defect is not caught.
@@ -172,33 +159,21 @@ effect function scenario() {
   uploadFails = false
   uploadDelay = 50
   let third = "none"
-  { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect {
+  effect {
     try exportWithShortDeadline("r3")
-  
-;return { kind: "normal" } as const;
-}, effect (e) => {
+  } catch effect (e) => {
     third = e._tag
-  
-;return { kind: "normal" } as const;
-});
-
-}
+  }
   uploadDelay = 0
   const deadline = try exportWithDeadline("r4")
   const defect = try Effect.exit(defectThroughCatch())
   const mixed = try Effect.exit(effect { return try mixedCause() })
   let moved = "none"
-  { const $nativeTryCompletion4 = try $nativeTryEffect4.catch(effect {
+  effect {
     try Effect.timeout(effect { return try moveFunds({ id: "a" }, { id: "b" }, 10) }, "5 millis")
-  
-;return { kind: "normal" } as const;
-}, effect (e) => {
+  } catch effect (e) => {
     moved = e._tag
-  
-;return { kind: "normal" } as const;
-});
-
-}
+  }
   return {
     first,
     second,

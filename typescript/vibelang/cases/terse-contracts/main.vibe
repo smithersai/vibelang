@@ -26,7 +26,7 @@ effect function full(id: string): string!NotFound!Users {
   return try (try Users).find(id)
 }
 
-effect function noDependencies(n: number): number!Timeout! {
+effect function noDependencies(n: number): number!Timeout {
   if (n < 0) throw new Timeout()
   return n
 }
@@ -59,7 +59,7 @@ effect function either(program: Maybe): number!! {
 
 const five: Effect<number> = Effect.sync(() => 5)
 
-effect function unwrap(program: Nested): number!NotFound! {
+effect function unwrap(program: Nested): number!NotFound {
   const inner = try program
   return try inner
 }

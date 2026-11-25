@@ -13,7 +13,7 @@ import (
 
 const effectGlobalsTarget = "FuzzEffectGlobals"
 
-// VIP-6; alchemy-6 and alchemy-11.
+// VIP-6.
 const effectGlobalsQuote = "Every export of Effect's `Effect` module is a global variable in a `.vibe` file"
 const effectGlobalsClashQuote = "A name that clashes is not a global, and is used as `Effect.x` instead."
 const effectGlobalsShadowQuote = "A local declaration or import shadows one, as with any global."
@@ -160,8 +160,16 @@ func FuzzEffectGlobals(f *testing.F) {
 			if qualified := compileEffectGlobal(t, w, Single("export const probe = Effect."+name+";\n")); qualified != nil {
 				Gap(t, effectGlobalsTarget, key, "VIP-6: %s is %s, so it is used as Effect.%s; got %v", name, why, name, qualified)
 			}
-			if bare := compileEffectGlobal(t, w, effectGlobalClashProject(name, mode)); bare == nil {
-				Gap(t, effectGlobalsTarget, key, "VIP-6: %s is %s, so it is not a global, but it resolved bare", name, why)
+			if why != "a reserved word" {
+				bare := compileEffectGlobal(t, w, effectGlobalClashProject(name, mode))
+				hasNameErr := slices.ContainsFunc(bare, func(k DiagnosticKey) bool {
+					// TypeScript gives missing shorthand bindings their own code.
+					return k.Source == "" && (k.Code == 2304 || k.Code == 2552 || k.Code == 2322 ||
+						mode == effectGlobalImport && k.Code == 18004)
+				})
+				if !hasNameErr {
+					Gap(t, effectGlobalsTarget, key, "VIP-6: %s is %s, so a bare reference must be missing or resolve to an incompatible native binding; got %v", name, why, bare)
+				}
 			}
 		} else {
 			project, wantError := effectGlobalsProject(name, mode)

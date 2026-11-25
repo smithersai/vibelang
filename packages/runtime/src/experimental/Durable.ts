@@ -255,7 +255,7 @@ const declareWorkflow = <
   const annotations = options.plan === undefined
     ? options.annotations
     : Context.add(options.annotations ?? Context.empty(), engineInternal.PlanOf, options.plan)
-  return Workflow.make(tag, {
+  const workflow = Workflow.make(tag, {
     payload: options.payload,
     success: options.success as Success,
     error: options.error as Error,
@@ -263,7 +263,36 @@ const declareWorkflow = <
     suspendedRetrySchedule: options.suspendedRetrySchedule,
     annotations
   }) as unknown as Workflow.Workflow<Tag, Schema.Struct<Payload>, Success, Error>
+  const { execute, poll } = workflow
+  return Object.assign(workflow, {
+    execute: ((payload: any, options?: any) =>
+      restoreDeadlines(tag, execute.call(workflow, payload, options))) as typeof execute,
+    poll: (executionId: string) =>
+      Effect.map(poll.call(workflow, executionId), Option.map((result) =>
+        result._tag === "Complete" && Exit.isFailure(result.exit) && hasLostDeadline(result.exit.cause)
+          ? new Workflow.Complete({ exit: Exit.failCause(restoreDeadlineCause(tag, result.exit.cause)) })
+          : result))
+  })
 }
+
+// The engine journals a defect as its name and message, so a run read back
+// from the store has lost DeadlineExceeded's class and fields. Rebuild it
+// from the workflow it belongs to (VIP-56).
+const isLostDeadline = (defect: unknown): defect is globalThis.Error =>
+  defect instanceof globalThis.Error && defect.name === "DeadlineExceeded" && !(defect instanceof DeadlineExceeded)
+
+const hasLostDeadline = (cause: Cause.Cause<unknown>): boolean =>
+  cause.reasons.some((reason) => Cause.isDieReason(reason) && isLostDeadline(reason.defect))
+
+const restoreDeadlineCause = <E>(workflow: string, cause: Cause.Cause<E>): Cause.Cause<E> =>
+  Cause.fromReasons(cause.reasons.map((reason) =>
+    Cause.isDieReason(reason) && isLostDeadline(reason.defect)
+      ? Cause.makeDieReason(new DeadlineExceeded({ workflow, message: reason.defect.message }))
+      : reason
+  ))
+
+const restoreDeadlines = <A, E, R>(workflow: string, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  Effect.catchCauseIf(effect, hasLostDeadline, (cause) => Effect.failCause(restoreDeadlineCause(workflow, cause)))
 
 /**
  * A run's journal, in order.

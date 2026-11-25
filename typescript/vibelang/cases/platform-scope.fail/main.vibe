@@ -23,5 +23,5 @@ module host {
   export const cwd = () => process.cwd()
 }
 import { cwd } from host
-export const both = (): infer _ => [cwd(), hostOf()]
+export const both = () => [cwd(), hostOf()]
 

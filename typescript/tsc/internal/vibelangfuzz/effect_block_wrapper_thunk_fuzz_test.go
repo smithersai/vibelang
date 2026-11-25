@@ -19,8 +19,8 @@ import (
 // code. So each program below type-checks: the thunk returns an
 // Effect<number>, the wrapper gives an Effect of that Effect, and the host
 // runs both. The key names the wrapper, the thunk form and the host. Effect.sync,
-// Effect.suspend and a direct call are controls the compiler never read as
-// hatches.
+// Effect.suspend and a direct call are controls whose thunks are ordinary
+// functions returning an Effect.
 
 const effectBlockWrapperTarget = "FuzzEffectBlockWrapperThunks"
 

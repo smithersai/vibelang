@@ -1,4 +1,3 @@
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"results":["stepped","stepped","stepped"],"events":["step","after concise","step","after nested","step","after block","stop concise","stop nested","stop block"]}
 // Concise, nested and block Effect helpers all run on their caller's fiber.
 // Their children remain alive after each helper returns and stop when the
@@ -6,16 +5,12 @@ import * as $nativeTryEffect from "effect/Effect";
 const events: string[] = []
 
 effect function ticker(name: string, started: Deferred.Deferred<void>) {
-  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
+  try Effect.onExit(effect {
     try Deferred.succeed(started, undefined)
     while (true) try sleep("1 millis")
-  
-;return { kind: "normal" } as const;
-}, () => effect {
+  }, () => effect {
     events.push(`stop ${name}`)
-  });
-
-}
+  })
 }
 
 effect function step(started: Deferred.Deferred<void>) {

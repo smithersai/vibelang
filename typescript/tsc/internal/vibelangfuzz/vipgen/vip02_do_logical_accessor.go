@@ -54,7 +54,7 @@ func (o *doLogicalAccessorEvent) Vibe(w *Writer)   { o.print(w) }
 func (o *doLogicalAccessorEvent) Effect(w *Writer) { o.print(w) }
 func (o *doLogicalAccessorEvent) Ends() bool       { return false }
 func (o *doLogicalAccessorEvent) print(w *Writer) {
-	w.Write("ev(\"logical-accessor:\" + JSON.stringify(" + o.Observed + "))")
+	w.Write("ev(\"logical-accessor:\" + stringifyObservation(" + o.Observed + "))")
 }
 
 const logicalAccessorFixture = `/** Native fixture intentionally hides throws from the Vibe checker.

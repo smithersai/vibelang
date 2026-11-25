@@ -505,11 +505,15 @@ const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 // vibelang/eslint against ESLint, typescript-eslint and the plugins Smithers lints with, at the versions the
 // suite's own lockfile pins: run.sh installs it, so this target reads the registry. corpus.test.mjs parses and
 // lints every .vibe file in the checkout, one compiler process each: about 3 minutes on an idle 4-vCPU box.
+// corpus.test.mjs walks the whole checkout for .vibe files, skipping the directories helpers.mjs names.
+// `tree` holds this package's own; the rest are absolute files, since a glob is package-scoped.
+const eslintCorpus = workspaceInputPaths("**/*.vibe")
+  .filter(file => !file.startsWith("packages/") && !/(^|\/)(\.cache|dist|\.git|\.jj|site)\//.test(file))
+  .map(file => S.file("//" + file))
 const compilerEslintTest = S.Shell.Test({
   summary: "ESLint bridge: vibelang/eslint parses and lints .vibe files, and typedProgram types the .ts files beside them.",
   shell: "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/compiler/test/eslint/run.sh",
-  data: [compilerNative, compilerSupport, S.glob("compiler/test/eslint/*.test.mjs"), tree,
-    S.glob("//typescript/**/*.vibe"), S.glob("//.smithers/flows/**/*.vibe"),
+  data: [compilerNative, compilerSupport, S.glob("compiler/test/eslint/*.test.mjs"), tree, ...eslintCorpus,
     S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",

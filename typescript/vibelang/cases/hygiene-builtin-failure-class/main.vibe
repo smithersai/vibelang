@@ -1,7 +1,3 @@
-
-import * as $nativeTryEffect1 from "effect/Effect";
-
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: ["caught:SyntaxError","caught:SyntaxError","caught:Bad","caught:Bad","caught:Bad"]
 // A call whose contract lists failures, such as parseJson's SyntaxError or a
 // trusted function's classes, tests what it throws against those classes. A
@@ -29,14 +25,12 @@ function plainParse(SyntaxError: number) {
 // An Effect function.
 effect function effectParse(SyntaxError: number) {
   try sleep("0 millis")
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  return effect {
     parseJsonTrusted("{")
-    return { kind: "return:" as const, value: "ok" };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: "caught:" + e.name };
-  });
-return $nativeTryCompletion.value;
-}
+    return "ok"
+  } catch effect (e) => {
+    return "caught:" + e.name
+  }
 }
 
 function plainTrusted(Bad: number) {
@@ -61,14 +55,12 @@ function plainDeclared(Bad: number) {
 
 effect function effectTrusted(Bad: number) {
   try sleep("0 millis")
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
+  return effect {
     parseTrusted("")
-    return { kind: "return:" as const, value: "ok" };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: "caught:" + e._tag };
-  });
-return $nativeTryCompletion1.value;
-}
+    return "ok"
+  } catch effect (e) => {
+    return "caught:" + e._tag
+  }
 }
 
 export effect function main() {

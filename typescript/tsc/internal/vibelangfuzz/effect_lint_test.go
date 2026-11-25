@@ -21,9 +21,9 @@ import (
 
 // effectLint checks the same sources separately: lint errors must not change
 // noEmitOnError, differential execution, or the existing diagnostic oracles.
-// A -short run checks one program in every, which still meets a failure that
-// reaches most programs (the shim drift of 2026-10-30) and keeps the target
-// inside its short budget; campaigns check every program. A lint witness, a
+// A -short run checks one program in every, which still catches a failure that
+// reaches most programs and keeps the target inside its short budget;
+// campaigns check every program. A lint witness, a
 // corpus file named effect-lint-*, always runs. A project too large for the
 // tools targets is not checked: compiling it twice outlasts the fuzz
 // worker's 60-second limit on a busy host.
@@ -164,8 +164,7 @@ func withoutEffectLint(ds []*ast.Diagnostic) []*ast.Diagnostic {
 // configuration's ignoreEffectErrorsInTscExitCode,
 // ignoreEffectWarningsInTscExitCode and ignoreEffectSuggestionsInTscExitCode
 // keep Effect's diagnostics out of the exit status and noEmitOnError, and
-// the rules print EK38xx codes, not Effect's (smithers, 2026-10-31: every
-// package's check failed on EK3801 with both options set).
+// the rules print EK38xx codes, not Effect's (VIP-38).
 const exitCodeQuote = "The existing Effect language-service configuration in `compilerOptions.plugins` selects the imported `effecttsgo/*` rules."
 
 func TestEffectLintConfigurationQuoted(t *testing.T) {

@@ -5,7 +5,7 @@
 error Fallback
 service Lookup { value: number }
 
-effect function fallback(): number!Fallback! { throw new Fallback() }
+effect function fallback(): number!Fallback { throw new Fallback() }
 
 export effect function failing(): number!! {
   try { throw {} as { id?: number } }

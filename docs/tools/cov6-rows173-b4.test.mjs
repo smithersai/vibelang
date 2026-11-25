@@ -1,8 +1,8 @@
 import { test } from "node:test"
 
 
-// Chapter 004: pending witness for per the proxy ruling of 2026 - spec-rule: docs/design/vips/0004-throw.md#80ede5107f580416
-test.todo("rule-evidence: docs/design/vips/0004-throw.md#80ede5107f580416 | Chapter 004: pending witness for per the proxy ruling of 2026 | present | Per the proxy ruling of 2026-11-04, the inline catch mapper provably cannot throw; an unannotated imported `identity` may throw `unknown` and cannot satisfy the catch callback's `never` contract.")
+// Chapter 004: pending witness for inline catch mapper - spec-rule: docs/design/vips/0004-throw.md#80ede5107f580416
+test.todo("rule-evidence: docs/design/vips/0004-throw.md#80ede5107f580416 | Chapter 004: pending witness for inline catch mapper | present | The inline catch mapper provably cannot throw; an unannotated imported `identity` may throw `unknown` and cannot satisfy the catch callback's `never` contract.")
 
 // Chapter 900: pending witness for an ordinary main has no automatic - spec-rule: docs/design/src/900-appendices.md#1a789ca38d7aa2c7
 test.todo('rule-evidence: docs/design/src/900-appendices.md#1a789ca38d7aa2c7 | Chapter 900: pending witness for an ordinary main has no automatic | present | An ordinary `main` has no automatic host invocation; run and provide its Effect explicitly.')

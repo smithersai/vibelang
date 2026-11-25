@@ -8,6 +8,7 @@ export function accepted(){
 export function main(){
  let caught=""
  try {invoke(risky)} catch(error) {caught=(error as Error).message}
- const bridged=Effect.runSync(Effect.try(() => invoke(safe)))
+ const exit=Effect.runSyncExit(Effect.try(() => invoke(safe)))
+ const bridged=exit._tag === "Success" ? exit.value : undefined
  return {caught,safe:invoke(safe),bridged}
 }

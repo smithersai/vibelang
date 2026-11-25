@@ -33,7 +33,7 @@ func forEachIsHomes(g *Gen, _ *Scope) Stmt {
 	name := g.Name("isHome")
 	start := fmt.Sprintf("function %s(){const saved:Array<()=>number>=[];let steps=0;", name)
 	nativeStart := fmt.Sprintf("function %s(){const saved=[];let steps=0;", name)
-	finish := "return JSON.stringify([steps,saved.map(f=>f())]);}"
+	finish := "return stringifyObservation([steps,saved.map(f=>f())]);}"
 	var source, reference string
 	if defaults {
 		write := ""

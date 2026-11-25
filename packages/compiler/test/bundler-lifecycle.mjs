@@ -1,4 +1,5 @@
 // Shared teardown contract for the two bundler plugins. No native build is needed.
+import { findBinary } from "../binary.mjs"
 import assert from "node:assert/strict"
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -11,6 +12,30 @@ const hangTimeout = setTimeout
 const clearHangTimeout = clearTimeout
 
 export function lifecycleTests(create) {
+  test("two module loads report one config warning and register shared watch inputs once", async (t) => {
+    const root = await mkdtemp(join(tmpdir(), "vibelang-plugin-warnings-"))
+    const shared = join(root, "shared.ts")
+    await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+      compilerOptions: { types: [], skipLibCheck: true, target: "esnext" },
+      files: ["a.vibe", "b.vibe", "shared.ts"], vibelang: { trustedPackages: ["dep"] }
+    }))
+    await writeFile(shared, "export const shared = 1")
+    for (const name of ["a", "b"]) await writeFile(join(root, name + ".vibe"), "export const value = 1")
+    const messages = [], watched = []
+    const warn = message => messages.push(message)
+    const plugin = create({ root, compiler: findBinary() })
+    plugin.configResolved?.({ root, command: "build", logger: { warn } })
+    t.after(async () => {
+      await plugin.closeBundle()
+      await rm(root, { recursive: true, force: true })
+    })
+    const context = { meta: { watchMode: true }, addWatchFile(file) { watched.push(file) }, warn,
+      error(error) { throw new Error(error.message) } }
+    for (const name of ["a", "b"]) await plugin.load.call(context, join(root, name + ".vibe"))
+    assert.equal(messages.filter(message => message.includes("EK3010")).length, 1, messages.join("\n"))
+    assert.equal(watched.filter(file => file === shared).length, 1)
+  })
+
   for (const mode of ["finishes", "ignores termination", "leaves inherited pipes"]) {
     for (const hook of ["closeBundle", "closeWatcher"]) {
       test(`${hook} waits for a compiler that ${mode} and releases its process and pipes`, async (t) => {

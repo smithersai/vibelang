@@ -24,59 +24,57 @@ async function cli(script: string, root: string, temp: string, args: string[]) {
   return { stdout, stderr, status }
 }
 
-for (const script of ["check-snippets.ts"]) {
-  test(script + " refuses an unmatched filter and preserves source and existing receipts", async () => {
-    await fixture(async (root, temp) => {
-      const page = join(root, "selected.md"), report = join(root, "prior.json"), pending = join(root, "prior.txt")
-      const source = "# Existing page\n\nProse only.\n"
-      writeFileSync(page, source)
-      writeFileSync(report, "prior report\n"); writeFileSync(pending, "prior pending\n")
-      const options = script === "check-snippets.ts" ? ["--json", report, "--pending-list", pending] : ["--check"]
-      const output = await cli(script, root, temp, ["--filter", "misspelled-selection-145", ...options])
-      expect(output.status).toBe(2)
-      expect(output.stderr).toContain("No Markdown pages match")
-      expect(output.stderr).toContain("misspelled-selection-145")
-      expect(readFileSync(page, "utf8")).toBe(source)
-      expect(readFileSync(report, "utf8")).toBe("prior report\n")
-      expect(readFileSync(pending, "utf8")).toBe("prior pending\n")
+test("check-snippets.ts refuses an unmatched filter and preserves source and existing receipts", async () => {
+  await fixture(async (root, temp) => {
+    const page = join(root, "selected.md"), report = join(root, "prior.json"), pending = join(root, "prior.txt")
+    const source = "# Existing page\n\nProse only.\n"
+    writeFileSync(page, source)
+    writeFileSync(report, "prior report\n"); writeFileSync(pending, "prior pending\n")
+    const options = ["--json", report, "--pending-list", pending]
+    const output = await cli("check-snippets.ts", root, temp, ["--filter", "misspelled-selection-145", ...options])
+    expect(output.status).toBe(2)
+    expect(output.stderr).toContain("No Markdown pages match")
+    expect(output.stderr).toContain("misspelled-selection-145")
+    expect(readFileSync(page, "utf8")).toBe(source)
+    expect(readFileSync(report, "utf8")).toBe("prior report\n")
+    expect(readFileSync(pending, "utf8")).toBe("prior pending\n")
+    expect(readdirSync(temp)).toEqual([])
+    expect(output.stdout).not.toContain("Totals:")
+  })
+})
+
+test("check-snippets.ts refuses an empty root without invoking the compiler", async () => {
+  await fixture(async (root, temp) => {
+    const output = await cli("check-snippets.ts", root, temp, [])
+    expect(output.status).toBe(2)
+    expect(output.stderr).toContain("No Markdown pages match")
+    expect(readdirSync(temp)).toEqual([])
+  })
+})
+
+test("check-snippets.ts accepts selected prose pages and default page selection", async () => {
+  await fixture(async (root, temp) => {
+    mkdirSync(join(root, "nested"))
+    writeFileSync(join(root, "nested", "guide.md"), "# Guide\n\nNo code here.\n")
+    // Matching a page without code is intentional; it does not invoke a compiler.
+    for (const args of [[], ["--filter", "nested" + sep], ["--filter", "guide.md"]]) {
+      const output = await cli("check-snippets.ts", root, temp, args)
+      expect({ args, status: output.status, stderr: output.stderr }).toEqual({ args, status: 0, stderr: "" })
       expect(readdirSync(temp)).toEqual([])
-      expect(output.stdout).not.toContain("Totals:")
-    })
+    }
   })
+})
 
-  test(script + " refuses an empty root without invoking the compiler", async () => {
-    await fixture(async (root, temp) => {
-      const output = await cli(script, root, temp, [])
-      expect(output.status).toBe(2)
+test("check-snippets.ts rejects unmatched path, case and punctuation selectors", async () => {
+  await fixture(async (root, temp) => {
+    writeFileSync(join(root, "guide.md"), "# Guide\n")
+    for (const filter of ["absent/", "GUIDE.md", "guide.md/missing", "literal[0]", "missing#tag", "missing space"]) {
+      const output = await cli("check-snippets.ts", root, temp, ["--filter", filter])
+      expect({ filter, status: output.status }).toEqual({ filter, status: 2 })
       expect(output.stderr).toContain("No Markdown pages match")
-      expect(readdirSync(temp)).toEqual([])
-    })
+    }
   })
-
-  test(script + " accepts selected prose pages and default page selection", async () => {
-    await fixture(async (root, temp) => {
-      mkdirSync(join(root, "nested"))
-      writeFileSync(join(root, "nested", "guide.md"), "# Guide\n\nNo code here.\n")
-      // Matching a page without code is intentional; it does not invoke a compiler.
-      for (const args of [[], ["--filter", "nested" + sep], ["--filter", "guide.md"]]) {
-        const output = await cli(script, root, temp, args)
-        expect({ args, status: output.status, stderr: output.stderr }).toEqual({ args, status: 0, stderr: "" })
-        expect(readdirSync(temp)).toEqual([])
-      }
-    })
-  })
-
-  test(script + " rejects unmatched path, case and punctuation selectors", async () => {
-    await fixture(async (root, temp) => {
-      writeFileSync(join(root, "guide.md"), "# Guide\n")
-      for (const filter of ["absent/", "GUIDE.md", "guide.md/missing", "literal[0]", "missing#tag", "missing space"]) {
-        const output = await cli(script, root, temp, ["--filter", filter])
-        expect({ filter, status: output.status }).toEqual({ filter, status: 2 })
-        expect(output.stderr).toContain("No Markdown pages match")
-      }
-    })
-  })
-}
+})
 
 test("checker rejects empty selections before receipts with jobs and retirement flags", async () => {
   await fixture(async (root, temp) => {
@@ -109,17 +107,15 @@ test("checker retains valid selections with jobs and retirement flags", async ()
   })
 })
 
-test("generated nonmatching selectors fail before temporary staging in both commands", async () => {
+test("generated nonmatching selectors fail before temporary staging", async () => {
   await fixture(async (root, temp) => {
     writeFileSync(join(root, "guide.md"), "# Guide\n")
     await fc.assert(fc.asyncProperty(fc.integer({ min: 0, max: 1_000_000_000 }), async suffix => {
       const filter = "absent_selection145_" + suffix
-      for (const script of ["check-snippets.ts"]) {
-        const output = await cli(script, root, temp, ["--filter", filter])
-        expect(output.status).toBe(2)
-        expect(output.stderr).toContain("No Markdown pages match")
-        expect(readdirSync(temp)).toEqual([])
-      }
+      const output = await cli("check-snippets.ts", root, temp, ["--filter", filter])
+      expect(output.status).toBe(2)
+      expect(output.stderr).toContain("No Markdown pages match")
+      expect(readdirSync(temp)).toEqual([])
     }), { seed: 145, numRuns: 16 })
   })
 })

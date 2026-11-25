@@ -1,4 +1,4 @@
-// Rule-specific pending obligations from the cov2-vips-a assignment.
+// Rule-specific pending obligations.
 // Pending because focused compiler and Effect TypeScript witnesses remain unverified.
 // These declarations make no claim that the compiler fails or conforms.
 import { test } from "bun:test"
@@ -33,7 +33,7 @@ test.todo("VIP-9 local service Shape lookup: Outside its own shape, a service de
 
 // rule-evidence: docs/design/vips/0009-service-declarations.md#f4c2100e2652d201
 // VIP-9: annotated exact nonobject Shape
-test.todo("VIP-9 annotated exact nonobject Shape: **Amended 2026-11-02 (accepted foldkit-48):** In `service Name: Type { … }`, the annotation supplies the exact whole Shape, including a non-object type.")
+test.todo("VIP-9 annotated exact nonobject Shape: **Amended 2026-11-02:** In `service Name: Type { … }`, the annotation supplies the exact whole Shape, including a non-object type.")
 
 // rule-evidence: docs/design/vips/0009-service-declarations.md#499e41c6ae470458
 // VIP-9: annotated service member rejection
@@ -84,8 +84,8 @@ test.todo("VIP-14 TypeScript global type precedence: | `Record`, `Iterable` | Ty
 test.todo("VIP-14 DOM Crypto remains bare: **Amended 2026-10-29: no `Crypto` row.** effect 4.1.1 has no root `Crypto` module, so bare `Crypto` is the DOM's.")
 
 // rule-evidence: docs/design/vips/0014-effect-modules-in-scope.md#1208eefaff58f384
-// VIP-14: ambiguous module exporter quick fixes
-test.todo("VIP-14 ambiguous module exporter quick fixes: Using it is a compile error that names every exporter and offers one import per exporter: in 4.1.1, `Model`, `Prompt` and `Utils`.")
+// VIP-14: ambiguous module exporter diagnostic
+test.todo("VIP-14 ambiguous module exporter diagnostic: Using it is a compile error that names every exporter and offers one import per exporter: in 4.1.1, `Model`, `Prompt` and `Utils`.")
 
 // rule-evidence: docs/design/vips/0014-effect-modules-in-scope.md#ced49d533ed360e1
 // VIP-14: implicit Effect qualifier identity
@@ -113,7 +113,7 @@ test.todo("VIP-15 schema nonfield EK1505: **Amended 2026-10-31: non-field member
 
 // rule-evidence: docs/design/vips/0015-schema-declarations.md#15fca8692bd36be1
 // VIP-15: written schema type alias in either order
-test.todo("VIP-15 written schema type alias in either order: **Amended 2026-11-02: written schema types (foldkit-9, accepted by Will).** For either ordinary `schema X` form, one written, nongeneric `type X = typeof X.Type` in the same scope replaces the synthesized alias, in either source order.")
+test.todo("VIP-15 written schema type alias in either order: **Amended 2026-11-02: written schema types.** For either ordinary `schema X` form, one written, nongeneric `type X = typeof X.Type` in the same scope replaces the synthesized alias, in either source order.")
 
 // rule-evidence: docs/design/vips/0016-data-declarations.md#39d812e34a5dd91e
 // VIP-16: variant rename resolved reference identity

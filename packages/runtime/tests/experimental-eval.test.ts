@@ -52,7 +52,10 @@ test("the VIP example runs, writes a baseline and passes its gate", async () => 
 
 test("a score that drops on a different answer is a regression and exits 1", async () => {
   const committed = Eval.write(await run(Eval.run(greetSuite).pipe(Effect.flatMap(Eval.baseline))))
-  const rude = Eval.suite("greet", { ...greetSuite, target: (name: string) => Effect.succeed(`Go away, ${name}`) })
+  function greet(name: string) {
+    return Effect.succeed(`Go away, ${name}`)
+  }
+  const rude = Eval.suite("greet", { ...greetSuite, target: greet })
   const report = await run(Effect.gen(function*() {
     return yield* Eval.compare(yield* Eval.load(committed), yield* Eval.run(rude))
   }))

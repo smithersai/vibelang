@@ -6,7 +6,7 @@ VibeLang 0.0.13 is the alpha. It supports the 33 accepted VIPs numbered 1 to 41 
 
 File a [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml) or propose a change with an [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml); Will approves each VIP after discussion.
 
-| VIP | Title | In 0.0.13 |
+| VIP | Title | Alpha and main-branch status |
 | --- | --- | --- |
 | [1](https://vibelang.sh/vips/0001-effect-and-async-functions) | `effect` and `async` functions | Supported |
 | [2](https://vibelang.sh/vips/0002-effect-blocks-and-do) | `effect { }` blocks, and `do { }` as TC39 defines it | Supported |
@@ -55,10 +55,10 @@ File a [bug report](https://github.com/smithersai/vibelang/issues/new?template=b
 | [53](https://vibelang.sh/vips/0053-rename-smithersscript-open) | Renaming VibeLang → **Vibe** (SmithersScript denied) | Revised 2026-11-23; needs Vibe rename plan |
 | [54](https://vibelang.sh/vips/0054-consistent-platform-code-open) | One consistent model for platform-specific code | RFP (request for proposal) |
 | [55](https://vibelang.sh/vips/0055-durable-tasks-workflows) | `task` and `workflow`, durable steps and the plan the compiler derives | Accepted (2026-11-23); implemented (`task`, `workflow`) |
-| [56](https://vibelang.sh/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | Accepted (2026-11-23). Runtime APIs implemented. Compiler plan lowering pending. |
-| [57](https://vibelang.sh/vips/0057-workers-remote) | `schema service` and worker imports: threads and other machines behind one typed boundary | Accepted (2026-11-23); implementation queued |
-| [58](https://vibelang.sh/vips/0058-capabilities) | Capabilities: a permission kernel in the standard library (+ task plan metadata) | Accepted (2026-11-23); runtime implemented (`Experimental.Capability`) |
-| [59](https://vibelang.sh/vips/0059-eval-declarations) | Eval declarations: a file kind and a function, no syntax | Accepted (2026-11-23); toolchain/CLI (`vibelang eval`, no grammar changes) |
+| [56](https://vibelang.sh/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | Implemented on `main`: durable waits, workflow deadlines and recorded race outcomes |
+| [57](https://vibelang.sh/vips/0057-workers-remote) | `schema service` and worker imports: threads and other machines behind one typed boundary | Implemented on `main`: schema services, worker imports, RPC and bundler worker entries |
+| [58](https://vibelang.sh/vips/0058-capabilities) | Capabilities: a permission kernel in the standard library (+ task plan metadata) | Implemented on `main`: runtime capabilities, task and workflow plan metadata, and capability ceilings |
+| [59](https://vibelang.sh/vips/0059-eval-declarations) | Eval declarations: a file kind and a function, no syntax | Implemented on `main`: `vibelang eval` discovers `*.eval.vibe` files, and bundlers reject eval entries |
 | [60](https://vibelang.sh/vips/0060-std-durable) | `Experimental.Durable`, the durable runtime: journal, replay, run state, step cache and time travel | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [61](https://vibelang.sh/vips/0061-std-triggers) | `Experimental.Trigger` and `Experimental.WorkQueue`: cron triggers and durable queues | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [62](https://vibelang.sh/vips/0062-std-model) | `Experimental.Model`: language models and decision models with no SDK | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |

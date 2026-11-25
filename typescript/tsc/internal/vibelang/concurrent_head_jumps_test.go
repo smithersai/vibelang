@@ -59,12 +59,12 @@ func TestConcurrentSourceBlockLabels(t *testing.T) {
 		name, source string
 		code         int32
 	}{
-		{"const-prefix", "source: { const value = 1; for concurrent (const n of [1]) { continue source } }", 1107},
-		{"let-prefix", "source: { let value = 1; for concurrent (const n of [1]) { continue source } }", 1107},
-		{"pattern-prefix", "source: { const { value } = { value: 1 }; for concurrent (const n of [1]) { continue source } }", 1107},
-		{"generated-spelling", "source: { const $concurrentLimit1 = 1; for concurrent (const n of [1]) { continue source } }", 1107},
-		{"without-prefix", "source: { for concurrent (const n of [1]) { continue source } }", 1107},
-		{"bounded-prefix", "source: { const value = 1; for concurrent(1) (const n of [1]) { continue source } }", 1107},
+		{"const-prefix", "source: { const value = 1; for concurrent (const n of [1]) { continue source } }", EK1905.Code},
+		{"let-prefix", "source: { let value = 1; for concurrent (const n of [1]) { continue source } }", EK1905.Code},
+		{"pattern-prefix", "source: { const { value } = { value: 1 }; for concurrent (const n of [1]) { continue source } }", EK1905.Code},
+		{"generated-spelling", "source: { const $concurrentLimit1 = 1; for concurrent (const n of [1]) { continue source } }", EK1905.Code},
+		{"without-prefix", "source: { for concurrent (const n of [1]) { continue source } }", EK1905.Code},
+		{"bounded-prefix", "source: { const value = 1; for concurrent(1) (const n of [1]) { continue source } }", EK1905.Code},
 		{"head-break", "source: { const value = 1; for concurrent (const n of do { if (value === 1) break source; [1] }) { void n } }", 0},
 		{"bounded-head-break", "source: { const value = 1; for concurrent(1) (const n of do { if (value === 1) break source; [1] }) { void n } }", 0},
 		{"self-label", "source: { const limit = 1; items: for concurrent(limit) (const n of [1]) { continue items } }", 0},

@@ -94,9 +94,12 @@ func TestPackageSidecarExportIsTheSource(t *testing.T) {
 		t.Parallel()
 		files := alchemy()
 		delete(files, "/lib/src/Stage.vibe")
-		files["/lib/src/Use.ts"] = `import { Stage } from "./Stage.d.vibe.ts"; export const use = (s: Stage): string => s.name;`
+		files["/lib/src/Use.ts"] = `import type { Stage } from "lib/Stage"; export const use = (s: Stage): string => s.name;`
 		p := program(t, files)
 		assert.Assert(t, p.GetSourceFile("/lib/src/Stage.d.vibe.ts") != nil)
+		for _, d := range p.GetSemanticDiagnostics(t.Context(), nil) {
+			t.Error(d.String())
+		}
 	})
 	for _, test := range []struct{ name, directory, config string }{
 		{"conventional mirror", "/lib/.vibe/declarations", "tsconfig.json"},
@@ -131,7 +134,10 @@ func TestPackageSidecarExportIsTheSource(t *testing.T) {
 		files["/lib/package.json"] = `{"name":"lib","type":"module","exports":{"./Stage":{"types":"./.vibe/declarations/src/Stage.d.vibe.ts"},"./Use":"./src/Use.ts"}}`
 		p := program(t, files)
 		assert.Assert(t, p.GetSourceFile("/app/node_modules/lib/.vibe/declarations/src/Stage.d.vibe.ts") != nil)
-		assert.Assert(t, len(p.GetSemanticDiagnostics(t.Context(), nil)) > 0, "native logical source and declaration identities stay separate (detail 285)")
+		ds := p.GetSemanticDiagnostics(t.Context(), nil)
+		if len(ds) != 1 || ds[0].Code() != 2345 {
+			t.Fatalf("passing Stage across two distinct private brands must report TS2345: %v", ds)
+		}
 	})
 	t.Run("a published package keeps its declarations", func(t *testing.T) {
 		t.Parallel()

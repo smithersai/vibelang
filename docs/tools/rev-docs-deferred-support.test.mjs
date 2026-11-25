@@ -7,15 +7,9 @@ import { readdirSync, readFileSync } from "node:fs"
 import test from "node:test"
 import fc from "fast-check"
 
-const FENCE = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[ \t]*$/gm
+import { deferredSupport } from "./docs-claims.mjs"
 
-// deferredSupport lists the paragraphs of a page, outside its fenced blocks,
-// that promise support for new forms later.
-function deferredSupport(markdown) {
-  return markdown.replace(FENCE, "").split(/\n[ \t]*\n/)
-    .map(paragraph => paragraph.replaceAll("`", "").replace(/\s+/g, " ").trim())
-    .filter(paragraph => /\bsupport for [^.!?]*\bnew\b[^.!?]*\b(?:arrives|will arrive)\b/i.test(paragraph))
-}
+const FENCE = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[ \t]*$/gm
 
 // waits reports whether one of the page's examples is marked as waiting for
 // the compiler.

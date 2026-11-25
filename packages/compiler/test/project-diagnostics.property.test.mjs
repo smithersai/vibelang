@@ -7,6 +7,7 @@ import { test } from "node:test"
 import fc from "fast-check"
 import { compileProjectSync, projectBackend, writeLoaderRecord } from "../project.mjs"
 import { loaderScope } from "../loader-scope.mjs"
+import { pastRacyWindow } from "./cache-harness.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
@@ -43,7 +44,7 @@ async function check({ count, nested, async, record, bad = true, warning = false
     const loaded = compileProjectSync({ ...options, [loaderScope]: true })
     assert.deepEqual(loaded.errors, [])
     if (record) {
-      await new Promise(resolve => setTimeout(resolve, 150))
+      await pastRacyWindow([join(root, "package.json"), join(root, "main.vibe"), project, ...files.map(file => join(root, file))])
       assert.equal(writeLoaderRecord(options).modules, 1)
       rmSync(join(root, ".cache"), { recursive: true, force: true })
     }

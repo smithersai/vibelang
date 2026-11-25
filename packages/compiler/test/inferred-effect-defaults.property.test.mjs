@@ -14,7 +14,6 @@ const fc = require("fast-check")
 const binary = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const corpus = JSON.parse(readFileSync(new URL("./property-regressions/t3code-inferred-effect-defaults.json", import.meta.url), "utf8"))
-const raw = process.env.VIBELANG_INFERRED_DEFAULTS_RAW === "1"
 const quote = "Declarations are exactly what idiomatic Effect TypeScript would declare."
 
 test("the inferred Effect default oracle quotes Chapter 1", () => {
@@ -66,18 +65,7 @@ function check(input) {
       assert.equal(result.status, 0, phase + ": " + result.stdout + result.stderr)
       declarations[phase] = readFileSync(join(dir, "out", source, "main.d.ts"), "utf8")
     }
-    const key = input.syntax === "shorthand" && corpus.pending[input.arity + ":" + input.form]
-    if (!raw && key) {
-      assert.equal(corpus.owner, "migfix-t3code")
-      assert.notEqual(declarations.vibe, declarations.native, "XPASS " + key + ": retire the exact pending entry")
-      // The only admitted gap is expansion of omitted Effect defaults. This
-      // replacement is a diagnostic bound on that gap; the oracle above and
-      // every healthy control still compare raw bytes.
-      const expanded = input.arity === 1 ? "Effect<string, never, never>" : "Effect<string, Error, never>"
-      const omitted = input.arity === 1 ? "Effect<string>" : "Effect<string, Error>"
-      assert.ok(declarations.vibe.includes(expanded), key)
-      assert.equal(declarations.vibe.replaceAll(expanded, omitted), declarations.native, key)
-    } else assert.equal(declarations.vibe, declarations.native, "t3code: inferred Effect defaults changed: " + JSON.stringify(input))
+    assert.equal(declarations.vibe, declarations.native, "inferred Effect defaults changed: " + JSON.stringify(input))
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 

@@ -18,7 +18,7 @@ export const report = effect (code: number | undefined) =>
   })
 
 // A program by name or a value, under a void!! contract.
-const command = (name: string, handler: (n: number) => void!!): infer _ => handler
+const command = (name: string, handler: (n: number) => void!!) => handler
 export const ls = command("ls", effect (n) => {
   const chosen = n > 0 ? listFlows : undefined
   return chosen

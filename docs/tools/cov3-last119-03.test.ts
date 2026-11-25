@@ -62,8 +62,6 @@ test.todo("Chapter 900: function return Effect type grouping — A function or c
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
 test.todo("Chapter 900: Effect type operand binding — Each operand sits at the type-operator level, so prefix and postfix operators bind tighter than `!`.")
 
-// Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.
-test.todo("Chapter 900: single dangling bang repair — A `!` after a type with no slot and no second `!` after it on its line is a syntax error, as in TypeScript (TS17019); the quick fix parenthesizes: `(x as Foo)!`.")
 
 // rule-evidence: docs/design/src/900-appendices.md#82d0bcc660939337 — Chapter 900: unambiguous double bang type
 // Deferred: verify the complete stated syntax, diagnostic, type or runtime obligation.

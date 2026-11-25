@@ -141,8 +141,8 @@ func relationalTypeUnwrap(n *ast.Node) *ast.Node {
 }
 
 // Keep the recovered legacy function channel available for EK0301 migration.
-// The old compiler accepts these heads; strict bang admission may add EK0301,
-// but native type names must not turn into value-level await/yield syntax.
+// Strict bang admission reports exactly one EK0301, and native type names must
+// not turn into value-level await/yield syntax.
 func TestEffectSlotRelationalLegacyTypeContext(t *testing.T) {
 	for _, tc := range []struct{ prefix, name string }{
 		{"async function host() { ", "await"},
@@ -152,13 +152,13 @@ func TestEffectSlotRelationalLegacyTypeContext(t *testing.T) {
 		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source, core.ScriptKindTS)
 		count := 0
 		for _, d := range file.Diagnostics() {
-			if d.Code() != 301 {
+			if !IsEK(d) || d.Code() != 301 {
 				t.Fatalf("lost type context %s: %v", tc.name, d)
 			}
 			count++
 		}
-		if count > 1 {
-			t.Fatal("duplicate EK0301")
+		if count != 1 {
+			t.Fatalf("want exactly one EK0301 for %s, got %d", tc.name, count)
 		}
 		result := relationalUnwrap(relationalInitializer(file))
 		if result == nil || result.Kind != ast.KindAsExpression {

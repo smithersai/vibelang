@@ -7,6 +7,8 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
 
+// The helper records the version of the fast-check the caller passes: the one package.json pins.
+const fastCheckVersion = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).devDependencies["fast-check"]
 const base = { name: "helper", rule: "metamorphic: replay preserves the shrunk counterexample", command: "node --test test/property-helper.test.mjs" }
 
 test("property helper shrinks, records bounded evidence, saves files and replays exactly", async t => {
@@ -21,7 +23,7 @@ test("property helper shrinks, records bounded evidence, saves files and replays
   const failure = JSON.parse(readFileSync(join(directory, "helper/failure.json"), "utf8"))
   assert.equal(failure.input, 1)
   assert.ok(failure.numShrinks > 0)
-  assert.equal(failure.fastCheckVersion, "4.10.2")
+  assert.equal(failure.fastCheckVersion, fastCheckVersion)
   assert.equal(failure.generatorVersion, 1)
   assert.equal(failure.diagnostics.length, 12000)
   assert.equal(readFileSync(join(directory, "helper/project/input.txt"), "utf8"), "1")

@@ -3,7 +3,7 @@
 // declaration with the key (D501) and, for an export, its shape as written,
 // including named and non-object whole shapes (VIP-9, amended 2026-11-02).
 // The conversion preserves each written shape and key.
-// tsforms-services-fixed is what vibelang --fix writes.
+
 
 export service Users: {
   find(id: string): string!!

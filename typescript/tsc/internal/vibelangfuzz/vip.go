@@ -102,7 +102,9 @@ async function vip(entry, maxSteps) {
     const { References } = await import("effect");
     const { TestClock } = await import("effect/testing");
     const events = await import("vip-events");
+    events.reset();
     const module = await import(pathToFileURL(entry).href);
+    events.events(); // Surface serialization errors from module initialization.
     events.reset();
     const main = "main" in module ? module.main : module.default;
     const program = main();

@@ -6,23 +6,23 @@
 // Effect function or block runs directly still reports EK1005.
 import { Effect } from "effect"
 
-export function plainDeclaration(): number { return Effect.runSync(Effect.succeed(1)) }
+export function plainDeclaration(): number { try { return Effect.runSync(Effect.succeed(1)) } catch { return -1 } }
 
 export class Plain {
-  method(): number { return Effect.runSync(Effect.succeed(2)) }
+  method(): number { try { return Effect.runSync(Effect.succeed(2)) } catch { return -1 } }
 }
 
-export const plainMap = (xs: ReadonlyArray<number>): Array<number> => xs.map((x) => Effect.runSync(Effect.succeed(x)))
+export const plainMap = (xs: ReadonlyArray<number>): Array<number> => xs.map((x) => { try { return Effect.runSync(Effect.succeed(x)) } catch { return -1 } })
 
 export const plainForEach = (xs: ReadonlyArray<number>): void => { xs.forEach((x) => { Effect.runFork(Effect.succeed(x)) }) }
 
 export const plainReturned = () => () => Effect.runPromise(Effect.succeed(3))
 
-export effect function inEffect() { return Effect.runSync(Effect.succeed(4)) }
+export effect function inEffect() { return Effect.runSyncExit(Effect.succeed(4)) }
 
 export const inEffectArrow = effect (xs: ReadonlyArray<number>) => { xs.forEach((x) => { Effect.runFork(Effect.succeed(x)) }) }
 
-export const inBlock = (): void!! => effect { Effect.runSync(Effect.void) }
+export const inBlock = (): void!! => effect { Effect.runSyncExit(Effect.void) }
 
 effect function withCallback(f: () => void) { f() }
 export const viaEffectFunction: void!! = withCallback(() => { Effect.runFork(Effect.void) })

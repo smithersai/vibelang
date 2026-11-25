@@ -1,5 +1,3 @@
-import * as $nativeTryEffect1 from "effect/Effect";
-import * as $nativeTryEffect from "effect/Effect";
 import { Effect, Stream } from "effect"
 error IdleFailure
 let attempts = 0
@@ -13,19 +11,15 @@ export effect function main() {
   const other = named()
   const cold = attempts
   let caught = "none"
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { try Stream.runDrain(stream) 
-;return { kind: "normal" } as const;
-}, effect (e) => { caught = e._tag 
-;return { kind: "normal" } as const;
-});
-
-}
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect { try Stream.runDrain(other) 
-;return { kind: "normal" } as const;
-}, effect (e) => { caught = e._tag 
-;return { kind: "normal" } as const;
-});
-
-}
+  effect {
+    try Stream.runDrain(stream)
+  } catch effect (e) => {
+    caught = e._tag
+  }
+  effect {
+    try Stream.runDrain(other)
+  } catch effect (e) => {
+    caught = e._tag
+  }
   return { cold, after: attempts, caught }
 }

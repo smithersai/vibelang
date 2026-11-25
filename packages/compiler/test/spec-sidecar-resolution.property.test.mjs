@@ -1,18 +1,18 @@
-// Coverage census: stock TypeScript final physical/logical resolution across declaration suffixes.
-// VIP-27 stock TypeScript final physical/logical resolution across declaration suffixes: docs/design/vips/0027-declaration-output.md#037637d2828edc83
+// Stock TypeScript control: package resolution of declaration-suffixed files
+// follows preserveSymlinks. This tests stock TypeScript, not the vibelang
+// compiler, so it is not evidence for any VibeLang rule.
 import assert from "node:assert/strict"
 import test from "node:test"
 import fc from "fast-check"
 import ts from "../../../docs/tools/node_modules/typescript/lib/typescript.js"
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from "node:fs"
+import { mkdtempSync, mkdirSync, writeFileSync, realpathSync, rmSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-const spec = readFileSync(new URL("../../../docs/design/src/007-tooling.md",import.meta.url),"utf8")
 
-test("TypeScript resolves physical or logical sidecar paths before classification",()=>{
- for(const text of ["final resolved path","preserveSymlinks","compatibility declaration"]) assert.ok(spec.includes(text),text)
+test("stock TypeScript resolves physical or logical sidecar paths before classification",()=>{
  fc.assert(fc.property(fc.boolean(),fc.constantFrom(".d.vibe.ts",".d.vibex.ts",".d.ts"),fc.constantFrom("Stage","Another"),(preserveSymlinks,extension,name)=>{
-  const dir=mkdtempSync(join(tmpdir(),"sidecar-resolve-"))
+  // realpath: a symlinked temp root (macOS /var) would make every path physical.
+  const dir=realpathSync(mkdtempSync(join(tmpdir(),"sidecar-resolve-")))
   try {
    const app=join(dir,"app"),pkg=join(dir,"pkg")
    mkdirSync(join(app,"node_modules"),{recursive:true});mkdirSync(pkg)

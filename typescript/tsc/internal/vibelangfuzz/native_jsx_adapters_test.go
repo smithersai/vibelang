@@ -12,7 +12,7 @@ import (
 
 const nativeJSXKindQuote = "A \x60.vibex\x60 file is a \x60.vibe\x60 file read with TypeScript's JSX language variant"
 const nativeJSXOutputQuote = "A compatibility sidecar is an emit output"
-const nativeJSXPreserveQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
+const nativeJSXPreserveQuote = diagnosticsNoRewriteQuote
 
 func TestNativeJSXAdaptersQuoted(t *testing.T) {
 	chapterSays(t, "007-tooling.md", nativeJSXKindQuote)

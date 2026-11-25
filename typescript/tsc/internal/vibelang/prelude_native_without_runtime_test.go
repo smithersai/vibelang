@@ -14,11 +14,11 @@ func TestNativePreludeWithoutRuntime(t *testing.T) {
 		"export const value = Layer",
 		"export const value = Schema",
 		"export const value = Scope",
-		"export const value = Effect.runSync(Effect.succeed(7))",
+		"export function value() { try { return Effect.runSync(Effect.succeed(7)) } catch { return 0 } }",
 		"export type API = typeof Layer\nexport declare const value: API",
 		"export declare const load: (id: string) => number!!",
 		"const Effect = { local: 7 as const }\nexport const value: 7 = Effect.local",
-		"import { Effect as Fx } from 'effect'\nexport const value = Fx.runSync(Fx.succeed(7))",
+		"import { Effect as Fx } from 'effect'\nexport function value() { try { return Fx.runSync(Fx.succeed(7)) } catch { return 0 } }",
 	} {
 		t.Run(source, func(t *testing.T) {
 			program, file, _, _ := editorProgramWith(t, source, map[string]string{"effect": "packages/runtime/node_modules/effect"})

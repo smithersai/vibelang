@@ -1,4 +1,3 @@
-import * as $nativeTryEffect from "effect/Effect";
 // vibelang --sourceMap maps generated JavaScript to .vibe lines (D36), inside
 // lowered generators and region closures, and each generator is named after
 // its source, so a stack trace names the VibeLang function.
@@ -19,14 +18,12 @@ effect function lookup(id: number) {
 }
 
 effect function audited(account: Account) {
-  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
+  return try Effect.onExit(effect {
     try Effect.yieldNow
-    return { kind: "return:" as const, value: (account.owner!.name.length) };
+    return (account.owner!.name.length)
   }, () => effect {
     try Effect.yieldNow
-  });
-return $nativeTryCompletion.value;
-}
+  })
 }
 
 // A recursive function refers to itself, so its generator is an object

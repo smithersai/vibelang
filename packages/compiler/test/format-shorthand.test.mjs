@@ -1,13 +1,7 @@
-// docs/design/vips/0034-compiler-and-tooling.md#dcce1a6fdc2157d3
-// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
-// docs/design/vips/0034-compiler-and-tooling.md#f402aaa0dce71fa7
-// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
-// docs/design/vips/0034-compiler-and-tooling.md#742e5f8dfb48a772
-// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
-// docs/design/vips/0034-compiler-and-tooling.md#56ec36499e4b5616
-// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
-// docs/design/vips/0034-compiler-and-tooling.md#277b4b01690f8a41
-// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
+// docs/design/src/001-functions.md, Syntax: no top-level shorthand; `effect load() { }`
+// and `async load() { }` outside a class or object literal are EK0101; insert `function`.
+// docs/design/vips/0034-compiler-and-tooling.md, One formatter: formatting preserves
+// diagnostic codes, categories and occurrences and does not apply diagnostic repairs.
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { spawnSync } from "node:child_process"
@@ -51,6 +45,3 @@ test("format preserves shorthand diagnostics", t => {
   assert.equal(after.status, 2, after.text)
   assert.equal((after.text.match(/error EK0101:/g) ?? []).length, 2, after.text)
 })
-
-// docs/design/vips/0034-compiler-and-tooling.md#5121e51bfb0b5dc6
-// VIP-34: diagnostic names the missing function keyword and its mechanical fix.

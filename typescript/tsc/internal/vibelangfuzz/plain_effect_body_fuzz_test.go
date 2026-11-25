@@ -11,10 +11,7 @@ import (
 // without `effect` is plain however its body reads: building, casting or
 // returning an Effect value in it does not make it an Effect function, so its
 // JavaScript holds no generator and no Effect.gen or Effect.fn wrapper, and a
-// call returns the value the body builds (alchemy-62: alchemy's effectClass, a
-// plain arrow returning Object.assign(class {}, Effectable.Prototype(...)),
-// compiled to Effect.fnUntraced before the VIP-1 flip, so `class X extends
-// effectClass(...)` threw "superclass is not a constructor").
+// call returns the value the body builds (VIP-1).
 const plainEffectBodyQuote = "A function's kind is decided by a keyword on the function, never by its body or by a type."
 
 // plainEffectBodyForms are plain function forms; BODY stands for an

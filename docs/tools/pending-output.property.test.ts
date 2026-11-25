@@ -31,5 +31,5 @@ test("explicit Effect entry prints generated output; unrun entries stay cold", a
         else expect([...refused.values()].join("\n")).toContain("stdout mismatch")
       }
     } finally { rmSync(root, { recursive: true, force: true }) }
-  }), { seed: 146, numRuns: 1, endOnFailure: true })
+  }), { seed: 146, numRuns: 5, endOnFailure: true })
 })

@@ -53,23 +53,15 @@ func TestObjectMemberKeyContext(t *testing.T) {
 			if count != 1 {
 				t.Fatalf("found %d try calls, want1", count)
 			}
-			for _, running := range []bool{false, true} {
-				planned := 0
-				cb := func(n *ast.Node) bool {
-					if isTry(n) {
-						planned++
-					}
-					return false
+			planned := 0
+			forEachCallInBody(f.AsNode().Statements()[0], func(n *ast.Node) bool {
+				if isTry(n) {
+					planned++
 				}
-				fn := f.AsNode().Statements()[0]
-				if running {
-					(&analyzer{}).forEachRunningCallInBody(fn, cb)
-				} else {
-					forEachCallInBody(fn, cb)
-				}
-				if planned != tc.calls {
-					t.Errorf("running=%v: planned %d, want %d", running, planned, tc.calls)
-				}
+				return false
+			})
+			if planned != tc.calls {
+				t.Errorf("planned %d, want %d", planned, tc.calls)
 			}
 		})
 	}

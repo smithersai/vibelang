@@ -1,5 +1,3 @@
-
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"hit":"> hit:a","miss":"missing:","index":"main","formatted":"X","collapsed":false}
 // service Name: Type declares a service of any shape (D281): an interface
 // declared elsewhere, a primitive, or a function type. The body holds only
@@ -34,13 +32,11 @@ type Collapsed = [Primary] extends [Replica] ? true : [Replica] extends [Primary
 const collapsed: Collapsed = false
 
 effect function lookup(query: string) {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
-    return { kind: "return:" as const, value: `${try Prefix}${try (try Search).find(query)}` };
-  }, effect (error) => {
-    return { kind: "return:" as const, value: `missing:${error.query}` };
-  });
-return $nativeTryCompletion.value;
-}
+  return effect {
+    return `${try Prefix}${try (try Search).find(query)}`
+  } catch effect (error) => {
+    return `missing:${error.query}`
+  }
 }
 
 effect function format(value: string) {

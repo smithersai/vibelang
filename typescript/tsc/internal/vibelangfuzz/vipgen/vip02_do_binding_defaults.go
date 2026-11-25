@@ -101,5 +101,5 @@ func (*doBindingEffectEvent) Ends() bool         { return false }
 func (e *doBindingEffectEvent) print(w *Writer, run, annotation string) {
 	w.Write("const " + e.Log + annotation + "=[];const " + e.Exit + "=" + run + "Effect.exit(" + e.Name + "(" + e.Log + "));\n")
 	w.Write("const " + e.Result + "=Exit.match(" + e.Exit + ",{onSuccess:value=>[\"Success\",value],onFailure:cause=>[\"Failure\",cause.reasons.map(reason=>[reason._tag,reason._tag===\"Die\"?reason.defect:reason._tag===\"Fail\"?reason.error:\"interrupted\"])]});\n")
-	w.Write("ev(\"binding-effect:\"+JSON.stringify([" + e.Result + "," + e.Log + "]))")
+	w.Write("ev(\"binding-effect:\"+stringifyObservation([" + e.Result + "," + e.Log + "]))")
 }

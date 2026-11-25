@@ -1,0 +1,4 @@
+exports: clamp, total
+clamp(7, 0, 5) = 5
+total([1, 2, 3]) = 6
+no theorem, spec function, proof statement or proof-only import in main.js or main.d.ts

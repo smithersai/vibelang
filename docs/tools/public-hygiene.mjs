@@ -36,7 +36,7 @@ function publicDecisionAttributions(text) {
 // and every README. Private patterns otherwise come only from the environment, so
 // a build host, a home-relative scratch path or an agent session name passed the
 // gate whenever VIBELANG_LEAK_PATTERNS was unset.
-export const publishedFile = file => /^(?:docs\/(?:design|user|research|maintainers)\/|site\/src\/|packages\/compiler\/skills\/)/.test(file) ||
+export const publishedFile = file => /^docs\/tools\/[^/]+\.test\.(?:mjs|ts)$/.test(file) || /^(?:docs\/(?:design|user|research|maintainers)\/|site\/src\/|packages\/compiler\/skills\/)/.test(file) ||
   /(?:^|\/)(?:README|CONTRIBUTING|MAINTAINERS|AGENTS|SECURITY)\.md$/.test(file)
 export const buildHostName = /\bnyc-?0\d\b|\bnyc[12]\b|\bcfbox\b/i
 export const privateHomePath = /(?:~|\$HOME|\$\{HOME\})\/(?:vibe|migrate|lanes|vl|\.vibe-orch|\.cfbox|\.smithers\/accounts)(?:\/|\b)/

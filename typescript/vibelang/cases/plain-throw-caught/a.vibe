@@ -45,4 +45,4 @@ export effect function pick(tag: string): number!Invalid {
   }
 }
 
-export const validate = effect (value: string): string!Invalid! => value === "" ? throw new Invalid({ value }) : value
+export const validate = effect (value: string): string!Invalid => value === "" ? throw new Invalid({ value }) : value

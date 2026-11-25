@@ -82,6 +82,19 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 				directory = tspath.GetNormalizedAbsolutePath(directory, basePath)
 			}
 			options.SidecarDir = directory
+		case "proofDir":
+			// VIP-43, Appendix F "Configuration": as sidecarDir, a relative
+			// directory resolves from the config that declares it, and a
+			// leading ${configDir} waits for the selected config's directory.
+			directory, ok := value.(string)
+			if !ok || directory == "" {
+				report(node, core.VibeInvalidConfigCode, "vibe.proofDir must be a path string; use a path such as \"proofs\".")
+				continue
+			}
+			if !startsWithConfigDirTemplate(directory) && basePath != "" {
+				directory = tspath.GetNormalizedAbsolutePath(directory, basePath)
+			}
+			options.ProofDir = directory
 		case "severities":
 			codes, ok := value.(*collections.OrderedMap[string, any])
 			if !ok {
@@ -111,7 +124,7 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 				severityDiagnostics[""] = diagnostic(name, core.VibeInvalidSeverityCode, "An empty diagnostic code cannot appear in vibe.severities; remove the entry.")
 			}
 		default:
-			report(jsonName(property), core.VibeInvalidConfigCode, "Unknown vibe option "+key+"; use effectGlobals, effectModules, severities, sidecarDir or experimental, or remove the option.")
+			report(jsonName(property), core.VibeInvalidConfigCode, "Unknown vibe option "+key+"; use effectGlobals, effectModules, severities, sidecarDir, proofDir or experimental, or remove the option.")
 		}
 	}
 	for _, name := range jsonEmptyNames(expression) {
@@ -121,7 +134,7 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 }
 
 func serializeVibeSettings(options *core.VibeLangOptions, configFileName tspath.RootedFilePath, caseSensitivity tspath.CaseSensitivity) *collections.OrderedMap[string, any] {
-	if options.Severities == nil && options.EffectGlobals == core.TSUnknown && options.EffectModules == core.TSUnknown && options.SidecarDir == "" && options.Experimental == nil {
+	if options.Severities == nil && options.EffectGlobals == core.TSUnknown && options.EffectModules == core.TSUnknown && options.SidecarDir == "" && options.ProofDir == "" && options.Experimental == nil {
 		if options.VibeOnly {
 			return collections.NewOrderedMapWithSizeHint[string, any](0)
 		}
@@ -140,6 +153,13 @@ func serializeVibeSettings(options *core.VibeLangOptions, configFileName tspath.
 			directory = tspath.GetRelativePathFromDirectory(configFileName.Directory().AsString(), directory, caseSensitivity)
 		}
 		result.Set("sidecarDir", directory)
+	}
+	if options.ProofDir != "" {
+		directory := options.ProofDir
+		if configFileName != "" && tspath.IsRootedDiskPath(directory) {
+			directory = tspath.GetRelativePathFromDirectory(configFileName.Directory().AsString(), directory, caseSensitivity)
+		}
+		result.Set("proofDir", directory)
 	}
 	if options.Experimental != nil {
 		names := make([]any, len(options.Experimental))

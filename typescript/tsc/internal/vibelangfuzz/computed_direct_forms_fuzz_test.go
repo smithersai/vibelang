@@ -12,7 +12,7 @@ var computedDirectFormQuotes = []string{
 	"| \x60EK4835\x60 | \x60Effect.catch\x60, \x60Effect.catchTag\x60, or \x60Effect.catchTags\x60 as the direct operand of bare \x60try\x60 in effect code |",
 	"| \x60EK4836\x60 | \x60Effect.provide\x60 or \x60Effect.provideService\x60 as the direct operand of bare \x60try\x60 in effect code |",
 	"the call is recognized by its resolved symbol, so an import alias counts and a local binding that shadows \x60Effect\x60 does not.",
-	"Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.",
+	diagnosticsNoRewriteQuote,
 }
 
 func computedDirectFormQuoted(t testing.TB) {
@@ -54,7 +54,7 @@ func FuzzComputedDirectFormAdvisories(f *testing.F) {
 			}
 		}
 		if !known {
-			key = keys[int(pick(0))%len(keys)]
+			key = keys[int(pick(3))%len(keys)]
 		}
 		api, origin, _ := strings.Cut(key, ":")
 		mode := pick(0) % 4

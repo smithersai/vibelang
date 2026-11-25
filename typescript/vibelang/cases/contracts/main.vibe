@@ -1,4 +1,3 @@
-
 // 003-failures.md: infer Name is a per-channel annotation; inferred channels appear in emitted declarations
 // rule: docs/design/src/003-failures.md#dd3bf3c87b734282
 // 003-failures.md: written infer channels preserve A, E and R inference in bang and Effect annotations
@@ -48,13 +47,11 @@ export effect function greeting(id: string): Effect<string, UserNotFound, never>
 }
 
 export effect function safe(id: string): Effect<string, never, never> {
-  { const $nativeTryCompletion = try Effect.catch(effect {
-    return { kind: "return:" as const, value: (try find(id)).name };
+  return try Effect.catch(effect {
+    return (try find(id)).name
   }, effect (e) => {
-    return { kind: "return:" as const, value: `missing ${e.id}` };
-  });
-return $nativeTryCompletion.value;
-}
+    return `missing ${e.id}`
+  })
 }
 
 export effect function named(id: string): Effect<{ id: string; name: string; }, UserNotFound, never> {

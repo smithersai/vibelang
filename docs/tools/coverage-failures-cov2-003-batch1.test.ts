@@ -43,17 +43,8 @@ test.todo("Chapter 003: contextual throwing thunk — Effect.try, Effect.tryProm
 // Spec: TypeScript's `try { } catch { }` statement stays allowed.
 test.todo("Chapter 003: plain try catch statement — A plain function containing try { JSON.parse(s) } catch { return fallback } compiles and catches; a direct throw remains EK0401.")
 
-// Chapter 003: ordered no-throw repairs
-// Spec: Quick fixes, in order: make the function `effect`, so `throw` is `Effect.fail` and a call known to throw runs with `try Effect.try(() => …)`; make it `effect` and write `return try die(e)`; or move the code to a `.ts` file.
-test.todo("Chapter 003: ordered no-throw repairs — Inspect ordered code actions for a known throwing call and throw statement; apply effect/fail, effect/die and .ts move and recheck.")
 
-// Chapter 003: nonconvertible no-throw repairs
-// Spec: Code that can't be `effect` (constructors, accessors, plain generators, initializers, `static` blocks, parameter lists, the top level) gets only the `.ts` fix.
-test.todo("Chapter 003: nonconvertible no-throw repairs — Constructors, accessors, plain generators, initializers, static blocks, parameter defaults and module top level offer only a preserving .ts move.")
 
-// Chapter 003: plain handler repairs
-// Spec: A plain handler gets `x catch effect (e) => { throw e }` and `x catch effect (e) => { return try die(e) }`.
-test.todo("Chapter 003: plain handler repairs — Apply both catch effect repairs to a plain handler throw; compare typed failure versus defect Exit.")
 
 // rule-evidence: docs/design/src/003-failures.md#ad1e10f261c69fc1
 // Chapter 003: unary throw expressions
@@ -96,7 +87,7 @@ test.todo("Chapter 003: throw placement — Plain code throw expression reports 
 // rule-evidence: docs/design/src/003-failures.md#7a86ed9442ac9c1e
 // Chapter 003: no throw-expression migration
 // Spec: Throw expressions remain supported; no migration to `do { throw (operand); }` is required.
-test.todo("Chapter 003: no throw-expression migration — A valid effect-body throw expression compiles and --fix leaves it unchanged without forcing do syntax.")
+test.todo("Chapter 003: no throw-expression migration — A valid effect-body throw expression compiles without a do expression.")
 
 // rule-evidence: docs/design/src/003-failures.md#77427b5bb65b125f
 // Chapter 003: match direct throw operand
@@ -126,7 +117,7 @@ test.todo("Chapter 003: foreign absent tag — An unannotated non-effectful fore
 // rule-evidence: docs/design/src/003-failures.md#1b78aaab30799f1a
 // Chapter 003: source throws tag ban
 // Spec: A written `@throws` or `@rethrows` tag there, on a function, service member or function-type signature, is `EK0406`: remove it and declare failures in the Effect's error type.
-test.todo("Chapter 003: source throws tag ban — Source function, service member and function-type @throws/@rethrows tags report EK0406; remove-tag fixes retain foreign annotations.")
+test.todo("Chapter 003: source throws tag ban — Source function, service member and function-type @throws/@rethrows tags report EK0406.")
 
 // rule-evidence: docs/design/src/003-failures.md#09b2e6d04fdece53
 // Chapter 003: declaration thrown contracts

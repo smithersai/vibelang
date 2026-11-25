@@ -5,7 +5,7 @@
 // back to Schema.optional under either setting, so the struct keeps accepting
 // an omitted key and an explicit undefined wherever the file is compiled. A
 // Schema.optionalKey field has no such spelling and keeps its constant.
-// tsforms-schemas-exact-fixed is what vibelang --fix writes.
+// See the manual form in tsforms-schemas-exact-fixed.
 export const ThinkingStart = Schema.Struct({ type: Schema.Literal("thinking-start"), signature: Schema.optional(Schema.String) })
 export type ThinkingStart = typeof ThinkingStart.Type
 

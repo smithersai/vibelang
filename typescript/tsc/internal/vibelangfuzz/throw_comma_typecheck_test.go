@@ -18,7 +18,7 @@ var throwCommaTypecheckWitness string
 
 func TestThrowCommaTypeCheckingQuoted(t *testing.T) {
 	r4Quoted(t, "007-tooling.md", throwCommaExitQuote)
-	r4Quoted(t, grammarAppendix, estreeThrowWarningQuote)
+	r4Quoted(t, grammarAppendix, estreeThrowCommaQuote)
 	r4Quoted(t, "000-intro.md", "TypeScript's meaning outside Effect code.")
 }
 
@@ -69,7 +69,7 @@ func checkThrowCommaTypechecking(t *testing.T, w *Workspace, key string, mode ui
 		good = type2322 && !error1010
 	}
 	if !good {
-		Gap(t, throwCommaTypecheckTarget, fmt.Sprintf("%s/%d", key, mode&3), "Chapter 7: %q; Appendix A: %q; ungrouped invalid punctuators are errors, and grouping must expose the independent TypeScript assignment error; got %v\n%s", throwCommaExitQuote, estreeThrowWarningQuote, SortedKeys(Keys(result.Dir, result.Diagnostics)), Archive(throwCommaTypecheckProject(key, mode).Files))
+		Gap(t, throwCommaTypecheckTarget, fmt.Sprintf("%s/%d", key, mode&3), "Chapter 7: %q; Appendix A: %q; ungrouped invalid punctuators are errors, and grouping must expose the independent TypeScript assignment error; got %v\n%s", throwCommaExitQuote, estreeThrowCommaQuote, SortedKeys(Keys(result.Dir, result.Diagnostics)), Archive(throwCommaTypecheckProject(key, mode).Files))
 	}
 }
 

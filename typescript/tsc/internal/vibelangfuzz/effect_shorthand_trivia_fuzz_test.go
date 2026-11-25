@@ -76,8 +76,7 @@ func FuzzEffectShorthandTrivia(f *testing.F) {
 		defer result.Remove()
 		// The chapter rejects the same declaration with or without trivia.
 		// Compare diagnostic identity to the comment-free control. The separate
-		// FuzzFunctionBoundaries target retains its exact EK0101 oracle and
-		// existing core-owned pending entry for the legacy diagnostic number.
+		// FuzzFunctionBoundaries target checks the exact EK0101 diagnostic.
 		reference := "export " + modifier + " " + keyword + "load<T>(value: T) { return value }\n"
 		control, err := w.Compile(context.Background(), Single(reference))
 		if err != nil {

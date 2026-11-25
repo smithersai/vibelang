@@ -13,7 +13,7 @@ test("published relative-URL guidance qualifies raw input before claiming reloca
   assert.deepEqual(checkRelativeUrlDocs(), [])
 })
 
-test("leading URL controls invalidate the unqualified written-path claim", () => {
+test("Platform control: leading URL controls invalidate the unqualified written-path claim", () => {
   for (const path of [" ", "\t", " ?q=1", "\n#part", "\u0000"]) {
     assert.ok(path.length && !["?", "#"].includes(path[0]))
     assert.notEqual(new URL(path, original).href, new URL(path, companion).href)
@@ -23,7 +23,7 @@ test("leading URL controls invalidate the unqualified written-path claim", () =>
   assert.equal(new URL("results/", original).href, new URL("results/", companion).href)
 })
 
-test("generated controls preserve URL file identity after input normalization", () => {
+test("Platform control: generated controls preserve URL file identity after input normalization", () => {
   fc.assert(fc.property(
     fc.array(fc.integer({ min: 0, max: 32 }), { minLength: 1, maxLength: 8 }),
     fc.constantFrom("", "?q=1", "#part"),

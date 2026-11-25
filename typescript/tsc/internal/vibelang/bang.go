@@ -40,6 +40,9 @@ func bangText(channels ...string) string {
 			slots[i] = bangSlot(channels[i], i > 0)
 		}
 	}
+	if slots[1] != "" && slots[2] == "" {
+		return slots[0] + "!" + slots[1]
+	}
 	return slots[0] + "!" + slots[1] + "!" + slots[2]
 }
 

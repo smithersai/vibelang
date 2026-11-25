@@ -19,6 +19,6 @@ export type Proof = [
  Check<Same<Callable, () => Effect.Effect<number, { readonly x: 1 }, { readonly service: number }>>>,
  Check<Same<OptionalRequirement, Effect.Effect<number, never, { readonly service: number }>>>
 ]
-export effect function legacy(): number!string! { return 1 }
+export effect function legacy(): number!string { return 1 }
 export effect function legacyEmptyError(): number!! { return 2 }
 export effect function main() { return [try legacy(), try legacyEmptyError()] }

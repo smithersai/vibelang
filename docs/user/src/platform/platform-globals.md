@@ -73,7 +73,7 @@ Key semantic differences to keep in mind:
 | `crypto.verify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
 | `crypto.webcrypto` | `try (try Mac.Mac).sign(macKey, data)` |
 | `dispatchEvent` | `Stream.fromEventListener(target, "message")` |
-| `document` | escape to TypeScript for now: Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `document` | `try (try Experimental.Document.Document).current` |
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
 | `exports` | `export const name = value` |
 | `fetch` | `try HttpClient.get(url)` |
@@ -135,7 +135,7 @@ Key semantic differences to keep in mind:
 | `setImmediate` | `try yieldNow` |
 | `setInterval` | `fork effect { try repeat(program, Schedule.spaced("1 second")) }` |
 | `setTimeout` | `try sleep("1 second")` |
-| `window` | escape to TypeScript for now: Effect has no service for the DOM; try (try Experimental.Window.Window).current gives an API that takes it the page's Window, and other UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `window` | `try (try Experimental.Window.Window).current` |
 | `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
 | `window.ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |

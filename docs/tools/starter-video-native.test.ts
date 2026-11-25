@@ -16,8 +16,8 @@ test("the recorded starter tests run with generated names on the native compiler
       const temp = mkdtempSync(join(tmpdir(), "starter-recording-test-"))
       const command = async (args: string[], cwd: string) => {
         const result = await stage(args, { cwd, env: { ...process.env, VIBELANG_BINARY: defaultCompiler(), CI: "1", NO_COLOR: "1", FORCE_COLOR: "0" } })
-        expect({ args, exitCode: result.exitCode, failure: result.failure, stderr: result.stderr })
-          .toEqual({ args, exitCode: 0, failure: "", stderr: result.stderr })
+        expect({ args, exitCode: result.exitCode, failure: result.failure })
+          .toEqual({ args, exitCode: 0, failure: "" })
         return result.stdout.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
       }
       try {

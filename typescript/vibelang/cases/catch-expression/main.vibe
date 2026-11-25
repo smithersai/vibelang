@@ -8,7 +8,7 @@ error NotFound { id: string }
 error Timeout
 error Wrapped { reason: string }
 
-effect function find(id: string): string!(NotFound | Timeout)! {
+effect function find(id: string): string!(NotFound | Timeout) {
   if (id === "missing") throw new NotFound({ id })
   if (id === "slow") throw new Timeout()
   return `user ${id}`
@@ -28,7 +28,7 @@ effect function describe(id: string): string!! {
 }
 
 // default: throw e passes the other failures on.
-effect function partial(id: string): string!Timeout! {
+effect function partial(id: string): string!Timeout {
   return find(id) catch effect (e) => match (e) {
     when NotFound: "missing";
     default: throw e;
@@ -41,7 +41,7 @@ effect function firstOf(a: string, b: string): string!! {
 }
 
 // A throw expression replaces the failure.
-effect function wrapped(id: string): string!Wrapped! {
+effect function wrapped(id: string): string!Wrapped {
   return find(id) catch effect (e) => throw new Wrapped({ reason: e._tag })
 }
 
@@ -60,7 +60,7 @@ effect function nickname(id: string): string!! {
   return effect { return (try lookupNickname(id)) ?? "unknown" } catch () => "failed"
 }
 
-effect function crash(): string!Timeout! {
+effect function crash(): string!Timeout {
   return try Effect.die("boom")
 }
 

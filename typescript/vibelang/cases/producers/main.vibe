@@ -1,4 +1,3 @@
-import * as $nativeTryEffect from "effect/Effect";
 // Producers (chapter 8, D26): lazy, one value at a time, cleanup on early
 // exit by break, return, and continue to an outer label, one pass per run,
 // service calls between yields, iteration over another producer, a producer passed
@@ -144,16 +143,10 @@ effect function bindings() {
 // elements before it.
 effect function caught() {
   const seen: number[] = []
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  return effect {
     for try (const n of failing()) seen.push(n)
-  
-;return { kind: "normal" } as const;
-}, effect (e) => {
-    return { kind: "return:" as const, value: ({ seen, error: e._tag, at: e.at }) };
-  });
-if ($nativeTryCompletion.kind === "return:") return $nativeTryCompletion.value;
-}
-  return { seen, error: "none", at: 0 }
+    return { seen, error: "none", at: 0 }
+  } catch (e) => ({ seen, error: e._tag, at: e.at })
 }
 
 // break to a label of an enclosing JavaScript loop leaves the producer loop.

@@ -2134,7 +2134,7 @@ effect/dist/Effect:runPromiseExitWith	never
 effect/dist/Effect:runPromiseExitWith()	never
 effect/dist/Effect:runPromiseWith	never
 effect/dist/Effect:runPromiseWith()	never
-effect/dist/Effect:runSync	never
+effect/dist/Effect:runSync	unknown
 effect/dist/Effect:runSyncExit	never
 effect/dist/Effect:runSyncExitWith	never
 effect/dist/Effect:runSyncExitWith()	never

@@ -1,16 +1,13 @@
-import * as $nativeTryEffect from "effect/Effect";
 import { Effect, Exit } from "effect"
 
 effect function defect() {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  return effect {
     try Effect.succeed(0)
     try Effect.die("bug")
-    return { kind: "return:" as const, value: ("finished") };
-  }, effect () => {
-    return { kind: "return:" as const, value: ("caught") };
-  });
-return $nativeTryCompletion.value;
-}
+    return ("finished")
+  } catch effect () => {
+    return ("caught")
+  }
 }
 
 // expect-result: ["Die"]

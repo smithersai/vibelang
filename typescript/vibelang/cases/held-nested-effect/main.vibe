@@ -1,6 +1,6 @@
 import { check } from "./caller.js"
 import { Effect } from "effect"
-export const pending = (migration: Effect.Effect<void, unknown, never>): infer _ => {
+export const pending = (migration: Effect.Effect<void, unknown, never>) => {
   const load: Effect.Effect<Effect.Effect<void, unknown, never>, never, never> = effect { return migration }
   return [1, load] as const
 }

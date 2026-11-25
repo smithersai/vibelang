@@ -2,4 +2,7 @@
 // function may run a root Effect with Effect.runSync and stays plain.
 import { Effect } from "effect"
 
-export const build = (): number => Effect.runSync(effect { return 3 })
+export const build = (): number => {
+  try { return Effect.runSync(effect { return 3 }) }
+  catch { return -1 }
+}

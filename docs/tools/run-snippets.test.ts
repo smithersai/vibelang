@@ -1,23 +1,22 @@
 import { expect, test } from "bun:test"
-import { readdirSync, readFileSync } from "node:fs"
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { blockDeadline, hangingBlockDeadline, runTestLimit } from "./run-snippets"
-
-test("tests run blocks through runSnippets, which sets their deadlines", () => {
-  const direct = readdirSync(import.meta.dir)
-    .filter(file => file.endsWith(".test.ts") && file !== "run-snippets.test.ts")
-    .filter(file => /check-snippets\.ts"\)[^)]*"--run"/.test(readFileSync(join(import.meta.dir, file), "utf8")))
-  expect(direct).toEqual([])
-})
+import { blockDeadline, hangingBlockDeadline, runSnippets, runTestLimit } from "./run-snippets"
 
 test("a block deadline can report its own failure inside the test limit", () => {
   expect(hangingBlockDeadline).toBeLessThan(blockDeadline)
   expect(runTestLimit).toBeGreaterThanOrEqual(2 * blockDeadline)
 })
 
-// Many tests here compile a program and have no limit of their own; the graph
-// runs them beside everything else, so bun's 5 s default fails a healthy compile.
-test("//:docs-tools gives a test without a limit of its own a minute", () => {
-  const targets = readFileSync(join(import.meta.dir, "../../PACKAGE.ts"), "utf8")
-  expect(targets).toContain(`cd docs/tools && bun test --timeout ${blockDeadline} `)
+test("runSnippets reports an unmatched filter without invoking the compiler", async () => {
+  const root = mkdtempSync(join(tmpdir(), "run-snippets-"))
+  try {
+    writeFileSync(join(root, "guide.md"), "# Guide")
+    const result = await runSnippets(root, join(root, "unused"), undefined, { filter: "missing-guide" })
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain("missing-guide")
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })

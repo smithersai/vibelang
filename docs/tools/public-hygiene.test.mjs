@@ -158,12 +158,13 @@ test("public attribution preserves provenance checks across model, lane and head
 
 test("published pages reject build hosts, private home paths and agent session names", () => {
   for (const [file, text, problem] of [
-    ["docs/design/vips/0038-effect-lint-built-in.md", "The report (`~/migrate/TOOL-RISK.md` on nyc-02) found", "a build host name"],
-    ["docs/design/vips/0038-effect-lint-built-in.md", "See `~/migrate/TOOL-RISK.md`.", "a private home path"],
-    ["site/src/pages/vips/0038-effect-lint-built-in.mdx", "built on cfbox", "a build host name"],
-    ["docs/research/notes.md", "found by smithers-3a", "an agent session name"],
-    ["packages/runtime/README.md", "logs in ~/vibe/fix/alpha/x", "a private home path"],
-    ["README.md", "measured on nyc1", "a build host name"],
+    ["docs/design/vips/0038-effect-lint-built-in.md", "The report (`~/" + "migrate/TOOL-RISK.md` on nyc-" + "09) found", "a build host name"],
+    ["docs/design/vips/0038-effect-lint-built-in.md", "See `~/" + "migrate/TOOL-RISK.md`.", "a private home path"],
+    ["site/src/pages/vips/0038-effect-lint-built-in.mdx", "built on cf" + "box", "a build host name"],
+    ["docs/tools/example.test.ts", "found by codex-" + "99", "an agent session name"],
+    ["docs/research/notes.md", "found by smithers-" + "99a", "an agent session name"],
+    ["packages/runtime/README.md", "logs in ~/" + "vibe/fix/alpha/x", "a private home path"],
+    ["README.md", "measured on ny" + "c1", "a build host name"],
   ]) assert.ok(publicHygiene(file, text).some(p => p.startsWith(problem)), file + ": " + text)
 })
 
@@ -172,7 +173,7 @@ test("the published-page rule keeps public names, portable homes and unpublished
     ["docs/user/src/setup/x.md", "Remove `~/.bun-create/vibelang` to scaffold from npm again."],
     ["docs/user/src/setup/x.md", "A model id such as claude-opus-5-5 is public."],
     ["docs/design/vips/0055-durable-tasks-workflows.md", "`lang/examples/problem/smithers-1/triage.ts`"],
-    ["typescript/tsc/internal/vibelangfuzz/nightly.sh", "# It runs on nyc-02"],
+    ["typescript/tsc/internal/vibelangfuzz/nightly.sh", "# It runs on nyc-" + "09"],
   ]) assert.deepEqual(privateInfrastructureProblems(file, text), [], text)
 })
 

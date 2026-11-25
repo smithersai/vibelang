@@ -14,7 +14,7 @@ const migrationSourceChildLintQuote = "Existing tools work."
 
 func TestMigrationSourceChildLintQuoted(t *testing.T) {
 	r4Quoted(t, "../vips/0034-compiler-and-tooling.md", migrationSourceChildLintQuote)
-	r4Quoted(t, "007-tooling.md", "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.")
+	r4Quoted(t, "007-tooling.md", diagnosticsNoRewriteQuote)
 }
 
 // The fixture records the unchanged target's two style requirements. Check

@@ -1,4 +1,4 @@
-// rule-evidence: docs/design/src/900-appendices.md#appendix-f-theorems-and-proofs-vip-43 | `vibelang prove` proves their roots and reports `EK4315` to `EK4319`, but it does not yet run the audit of [Steps](#steps), step 6, or read `vibe.proofDir`: the proof directory is `proofs` in the selected config's directory.
+// rule-evidence: docs/design/src/900-appendices.md#the-proof-command | `vibelang prove` proves every root of the project.
 // The program run.mjs proves: a spec function, a contract and a loop invariant.
 spec function sumTo(n: number): number {
   proof {

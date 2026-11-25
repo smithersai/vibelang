@@ -94,5 +94,5 @@ func (e *doAssignmentPatternEvent) Vibe(w *Writer)   { e.print(w) }
 func (e *doAssignmentPatternEvent) Effect(w *Writer) { e.print(w) }
 func (e *doAssignmentPatternEvent) Ends() bool       { return false }
 func (e *doAssignmentPatternEvent) print(w *Writer) {
-	w.Write("ev(\"pattern-value:\" + JSON.stringify(" + e.Name + "()))")
+	w.Write("ev(\"pattern-value:\" + stringifyObservation(" + e.Name + "()))")
 }

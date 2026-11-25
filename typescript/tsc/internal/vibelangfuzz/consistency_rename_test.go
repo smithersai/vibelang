@@ -210,7 +210,7 @@ func consistencyCountDiff(before, after map[string]int, removedOnly bool) ([]str
 // recovery may read the renamed text
 // another way; a symbol a declaration file declares, which describes code
 // outside the program that a rename does not change; and `main`, whose name
-// makes a function the program's entry (SKILL.md's Forms, D312).
+// makes a function the program's entry (Chapter 11).
 // symbols also leaves out a `this` receiver: renaming it changes its special
 // parameter semantics even in stock TypeScript (TestConsistencyThisParameter).
 func (c *consistency) checkRename(probe consistencyProbe, refs map[consistencySpan]bool) {

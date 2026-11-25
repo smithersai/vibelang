@@ -165,7 +165,7 @@
 9 FuzzDurableDeclarations
 10 FuzzDynamicCallRecovery
 11 FuzzESTreeConcurrentIdentifiers
-12 FuzzESTreeWarningSeverity
+12 FuzzESTreeThrowComma
 12 FuzzEditor
 21 FuzzEditorConsistency
 13 FuzzEditorRenameCollisionDiagnostics
@@ -436,7 +436,6 @@
 9 FuzzMigrationDoArms
 10 FuzzMigrationDoReturn
 19 FuzzMigrationDoTemporaryReturns
-11 FuzzMigrationEffectBlockLint
 27 FuzzMigrationEffectContainers
 12 FuzzMigrationEffectHeritage
 25 FuzzMigrationEffectOperands
@@ -986,7 +985,6 @@
 24 TestCatchValueDiagnosticsQuoted
 25 TestChapter007GeneratorArgumentQuoted
 26 TestChapter007OrdinaryThrowsQuoted
-27 TestChapter007ServiceReadHygieneQuoted
 28 TestChapter007ThrowNativeReferenceQuoted
 29 TestChildProcessServiceAdviceQuoted
 30 TestCitedCodesReadWholeCodes
@@ -1201,7 +1199,7 @@
 16 TestDurableCallSignaturesQuoted
 17 TestDurableDeclarationsQuoted
 18 TestDynamicCallRecoveryQuoted
-19 TestESTreeWarningsQuoted
+19 TestESTreeThrowCommaQuoted
 20 TestEditorContainmentPanicKeys
 21 TestEditorMatchExtractorSpanQuoted
 22 TestEditorProjectedDeclarationReferences
@@ -1941,7 +1939,6 @@
 7 TestMigrationDoArmsQuoted
 8 TestMigrationDoReturnQuoted
 9 TestMigrationDoTemporaryReturnsQuoted
-10 TestMigrationEffectBlockLintQuoted
 11 TestMigrationEffectHeritageQuoted
 12 TestMigrationEffectOperandsQuoted
 25 TestMigrationExistingPlatformBodyNeighborhood
@@ -2069,8 +2066,6 @@
 9 TestNativeOptimizerCompanionsQuoted
 10 TestNativeOutputSpecifierRulesQuoted
 11 TestNativePreludeWithoutRuntimeQuoted
-12 TestNativeReadonlyUpgradeKeys
-13 TestNativeReadonlyUpgradeQuoted
 14 TestNativeReferenceExportQuoted
 15 TestNativeServiceKeyNamespaceQuoted
 16 TestNativeSidecarExportEqualsStock
@@ -2081,7 +2076,6 @@
 21 TestNativeStaticAwaitRegression
 22 TestNativeStreamProtocolsQuoted
 23 TestNativeTemporaryDirectoryAdviceQuoted
-24 TestNativeTryContextualReturnQuoted
 25 TestNativeTryForwarding
 26 TestNativeTryForwardingQuoted
 27 TestNativeTryForwardingVariants
@@ -2173,7 +2167,6 @@
 23 TestPinnedEffectVersion
 24 TestPipeArrowAdmissionQuoted
 25 TestPipeArrowBodyQuoted
-26 TestPipeDeclarationAliasesQuoted
 27 TestPipeEdgeQuoted
 28 TestPipeEdgesQuoted
 29 TestPipeTopicEarlyErrorQuoted
@@ -2186,7 +2179,6 @@
 6 TestPlainHandlerHomeQuoted
 7 TestPlainHandlerThrowQuoted
 8 TestPlainMatchKindsQuoted
-9 TestPlainReturnedEffectInferenceQuoted
 10 TestPlainRunnersQuoted
 11 TestPlainStaticAwaitQuoted
 12 TestPlainStaticAwaitRegression
@@ -2285,7 +2277,6 @@
 14 TestQualifiedFunctionExemptionsQuoted
 15 TestQualifiedHostAliasQuoted
 16 TestQualifiedPrototypeKeysQuoted
-17 TestQuickFixCommentRuleQuoted
 18 TestRecursiveInferredDeclarationsQuoted
 19 TestRecursiveLegacySlotsQuoted
 20 TestRegistryDebtWitnessIdentity
@@ -2528,7 +2519,7 @@
 13 TestStructuredThrowsQuoted
 14 TestSuperseded
 15 TestSymbolCustomMatcherSpelling
-16 TestT3CodeCryptoWarningESTree
+16 TestT3CodeCryptoThrowCommaESTree
 17 TestT3codeOptionalKeyCodecCorpus
 18 TestT3codeOptionalKeyCodecQuoted
 19 TestTaggedCallbackContractVariants

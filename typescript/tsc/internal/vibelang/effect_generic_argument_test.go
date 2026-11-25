@@ -7,6 +7,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
+// rule-evidence: docs/design/src/002-running.md#a504880b23f48fb9
+// rule-evidence: docs/design/vips/0001-effect-and-async-functions.md#a504880b23f48fb9
 func TestEffectIntoPlainGeneric(t *testing.T) {
 	for _, test := range []struct {
 		name, declaration, argument, typeArgs string

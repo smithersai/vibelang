@@ -28,6 +28,15 @@ test("mutations distinguish deleted factory registrations from neighboring rules
       const declaration = "var" + whitespace + code + whitespace + "=" + whitespace + call
       const mutation = source + "\n" + (commentOnly ? "/* " + declaration.replaceAll("/* declaration */", "") + " */" : declaration)
       const findings = auditIdentity(compilerCodes(files(mutation)), rows, [])
-      assert.deepEqual(findings.map(f => [f.kind, f.code]), commentOnly || ordinal === 2115 ? [] : [["registered-missing", code]])
+      assert.deepEqual(findings.map(f => [f.kind, f.code]), commentOnly || ordinal === 2115 ? [] : [["registered-missing", code], ["retired-registered", code]])
     }), { seed: 621152116, numRuns: 150 })
+})
+
+test("retired layer and service declarations document manual migration", () => {
+  const decisions = readFileSync(new URL("../design/DECISIONS.md", import.meta.url), "utf8")
+  for (const [heading, code] of [["Retired layer declarations", "EK2121"], ["Retired service class spelling", "EK0909"]]) {
+    const section = decisions.split("## " + heading + "\n")[1].split("\n## ")[0]
+    assert.ok(section.includes(code))
+    assert.doesNotMatch(section, /--fix/)
+  }
 })

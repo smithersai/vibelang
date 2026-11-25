@@ -5,7 +5,7 @@
 // declaration file documents both names as the native pair did. foldkit's
 // canvas/shape.ts (one text on both) and runtime/modelPreservation.ts (two
 // texts) are the pattern; typescript/main.ts of the fixed twin is the pair.
-// tsforms-schema-documented-type-fixed is what vibelang --fix writes.
+
 
 /** A 2D point in canvas-local coordinates. */
 export schema Point { readonly x: number; readonly y: number }

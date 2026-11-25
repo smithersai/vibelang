@@ -1,0 +1,19 @@
+// rule-evidence: docs/design/src/900-appendices.md#syntax | Each is a keyword only before the tokens listed, on the same line, and an identifier everywhere else.
+// rule-evidence: docs/design/src/900-appendices.md#syntax | The excluded names keep `theorem as T`, `theorem satisfies T` and the VIP-7 test `theorem is P` as expressions, as for [EffectShorthand](#effectshorthand).
+const theorem = { name: "pythagoras", steps: 3 }
+type Named = { name: string }
+
+function t(x: number): number {
+  return x + 1
+}
+
+export function words(): string {
+  const cast = theorem as Named
+  const checked = theorem satisfies Named
+  // A line break after the word keeps the TypeScript reading: an expression
+  // statement, then the call t(2).
+  theorem
+  const called = t(2)
+  const steps = theorem.steps
+  return [cast.name, checked.name, called, steps].join(" ")
+}

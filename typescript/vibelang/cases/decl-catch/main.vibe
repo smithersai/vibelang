@@ -24,7 +24,7 @@ effect function describe(kind: string) {
 }
 
 // The default rethrows failures this match does not handle.
-effect function partial(kind: string): string!Broken! {
+effect function partial(kind: string): string!Broken {
   return fail(kind) catch effect (e) => {
     switch (e._tag) {
       case "NotFound": case "Busy": case "Offline": return "handled"

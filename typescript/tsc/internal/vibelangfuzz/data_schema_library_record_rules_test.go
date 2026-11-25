@@ -6,7 +6,7 @@ import "strings"
 // writable decoded keys, including inside a shallow readonly field.
 func dataSchemaLibraryRecordRules() []dataRule {
 	const chapter = "006-data.md"
-	const quote = "selected by ordinary type lookup and alias resolution, not by spelling."
+	const quote = "selected by ordinary type lookup and alias resolution."
 	var rules []dataRule
 	for _, binding := range []struct{ key, declaration, use string }{
 		{"qualified", "", "globalThis.Record"},

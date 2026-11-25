@@ -1,11 +1,8 @@
-
+// Migration-output regression for abrupt completions through catch and cleanup.
 import * as $nativeTryEffect7 from "effect/Effect";
 
-import * as $nativeTryEffect6 from "effect/Effect";
 
-import * as $nativeTryEffect5 from "effect/Effect";
 
-import * as $nativeTryEffect4 from "effect/Effect";
 
 import * as $nativeTryEffect3 from "effect/Effect";
 
@@ -99,14 +96,12 @@ let { n } = $nativeTryError;
 });
 if ($nativeTryCompletion3.kind === "break:block") break block;
 }
-  if (flag) { const $nativeTryCompletion4 = try $nativeTryEffect4.catch(effect { try risky(3) 
-;return { kind: "normal" } as const;
-}, effect () => { out += "embedded;" 
-;return { kind: "normal" } as const;
-});
-
-}
-  { const $nativeTryCompletion5 = try $nativeTryEffect5.onExit(effect {
+  if (flag) effect {
+    try risky(3)
+  } catch effect () => {
+    out += "embedded;"
+  }
+  try Effect.onExit(effect {
     switch (try risky(4)) {
       case 4:
         out += "four;"
@@ -114,13 +109,9 @@ if ($nativeTryCompletion3.kind === "break:block") break block;
       default:
         out += "other;"
     }
-  
-;return { kind: "normal" } as const;
-}, () => effect {
+  }, () => effect {
     out += "switched"
-  });
-
-}
+  })
   return out
 }
 
@@ -128,16 +119,12 @@ if ($nativeTryCompletion3.kind === "break:block") break block;
 effect function hoisted() {
   let first: number | undefined
   let i: number | undefined
-  { const $nativeTryCompletion6 = try $nativeTryEffect6.onExit(effect {
+  try Effect.onExit(effect {
     first = try risky(1)
     for (i = 0; i < 2; i++) first += i
-  
-;return { kind: "normal" } as const;
-}, () => effect {
+  }, () => effect {
     events.push("hoisted")
-  });
-
-}
+  })
   return `${first} ${i}`
 }
 

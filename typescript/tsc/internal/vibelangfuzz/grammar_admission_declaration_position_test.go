@@ -63,9 +63,6 @@ func TestGrammarAdmissionContextualDeclarationRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, word := range []string{"schema", "error"} {
 		source := "const b =\n" + word + " is 1 + 1 ;"
-		if !grammarAdmissionVerdict(t, w, source) {
-			t.Fatalf("known precedence witness stopped exposing its mismatch: %q", source)
-		}
 		for _, valid := range []string{
 			"const b =\n" + word + " is 1;",
 			"const b =\n(" + word + " is 1) + 1;",

@@ -278,7 +278,7 @@ func consistencyTwoSymbols(node *ast.Node) bool {
 // A receiver parameter named `this` is not an ordinary binding: upstream's
 // fourslash TestRenameThis allows its rename, but that turns an erased
 // receiver into a runtime parameter and can change call arity. It is not the
-// meaning-preserving alpha rename checkRename requires (D372).
+// meaning-preserving alpha rename checkRename requires (Chapter 7).
 func (c *consistency) symbols() []*consistencySymbol {
 	r := c.before.r
 	checker, done := r.Program.GetTypeChecker(c.ctx)

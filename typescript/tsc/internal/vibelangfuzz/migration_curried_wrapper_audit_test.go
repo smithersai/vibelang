@@ -15,7 +15,7 @@ var curriedWrapperKeys = []string{"staged", "staged-alias", "nested", "returned-
 
 func TestMigrationCurriedWrapperAuditQuoted(t *testing.T) {
 	chapterSays(t, "001-functions.md", "an Effect, not yet run")
-	chapterSays(t, "007-tooling.md", "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.")
+	chapterSays(t, "007-tooling.md", diagnosticsNoRewriteQuote)
 	text, err := os.ReadFile(filepath.Join(Root(), ".smithers/flows/migrate/README.md"))
 	if err != nil {
 		t.Fatal(err)

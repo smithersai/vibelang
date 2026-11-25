@@ -13,7 +13,7 @@ test("the JSON string guide shows the embedded object's exported schema", () => 
   expect(block!.pending).toBeUndefined()
 })
 
-test("JSON string exports retain their nested encoded schemas", () => {
+test("Platform control: JSON string exports retain their nested encoded schemas", () => {
   fc.assert(fc.property(
     fc.dictionary(fc.string({ minLength: 1, maxLength: 12 }), fc.constantFrom(
       Schema.String, Schema.Finite, Schema.Boolean, Schema.FiniteFromString,

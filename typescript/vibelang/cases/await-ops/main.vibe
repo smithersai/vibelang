@@ -1,5 +1,3 @@
-import * as $nativeTryEffect1 from "effect/Effect";
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"all":["user 1",3],"record":{"user":"user 2","count":3},"held":["user 3",3],"failFast":"Boom","settled":["Success","Failure"],"race":"fast","raceFailure":"Boom","raceBlocks":"got user 4","any":"fast","deferred":"ready","tie":"a","raceDo":"got user 5","templates":["user 6!",3],"templateRace":"fast!"}
 import { join as $tryJoinFiber } from "effect/Fiber"
 import { all as $tryAllEffects } from "effect/Effect"
@@ -27,7 +25,7 @@ effect function fast(): string!! {
   return "fast"
 }
 
-effect function boom(): string!Boom! {
+effect function boom(): string!Boom {
   try sleep("1 millis")
   throw new Boom({ n: 1 })
 }
@@ -50,14 +48,12 @@ effect function held() {
 
 // A failure interrupts the rest and propagates.
 effect function failFast() {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  return effect {
     (try.all [effect { return try slow() }, effect { return try boom() }])
-    return { kind: "return:" as const, value: ("no") };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: (e._tag) };
-  });
-return $nativeTryCompletion.value;
-}
+    return ("no")
+  } catch effect (e) => {
+    return (e._tag)
+  }
 }
 
 // all with mode "result" never fails; each outcome is a Result.
@@ -72,13 +68,11 @@ effect function race() {
 }
 
 effect function raceFailure() {
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
-    return { kind: "return:" as const, value: ((try.race [effect { return try slow() }, effect { return try boom() }])) };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: (e._tag) };
-  });
-return $nativeTryCompletion1.value;
-}
+  return effect {
+    return ((try.race [effect { return try slow() }, effect { return try boom() }]))
+  } catch effect (e) => {
+    return (e._tag)
+  }
 }
 
 effect function raceBlocks() {

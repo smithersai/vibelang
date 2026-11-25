@@ -41,6 +41,7 @@ func FuzzFormatterRelationalRHS(f *testing.F) {
 			return core.ApplyBulkEdits(s, format.FormatDocument(ctx, file)), nil
 		}},
 	}
+	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, mode uint8) {
 		TestFormatterRelationalRHSQuoted(t)
 		operator := []string{"<", ">", "<=", ">=", "==", "!=", "===", "!=="}[mode&7]
@@ -63,7 +64,7 @@ func FuzzFormatterRelationalRHS(f *testing.F) {
 		if mode&16 != 0 {
 			trivia = " /* pattern */ "
 		}
-		source := fmt.Sprintf("const el = match (s) { when%s%s %s: <A/>; default: <B/>; }\n", trivia, operator, operand)
+		source := fmt.Sprintf("export const el = match (s) { when%s%s %s: <A/>; default: <B/>; }\n", trivia, operator, operand)
 		if mode&32 != 0 {
 			source = strings.ReplaceAll(source, "; ", ";\n  ")
 		}
@@ -72,6 +73,18 @@ func FuzzFormatterRelationalRHS(f *testing.F) {
 		}
 		if mode&128 != 0 {
 			source = "// café 😀\n" + source
+		}
+		source = "declare namespace JSX { interface Element {} }\n" +
+			"declare function A(): JSX.Element; declare function B(): JSX.Element;\n" +
+			"declare const s: number; declare const limits: Record<string, number>;\n" + source
+		var before *Result
+		if !invalid {
+			config := strings.TrimSuffix(DefaultConfig, "\n}") + ",\n \"files\": [\"view.vibex\"]\n}"
+			config = strings.Replace(config, `"target": "ES2022"`, `"target": "ES2022", "jsx": "preserve"`, 1)
+			before = vipCompile(t, w, Project{Files: map[string]string{"view.vibex": source}, Config: config})
+			if !toolsErrorFree(before) || before.Outputs["out/view.jsx"] == "" {
+				t.Fatalf("invalid formatter witness: %v\n%s", Keys(before.Dir, before.Diagnostics), source)
+			}
 		}
 		for _, host := range hosts {
 			once, err := vibelangfmt.Format("view.vibex", source, host.format)
@@ -88,6 +101,10 @@ func FuzzFormatterRelationalRHS(f *testing.F) {
 			}
 			if host.name == "identity" && once != source {
 				Gap(t, "FuzzFormatterRelationalRHS", "identity:"+gapKey, "identity host changed source:\n%s\n%s", source, once)
+			}
+			after := toolsRecompile(t, w, before, map[string]string{"view.vibex": once})
+			if difference := toolsFormatDifference(before, after); difference != "" {
+				Gap(t, "FuzzFormatterRelationalRHS", "meaning:"+gapKey, "%s\n%s\n%s", difference, source, once)
 			}
 			twice, err := vibelangfmt.Format("view.vibex", once, host.format)
 			if err != nil || twice != once {

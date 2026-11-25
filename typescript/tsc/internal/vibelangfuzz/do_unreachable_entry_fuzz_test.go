@@ -39,7 +39,7 @@ func FuzzDoUnreachableEntry(f *testing.F) {
 		case "branch":
 			before = "if (flag) return 'early'; else stop();"
 		}
-		value, read, wrong := "7", "value.toFixed()", "string"
+		value, read, wrong := "7", "String(value satisfies number)", "string"
 		if parts[1] == "string" {
 			value, read, wrong = "'seven'", "value.toUpperCase()", "number"
 		}

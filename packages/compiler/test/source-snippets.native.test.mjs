@@ -5,6 +5,7 @@ import { join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { listSources, resolveSource } from "vibelang/source"
+import { pastRacyWindow } from "./cache-harness.mjs"
 import { projectBackend } from "vibelang/project"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
@@ -53,7 +54,7 @@ test("mixed snippets keep native diagnostics, error polarity and dependency inva
   writeFileSync(join(root, "negative.error.vibe"), 'export const value: number = 42\n')
   writeFileSync(join(root, "native.error.vibe"), 'export const value = 42\n')
   // The cache deliberately declines inputs edited within its timestamp grace period.
-  await new Promise(resolve => setTimeout(resolve, 150))
+  await pastRacyWindow([join(root, "negative.error.vibe"), join(root, "native.error.vibe")])
   assert.deepEqual((await check()).errors, [], "an expected-error source that starts passing is visible to the builder")
   const cached = await check()
   assert.deepEqual(cached.errors, [])

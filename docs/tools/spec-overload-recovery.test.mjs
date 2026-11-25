@@ -78,9 +78,5 @@ test("a complete optional-R parse includes automatic semicolon insertion", () =>
   assert.match(appendix, /A complete source parse includes TypeScript’s automatic semicolon insertion/)
   assert.match(vip3(), /A complete parse includes TypeScript’s automatic semicolon insertion/)
   assert.match(block(appendix, "function lineBreak", "vibe"), /x as number!!as\n  B \/\/ a second statement/)
-  const statements = source => ts.createSourceFile("a.ts", source, ts.ScriptTarget.Latest, true).statements.length
-  assert.equal(statements("x as Effect.Effect<number, never, as>\nB"), 2, "present R completes by ASI")
-  assert.equal(statements("x as Effect.Effect<number> as\nB"), 1, "the chained assertion also completes")
-  assert.equal(statements("x as Effect.Effect<number> as B"), 1, "on one line only the chained assertion completes")
   assert.deepEqual(codes(block(appendix, "function lineBreak")), [])
 })

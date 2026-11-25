@@ -6,7 +6,7 @@ import (
 )
 
 func TestErrorMatcherDeclarationCounterparts(t *testing.T) {
-	quote := "published declarations add neither a"
+	quote := "Published declarations add neither a"
 	if !strings.Contains(SpecText("../vips/0027-declaration-output.md"), quote) {
 		t.Fatal("VIP-27 published matcher ruling missing")
 	}

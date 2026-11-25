@@ -109,3 +109,18 @@ func FuzzForeignValidationBridges(f *testing.F) {
 		}
 	})
 }
+
+// VIP-6 gives the prelude's sync the same one-argument contract as Effect.sync.
+func TestSyncRejectsInputCarryingHatch(t *testing.T) {
+	w := NewWorkspace(t)
+	control := vipCompile(t, w, Single(`export effect function run() { return try sync(() => 1) }`))
+	vipDiagnostics(t, control)
+	r := vipCompile(t, w, Single(`export effect function run() { return try sync((n: number) => n, 1) }`))
+	const key = "sync:extra-argument"
+	got := r3Errors(r.Diagnostics)
+	if len(got) == 0 {
+		Gap(t, "TestSyncRejectsInputCarryingHatch", key, "VIP-6: sync(f, x) must give TS2554")
+	}
+	vipDiagnostics(t, r, "TS2554")
+	ExpectPending(t, "TestSyncRejectsInputCarryingHatch", key)
+}

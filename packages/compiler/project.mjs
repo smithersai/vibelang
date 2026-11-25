@@ -832,7 +832,7 @@ export function projects({ root, project, compiler, cache, debug = () => {}, pre
       revision++
       debug(`invalidate: revision ${revision}`)
     },
-    async load(file) {
+    async load(file, { projectWarnings } = {}) {
       if (closed) throw new Error("vibelang: projects are closed")
       // Vite uses forward slashes on Windows; compiler output keys use native paths.
       file = resolve(file)
@@ -850,7 +850,9 @@ export function projects({ root, project, compiler, cache, debug = () => {}, pre
       }
       const { outputs, inputs } = result
       const errors = diagnosticsForFile(result.errors, file, result.files)
-      const warnings = diagnosticsForFile(result.warnings, file, result.files)
+      const includeGlobal = projectWarnings !== "once" || state.warned !== state.compiled
+      const warnings = diagnosticsForFile(result.warnings, file, result.files, includeGlobal)
+      if (projectWarnings === "once" && !errors.length) state.warned = state.compiled
       // Keep the public first-module flag independent of source diagnostics.
       const first = state.reported !== state.compiled
       state.reported = state.compiled

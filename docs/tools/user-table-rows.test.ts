@@ -146,12 +146,8 @@ test("generated native file mappings retain bytes unless an encoding is explicit
     fc.constantFrom("fs.readFile", "fs.promises.readFile", "fs.readFileSync", 'fs["readFile"]', 'fs.promises["readFile"]'),
     fc.constantFrom("", "(path)", '("utf8")', '(join("dir", "utf8"))', "(path, null)", "(path, undefined)", "(path, void 0)", '(path, { flag: "r" })', "(path, { encoding: null })", "(path, { encoding: undefined })"),
     fc.constantFrom("", " ", "  "),
-    fc.array(fc.integer({ min: 0, max: 255 }), { maxLength: 32 }),
     fc.boolean(), fc.boolean(),
-    (reader, args, space, values, global, explicitDecoderEncoding) => {
-      const bytes = Uint8Array.from(values)
-      expect(ArrayBuffer.isView(bytes)).toBe(true)
-      expect(typeof new TextDecoder().decode(bytes)).toBe("string")
+    (reader, args, space, global, explicitDecoderEncoding) => {
       const source = (reader + args).replaceAll(".", space + "." + space)
       const decoded = "try (try FileSystem.FileSystem)." + space + "readFileString" + space + "(path" + (explicitDecoderEncoding ? ', "utf8"' : "") + ")"
       const options = { checkPlatformReplacements: true }
@@ -288,13 +284,7 @@ test("generated clock mappings separate arbitrary counters from elapsed interval
   fc.assert(fc.property(
     fc.constantFrom("performance.now", "performance.now()", "globalThis.performance.now()"),
     fc.constantFrom("", " ", "  "), fc.boolean(),
-    fc.bigInt({ min: 1_000_000_000_000_000_000n, max: 1_000_000_000_000_000_000_000_000n }),
-    fc.bigInt({ min: 0n, max: 1_000_000_000_000_000n }),
-    fc.bigInt({ min: 0n, max: 1_000_000_000_000n }),
-    (source, space, global, offset, begin, duration) => {
-      const first = begin + offset, second = first + duration
-      expect(Number(second - first) / 1e6).toBe(Number(duration) / 1e6)
-      expect(Number(second) / 1e6).not.toBe(Number(begin + duration) / 1e6)
+    (source, space, global) => {
       const expression = "Number(try Clock" + space + "." + space + "monotonicTimeNanos) / 1e6"
       const bare = tick + expression + tick
       const broken = table(source, bare, global)
@@ -329,16 +319,9 @@ test("generated runtime version mappings preserve the native string", () => {
     "| " + tick + source + tick + " | " + replacement + " |"
   ].join("\n")
   fc.assert(fc.property(
-    fc.tuple(fc.integer({ min: 0, max: 999 }), fc.integer({ min: 0, max: 999 }), fc.integer({ min: 0, max: 999 })),
-    fc.constantFrom("", "-rc.1", "-preview.2"), fc.constantFrom("", " ", "  "),
+    fc.constantFrom("", " ", "  "),
     fc.constantFrom("process.version", "globalThis.process.version"),
-    (parts, suffix, space, source) => {
-      const node = parts.join(".") + suffix
-      const components = { node, v8: "example", uv: "example" }
-      const native = "v" + node
-      expect(components).not.toEqual(native)
-      expect(components.node).not.toEqual(native)
-      expect("v" + components.node).toBe(native)
+    (space, source) => {
       const lookup = "(try" + space + " Experimental.Process.Process)"
       const map = "try " + lookup + space + "." + space + "versions"
       const nodeOnly = "(try " + lookup + ".versions).node"

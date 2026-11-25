@@ -410,13 +410,13 @@ func (c *converter) triedTaggedTemplate(n *ast.Node) *obj {
 
 // isPatternMatcher recognizes only the parser's subject-capturing arrow at
 // an is keyword. A written arrow, even one naming $is1, has no synthetic =>;
-// other generated arrows (do, throw, catch) start at their own keywords.
+// other generated arrows (do, throw, catch) anchor their => at their own keywords.
 func (c *converter) isPatternMatcher(callee *ast.Node) bool {
 	arrow := ast.SkipParentheses(callee)
 	if !isProgramArrow(arrow) {
 		return false
 	}
-	_, kind := c.tokenAfter(c.start(arrow))
+	_, kind := c.tokenAfter(arrow.AsArrowFunction().EqualsGreaterThanToken.Pos())
 	return kind == ast.KindIsKeyword
 }
 

@@ -3,6 +3,7 @@ package vipgen
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // Chapter 000-intro: "**TypeScript's meaning outside Effect code.** Plain
@@ -92,6 +93,7 @@ const %s = new Function(%q, %q, "return " + %s.transpileModule(%s, { compilerOpt
 	// the probe's local trace runs here; the shared event is logged by main.
 	observed := g.Name("observed")
 	bind := "\nconst " + observed + " = " + name + "()"
+	source = strings.Replace(source, "return JSON.stringify(", "return stringifyObservation(", 1)
 	g.AddDecl(&Code{V: source + bind, E: reference + bind})
 	return &forOfCloseObservation{Observed: observed}
 }

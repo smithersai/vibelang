@@ -21,7 +21,7 @@ export effect function wrap(body: number!unknown): number!unknown {
 }
 
 // With every channel written, the self-call is typed from the contract.
-export effect function written(index: number): number!unknown! {
+export effect function written(index: number): number!unknown {
   if (index < 0) return 1
   return try guarded(written(index - 1))
 }

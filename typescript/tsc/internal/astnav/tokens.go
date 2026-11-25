@@ -601,7 +601,9 @@ func findRightmostValidToken(endPos int, sourceFile *ast.SourceFile, containingN
 				for startPos < min(visitedNode.Pos(), position) {
 					token := scanNavigationToken(scanner, n)
 					tokenStart := scanner.TokenStart()
-					if tokenStart >= min(visitedNode.Pos(), position) {
+					// A closing backtick in a lowered template can scan as the
+					// start of a new literal. Only materialize tokens inside this gap.
+					if tokenStart >= min(visitedNode.Pos(), position) || scanner.TokenEnd() > min(visitedNode.Pos(), n.End()) {
 						break
 					}
 					tokenFullStart := scanner.TokenFullStart()
@@ -619,7 +621,7 @@ func findRightmostValidToken(endPos int, sourceFile *ast.SourceFile, containingN
 			for startPos < min(endPos, position) {
 				token := scanNavigationToken(scanner, n)
 				tokenStart := scanner.TokenStart()
-				if tokenStart >= min(endPos, position) {
+				if tokenStart >= min(endPos, position) || scanner.TokenEnd() > min(endPos, n.End()) {
 					break
 				}
 				tokenFullStart := scanner.TokenFullStart()

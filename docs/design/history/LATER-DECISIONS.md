@@ -26,6 +26,6 @@ The archived decision log ends at D520. These descriptions come from the later p
 | D25, D342, D401, D481, D490: `using` regions | [VIP-8](../vips/0008-using-denied.md) denied special resource syntax. |
 | D2, D16–D20, D50, D128, D132, D351: control handlers | [VIP-35](../vips/0035-handlers-open.md) denied control handlers on 2026-11-23. |
 | D5, D22, D23, D249, D261, D389, D514: package trust | [VIP-4](../vips/0004-throw.md) defines callable throws contracts. [VIP-27](../vips/0027-declaration-output.md) governs declaration output. |
-| D33, D219, D291, D372: automatic fixes | [The VIP index](../vips/README.md) records Will’s pre-release policy. [VIP-34](../vips/0034-compiler-and-tooling.md) governs tooling. |
+| D33, D219, D291, D372: automatic fixes | [The VIP index](../vips/README.md) records the pre-release policy. [VIP-34](../vips/0034-compiler-and-tooling.md) governs tooling. |
 | D135, D312, D387: automatic startup | [VIP-26](../vips/0026-top-level-and-main.md) requires an explicit runner. |
 | D196, D377, D394: Effect await operations | [VIP-18](../vips/0018-concurrent.md) defines the concurrent `try` forms. |

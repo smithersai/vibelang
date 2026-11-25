@@ -22,17 +22,7 @@ assert.deepEqual(loopCellsExit.value, [99, 11, 12])
 assert.equal(initialHeadExit._tag, "Failure")
 assert.equal(initialHeadExit.cause.reasons[0]._tag, "Die")
 assert.ok(initialHeadExit.cause.reasons[0].defect instanceof ReferenceError)
-// A later lexical cell does not rebind a closure over the original cell.
-for (const x of [1, 2]) assert.equal(typeof x, "number")
 assert.throws(initialReader, ReferenceError)
-const readers = []
-for (const x of [1, 2]) readers.push(() => x)
-assert.deepEqual(readers.map(f => f()), [1, 2])
-// Native shared-cell identity is the precedent for failed-alternative replacement.
-let cell = 5
-const saved = () => cell
-cell = [5].length
-assert.equal(saved(), 1)
 `)
   assert.equal(result.status, 0, result.stderr || result.stdout)
 })

@@ -35,7 +35,7 @@ for (const { name } of templates) {
       expect(await run([forms, "-legacy", "tsconfig.test.json", "-compiler", compiler])).toBe("0 legacy sites\n")
       expect(await run(["node", "--enable-source-maps", "dist/main.js"])).toBe(expected[name])
       const tests = await run(["node", join(repo, "docs/tools/node_modules/vitest/vitest.mjs"), "run"])
-      expect(tests).toContain("2 passed")
+      expect(tests).toMatch(/\bTests\s+2 passed\b/)
 
       if (name === "app") {
         const main = join(app, "src/main.vibe")

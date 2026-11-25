@@ -1,5 +1,5 @@
 export let runs = 0
-export const makeRuntime = (options: { n: number }): infer _ => {
+export const makeRuntime = (options: { n: number }) => {
   const n = options.n
   const p: Effect.Effect<{ n: number }, never, never> = effect {
     runs++

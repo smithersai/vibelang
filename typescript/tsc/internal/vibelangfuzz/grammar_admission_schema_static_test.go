@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const grammarSchemaDeclarationFieldsQuote = `SchemaDeclaration = SchemaStart "{" Field* "}"`
+const grammarSchemaDeclarationFieldsQuote = `SchemaDeclaration = SchemaStart TypeParameters? "{" SchemaMember* "}"`
 
 func TestGrammarAdmissionSchemaStaticQuoted(t *testing.T) {
 	for _, quote := range []string{grammarSchemaDeclarationFieldsQuote, grammarSchemaFieldTypeQuote, grammarAdmissionQuote} {

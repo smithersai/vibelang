@@ -133,9 +133,6 @@ test.todo("Chapter 003: destructuring initialization defects — Destructuring n
 // Spec: **An ordinary `async` parameter list** rejects: a throwing default rejects the returned Promise, and an outward `return v` in a default (`x = do { return 7 }`) skips the body and fulfills the Promise with `v`.
 test.todo("Chapter 003: async parameter completion — Throwing ordinary async defaults reject; x = do { return 7 } skips the body and fulfills 7, with no synchronous throw.")
 
-// Chapter 003: missing error member separator
-// Spec: Two members on one line with no separator, `error E { a: number b: string }`, are `EK1306`; the quick fix inserts `;`.
-test.todo("Chapter 003: missing error member separator — error E { a: number b: string } reports EK1306; applying its semicolon quick fix leaves no errors and preserves both fields.")
 
 // rule-evidence: docs/design/src/003-failures.md#59edbba0dddadf66
 // Chapter 003: bodyless error method overloads

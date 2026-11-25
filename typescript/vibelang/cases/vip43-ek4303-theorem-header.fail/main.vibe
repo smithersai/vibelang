@@ -1,0 +1,21 @@
+// expect: EK4303 TS7006
+// rule-evidence: docs/design/src/900-appendices.md#header | A missing annotation, an optional (`x?`), rest, defaulted or destructured parameter, a `this` parameter, and a return type annotation are rule 4303.
+theorem untyped(x) {
+  assert(x === x)
+}
+theorem optional(x?: number) {
+  assert(x === x)
+}
+theorem rest(...xs: number[]) {
+  assert(xs.length >= 0)
+}
+theorem defaulted(x: number = 1) {
+  assert(x === x)
+}
+theorem destructured({ x }: { x: number }) {
+  assert(x === x)
+}
+theorem typed(x: number): void {
+  assert(x === x)
+}
+export const one = 1

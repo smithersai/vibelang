@@ -9,7 +9,7 @@ import (
 )
 
 const provideServiceTypeArgumentsQuote = "| \x60EK4836\x60 | \x60Effect.provide\x60 or \x60Effect.provideService\x60 as the direct operand of bare \x60try\x60 in effect code |"
-const provideServiceTypeArgumentsSafetyQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
+const provideServiceTypeArgumentsSafetyQuote = diagnosticsNoRewriteQuote
 
 func provideServiceTypeArgumentsQuoted(t testing.TB) {
 	t.Helper()

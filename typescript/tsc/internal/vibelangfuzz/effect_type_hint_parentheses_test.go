@@ -8,7 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const legacyEffectAliasQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
+const legacyEffectAliasQuote = diagnosticsNoRewriteQuote
 
 const effectHintParenthesesTarget = "FuzzEffectTypeHintParentheses"
 const effectHintParenthesesQuote = "Use the equivalent `A!E!R` spelling, preserving `never` slots and required parentheses."

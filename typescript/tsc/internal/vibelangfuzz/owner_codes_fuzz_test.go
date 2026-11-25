@@ -132,7 +132,7 @@ func FuzzRestorePlacement(f *testing.F) {
 			key += ":masked"
 		}
 		got := codesOf(r.Diagnostics, 2111, 2202)
-		ok := len(got) == 0 && want == 0 || len(got) == 1 && got[want] == 1
+		ok := len(got) == 0 && want == 0 && !HasError(r.Diagnostics) || len(got) == 1 && got[want] == 1
 		if !ok {
 			Gap(t, restorePlacementTarget, key, "%s; expected EK%04d (0: none), got EK2111 x%d, EK2202 x%d\n%s\n%v", restorePlacementQuote, want, got[2111], got[2202], source, Keys(r.Dir, r.Diagnostics))
 		}

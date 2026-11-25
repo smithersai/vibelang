@@ -3,6 +3,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { execFileSync } from "node:child_process"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 
@@ -16,6 +17,8 @@ test("chapter 7 runs a repository's Oxlint JS-plugin rules on .vibe files", () =
 })
 
 test("the migrate flow tests the Oxlint JS-plugin bridge the chapter requires", () => {
-  const tooling = read(".smithers/flows/migrate/test/tooling.test.mjs")
-  assert.match(tooling, /jsPlugins/)
+  const env = { ...process.env }
+  delete env.NODE_TEST_CONTEXT
+  const output = execFileSync(process.execPath, ["--test", "--test-name-pattern=the lint config runs the rules of the repository", ".smithers/flows/migrate/test/tooling.test.mjs"], { cwd: root, env, encoding: "utf8" })
+  assert.match(output, /the lint config runs the rules of the repository/)
 })

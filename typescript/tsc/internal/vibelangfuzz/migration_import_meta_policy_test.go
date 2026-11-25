@@ -11,7 +11,7 @@ import (
 )
 
 func TestMigrationImportMetaPolicyQuoted(t *testing.T) {
-	chapterSays(t, "007-tooling.md", "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.")
+	chapterSays(t, "007-tooling.md", diagnosticsNoRewriteQuote)
 	r4Quoted(t, "../vips/0034-compiler-and-tooling.md", "Existing tools work.")
 }
 

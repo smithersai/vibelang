@@ -39,20 +39,20 @@ func FuzzConcurrentRHSBindings(f *testing.F) {
 		key, head, items, capture string
 		code                      int32
 	}{
-		{"const", "const value", "[1]", "value.toFixed()", 0},
-		{"let", "let value", "[1]", "value.toFixed()", 0},
-		{"object", "const { value }", "[{ value: 1 }]", "value.toFixed()", 0},
-		{"renamed", "let { n: value }", "[{ n: 1 }]", "value.toFixed()", 0},
-		{"nested", "const { n: { value } }", "[{ n: { value: 1 } }]", "value.toFixed()", 0},
-		{"array", "let [value]", "[[1]]", "value.toFixed()", 0},
-		{"rest", "const [value, ...tail]", "[[1, 2]]", "value.toFixed() + tail.length", 0},
+		{"const", "const value", "[1]", "(value satisfies number)", 0},
+		{"let", "let value", "[1]", "(value satisfies number)", 0},
+		{"object", "const { value }", "[{ value: 1 }]", "(value satisfies number)", 0},
+		{"renamed", "let { n: value }", "[{ n: 1 }]", "(value satisfies number)", 0},
+		{"nested", "const { n: { value } }", "[{ n: { value: 1 } }]", "(value satisfies number)", 0},
+		{"array", "let [value]", "[[1]]", "(value satisfies number)", 0},
+		{"rest", "const [value, ...tail]", "[[1, 2]]", "(value satisfies number) + tail.length", 0},
 		{"object-rest", "const { n, ...value }", "[{ n: 1, text: 'ok' }]", "value.text.toUpperCase()", 0},
-		{"default", "const { value = 1 }", "[{}] as Array<{ value?: number }>", "value.toFixed()", 0},
-		{"empty", "let value", "[] as number[]", "value.toFixed()", 0},
+		{"default", "const { value = 1 }", "[{}] as Array<{ value?: number }>", "(value satisfies number)", 0},
+		{"empty", "let value", "[] as number[]", "(value satisfies number)", 0},
 		{"const-write", "const value", "[1]", "(value = 2)", 2588},
 		{"let-write", "let value", "[1]", "(value = 2)", 0},
 		{"wrong-member", "const value", "[1]", "value.missing", 2339},
-		{"vibex", "const value", "[1]", "value.toFixed()", 0},
+		{"vibex", "const value", "[1]", "(value satisfies number)", 0},
 	}
 	keys := make([]string, len(sites))
 	for i, site := range sites {

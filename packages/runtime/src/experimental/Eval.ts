@@ -128,6 +128,7 @@ export interface GateOptions {
 export interface Suite<Args extends ReadonlyArray<unknown> = ReadonlyArray<any>, A = any, R = never> {
   readonly [TypeId]: TypeId
   readonly name: string
+  readonly targetTag?: string | undefined
   readonly target: (...args: Args) => Effect.Effect<A, unknown, R>
   readonly cases: ReadonlyArray<Case<Args, A>>
   readonly scorers: ReadonlyArray<Scorer.Scorer<Scorer.Run<Args, A>, R>>
@@ -195,10 +196,16 @@ export const suite = <
   const list = (value: unknown) => Array.isArray(value) ? Object.freeze([...value]) : value === undefined ? Object.freeze([]) : value
   const scorers = read(() => list(source.scorers))
   const gate = read(() => source.gate)
+  const target = read(() => source.target)
+  const targetTag = read(() => {
+    const tagged = target as typeof target & { tag?: unknown; key?: unknown; _tag?: unknown }
+    return [tagged?.tag, tagged?.key, tagged?._tag, tagged?.name].find((value): value is string => typeof value === "string" && value.length > 0)
+  }) ?? "(anonymous)"
   return Object.freeze({
     [TypeId]: TypeId,
     name,
-    target: read(() => source.target) as Declared["target"],
+    targetTag,
+    target: target as Declared["target"],
     cases: read(() => list(source.cases)) as Declared["cases"],
     scorers: scorers as Declared["scorers"],
     trials: read(() => source.trials) ?? 1,
@@ -421,6 +428,7 @@ export interface CaseResult {
  * @since 0.0.13
  */
 export interface RunResult {
+  readonly targetTag?: string | undefined
   readonly runId: string
   readonly suite: string
   readonly at: string
@@ -661,6 +669,7 @@ export const run = <Args extends ReadonlyArray<unknown>, A, R>(
     return {
       runId,
       suite: suite.name,
+      targetTag: suite.targetTag,
       at,
       cases,
       observations: cases.flatMap((item) => item.observations),
@@ -774,6 +783,7 @@ export const baselineVersion = 1 as const
  * @since 0.0.13
  */
 export interface BaselineRecord {
+  readonly targetTag?: string | undefined
   readonly suite: string
   readonly case: string
   readonly scorer: string
@@ -826,6 +836,8 @@ const decodeRecord = (value: unknown, index: number): BaselineRecord | EvalError
     if (read instanceof EvalError) return read
     fields[field] = read
   }
+  const targetTag = source.targetTag === undefined ? undefined : textField(source.targetTag, "targetTag", `${at}.targetTag`)
+  if (targetTag instanceof EvalError) return targetTag
   const score = source.score
   if (typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 1) {
     return baselineError(`Baseline record field 'score' must be a finite number in [0, 1], got ${shown(score)}`, `${at}.score`)
@@ -838,6 +850,7 @@ const decodeRecord = (value: unknown, index: number): BaselineRecord | EvalError
   }
   return {
     suite: fields.suite!,
+    ...(targetTag === undefined ? {} : { targetTag }),
     case: fields.case!,
     scorer: fields.scorer!,
     ...(scorerName === undefined ? {} : { scorerName }),
@@ -892,6 +905,7 @@ export const baseline = (run: RunResult): Effect.Effect<Baseline, EvalError> =>
       observation.kind === "score"
         ? [{
           suite: run.suite,
+          targetTag: run.targetTag,
           case: observation.case,
           scorer: observation.scorer,
           ...(observation.scorerName === undefined ? {} : { scorerName: observation.scorerName }),
@@ -904,8 +918,8 @@ export const baseline = (run: RunResult): Effect.Effect<Baseline, EvalError> =>
 
 const recordOrder = (left: BaselineRecord, right: BaselineRecord): number =>
   text.compareText(
-    text.tupleKey(left.suite, left.case, left.scorer, left.stepKey),
-    text.tupleKey(right.suite, right.case, right.scorer, right.stepKey)
+    text.tupleKey(left.suite, left.targetTag ?? "", left.case, left.scorer, left.stepKey),
+    text.tupleKey(right.suite, right.targetTag ?? "", right.case, right.scorer, right.stepKey)
   ) ||
   left.score - right.score ||
   text.compareText(left.scorerName ?? "", right.scorerName ?? "")
@@ -922,6 +936,7 @@ export const write = (baseline: Baseline): string => {
   const records = [...baseline.records].sort(recordOrder).map((record) =>
     canonical.canonicalJson({
       suite: record.suite,
+      ...(record.targetTag === undefined ? {} : { targetTag: record.targetTag }),
       case: record.case,
       scorer: record.scorer,
       ...(record.scorerName === undefined ? {} : { scorerName: record.scorerName }),
@@ -1134,13 +1149,13 @@ export const compare = (baseline: Baseline, run: RunResult, tolerances: Toleranc
   const inconclusive = run.observations.filter((observation): observation is InconclusiveObservation =>
     observation.kind === "inconclusive"
   )
-  const baselineByKey = groupBy(baseline.records, (record) => text.tupleKey(record.case, record.scorer))
-  const actualByKey = groupBy(actual, (observation) => text.tupleKey(observation.case, observation.scorer))
+  const baselineByKey = groupBy(baseline.records, (record) => text.tupleKey(record.targetTag ?? run.targetTag ?? "", record.case, record.scorer))
+  const actualByKey = groupBy(actual, (observation) => text.tupleKey(run.targetTag ?? "", observation.case, observation.scorer))
   // A scorer that could not decide is inconclusive, not missing: each
   // inconclusive observation accounts for one baseline record of its pair.
   const undecided = new Map<string, number>()
   for (const observation of inconclusive) {
-    const key = text.tupleKey(observation.case, observation.scorer)
+    const key = text.tupleKey(run.targetTag ?? "", observation.case, observation.scorer)
     undecided.set(key, (undecided.get(key) ?? 0) + 1)
   }
   const regressions: Array<Regression> = []

@@ -1,7 +1,7 @@
 // expect: EK0403
 // The program is rejected, so it has no run result to expect.
 import { parse, describe, count } from "./lib.js"
-export effect function probe(s:string):unknown!RangeError! { return parse(s) }
+export effect function probe(s:string):unknown!RangeError { return parse(s) }
 export effect function main() {
  const good = try Effect.exit(probe('"value"'))
  const bad = try Effect.exit(probe("listed"))

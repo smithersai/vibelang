@@ -19,7 +19,7 @@ export const stepsSeen = (): ReadonlyArray<string> => steps
 
 // TypeScript code that a plain function calls keeps its exceptions unchanged.
 export const contextual: (text: string) => string = (text) => foreign(text)
-export const inferred = (text: string): infer _ => foreign(text)
+export const inferred = (text: string) => foreign(text)
 export const callForeign = (text: string): string => foreign(text)
 export const callContextual: (f: () => string) => string = (f) => f()
 
@@ -36,13 +36,13 @@ export const recover = (): string => {
 
 // A throw that can escape needs an Effect contract.
 export class Validator {
-  effect validate(text: string): string!Empty! {
+  effect validate(text: string): string!Empty {
     if (!text) throw new Empty({ value: text })
     return text
   }
 }
 
-export const half = effect (n: number): number!string! => {
+export const half = effect (n: number): number!string => {
   if (n < 0) throw "negative"
   return n / 2
 }

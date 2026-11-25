@@ -57,11 +57,6 @@ function behindRows(text: string) {
     })
 }
 
-// A row that names a diagnostic needs a witness here, keyed by its first cell:
-// source that still reports each code. When the witness compiles, the row's
-// change has landed and the row goes.
-const behindWitnesses: Record<string, string> = {}
-
 async function compileWitness(source: string) {
   const temp = mkdtempSync(join(tmpdir(), "docs-transition-witness-"))
   try {
@@ -82,19 +77,15 @@ const formerBehindRows = [
   "| `fork.scoped w()`, `fork.in(scope) w()`, `fork.detached w()` | `Effect.forkScoped(w())`, `Effect.forkIn(w(), scope)`, `Effect.forkDetach(w())` | TS1005, EK4410 |"
 ]
 
-test("RD-072: a deferred form in the migration rules names a diagnostic only while a witness still reports it", async () => {
+test("RD-072: the migration rules contain no unwitnessed diagnostic rows", () => {
   expect(behindRows("## Where this toolchain is behind the skill\n\n| The skill | Write on this toolchain | Until then |\n| --- | --- | --- |\n" + formerBehindRows.join("\n") + "\n\n## Next\n").map(row => row.codes))
     .toEqual([["TS2304"], ["TS1005", "EK4410"]])
   for (const file of ["rules.md", "context.md"]) {
     const rows = behindRows(readFileSync(new URL("../../.smithers/flows/migrate/" + file, import.meta.url), "utf8"))
     expect(rows.length, file + " keeps the compiler-model row").toBeGreaterThan(0)
     for (const row of rows) {
+      expect(row.codes, file + ": " + row.skill).toEqual([])
       expect(row.skill, file).not.toMatch(/fork\.(?:scoped|in\(|detached)|Every export of `Effect` as a global/)
-      if (!row.codes.length) continue
-      const witness = behindWitnesses[row.skill]
-      if (witness === undefined) throw new Error(file + ": the row \"" + row.skill + "\" names " + row.codes.join(", ") + " and has no witness that still reports it")
-      const { compiled } = await compileWitness(witness)
-      for (const code of row.codes) expect(compiled.stdout + compiled.stderr, file + ": " + row.skill).toContain(code)
     }
   }
 }, 60000)

@@ -17,11 +17,15 @@ export async function devServer(options, version = "vite") {
 
 // The dependency-scan tests need the optimizer. Their server writes its cache
 // to a directory of its own outside the fixture, which close removes. Close
-// first waits for the crawl to end and the optimizer run to finish, then for
-// the 200 ms timer after which Vite logs the dependencies that run added: close
-// clears none of these timers.
+// first waits for the crawl to end and the optimizer run to finish. After each
+// run Vite starts a 200 ms timer to log the dependencies it added, and close
+// clears no such timer, so close then waits until the process holds no more
+// timers than it did before the server started.
+const timers = () => process.getActiveResourcesInfo().filter((name) => name === "Timeout").length
+
 export async function scanServer(options) {
   const cacheDir = mkdtempSync(join(tmpdir(), "vibelang-vite-scan-"))
+  const before = timers()
   const server = await createServer({ ...options, cacheDir })
   const close = server.close.bind(server)
   server.close = async () => {
@@ -30,8 +34,12 @@ export async function scanServer(options) {
       await environment.waitForRequestsIdle()
       const { metadata } = environment.depsOptimizer
       await Promise.all(Object.values({ ...metadata.discovered, ...metadata.optimized }).map((info) => info.processing))
-      await delay(250)
       await close()
+      const deadline = Date.now() + 10000
+      while (timers() > before) {
+        if (Date.now() > deadline) throw new Error(`the closed Vite server still holds ${timers() - before} timer(s)`)
+        await delay(10)
+      }
     } finally { rmSync(cacheDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }) }
   }
   return server

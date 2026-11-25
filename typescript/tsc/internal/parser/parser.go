@@ -4525,7 +4525,8 @@ func (p *Parser) nextTokenCanFollowDefaultKeyword() bool {
 		return p.lookAhead((*Parser).nextTokenIsFunctionKeywordOnSameLine) || p.isStartOfVibeLangEffectExpression()
 	case ast.KindIdentifier:
 		// export default effect function (vibelang_effect.go); export default spec function, rule 4302 (vibelang_proofs.go)
-		return p.isStartOfVibeLangEffectExpression() || p.isVibeLangFile() && p.scanner.TokenValue() == "spec" && p.lookAhead((*Parser).scanStartOfSpecFunction)
+		return p.isStartOfVibeLangEffectExpression() || p.isVibeLangFile() && (p.scanner.TokenValue() == "spec" && p.lookAhead((*Parser).scanStartOfSpecFunction) ||
+			p.scanner.TokenValue() == "theorem" && p.lookAhead((*Parser).scanStartOfTheorem)) // export default theorem t(), rule 4302
 	}
 	return false
 }

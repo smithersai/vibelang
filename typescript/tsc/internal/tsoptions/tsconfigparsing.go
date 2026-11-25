@@ -1211,6 +1211,11 @@ func parseJsonConfigFileContentWorker(
 		vibe.SidecarDir = getSubstitutedPathWithConfigDirTemplate(vibe.SidecarDir, basePathForFileNames)
 		options.VibeLang = &vibe
 	}
+	if options := parsedConfig.options; options != nil && options.CompilerOptions != nil && options.VibeLang != nil && startsWithConfigDirTemplate(options.VibeLang.ProofDir) {
+		vibe := *options.VibeLang
+		vibe.ProofDir = getSubstitutedPathWithConfigDirTemplate(vibe.ProofDir, basePathForFileNames)
+		options.VibeLang = &vibe
+	}
 	rawConfig := parseJsonToStringKey(parsedConfig.raw)
 	if configFileName != "" && parsedConfig.options != nil {
 		parsedConfig.options.ConfigFilePath = configFileName

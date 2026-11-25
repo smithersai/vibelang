@@ -23,6 +23,7 @@ func TestVibeLangDanglingBang(t *testing.T) {
 		{"newline-slot", "declare const loaded: User!NotFound\nconst b: User!\n  NotFound = loaded\n", 1},
 		{"equals", "declare const loaded: User!!\nconst e: User! = loaded\n", 1},
 		{"return-type", "effect function f(): number!\n{ return 1 }\n", 1},
+		{"dangling-requirement", "function f(): number!{ x: 1 }! { return 1 }", 1},
 		{"alias", "type T = string!\n", 1},
 		{"double-bang-newline", "declare const loaded: User!!\nconst ok: User!!\n  = loaded\n", 0},
 		{"double-bang-equals", "declare const loaded: User!!\nconst ok: User!!= loaded\n", 0},

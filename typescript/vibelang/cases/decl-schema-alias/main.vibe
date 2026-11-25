@@ -1,4 +1,3 @@
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"code":"read_failed","invalid":"invalid","described":"missing","port":true,"id":[true,true,false],"tags":["a"],"names":false,"pair":["a",1],"counts":{"a":1},"point":{"x":1},"home":{"city":"Paris"},"status":[true,true,false],"flag":true,"version":1}
 export schema Code = "root_missing" | "read_failed"
 export schema Port = number
@@ -19,13 +18,7 @@ function describe(code: Code): string {
 }
 
 effect function decode(input: unknown) {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
-    return { kind: "return:" as const, value: (try Schema.decodeUnknownEffect(Code)(input)) };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: ("invalid") };
-  });
-return $nativeTryCompletion.value;
-}
+  return Schema.decodeUnknownEffect(Code)(input) catch (e) => "invalid"
 }
 
 // schema stays an ordinary name where no declaration starts.

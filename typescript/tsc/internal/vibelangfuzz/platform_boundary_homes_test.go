@@ -13,7 +13,7 @@ const platformBoundaryTarget = "FuzzPlatformBoundaryHomes"
 
 var platformBoundaryQuotes = []string{
 	"anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too",
-	"A wrapper changes how a failure is represented, not whether the platform may be called.",
+	"A wrapper changes how a failure is represented. Code that needs the platform lives in a `.ts` file or a `module` body",
 	"A property on an unrelated object, such as `client.fetch` or `client.timeout`, is a different symbol.",
 	"A local binding, an import or an Effect module in scope (`Option`, `FileSystem`, `Headers`, `Worker`) shadows the global first",
 	"| a statically named value that reaches the platform (rule below) anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows.",

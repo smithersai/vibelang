@@ -120,9 +120,8 @@ func FuzzAsyncAwaitedDefinitions(f *testing.F) {
 				Gap(t, "FuzzAsyncAwaitedDefinitions", "async-definition:types:"+key, "%s; %s leaves an awaited definition in the wrong function context: %v\n%s", asyncRefactorPreservationQuote, action.Title, errors, Archive(edited))
 			}
 		}
-		// An unsupported head may be withheld or rewritten safely. Controls keep
-		// the existing conversion available rather than disabling every action.
-		if tc.want > 0 && found != tc.want {
+		// Keep the positive controls and refused conversion counts exact.
+		if found != tc.want {
 			Gap(t, "FuzzAsyncAwaitedDefinitions", "async-definition:control:"+key, "want %d safe conversions, got %d\n%s", tc.want, found, e.archive)
 		}
 	})

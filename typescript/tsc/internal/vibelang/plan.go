@@ -302,13 +302,6 @@ func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
 	return visit(body)
 }
 
-// forEachRunningCallInBody is forEachCallInBody. It remains only for
-// object_member_context_test.go, which pins that the two walks agree; delete
-// it with that use.
-func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) bool) bool {
-	return forEachCallInBody(fn, cb)
-}
-
 type fnState uint8
 
 const (
@@ -395,17 +388,10 @@ func isWrittenForm(fn *ast.Node) bool {
 }
 
 // performs reports whether call performs an Effect operation: it runs an
-// Effect, calls an Effect function through its plain variant, or looks up a
+// Effect or looks up a
 // service.
 func (a *analyzer) performs(call *ast.Node) bool {
 	return a.runs(call) || ast.IsCallExpression(call) && !holdsProgram(a.checker, call) && isServiceLookup(a.checker, call)
-}
-
-// runsVariant reports whether call calls an Effect function through its plain
-// variant (D421). It runs no Effect, but its callee is an Effect function,
-// which plain code may not call (D500): EK1001, EK9203, or EK4301.
-func (a *analyzer) runsVariant(call *ast.Node) bool {
-	return false
 }
 
 // runs reports whether call runs an Effect, which the lowering spells yield*.

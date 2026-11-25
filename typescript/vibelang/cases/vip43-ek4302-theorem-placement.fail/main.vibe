@@ -1,0 +1,25 @@
+// expect: EK4302
+// Rule 4301: a theorem or spec function that is not a statement of a
+// module's top level. Appendix B keeps the number 4301 for an interim rule
+// until a coordinated renumber, so the compiler reports the rule as EK4302
+// until then.
+// rule-evidence: docs/design/src/900-appendices.md#names-and-placement | `theorem` and `spec function` declarations are statements of a module's top level in a `.vibe` or `.vibex` file (4301).
+export function holder(n: number): number {
+  theorem inner(x: number) {
+    assert(x === x)
+  }
+  spec function local(m: number): number {
+    return m
+  }
+  return n
+}
+{
+  theorem blocked(x: number) {
+    assert(x === x)
+  }
+}
+namespace Facts {
+  theorem spaced(x: number) {
+    assert(x === x)
+  }
+}

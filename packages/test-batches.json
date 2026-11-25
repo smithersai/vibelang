@@ -18,7 +18,6 @@
     [
       "compiler/test/declaration-module-identity.property.test.mjs",
       "compiler/test/directive-standalone.test.mjs",
-      "compiler/test/effect-version-coverage.test.mjs",
       "compiler/test/emitted-namespace.property.test.mjs",
       "compiler/test/eslint-corpus-constants.test.mjs",
       "compiler/test/eslint-escaped-name.property.test.mjs",
@@ -407,7 +406,25 @@
       "runtime/tests/subprocess.property.test.ts",
       "runtime/tests/trusted.test.ts",
       "runtime/tests/try-operations.test.ts",
-      "runtime/tests/try-union-types.test.ts"
+      "runtime/tests/try-union-types.test.ts",
+      "runtime/tests/eval-target.test.ts"
+    ],
+    [
+      "runtime/tests/agent-run-durable.test.ts",
+      "runtime/tests/agent-run-fuzz.test.ts",
+      "runtime/tests/agent-run.test.ts",
+      "runtime/tests/mcp-client-fuzz.test.ts",
+      "runtime/tests/mcp-client.test.ts",
+      "runtime/tests/tools-fuzz.test.ts",
+      "runtime/tests/tools.test.ts"
+    ],
+    [
+      "runtime/tests/otlp-scrub.property.test.ts",
+      "runtime/tests/otlp.test.ts",
+      "runtime/tests/sandbox-isolation.property.test.ts",
+      "runtime/tests/sandbox.test.ts",
+      "runtime/tests/secrets-scrub.property.test.ts",
+      "runtime/tests/secrets.test.ts"
     ]
   ],
   "vite": [
@@ -438,7 +455,9 @@
       "vite/test/ts-directive.test.mjs",
       "vite/test/vibex-bare-import.test.mjs",
       "vite/test/vibex.test.mjs",
-      "vite/test/worker-workspaces.test.mjs"
+      "vite/test/worker-workspaces.test.mjs",
+      "vite/test/eval-files.test.mjs",
+      "vite/test/worker-imports.test.mjs"
     ],
     [
       "vite/test/javascript-contract.property.test.mjs#1",
@@ -486,7 +505,9 @@
       "unplugin/test/deferred.test.mjs",
       "unplugin/test/embedded.test.mjs",
       "unplugin/test/entry-globs.property.test.mjs",
-      "unplugin/test/entry-sidecars.test.mjs"
+      "unplugin/test/entry-sidecars.test.mjs",
+      "unplugin/test/eval-files.test.mjs",
+      "unplugin/test/worker-imports.test.mjs"
     ],
     [
       "unplugin/test/encoded-imports.property.test.mjs#1",

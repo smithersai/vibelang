@@ -1,0 +1,62 @@
+// expect: EK4311
+// rule-evidence: docs/design/src/900-appendices.md#verification-expressions | Every other form is rule 4311, including `==` and `!=`, `%`, `/` outside `Math.floor`, `null`, `??`, `?.`, template literals, `typeof`, `in`, `instanceof`, `as`, `satisfies`, the non-null `!`, bitwise and shift operators, `**`, assignment, `new`, `this`, any other arrow or function expression, and every VibeLang expression form.
+// rule-evidence: docs/design/src/900-appendices.md#numbers | A numeric literal is an integer whose magnitude is at most `Number.MAX_SAFE_INTEGER`.
+interface Box { readonly value?: number }
+theorem remainder(x: number) {
+  assert(x % 2 === 0 || x % 2 === 1 || x < 0)
+}
+theorem division(x: number) {
+  assert(x / 2 <= x || x < 0)
+}
+theorem fraction(x: number) {
+  assert(x + 0.5 > x)
+}
+theorem unsafeInteger(x: number) {
+  assert(x < 9007199254740993 || x >= 0)
+}
+theorem looseEquality(x: number, y: number) {
+  assert(x == y || x != y)
+}
+theorem nullish(box: Box) {
+  assert((box.value ?? 0) >= 0 || box?.value === undefined)
+}
+theorem template(x: number) {
+  assert(`${x}`.length >= 0)
+}
+theorem typeTest(x: number) {
+  assert(typeof x === "number")
+}
+theorem cast(x: number) {
+  assert((x as number) === x)
+}
+theorem bitwise(x: number) {
+  assert((x | 0) === x || (x << 1) >= x || x < 0)
+}
+theorem power(x: number) {
+  assert(x ** 2 >= 0)
+}
+theorem callback(xs: readonly number[]) {
+  assert(xs.map((x) => x + 1).length === xs.length)
+}
+theorem blockCallback(xs: readonly number[]) {
+  assert(xs.every((x) => { return x >= 0 }) || xs.length >= 0)
+}
+theorem spread(xs: readonly number[]) {
+  assert([...xs].length === xs.length && Math.max(...xs) >= 0)
+}
+export function holder(n: number): number {
+  proof {
+    const half = n / 2
+    if (n % 2 === 0) assert(half + half === n)
+  }
+  return n
+}
+// Each of these is a verification expression form.
+theorem allowed(xs: readonly number[], n: number, flag: boolean, s: string) {
+  assume(xs.every((x, i) => x >= i) && n >= 0)
+  const half = Math.floor(n / 2)
+  const pair = { half, n: -n }
+  assert(half * 2 <= n && [half, n][0] === pair.half)
+  assert((flag ? 1 : 0) + 9007199254740991 > 0 && !flag !== flag)
+  assert(xs.some((x) => x === n) || s !== "b" || 1n === 1n || undefined === undefined)
+}

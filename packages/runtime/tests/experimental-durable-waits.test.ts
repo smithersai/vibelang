@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import fc from "fast-check"
-import { Effect, Exit, Layer, Schema, Stream } from "effect"
+import { Cause, Effect, Exit, Layer, Option, Schema, Stream } from "effect"
 import { DurableDeferred } from "effect/workflow"
 import { Durable } from "vibelang-runtime/experimental"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
@@ -508,3 +508,30 @@ test("the first delivery wins under any later deliveries and crashes", async () 
     check: firstDeliveryWins
   })
 }, 120000)
+
+// Deadlines (VIP-56).
+
+const Expiring = Durable.workflow("waits#Expiring", { payload: { id: Schema.String }, success: Schema.String })
+const expiring = Expiring.toLayer(({ id }) =>
+  Durable.withDeadline("waits#Expiring", 0, { success: Schema.String }, Effect.as(Durable.sleep("1 hour"), `late:${id}`))
+)
+
+test("a run that missed its deadline dies with DeadlineExceeded again when a fresh engine reads it back", async () => {
+  const store = Durable.makeMemoryStore()
+  const invoke = () =>
+    Effect.runPromise(Effect.provide(Effect.exit(Expiring.execute({ id: "d1" })), Layer.provideMerge(expiring, Durable.layerStore(store))))
+  const defectOf = (exit: Exit.Exit<string, unknown>) =>
+    Exit.isFailure(exit) ? exit.cause.reasons.find(Cause.isDieReason)?.defect : undefined
+
+  const first = defectOf(await invoke())
+  expect(first).toBeInstanceOf(Durable.DeadlineExceeded)
+  const againExit = await invoke()
+  const again = defectOf(againExit)
+  expect(again).toBeInstanceOf(Durable.DeadlineExceeded)
+  expect(again).toMatchObject({ _tag: "DeadlineExceeded", workflow: "waits#Expiring", message: (first as Durable.DeadlineExceeded).message })
+
+  const run = await runOf(Expiring, { id: "d1" })
+  const polled = await Effect.runPromise(Effect.provide(Expiring.poll(run), Layer.provideMerge(expiring, Durable.layerStore(store))))
+  const exit = Option.getOrThrow(polled)
+  expect(exit._tag === "Complete" && defectOf(exit.exit)).toBeInstanceOf(Durable.DeadlineExceeded)
+})

@@ -55,9 +55,22 @@ const bundle = (root, plugins) => build({
 
 test("a build compiles a .ts module with the directive and leaves its plain neighbour to Vite", async (t) => {
   const root = project(t)
-  await bundle(root, [vibelang({ compiler })])
+  // Record what the plugin's load hook returns for each .ts module.
+  const plugin = vibelang({ compiler })
+  const load = plugin.load
+  const served = new Map()
+  plugin.load = async function (id, options) {
+    const result = await load.call(this, id, options)
+    if (/\.ts$/.test(id)) served.set(id.slice(root.length + 1), result)
+    return result
+  }
+  await bundle(root, [plugin])
   const { output } = await import(pathToFileURL(join(root, "dist/run.mjs")).href)
   assert.equal(output, "hello nobody!")
+  assert.equal(typeof served.get("src/hello.ts")?.code, "string", "the plugin did not compile src/hello.ts")
+  assert.ok(served.has("src/plain.ts"), `Vite never asked the plugin for src/plain.ts: ${[...served.keys()]}`)
+  assert.equal(served.get("src/plain.ts"), undefined, "the plugin compiled src/plain.ts, which has no directive")
+  assert.equal(served.get("src/run.ts"), undefined, "the plugin compiled src/run.ts, which has no directive")
 })
 
 test("without the plugin Vite refuses the file", async (t) => {
@@ -121,4 +134,25 @@ test("a cold dependency scan reads the file's JavaScript", async (t) => {
   await optimizer.scanProcessing
   const scanned = Object.keys({ ...optimizer.metadata.discovered, ...optimizer.metadata.optimized })
   assert.ok(scanned.includes("effect/Schema"), `the scan found ${JSON.stringify(scanned)}`)
+})
+
+// Another plugin's virtual module stays with that plugin, even when its id
+// ends in .ts or .vibe: the directive check reads real files only.
+test("a build leaves another plugin's \\0 virtual .ts and .vibe modules to that plugin", async (t) => {
+  const root = project(t, { "src/run.ts": 'export { answer } from "virtual:worker"\nexport { other } from "virtual:module"\n' })
+  const ids = { "virtual:worker": "\0virtual:worker-entry:entry.ts", "virtual:module": "\0virtual:module.vibe" }
+  const sources = { [ids["virtual:worker"]]: "export const answer = 42\n", [ids["virtual:module"]]: "export const other = 'virtual'\n" }
+  const plugin = vibelang({ compiler })
+  const load = plugin.load
+  const served = new Map()
+  plugin.load = async function (id, options) {
+    const result = await load.call(this, id, options)
+    if (id.startsWith("\0")) served.set(id, result)
+    return result
+  }
+  const virtual = { name: "virtual-fixture", resolveId: (source) => ids[source], load: (id) => sources[id] }
+  await bundle(root, [plugin, virtual])
+  const { answer, other } = await import(pathToFileURL(join(root, "dist/run.mjs")).href)
+  assert.deepEqual([answer, other], [42, "virtual"])
+  assert.deepEqual(Object.fromEntries(served), { [ids["virtual:worker"]]: undefined, [ids["virtual:module"]]: undefined })
 })

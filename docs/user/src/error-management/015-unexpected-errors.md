@@ -22,7 +22,7 @@ true
 
 `die` terminates the fiber with a defect. Pass an `Error` instance so failure reports keep a stack trace. Implicit JavaScript runtime errors (such as dereferencing `undefined`) also become defects.
 
-Use `throw` inside an `effect` function for a typed failure, and `try die(error)` for a defect. Prefer a typed Effect such as `fromOption` when you expect a value to be missing.
+A `throw` in a plain function is `EK0401`. Use `throw` inside an `effect` function for a typed failure, and `try die(error)` for a defect. Prefer a typed Effect such as `fromOption` when you expect a value to be missing.
 
 ```vibe
 // run: try Console.log(try firstLabel(["one"])); try Console.log(try firstLabel([]))

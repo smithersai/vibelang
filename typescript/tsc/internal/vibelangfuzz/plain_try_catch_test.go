@@ -9,7 +9,7 @@ import (
 
 const plainTryCatchTarget = "FuzzPlainTryCatch"
 
-// Chapter 1; alchemy-13 (decided detail 205: a plain try/catch is JavaScript's).
+// Chapter 1: a plain try/catch is JavaScript's.
 const plainTryCatchQuote = "A `try { } catch { }` statement at the top level, or in a plain or `async` function, is JavaScript's, as in TypeScript. Only effect code bans it (VIP-5)."
 
 func TestPlainTryCatchQuoted(t *testing.T) {

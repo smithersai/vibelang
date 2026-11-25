@@ -9,7 +9,7 @@ func TestEffectErrorObjectOperand(t *testing.T) {
 		"type T = number!{ x: 1 }!never",
 		"function f(): number!! { return 1 }",
 		"function f(): number!{ x: 1 } { return 1 }",
-		"function f(): number!{ x: 1 }! { return 1 }",
+		"function f(): number!{ x: 1 }!never { return 1 }",
 	} {
 		t.Run(source, func(t *testing.T) {
 			file := parseVibe(t, source)

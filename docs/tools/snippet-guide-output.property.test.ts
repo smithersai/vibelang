@@ -61,5 +61,5 @@ test("run hooks execute their Effects and keep exact generated output", async ()
         }
       }
     } finally { rmSync(root, { recursive: true, force: true }) }
-  }), { seed: 345, numRuns: 1, endOnFailure: true })
+  }), { seed: 345, numRuns: 5, endOnFailure: true })
 }, runTestLimit)

@@ -11,7 +11,7 @@ import * as Exit from "effect/Exit"
 
 error Lost { code: string }
 
-const work = effect (): number!Lost! => {
+const work = effect (): number!Lost => {
   throw new Lost({ code: "lost" })
 }
 

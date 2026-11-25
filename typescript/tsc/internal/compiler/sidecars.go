@@ -147,8 +147,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	var mutex sync.Mutex
 	var referenced []*ast.SourceFile
 	visited := map[*ast.SourceFile]bool{}
-	// refer records the body a relative specifier names, in any of the
-	// spellings of vibelang.declarationImportStyle: ./main.vibe.parse.js,
+	// bodyAt accepts the emitted path spellings ./main.vibe.parse.js,
 	// ./main.vibe.parse or ./main.vibe.parse.ts.
 	bodyAt := func(target string) *ast.SourceFile {
 		if body := bodies[target]; body != nil {
@@ -505,44 +504,6 @@ func rewriteSidecarDirectives(text, declarationDirectory, sidecarDirectory strin
 			return parts[1] + parts[2] + relative + parts[4]
 		})
 	})
-}
-
-// sidecarText turns the declaration text that declarationFile would hold for
-// source into its sidecar's. exists reports whether a file is on disk.
-func sidecarText(text string, declarationFile string, source string, exists func(string) bool, caseSensitivity tspath.CaseSensitivity) string {
-	sourceDirectory := tspath.GetDirectoryPath(source)
-	text = rewriteSidecarSpecifiers(text, func(specifier string) string {
-		return vibeSpecifier(specifier, sourceDirectory, exists)
-	})
-	return rewriteSidecarDirectives(text, tspath.GetDirectoryPath(declarationFile), sourceDirectory, caseSensitivity)
-}
-
-// vibeSpecifier names a .vibe module by its source, ./y.vibe, where a
-// relative specifier, ./y.js, ./y or ./y.ts, reaches y.vibe and no TypeScript
-// file that stock TypeScript would resolve first. Explicit .vibe specifiers have already
-// been preserved by declaration emit, so native siblings cannot hide them.
-func vibeSpecifier(specifier string, directory string, exists func(string) bool) string {
-	stem := specifier
-	switch {
-	case strings.HasSuffix(specifier, ".js"):
-		stem = strings.TrimSuffix(specifier, ".js")
-	case strings.HasSuffix(specifier, tspath.ExtensionTs) && !tspath.IsDeclarationFileName(specifier):
-		stem = strings.TrimSuffix(specifier, tspath.ExtensionTs)
-	case strings.HasSuffix(specifier, tspath.ExtensionVibe):
-		return specifier
-	case tspath.TryGetExtensionFromPath(specifier) != "":
-		return specifier
-	}
-	base := tspath.ResolvePath(directory, stem)
-	if !exists(base + tspath.ExtensionVibe) {
-		return specifier
-	}
-	for _, extension := range []string{tspath.ExtensionTs, tspath.ExtensionTsx, tspath.ExtensionDts} {
-		if exists(base + extension) {
-			return specifier
-		}
-	}
-	return stem + tspath.ExtensionVibe
 }
 
 // rewriteSidecarSpecifiers reads declaration module names as TypeScript

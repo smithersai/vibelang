@@ -9,7 +9,7 @@ import (
 
 const plainMatchKindsTarget = "FuzzPlainMatchKinds"
 
-// Chapter 1 and VIP-1; foldkit-72, foldkit-65 and foldkit-3.
+// Chapter 1 and VIP-1.
 const plainMatchKindQuote = "A function's kind is decided by a keyword on the function, never by its body or by a type."
 const plainMatchUnrunQuote = "neither keyword: plain JavaScript; returns the Effect unrun"
 

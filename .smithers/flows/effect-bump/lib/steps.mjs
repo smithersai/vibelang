@@ -16,7 +16,7 @@ const INSTALLS = ["packages/runtime", "experiments", "docs/tools"]
 // names what to change; docs/maintainers/effect-upgrade.md lists them.
 export const PROBES = [
   { name: "pins", cwd: ".", command: "node scripts/effect-pin.mjs" },
-  { name: "runtime", cwd: "packages/runtime", command: "bun test" },
+  { name: "runtime", cwd: "packages/runtime", command: "bun test --timeout=30000" },
   { name: "kernel", cwd: "experiments", command: "bun test --timeout=30000" },
   {
     name: "compiler-tables",

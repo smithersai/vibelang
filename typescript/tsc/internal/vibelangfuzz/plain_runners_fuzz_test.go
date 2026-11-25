@@ -112,3 +112,21 @@ func plainRunnerInput(data []byte) (struct{ key, source string }, string) {
 	}
 	return plainRunnerForms[int(a)%len(plainRunnerForms)], plainRunners[int(b)%len(plainRunners)]
 }
+
+// Chapter 3 applies the same throwing-call rule to Effect's synchronous
+// runner as to other throwing foreign calls. A native try catches it.
+func TestPlainRunSyncThrows(t *testing.T) {
+	w := NewWorkspace(t)
+	for _, caught := range []bool{true, false} {
+		body := `return Effect.runSync(Effect.fail("boom"))`
+		if caught {
+			body = "try { " + body + " } catch { return 1 }"
+		}
+		r := vipCompile(t, w, Single("export function run() { "+body+" }"))
+		if caught {
+			vipDiagnostics(t, r)
+			continue
+		}
+		vipDiagnostics(t, r, "EK0401")
+	}
+}

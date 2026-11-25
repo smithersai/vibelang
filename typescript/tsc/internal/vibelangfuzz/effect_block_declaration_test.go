@@ -12,10 +12,9 @@ import (
 // Effect, as its Effect TypeScript twin imports it, even when the prelude
 // supplies Effect and the source never names it. Chapter 1: "Declarations are
 // exactly what idiomatic Effect TypeScript would declare." The declaration
-// names Effect.Effect<...>, not import("effect/Effect").Effect<...>. t3code's
-// PullRequestProviderRegistry.ts lost its Effect import to the codemod, which
-// left only effect blocks. This compares the compiler
-// with itself on a VibeLang module and its twin, as VIP-27 permits.
+// names Effect.Effect<...>, not import("effect/Effect").Effect<...>. This
+// compares the compiler with itself on a VibeLang module and its twin, as
+// VIP-27 permits.
 func TestEffectBlockDeclarationNamesEffect(t *testing.T) {
 	requireDeclarationPreludeModesQuote(t)
 	service := "export class Drivers extends Context.Service<Drivers, { readonly n: number }>()(\"Drivers\") {}\n"

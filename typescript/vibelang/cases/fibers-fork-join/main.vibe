@@ -1,4 +1,3 @@
-
 module $LegacyJoin {
 import { Deferred, Effect, Fiber } from "effect"
 type IsFiber<T> = T extends Fiber.Fiber<infer _A, infer _E> ? true : false
@@ -78,11 +77,10 @@ function joinParts(value: object, fibers: Array<Fiber.Fiber<unknown, unknown>>):
 }
 }
 import { $join as $joinCollection } from $LegacyJoin
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"pair":["Ada",3],"tuple":["Ada",3],"record":{"user":"Ada","count":3},"block":"done","old":"Ada","deferred":7,"failed":"NotFound","interrupted":true,"detached":"background","scoped":"scoped"}
 error NotFound { id: string }
 
-effect function getUser(id: string): string!NotFound! {
+effect function getUser(id: string): string!NotFound {
   try sleep("5 millis")
   if (id === "missing") throw new NotFound({ id })
   return "Ada"
@@ -137,14 +135,12 @@ effect function deferred() {
 }
 
 effect function failed() {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  return effect {
     const user = fork getUser("missing")
-    return { kind: "return:" as const, value: (join user) };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: (e._tag) };
-  });
-return $nativeTryCompletion.value;
-}
+    return (join user)
+  } catch effect (e) => {
+    return (e._tag)
+  }
 }
 
 // When one fiber fails, join interrupts the others.

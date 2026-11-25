@@ -530,3 +530,55 @@ for (const sidecarDir of [undefined, ".vibe/declarations"]) {
     if (sidecarDir !== undefined) await assert.rejects(readFile(join(root, "main.d.vibe.ts")), { code: "ENOENT" })
   })
 }
+
+// `vite build --watch`: Vite's own watcher, not the dev server, sees each save,
+// and the plugin recompiles the module whose import changed.
+test("a watching Vite build rebuilds after a .vibe save, reports a diagnostic, and recovers", async (t) => {
+  const root = await fixture(t)
+  await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+    compilerOptions: { strict: true, module: "ESNext", target: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true },
+    include: ["watched/*.vibe"]
+  }))
+  await mkdir(join(root, "watched"))
+  const leaf = join(root, "watched/leaf.vibe")
+  await writeFile(leaf, "export const answer: number = 1\n")
+  await writeFile(join(root, "watched/main.vibe"), 'import { answer } from "./leaf.vibe"\nexport const doubled: number = answer * 2\n')
+  const outDir = join(root, "watch-out")
+  const events = []
+  let waiting
+  const watcher = await build({
+    root, configFile: false, logLevel: "silent", plugins: [vibelang({ compiler })],
+    build: { outDir, emptyOutDir: true, minify: false, watch: { chokidar: watch }, lib: { entry: join(root, "watched/main.vibe"), formats: ["es"], fileName: "main" } }
+  })
+  t.after(() => watcher.close())
+  // One result per build: BUNDLE_END for a written bundle, ERROR for a failed one.
+  watcher.on("event", async (event) => {
+    if (event.code === "BUNDLE_END" || event.code === "ERROR") {
+      await event.result?.close()
+      events.push(event.code === "ERROR" ? event.error.message : "built")
+      waiting?.()
+    }
+  })
+  async function next(count) {
+    const deadline = Date.now() + 60000
+    while (events.length < count) {
+      if (Date.now() > deadline) assert.fail(`the watching build produced ${JSON.stringify(events)}, not ${count} results`)
+      await new Promise((accept) => {
+        const timer = setTimeout(accept, 1000)
+        waiting = () => { clearTimeout(timer); accept() }
+      })
+    }
+    return events[count - 1]
+  }
+  const output = async () => (await import(pathToFileURL(join(outDir, "main.js")).href + "?" + events.length)).doubled
+  assert.equal(await next(1), "built")
+  assert.equal(await output(), 2)
+  await writeFile(leaf, "export const answer: number = 5\n")
+  assert.equal(await next(2), "built")
+  assert.equal(await output(), 10)
+  await writeFile(leaf, 'export const answer: number = "five"\n')
+  assert.match(await next(3), /TS2322/)
+  await writeFile(leaf, "export const answer: number = 7\n")
+  assert.equal(await next(4), "built")
+  assert.equal(await output(), 14)
+})

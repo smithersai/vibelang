@@ -9,7 +9,13 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// Spec functions and proof blocks (VIP-43, Appendix F):
+// Theorems, spec functions and proof blocks (VIP-43, Appendix F):
+//
+//	theorem clampInRange(x: number, lo: number, hi: number) {
+//	  assume(lo <= hi)
+//	  const result = clamp(x, lo, hi)
+//	  assert(lo <= result && result <= hi)
+//	}
 //
 //	spec function countPrefix(xs: readonly boolean[], end: number): number {
 //	  proof {
@@ -19,9 +25,15 @@ import (
 //	  return end <= 0 ? 0 : countPrefix(xs, end - 1) + (xs[end - 1] ? 1 : 0)
 //	}
 //
+// theorem followed on the same line by a binding identifier other than as,
+// satisfies or is, then ( or <, is a theorem: a function declaration without
+// the function keyword, flagged ast.NodeFlagsVibeLangSpec and
+// ast.NodeFlagsVibeLangProof together. The first flag erases it as a spec
+// function erases; the two together tell a theorem from one. Its body is a
+// proof context, so its proof statements are flagged as a proof block's are.
 // spec followed on the same line by function, async function or effect
 // function is a spec function: the function declaration, flagged
-// ast.NodeFlagsVibeLangSpec. proof followed on the same line by { where a
+// ast.NodeFlagsVibeLangSpec alone. proof followed on the same line by { where a
 // statement can start is a proof block: the block, flagged
 // ast.NodeFlagsVibeLangProof. In a proof block, an expression statement that
 // calls assume, assert, ensures, invariant or decreases by its plain name is
@@ -34,6 +46,54 @@ import (
 
 // proofStatementNames are the callees of proof statements.
 var proofStatementNames = []string{"assume", "assert", "ensures", "invariant", "decreases"}
+
+// scanStartOfTheorem reports whether the current token, theorem, starts a
+// theorem: a binding identifier other than as, satisfies or is follows on the
+// same line, then ( or <. The excluded names keep theorem as T, theorem
+// satisfies T and theorem is P expressions. It moves the scanner; call it
+// through lookAhead.
+func (p *Parser) scanStartOfTheorem() bool {
+	p.nextToken()
+	if p.hasPrecedingLineBreak() || !p.isBindingIdentifier() {
+		return false
+	}
+	switch p.token {
+	case ast.KindAsKeyword, ast.KindSatisfiesKeyword, ast.KindIsKeyword:
+		return false
+	}
+	p.nextToken()
+	return p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken
+}
+
+// parseTheoremDeclaration parses a theorem at the current token, theorem, as
+// a function declaration. A return type and a missing body parse, and the
+// checker rejects them (rules 4303 and 4302).
+func (p *Parser) parseTheoremDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {
+	word := p.tokenRange()
+	p.nextToken()
+	nameRange := p.tokenRange()
+	name := p.parseBindingIdentifier()
+	typeParameters := p.parseTypeParameters()
+	restoreFiberContext := p.setVibeLangFiberContext(false /*effect*/)
+	saveContextFlags := p.contextFlags
+	parameters := p.parseParameters(ParseFlagsNone)
+	returnType := p.parseReturnType(ast.KindColonToken, false /*isType*/)
+	body := p.parseFunctionBlockOrSemicolon(ParseFlagsNone, diagnostics.X_or_expected)
+	p.contextFlags = saveContextFlags
+	restoreFiberContext()
+	fn := p.finishNode(p.factory.NewFunctionDeclaration(modifiers, nil /*asteriskToken*/, name, typeParameters, parameters, returnType, nil /*fullSignature*/, body), pos)
+	p.withJSDoc(fn, jsdoc)
+	p.checkJSSyntax(fn)
+	fn.Flags |= ast.NodeFlagsVibeLangSpec | ast.NodeFlagsVibeLangProof
+	if body != nil {
+		p.markProofStatements(body.Statements())
+	}
+	// The formatter reads theorem name as async function name: the word, then
+	// a declaration written without its function keyword.
+	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxSpec, Word: word, Range: core.NewTextRange(word.Pos(), fn.End())})
+	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxShorthand, Word: nameRange})
+	return fn
+}
 
 // scanStartOfSpecFunction reports whether the current token, spec, starts a
 // spec function: function, async function or effect function follows on the

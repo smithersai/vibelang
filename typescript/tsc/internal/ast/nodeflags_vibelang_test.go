@@ -35,6 +35,7 @@ func TestVibeLangNodeFlagsAreDistinctBits(t *testing.T) {
 		"NodeFlagsVibeLangUncountedPattern": NodeFlagsVibeLangUncountedPattern,
 		"NodeFlagsVibeLangPatternBinding":   NodeFlagsVibeLangPatternBinding,
 		"NodeFlagsVibeLangSpec":             NodeFlagsVibeLangSpec,
+		"NodeFlagsVibeLangIsHolder":         NodeFlagsVibeLangIsHolder,
 		"NodeFlagsVibeLangProof":            NodeFlagsVibeLangProof,
 	}
 	var declared []string

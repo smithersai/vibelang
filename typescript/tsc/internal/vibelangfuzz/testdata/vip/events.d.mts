@@ -12,3 +12,7 @@ export declare function raise(value: unknown): never;
 export declare function reset(): void;
 /** The labels logged since the last reset, in order. */
 export declare function events(): readonly string[];
+/** Serializes a test observation. The worker reports serialization failures when reading the event log.
+ * @throws {never}
+ */
+export declare function stringifyObservation(value: unknown, replacer?: (key: string, value: any) => any): string;

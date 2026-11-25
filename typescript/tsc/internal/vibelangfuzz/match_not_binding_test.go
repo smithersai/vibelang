@@ -20,7 +20,7 @@ func TestMatchNotBindingQuoted(t *testing.T) {
 	}
 }
 
-var notBindingPatterns = []string{"not(let x)", "not (const x)", "not { value: let x }", "not [let x]", "not not(let x)", "helpers.not(let x)"}
+var notBindingPatterns = []string{"not(let x)", "not (const x)", "not { value: let x }", "not [let x]", "not not(let x)", "helpers.not(let x)", "not (not(let x))"}
 var notBindingForms = []string{"match", "if", "value", "while"}
 
 // The generator varies the negation's shape, lexical home and trivia. The
@@ -50,7 +50,7 @@ func FuzzMatchNotBinding(f *testing.F) {
 		pat, form := notBindingPatterns[pi], notBindingForms[fi]
 		pat = strings.ReplaceAll(pat, "not", []string{"not", "not /* gap */", "not\n"}[int(trivia)%3])
 		// Qualifying is a member access, so do not put trivia into that identifier.
-		if pi == len(notBindingPatterns)-1 {
+		if notBindingPatterns[pi] == "helpers.not(let x)" {
 			pat = notBindingPatterns[pi]
 		}
 		body := "return match(s) { when " + pat + ": 1; default: 0; }"
@@ -68,11 +68,20 @@ func FuzzMatchNotBinding(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer r.Remove()
+		wantEarlyError := notBindingPatterns[pi] == "not not(let x)"
+		seenEarlyErrors := 0
 		var errors []string
 		for _, d := range r.Diagnostics {
 			if d.Category() == diagnostics.CategoryError {
+				if wantEarlyError && d.Source() == "EK" && d.Code() == 707 {
+					seenEarlyErrors++
+					continue
+				}
 				errors = append(errors, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))
 			}
+		}
+		if wantEarlyError && seenEarlyErrors != 1 {
+			t.Fatalf("unparenthesized nested not: want one EK0707, got %d: %s", seenEarlyErrors, source)
 		}
 		if len(errors) > 0 {
 			Gap(t, "FuzzMatchNotBinding", form+":"+notBindingPatterns[pi], "VIP-7: %s; %s\n%s\n%s", notBindingPrefixQuote, notBindingInitQuote, source, strings.Join(errors, "\n"))

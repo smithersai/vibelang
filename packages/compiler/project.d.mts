@@ -160,7 +160,8 @@ export function projects(options: {
   /** Closes every project backend. Further loads reject. */
   close(): Promise<void>
   invalidate(): void
-  load(file: string): Promise<Loaded>
+  /** With projectWarnings: "once", include global warnings on the first error-free reporting load of each compile. */
+  load(file: string, options?: { projectWarnings?: "once" }): Promise<Loaded>
 }
 
 /** The executable and argument vector used to invoke the selected compiler. */

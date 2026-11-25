@@ -30,7 +30,7 @@ test("snippet commands retain output, exit status, cwd and literal arguments", a
 })
 
 test("a direct snippet process is killed at its deadline with its partial output retained", async () => {
-  const result = await command(["sh", "-c", "echo started; echo err >&2; exec sleep 5"], import.meta.dir, 200)
+  const result = await command(["sh", "-c", "echo started; echo err >&2; exec sleep 15"], import.meta.dir, 1500)
   expect(result.timedOut).toBe(true)
   expect(result.exitCode).not.toBe(0)
   expect(result.stdout).toBe("started\n")
@@ -53,11 +53,11 @@ async function descendant({ exits, stream, depth, noise }: { exits: boolean; str
   // after the output pipes have closed.
   const scratch = mkdtempSync(join(tmpdir(), "snippet-descendant-"))
   const marker = join(scratch, "escaped")
-  let script = "sleep 1; echo ESCAPED >&" + (stream === "stderr" ? 2 : 1) + "; : > " + quote(marker)
+  let script = "sleep 15; echo ESCAPED >&" + (stream === "stderr" ? 2 : 1) + "; : > " + quote(marker)
   for (let i = 0; i < depth; i++) script = "sh -c " + quote(script) + " & wait"
   script = "trap '' TERM; " + script
   const redirects = stream === "stdout" ? "2>/dev/null" : stream === "stderr" ? ">/dev/null" : ""
-  const result = await command(["sh", "-c", "sh -c " + quote(script) + " " + redirects + " & echo $!; printf '%s' " + quote("雪😀".repeat(noise)) + " >&2; " + (exits ? "exit 0" : "wait")], import.meta.dir, 200)
+  const result = await command(["sh", "-c", "sh -c " + quote(script) + " " + redirects + " & echo $!; printf '%s' " + quote("雪😀".repeat(noise)) + " >&2; " + (exits ? "exit 0" : "wait")], import.meta.dir, 1500)
   const pid = Number(result.stdout.split("\n")[0])
   try {
     expect(pid).toBeGreaterThan(1)
@@ -67,7 +67,7 @@ async function descendant({ exits, stream, depth, noise }: { exits: boolean; str
     if (exits) expect(result.exitCode).toBe(0)
     else expect(result.exitCode).not.toBe(0)
     // The group SIGKILL has landed once command() returns. Wait for the exit itself under a generous
-    // cap rather than a fixed second, then check the marker: a survivor would write it about 1 s after
+    // cap rather than a fixed second, then check the marker: a survivor would eventually write it after
     // the deadline, a killed process never does.
     const cap = Date.now() + 10_000
     while (running(pid) && Date.now() < cap) await Bun.sleep(10)
@@ -98,4 +98,4 @@ test.skipIf(process.platform === "win32")("snippet deadlines bound nested proces
     regressions: new URL("./property-regressions/", import.meta.url),
     check: descendant
   })
-}, 30_000)
+}, 90_000)

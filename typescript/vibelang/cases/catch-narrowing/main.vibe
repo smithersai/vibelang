@@ -34,8 +34,8 @@ export const rethrow = effect (source: Source): Effect.Effect<number, string, ne
   return source.read === undefined ? 0 : (source.read() catch effect (error) => (throw error))
 }
 
-effect function read(): number!string! { return 7 }
-effect function failed(): number!string! { throw "failed" }
+effect function read(): number!string { return 7 }
+effect function failed(): number!string { throw "failed" }
 
 export effect function main() {
   const absent: Source = {}

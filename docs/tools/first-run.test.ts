@@ -14,7 +14,9 @@ const compiler = defaultCompiler()
 
 test.skipIf(!existsSync(compiler))("the local starter runs and its stdout matches the first-run guides", async () => {
   const temp = mkdtempSync(join(tmpdir(), "docs-first-run-"))
+  let stages = 0
   const command = async (args: string[], cwd = temp) => {
+    stages++
     const result = await stage(args, { cwd, env: { ...process.env, VIBELANG_BINARY: compiler } })
     const { exitCode, signalCode, failure } = result
     expect({ args, exitCode, signalCode, failure }).toEqual({ args, exitCode: 0, signalCode: null, failure: "" })
@@ -27,7 +29,7 @@ test.skipIf(!existsSync(compiler))("the local starter runs and its stdout matche
     const app = join(temp, "app")
     // The Vite plugin must be able to check and emit a new, unbuilt app.
     const tests = await command(["node", join(repo, "docs/tools/node_modules/vitest/vitest.mjs"), "run"], app)
-    expect(tests).toContain("2 passed")
+    expect(tests).toMatch(/\bTests\s+2 passed\b/)
     const version = await command([compiler, "--version"], app)
     const existingProject = readFileSync(join(repo, "docs/user/src/setup/existing-project.md"), "utf8")
     const expectedVersion = sectionBlocks(existingProject, "3. Check the compiler", "out")
@@ -35,6 +37,7 @@ test.skipIf(!existsSync(compiler))("the local starter runs and its stdout matche
     expect(normalizeOutput(version)).toBe(expectedVersion[0])
     await command([compiler, "-p", "tsconfig.json"], app)
     const stdout = await command(["node", "--enable-source-maps", "dist/main.js"], app)
+    expect(stages).toBe(STAGES)
     for (const page of ["013-getting-started.md", "getting-started/004-installation.md", "setup/new-project.md"]) {
       const markdown = readFileSync(join(repo, "docs/user/src", page), "utf8")
       const outputs = page === "setup/new-project.md"

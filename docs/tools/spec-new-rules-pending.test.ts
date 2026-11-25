@@ -28,7 +28,6 @@ test.todo("rule-evidence: docs/design/src/007-tooling.md#formatting-and-existing
 test.todo("rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | transitional-diagnostics 4fcb3cde4901 | present | Afterwards, a module-only `Effect<number>` is native `TS2709`; an unbound name follows TypeScript resolution ([VIP-3](../vips/0003-effect-type-shorthand.md#decision)).")
 test.todo("rule-evidence: docs/design/src/007-tooling.md#ordinary-mutable-marker-migration | ordinary-mutable-marker-migration e7ba0df7f252 | present | `EK3410` rejects a retired `mutable` marker on an ordinary interface or object-type property or index signature, or a plain `error` payload.")
 test.todo("rule-evidence: docs/design/src/007-tooling.md#legacy-data-receiver-methods | legacy-data-receiver-methods 664dee1201ed | present | `EK1402` rejects a legacy Effect data receiver method such as `Option.some(1).map(f)`.")
-test.todo("rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | legacy-fork-try-statement-and-wire-migration dab261dec2a9 | present | | Code | Rejected form | `vibelang --fix` repair |")
 test.todo("rule-evidence: docs/design/src/007-tooling.md#empty-legacy-trust-wrappers | empty-legacy-trust-wrappers dfff7d2a6b06 | present | `EK0407` retires the resolved `trusted(f, [])` wrapper.")
 test.todo("rule-evidence: docs/design/vips/0040-module-declarations.md#decision | decision 468cce6a151f | present | This follows its TC39 `ModuleBody` grammar and the no-shared-lexical-scope rule below.")
 

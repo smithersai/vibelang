@@ -1,9 +1,3 @@
-
-import * as $nativeTryEffect2 from "effect/Effect";
-
-import * as $nativeTryEffect1 from "effect/Effect";
-
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"call":"caught","tagged":"caught","effect":"caught","value":"a7b","effect value":"a7b"}
 // A tagged template calls its tag with the tag's contract, as a call does: a
 // tag with a written @throws runs through an explicit Effect.try bridge, whose
@@ -20,39 +14,31 @@ export effect function main() {
   let call = ""
   let tagged = ""
   let effect = ""
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  effect {
     try ((ThrownBad: typeof Bad) => Effect.catch(
       Effect.try({ try: () => tag(Object.assign(["a", "b"], { raw: ["a", "b"] }), 0), catch: (error) => error }),
       (error) => error instanceof ThrownBad ? Effect.fail(error) : Effect.die(error)
     ))(Bad)
-  
-;return { kind: "normal" } as const;
-}, effect () => { call = "caught" 
-;return { kind: "normal" } as const;
-});
-
-}
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect { try ((ThrownBad: typeof Bad) => Effect.catch(
+  } catch effect () => {
+    call = "caught"
+  }
+  effect {
+    try ((ThrownBad: typeof Bad) => Effect.catch(
       Effect.try({ try: () => tag`a${0}b`, catch: (error) => error }),
       (error) => error instanceof ThrownBad ? Effect.fail(error) : Effect.die(error)
-    ))(Bad) 
-;return { kind: "normal" } as const;
-}, effect () => { tagged = "caught" 
-;return { kind: "normal" } as const;
-});
-
-}
-  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect { const zero = try number(0)
+    ))(Bad)
+  } catch effect () => {
+    tagged = "caught"
+  }
+  effect {
+    const zero = try number(0)
     try ((ThrownBad: typeof Bad) => Effect.catch(
       Effect.try({ try: () => tag`a${zero}b`, catch: (error) => error }),
       (error) => error instanceof ThrownBad ? Effect.fail(error) : Effect.die(error)
-    ))(Bad) 
-;return { kind: "normal" } as const;
-}, effect () => { effect = "caught" 
-;return { kind: "normal" } as const;
-});
-
-}
+    ))(Bad)
+  } catch effect () => {
+    effect = "caught"
+  }
   const value = try ((ThrownBad: typeof Bad) => Effect.catch(
       Effect.try({ try: () => tag`a${7}b`, catch: (error) => error }),
       (error) => error instanceof ThrownBad ? Effect.fail(error) : Effect.die(error)

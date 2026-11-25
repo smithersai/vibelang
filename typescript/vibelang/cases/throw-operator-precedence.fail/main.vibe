@@ -2,7 +2,7 @@
 error Failure { code: string }
 effect function fail() { throw new Failure({ code: "unknown" }) }
 // S10-12: the string operand fits the failure contract, but is not the intended failure.
-export effect function conditional(): unknown!string! {
+export effect function conditional(): unknown!string {
   return fail() catch effect (f) => throw f.code === "unknown" ? "a" : "b"
 }
 export effect function nullish() {

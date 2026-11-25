@@ -1,0 +1,15 @@
+default: proofs/main.vibe.ts
+proved  double        main.vibe:2
+proved  doubleIsEven  main.vibe:6
+2 proved, 0 not proved, 0 trusted.
+Model: number is an unbounded integer: NaN, infinities, -0, fractions and the 2^53 limit are outside these proofs.
+Verified by LemmaScript 0.6.6 (MIT, Midspiral, https://github.com/midspiral/LemmaScript) with Dafny 4.11.0.
+"verification/dafny": verification/dafny/main.vibe.ts, and no proofs directory
+"${configDir}/.proofs": .proofs/main.vibe.ts
+extended config, "generated": shared/generated/main.vibe.ts
+extended config, "${configDir}/generated": generated/main.vibe.ts
+the selected config's proofDir wins: mine/main.vibe.ts
+a proofDir that is not a path string (3, true, null, an array, ""): error EK3007
+a proofDir with files vibelang prove did not write: EK4316
+a proofDir that holds a program file: EK4316
+no root: Nothing to prove.

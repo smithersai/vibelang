@@ -1,4 +1,3 @@
-import * as $nativeTryEffect from "effect/Effect";
 // A function that compiles to plain JavaScript throws what it is given, as an
 // Effect function does (D406, D54): a Cause held as unknown is the expected
 // failure itself, so the function's catch receives the Cause object, whatever
@@ -24,9 +23,11 @@ function mixed() {
 effect function framedDied() {
   try yieldNow
   const cause: unknown = Cause.die("boom")
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { throw cause }, effect (e) => { return { kind: "return:" as const, value: (e === cause ? "Cause" : "other") }; });
-return $nativeTryCompletion.value;
-}
+  return effect {
+    throw cause
+  } catch effect (e) => {
+    return (e === cause ? "Cause" : "other")
+  }
 }
 
 // expect-result: {"failed":"Cause","died":"Cause","framedDied":"Cause","mixed":"Cause"}

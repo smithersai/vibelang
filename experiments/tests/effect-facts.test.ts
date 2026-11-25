@@ -133,8 +133,11 @@ describe("Context and structured concurrency", () => {
 describe("host stack limits", () => {
   test("F9 measure the direct-style recursion depth the host allows", () => {
     const direct = (n: number): number => (n === 0 ? 0 : direct(n - 1) + 1)
+    expect(direct(1_000)).toBe(1_000)
+    const ceiling = 10_000_000
+    expect(() => direct(ceiling)).toThrow()
     let low = 1_000
-    let high = 10_000_000
+    let high = ceiling
     while (low + 1 < high) {
       const mid = Math.floor((low + high) / 2)
       try {
@@ -145,6 +148,8 @@ describe("host stack limits", () => {
       }
     }
     console.log(`\n--- F9 direct recursion limit on this host (bun ${Bun.version}): ~${low} frames`)
-    expect(low).toBeLessThan(10_000_000)
+    expect(direct(low)).toBe(low)
+    expect(high).toBeLessThan(ceiling)
+    expect(() => direct(ceiling)).toThrow()
   })
 })

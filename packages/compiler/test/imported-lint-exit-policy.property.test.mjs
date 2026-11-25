@@ -10,7 +10,6 @@ import fc from "fast-check"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const binary = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
-const stock = process.env.EFFECT_TSGO_BINARY
 const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")
 const runtime = join(repo, "packages/runtime")
 const missing = [binary, effect, join(runtime, "dist/index.js")].find((path) => !existsSync(path))
@@ -42,9 +41,6 @@ function check(root, { severity, ignore, mode, includeSuggestions = true, salt =
     plugins: [plugin], ...(mode === "check" ? { noEmit: true } : {}),
     ...(mode === "noEmitOnError" ? { noEmitOnError: true } : {})
   }
-  writeFileSync(join(root, "tsconfig-stock.json"), JSON.stringify({ compilerOptions: { ...options, plugins: pluginEntry ? [plugin] : [{
-    name: "@effect/language-service", diagnosticSeverity: { promiseInEffectSuccess: severity }
-  }] }, include: ["src"] }))
   const ownOptions = { ...options }
   if (!pluginEntry) delete ownOptions.plugins
   writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
@@ -52,9 +48,9 @@ function check(root, { severity, ignore, mode, includeSuggestions = true, salt =
     ...(!pluginEntry ? { vibe: { severities: { EK3897: severity } } } : {})
   }))
   writeFileSync(join(root, "src/a.ts"), source.replaceAll("setWindow", "setWindow" + salt))
-  const run = (exe, config = ".") => {
+  const run = exe => {
     rmSync(join(root, "out"), { recursive: true, force: true })
-    const result = spawnSync(exe, ["-p", config, "--pretty", "false"], { cwd: root, encoding: "utf8", timeout: 30000 })
+    const result = spawnSync(exe, ["-p", ".", "--pretty", "false"], { cwd: root, encoding: "utf8", timeout: 30000 })
     assert.ifError(result.error)
     return { status: result.status, emitted: existsSync(join(root, "out/a.js")), output: result.stdout + result.stderr }
   }
@@ -65,10 +61,6 @@ function check(root, { severity, ignore, mode, includeSuggestions = true, salt =
   const expected = { status: fails ? mode === "noEmitOnError" ? 1 : 2 : 0, emitted: mode !== "check" && !(mode === "noEmitOnError" && fails) }
   assert.deepEqual({ status: ours.status, emitted: ours.emitted }, expected, JSON.stringify({ severity, ignore, mode, includeSuggestions, pluginEntry, output: ours.output }))
   if (visible) assert.match(ours.output, /EK3897/)
-  if (stock) {
-    const native = run(stock, "tsconfig-stock.json")
-    assert.deepEqual({ status: ours.status, emitted: ours.emitted }, { status: native.status, emitted: native.emitted }, JSON.stringify({ severity, ignore, mode, includeSuggestions, pluginEntry, ours, native }))
-  }
 }
 
 test("the minimized Smithers promise warning respects compiler exit and emit options", { skip, timeout: 120000 }, (t) => {

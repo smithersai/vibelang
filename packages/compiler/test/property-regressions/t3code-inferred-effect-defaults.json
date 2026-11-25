@@ -8,7 +8,5 @@
     "depth": 0,
     "route": "relative",
     "namespace": "subpath"
-  },
-  "pending": {},
-  "owner": "migfix-t3code"
+  }
 }

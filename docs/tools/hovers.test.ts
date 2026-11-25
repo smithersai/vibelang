@@ -43,24 +43,31 @@ const native = resolve(import.meta.dir, "../../packages/compiler/native", proces
 const legacy = resolve(import.meta.dir, "../../typescript/built/local/tsc")
 const selected = process.env.VIBELANG_BINARY || (existsSync(native) ? native : legacy)
 const compiler = Bun.which(selected) ?? resolve(selected)
-const root = mkdtempSync(join(tmpdir(), "hovers-test-"))
-const cache = join(root, "cache")
-const wrapper = join(root, "vibelang")
-const page = join(root, "src/page.md")
-const writeWrapper = (build: number) => {
-  writeFileSync(wrapper, `#!/bin/sh\n# build ${build}\nexec "${compiler}" "$@"\n`)
-  chmodSync(wrapper, 0o755)
+const roots: string[] = []
+afterAll(() => { for (const root of roots) rmSync(root, { recursive: true, force: true }) })
+
+function fixture() {
+  const root = mkdtempSync(join(tmpdir(), "hovers-test-"))
+  roots.push(root)
+  const cache = join(root, "cache")
+  const wrapper = join(root, "vibelang")
+  const page = join(root, "src/page.md")
+  const writeWrapper = (build: number) => {
+    writeFileSync(wrapper, `#!/bin/sh\n# build ${build}\nexec "${compiler}" "$@"\n`)
+    chmodSync(wrapper, 0o755)
+  }
+  const writePage = (name: string) => {
+    mkdirSync(join(root, "src"), { recursive: true })
+    writeFileSync(page, ["# Page", "", "```vibe", 'import { Effect } from "effect"', "",
+      "/** Wraps {@link Effect.succeed} for the docs. */", `function ${name}(n: number) {`, "  return n + 1", "}", `const answer = ${name}(41)`, "```", ""].join("\n"))
+  }
+  const run = () => updateHovers({ compiler: wrapper, root, cache })
+  const entry = (): PageHovers => JSON.parse(readFileSync(join(cache, "src/page.json"), "utf8"))
+  return { root, cache, writeWrapper, writePage, run, entry }
 }
-const writePage = (name: string) => {
-  mkdirSync(join(root, "src"), { recursive: true })
-  writeFileSync(page, ["# Page", "", "```vibe", 'import { Effect } from "effect"', "",
-    "/** Wraps {@link Effect.succeed} for the docs. */", `function ${name}(n: number) {`, "  return n + 1", "}", `const answer = ${name}(41)`, "```", ""].join("\n"))
-}
-const run = () => updateHovers({ compiler: wrapper, root, cache })
-const entry = (): PageHovers => JSON.parse(readFileSync(join(cache, "src/page.json"), "utf8"))
-afterAll(() => rmSync(root, { recursive: true, force: true }))
 
 test.skipIf(!existsSync(compiler))("a second run reuses the page's entry", async () => {
+  const { cache, writeWrapper, writePage, run, entry } = fixture()
   writeWrapper(1)
   writePage("wrap")
   expect(await run()).toMatchObject({ pages: 1, hits: 0, misses: 1 })
@@ -72,6 +79,10 @@ test.skipIf(!existsSync(compiler))("a second run reuses the page's entry", async
 }, 60_000)
 
 test.skipIf(!existsSync(compiler))("editing a block refreshes its page", async () => {
+  const { cache, writeWrapper, writePage, run, entry } = fixture()
+  writeWrapper(1)
+  writePage("wrap")
+  await run()
   writePage("increment")
   expect(await run()).toMatchObject({ hits: 0, misses: 1 })
   expect(entry().blocks[0].nodes.some(n => n.type === "hover" && n.target === "increment")).toBe(true)
@@ -79,12 +90,20 @@ test.skipIf(!existsSync(compiler))("editing a block refreshes its page", async (
 }, 60_000)
 
 test.skipIf(!existsSync(compiler))("a rebuilt compiler refreshes every page", async () => {
+  const { cache, writeWrapper, writePage, run, entry } = fixture()
+  writeWrapper(1)
+  writePage("wrap")
+  await run()
   expect(await run()).toMatchObject({ hits: 1, misses: 0 })
   writeWrapper(2)
   expect(await run()).toMatchObject({ hits: 0, misses: 1 })
 }, 60_000)
 
 test.skipIf(!existsSync(compiler))("no cached text contains a forbidden string", async () => {
+  const { cache, writeWrapper, writePage, run, entry } = fixture()
+  writeWrapper(1)
+  writePage("increment")
+  await run()
   const text = readFileSync(join(cache, "src/page.json"), "utf8")
   expect(leaks(text)).toEqual([])
   expect(text).not.toContain("file:")
@@ -93,9 +112,10 @@ test.skipIf(!existsSync(compiler))("no cached text contains a forbidden string",
   const hover = entry().blocks[0].nodes.find(n => n.type === "hover" && n.target === "increment" && n.line === 3)
   expect(hover?.type === "hover" && hover.docs).toBe(
     "Wraps Effect.succeed for the docs.")
-})
+}, 60_000)
 
 test("another runtime directory changes every page's key", () => {
+  const { root } = fixture()
   const runtime = (name: string, declarations: string) => {
     const dir = join(root, name)
     mkdirSync(join(dir, "dist"), { recursive: true })

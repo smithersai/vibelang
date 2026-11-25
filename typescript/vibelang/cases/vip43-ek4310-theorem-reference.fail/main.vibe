@@ -1,0 +1,12 @@
+// expect: EK4310
+// rule-evidence: docs/design/src/900-appendices.md#names-and-placement | Every reference to a theorem is rule 4310: in an expression, in a type query such as `typeof T`, or in an export specifier.
+theorem fact(x: number) {
+  assert(x === x)
+}
+theorem selfReference(x: number) {
+  const again = fact
+  assert(again === again)
+}
+export const value = fact
+export type Fact = typeof fact
+export { fact }

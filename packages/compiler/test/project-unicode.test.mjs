@@ -3,9 +3,9 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync, rmSyn
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { setTimeout as delay } from "node:timers/promises"
 import fc from "fast-check"
 import { compileProjectSync, projectBackend } from "../project.mjs"
+import { pastRacyWindow } from "./cache-harness.mjs"
 
 async function check({ stream, unit, prefix = "", category = "error", tail = [], location = "none", split = 1 }) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-project-unicode-"))
@@ -104,7 +104,7 @@ test("cached warnings from before incremental UTF-8 decoding are recompiled", as
   ].join("\n"))
   const old = new Date(Math.floor((Date.now() - 10_000) / 1000) * 1000 + 123)
   for (const path of [file, project, compiler]) utimesSync(path, old, old)
-  await delay(120) // Let the real source ctimes leave the cache race window.
+  await pastRacyWindow([file, project, compiler]) // utimes cannot move ctime.
   const previous = process.env.VIBELANG_DISABLE_CACHE
   process.env.VIBELANG_DISABLE_CACHE = ""
   const debug = []

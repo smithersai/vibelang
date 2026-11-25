@@ -54,8 +54,8 @@ func producerBindingDefaultYield(g *Gen, shape string) Stmt {
 	).Replace(pattern)
 	refBody := strings.ReplaceAll(refPattern, "@default@", refDefault) + "ev(\"after\");yield* Queue.offer(queue,n)"
 	return &producerBindingYieldEvent{
-		vibe: "effect function* " + name + "(){" + vibeBody + "};const collected=try Stream.runCollect(" + name + "());ev(\"producer-binding:\"+JSON.stringify(collected))",
-		ref:  "const " + name + "=()=>Stream.callback((queue)=>Effect.gen(function*(){" + refBody + "}).pipe(Effect.andThen(Queue.end(queue))),{bufferSize:1,strategy:\"suspend\"});const collected=yield* Stream.runCollect(" + name + "());ev(\"producer-binding:\"+JSON.stringify(collected))",
+		vibe: "effect function* " + name + "(){" + vibeBody + "};const collected=try Stream.runCollect(" + name + "());ev(\"producer-binding:\"+stringifyObservation(collected))",
+		ref:  "const " + name + "=()=>Stream.callback((queue)=>Effect.gen(function*(){" + refBody + "}).pipe(Effect.andThen(Queue.end(queue))),{bufferSize:1,strategy:\"suspend\"});const collected=yield* Stream.runCollect(" + name + "());ev(\"producer-binding:\"+stringifyObservation(collected))",
 	}
 }
 

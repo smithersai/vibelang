@@ -6,5 +6,5 @@
     "exported": true,
     "source": "export const sample = { value: 1 };\nexport function read(input: keyof typeof sample): number { return input.length; }\n"
   },
-  "rule": "T3code: Knip surface erases same-module typeof export use (keyof); lane migfix-t3code"
+  "rule": "T3code: Knip surface erases same-module typeof export use (keyof)"
 }

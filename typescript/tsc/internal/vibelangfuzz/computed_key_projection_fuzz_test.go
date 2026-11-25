@@ -32,11 +32,12 @@ func FuzzComputedKeyExpressionProjection(f *testing.F) {
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, context uint8) {
-		index := slices.IndexFunc(computedExpressionRules, func(rule struct{ key, prefix, domain, expression, parameters string }) bool { return rule.key == key })
+		index := slices.IndexFunc(computedExpressionRules, func(rule computedExpressionRule) bool { return rule.key == key })
 		if index < 0 {
 			index = int(context) % len(computedExpressionRules)
 			key = computedExpressionRules[index].key
 		}
+		rule := computedExpressionRules[index]
 		source := computedExpressionSource(index, context)
 		projected := vibelangmapper.Project(source, vibelangmapper.FileContext{})
 		if len(projected.Diagnostics) != 0 {
@@ -63,11 +64,17 @@ func FuzzComputedKeyExpressionProjection(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer result.Remove()
-		for _, d := range result.Diagnostics {
-			if d.Category() == diagnostics.CategoryError {
-				Gap(t, computedProjectionTarget, fmt.Sprintf("type:%s:%d", key, context%8), "%s: %s\n%s", computedExpressionGrammar, specDiagnosticText(d), projected.Text)
-				return
+		if rule.wantCode == 0 {
+			for _, d := range result.Diagnostics {
+				if d.Category() == diagnostics.CategoryError {
+					Gap(t, computedProjectionTarget, fmt.Sprintf("type:%s:%d", key, context%8), "%s: %s\n%s", computedExpressionGrammar, specDiagnosticText(d), projected.Text)
+					return
+				}
 			}
+			return
+		}
+		if countCode(result.Diagnostics, rule.wantCode) == 0 {
+			Gap(t, computedProjectionTarget, fmt.Sprintf("type:%s:%d", key, context%8), "%s: want TS%d, got %v\n%s", computedExpressionGrammar, rule.wantCode, Keys(result.Dir, result.Diagnostics), projected.Text)
 		}
 	})
 }

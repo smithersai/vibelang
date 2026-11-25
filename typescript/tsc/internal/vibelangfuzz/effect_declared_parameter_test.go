@@ -205,6 +205,13 @@ func checkDeclaredParameterOracle(t *testing.T, w *Workspace, source string, wan
 		if d.Code() == 4802 {
 			count++
 		}
+		if IsEK(d) && d.Code() == 403 && d.File() != nil && d.File().Text()[d.Pos():d.End()] == `Effect["runSync"]` &&
+			slices.ContainsFunc(result.Diagnostics, func(root *ast.Diagnostic) bool {
+				return IsEK(root) && root.Code() == 1005 && root.File() == d.File() && root.Loc() == d.Loc()
+			}) {
+			// The nested root also violates the runSync unknown-throws contract.
+			continue
+		}
 		if d.Category() == diagnostics.CategoryError && d.Code() != 1005 && d.Code() != 3207 && !isDeclaredRootPromiseCompanion(d, result.Diagnostics) {
 			t.Fatalf("unexpected error: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 		}

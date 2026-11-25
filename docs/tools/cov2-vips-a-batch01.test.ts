@@ -1,4 +1,4 @@
-// Rule-specific pending obligations from the cov2-vips-a assignment.
+// Rule-specific pending obligations.
 // Pending because focused compiler and Effect TypeScript witnesses remain unverified.
 // These declarations make no claim that the compiler fails or conforms.
 import { test } from "bun:test"
@@ -93,7 +93,7 @@ test.todo("VIP-2 jump replacement by iterator close errors: **Amended 2026-10-30
 
 // rule-evidence: docs/design/vips/0002-effect-blocks-and-do.md#fcd193ff44c58091
 // VIP-2: parameter return across function kinds
-test.todo("VIP-2 parameter return across function kinds: A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body: a plain function returns the value, an `async` function fulfills with it, an `effect` function's call gives an Effect that succeeds with it, and a generator's call gives a generator that finishes with it without starting the body (Will, 2026-10-30: \"everything about the do expreession should work liike that spec\").")
+test.todo("VIP-2 parameter return across function kinds: A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body: a plain function returns the value, an `async` function fulfills with it, an `effect` function's call gives an Effect that succeeds with it, and a generator's call gives a generator that finishes with it without starting the body.")
 
 // rule-evidence: docs/design/vips/0002-effect-blocks-and-do.md#54acaff692d7ed8c
 // VIP-2: effect parameter throws become defects
@@ -119,9 +119,6 @@ test.todo("VIP-2 fresh literals and contextual typing: Its fresh literals and co
 // VIP-2: mixed block heads report EK0105
 test.todo("VIP-2 mixed block heads report EK0105: The mixed heads `effect async { B }` and `async effect { B }` parse for recovery and report `EK0105` (VIP-1).")
 
-// rule-evidence: docs/design/vips/0002-effect-blocks-and-do.md#08dee614e3b57b98
-// VIP-2: remove async quick fix
-test.todo("VIP-2 remove async quick fix: Remove `async` to recover the ordinary cold Effect block.")
 
 // rule-evidence: docs/design/vips/0002-effect-blocks-and-do.md#2c18e0a55c2e7e51
 // VIP-2: bare async block rejection
@@ -136,10 +133,8 @@ test.todo("VIP-3 Effect shorthand line boundary: **Amended 2026-10-30: a line br
 test.todo("VIP-3 postfix type newline diagnostics: TypeScript stops its postfix type operators at a preceding line break, and a slot has no closing token, so `now(): number!!` then `later(): number!!` stay two members and a `!` with no slot on its line is TS17019.")
 
 // VIP-3: omitted slot migration warning
-test.todo("VIP-3 omitted slot migration warning: **Amended 2026-10-30: migration warning.** The transitional compiler reports `EK4853` when `--fix` can preserve requirements that the retired omitted-slot rule inferred by writing them explicitly.")
+test.todo("VIP-3 omitted slot migration warning: EK4853 warns that the omitted requirement slot formerly inferred requirements.")
 
-// VIP-3: position sensitive migration rewrite
-test.todo("VIP-3 position sensitive migration rewrite: The quick fix and `--fix` write `A!E!R` where it means the same type in that position without new parentheses, and `Effect.Effect<A, E, R>` through the real `Effect` namespace binding everywhere else: `Effect<number>` becomes `number!!`, while `Effect<A | B, E>`, `Effect<A, E>[]` and an `extends` or `implements` heritage element get the qualified form.")
 
 // rule-evidence: docs/design/vips/0003-effect-type-shorthand.md#c2c3e981b82756f9
 // VIP-3: qualified declaration emission

@@ -1,4 +1,3 @@
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: ["ok",42,"ok",42,1,"refused",6]
 import { Effect } from "effect"
 import { choose, bootstrap, counts } from "./callbacks.js"
@@ -20,13 +19,11 @@ export effect function main() {
   const d = try byName(false)
   const args = try bootstrap(false)
   let failure = "missing"
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { try bootstrap(true) 
-;return { kind: "normal" } as const;
-}, effect (error) => { failure = error 
-;return { kind: "normal" } as const;
-});
-
-}
+  effect {
+    try bootstrap(true)
+  } catch effect (error) => {
+    failure = error
+  }
   try choose(true)
   return [a, b, c, d, args.length, failure, readCounts()]
 }

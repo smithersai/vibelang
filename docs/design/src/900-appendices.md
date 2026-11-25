@@ -142,13 +142,19 @@ Each declaration production starts with its own start production (`ServiceDeclar
 #### DeclarationStart
 
 ```text
-DeclarationStart = ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart | TaskStart | WorkflowStart
+DeclarationStart = SchemaServiceStart | ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart | TaskStart | WorkflowStart
 ```
 
 #### ServiceStart
 
 ```text
 ServiceStart     = "service" [no LineTerminator here] BindingIdentifier
+```
+
+#### SchemaServiceStart
+
+```text
+SchemaServiceStart = "schema" [no LineTerminator here] "service" [no LineTerminator here] BindingIdentifier
 ```
 
 #### ErrorStart
@@ -685,6 +691,14 @@ ServiceDeclaration = ServiceStart TypeParameters? ClassHeritage? "{" (ServiceMem
                    | ServiceStart TypeParameters? ":" Type "{" (ServiceMember Separator)* "}"   (only KeyMember and DefaultMember are admitted; other members parse for EK0902)
 ```
 
+#### SchemaServiceDeclaration
+
+```text
+SchemaServiceDeclaration = SchemaServiceStart "{" ((MethodSignature | KeyMember) Separator)* "}"
+```
+
+The [schema service rules](../vips/0057-workers-remote.md#schema-service) restrict method parameters and return channels and define the generated RPC group.
+
 <a id="servicemember"></a>
 
 ```text
@@ -1064,7 +1078,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1136 records)</summary>
+<summary>Parser and lowering hooks (1133 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1901,9 +1915,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_fiber_context.go:Parser.isReservedFiberName@fiber-type-name ` | ` admission:fiber-type-name ` | ` 900-appendices.md ` | ` support ` | VIP-17: reserve `fork` and `join` at type alias, interface, enum and declaration type-parameter names in the source Effect context |
 | ` parser/vibelang_data.go:Parser.parseDataFields ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration ` | ` support ` | VIP-16 data members; a missing member separator recovers as `EK1605` |
 | ` parser/vibelang_data.go:dataMemberSeparatorDiagnostic ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration ` | ` recovery ` | VIP-16: `EK1605` reports a missing data member separator |
-| ` parser/vibelang_default_data_export.go:Parser.parseVibeLangDefaultDataExport ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration `, ` 900-appendices.md#SchemaDeclaration ` | ` recovery ` | Chapter 006: export default schema and export default data are EK1501 and EK1603; read as named exports only to keep the module boundary |
-| ` parser/vibelang_default_data_export.go:Parser.skipSchemaTypeParameters ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration ` | ` recovery ` | Chapter 006: schema type parameters are EK1502; read only so the declaration causes no second error |
-| ` parser/vibelang_default_data_export.go:Parser.vibelangDeclarationError ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration `, ` 900-appendices.md#SchemaDeclaration ` | ` recovery ` | Reports the Chapter 006 declaration syntax errors EK1501, EK1502 and EK1603 |
 | ` parser/vibelang_match.go:Parser.markUncovered ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 / Chapter 004 Coverage: `and` and `not` arms cover nothing (`EK4701`); flags their tests for the checker |
 | ` parser/vibelang_match.go:bindsBesideOneTest ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 / Chapter 004 Coverage: recognize binding-only operands without granting `and` exhaustive coverage |
 | ` parser/vibelang_match.go:onlyBinds ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 / Chapter 004 Coverage: recognize patterns that only bind and test key presence |
@@ -1955,7 +1966,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_fiber_context.go:Parser.nextTokenIsEqualsGreaterThan ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression `, ` 900-appendices.md#JoinExpression ` | ` support ` | VIP-17 (amended): EK1702 rejects fork and join as bindings under [+Effect] |
 | ` parser/vibelang_fiber_context.go:Parser.nextTokenIsColonToken ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression `, ` 900-appendices.md#JoinExpression ` | ` support ` | VIP-17 (amended): EK1702 rejects fork and join as bindings under [+Effect] |
 | ` parser/vibelang.go:Parser.parseSchemaDeclaration@schema-no-body ` | ` admission:schema-no-body ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` recovery ` | A schema header without a field body or alias reports `EK1503`; the saved witness remains a rejection control |
-| ` parser/vibelang.go:Parser.parseVibeLangEffectType@effect-type-line-break ` | ` admission:effect-type-line-break ` | ` - ` | ` pending ` | Appendix A: EffectType has [no LineTerminator here] between its bangs; `number !` then `!` on the next line compiles as `number!!` |
 | ` parser/vibelang_primitives.go:Parser.isStartOfVibeLangMaskBlock@interruption-outside-effect ` | ` admission:interruption-outside-effect ` | ` 900-appendices.md#Uninterruptible `, ` 900-appendices.md#Restore `, ` 900-appendices.md#Interruptible `, ` 002-running.md ` | ` recovery ` | VIP-22/EK2201: recognizes outside-Effect interruption blocks only to reject their placement; no admitted syntax |
 | ` vibelang/frames_lower.go:lowering.bindSuperMethod ` | ` admission:effect-function-support ` | ` 001-functions.md ` | ` support ` | VIP-1 Bindings: preserves the receiver of a super method or tag without reading its own call property; no new syntax |
 | ` parser/vibelang_match.go:Parser.inlineBinding ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: a name bound inside or and not patterns shares one cell |
@@ -1972,7 +1982,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/producers.go:isProducer@fiber-in-generator ` | ` admission:fiber-in-generator ` | ` 900-appendices.md#ForkExpression `, ` 900-appendices.md#JoinExpression ` | ` recovery ` | VIP-17: native plain-generator `fork` and `join` retain syntax rejection; the original operand-type-only witness remains a regression control |
 | ` parser/vibelang.go:Parser.parseServiceDeclaration@service-class ` | ` admission:service-class ` | ` 005-services.md `, ` 900-appendices.md ` | ` recovery ` | VIP-9 has no class token in ServiceStart; EK0909 rejects the retired spelling and retains its preserving migration |
 | ` parser/vibelang.go:Parser.parseVibeLangProvideStatement@provider-expression ` | ` admission:provider-expression ` | ` - ` | ` pending ` | Appendix A: Provider = LeftHandSideExpression "=" AssignmentExpression \| ConditionalExpression; `provide K => 1 { }` has no derivation and reports only old EK3207 |
-| ` parser/vibelang.go:Parser.parseVibeLangEffectType@effect-type-trailing-bang ` | ` admission:effect-type-trailing-bang ` | ` - ` | ` pending ` | VIP-3 and Appendix A: EffectType ends in an operand or the omitted-E `!!`; `type T = A!B!;` compiles with no diagnostic instead of reporting a dangling `!` |
 | ` parser/vibelang_errors.go:Parser.isVibeLangNoSeparator ` | ` admission:error ` | ` 900-appendices.md#ErrorBody `, ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-13/29/9: recover a missing member Separator for EK1306/EK0908; native class parsing stays separate |
 | ` parser/vibelang_errors.go:Parser.parseVibeLangNoSeparator ` | ` admission:error ` | ` 900-appendices.md#ErrorBody `, ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-13/29/9: recover a missing member Separator for EK1306/EK0908; native class parsing stays separate |
 | ` parser/vibelang_effect_channels.go:Parser.checkVibeLangEffectChannels ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | VIP-3 EK0301 syntax validation also under --noCheck; does not admit bare compound slots |
@@ -2170,6 +2179,8 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.parseMatchPrimaryPattern@pattern-name-object ` | ` admission:pattern-name-object ` | ` - ` | ` pending ` | VIP-7 pinned `MemberExpressionPattern` has a member or extractor call, never a member followed by `ObjectPattern`; the parser consumes the field list after a name and leaves a static error |
 | ` parser/vibelang_match.go:Parser.parseMatchValueExpression@pattern-super-element ` | ` admission:pattern-super-element ` | ` - ` | ` pending ` | VIP-7 pinned `PatternMatchingMemberExpression` starts with `super . IdentifierName`, never bare `super`; the parser also consumes `super[key]` and leaves only ordinary checking errors |
 | ` parser/vibelang_service_type.go:Parser.vibelangServiceConstructorFieldNames ` | ` admission:service ` | ` 900-appendices.md#Member ` | ` support ` | VIP-9: preserve `constructor` member signatures through class formatting |
+| ` parser/vibelang_proofs.go:Parser.scanStartOfTheorem ` | ` admission:theorem ` | ` 900-appendices.md#TheoremDeclaration ` | ` support ` | VIP-43: theorem before identifier on the same line |
+| ` parser/vibelang_proofs.go:Parser.parseTheoremDeclaration ` | ` admission:theorem ` | ` 900-appendices.md#TheoremDeclaration ` | ` admitted ` | VIP-43 theorem declaration |
 | ` parser/vibelang_proofs.go:Parser.scanStartOfSpecFunction ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` support ` | VIP-43: spec before function, async function or effect function on the same line |
 | ` parser/vibelang_proofs.go:Parser.parseSpecFunctionDeclaration ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` admitted ` | VIP-43 spec function; async, effect, generator and overload forms parse for EK4302 |
 | ` parser/vibelang_proofs.go:Parser.joinModifiers ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` support ` | VIP-43: modifiers before and after spec form one list for EK4302 |
@@ -2243,7 +2254,7 @@ The rows below that cite VIP-55 belong to the experimental durable declarations 
 
 The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed. The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`. The old module-declaration codes are retired by [VIP-40](../vips/0040-module-declarations.md#diagnostics); its current rules use `EK4001`–`EK4009`.
 
-Accepted [VIP-43](../vips/0043-theorems.md) numbers the rules in [Appendix F](#details) 4301 to 4319 in its block. The compiler registers `EK4302`, `EK4304` to `EK4307`, `EK4309`, `EK4310`, `EK4314` and `EK4315` to `EK4319`, which have rows below; each other rule becomes a row here when the compiler registers it. Interim `EK4301` keeps its number until a coordinated renumber moves it out of the block, and the compiler registers rule 4301 only after that move.
+Accepted [VIP-43](../vips/0043-theorems.md) numbers the rules in [Appendix F](#details) 4301 to 4319 in its block. The compiler registers `EK4302` to `EK4311`, `EK4314` and `EK4315` to `EK4319`, which have rows below; each other rule becomes a row here when the compiler registers it. Interim `EK4301` keeps its number until a coordinated renumber moves it out of the block, and the compiler registers rule 4301 only after that move.
 
 The additional retained compiler and migration assignments are `EK1011`, `EK2112`, `EK2113`, `EK2120`, `EK2121`, `EK9001`, `EK9002`, `EK9003` and `EK9004`. Their definitions and existing VIP authorities are listed in the table below.
 
@@ -2386,12 +2397,15 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4008` | `export =` or `import x = require()` in a module body Replay [example: main.vibe:4:3](../../../typescript/vibelang/cases/cov2-900b-cite-ek4008-module-cjs.fail/main.vibe). | 40 | [Modules](001-functions.md#module-declarations) |
 | `EK4009` | `import.meta` in a module body | 40 | [Modules](001-functions.md#module-declarations) |
 | `EK4302` | a modifier or overload on a spec function: `export`, `export default`, `declare`, `async`, `effect`, `*`, or an overload signature | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4303` | A theorem parameter without a type annotation, an optional, rest, defaulted, destructured or `this` parameter, or a theorem return type | 43 | [Theorems and proofs](#compiler-and-language-server) |
 | `EK4304` | a `proof { }` block outside a checked function, inside another proof context, or as the whole body of an `if`, `else`, loop or labeled statement | 43 | [Theorems and proofs](#compiler-and-language-server) |
 | `EK4305` | a statement in a proof block other than a proof statement, a `const`, an `if` or a block, or a `const` that no later statement of its block uses | 43 | [Theorems and proofs](#compiler-and-language-server) |
 | `EK4306` | in a proof block, `assume` or `ensures` other than as a direct statement of a function's leading proof block, `decreases` other than as a direct statement of a function's or loop's leading proof block, or `invariant` other than as a direct statement of a loop's leading proof block | 43 | [Theorems and proofs](#compiler-and-language-server) |
 | `EK4307` | a second argument to `assert`, or any other reference to `by` in a proof context | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4308` | A call to a procedure, an impure trusted function included, in a verification expression anywhere except the initializer of a `const` that is a direct statement of a theorem body: in a hypothesis, an assertion, a contract, an invariant, a measure, an `if` condition, or a `const` in a proof block or nested in a theorem's `if` or block | 43 | [Theorems and proofs](#compiler-and-language-server) |
 | `EK4309` | `ensures` in a function without a written return type, with a `void` or `undefined` return type, or whose argument is not an arrow with one untyped identifier parameter and an expression body | 43 | [Theorems and proofs](#compiler-and-language-server) |
 | `EK4310` | a reference to a spec function outside a proof context or a spec function | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4311` | An expression in a verification position outside the verification expression forms, the [number rule](#numbers) included | 43 | [Theorems and proofs](#compiler-and-language-server) |
 | `EK4314` | a spec function that is not transparent: a loop, a `let`, an assignment, a proof block with an `assert`, or a call to a procedure | 43 | [Theorems and proofs](#compiler-and-language-server) |
 | `EK4315` | `vibelang prove`: an obligation Dafny could not prove, such as a postcondition, an invariant, termination or an index in range | 43 | [Theorems and proofs](#vibelang-prove) |
 | `EK4316` | `vibelang prove`: `lemmascript` is not installed or is not the pinned 0.6.6, `dafny` does not run from `PATH` or is not the pinned 4.11.0, the proof directory holds a program file or files `vibelang prove` did not write, or a module with a root is outside the selected config's directory | 43 | [Theorems and proofs](#vibelang-prove) |
@@ -2531,6 +2545,7 @@ A transitional compiler may still print compatibility diagnostics from the old l
 | interim `EK9214` | error: a service key is called with arguments in the legacy service lowering. Read the implementation before calling it. EK3007 belongs only to configuration keys and values. Replay [example: main.vibe:13:13](../../../typescript/vibelang/cases/service-key-call-arguments.fail/main.vibe). | 9, 30 | [Compatibility identity examples](../../../typescript/tsc/internal/vibelang/diagnostic_compatibility_identity_test.go) |
 | interim `EK9005` | error: the stock-TypeScript projection cannot choose a lowering from written types. Its fatal refusal keeps the former mapper behavior; native editor advice retains EK9100. [mapper example: form-choice](../../../typescript/tsc/internal/vibelangmapper/diagnostic_appendix_hosts_test.go). | 34 | Add the requested annotation or compile with the native compiler. |
 | interim `EK9006` | error: the stock-TypeScript projection cannot prove a data-method receiver or access form. Native editor annotation suggestions retain EK9101. [mapper example: data-method](../../../typescript/tsc/internal/vibelangmapper/diagnostic_appendix_hosts_test.go). | 34 | Add the requested receiver type or call the module function explicitly. |
+| interim `EK9007` | error: the stock-TypeScript mapper encounters an effect `try` outside effect code. Move it into an effect function or block. | 5 | [Running Effects](002-running.md) |
 | interim `EK9100` | warning: the native editor reports a callable that needs an explicit annotation for its inferred lowering. It is absent from ordinary compiler diagnostics. Example: an inferred callable whose projection needs an explicit Effect return type; [editor form example](../../../typescript/tsc/internal/ls/inferred_form_session_test.go). | 34 | Write the annotation explicitly; the fatal projection identity is EK9005. |
 | interim `EK9101` | suggestion: the native editor reports the checker’s receiver type for a data-method access. Example: an inferred receiver at `todos.map()`; [editor receiver example](../../../typescript/tsc/internal/ls/inferred_receiver_session_test.go). | 34 | Write the receiver annotation explicitly; the fatal projection identity is EK9006. |
 
@@ -2729,7 +2744,7 @@ Listed for a future decision; not part of the language.
 
 VIPs 55 to 72, the built-in set, were accepted optimistically on 2026-11-09 and are open again since 2026-11-11; the [VIPs index](../vips/README.md#open) lists them. What is built from them is experimental, and each one's Status line says what exists and how to opt in.
 
-The proposals page lists further ideas, each to get its own VIP: durable execution, compile-time evaluation, build-time host selection, validators derived from types, typed asset imports, custom loaders, Rust and Zig source imports, a coding-agent library, typed workers, shared structs, declarations in conditionals, toolchain commands, bundler plugins, mandatory compiler options and a TC39 adopt-early list.
+Accepted [VIP-55](../vips/0055-durable-tasks-workflows.md) defines durable tasks and workflows. [VIP-57](../vips/0057-workers-remote.md) defines typed workers. See the [VIP index](../vips/README.md) for the status of other proposals.
 
 ## Appendix D. Flipping pending examples
 
@@ -2796,7 +2811,7 @@ export declare function decodeUnknownSync<T>(s: Schema.Decoder<T>): {
 
 **Outside the supported alpha.** VIP-43 remains outside the alpha's core supported set.
 
-Source: [VIP-43](../vips/0043-theorems.md), accepted 2026-11-07. The rules below are part of the language. The compiler implements spec functions and proof blocks, and reports `EK4302`, `EK4304` to `EK4307`, `EK4309`, `EK4310` and `EK4314` for them. `vibelang prove` proves their roots and reports `EK4315` to `EK4319`, but it does not yet run the audit of [Steps](#steps), step 6, or read `vibe.proofDir`: the proof directory is `proofs` in the selected config's directory. It does not implement theorems yet: it reads `theorem` as an identifier, and it does not yet report rules 4301, 4303, 4308 and 4311 to 4313.
+Source: [VIP-43](../vips/0043-theorems.md), accepted 2026-11-07. The rules below are part of the language. The compiler implements spec functions and proof blocks, and reports `EK4302` to `EK4311` and `EK4314` for them. `vibelang prove` proves their roots and reports `EK4315` to `EK4319`, but it does not yet run the audit of [Steps](#steps), step 6, or read `vibe.proofDir`: the proof directory is `proofs` in the selected config's directory. It does not implement theorems yet: it reads `theorem` as an identifier, and it does not yet report rules 4301, 4303, 4308 and 4311 to 4313.
 
 A theorem states a fact about plain functions for every input in the [model](#the-trust-boundary). `vibelang prove` proves it by lowering the source to [LemmaScript](https://github.com/midspiral/LemmaScript)'s annotated TypeScript and running LemmaScript's `lsc` with the Dafny verifier. All proof syntax erases: compiled JavaScript and declarations are the same as for the program without it.
 
@@ -3387,15 +3402,15 @@ VIP-34 gives VIP-43 the block `EK43xx`, and its rules are numbered from 4301. Ea
 | --- | --- | --- |
 | `4301` | A `theorem` or `spec function` that is not a statement of a module's top level: in a block, a function body, a namespace or a `declare` context | Move it to the module's top level |
 | `EK4302` | A modifier or overload on a theorem or spec function: `export`, `export default`, `declare`, `async`, `effect`, `*`, or an overload signature | Remove it; theorems and spec functions are module-local |
-| `4303` | A theorem parameter without a type annotation, an optional, rest, defaulted, destructured or `this` parameter, or a theorem return type | Give each parameter a plain name and a type |
+| `EK4303` | A theorem parameter without a type annotation, an optional, rest, defaulted, destructured or `this` parameter, or a theorem return type | Give each parameter a plain name and a type |
 | `EK4304` | A `proof { }` block outside a checked function, inside another proof context, or as the whole body of an `if`, `else`, loop or labeled statement | Move the facts into a theorem, into a module-level plain function, or into a braced block |
 | `EK4305` | A statement in a theorem body or proof block outside the allowed forms: `let`, a loop, `return`, `throw`, a nested function, an expression statement other than a proof statement, or `assume` after another statement; a `const` that no later statement uses; a theorem with no `assert` | Use `const`, `if` and proof statements, and state at least one assertion |
 | `EK4306` | A proof statement outside its allowed place: `ensures`, `invariant` or `decreases` in a theorem; in a proof block, `assume` or `ensures` other than as a direct statement of a function's leading proof block, `decreases` other than as a direct statement of a function's or loop's leading proof block, and `invariant` other than as a direct statement of a loop's leading proof block | Move it to the leading proof block of the function or loop it describes |
 | `EK4307` | A second argument to `assert`, or any other reference to `by` in a proof context | Remove it; write proof steps in the proof file |
-| `4308` | A call to a procedure, an impure trusted function included, in a verification expression anywhere except the initializer of a `const` that is a direct statement of a theorem body: in a hypothesis, an assertion, a contract, an invariant, a measure, an `if` condition, or a `const` in a proof block or nested in a theorem's `if` or block | Move the call into a `const` at the theorem body's top level |
+| `EK4308` | A call to a procedure, an impure trusted function included, in a verification expression anywhere except the initializer of a `const` that is a direct statement of a theorem body: in a hypothesis, an assertion, a contract, an invariant, a measure, an `if` condition, or a `const` in a proof block or nested in a theorem's `if` or block | Move the call into a `const` at the theorem body's top level |
 | `EK4309` | `ensures` in a function without a written return type, with a `void` or `undefined` return type, or whose argument is not an arrow with one untyped identifier parameter and an expression body | Write the return type and `ensures((r) => …)` |
 | `EK4310` | A reference to a theorem, in an expression, a type query or an export specifier, or a reference to a spec function outside a proof context or a spec function | Call a plain function, or move the use into a proof |
-| `4311` | An expression in a verification position outside the verification expression forms, the [number rule](#numbers) included | Rewrite it with the listed forms, or move the computation into a spec function |
+| `EK4311` | An expression in a verification position outside the verification expression forms, the [number rule](#numbers) included | Rewrite it with the listed forms, or move the computation into a spec function |
 | `4312` | `==` or `!=` in verified code, or a comparison of a value whose type is not primitive: an operand of `===` or `!==`, an array element type for `includes`, `indexOf` or `lastIndexOf`, a `Set` element type or a `Map` key type | Compare primitive values, or write a spec function that compares the parts |
 | `4313` | Verified code outside VibeLang's layer of the verified subset: a VibeLang form, a class or `new`, mutation, a numeric form outside the number rule, a cast, `null`, a call of a non-callable target, an excluded reached type such as a function type, a reached variable other than a primitive `.vibe` constant, or a mutable collection type in a trusted function's signature | Keep reached code to plain TypeScript in the subset, write `with` or a spread instead of mutating, or make the callee trusted |
 | `EK4314` | A spec function that is not transparent: a loop, a `let`, an assignment, an `assert`, or a call to a procedure | Write it with expressions and recursion |

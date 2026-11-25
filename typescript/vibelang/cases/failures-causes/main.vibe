@@ -1,8 +1,3 @@
-import * as $nativeTryEffect4 from "effect/Effect";
-import * as $nativeTryEffect3 from "effect/Effect";
-import * as $nativeTryEffect2 from "effect/Effect";
-import * as $nativeTryEffect1 from "effect/Effect";
-import * as $nativeTryEffect from "effect/Effect";
 // A catch handles a failure only when the cause holds expected failures alone
 // (D13): a defect, an interruption, or a mixed cause passes through it. A
 // finally runs on every exit, and a failure inside it is never dropped (D15).
@@ -19,66 +14,50 @@ function reasons(exit: Exit.Exit<unknown, unknown>) {
 
 // A JavaScript TypeError is a defect: the catch does not run, the finally does.
 effect function defect() {
-  { const $nativeTryCompletion = try $nativeTryEffect.onExit($nativeTryEffect.catch(effect {
+  return try Effect.onExit(Effect.catch(effect {
     try Effect.sleep("1 millis")
     const broken: any = undefined
-    return { kind: "return:" as const, value: (broken.name) };
+    return (broken.name)
   }, effect (e) => {
     events.push("catch saw a defect")
-    return { kind: "return:" as const, value: ("caught") };
+    return ("caught")
   }), () => effect {
     events.push("finally after a defect")
-  });
-return $nativeTryCompletion.value;
-}
+  })
 }
 
 // An expected failure plus a defect from cleanup is a mixed cause. Effect 4.1.1
 // makes the failure a defect beside the cleanup's (Effect-TS/effect#9433).
 effect function mixed() {
-  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
-    { const $nativeTryCompletion1 = try $nativeTryEffect1.onExit(effect {
-      throw new Expected()
-    }, () => effect {
-      try Effect.die("release-defect")
-    });
-
-}
-  
-;return { kind: "normal" } as const;
-}, effect (e) => {
+  return Effect.onExit(effect {
+    throw new Expected()
+  }, () => Effect.die("release-defect")) catch effect () => {
     events.push("catch saw a mixed cause")
-    return { kind: "return:" as const, value: ("recovered") };
-  });
-if ($nativeTryCompletion2.kind === "return:") return $nativeTryCompletion2.value;
-}
+    return "recovered"
+  }
 }
 
 // A failure inside finally is kept; when the body failed too, both are.
 effect function failingFinally(bodyFails: boolean) {
-  { const $nativeTryCompletion3 = try $nativeTryEffect3.onExit(effect {
+  return try Effect.onExit(effect {
     if (bodyFails) throw new Expected()
-    return { kind: "return:" as const, value: ("body") };
+    return ("body")
   }, () => effect {
     throw new Cleanup()
-  });
-return $nativeTryCompletion3.value;
-}
+  })
 }
 
 // Interruption runs finally and skips catch.
 effect function slow() {
-  { const $nativeTryCompletion4 = try $nativeTryEffect4.onExit($nativeTryEffect4.catch(effect {
+  return try Effect.onExit(Effect.catch(effect {
     try Effect.sleep("1 second")
-    return { kind: "return:" as const, value: ("finished") };
+    return ("finished")
   }, effect (e) => {
     events.push("catch saw an interruption")
-    return { kind: "return:" as const, value: ("caught") };
+    return ("caught")
   }), () => effect {
     events.push("finally after interruption")
-  });
-return $nativeTryCompletion4.value;
-}
+  })
 }
 
 // expect-result: {"defect":["Die"],"mixed":["Die","Die"],"cleanup":["Fail"],"both":["Fail","Fail"],"timeout":["Fail"],"events":["finally after a defect","finally after interruption"]}

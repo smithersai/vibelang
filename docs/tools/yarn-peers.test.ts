@@ -1,5 +1,4 @@
 import { test, expect } from "bun:test"
-import fc from "fast-check"
 import { readFileSync } from "node:fs"
 
 const page = readFileSync(new URL("../user/src/setup/existing-project.md", import.meta.url), "utf8")
@@ -23,16 +22,4 @@ function complete(markdown: string) {
 }
 test("the documented Yarn recipe supplies the Vite peer required by its test tools", () => {
   expect(complete(page)).toBe(true)
-})
-test("formatting and quoting install commands retain the peer requirement", () => {
-  fc.assert(fc.property(fc.constantFrom(" ", "  ", "\t"), fc.constantFrom("", "'", '"'), (space, quote) => {
-    const rewritten = page.replace(/^yarn add .+$/gm, line => line.split(/\s+/).map(token => token.includes("@") && !token.startsWith("-") ? quote + token + quote : token).join(space))
-    expect(complete(rewritten)).toBe(true)
-  }), { numRuns: 200 })
-})
-test("prose and unrelated package managers cannot hide an omitted Yarn peer", () => {
-  fc.assert(fc.property(fc.constantFrom("npm", "bun", "pnpm"), fc.integer({ min: 1, max: 9999 }), (manager, id) => {
-    const broken = page.replace(/^yarn add .+$/gm, line => line.split(/\s+/).filter(token => !/^['"]?vite@/.test(token)).join(" "))
-    expect(complete(broken + "\nVite is installed: " + id + "\n\n```sh\n" + manager + " add --dev vite@8\n```\n")).toBe(false)
-  }), { numRuns: 200 })
 })

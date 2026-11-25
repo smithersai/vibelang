@@ -12,7 +12,7 @@ import (
 )
 
 const platformContextualRow = "interim warning inside formerly accepted boundary callbacks; error otherwise:"
-const platformContextualQuote = "The restriction and preserving repair still apply; unwrapped host access and Node value imports remain errors."
+const platformContextualQuote = "After that migration tier retires, the wrapped access is an error. Unwrapped host access and Node value imports are already errors."
 
 func TestPlatformContextualSeverityQuoted(t *testing.T) {
 	appendix := SpecText(grammarAppendix)

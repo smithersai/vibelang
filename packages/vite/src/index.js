@@ -382,7 +382,7 @@ export default function vibelang(options = {}) {
   // file -> Map(./dep.js -> ./dep.ts). Filled as each module loads.
   const writtenNames = new Map()
   async function loadModule(file) {
-    const result = await (await loaded()).load(file)
+    const result = await (await loaded()).load(file, { projectWarnings: "once" })
     rememberContracts(result)
     const output = relativeOutput(result, file, backend, () => backend.findCompiler(root, options.compiler), debug)
     if (output.writtenImports?.size) writtenNames.set(file, output.writtenImports)
@@ -617,14 +617,14 @@ export default function vibelang(options = {}) {
       const entryPlatform = workerEntryPlatform(id)
       if (entryPlatform && isCompiled(file)) return { code: workerEntryCode(file, entryPlatform), map: null }
       if (!isCompiled(file) || !isModuleId(id)) return
-      const { project, code, map, inputs, errors, warnings, error } = await loadModule(sourceFile(file))
+      const { project, code, map, inputs, errors, warnings, error, first } = await loadModule(sourceFile(file))
       this.addWatchFile(project)
       // Handling load bypasses Vite's filesystem loader, which normally adds
       // watches for source files outside its root.
       this.addWatchFile(backend.moduleDeclarationSource?.(file) ?? sourceFile(file))
       // In build watch mode, register all project inputs (including type-only
       // imports not present in emitted JavaScript) so edits trigger rebuilds.
-      if (!serving && this.meta?.watchMode) {
+      if (!serving && this.meta?.watchMode && first !== false) {
         for (const input of inputs ?? []) {
           if (existsSync(input)) this.addWatchFile(input)
         }

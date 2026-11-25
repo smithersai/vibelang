@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"bytes"
 	"fmt"
 	"slices"
 	"testing"
@@ -36,12 +37,18 @@ func FuzzConcurrentFreshBindings(f *testing.F) {
 	keys := make([]string, len(variants))
 	for i, row := range variants {
 		keys[i] = row.key
-		f.Add([]byte("key:" + row.key))
+		for m := byte(0); m < 8; m++ {
+			f.Add(append([]byte("key:"+row.key+"\x00"), m))
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		TestConcurrentFreshBindingQuoted(t)
-		row := variants[r3Pick(data, keys)]
+		pickData := data
+		if head, _, ok := bytes.Cut(data, []byte{0}); ok {
+			pickData = head
+		}
+		row := variants[r3Pick(pickData, keys)]
 		n := 0
 		if len(data) > 0 {
 			n = int(data[len(data)-1])

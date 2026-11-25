@@ -31,7 +31,14 @@ func dataListPatternGrammarRules() []dataRule {
 				source = "function f(s:{items:readonly number[]}){return match(s){when {items:" + p.text + "}:true;default:false;}}"
 			}
 			key := "list-grammar-" + p.key + "-" + form
-			rules = append(rules, dataRule{key, "004-match.md", p.quote, source, ""})
+			quote, code := p.quote, ""
+			// Pinned draft, MatchElementList early errors: once an optional
+			// element appears, neither required elements nor elisions may follow.
+			if p.key == "optional-before-required" || p.key == "optional-elision-optional" {
+				quote = "Invalid `match`/`is` grammar and pattern-specific early errors use `EK0707`"
+				code = "only:EK0707"
+			}
+			rules = append(rules, dataRule{key, "004-match.md", quote, source, code})
 
 		}
 	}

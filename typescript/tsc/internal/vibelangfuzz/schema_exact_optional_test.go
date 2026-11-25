@@ -14,12 +14,13 @@ func TestSchemaOptionalMutabilityQuoted(t *testing.T) {
 }
 
 // Runtime checks reuse the VIP differential generator, worker, stability
-// checks and failures(). Declaration checks compare against the stock 5.9.3
-// twin under the identical option. No second Exit comparator is introduced.
+// checks and failures(). Declaration checks compare against the stock compiler
+// version the fork tracks, using the JS API only to compare the emitted
+// declarations. Both emitters receive the identical project options.
 func FuzzSchemaExactOptional(f *testing.F) {
 	startShortBudget(f)
 	api := declarationIdentityAPI(f)
-	tsc := filepath.Join(api, "bin/tsc")
+	tsc := StockTypeScript(f)
 	env := newVIPEnv(f)
 	for _, mode := range []uint8{0, 4, 8, 12, 31} {
 		f.Add("optional-fields", mode, false)

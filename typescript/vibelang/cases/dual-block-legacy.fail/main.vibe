@@ -5,7 +5,7 @@
 // and a call whose appended form still type-checks is EK1023 (D382). The
 // block is a program (VIP-2), so options' appended form no longer
 // type-checks either: TS2769 there.
-// dual-block-legacy-fixed is what vibelang --fix writes.
+// See the manual form in dual-block-legacy-fixed.
 effect function work() {
   try sleep("1 millis")
   return "done"

@@ -92,7 +92,7 @@ func toolsInterestingOffsets(text string) []byte {
 	return offsets
 }
 
-var toolsInterestingToken = regexp.MustCompile(`\b(catch|provide|fork|join|match|when|error|service|throw|wire|sync|using|schema|data|control)\b|\|>|!|%`)
+var toolsInterestingToken = regexp.MustCompile(`\b(catch|provide|fork|join|match|when|error|service|throw|sync|using|schema|data|effect|task|workflow)\b|\|>|!|%`)
 
 // A toolsEditor holds one FuzzEditor input.
 type toolsEditor struct {
@@ -449,14 +449,4 @@ func toolsEnclosingKind(name, text string, offset int) string {
 		return "none"
 	}
 	return strings.Join(kinds, "<")
-}
-
-// quickFixCommentQuote is the rule FuzzEditor's comment oracle checks
-// (chapter 7, built-in warnings).
-const quickFixCommentQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
-
-func TestQuickFixCommentRuleQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("007-tooling.md"), quickFixCommentQuote) {
-		t.Fatal(quickFixCommentQuote)
-	}
 }

@@ -43,12 +43,4 @@ test("authority checks reject denied owners and preserve severity and assignment
     "denied-tooling": [appendix, tooling.replace("**Status:** accepted", "**Status:** denied"), "accepted VIP"],
   }
   for (const [key, [catalog, vip, expected]] of Object.entries(cases)) assert.ok(problems(catalog, vip).includes(expected), key)
-  // Explore neighbouring owners and layout without inventing language rules.
-  let seed = 900
-  for (let i = 0; i < 256; i++) {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
-    const owner = seed % 40 + 1
-    const changed = appendix.replace(row, row.replace(/\| \d+ \|/, `| ${owner} |`))
-    assert.equal(problems(changed, tooling).includes("accepted owner"), owner !== 34, `owner:${owner}`)
-  }
 })

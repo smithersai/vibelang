@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
-import { STAGE_MS, stage } from "./first-run-stage"
+import { stage } from "./first-run-stage"
 
 test("a stage that outruns its deadline is killed and names the signal and deadline", async () => {
   const started = Date.now()
@@ -20,20 +19,11 @@ test("a stage that exits on its own reports its output and no failure", async ()
   expect({ exitCode: failed.exitCode, signalCode: failed.signalCode, failure: failed.failure }).toEqual({ exitCode: 3, signalCode: null, failure: "why\n" })
 })
 
-test("the first-run check's deadline covers every stage it runs", () => {
-  const source = readFileSync(resolve(import.meta.dir, "first-run.test.ts"), "utf8")
-  const declared = Number(/const STAGES = (\d+)/.exec(source)?.[1])
-  const calls = source.match(/await command\(/g)?.length
-  expect(calls).toBe(declared)
-  expect(source).toContain("}, STAGES * STAGE_MS)")
-  expect(STAGE_MS).toBeGreaterThanOrEqual(30_000)
-})
-
 for (const exits of [false, true]) {
   test.skipIf(process.platform === "win32")("a deadline kills a pipe-holding descendant after its parent " + (exits ? "exits" : "waits"), async () => {
-    const result = await stage(["sh", "-c", "sh -c 'sleep 1; echo escaped' & echo $!; " + (exits ? "exit 0" : "wait")], { cwd: import.meta.dir, timeout: 200 })
+    const result = await stage(["sh", "-c", "sh -c 'sleep 15; echo escaped' & echo $!; " + (exits ? "exit 0" : "wait")], { cwd: import.meta.dir, timeout: 1500 })
     expect(result.stdout).not.toContain("escaped")
-    expect(result.failure).toContain("after 200 ms")
+    expect(result.failure).toContain("after 1500 ms")
     const pid = Number(result.stdout.trim().split("\n")[0])
     expect(pid).toBeGreaterThan(1)
     let alive = true

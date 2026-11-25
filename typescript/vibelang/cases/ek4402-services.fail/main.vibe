@@ -9,12 +9,12 @@ import { randomBytes } from "node:crypto"
 import { hostname, tmpdir, uptime } from "node:os"
 import { mkdtemp } from "node:fs/promises"
 
-export const output = (name: string): infer _ => path.join("dist", name)
-export const status = (): infer _ => execFileSync("git", ["status"])
-export const page = (url: string): infer _ => fetch(url)
-export const salt = (): infer _ => randomBytes(16)
-export const here = (): infer _ => process.cwd()
-export const scratch = (): infer _ => tmpdir()
-export const workspace = (): infer _ => mkdtemp("build-")
-export const machine = (): infer _ => hostname()
-export const age = (): infer _ => uptime()
+export const output = (name: string) => path.join("dist", name)
+export const status = () => execFileSync("git", ["status"])
+export const page = (url: string) => fetch(url)
+export const salt = () => randomBytes(16)
+export const here = () => process.cwd()
+export const scratch = () => tmpdir()
+export const workspace = () => mkdtemp("build-")
+export const machine = () => hostname()
+export const age = () => uptime()

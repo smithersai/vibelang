@@ -1,5 +1,4 @@
-import { Schema } from "effect";
-import * as $nativeTryEffect from "effect/Effect";
+import { Effect, Schema } from "effect";
 export declare const Address: Schema.Struct<{
     readonly city: Schema.String;
     readonly zip: Schema.optional<Schema.String>;
@@ -23,7 +22,7 @@ export declare const User: Schema.Struct<{
     }>;
 }>;
 export type User = typeof User.Type;
-export declare function main(): $nativeTryEffect.Effect<{
+export declare function main(): Effect.Effect<{
     a: string | {
         readonly id: string;
         readonly name: string;

@@ -1,0 +1,5 @@
+// A predicate that several modules' theorems need is an exported plain
+// function, which every proof can call.
+export function inRange(x: number, lo: number, hi: number): boolean {
+  return lo <= x && x <= hi
+}

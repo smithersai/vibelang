@@ -13,10 +13,15 @@ const moduleDeclarationSource = (path) => /^(.+\.vibex?)\.[^./\\]+\.jsx?$/.exec(
 
 const normalize = (path) => realpath(path).replaceAll("\\", "/")
 
-export function diagnosticsForFile(diagnostics, file, files) {
+export function diagnosticsForFile(diagnostics, file, files, includeGlobal = true) {
+  if (diagnostics.length === 0) return []
   const source = normalize(moduleDeclarationSource(file) ?? file)
-  const listed = new Set(files.map(normalize))
-  return diagnostics.filter((diagnostic) => !diagnostic.file || !listed.has(normalize(diagnostic.file)) || normalize(diagnostic.file) === source)
+  const listed = includeGlobal ? new Set(files.map(normalize)) : undefined
+  return diagnostics.filter((diagnostic) => {
+    if (!diagnostic.file) return includeGlobal
+    const path = normalize(diagnostic.file)
+    return path === source || (listed !== undefined && !listed.has(path))
+  })
 }
 
 /** Formats a diagnostic as `file:line:column - error TS2322: text`. */

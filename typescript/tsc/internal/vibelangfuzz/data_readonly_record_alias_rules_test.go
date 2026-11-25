@@ -5,7 +5,7 @@ package vibelangfuzz
 // or array fallback. The canonical controls keep the known-gap boundary narrow.
 func dataReadonlyRecordAliasRules() []dataRule {
 	const chapter = "006-data.md"
-	const quote = "selected by ordinary type lookup and alias resolution, not by spelling."
+	const quote = "selected by ordinary type lookup and alias resolution."
 	var rules []dataRule
 	for _, binding := range []struct{ key, declaration, outer, inner string }{
 		{"canonical-qualified", "", "Readonly", "globalThis.Record"},

@@ -200,7 +200,9 @@ function caseLines(suite, result, baseline) {
   for (const item of result.cases) {
     const head = `${suite.name}  ${item.case}  `
     if (item.error !== undefined) {
-      lines.push(head + (unrecorded(item.error)
+      lines.push(head + (item.error.cause?._tag === "UnrecordedDecision"
+        ? "undecided: a decision call has no recording; add its response to the .eval.decisions.json fixture"
+        : unrecorded(item.error)
         ? "undecided: a model call has no recording; run vibelang eval --live to record it"
         : `failed: ${item.error.message}`))
       continue
@@ -216,7 +218,7 @@ function caseLines(suite, result, baseline) {
       const name = observations[0].scorerName || key.slice(0, 8)
       const scores = observations.filter((observation) => observation.kind === "score").map((observation) => observation.score)
       const inconclusive = observations.find((observation) => observation.kind === "inconclusive")
-      const recorded = baseline?.records.filter((record) => record.case === item.case && record.scorer === key).map((record) => record.score) ?? []
+      const recorded = baseline?.records.filter((record) => (record.targetTag === undefined || record.targetTag === result.targetTag) && record.case === item.case && record.scorer === key).map((record) => record.score) ?? []
       const against = recorded.length ? `(baseline ${score(meanOf(recorded))})` : "(no baseline)"
       const trials = observations.length > 1 ? `  ${plural(observations.length, "trial")}` : ""
       lines.push(head + (scores.length
@@ -232,7 +234,7 @@ async function listFile(file, shown, out) {
   out(shown)
   let cases = 0
   for (const suite of suites) {
-    out(`  ${suite.name}  target ${targetTag(suite.target)}`)
+    out(`  ${suite.name}  target ${suite.targetTag ?? targetTag(suite.target)}`)
     for (const item of casesOf(suite)) {
       cases++
       out(`    ${typeof item?.name === "string" ? item.name : "(unnamed case)"}`)
@@ -259,6 +261,8 @@ async function runFile(file, shown, options, out, err) {
     )))
     model = Layer.provide(Test.record(recording, { live }), nodeFileSystem(Effect, FileSystem))
   } else model = Test.replay(before)
+  const decisions = recordedCalls(file.replace(/\.vibex?$/, ".decisions.json"))
+  model = Layer.merge(model, Test.decisions(decisions))
 
   const stored = readBaselines(baselinePath(file))
   const baselines = new Map()

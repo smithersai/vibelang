@@ -5,14 +5,14 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import { requireOrSkip } from "./prerequisites.mjs"
 
-const repo = process.env.RELIC_TEST_REPO || fileURLToPath(new URL("../../../", import.meta.url))
+const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
-const baseline = process.env.VIBELANG_RELIC_BASELINE_BINARY
-const baselineSource = process.env.RELIC_BASELINE_APPROVAL_SOURCE
-const serviceSource = process.env.RELIC_SERVICE_APPROVAL_SOURCE || join(repo, "examples/approval/src/main.vibe")
+const serviceSource = join(repo, "examples/approval/src/main.vibe")
+// experiments/node_modules holds the pinned stock TypeScript and Effect.
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
-const stock = process.env.RELIC_REFERENCE_NODE_MODULES
+const skip = requireOrSkip([native, serviceSource, join(modules, "typescript/bin/tsc"), join(modules, "effect/package.json"), join(repo, "packages/runtime/dist/index.js")].find(path => !existsSync(path)))
 function run(bin, args, cwd) {
   const r = spawnSync(bin, args, { cwd, encoding: "utf8", timeout: 120000 })
   assert.equal(r.status, 0, `${r.error || ""}\n${r.stdout}\n${r.stderr}`)
@@ -63,24 +63,19 @@ export function scriptedReview(version: string, decisions: ReadonlyArray<boolean
 }
 `
 
-test("approval service redesign preserves repeated business Exits and review logs against saved control source and stock TS/Effect", {
-  skip: !baseline || !baselineSource || !stock ? "set saved-base approval source/binary and exact reference dependencies for the required redesign proof" : undefined
-}, t => {
-  for (const path of [baseline, baselineSource, native, join(repo, "packages/runtime/dist/index.js")]) assert.ok(existsSync(path), path)
-  assert.equal(JSON.parse(readFileSync(join(stock, "typescript/package.json"))).version, "5.9.3")
-  assert.equal(JSON.parse(readFileSync(join(stock, "effect/package.json"))).version, "4.1.0")
-  const original = project(t, readFileSync(baselineSource, "utf8"))
+// The approval example, compiled by vibelang, behaves like its hand-written
+// stock TypeScript/Effect twin compiled by stock tsc: the same Exit and the
+// same review log for every decision script, on repeated runs.
+test("approval service example matches its stock TS/Effect twin's Exits and review logs", { skip }, t => {
   const service = project(t, readFileSync(serviceSource, "utf8"))
-  run(baseline, ["-p", ".", "--pretty", "false"], original)
   run(native, ["-p", ".", "--pretty", "false"], service)
-  const before = outcomes(original)
-  assert.deepEqual(outcomes(service), before)
-  const reference = project(t, twin, stock, "ts")
-  run(process.execPath, [join(stock, "typescript/bin/tsc"), "-p", "."], reference)
-  assert.deepEqual(outcomes(reference), before)
-  // The exported Control key changes ABI. Only the supported business
-  // function declarations retain their API; this is an explicit redesign.
-  const functions = root => readFileSync(join(root, "dist/main.d.ts"), "utf8").match(/export declare function (?:release|autoApprove|scriptedReview)\([\s\S]*?;/g)
-  assert.deepEqual(functions(service), functions(original))
-  assert.deepEqual(before.filter((_,i)=>i%3===0).map(x=>x.exit.value), ["released v1","staging declined","staging declined","production declined","production declined","released v1","staging declined"])
+  const compiled = outcomes(service)
+  const reference = project(t, twin, modules, "ts")
+  run(process.execPath, [join(modules, "typescript/bin/tsc"), "-p", "."], reference)
+  assert.deepEqual(compiled, outcomes(reference))
+  assert.deepEqual(compiled.filter((_,i)=>i%3===0).map(x=>x.exit.value), ["released v1","staging declined","staging declined","production declined","production declined","released v1","staging declined"])
+  assert.deepEqual(compiled[9].messages, [["review: deploy v1 to staging: yes"], ["review: deploy v1 to production: no"]])
+  // The business functions keep their exported API.
+  const functions = root => readFileSync(join(root, "dist/main.d.ts"), "utf8").match(/export declare function (?:release|autoApprove|scriptedReview)\b/g)
+  assert.deepEqual(functions(service), ["export declare function release", "export declare function autoApprove", "export declare function scriptedReview"])
 })

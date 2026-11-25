@@ -27,7 +27,7 @@ func FuzzPatternCacheNativeScopes(f *testing.F) {
 		}
 		source := "export function f(s: unknown) { return (s is { value: let value }) ? value : 0 }"
 		if key == "discriminant" || key != "binding" && mode&1 != 0 {
-			source = "export function f(s: {_tag: \"leaf\"} | {_tag: \"node\"; value: number}): number { if (s is {_tag: \"leaf\"}) return 0; return s.value }"
+			source = "export function f(s: {_tag: \"leaf\"; value: number} | {_tag: \"node\"; value: number}): number { if (s is {_tag: \"leaf\", value: let n}) return n; return s.value }"
 		}
 		if mode&2 != 0 {
 			source = strings.ReplaceAll(source, "s is", "(s) is")
@@ -51,9 +51,11 @@ func FuzzPatternCacheNativeScopes(f *testing.F) {
 			t.Fatal("missing main source")
 		}
 		contains := func(outer, inner *ast.Node) bool { return outer.Pos() <= inner.Pos() && outer.End() >= inner.End() }
+		wrappers := 0
 		var visit func(*ast.Node) bool
 		visit = func(n *ast.Node) bool {
 			if ast.IsArrowFunction(n) && ast.IsBlock(n.Body()) && len(parser.VibeLangMatchCacheBindings(n.Body())) != 0 {
+				wrappers++
 				for _, parameter := range n.Parameters() {
 					if parameter.Pos() >= n.Body().Pos() && parameter.End() <= n.Body().End() {
 						t.Errorf("%s predicate parameter %v is inside cache body %v", key, parameter.Loc, n.Body().Loc)
@@ -61,6 +63,7 @@ func FuzzPatternCacheNativeScopes(f *testing.F) {
 				}
 			}
 			if parser.VibeLangMatchCacheCondition(n) != nil {
+				wrappers++
 				var written func(*ast.Node) bool
 				written = func(child *ast.Node) bool {
 					if ast.IsIdentifier(child) && child.Flags&ast.NodeFlagsReparsed == 0 && !contains(n, child) {
@@ -71,6 +74,7 @@ func FuzzPatternCacheNativeScopes(f *testing.F) {
 				n.ForEachChild(written)
 			}
 			if ast.IsBlock(n) && len(parser.VibeLangMatchCacheBindings(n)) != 0 {
+				wrappers++
 				for _, statement := range n.Statements() {
 					if ast.IsReturnStatement(statement) && statement.Expression() != nil && !contains(statement, statement.Expression()) {
 						t.Errorf("%s cached return %v excludes predicate %v", key, statement.Loc, statement.Expression().Loc)
@@ -80,5 +84,8 @@ func FuzzPatternCacheNativeScopes(f *testing.F) {
 			return n.ForEachChild(visit)
 		}
 		visit(file.AsNode())
+		if wrappers == 0 {
+			t.Fatalf("%s emitted no match cache wrapper:\n%s", key, source)
+		}
 	})
 }

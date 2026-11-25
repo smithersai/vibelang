@@ -1,7 +1,3 @@
-
-import * as $nativeTryEffect1 from "effect/Effect";
-
-import * as $nativeTryEffect from "effect/Effect";
 // Chapter 24: the function whose region lowering both reviews examined.
 // try/catch/finally compile to Effect frames; catch handles expected failures only (D13).
 class InvalidId extends TaggedError("InvalidId")<{ readonly raw: string }> {}
@@ -29,15 +25,13 @@ effect function parseId(raw: string) {
 
 effect function profile(raw: string) {
   const id = try parseId(raw)                 // may throw InvalidId
-  { const $nativeTryCompletion = try $nativeTryEffect.onExit($nativeTryEffect.catch(effect {
-    return { kind: "return:" as const, value: try (try Users).find(String(id)) };
+  return try Effect.onExit(Effect.catch(effect {
+    return try (try Users).find(String(id))
   }, effect (e) => {                           // e: UserNotFound
-    return { kind: "return:" as const, value: guest };
+    return guest
   }), () => effect {
     try (try Metrics).increment("profile")
-  });
-return $nativeTryCompletion.value;
-}
+  })
 }
 // Effect<User, InvalidId, Users | Metrics>
 
@@ -61,16 +55,10 @@ export effect function main() {
   const found = try Effect.provide(effect { return try profile("42") }, Layer.mergeAll(UsersTest, MetricsTest))
   const missing = try Effect.provide(effect { return try profile("7") }, Layer.mergeAll(UsersTest, MetricsTest))
   let invalid = "none"
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
+  effect {
     try Effect.provide(effect { return try profile("x") }, Layer.mergeAll(UsersTest, MetricsTest))
-  
-;return { kind: "normal" } as const;
-}, effect (e) => {
+  } catch effect (e) => {
     invalid = e._tag
-  
-;return { kind: "normal" } as const;
-});
-
-}
+  }
   return { found: found.name, missing: missing.name, invalid, counts }
 }

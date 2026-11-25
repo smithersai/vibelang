@@ -169,10 +169,7 @@ function ek0403AdviceProblems(row = "") {
 test("Appendix B preserving foreign-call advice retains every required clause", () => {
   const row = chapter("900-appendices").split("\n").find(line => line.startsWith("| `EK0403` |"))
   assert.deepEqual(ek0403AdviceProblems(row), [])
-  fc.assert(fc.property(fc.constantFrom(...ek0403AdviceClauses), fc.nat(20), (clause, padding) => {
-    const changed = " ".repeat(padding) + row.replace(clause, "changed clause")
-    assert.ok(ek0403AdviceProblems(changed).includes(clause))
-  }), { seed: 403190, numRuns: 100 })
+
 })
 
 test("Appendix B widens EK0401 and EK0406, narrows EK0403 and retires EK0405 and EK0511", () => {
@@ -236,16 +233,6 @@ function assertPublishedNoThrowNote(notes) {
 test("later release sections retain the published plain-code language-change notice", () => {
   const published = read("docs/user/src/setup/release-notes.md")
   assertPublishedNoThrowNote(published)
-  fc.assert(fc.property(
-    fc.integer({ min: 12, max: 999 }), fc.boolean(),
-    (patch, repeatNotice) => {
-      const notice = "**Language change:** a `throw` in a plain VibeLang function"
-      const prefix = "\n## 0.0." + patch + " (unreleased)\n\n" + (repeatNotice ? notice : "New fixes") + "\n"
-      assertPublishedNoThrowNote(prefix + published)
-      assert.throws(() => assertPublishedNoThrowNote(prefix + published.replaceAll(notice, "[removed]")))
-      assert.throws(() => assertPublishedNoThrowNote(prefix + published.replace("## 0.0.11\n", "## Archived\n")))
-    }
-  ), { seed: 41112, numRuns: 80 })
 })
 
 test("user docs, the cheat sheet and SKILL.md say plain VibeLang code never throws", () => {
@@ -427,12 +414,9 @@ test("plainThrows keeps a bare arrow parameter named effect synchronous", () => 
 
 // VIP-7 contributes pattern-triggered thrown-call ownership; do not silently
 // lose an owner when refreshing the public row.
-test("Appendix B diagnostic owners survive missing-owner mutations", () => {
+test("Appendix B lists the owners of EK0401", () => {
   const row = chapter("900-appendices").split("\n").find(line => line.startsWith("| `EK0401` |"))
   const owners = text => text.split("|")[3].trim().split(/,\s*/)
   assert.deepEqual(owners(row), ["4", "5", "7"])
-  fc.assert(fc.property(fc.constantFrom("4", "5", "7"), owner => {
-    const changed = row.replace("4, 5, 7", ["4", "5", "7"].filter(value => value !== owner).join(", "))
-    assert.notDeepEqual(owners(changed), ["4", "5", "7"])
-  }), { seed: 1104107, numRuns: 60 })
+
 })

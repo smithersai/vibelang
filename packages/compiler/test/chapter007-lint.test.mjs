@@ -11,7 +11,6 @@ import { Connection } from "../../../typescript/vibelang/lsp-connection.mjs"
 const fc = createRequire(new URL("../../runtime/package.json", import.meta.url))("fast-check")
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
-const stock = process.env.EFFECT_TSGO_BINARY
 const binary = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const source = 'import { Effect } from "effect"\nexport const pause = () => Effect.sleep(0)\n'
@@ -77,21 +76,6 @@ test("Chapter 007 / imported native options preserve compiler and lint policy", 
       assert.ifError(result.error)
       assert.equal(result.signal, null, context)
       assert.equal(result.status === 0, !(prefix.length ? visible && value.severity === "error" : compilerFails), context)
-      if (stock && prefix.length === 0) {
-        const config = JSON.parse(readFileSync(join(root, "tsconfig.json"), "utf8"))
-        const nativePlugin = { ...config.compilerOptions.plugins[0],
-          diagnosticSeverity: { effectSleepZeroToYieldNow: value.severity } }
-        writeFileSync(join(root, "native.ts"), 'import { Effect } from "effect"\nexport const pause = Effect.sleep(0)\n')
-        writeFileSync(join(root, "tsconfig.native.json"), JSON.stringify({
-          compilerOptions: { ...config.compilerOptions, plugins: [nativePlugin] }, files: ["native.ts"]
-        }))
-        const native = spawnSync(stock, ["-p", "tsconfig.native.json", "--pretty", "false"], {
-          cwd: root, encoding: "utf8", timeout: 30000
-        })
-        assert.ifError(native.error)
-        assert.equal(native.signal, null, context + native.stdout + native.stderr)
-        assert.equal(result.status, native.status, context + "\nNative twin:\n" + native.stdout + native.stderr)
-      }
       const imported = [...result.stdout.matchAll(/(?:error|warning|suggestion) (EK38\d\d):/g)].map(match => match[1])
       assert.deepEqual(imported, visible ? ["EK3833"] : [], context)
       if (visible) assert.match(result.stdout, new RegExp(value.severity + " EK3833:"), context)

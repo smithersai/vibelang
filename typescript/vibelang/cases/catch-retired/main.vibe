@@ -1,29 +1,22 @@
-
-import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"typed":["missing 7","retry","user 1"],"caused":["user 1","fallback"]}
 // Migrated recovery keeps the legacy typed and Cause results; editor tests retain the retired clauses.
 error NotFound { id: string }
 error Timeout
 
-effect function find(id: string): string!(NotFound | Timeout)! {
+effect function find(id: string): string!(NotFound | Timeout) {
   if (id === "7") throw new NotFound({ id })
   if (id === "slow") throw new Timeout()
   return `user ${id}`
 }
 
 effect function typed(id: string) {
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
-    return { kind: "return:" as const, value: try find(id) };
-  }, effect (e) => {
-    return { kind: "return:" as const, value: match (e) {
+  return find(id) catch effect (e) => {
+    return match (e) {
       when NotFound: `missing ${e.id}`;
       when Timeout: "retry";
       default: throw e;
     }
- };
-  });
-return $nativeTryCompletion.value;
-}
+  }
 }
 
 effect function caused(id: string) {

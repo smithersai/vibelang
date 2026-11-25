@@ -3,7 +3,7 @@
 // level it is data. try runs it, only in effect code (VIP-5), and the run
 // program's channels must fit the effect function's contract. Outside effect
 // code try reports EK0501 while type recovery retains the success value.
-const makeRuntime = (n: number): infer _ => {
+const makeRuntime = (n: number) => {
   const p: Effect.Effect<{ n: number }, never, never> = effect { return { n } }
   return p
 }
@@ -15,7 +15,7 @@ export const plain = (): number => {
 
 error Unavailable {}
 service Needed { value: number }
-const makeProgram = (input: Effect.Effect<number, Unavailable, Needed>): infer _ => {
+const makeProgram = (input: Effect.Effect<number, Unavailable, Needed>) => {
   const p: Effect.Effect<number, Unavailable, Needed> = input
   return p
 }

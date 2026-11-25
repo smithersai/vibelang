@@ -1,0 +1,40 @@
+// expect: EK4305
+// rule-evidence: docs/design/src/900-appendices.md#body | Any other statement is rule 4305: `let`, a loop, `return`, `throw`, a nested function, an `assume` after the first other statement, or an expression statement other than a proof statement.
+// rule-evidence: docs/design/src/900-appendices.md#body | A theorem with no `assert`, and a `const` that no later statement uses, are rule 4305 too: the lemma form drops an unused constant, and with it the preconditions of the calls in its initializer.
+function twice(n: number): number {
+  return n + n
+}
+theorem mutable(x: number) {
+  let y = x
+  assert(y === x)
+}
+theorem looping(x: number) {
+  while (x < 0) { }
+  assert(x === x)
+}
+theorem returning(x: number) {
+  assert(x === x)
+  return
+}
+theorem lateAssume(x: number) {
+  assert(x === x)
+  assume(x > 0)
+}
+theorem nestedAssume(x: number) {
+  if (x > 0) assume(x > 1)
+  assert(x === x)
+}
+theorem calling(x: number) {
+  twice(x)
+  assert(x === x)
+}
+theorem unusedConst(x: number) {
+  const y = twice(x)
+  assert(x === x)
+}
+theorem noAssert(x: number) {
+  assume(x > 0)
+}
+theorem empty() {
+}
+export const one = 1

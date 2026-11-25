@@ -1,5 +1,3 @@
-
-import * as $nativeTryEffect from "effect/Effect";
 import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 import { $errorSubclass } from "vibelang-runtime"
 import { $ErrorArgs } from "vibelang-runtime"
@@ -20,12 +18,8 @@ export effect function main() {
   const input = { who: "y", _tag: "spoof" }
   const extra = new Sub(input)
   try Console.log(sub._tag, sub.who)
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { try fail() 
-;return { kind: "normal" } as const;
-}, effect (e) => {
+  return fail() catch effect (e) => {
     try Console.log(e._tag, e.who)
-    return { kind: "return:" as const, value: [sub._tag, sub.who, e._tag, e.who, extra._tag, extra.who] };
-  });
-if ($nativeTryCompletion.kind === "return:") return $nativeTryCompletion.value;
-}
+    return [sub._tag, sub.who, e._tag, e.who, extra._tag, extra.who]
+  }
 }

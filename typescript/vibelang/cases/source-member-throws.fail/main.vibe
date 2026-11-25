@@ -1,0 +1,7 @@
+// expect: EK0406
+service Port {
+  static readonly key = "case/Port"; /** @throws {Error} */
+  read: () => number; /** @throws {Error} */
+  close(): void
+}
+export type Reader = { /** @throws {Error} */ (): number }

@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"bytes"
 	"fmt"
 	"slices"
 	"testing"
@@ -40,12 +41,18 @@ func FuzzConcurrentLabeledBreak(f *testing.F) {
 	keys := make([]string, len(variants))
 	for i, v := range variants {
 		keys[i] = v.key
-		f.Add([]byte("key:" + v.key))
+		for m := byte(0); m < 9; m++ {
+			f.Add(append([]byte("key:"+v.key+"\x00"), m))
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		TestConcurrentLabeledBreakQuoted(t)
-		v := variants[r3Pick(data, keys)]
+		pickData := data
+		if head, _, ok := bytes.Cut(data, []byte{0}); ok {
+			pickData = head
+		}
+		v := variants[r3Pick(pickData, keys)]
 		n := 0
 		if len(data) > 0 {
 			n = int(data[len(data)-1])

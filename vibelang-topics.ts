@@ -7,12 +7,7 @@ import { fileURLToPath } from "node:url"
 // the Test functions those files declare. PACKAGE.ts declares
 // //:go-vibelang-topic-<topic> from it, and the merge gate's selector
 // (ls/gate-cases.sh) runs a topic when a change edits a source or test file of
-// internal/vibelang that the topic names. c87f85092cc6 changed fix.go and
-// tsforms_services.go, and main 0d0c6b46ee6e went RED post-merge on
-// TestFixReachesFixedPoint (fix_fixedpoint_test.go) and
-// TestTypeScriptFormCasesFix (tsforms_test.go): the gate ran no Go test of
-// internal/vibelang. The scan lives here so PACKAGE.ts stays free of
-// filesystem reads.
+// internal/vibelang that the topic names. The scan lives here so PACKAGE.ts stays free of filesystem reads.
 const dir = join(dirname(fileURLToPath(import.meta.url)), "typescript/tsc/internal/vibelang")
 
 export const vibelangTopics = new Map<string, Array<string>>()

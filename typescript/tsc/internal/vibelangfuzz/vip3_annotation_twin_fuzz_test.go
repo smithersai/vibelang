@@ -298,6 +298,14 @@ func CheckVIP3AnnotationTwin(t *testing.T, w *Workspace, tsc string, x annotatio
 		t.Fatal(err)
 	}
 	defer c.Remove()
+	if x.shape == "bangEmpty" {
+		// An explicit error slot followed by a second bang requires an R
+		// operand. Appendix A rejects this spelling before type comparison.
+		if countCode(c.Diagnostics, 17019) != 1 {
+			t.Fatalf("expected one TS17019 for the empty requirement, got %v", SortedKeys(Keys(c.Dir, c.Diagnostics)))
+		}
+		return
+	}
 	vibeAccepts := c.Program != nil && !HasError(c.Diagnostics)
 	if x.shape == "unionOfEffects" || x.shape == "unionOfBangs" {
 		// Its two members differ in E and R whenever either is not never; with

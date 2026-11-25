@@ -1,5 +1,5 @@
 import { test, expect, afterAll } from "bun:test"
-import { contrastStage } from "./site-contrast-stage"
+import { contrastDeadline, contrastEnvironment, contrastStage } from "./site-contrast-stage"
 import { scratchSite } from "./site-scratch"
 import { resolve, join } from "node:path"
 import { mkdtempSync, readFileSync, writeFileSync, chmodSync, rmSync } from "node:fs"
@@ -47,13 +47,7 @@ test("built install metadata resolves in the npm snapshot and both themes have z
     ]) {
       // Bun tests set NODE_ENV=test; React would embed development RSC stacks.
       // Keep npm ci in the test environment so it installs devDependencies.
-      const env = {
-        ...process.env,
-        ...(command.includes("build") ? { NODE_ENV: "production", PATH: bin + ":" + process.env.PATH } : {}),
-        ...(command.includes("test:404") ? { VIBELANG_DOCS_TEST_OUTPUT: resolve(site, "dist/public") } : {}),
-      }
-      delete env.VIBELANG_SITE_RELEASE_FILE
-      delete env.VIBELANG_RELEASE_VERSION
+      const env = contrastEnvironment(command, process.env, bin, site)
       const { stdout, stderr, code } = await contrastStage(command, site, env)
       expect({ command, code, output: code === 0 ? "" : stdout + stderr }).toEqual({ command, code: 0, output: "" })
       if (command.includes("build")) {
@@ -69,4 +63,4 @@ test("built install metadata resolves in the npm snapshot and both themes have z
   } finally { rmSync(bin, { recursive: true, force: true }) }
   // The build runs the kernel law suite (up to 15 minutes, kernel-facts.ts) and
   // //:site-contrast allows 30; site-contrast-budget.test.ts keeps this between them.
-}, 25 * 60_000)
+}, contrastDeadline)

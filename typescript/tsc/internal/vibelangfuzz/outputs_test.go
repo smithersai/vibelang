@@ -259,7 +259,7 @@ func TestOutputsDoValueMapping(t *testing.T) {
 func TestOutputsStockSpans(t *testing.T) {
 	tsc := filepath.Join(Root(), "experiments/node_modules/.bin/tsc")
 	if _, err := os.Stat(tsc); err != nil {
-		t.Skipf("optional installed stock compiler: %v", err)
+		Missing(t, "stock TypeScript is unavailable at %s: %v", tsc, err)
 	}
 	w := NewWorkspace(t)
 	const source = "// é😀\nexport const answer: number = 'no';\n"

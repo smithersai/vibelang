@@ -368,7 +368,10 @@ loop:
 func (r *NameResolver) useOuterVariableScopeInParameter(result *ast.Symbol, location *ast.Node, lastLocation *ast.Node) bool {
 	if ast.IsParameterDeclaration(lastLocation) {
 		body := location.Body()
-		if body != nil && result.ValueDeclaration() != nil && result.ValueDeclaration().Pos() >= body.Pos() && result.ValueDeclaration().End() <= body.End() {
+		// A rewritten body can span an original parameter initializer. Only
+		// declarations actually nested in the body leave parameter scope.
+		decl := result.ValueDeclaration()
+		if body != nil && decl != nil && decl.Pos() >= body.Pos() && decl.End() <= body.End() && ast.IsNodeDescendantOf(decl, body) {
 			// check for several cases where we introduce temporaries that require moving the name/initializer of the parameter to the body
 			// - static field in a class expression
 			// - optional chaining pre-es2020

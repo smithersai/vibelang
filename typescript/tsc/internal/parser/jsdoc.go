@@ -20,7 +20,7 @@ func parseJSDocForNode(sourceFile *ast.SourceFile, node *ast.Node) []*ast.Node {
 	p := getParser()
 	defer putParser(p)
 	p.initializeState(sourceFile.ParseOptions(), sourceFile.Text(), sourceFile.ScriptKind)
-	ranges := GetJSDocCommentRanges(&p.factory, nil, node, sourceFile.Text())
+	ranges := getJSDocCommentRanges(&p.factory, nil, node, sourceFile.Text(), p.isVibeLangFile())
 	if len(ranges) == 0 {
 		return nil
 	}
@@ -76,7 +76,7 @@ func (p *Parser) withJSDoc(node *ast.Node, info jsdocScannerInfo) []*ast.Node {
 		// Fall through to eager parse for @see/@link
 	}
 
-	ranges := GetJSDocCommentRanges(&p.factory, p.jsdocCommentRangesSpace, node, p.sourceText)
+	ranges := getJSDocCommentRanges(&p.factory, p.jsdocCommentRangesSpace, node, p.sourceText, p.isVibeLangFile())
 	p.jsdocCommentRangesSpace = ranges[:0]
 
 	// Should only be called once per node

@@ -7,6 +7,11 @@
  *
  * {@link detect} reports which coding-agent CLIs the machine has.
  *
+ * {@link run} runs a model in a loop until it produces a typed answer: each
+ * turn the model writes a short JavaScript cell that runs in a QuickJS
+ * sandbox and reaches the world only through the tools it was handed.
+ * {@link stream} is the same run as a stream of events.
+ *
  * @experimental
  * @since 0.0.13
  */
@@ -24,7 +29,11 @@ import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as Queue from "effect/Queue"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import type * as AiError from "effect/ai/AiError"
+import type * as LanguageModel from "effect/ai/LanguageModel"
+import type * as Toolkit from "effect/ai/Toolkit"
 import * as Acp from "./internal/agentAcp.js"
+import * as Loop from "./internal/agentLoop.js"
 
 /**
  * @category type ids
@@ -53,6 +62,14 @@ export const TypeId: TypeId = "~vibelang/experimental/Agent"
  *   with an error, or it sent what the protocol does not allow.
  * - `cli_stopped`: the CLI ended its turn without finishing the task: it
  *   refused, or ran out of tokens or turns.
+ * - `invalid_options`: {@link run} was given a limit, budget or prompt it
+ *   cannot use. No model was asked.
+ * - `sandbox_unavailable`: the QuickJS sandbox could not be loaded, or broke.
+ * - `turns_exhausted`: {@link run} spent `maxTurns` without a valid answer.
+ * - `output_invalid`: the answer missed `output` and the corrections were
+ *   spent.
+ * - `judge_unavailable`: `judge` is positive and the decision model could
+ *   not be reached. A run is never approved without it.
  *
  * @category errors
  * @since 0.0.13
@@ -61,7 +78,12 @@ export const AgentFailedReason = Schema.Literals([
   "profile_unknown",
   "cli_unavailable",
   "cli_failed",
-  "cli_stopped"
+  "cli_stopped",
+  "invalid_options",
+  "sandbox_unavailable",
+  "turns_exhausted",
+  "output_invalid",
+  "judge_unavailable"
 ])
 
 /**
@@ -626,3 +648,208 @@ export const detect = (): Effect.Effect<
         return { id: detector.id, name: detector.name, binary, version, status: signal.status, account: signal.account }
       }), { concurrency: 3 })
   })
+
+// -----------------------------------------------------------------------------
+// The cell loop
+// -----------------------------------------------------------------------------
+
+/**
+ * The ceilings a run's sandbox enforces. Each is always set: a caller may
+ * change one, and none can be removed.
+ *
+ * - `calls`: tool calls one cell may make. 64 unless set.
+ * - `timeMs`: milliseconds one cell may compute, not counting time spent
+ *   waiting on a tool. 30,000 unless set.
+ * - `callMs`: milliseconds one tool call may take. 120,000 unless set.
+ * - `memoryBytes`: bytes the whole run may hold, between 32 MiB and 4 GiB.
+ *   128 MiB unless set.
+ *
+ * @category run
+ * @since 0.0.13
+ */
+export interface Limits {
+  readonly calls: number
+  readonly timeMs: number
+  readonly callMs: number
+  readonly memoryBytes: number
+}
+
+/**
+ * The limits a run applies when none are given.
+ *
+ * @category run
+ * @since 0.0.13
+ */
+export const defaultLimits: Limits = Loop.defaultLimits
+
+/**
+ * The turns a run may take when `maxTurns` is not given.
+ *
+ * @category run
+ * @since 0.0.13
+ */
+export const defaultMaxTurns: number = Loop.defaultMaxTurns
+
+/**
+ * The options of {@link run} and {@link stream}.
+ *
+ * @category run
+ * @since 0.0.13
+ */
+export interface RunOptions<Output extends Schema.Top, E = never, R = never> {
+  /** The task. */
+  readonly prompt: string
+  /** The answer is decoded with this schema. */
+  readonly output: Output
+  /** Instructions placed before the cell protocol. */
+  readonly system?: string | undefined
+  /**
+   * The functions a cell may call: a toolkit with handlers, or an Effect that
+   * gives one, such as `Experimental.Tools.filesystem`. None unless set.
+   */
+  readonly tools?: Toolkit.WithHandler<any> | Effect.Effect<Toolkit.WithHandler<any>, E, R> | undefined
+  /** Turns before the run fails with `turns_exhausted`. {@link defaultMaxTurns} unless set. */
+  readonly maxTurns?: number | undefined
+  /** Re-prompts after an answer that fails `output`. 1 unless set. */
+  readonly corrections?: number | undefined
+  /** Changes to {@link defaultLimits}. */
+  readonly limits?: Partial<Limits> | undefined
+  /**
+   * How many completion claims a decision model checks against the run's
+   * evidence. 0 unless set; a positive value needs `DecisionModel`.
+   */
+  readonly judge?: number | undefined
+}
+
+/**
+ * Token counts a run spent across its turns.
+ *
+ * @category run
+ * @since 0.0.13
+ */
+export interface Usage {
+  readonly inputTokens: number
+  readonly outputTokens: number
+}
+
+/**
+ * What a finished run gives: the decoded answer, the turns it took and the
+ * tokens it spent.
+ *
+ * @category run
+ * @since 0.0.13
+ */
+export interface RunResult<A> {
+  readonly output: A
+  readonly turns: number
+  readonly usage: Usage
+}
+
+/**
+ * One event of a run, in order:
+ *
+ * - `TurnStarted`: the model is asked for turn `turn`, counting from 1.
+ * - `TextDelta`: a piece of the model's reply.
+ * - `Cell`: the program the reply held.
+ * - `ToolCall` and `ToolResult`: a call the cell made, and whether it
+ *   succeeded.
+ * - `CellEnded`: how the cell ended (`missing` when the reply held no cell)
+ *   and what it printed.
+ * - `Correction`: an answer missed `output`, and a correction was spent.
+ * - `Judged`: the judge's verdict on a completion claim.
+ * - `Finished`: the run's result. Always last.
+ *
+ * @category run
+ * @since 0.0.13
+ */
+export type AgentEvent<A = unknown> =
+  | Loop.Event
+  | { readonly _tag: "Finished"; readonly result: RunResult<A> }
+
+const loopFailed = (error: Loop.LoopFailure | AiError.AiError): AgentFailed | AiError.AiError =>
+  (error as Loop.LoopFailure)._tag === "LoopFailure"
+    ? new AgentFailed({
+      reason: (error as Loop.LoopFailure).reason,
+      message: (error as Loop.LoopFailure).message,
+      turns: (error as Loop.LoopFailure).turns
+    })
+    : error as AiError.AiError
+
+/**
+ * Runs a model in the cell loop until it gives an answer `output` decodes.
+ *
+ * Each turn the model writes a JavaScript cell. The cell runs in a QuickJS
+ * sandbox with no file system, network, timers, `Date` or `Math.random`; it
+ * acts only by `await tools[name](input)`, prints with `console.log`, and
+ * ends the run with `done(answer)`.
+ *
+ * - The model is the `LanguageModel` in context: `Experimental.Model.use`.
+ * - A cell can call only the tools it was handed; any other name fails
+ *   inside the sandbox before the host sees it.
+ * - Inside a workflow or one of its tasks, every tool call is a recorded
+ *   step. A crash mid-cell re-runs the cell from the top; settled calls
+ *   replay their recorded values.
+ * - A miss against `output` spends one correction. A spent budget fails with
+ *   {@link AgentFailed}.
+ *
+ * Fails with {@link AgentFailed} (`invalid_options`, `sandbox_unavailable`,
+ * `turns_exhausted`, `output_invalid`, `judge_unavailable`), or with the
+ * model's `AiError`.
+ *
+ * **Example** (A typed review)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { Agent, Model, Tools } from "vibelang-runtime/experimental"
+ *
+ * const review = Agent.run({
+ *   prompt: "Review src/index.ts",
+ *   tools: Tools.readOnly,
+ *   output: Schema.Struct({ approved: Schema.Boolean, issues: Schema.Array(Schema.String) })
+ * })
+ * ```
+ *
+ * @category run
+ * @since 0.0.13
+ */
+export const run = <Output extends Schema.Top, E = never, R = never>(
+  options: RunOptions<Output, E, R>
+): Effect.Effect<
+  RunResult<Output["Type"]>,
+  AgentFailed | AiError.AiError | E,
+  LanguageModel.LanguageModel | R | Output["DecodingServices"]
+> =>
+  Effect.mapError(
+    Loop.run(options as Loop.Options, () => Effect.void, false),
+    (error) => loopFailed(error as Loop.LoopFailure | AiError.AiError)
+  ) as any
+
+/**
+ * The same run as {@link run}, as a stream of {@link AgentEvent}s ending in
+ * `Finished`. The model is asked with `streamText`, so `TextDelta` events
+ * arrive as it writes. A failure ends the stream with the same error
+ * {@link run} gives.
+ *
+ * @category run
+ * @since 0.0.13
+ */
+export const stream = <Output extends Schema.Top, E = never, R = never>(
+  options: RunOptions<Output, E, R>
+): Stream.Stream<
+  AgentEvent<Output["Type"]>,
+  AgentFailed | AiError.AiError | E,
+  LanguageModel.LanguageModel | R | Output["DecodingServices"]
+> =>
+  Stream.callback<AgentEvent<Output["Type"]>, AgentFailed | AiError.AiError | E, any>((queue) =>
+    Loop.run(options as Loop.Options, (event) => Effect.asVoid(Queue.offer(queue, event)), true).pipe(
+      Effect.mapError((error) => loopFailed(error as Loop.LoopFailure | AiError.AiError)),
+      Effect.matchCauseEffect({
+        onFailure: (cause) => Queue.failCause(queue, cause as any),
+        onSuccess: (result) =>
+          Effect.andThen(
+            Queue.offer(queue, { _tag: "Finished", result: result as RunResult<Output["Type"]> }),
+            Queue.end(queue)
+          )
+      })
+    )
+  ) as any

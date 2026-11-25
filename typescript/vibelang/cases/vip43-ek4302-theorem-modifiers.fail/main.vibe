@@ -1,0 +1,14 @@
+// expect: EK4302 TS7010
+// rule-evidence: docs/design/src/900-appendices.md#names-and-placement | They can't be exported (4302), so no other module or package depends on one; a theorem can still sit in any module that imports the functions it states facts about.
+// rule-evidence: docs/design/src/900-appendices.md#header | A theorem has no overloads (4302).
+export theorem exported(x: number) {
+  assert(x === x)
+}
+theorem twice(x: number)
+theorem twice(x: number) {
+  assert(x === x)
+}
+export default theorem fallback(x: number) {
+  assert(x === x)
+}
+export const one = 1

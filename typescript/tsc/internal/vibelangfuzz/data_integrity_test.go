@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -57,5 +58,30 @@ func TestPendingDataHygiene(t *testing.T) {
 		if records == 0 {
 			t.Errorf("%s has no pending entries", filepath.Base(file))
 		}
+	}
+}
+
+// Corpus files can repeat fixture comments verbatim. Check them as well as the
+// source fixture so a minimized test cannot preserve private build host names.
+func TestCorpusHostHygiene(t *testing.T) {
+	private := regexp.MustCompile(`(?i)\bnyc-0[12]\s+repros/|\bminimized by [\w-]+ \(nyc-`)
+	err := filepath.WalkDir(filepath.Join(repoTestdata(), "fuzz"), func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if private.Match(data) {
+			t.Errorf("%s: replace internal host and work stream details with a public fixture reference", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }

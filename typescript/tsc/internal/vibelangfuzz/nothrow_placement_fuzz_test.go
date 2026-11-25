@@ -48,10 +48,8 @@ func TestNothrowPlacementQuoted(t *testing.T) { nothrowPlacementChapter(t) }
 // around body; effect marks effect code and async an async function, where
 // no payload is EK0401. A kind with a default writes the payload as an
 // expression into a parameter's default, in the direct position only; plain
-// marks a parameter list that is synchronous code (quote 9). admitted marks a
-// function literal passed where its parameter admits throws (quotes 7 and 8):
-// a rest parameter's element or a tuple-rest member at the argument's
-// position (PREVIEW-10), where a known call belongs to the receiving call.
+// marks a synchronous parameter list. admitted marks a function literal passed
+// where its parameter admits throws, so a known call belongs to the receiving call.
 type nothrowKind struct {
 	key           string
 	effect, async bool

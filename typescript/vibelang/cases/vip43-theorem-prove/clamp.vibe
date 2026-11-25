@@ -1,0 +1,13 @@
+// rule-evidence: docs/design/src/900-appendices.md#theorem-lowering | A theorem `T` becomes `export function T<P>(params): boolean` whose body starts with `//@ verify` and ends with `return true`.
+// rule-evidence: docs/design/src/900-appendices.md#theorem-lowering | - **Lemma form**, when no hypothesis, constant or assertion calls a procedure: each assertion becomes `//@ ensures F'` lines, with every constant replaced.
+export function clamp(x: number, lo: number, hi: number): number {
+  if (x < lo) return lo
+  if (x > hi) return hi
+  return x
+}
+
+theorem clampInRange(x: number, lo: number, hi: number) {
+  assume(lo <= hi)
+  const result = clamp(x, lo, hi)
+  assert(lo <= result && result <= hi)
+}

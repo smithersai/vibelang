@@ -64,7 +64,10 @@ for (const version of ["vite", "vite7"]) {
         const response = await fetch(base + "/src/main.vibe")
         const code = await response.text()
         assert.equal(response.status, 200, code)
-        assert.match(code, /imported|value/)
+        // The served module imports the created source by its URL. Text
+        // such as "value" appears in any compiled output, so it proves nothing.
+        const imports = [...code.matchAll(/\bfrom "([^"?]+)/g)].map(match => decodeURI(match[1]))
+        assert.ok(imports.includes(`/src/${name}`), `main.vibe does not import /src/${name}:\n${code}`)
         assert.equal((await fetch(base + "/src/" + encodeURI(name))).status, 200)
         messages.length = 0
         await rm(file)

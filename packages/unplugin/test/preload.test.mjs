@@ -81,9 +81,10 @@ test("Rolldown build() shortcut receives the native adapter", async t => {
   succeeded(await run({ root, bundler: "rolldown", mode: "shortcut" }))
 })
 
-test("Rolldown watch() retains its synchronous watcher API", async t => {
+// preload-build.mjs reads the first bundle, saves leaf.vibe as 99, and reads the rebuild.
+test("Rolldown watch() retains its synchronous watcher API and rebuilds after an edit", async t => {
   const root = await fixture(t)
-  succeeded(await run({ root, bundler: "rolldown", mode: "watch" }))
+  succeeded(await run({ root, bundler: "rolldown", mode: "watch" }), [42, 99])
 })
 
 test("esbuild: node default import and rebuild context retain native loading", async t => {

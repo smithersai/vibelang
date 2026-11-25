@@ -44,15 +44,26 @@ async function project(t, extra = {}) {
   return root
 }
 
-const bundlers = { webpack: "out/main.cjs", rspack: "out/main.cjs", rollup: "out/main.js", rolldown: "out/main.js", esbuild: "out/main.js", vite: "out/main.js" }
+const bundlers = { webpack: "out/main.cjs", rspack: "out/main.cjs", rollup: "out/main.js", rolldown: "out/main.js", esbuild: "out/main.js", vite: "out/main.js", bun: "out/main.js" }
+const runtime = (bundler) => (bundler === "bun" ? "bun" : process.execPath)
+// The Bun adapter's onLoad filter matches .vibe and .vibex only, so Bun parses
+// a // @vibe .ts module as TypeScript and fails on `error Empty`.
+const pending = { bun: "the Bun adapter does not load // @vibe .ts modules" }
+
+// VIBELANG_UNPLUGIN_DEBUG=1 prints "vibelang-unplugin: load <file> from <project>"
+// for each module the plugin compiles.
+const loaded = (stderr) => [...stderr.matchAll(/^vibelang-unplugin: load (\S+) from /gm)].map((match) => match[1])
 
 describe("VibeLang in a .ts module", () => {
   for (const [bundler, bundle] of Object.entries(bundlers)) {
-    it(`${bundler} compiles the module and leaves its plain neighbour alone`, async (t) => {
+    it(`${bundler} compiles the module and leaves its plain neighbour alone`, { todo: pending[bundler] }, async (t) => {
       const root = await project(t)
-      const built = spawnSync(process.execPath, [build, bundler], { cwd: root, encoding: "utf8" })
+      const built = spawnSync(runtime(bundler), [build, bundler], { cwd: root, encoding: "utf8", env: { ...process.env, VIBELANG_UNPLUGIN_DEBUG: "1" } })
       assert.equal(built.status, 0, built.stdout + built.stderr)
-      const run = spawnSync(process.execPath, [join(root, bundle)], { cwd: root, encoding: "utf8" })
+      const compiled = loaded(built.stderr)
+      assert.ok(compiled.some((file) => file.endsWith("hello.ts")), `the plugin compiled ${JSON.stringify(compiled)}\n${built.stderr}`)
+      assert.deepEqual(compiled.filter((file) => /(?:plain|main)\.ts$/.test(file)), [], "the plugin compiled a .ts file without the directive")
+      const run = spawnSync(runtime(bundler), [join(root, bundle)], { cwd: root, encoding: "utf8" })
       assert.equal(run.stdout, "hello nobody!\n", run.stderr)
     })
   }

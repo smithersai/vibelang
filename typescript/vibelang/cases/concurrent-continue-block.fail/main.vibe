@@ -1,0 +1,8 @@
+// expect: EK1905
+export effect function visit() {
+  outer: {
+    for concurrent (const item of [1, 2]) {
+      if (item === 1) continue outer
+    }
+  }
+}

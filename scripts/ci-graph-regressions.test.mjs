@@ -22,5 +22,6 @@ test("cross-package quoted rules and durable schema fixtures use workspace file 
 
 test("the generator contract selector names the live test in its package", () => {
   const command = root.match(/"go-generator-return-contracts": goVibelang\(\s*"[^"]*",\s*`([^`]+)`/)[1]
-  assert.match(command, /-run '\^TestEffectFnBareReturnContractsQuoted\$' \.\/internal\/vibelangfuzz\/$/)
+  assert.match(read("typescript/tsc/internal/vibelangfuzz/effect_bare_return_diagnostics_test.go"), /^func TestEffectBareReturnDiagnosticsQuoted\(/m)
+  assert.match(command, /-run '\^TestEffectBareReturnDiagnosticsQuoted\$' \.\/internal\/vibelangfuzz\/$/)
 })

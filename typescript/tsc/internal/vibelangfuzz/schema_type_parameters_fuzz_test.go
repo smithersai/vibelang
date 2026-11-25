@@ -10,7 +10,7 @@ import (
 )
 
 const schemaTypeParameterQuote = "type parameters on a `schema` declaration; use an ordinary generic TypeScript factory returning a Schema value"
-const schemaHeaderLineBreakQuote = "No other line-break or disambiguation rule applies to these four words."
+const schemaHeaderLineBreakQuote = "SchemaStart      = \"schema\"  [no LineTerminator here] BindingIdentifier"
 
 func TestSchemaTypeParameterAdmissionQuoted(t *testing.T) {
 	schemaTypeParameterQuoted(t)

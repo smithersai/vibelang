@@ -32,7 +32,8 @@ export effect function observe(kind: Kind) {
         if (rows.length > 0 && matches(this)) iterators++
         return Reflect.apply(oldIterator, this, [])
       }
-      const exits = Fx.runSync(work)
+      const exit = Fx.runSyncExit(work)
+      const exits = exit._tag === "Success" ? exit.value : []
       return { maps, iterators, exits }
     } finally {
       prototype.map = oldMap
@@ -48,7 +49,7 @@ export effect function main() {
   for (const kind of ["literal", "grouped", "held", "spread", "single", "empty"] as const) {
     const actual = try observe(kind)
     const native = try nativeObserve(kind)
-    same = same && JSON.stringify(actual) === JSON.stringify(native)
+    same = same && (try Fx.try(() => JSON.stringify(actual) === JSON.stringify(native)))
     if (kind === "empty") summary.emptyLength = actual.tags.length
     else summary[kind] = [actual.maps, actual.iterators]
   }

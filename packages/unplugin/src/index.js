@@ -395,7 +395,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
 
   async function loadModule(id) {
     const file = cleanId(id)
-    const compiled = await (await loaded()).load(file)
+    const compiled = await (await loaded()).load(file, { projectWarnings: "once" })
     const result = relativeOutput(compiled, file, backend, compilerPath, debug)
     if (result.writtenImports?.size) writtenNames.set(file, result.writtenImports)
     else writtenNames.delete(file)
@@ -404,7 +404,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     if (missing.length) debug(`watch missing relative inputs: ${missing.join(", ")}`)
     // Keep missing candidates in the bundler's watch set, outside the backend's
     // existing-input snapshot and its check for saves made during a compile.
-    return missing.length ? { ...result, inputs: [...new Set([...result.inputs, ...missing])] } : result
+    return missing.length ? { ...result, missing, inputs: [...new Set([...result.inputs, ...missing])] } : result
   }
 
   // The module the plugin serves for a specifier, or undefined to leave it to
@@ -570,7 +570,8 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       missingWatcher?.finish(error)
     },
     watchChange(id) {
-      if (/\.(?:vibex?|[cm]?tsx?|json)$/.test(id)) current?.invalidate()
+      // Vite serve keeps its backend across edits. Build adapters recreate it.
+      if (viteCommand === "serve") current?.invalidate()
       debug(`watch change ${id}`)
     },
     // Bun 1.4.2 stops resolving Bun.build's in-memory `files` once a plugin's
@@ -598,15 +599,17 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       }
       const entryPlatform = workerEntryPlatform(id)
       if (entryPlatform) return { code: workerEntryCode(cleanId(id), entryPlatform), map: null, moduleType: "js" }
-      const { project, code, map, inputs, errors, warnings, error } = await loadModule(id)
+      const { project, code, map, inputs, errors, warnings, error, first, missing = [] } = await loadModule(id)
       // Any project source or the tsconfig can change the contracts this module compiles against.
       const rollupWatch = meta.framework === "rollup" && this.meta?.watchMode && !watchClosed
-      const nativeWatch = ["rolldown", "vite"].includes(meta.framework)
+      const globalWatch = ["rollup", "rolldown", "vite"].includes(meta.framework)
+      const nativeWatch = meta.framework !== "rollup" && globalWatch && (this.meta?.watchMode || viteCommand === "serve")
       // Vite serve also reports watchMode, but buildStart runs only once.
       // Its server watches directories itself, without build acknowledgements.
       const managedWatch = rollupWatch || (nativeWatch && viteCommand !== "serve" && this.meta?.watchMode && !watchClosed)
       const watch = new Set()
-      for (const input of [project, ...inputs]) {
+      const watchInputs = globalWatch && first === false ? missing : [project, ...inputs]
+      for (const input of watchInputs) {
         // A directory watch does not reliably observe an index created in a
         // new child directory. Missing candidates use the file notifier below.
         if ((rollupWatch || nativeWatch) && !existsSync(input)) {
@@ -620,13 +623,10 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         watch.add(input)
       }
       for (const input of watch) this.addWatchFile(input)
-      if (managedWatch) {
-        const missing = missingRelativeInputs(errors)
-        if (missing.length) {
-          missingWatcher ??= missingSourceWatcher(debug)
-          this.addWatchFile(missingWatcher.file)
-          missingWatcher.add(missing)
-        }
+      if (managedWatch && missing.length) {
+        missingWatcher ??= missingSourceWatcher(debug)
+        this.addWatchFile(missingWatcher.file)
+        missingWatcher.add(missing)
       }
       // Reject this source's errors even after another clean module was loaded.
       if (errors.length) {
@@ -780,14 +780,9 @@ export const unplugin = createUnplugin((options = {}, meta) => {
               messages.push({ text: failure.message })
             }
           }
-          // Inline source-map sources are URLs. Keep percent signs literal
-          // when esbuild resolves and combines this map with its JSX output.
-          const outputMap = map && isJsxModule(cleanId(path))
-            ? { ...map, sources: map.sources.map(source => isAbsolute(source) ? pathToFileURL(source).href : source) }
-            : map
-          let contents = outputMap
+          let contents = map
             ? `${code}
-//# sourceMappingURL=data:application/json;charset=utf-8;base64,${Buffer.from(JSON.stringify(outputMap)).toString("base64")}`
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,${Buffer.from(JSON.stringify(map)).toString("base64")}`
             : code
           let jsxWarnings = []
           if (isJsxModule(cleanId(path)) && !messages.length) {

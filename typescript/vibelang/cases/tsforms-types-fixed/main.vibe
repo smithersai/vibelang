@@ -3,7 +3,7 @@
 // changing declarations. Required grouping is added; source-written parentheses
 // retain the qualified type. An omitted slot is never; written infer return
 // slots are retired by VIP-3. The directive keeps an additional qualified spelling.
-// tsforms-types-fixed is what vibelang --fix writes.
+
 error Missing { id: string }
 
 effect function load(id: string): number!Missing {

@@ -24,7 +24,6 @@
     "app/src/a.ts": "4110f6902749ada93ddfb5cb46d07c20db1018ccfc7a600149fd4783e85dab84"
   },
   "knownFailure": {
-    "owner": "migfix-alchemy",
     "key": "sidecar-source-module-identity",
     "keys": [],
     "codes": [

@@ -634,6 +634,6 @@ it.live("finds a user", effect () => {
  * @category constructors
  * @since 0.0.2
  */
-export function guarded(outcome: Exit.Exit<User, NotFound>) {
+export function isFailedOutcome(outcome: Exit.Exit<User, NotFound>) {
   return outcome is if (Exit.isFailure(outcome))
 }

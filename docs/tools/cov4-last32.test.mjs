@@ -98,12 +98,6 @@ test.todo("VIP-27: Generated throw contracts remain output-only and source tags 
 // rule-evidence: docs/design/vips/0027-declaration-output.md#1114cddd3de867a6 — VIP-27: Published error constructor typing and own matcher dispatch work across copies.
 test.todo("VIP-27: Published error constructor typing and own matcher dispatch work across copies [docs/design/vips/0027-declaration-output.md#1114cddd3de867a6]")
 
-// rule-evidence: docs/design/src/002-running.md#a504880b23f48fb9 — Chapter 002: Annotated Effect arguments still warn in bare generic or plain container positions.
-test.todo("Chapter 002: Annotated Effect arguments still warn in bare generic or plain container positions [docs/design/src/002-running.md#a504880b23f48fb9]")
 
 // rule-evidence: docs/design/src/005-services.md#a67dc13dcc9ae35f — Chapter 005: Service members preserve written readonly and native writable defaults.
 test.todo("Chapter 005: Service members preserve written readonly and native writable defaults [docs/design/src/005-services.md#a67dc13dcc9ae35f]")
-
-
-// rule-evidence: docs/design/vips/0001-effect-and-async-functions.md#a504880b23f48fb9 — VIP-1: Annotated Effect arguments still warn in bare generic or plain container positions.
-test.todo("VIP-1: Annotated Effect arguments still warn in bare generic or plain container positions [docs/design/vips/0001-effect-and-async-functions.md#a504880b23f48fb9]")

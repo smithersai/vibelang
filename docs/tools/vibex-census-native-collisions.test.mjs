@@ -1,6 +1,3 @@
-// VIP-39 stock collision reference: docs/design/vips/0039-vibex.md#f85126f669fd4d69
-// VIP-39 stock collision reference: docs/design/vips/0039-vibex.md#d3c48b682dbd18e1
-// VIP-39 stock collision reference: docs/design/vips/0039-vibex.md#6a4bffb3666c942c
 import assert from "node:assert/strict"
 import {test} from "node:test"
 import ts from "typescript"
@@ -28,8 +25,7 @@ const controls=[
  ["declarations only",{declaration:true,emitDeclarationOnly:true},["App.d.ts"],[]],
  ["React noEmit",{jsx:ts.JsxEmit.React,noEmit:true},[],[]]
 ]
-for(const [name,options,collisions,outputs] of controls) test("VIP-39 native collision control: "+name,()=>{
- assert.equal(ts.version,"5.9.3")
+for(const [name,options,collisions,outputs] of controls) test("TypeScript emit collision control: "+name,()=>{
  const {diagnostics,written}=compile(options)
  assert.deepEqual(diagnostics.map(d=>d.code),collisions.map(()=>5056))
  for(const path of collisions) assert.ok(diagnostics.some(d=>ts.flattenDiagnosticMessageText(d.messageText," ").includes("/"+path)),path)

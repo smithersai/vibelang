@@ -54,19 +54,19 @@ for (const [before, after] of [
 })
 
 test("VIP-32 attribution-only privacy edit changes no normative sentences", () => {
-  const before = "**Amended 2026-10-29: repos that already use VibeLang.** The published `vibelang-runtime` enforces its exact Effect pin, so the Effect upgrade lands together with the VibeLang release pinned to the new Effect, not before it (found by smithers-3a on Smithers). Recorded under Will's standing approval of recommendations."
-  const after = before.replace("found by smithers-3a on Smithers", "found while upgrading Smithers")
+  const before = "**Amended 2026-10-29: repos that already use VibeLang.** The published `vibelang-runtime` enforces its exact Effect pin, so the Effect upgrade lands together with the VibeLang release pinned to the new Effect, not before it (found by tester on Example)."
+  const after = before.replace("found by tester on Example", "found while upgrading Example")
   expect(changedRules([{ path: "docs/design/vips/0032-effect-version.md", before, after }])).toEqual([])
   expect(changedRules([doc(after.replace("pinned to the new Effect", "pinned to the current Effect"), before)])).toHaveLength(1)
 })
 
 test("EK1010 attribution-only privacy edit changes no normative sentences in all three locations", () => {
-  const chapterBefore = "The new punctuator-only comma case is a warning until `vibelang --fix` can parenthesize it: Will's rule (effectscript-11, 23:05Z) is codemod first, then the error; a new error never lands ahead of its `--fix`."
+  const chapterBefore = "The new punctuator-only comma case is a warning until `vibelang --fix` can parenthesize it: codemod first, then the error (found by tester); a new error never lands ahead of its `--fix`."
   const chapterAfter = "The new punctuator-only comma case is a warning until `vibelang --fix` can parenthesize it: the preserving codemod ships before the new error; a new error never lands ahead of its `--fix`."
-  const appendixBefore = "Its new punctuator-only comma case temporarily reports warning `EK1010` until the parenthesizing `vibelang --fix` ships, following Will's rule (effectscript-11, 23:05Z): codemod first, then the error."
+  const appendixBefore = "Its new punctuator-only comma case temporarily reports warning `EK1010` until the parenthesizing `vibelang --fix` ships: codemod first, then the error."
   const appendixAfter = "Its new punctuator-only comma case temporarily reports warning `EK1010` until the parenthesizing `vibelang --fix` ships: the preserving codemod ships before the new error."
-  const tableBefore = "| `EK1010` | warning for the new punctuator-only comma case until its parenthesizing `vibelang --fix` ships (Will, effectscript-11, 23:05Z: codemod first, then the error); existing operator-left violations (D186, S10-12) remain errors; parenthesize the operand or the throw | 41 | [Failures](003-failures.md#throw-expressions) |"
-  const tableAfter = tableBefore.replace("Will, effectscript-11, 23:05Z: codemod first, then the error", "the preserving codemod ships before the new error")
+  const tableBefore = "| `EK1010` | warning for the new punctuator-only comma case until its parenthesizing `vibelang --fix` ships (codemod first, then the error); existing operator-left violations (D186, S10-12) remain errors; parenthesize the operand or the throw | 41 | [Failures](003-failures.md#throw-expressions) |"
+  const tableAfter = tableBefore.replace("codemod first, then the error", "the preserving codemod ships before the new error")
   const changes = [
     { path: "docs/design/src/003-failures.md", before: chapterBefore, after: chapterAfter },
     { path: "docs/design/src/900-appendices.md", before: appendixBefore + "\n\n" + tableBefore, after: appendixAfter + "\n\n" + tableAfter }
@@ -355,13 +355,6 @@ test("full-context diff parsing preserves additions, deletions, renames and fina
     { path: "typescript/vibelang/cases/x/main.vibe", before: "", after: "export const x = fork f()" }
   ])
   expect(() => parseDiff("diff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -99 +99 @@\n-old\n+new")).toThrow("incomplete")
-})
-
-test("PACKAGE declares an explicit diff target and its regression target", () => {
-  const text = readFileSync(process.env.RULE_EVIDENCE_PACKAGE || resolve(import.meta.dir, "../../PACKAGE.ts"), "utf8")
-  expect(text.includes('"spec-rule-evidence": specRuleEvidence')).toBe(true)
-  expect(text.includes('"spec-rule-evidence-test": specRuleEvidenceTest')).toBe(true)
-  expect(text).toContain('shell: "bun docs/tools/rule-evidence.ts --immutable"')
 })
 
 test("real Effect twins may compare their Exit instead of their declarations", async () => {
@@ -827,4 +820,10 @@ test("existing normative VIP amendments beneath the quotation heading remain vis
   const rules = changedRules([recordChange(vip)])
   for (const anchor of ["EK4856", "EK3011", "oxfmt file.vibe"])
     expect(rules.some(rule => rule.text.includes(anchor) && rule.section === "wills-words")).toBe(true)
+})
+
+test("VIP background sections and table headers create no rule obligations", () => {
+  const path = "docs/design/vips/0099-example.md"
+  const after = "**Status:** accepted\n\n## Alternatives\n\n### Details\n\nUse `old()`.\n\n## Decision\n\n| `Form` | Meaning |\n| --- | --- |\n| `new()` | Runs the operation |"
+  expect(changedRules([{ path, before: "", after }]).map(rule => rule.text)).toEqual(["| `new()` | Runs the operation |"])
 })

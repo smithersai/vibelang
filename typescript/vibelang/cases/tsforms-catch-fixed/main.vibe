@@ -2,7 +2,7 @@
 // Effect's catch combinators draw EK4835 (D289); the fix writes a catch
 // expression with one arm per tag. Each arm tests _tag structurally,
 // including when a static type names an error class, as catchTag does.
-// tsforms-catch-fixed is what vibelang --fix writes.
+
 error Missing { id: number }
 error Timeout
 

@@ -289,7 +289,9 @@ func checkContracts(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if isLowerable(node) && node.Type() != nil {
+		// A plain factory constructs an Effect value. Its synchronous exceptions
+		// are checked at the call site in its body, outside the returned E.
+		if isLowerable(node) && node.Type() != nil && a.isEffect(node) {
 			a.checkContract(file, node)
 		}
 		return node.ForEachChild(visit)

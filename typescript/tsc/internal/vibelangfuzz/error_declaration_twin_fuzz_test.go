@@ -29,8 +29,7 @@ import (
 // `schema` declarations", whose twin is `Schema.TaggedError<Name>()("Name",
 // { fields })` with each field type mapped by Chapter 6's table; "Every field
 // is readonly, as in `error`", so no field gets `Schema.mutableKey`
-// (foldkit-90's fieldless declaration and decide-live's request for schema
-// error cases, 2026-11-01).
+// (Chapter 3 and Chapter 6).
 func FuzzErrorDeclarationTwin(f *testing.F) {
 	startShortBudget(f)
 	errorTwinChapters(f)
@@ -62,7 +61,7 @@ func FuzzErrorDeclarationTwin(f *testing.F) {
 }
 
 // TestErrorDeclarationTwinQuoted fails when a chapter rewords a sentence the
-// oracle quotes (RULES.md 9).
+// oracle quotes.
 func TestErrorDeclarationTwinQuoted(t *testing.T) { errorTwinChapters(t) }
 
 var errorTwinQuotes = map[string][]string{
@@ -125,7 +124,7 @@ var errorTwinSchemas = map[string]string{
 
 // parseErrorTwin reads the keyed form, `error-twin:` then `;`-separated
 // parts (a field name, `?` for optional; `getter`; `method`; `braces`), so a
-// saved corpus file keeps what it tests (RULES.md 11), and otherwise reads
+// saved corpus file keeps what it tests, and otherwise reads
 // the shape from the bytes.
 func parseErrorTwin(data []byte) errorTwin {
 	var e errorTwin

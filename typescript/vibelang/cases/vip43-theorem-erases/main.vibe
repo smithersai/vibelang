@@ -1,0 +1,52 @@
+// rule-evidence: docs/design/src/900-appendices.md#erasure | The emitted JavaScript is the compiler's output for the program with every theorem, spec function and proof block removed, import elision included.
+// rule-evidence: docs/design/src/900-appendices.md#erasure | | Declarations (`.d.ts`, `.d.vibe.ts`) | Theorems and spec functions emit nothing.
+// rule-evidence: docs/design/src/900-appendices.md#names-and-placement | `noUnusedLocals` never reports a theorem, and reports a spec function that nothing references, as it reports a function.
+// rule-evidence: docs/design/src/900-appendices.md#header | Type parameters are allowed: `theorem reverseKeepsLength<T>(xs: readonly T[]) { … }`.
+import { inRange } from "./facts.js"
+
+export function clamp(x: number, lo: number, hi: number): number {
+  if (x < lo) return lo
+  if (x > hi) return hi
+  return x
+}
+
+function sum(xs: readonly number[]): number {
+  return xs.length === 0 ? 0 : xs[0] + sum(xs.slice(1))
+}
+
+export function total(xs: readonly number[]): number {
+  return sum(xs)
+}
+
+spec function isSortedFrom(xs: readonly number[], i: number): boolean {
+  proof {
+    assume(0 <= i)
+    decreases(xs.length - i)
+  }
+  return i + 1 >= xs.length || (xs[i] <= xs[i + 1] && isSortedFrom(xs, i + 1))
+}
+
+theorem clampInRange(x: number, lo: number, hi: number) {
+  assume(lo <= hi)
+  const result = clamp(x, lo, hi)
+  assert(lo <= result && result <= hi)
+  assert(inRange(result, lo, hi))
+}
+
+theorem sumNonNegative(xs: readonly number[]) {
+  assume(xs.every((x) => x >= 0))
+  assert(sum(xs) >= 0)
+}
+
+theorem sortedSuffix(xs: readonly number[], i: number) {
+  assume(0 <= i)
+  assume(isSortedFrom(xs, i))
+  assert(isSortedFrom(xs, i + 1))
+}
+
+theorem keepsLength<T>(xs: readonly T[]) {
+  if (xs.length > 0) {
+    const rest = xs.slice(1)
+    assert(rest.length < xs.length)
+  } else assert(xs.length === 0)
+}

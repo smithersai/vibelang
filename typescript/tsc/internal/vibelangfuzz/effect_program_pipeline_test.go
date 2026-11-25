@@ -11,8 +11,8 @@ const effectProgramPipelineTarget = "FuzzEffectProgramPipelines"
 // Pipeline topics are arguments too. A declared Effect parameter takes the
 // cold program, including when the caller holds the combinator's result.
 func TestEffectProgramPipelinesQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("002-running.md"), effectGenericArgumentQuote) {
-		t.Fatalf("Chapter 2 no longer says %q", effectGenericArgumentQuote)
+	if !strings.Contains(SpecText("002-running.md"), effectDeclaredParameterQuote) {
+		t.Fatalf("Chapter 2 no longer says %q", effectDeclaredParameterQuote)
 	}
 }
 

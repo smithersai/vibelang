@@ -262,6 +262,16 @@ test("a score below its baseline is a regression and exits 1", { skip }, (t) => 
   assert.equal(read("src/greet.eval.baseline.json"), before, "a plain run rewrote the baseline")
 })
 
+test("renaming a target reports a missing baseline even for an identical score", { skip }, (t) => {
+  const { root, run } = project(t, { "src/greet.eval.vibe": greet })
+  const first = run(["--update"])
+  assert.equal(first.status, 0, first.text)
+  writeFileSync(join(root, "src/greet.eval.vibe"), greet.replace("function greet(", "function hello(").replace("target: greet", "target: hello"))
+  const renamed = run()
+  assert.equal(renamed.status, 1, renamed.text)
+  assert.match(renamed.stdout, /greet  ada  exact 1.00  \(no baseline\)/)
+})
+
 test("a path argument selects eval files, and each file keeps its own baseline", { skip }, (t) => {
   const { run, exists } = project(t, {
     "src/greet.eval.vibe": greet,
@@ -427,4 +437,29 @@ test("importing an eval file runs nothing (rule 2)", { skip }, (t) => {
   assert.equal(result.status, 0, result.stderr)
   assert.equal(result.stdout, "capital 1\n")
   assert.equal(exists("live-calls.log"), false)
+})
+
+test("a decision target replays its fixture and a missing decision is undecided", { skip }, (t) => {
+  const { root, run } = project(t, {
+    "src/decide.ts": `import { Effect, Schema } from "effect"
+import { Decision, DecisionModel } from "effect/ai"
+const flag = Decision.make({ input: Schema.String, decisions: { urgent: Decision.probability({ instructions: "Is it urgent?" }) } })
+export const classify = (input: string) => Effect.map(DecisionModel.decide(flag, { input }), reply => reply.answers.urgent.probability)
+`,
+    "src/flag.eval.vibe": `import { classify } from "./decide.ts"
+export default Experimental.Eval.suite("flag", { target: classify, cases: [{ name: "one", input: ["x"], expected: 0.75 }], scorers: [Experimental.Scorer.exact] })
+`
+  })
+  const missing = run()
+  assert.equal(missing.status, 5, missing.text)
+  assert.match(missing.stdout, /undecided: a decision call has no recording/)
+  writeFileSync(join(root, "src/flag.eval.decisions.json"), JSON.stringify({
+    calls: [{ request: { state: "x" }, response: { answers: { urgent: { _tag: "Probability", probability: 0.75 } } } }]
+  }))
+  const update = run(["--update"])
+  assert.equal(update.status, 0, update.text)
+  const replay = run()
+  assert.equal(replay.status, 0, replay.text)
+  assert.match(replay.stdout, /exact 1.00  \(baseline 1.00\)/)
+  assert.match(replay.stdout, /0 model calls/)
 })

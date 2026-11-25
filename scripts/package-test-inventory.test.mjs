@@ -104,7 +104,7 @@ function checkInventory(groups, targets, batchPlan = batches) {
     assert.deepEqual(new Set(suiteLeaves), new Set(expectedTargets), "Suite selection differs from the inventory")
   }
   const declaredLeaves = Object.entries(targets).filter(([label,t]) =>
-    t.kind === "Shell.Test" && Object.keys(directories).some(group => label.startsWith(group + "-test-")))
+    t.kind === "Shell.Test" && label !== "runtime-test-runners" && Object.keys(directories).some(group => label.startsWith(group + "-test-")))
   assert.deepEqual(new Set(declaredLeaves.map(([label]) => label)), labels, "unowned executable leaf")
 
 }

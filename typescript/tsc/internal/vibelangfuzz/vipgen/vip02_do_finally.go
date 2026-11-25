@@ -85,5 +85,5 @@ func (e *doFinallyEvent) Vibe(w *Writer)   { e.print(w) }
 func (e *doFinallyEvent) Effect(w *Writer) { e.print(w) }
 func (e *doFinallyEvent) Ends() bool       { return false }
 func (e *doFinallyEvent) print(w *Writer) {
-	w.Write("ev(\"completion:\" + JSON.stringify(" + e.Name + "()))")
+	w.Write("ev(\"completion:\" + stringifyObservation(" + e.Name + "()))")
 }

@@ -15,14 +15,14 @@ const effectChannelsQuote = "Declarations are exactly what idiomatic Effect Type
 // that yields them declares. TypeScript reads those from the subtype-reduced
 // union of the yielded Effects, so a program that runs both a failure alias
 // and another alias of the same union declares one alias; this compares the
-// compiler with itself on two inputs the sentence says agree (RULES.md 1). The
+// compiler with itself on two inputs the sentence says agree. The
 // input picks up to four runs. alchemy's AWS `syncTags` helpers run
 // `tagResource` and `untagResource`, whose errors are two such aliases, and
 // declared every member instead (corpus alchemy-aws-sync-tags). alchemy's
 // kubernetes `waitForLoadBalancer` reads a hostname whose channel holds
 // `Error` and throws `ServiceNotReady`, an `Error` subclass: Effect.fn's
 // reduced union absorbs it into `Error`, and a `catch` arm on its tag then
-// finds no such member (alchemy-63; corpus alchemy-k8s-service-not-ready,
+// finds no such member (corpus alchemy-k8s-service-not-ready,
 // whose throw is an expression in alchemy-k8s-service-not-ready-expr). The
 // AWS sites read through a .vibe function with a contract
 // (alchemy-aws-contract-read-not-ready). Unannotated Vibe callees are
@@ -45,7 +45,7 @@ func FuzzEffectChannelsDeclaration(f *testing.F) {
 	})
 }
 
-// TestEffectChannelsQuoted fails when Chapter 1 is reworded (RULES.md 9).
+// TestEffectChannelsQuoted fails when Chapter 1 is reworded.
 func TestEffectChannelsQuoted(t *testing.T) { effectChannelsChapter(t) }
 
 func effectChannelsChapter(tb testing.TB) {
@@ -118,7 +118,7 @@ export declare const hostname: () => Effect.Effect<string | undefined, Error | A
 const effectChannelsImports = `import { A, ApiError, base, derived, envA, envB, hostname, list, NotReady, read, tag, untag } from "./lib.js"
 `
 
-// parseEffectChannels reads `channels:<run>;<run>…` (RULES.md 11), and
+// parseEffectChannels reads `channels:<run>;<run>…`, and
 // otherwise picks up to four runs from the bytes.
 func parseEffectChannels(data []byte) []effectChannelRun {
 	var runs []effectChannelRun
@@ -169,7 +169,7 @@ func CheckEffectChannels(t *testing.T, w *Workspace, runs []effectChannelRun) {
 	if len(runs) == 0 {
 		return
 	}
-	vibe, twin := []string{effectChannelsImports, "const quiet = effect (n: number) => n\n\neffect function vibeRead(): (string | undefined)!(Error | ApiError)! { return undefined }\n" + effectChannelsVibeCallees + "\nexport const program = effect (n: number) => {\n"}, []string{"import { Effect } from \"effect\"\n", effectChannelsImports, "const quiet = Effect.fn(function* (n: number) {\n  return n\n})\n\nconst vibeRead = (): Effect.Effect<string | undefined, Error | ApiError> => Effect.succeed(undefined)\n" + effectChannelsTwinCallees + "\nexport const program = Effect.fn(function* (n: number) {\n"}
+	vibe, twin := []string{effectChannelsImports, "const quiet = effect (n: number) => n\n\neffect function vibeRead(): (string | undefined)!(Error | ApiError) { return undefined }\n" + effectChannelsVibeCallees + "\nexport const program = effect (n: number) => {\n"}, []string{"import { Effect } from \"effect\"\n", effectChannelsImports, "const quiet = Effect.fn(function* (n: number) {\n  return n\n})\n\nconst vibeRead = (): Effect.Effect<string | undefined, Error | ApiError> => Effect.succeed(undefined)\n" + effectChannelsTwinCallees + "\nexport const program = Effect.fn(function* (n: number) {\n"}
 	for _, run := range runs {
 		vibe = append(vibe, "  "+run.vibe+"\n")
 		twin = append(twin, "  "+run.twin+"\n")
@@ -204,11 +204,11 @@ func CheckEffectChannels(t *testing.T, w *Workspace, runs []effectChannelRun) {
 	vibeDeclares, vibeErrors := declared("main.vibe", vibeText)
 	twinDeclares, twinErrors := declared("main.ts", twinText)
 	switch {
-	case len(twinErrors) != 0:
-		t.Fatalf("the twin must compile: %v\n%s", twinErrors, twinText)
+	case len(twinErrors) != 0 || twinDeclares == "":
+		t.Fatalf("the twin must compile and declare program: errors=%v declares=%q\n%s", twinErrors, twinDeclares, twinText)
 	case len(vibeErrors) != 0:
 		g.Add("feature:effect-channels-compile", "%v\n%s", vibeErrors, vibeText)
-	case vibeDeclares != twinDeclares:
+	case vibeDeclares == "" || vibeDeclares != twinDeclares:
 		key := "feature:effect-channels"
 		if slices.ContainsFunc(runs, func(run effectChannelRun) bool { return run.name == "quiet" }) {
 			key += ":vibe-callee"

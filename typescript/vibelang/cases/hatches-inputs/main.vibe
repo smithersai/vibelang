@@ -1,17 +1,8 @@
 import { callback } from "vibelang-runtime"
 
-import * as $nativeTryEffect1 from "effect/Effect";
 
-import * as $nativeTryEffect from "effect/Effect";
 import { schedule, cancel } from "./timers.js"
-// Self-contained hatches (D229-D232): a hatch's TypeScript uses only its own
-// parameters and locals, globals, imports, and the file's error declarations.
-// Values reach it as inputs, the arguments after the function, which fill its
-// first parameters; an async function receives the signal after them, and a
-// callback receives resume and the signal after them. try's error mapper
-// stays the second argument. Inputs and the mapper are VibeLang, so a call
-// among the inputs runs before the hatch starts. Inputs keep callback's type
-// arguments from being written, so its resume parameter takes a Resume type.
+// Capture values in the thunk. Await the name before constructing its Effect.
 error Rejected { reason: string }
 
 type Pair = readonly [number, number]
@@ -23,37 +14,26 @@ effect function readName() {
 
 // expect-result: {"sum":5,"shouted":"ADA","awaited":"hi!","pair":7,"most":2,"parsed":{"n":1},"mapped":"Rejected","asyncMapped":"Rejected","waited":2,"read":40,"listed":3}
 export effect function main() {
-  const sum = try sync((a, b) => a + b, 2, 3)
-  const shouted = try sync((name) => name.toUpperCase(), try readName())
-  const awaited = try sync(async (word, signal) => (signal.aborted ? "aborted" : `${word}!`), "hi")
+  const sum = try Effect.sync(() => 2 + 3)
+  const name = try readName()
+  const shouted = try Effect.sync(() => name.toUpperCase())
+  const awaited = try Effect.promise(async (signal) => signal.aborted ? "aborted" : "hi!")
   const pairOf: Pair = [3, 4]
-  const pair = try sync((p: Pair) => p[0] + p[1], pairOf)
-  const most = try sync(Math.max(1, 2))
+  const pair = try Effect.sync(() => pairOf[0] + pairOf[1])
+  const most = try Effect.sync(() => Math.max(1, 2))
   const parsed = try Effect.try({ try: () => JSON.parse('{"n":1}'), catch: (error) => new Rejected({ reason: String(error) }) })
   let mapped = "none"
-  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+  effect {
     try Effect.try({ try: () => JSON.parse("{"), catch: (error) => new Rejected({ reason: String(error) }) })
-  
-;return { kind: "normal" } as const;
-}, effect (error) => {
+  } catch effect (error) => {
     mapped = error._tag
-  
-;return { kind: "normal" } as const;
-});
-
-}
+  }
   let asyncMapped = "none"
-  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
+  effect {
     try Effect.tryPromise({ try: () => (async (n) => { throw new Error(String(n)) })(7), catch: (error) => new Rejected({ reason: String(error) }) })
-  
-;return { kind: "normal" } as const;
-}, effect (error) => {
+  } catch effect (error) => {
     asyncMapped = error._tag
-  
-;return { kind: "normal" } as const;
-});
-
-}
+  }
   const waited = try callback((ms, resume) => {
     const timer = schedule(() => resume(ms), ms)
     return () => cancel(timer)
@@ -62,6 +42,6 @@ export effect function main() {
     if (n > 0) resume(n * 10)
     else resume.fail(new Rejected({ reason: "empty" }))
   }, 4)
-  const listed = try sync((items) => items.length, [1, 2, 3])
+  const listed = try Effect.sync(() => [1, 2, 3].length)
   return { sum, shouted, awaited, pair, most, parsed, mapped, asyncMapped, waited, read, listed }
 }

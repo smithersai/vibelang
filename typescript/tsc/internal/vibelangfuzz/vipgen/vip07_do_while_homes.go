@@ -59,7 +59,7 @@ func loopIsHomes(g *Gen, _ *Scope, postTest bool) Stmt {
 	if !postTest {
 		loop = "outer:for(;" + test + ";){" + body + "}"
 	}
-	source := start + loop + "return JSON.stringify([tests,turns,cell,tail,writes.map(safe),reads.map(safe),conditions.map(safe)])}"
+	source := start + loop + "return stringifyObservation([tests,turns,cell,tail,writes.map(safe),reads.map(safe),conditions.map(safe)])}"
 	// Run the body with the previous condition's cell; create the next one
 	// only after the body, and never overwrite an earlier closure's cell.
 	nativeBody := "turns++;reads.push(current.read);"
@@ -78,7 +78,7 @@ func loopIsHomes(g *Gen, _ *Scope, postTest bool) Stmt {
 	if !postTest {
 		nativeLoop = next + nativeBody
 	}
-	reference := nativeStart + "let current=fresh();for(;;){" + nativeLoop + "}return JSON.stringify([tests,turns,cell,tail,writes.map(safe),reads.map(safe),conditions.map(safe)])}"
+	reference := nativeStart + "let current=fresh();for(;;){" + nativeLoop + "}return stringifyObservation([tests,turns,cell,tail,writes.map(safe),reads.map(safe),conditions.map(safe)])}"
 	g.AddDecl(&Code{V: source, E: reference})
 	return &doWhileIsHomesCall{Name: name}
 }

@@ -175,8 +175,8 @@ func checkDoNeverCompletion(t *testing.T, w *Workspace, stock, key string, data 
 		if key == "outer-finally" {
 			value, twin = "do { try { 1 } finally {} }", "(() => { try { return 1 } finally {} })()"
 		}
-		operation := "const value = " + value + "; return value.toFixed();"
-		twinOperation := "const value = " + twin + "; return value.toFixed();"
+		operation := "const value = " + value + "; try { return value.toFixed() } catch { return \"\" }"
+		twinOperation := "const value = " + twin + "; try { return value.toFixed() } catch { return \"\" }"
 		if key == "outer-invalid" {
 			operation = strings.Replace(operation, ".toFixed()", ".missing()", 1)
 			twinOperation = strings.Replace(twinOperation, ".toFixed()", ".missing()", 1)

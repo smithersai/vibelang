@@ -1,6 +1,10 @@
 package vibelangfuzz
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +16,20 @@ import (
 // an error without consuming one allocates a node forever: the compiler, and an
 // editor showing the file, runs until it is out of memory.
 func TestVibeLangBodyParseProgress(t *testing.T) {
+	const child = "VIBELANG_BODY_PARSE_PROGRESS_CHILD"
+	if os.Getenv(child) != "1" {
+		// Isolate runaway parser allocations from the test process. The last
+		// input printed by the child identifies the parser state.
+		ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestVibeLangBodyParseProgress$")
+		cmd.Env = append(os.Environ(), child+"=1")
+		if output, err := cmd.CombinedOutput(); err != nil {
+			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+			t.Fatalf("body parse subprocess failed: %v (%v)\n%s", err, ctx.Err(), strings.Join(lines[max(0, len(lines)-12):], "\n"))
+		}
+		return
+	}
 	bodies := []string{
 		"service S { } layer L: S { @ }",
 		"layer L: S { n: 1; @ }",
@@ -40,17 +58,8 @@ func TestVibeLangBodyParseProgress(t *testing.T) {
 	for _, body := range bodies {
 		for _, token := range tokens {
 			source := strings.Replace(body, "@", token, 1)
-			done := make(chan struct{})
-			go func() {
-				parseAs(parseKind{"/fuzz/main.vibe", core.ScriptKindTS}, source)
-				close(done)
-			}()
-			select {
-			case <-done:
-			case <-time.After(30 * time.Second):
-				// The stuck goroutine still allocates: stop the process, not just this test.
-				panic("the parser makes no progress on: " + source)
-			}
+			fmt.Fprintln(os.Stderr, source)
+			parseAs(parseKind{"/fuzz/main.vibe", core.ScriptKindTS}, source)
 		}
 	}
 }

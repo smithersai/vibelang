@@ -46,7 +46,13 @@ for name in hello users http-api file-tree resilience approval pipeline react-vi
   case "$name" in
     *-vite)
       if (cd "$dir" && bun run test) >>"$log" 2>&1; then
-        printf 'OK   %-10s typecheck, tests and production build\n' "$name"
+        if grep -qE 'warning EK[0-9]+' "$log"; then
+          printf 'FAIL %-10s compiler warning in log (see .cache/check-examples/%s.log)\n' "$name" "$name"
+          grep -E 'warning EK[0-9]+' "$log" >&2 || true
+          failed=1
+        else
+          printf 'OK   %-10s typecheck, tests and production build\n' "$name"
+        fi
       else
         printf 'FAIL %-10s typecheck, tests or build (see .cache/check-examples/%s.log)\n' "$name" "$name"
         failed=1
@@ -56,7 +62,13 @@ for name in hello users http-api file-tree resilience approval pipeline react-vi
     # TypeScript original with one suite; alchemy-stack never deploys.
     foldkit-app|alchemy-stack)
       if (cd "$dir" && bun run test) >>"$log" 2>&1; then
-        printf 'OK   %-10s bun run test over both versions\n' "$name"
+        if grep -qE 'warning EK[0-9]+' "$log"; then
+          printf 'FAIL %-10s compiler warning in log (see .cache/check-examples/%s.log)\n' "$name" "$name"
+          grep -E 'warning EK[0-9]+' "$log" >&2 || true
+          failed=1
+        else
+          printf 'OK   %-10s bun run test over both versions\n' "$name"
+        fi
       else
         printf 'FAIL %-10s bun run test (see .cache/check-examples/%s.log)\n' "$name" "$name"
         failed=1
@@ -64,7 +76,12 @@ for name in hello users http-api file-tree resilience approval pipeline react-vi
       continue ;;
   esac
   if (cd "$dir" && "$compiler" -p .) >>"$log" 2>&1; then
-    :
+    if grep -qE 'warning EK[0-9]+' "$log"; then
+      printf 'FAIL %-10s compiler warning in log (see .cache/check-examples/%s.log)\n' "$name" "$name"
+      grep -E 'warning EK[0-9]+' "$log" >&2 || true
+      failed=1
+      continue
+    fi
   else
     compiler_status=$?
     printf 'FAIL %-10s compile (exit %s; see .cache/check-examples/%s.log)\n' "$name" "$compiler_status" "$name"

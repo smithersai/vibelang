@@ -25,6 +25,11 @@ type VibeLangOptions struct {
 	// (VIP-27, decided detail 268). It may still begin with ${configDir}
 	// until the selected config's directory substitutes it.
 	SidecarDir string `json:"sidecarDir,omitzero"`
+	// ProofDir is vibe.proofDir, the absolute directory vibelang prove writes
+	// its lowering files to, or "" for proofs in the selected config's
+	// directory (VIP-43, Appendix F "Configuration"). It may still begin
+	// with ${configDir} until the selected config's directory substitutes it.
+	ProofDir string `json:"proofDir,omitzero"`
 	// Experimental is vibe.experimental, the experimental features the
 	// project opts in to (VIP-30, clarified 2026-11-11). Nil inherits.
 	Experimental []string `json:"experimental,omitzero"`
@@ -64,7 +69,7 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 	if o == nil || other == nil {
 		return o == other
 	}
-	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.SidecarDir == other.SidecarDir && slices.Equal(o.Experimental, other.Experimental) && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
+	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.SidecarDir == other.SidecarDir && o.ProofDir == other.ProofDir && slices.Equal(o.Experimental, other.Experimental) && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
 }
 
 // EffectiveEquals compares only the compile-time VibeLang settings that affect
@@ -148,6 +153,9 @@ func MergeVibeSettings(base, child *VibeLangOptions) *VibeLangOptions {
 	}
 	if result.SidecarDir == "" {
 		result.SidecarDir = base.SidecarDir
+	}
+	if result.ProofDir == "" {
+		result.ProofDir = base.ProofDir
 	}
 	if result.Experimental == nil {
 		result.Experimental = base.Experimental

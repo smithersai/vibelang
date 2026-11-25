@@ -261,6 +261,31 @@
       "types": "./dist/experimental/WorkQueue.d.ts",
       "import": "./dist/experimental/WorkQueue.js",
       "default": "./dist/experimental/WorkQueue.js"
+    },
+    "./experimental/Tools": {
+      "types": "./dist/experimental/Tools.d.ts",
+      "import": "./dist/experimental/Tools.js",
+      "default": "./dist/experimental/Tools.js"
+    },
+    "./experimental/McpClient": {
+      "types": "./dist/experimental/McpClient.d.ts",
+      "import": "./dist/experimental/McpClient.js",
+      "default": "./dist/experimental/McpClient.js"
+    },
+    "./experimental/Sandbox": {
+      "types": "./dist/experimental/Sandbox.d.ts",
+      "import": "./dist/experimental/Sandbox.js",
+      "default": "./dist/experimental/Sandbox.js"
+    },
+    "./experimental/Secrets": {
+      "types": "./dist/experimental/Secrets.d.ts",
+      "import": "./dist/experimental/Secrets.js",
+      "default": "./dist/experimental/Secrets.js"
+    },
+    "./experimental/Otlp": {
+      "types": "./dist/experimental/Otlp.d.ts",
+      "import": "./dist/experimental/Otlp.js",
+      "default": "./dist/experimental/Otlp.js"
     }
   },
   "files": [

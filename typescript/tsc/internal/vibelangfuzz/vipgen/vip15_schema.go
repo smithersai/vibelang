@@ -592,7 +592,7 @@ func init() {
 			// is alone cannot distinguish grouped literal members or readonly ASTs.
 			// Compare the public schema shape with the chapter's exact Effect schema.
 			results = append(results, fmt.Sprintf("Object.keys(%s).sort()", name))
-			results = append(results, fmt.Sprintf(`JSON.stringify(%s.ast, (_, v) => typeof v === "bigint" ? { bigint: String(v) } : v)`, name))
+			results = append(results, fmt.Sprintf(`stringifyObservation(%s.ast, (_, v) => typeof v === "bigint" ? { bigint: String(v) } : v)`, name))
 		}
 		body := "function witness() {\n  const probes: unknown[] = " + schemaProbes + "\n  return [" + strings.Join(results, ", ") + "]\n}"
 		registerWitness(15, ChapterWitness{
@@ -621,13 +621,17 @@ func init() {
   nested: { active: boolean };
 }
 function witness() {
-  const sample = Schema.decodeUnknownSync(Sample)({
-    kind: "sample", value: null, absent: undefined, items: [1],
-    pair: ["a", 2], counts: { a: 1 }, nested: { active: true },
-  })
-  sample.items.push(2)
-  sample.counts.a = 2
-  return [sample, Schema.is(Sample)({ ...sample, kind: "other" })]
+  try {
+    const sample = Schema.decodeUnknownSync(Sample)({
+      kind: "sample", value: null, absent: undefined, items: [1],
+      pair: ["a", 2], counts: { a: 1 }, nested: { active: true },
+    })
+    sample.items.push(2)
+    sample.counts.a = 2
+    return [sample, Schema.is(Sample)({ ...sample, kind: "other" })]
+  } catch (error) {
+    return ["unexpected schema failure", String(error)]
+  }
 }`,
 			Effect: `const Sample = Schema.Struct({
   kind: Schema.mutableKey(Schema.Literal("sample")),
@@ -656,8 +660,12 @@ function witness() {
 			Quote:   "| `name?: T` / `T?` | `Schema.optional(S)`: missing or present `undefined` | `Schema.optionalKey(S)`: missing only |",
 			Vibe: `schema S0 { x?: string; readonly y?: number }
 function witness() {
-  const probes: unknown[] = [{}, { x: undefined }, { x: "a", y: 1 }, { x: 1 }, { y: "b" }]
-  return [probes.map((v) => Schema.is(S0)(v)), "x" in Schema.decodeUnknownSync(S0)({})]
+  try {
+    const probes: unknown[] = [{}, { x: undefined }, { x: "a", y: 1 }, { x: 1 }, { y: "b" }]
+    return [probes.map((v) => Schema.is(S0)(v)), "x" in Schema.decodeUnknownSync(S0)({})]
+  } catch (error) {
+    return ["unexpected schema failure", String(error)]
+  }
 }`,
 			Effect: `const S0 = Schema.Struct({ x: Schema.mutableKey(Schema.optional(Schema.String)), y: Schema.optional(Schema.Number) })
 function witness() {
@@ -677,7 +685,11 @@ const Count = Schema.NumberFromString
 schema Address { city: string }
 schema S0 { n: Count; home: Address }
 function witness() {
-  return Schema.decodeUnknownSync(S0)({ n: "7", home: { city: "x" } })
+  try {
+    return Schema.decodeUnknownSync(S0)({ n: "7", home: { city: "x" } })
+  } catch (error) {
+    return ["unexpected schema failure", String(error)]
+  }
 }`,
 			Effect: `const Count = Schema.NumberFromString
 const Address = Schema.Struct({ city: Schema.mutableKey(Schema.String) })
@@ -694,7 +706,7 @@ function witness() {
 }
 
 func init() {
-	registerWitness(15, ChapterWitness{Key: "vip15.computed-keys-plain", Chapter: "006-data.md", Quote: "Evaluate each admitted key once at the declaration's existing execution point in native property evaluation order", Vibe: "const trace:string[]=[];function key(s:string):string{trace.push(s);return s};schema S {[key(\"a\")]:number;[key(\"b\")]:string};function witness(){return [trace,Schema.decodeUnknownSync(S)({a:1,b:\"x\",extra:true}),Schema.is(S)({other:1})]}", Effect: "const trace=[];function key(s){trace.push(s);return s};const S=Schema.Struct({[key(\"a\")]:Schema.mutableKey(Schema.Number),[key(\"b\")]:Schema.mutableKey(Schema.String)});function witness(){return [trace,Schema.decodeUnknownSync(S)({a:1,b:\"x\",extra:true}),Schema.is(S)({other:1})]}", Modules: []string{"Schema"}, Cite: Citation{VIP: 15, Template: "Schema.Struct({ [key(\"a\")]:Schema.mutableKey(Schema.Number) })", Quote: "`schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name."}})
+	registerWitness(15, ChapterWitness{Key: "vip15.computed-keys-plain", Chapter: "006-data.md", Quote: "Evaluate each admitted key once at the declaration's existing execution point in native property evaluation order", Vibe: "const trace:string[]=[];function key(s:string):string{trace.push(s);return s};schema S {[key(\"a\")]:number;[key(\"b\")]:string};function witness(){try{return [trace,Schema.decodeUnknownSync(S)({a:1,b:\"x\",extra:true}),Schema.is(S)({other:1})]}catch(error){return [\"unexpected schema failure\",String(error)]}}", Effect: "const trace=[];function key(s){trace.push(s);return s};const S=Schema.Struct({[key(\"a\")]:Schema.mutableKey(Schema.Number),[key(\"b\")]:Schema.mutableKey(Schema.String)});function witness(){return [trace,Schema.decodeUnknownSync(S)({a:1,b:\"x\",extra:true}),Schema.is(S)({other:1})]}", Modules: []string{"Schema"}, Cite: Citation{VIP: 15, Template: "Schema.Struct({ [key(\"a\")]:Schema.mutableKey(Schema.Number) })", Quote: "`schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name."}})
 }
 
 func init() {
