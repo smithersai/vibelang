@@ -35,7 +35,7 @@
           "cards": [
             {
               "title": "Report a reproducible bug",
-              "text": "Include a minimal reproduction; otherwise: needs-repro."
+              "text": "Include a minimal reproduction to avoid the needs-repro label."
             },
             {
               "title": "Wait for accepted",
@@ -159,7 +159,7 @@
             },
             {
               "title": "TypeScript interop",
-              "text": "Checks .vibe and .ts together; emits JavaScript and types."
+              "text": "Checks .vibe and .ts together and emits JavaScript and types."
             }
           ]
         },

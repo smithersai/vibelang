@@ -1,0 +1,83 @@
+{
+  "summary": "VibeLang compiler maintenance, build diagnosis, documentation, and Effect migration.",
+  "flows": [
+    {
+      "id": "ci-health",
+      "description": "Rank the build graph's slow, slower and flaky targets from CI's results and logs, with the tests and causes behind each",
+      "summary": "Find slow, regressed, and flaky checks in build results.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/flows/ci-health/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "first-bad",
+      "description": "Rerun the graph targets that fail at a bad commit, then bisect the ones that reproduce to the first commit after a good one that fails them",
+      "summary": "Find the first revision that reproduces a failing check.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/flows/first-bad/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "docs",
+      "description": "Generate CONTRIBUTING, MAINTAINERS and the agent files from project.ts, and count each doc's tokens",
+      "summary": null,
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/docs/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "effect-bump",
+      "description": "Move a VibeLang checkout to another Effect version: pin, move version literals, install, rebuild, regenerate, run the checks that compare VibeLang with Effect, and report what to change",
+      "summary": null,
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/effect-bump/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "migrate",
+      "description": "Migrate an Effect TypeScript codebase to idiomatic VibeLang, one planned batch per execution: upgrade Effect and set VibeLang up first, then codemod, compile, agent repair, verify against the baseline tests and declarations, commit",
+      "summary": null,
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/migrate/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "ts-bump",
+      "description": "Move the TypeScript fork to a newer upstream commit: merge upstream's changes three ways, move the pin, regenerate the Effect rules' shims, build, run the fork's targets, and report what to change",
+      "summary": null,
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/ts-bump/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    }
+  ],
+  "on": [],
+  "github": {
+    "mirror": "pull",
+    "issues": "read",
+    "changes": "send-upstream"
+  }
+}
