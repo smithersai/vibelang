@@ -91,7 +91,7 @@ test("contributing gives a graph command for every check and names the pull requ
   for (const row of rows) expect(row).toMatch(/\| `smthrs ci \/\/[^\s`]+` \|$/)
   expect(output).not.toContain(".github/workflows/mq-pregate.yml")
   expect(output).not.toContain("mq-pregate")
-  expect(output).toContain("`smthrs ci`")
+  expect(output).toContain("`smthrs ci //...`")
   expect(output).toContain("[the build graph](docs/maintainers/build.md)")
   expect(output).not.toContain("The repository has no CI or commit statuses.")
   const pr = Bun.YAML.parse(await readFile(join(repository, ".github/workflows/pr-check.yml"), "utf8"))

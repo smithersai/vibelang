@@ -1,9 +1,8 @@
 #!/bin/sh
 # Compiles every Go package the build graph's targets compile, with their
 # flags, into the graph's Go cache, then deletes the entries this build did not
-# use. .github/workflows/go-cache.yml runs it on each push to main and saves
-# the cache that the merge queue's hosted pre-gate restores, so a hosted gate
-# compiles only what its change touched (docs/maintainers/build.md).
+# use, so subsequent graph builds compile only what changed
+# (docs/maintainers/build.md).
 #
 # Usage: scripts/warm-go-cache.sh [--print]
 #   --print   print the package patterns it compiles and stop

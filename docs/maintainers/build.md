@@ -357,10 +357,10 @@ emission or VIP-27. The broader migration suite remains unchanged.
 ## The merge queue's pre-gate
 
 Contributors base new work on `vibe`; `main` advances through green commits.
-The merge queue can dispatch a pre-gate to check one queued change against a
-full base commit id. `.github/workflows/mq-pregate.yml` checks out that supplied
-commit, applies the change's patch, runs `scripts/ci.sh` with the gate's targets,
-and uploads the graph's results as an artifact named after the run.
+The merge queue runs its selected checks through `smthrs ci` (`scripts/ci.sh`)
+on our build hosts against a supplied full base commit id. The retired GitHub
+Actions pre-gate and Go cache workflows (`.github/workflows/mq-pregate.yml` and
+`.github/workflows/go-cache.yml`) have been removed (`#469`).
 
 In stacked mode, changes land on `vibe` after the apply-and-build check without
 waiting for a pre-gate pass. Full validation runs after landing; `main` advances
@@ -368,31 +368,18 @@ only through commits whose post-merge checks passed. Build toolchains from
 `main` unless a required change is available only on `vibe`, as
 [the repository guidance](../../AGENTS.md#vibe-and-main) describes.
 
-The queue dispatches it with a `repository_dispatch` event, `mq-pregate`, and a
-person can dispatch the same inputs with `gh workflow run`:
+`scripts/apply-patch.sh` applies a base64-encoded xz or gzip patch payload when
+transferring queued patches to a worker checkout.
 
-```sh
-gh workflow run mq-pregate.yml -f tag=<name> -f base=<full-base-commit-id> \
-  -f targets='<targets>' -f patch=<base64 of the git diff, compressed with xz or gzip>
-```
-
-`scripts/apply-patch.sh` applies the patch. GitHub limits a dispatch payload to
-65,535 characters, so the queue compresses with xz, and a change whose patch is
-still too large runs only on the build hosts.
-
-The hosted workflow installs Chromium only when browser prerequisites cannot
-be ruled out. `scripts/ci-browser-needed.mjs` asks `smthrs ci --plan` for the
-complete dependency plan of explicit, reviewed targets such as `//:release`
-and `//packages:compiler-test-1` to `-4`. Every executable target in that closure must
-be on its reviewed list; a browser target reached through another target
-therefore keeps setup. Broad selectors, new targets, unfamiliar rules, incomplete
-plans and planner failures all retain `npm ci` and Chromium installation.
-Add a target to the reviewed list only after checking that its own command
-does not use a browser. The plan check does not execute any target.
-
-The workflow holds no secrets and its token only reads this repository. A hosted
-pass counts; a hosted failure sends the change back to a build host, which is the
-reference for rejecting it.
+`scripts/ci-browser-needed.mjs` determines whether browser prerequisites can be
+ruled out for a target selection by asking `smthrs ci --plan` for the complete
+dependency plan of explicit, reviewed targets such as `//:release` and
+`//packages:compiler-test-1` to `-4`. Every executable target in that closure
+must be on its reviewed list; a browser target reached through another target
+therefore keeps setup. Broad selectors, new targets, unfamiliar rules,
+incomplete plans and planner failures all retain `npm ci` and Chromium
+installation. Add a target to the reviewed list only after checking that its own
+command does not use a browser. The plan check does not execute any target.
 
 Cache preparation reads literal `./internal/` and `./cmd/` package selectors
 from `PACKAGE.ts`, `typescript/PACKAGE.ts`, `typescript/tsc/PACKAGE.ts` and
@@ -401,45 +388,20 @@ cache list. The POSIX shell and `awk` reader needs no Node or Bun installation.
 It retains exact package boundaries and recursive `...` selectors, removes
 duplicates and refuses missing declarations, incomplete inventories or dynamic
 selector suffixes. Literals in comments remain included conservatively.
-`scripts/warm-go-cache.sh --print` prints the sorted inventory. The independent
-coverage audit and a real graph/Go fixture check a new exact package, invalid
-neighboring packages and compilation without running its tests.
+`scripts/warm-go-cache.sh --print` prints the sorted inventory, and
+`scripts/warm-go-cache.sh` compiles and vets every inventoried package into
+`GOCACHE` (`$HOME/.cache/go-build-smthrs` by default) and trims unused entries.
+The independent coverage audit and a real graph/Go fixture check a new exact
+package, invalid neighboring packages and compilation without running its tests.
 
-A hosted run compiles every Go package that changed since the Go cache it
-restores. `.github/workflows/go-cache.yml` keeps that cache current: on each push
-to `main` it runs `scripts/warm-go-cache.sh`, which compiles and vets what
-the graph's Go targets and `scripts/check-forms-table.sh` compile, with their
-flags, and saves the cache as `go-<commit>`. The pre-gate restores the newest
-`go-` cache, the only cache that holds the graph's Go build. With one cache saved
-a day, the hosted `//typescript:compiler` build took 41 s an hour after the save
-and 393 s by the next morning (2026-10-31).
-
-The same trusted workflow saves the day's dependency cache as
-`gate-trusted-v1-<day>`. Only runs on `main` can write either cache, including
-manual runs. On a daily cache miss, it runs `scripts/ci.sh --prepare-only` for
-the frozen dependency installs, then `npm ci` and the Chromium install in
-`site/`. Its Go warmup downloads the Go modules. Both caches are saved only
-after all warmup steps succeed, so failed or interrupted installs are not
-published. The daily cache can restore an earlier trusted day's downloads.
-
-The hosted pre-gate restores both caches read-only and never saves changes
-made while running a dispatched patch, regardless of the gate's result.
-The new dependency prefix excludes the old `gate-<day>` caches; neither
-workflow falls back to that namespace. The daily cache holds ordinary Go
-build entries, Go modules, Bun packages and Playwright browser downloads, but
-leaves the graph's Go build to `go-<commit>`. Both workflows first delete
-toolchains no target uses, about 10 GB.
-Every Go build and test target, including `//typescript:forms-generator`, uses `GOCACHE=$HOME/.cache/go-build-smthrs`,
-so one cache serves them all. All three native executable targets pass Go's
-`-p 8` limit. The compiler appends `-trimpath` to inherited `GOFLAGS`,
-preserving module, build tag and linker settings. The graph's `--jobs` controls simultaneous targets; it does not
-limit package compilation inside one target. `scripts/go-cache.test.mjs` fails when a target
-compiles a package the script misses, or when the two workflows' cache paths
-differ. `scripts/mq-pregate.test.mjs` checks the pre-gate's base guidance and
-verifies that both dispatch paths carry the supplied commit into checkout and
-target selection. It also rejects cache writers in the pre-gate, checks that
-the trusted workflow is the only writer of both cache families, and verifies
-the dependency cache namespace, paths and successful warmup requirements.
+Every Go build and test target, including `//typescript:forms-generator`, uses
+`GOCACHE=$HOME/.cache/go-build-smthrs`, so one cache serves them all. All three
+native executable targets pass Go's `-p 8` limit. The compiler appends
+`-trimpath` to inherited `GOFLAGS`, preserving module, build tag and linker
+settings. The graph's `--jobs` controls simultaneous targets; it does not limit
+package compilation inside one target. `scripts/go-cache.test.mjs` fails when a
+target compiles a package `scripts/warm-go-cache.sh` misses, or if either
+retired GitHub Actions workflow returns.
 
 The runtime suite uses Bun's `--only-failures` reporter. Every test still runs,
 and the summary retains pass, skip and failure counts. Omitting individual

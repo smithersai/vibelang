@@ -9,7 +9,7 @@ Run on the durable host from the repository root:
 ```sh
 .smithers/node_modules/.bin/smthrs flow start fuzz-campaign --data '{
   "run": "/tmp/fuzz-run-1",
-  "repo": "/Users/williamcory/vibelang",
+  "repo": "/path/to/vibelang",
   "findings": "/tmp/fuzz-findings",
   "machine": [],
   "duration": "5m",

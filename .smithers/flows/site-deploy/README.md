@@ -14,7 +14,7 @@ For production deploys, pass a `0600` credentials file with `CLOUDFLARE_API_TOKE
 
 ```sh
 .smithers/node_modules/.bin/smthrs flow start site-deploy \
-  --data '{"state":"/home/lane/vibe/site-deploy","credentials":"/home/lane/.config/vibelang-site-deploy.credentials"}'
+  --data '{"state":"/var/lib/vibelang/site-deploy","credentials":"/etc/vibelang/site-deploy.credentials"}'
 ```
 
 ## Steps

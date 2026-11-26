@@ -118,7 +118,7 @@ The doc snippet checker preserves expected syntax errors and checks sibling exam
 
 For upstream Go fixtures, the experimental mapper and focused runtime debugging, see [Running suites directly](docs/maintainers/build.md#running-suites-directly).
 
-Run the cached build graph locally with \`smthrs ci //...\`; [the build graph](docs/maintainers/build.md) lists its targets and cache inputs. The merge queue runs its selected checks through \`smthrs ci\` on build hosts.
+Run the cached build graph locally with \`smthrs ci //...\`; [the build graph](docs/maintainers/build.md) lists its targets and cache inputs. The merge queue runs its selected checks through the build graph on build hosts.
 
 Each pull request runs the end-to-end and compiler case checks against its head commit. Open the \`vibelang/pr-check\` check in the pull request to see both results and their logs.
 

@@ -37,13 +37,19 @@ Claude Code's LSP client declares `textDocument.publishDiagnostics` and no `text
 
 ## Evals
 
-`scripts/agent-evals/run.mjs` runs them. It needs the three agents logged in on the machine, and edits files without asking:
+The agent evals are `@smthrs/evals` suites under `.smithers/evals/`. The deterministic regression suite (`agent-evals`, wired as `//:agent-evals` in `smthrs ci`) verifies every task's reference solution passes and every untouched base sample fails without invoking any agent:
 
 ```sh
-sh scripts/build-vibelang.sh                                # or --binary <a compiler built for the eval host>
-node scripts/agent-evals/run.mjs prepare /tmp/agent-evals   # packs and installs this checkout into /tmp/agent-evals/base
-node scripts/agent-evals/run.mjs all /tmp/agent-evals --trials 3 --jobs 6
-node scripts/agent-evals/run.mjs summary /tmp/agent-evals
+.smithers/node_modules/.bin/smthrs test //:agent-evals
+```
+
+To run live coding-agent trials (requires the agents logged in on the machine; edits temp copies without asking):
+
+```sh
+sh scripts/build-vibelang.sh
+AGENT_EVALS_DIR=/tmp/agent-evals .smithers/node_modules/.bin/smthrs eval run agent-evals-live \
+  --root .smithers --trials 3 --output /tmp/agent-evals/run.json
+.smithers/node_modules/.bin/smthrs eval baseline /tmp/agent-evals/run.json --root .smithers
 ```
 
 Each trial copies a sample repository (`src/store.vibe`, `src/profile.vibe` and tests in `.vibe`), runs the real agent headless on a task, then checks from outside that the test file is unchanged, that `vibelang -p tsconfig.test.json --noEmit` passes, and that `vitest run` passes. A trial "saw a diagnostic" when a tool result in its transcript holds a VibeLang diagnostic line (`file.vibe(line,col): error TS…/EK…`) or opencode's "LSP errors detected" block.

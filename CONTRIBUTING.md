@@ -63,7 +63,7 @@ The doc snippet checker preserves expected syntax errors and checks sibling exam
 
 For upstream Go fixtures, the experimental mapper and focused runtime debugging, see [Running suites directly](docs/maintainers/build.md#running-suites-directly).
 
-Run the cached build graph locally with `smthrs ci //...`; [the build graph](docs/maintainers/build.md) lists its targets and cache inputs. The merge queue runs its selected checks through `smthrs ci` on build hosts.
+Run the cached build graph locally with `smthrs ci //...`; [the build graph](docs/maintainers/build.md) lists its targets and cache inputs. The merge queue runs its selected checks through the build graph on build hosts.
 
 Each pull request runs the end-to-end and compiler case checks against its head commit. Open the `vibelang/pr-check` check in the pull request to see both results and their logs.
 
@@ -96,4 +96,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,363 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,360 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
