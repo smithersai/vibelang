@@ -52,7 +52,7 @@ File a [bug report](https://github.com/smithersai/vibelang/issues/new?template=b
 | [42](https://vibelang.sh/vips/0042-vibelang-in-ts-files-open) | VibeLang in `.ts` files (`// @vibe`) | Accepted (2026-11-23); compiler implements `// @vibe` |
 | [43](https://vibelang.sh/vips/0043-theorems) | `theorem` and `spec`, proofs in TypeScript's own syntax | Accepted, not in the alpha; not implemented |
 | [44](https://vibelang.sh/vips/0044-durable-values) | Durable values | Accepted, not in the alpha; its schema mapping is supported as part of VIP-15 |
-| [53](https://vibelang.sh/vips/0053-rename-smithersscript-open) | Renaming VibeLang → **Vibe** (SmithersScript denied) | Revised 2026-11-23; needs Vibe rename plan |
+| [53](https://vibelang.sh/vips/0053-rename-smithersscript-open) | Renaming VibeLang → **Vibe** | Revised 2026-11-23; needs Vibe rename plan |
 | [54](https://vibelang.sh/vips/0054-consistent-platform-code-open) | One consistent model for platform-specific code | RFP (request for proposal) |
 | [55](https://vibelang.sh/vips/0055-durable-tasks-workflows) | `task` and `workflow`, durable steps and the plan the compiler derives | Accepted (2026-11-23); implemented (`task`, `workflow`) |
 | [56](https://vibelang.sh/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | Implemented on `main`: durable waits, workflow deadlines and recorded race outcomes |

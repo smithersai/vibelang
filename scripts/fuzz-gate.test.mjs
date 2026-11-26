@@ -116,6 +116,7 @@ function fixture(t, ciSource = process.env.CI_SCRIPT_SOURCE ? readFileSync(proce
   write("scripts/ci.sh", ciSource)
   for (const file of ["select.mjs", "map.json"]) write("scripts/fuzz-gate/" + file, read("scripts/fuzz-gate/" + file))
   write("scripts/check-effect-install.mjs", "process.exit(0)\n")
+  write("scripts/is-main.mjs", read("scripts/is-main.mjs"))
   write("scripts/share-effect.mjs", read("scripts/share-effect.mjs"))
   const installs = /^for dir in ([^;\n]+); do install "\$dir"; done$/m.exec(ciSource)
   assert.ok(installs, "the CI selection fixture needs explicit install directories")
