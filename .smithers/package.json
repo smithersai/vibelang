@@ -8,23 +8,29 @@
     "test:migrate": "node --test flows/migrate/test/*.test.mjs"
   },
   "dependencies": {
-    "@smthrs/artifacts": "1.0.0-rc.16",
-    "@smthrs/crypto": "1.0.0-rc.16",
-    "@smthrs/engine": "1.0.0-rc.16",
-    "@smthrs/flow": "1.0.0-rc.16",
-    "@smthrs/patterns": "1.0.0-rc.16",
-    "@smthrs/plan": "1.0.0-rc.16",
-    "effect": "4.0.6",
+    "@smthrs/artifacts": "1.0.0-rc.18",
+    "@smthrs/crypto": "1.0.0-rc.18",
+    "@smthrs/engine": "1.0.0-rc.18",
+    "@smthrs/flow": "1.0.0-rc.18",
+    "@smthrs/patterns": "1.0.0-rc.18",
+    "@smthrs/plan": "1.0.0-rc.18",
+    "effect": "4.1.1",
     "js-tiktoken": "1.0.21",
-    "minimatch": "10.2.6"
+    "minimatch": "10.2.6",
+    "vibelang-runtime": "file:../packages/runtime"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.60.0",
-    "@smthrs/cli": "1.0.0-rc.16",
-    "@smthrs/evals": "1.0.0-rc.16",
-    "@smthrs/scorers": "1.0.0-rc.16",
-    "@smthrs/targets": "1.0.0-rc.16",
+    "@smthrs/cli": "1.0.0-rc.18",
+    "@smthrs/evals": "1.0.0-rc.18",
+    "@smthrs/scorers": "1.0.0-rc.18",
+    "@smthrs/targets": "1.0.0-rc.18",
     "oxlint": "1.60.0",
-    "prettier": "3.6.2"
+    "prettier": "3.6.2",
+    "vibelang": "file:../packages/compiler"
+  },
+  "overrides": {
+    "@effect/platform-node-shared": "4.1.1",
+    "vibelang-runtime": "file:../packages/runtime"
   }
 }

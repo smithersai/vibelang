@@ -9,10 +9,9 @@
 //
 // It exits 0 when the panel passed, 1 when it did not, and 2 when a step failed.
 import { Cause, Effect, Exit, Layer, Option, Schema } from "effect";
-import * as Crypto from "effect/Crypto";
 import { FlowEngine } from "@smthrs/engine";
 import { Interpreter } from "@smthrs/flow";
-import { syncCrypto } from "@smthrs/crypto";
+import { WebCrypto } from "@smthrs/crypto";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import specReview, { commandReviewers, actions, Outcome, Reviewers } from "./flow.ts";
@@ -27,7 +26,7 @@ export const execute = (payload: Payload, reviewers: Layer.Layer<Reviewers> = co
       Effect.provide(
         Interpreter.layerWithImplementations(specReview, actions.pipe(Layer.provide(reviewers))).pipe(
           Layer.provideMerge(FlowEngine.layerMemory),
-          Layer.provideMerge(Layer.succeed(Crypto.Crypto, syncCrypto))
+          Layer.provideMerge(WebCrypto.layer)
         )
       )
     )

@@ -4,10 +4,9 @@
 // `smthrs flow start <flow> --data '<payload>'`, which records the run in
 // `.flows/`, where `smthrs runs list` and `smthrs runs show` read it.
 import { Effect, Layer } from "effect";
-import * as Crypto from "effect/Crypto";
 import { FlowEngine } from "@smthrs/engine";
 import { Interpreter } from "@smthrs/flow";
-import { syncCrypto } from "@smthrs/crypto";
+import { WebCrypto } from "@smthrs/crypto";
 
 type Flow<P, A, E> = Parameters<typeof Interpreter.layerWithImplementations>[0] & {
   readonly _tag: string;
@@ -18,7 +17,7 @@ type Flow<P, A, E> = Parameters<typeof Interpreter.layerWithImplementations>[0] 
 export const runtime = <P, A, E>(flow: Flow<P, A, E>, implementations: Layer.Layer<any, any, any>) =>
   Interpreter.layerWithImplementations(flow, implementations as never).pipe(
     Layer.provideMerge(FlowEngine.layerMemory),
-    Layer.provideMerge(Layer.succeed(Crypto.Crypto, syncCrypto))
+    Layer.provideMerge(WebCrypto.layer)
   );
 
 /** execute runs one execution of a flow and returns its exit. */

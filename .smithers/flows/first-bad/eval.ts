@@ -38,7 +38,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import firstBad, { layer } from "./flow.ts";
+import firstBad, { layer } from "./flow.vibe";
 import { finish } from "./lib/steps.mjs";
 import { execute } from "../in-process.ts";
 import { stepKey } from "../step-key.mjs";

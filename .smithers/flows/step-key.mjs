@@ -12,7 +12,7 @@ import { createHash } from "node:crypto"
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 
-const CODE = ["flow.ts", "lib", "templates"]
+const CODE = ["flow.ts", "flow.vibe", "lib", "templates"]
 
 function walk(file, out) {
   if (statSync(file).isDirectory()) for (const name of readdirSync(file).sort()) walk(path.join(file, name), out)

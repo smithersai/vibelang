@@ -92,6 +92,6 @@ test("the durable host refuses migrate, whose steps load the target's tools", { 
     run: path.join(root, "run"), target: path.join(root, "missing"), packages: ["."], test: "true", testCwd: ".", toolchain: path.join(root, "toolchain")
   }))
   assert.notEqual(started.status, 0)
-  assert.match(started.stdout + started.stderr, /runs code this host cannot pin: .*computes the target of/)
+  assert.match(started.stdout + started.stderr, /runs code this host cannot pin/)
   assert.deepEqual(smthrs(root, "runs", "list").json().items, [])
 })

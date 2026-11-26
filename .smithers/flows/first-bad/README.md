@@ -93,6 +93,6 @@ repository's main:
 | `runs` | Bisection took at most one run at good plus log2 of the commits |
 
 ```sh
-cd .smithers && bun flows/first-bad/eval.ts            # compare with baseline.json; exit 1 on a drop
-cd .smithers && bun flows/first-bad/eval.ts --update   # record baseline.json
+cd .smithers && bun --preload vibelang/bun flows/first-bad/eval.ts            # compare with baseline.json; exit 1 on a drop
+cd .smithers && bun --preload vibelang/bun flows/first-bad/eval.ts --update   # record baseline.json
 ```

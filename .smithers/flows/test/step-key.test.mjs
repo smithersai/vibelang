@@ -33,6 +33,9 @@ test("a change to the code a run executes changes the step key", (t) => {
   mkdirSync(path.join(dir, "templates"))
   writeFileSync(path.join(dir, "templates/runner.mjs"), "template\n")
   assert.notEqual(flowDigest(dir), withLib, "a template the run writes into its target")
+  const withVibe = flowDigest(dir)
+  writeFileSync(path.join(dir, "flow.vibe"), "export default 1\n")
+  assert.notEqual(flowDigest(dir), withVibe, "a flow.vibe entry")
 })
 
 test("the eval, its baseline, tests and README leave the step key alone", (t) => {
