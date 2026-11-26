@@ -24,7 +24,7 @@ export function declarationFixture(file, { env = {}, bindings = {}, source = rea
     pendingGroups: () => [["FuzzPendingFirst", "probe:TestDataSpecRules"], ["probe:TestVIPConstructs"]],
     migrationSources: { migrationSources: true },
     process: { env },
-    S: { Suite: identity, Generate: identity, Filegroup: identity, glob: identity, file: identity, Package: identity,
+    S: { Cron: identity, Suite: identity, Generate: identity, Filegroup: identity, glob: identity, file: identity, Package: identity,
       Shell: { Build: identity, Test: identity, Run: identity }, Host: { bin: identity } },
     Tsc: group("tsc"), Packages: group("packages"), Typescript: group("typescript"), Vibelang: group("vibelang"),
     ...bindings

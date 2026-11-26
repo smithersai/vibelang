@@ -74,6 +74,7 @@ test("file leaves preserve the previous selectors as a disjoint union", () => {
       ".smithers/flows/ts-bump/test/*.test.mjs",
       ".smithers/flows/ci-health/test/*.test.mjs",
       ".smithers/flows/first-bad/test/*.test.mjs",
+      ".smithers/flows/site-deploy/test/*.test.mjs",
       ".smithers/flows/test/*.test.mjs"
     ])
   ].sort()

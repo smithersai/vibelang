@@ -52,7 +52,7 @@ test("smthrs discovers every flow", (t) => {
   const listed = smthrs(project(t), "flow", "list")
   assert.equal(listed.status, 0, listed.stderr)
   assert.deepEqual(listed.json().items.map((flow) => flow.flowId).sort(),
-    ["ci-health", "docs", "effect-bump", "first-bad", "migrate", "ts-bump"])
+    ["ci-health", "docs", "effect-bump", "first-bad", "migrate", "site-deploy", "ts-bump"])
 })
 
 test("a ci-health run on the durable host writes its report and is listed", { skip }, (t) => {

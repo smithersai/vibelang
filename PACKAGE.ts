@@ -674,6 +674,48 @@ const declarationPreservation = S.Shell.Test({
   timeout: "5m"
 })
 
+const scheduleRefresh = S.Shell.Run({
+  summary: "Fetch main@github, advance the schedule workspace when main moves, and prepare toolchains.",
+  shell: 'jj git fetch --remote github && target=$(jj --ignore-working-copy log --no-graph -r main@github -T commit_id) && cur=$(jj --ignore-working-copy log --no-graph -r @- -T commit_id) && { [ "$target" = "$cur" ] || jj new main@github; } && sh scripts/ci.sh --prepare-only',
+  data: [tree],
+  tools: [S.Host.bin("jj"), bun, node],
+  manual: true, sandbox: "none", timeout: "15m"
+})
+
+const specCoverageCensus = S.Shell.Run({
+  summary: "Inventory main rules with passing, pending, missing and tag-linked evidence.",
+  shell: 'bun docs/tools/coverage-census.ts --revision "$CENSUS_REVISION" --out "${CENSUS_OUT:-.cache/coverage-census}"',
+  env: { CENSUS_REVISION: process.env.CENSUS_REVISION ?? "main@github", CENSUS_OUT: process.env.CENSUS_OUT ?? "" },
+  data: [tree],
+  tools: [bun, S.Host.bin("jj")],
+  manual: true, sandbox: "none", timeout: "10m"
+})
+
+const nightlyFuzz = S.Shell.Run({
+  summary: "Run one bounded rotating nightly fuzz slice within the 24-hour schedule budget.",
+  shell: "sh scripts/nightly-fuzz.sh",
+  data: [tree],
+  tools: [go, node, bun],
+  manual: true, sandbox: "none", timeout: "24h"
+})
+
+const migrateEval = S.Shell.Test({
+  summary: "Run the migrate flow evaluation against its committed baseline.",
+  shell: "bun .smithers/flows/migrate/eval.ts",
+  data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
+  tools: [bun, node, S.Host.bin("jj")],
+  exclusive: true, sandbox: "none", timeout: "30m"
+})
+
+const siteDeploy = S.Shell.Run({
+  summary: "Deploy vibelang.sh through the durable site-deploy flow when main or npm latest changes.",
+  shell: '.smithers/node_modules/.bin/smthrs flow start site-deploy --data "{\\"state\\":\\"${SITE_DEPLOY_STATE:-.cache/site-deploy}\\",\\"credentials\\":\\"${SITE_DEPLOY_CREDENTIALS:-}\\"}"',
+  env: { SITE_DEPLOY_STATE: process.env.SITE_DEPLOY_STATE ?? "", SITE_DEPLOY_CREDENTIALS: process.env.SITE_DEPLOY_CREDENTIALS ?? "" },
+  data: [tree],
+  tools: [node, bun, S.Host.bin("jj"), S.Host.bin("npm")],
+  manual: true, sandbox: "none", timeout: "30m"
+})
+
 const targets = {
   setup: S.Shell.Run({
     summary: "Install the checkout compiler, runtime, starter and editor extension.",
@@ -725,13 +767,30 @@ const targets = {
     sandbox: "none",
     timeout: "1m"
   }),
-  "spec-coverage-census": S.Shell.Run({
-    summary: "Inventory main rules with passing, pending, missing and tag-linked evidence.",
-    shell: 'bun docs/tools/coverage-census.ts --revision "$CENSUS_REVISION" --out "${CENSUS_OUT:-.cache/coverage-census}"',
-    env: { CENSUS_REVISION: process.env.CENSUS_REVISION ?? "main@github", CENSUS_OUT: process.env.CENSUS_OUT ?? "" },
-    data: [tree],
-    tools: [bun, S.Host.bin("jj")],
-    manual: true, sandbox: "none", timeout: "10m"
+  "schedule-refresh": scheduleRefresh,
+  "spec-coverage-census": specCoverageCensus,
+  "nightly-fuzz": nightlyFuzz,
+  "migrate-eval": migrateEval,
+  "site-deploy": siteDeploy,
+  "schedule-coverage-census": S.Cron({
+    schedule: "0,30 * * * *",
+    refresh: [scheduleRefresh],
+    run: [specCoverageCensus]
+  }),
+  "schedule-site-deploy": S.Cron({
+    schedule: "2,12,22,32,42,52 * * * *",
+    refresh: [scheduleRefresh],
+    run: [siteDeploy]
+  }),
+  "schedule-migrate-eval": S.Cron({
+    schedule: "5,15,25,35,45,55 * * * *",
+    refresh: [scheduleRefresh],
+    run: [migrateEval]
+  }),
+  "schedule-nightly-fuzz": S.Cron({
+    schedule: "20 1 * * *",
+    refresh: [scheduleRefresh],
+    run: [nightlyFuzz]
   }),
   "spec-coverage-census-test": S.Shell.Test({
     summary: "Census extraction, immutable snapshots, stable ids and conservative evidence properties.",
