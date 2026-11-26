@@ -772,6 +772,14 @@ const targets = {
   "nightly-fuzz": nightlyFuzz,
   "migrate-eval": migrateEval,
   "site-deploy": siteDeploy,
+  "fuzz-campaign-flow": S.Shell.Test({
+    summary: "Run the durable fuzz-campaign flow on ScanFixVerify and CommandSandbox against fixture repositories.",
+    shell: "node --test .smithers/flows/fuzz-campaign/test/flow.test.mjs",
+    data: [tree],
+    tools: [node],
+    sandbox: "none",
+    timeout: "10m"
+  }),
   "schedule-coverage-census": S.Cron({
     schedule: "0,30 * * * *",
     refresh: [scheduleRefresh],
