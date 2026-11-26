@@ -281,6 +281,125 @@ function vibeTarget(source, outputs) {
   return typeof output === "string" && output.startsWith("./.vibelang/js/") ? output : undefined
 }
 
+function normalizeRouteTarget(value) {
+  const source = original(value)
+  if (source !== undefined) return { types: source, "vibelang-source": source, default: value.default }
+  if (Array.isArray(value)) return value.map(normalizeRouteTarget)
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalizeRouteTarget(v)]))
+  }
+  return value
+}
+
+function substituteWildcard(value, star) {
+  if (typeof value === "string") return value.replaceAll("*", star)
+  if (Array.isArray(value)) return value.map(item => substituteWildcard(item, star))
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, substituteWildcard(v, star)]))
+  }
+  return value
+}
+
+function sortedWildcards(map) {
+  return Object.keys(map)
+    .filter(key => key.includes("*") && (key.startsWith("./") || key.startsWith("#")))
+    .sort((a, b) => b.indexOf("*") - a.indexOf("*") || b.length - a.length)
+}
+
+/**
+ * Compact redundant conversion-added exact keys from an exports/imports map
+ * when the winning wildcard pattern already resolves every condition identically.
+ * Never removes authored baseline keys, null exclusions (e.g. sidecar blocks),
+ * or keys whose conditions/targets differ from the wildcard.
+ */
+export function compactExportMap(map, { authoredKeys } = {}) {
+  if (!map || typeof map !== "object" || Array.isArray(map)) return { map, removed: [] }
+  const authored = authoredKeys ? new Set(authoredKeys) : null
+  const patterns = sortedWildcards(map)
+  if (!patterns.length) return { map: { ...map }, removed: [] }
+  const compacted = {}
+  const removed = []
+  for (const [key, item] of Object.entries(map)) {
+    const removable = !key.includes("*") && item !== null &&
+      (authored ? !authored.has(key) : generatedPatternRoute(item))
+    if (removable) {
+      let winner, star
+      for (const pattern of patterns) {
+        const matched = matchPattern(pattern, key)
+        if (matched !== undefined && matched !== "") { winner = pattern; star = matched; break }
+      }
+      if (winner !== undefined) {
+        const expected = normalizeRouteTarget(substituteWildcard(map[winner], star))
+        const actual = normalizeRouteTarget(item)
+        if (JSON.stringify(actual) === JSON.stringify(expected)) {
+          removed.push(key)
+          continue
+        }
+      }
+    }
+    compacted[key] = item
+  }
+  return { map: compacted, removed }
+}
+
+function listDiskNativeFiles(packageDir) {
+  const found = []
+  const walkDir = (dir, rel) => {
+    let entries
+    try { entries = readdirSync(dir, { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (entry.name.startsWith(".") || ["node_modules", "dist", "coverage"].includes(entry.name)) continue
+        const child = join(dir, entry.name)
+        if (existsSync(join(child, "package.json"))) continue
+        walkDir(child, rel ? rel + "/" + entry.name : entry.name)
+      } else if (native.test(entry.name)) {
+        found.push("./" + (rel ? rel + "/" + entry.name : entry.name))
+      }
+    }
+  }
+  walkDir(packageDir, "")
+  return found
+}
+
+function compactableWildcards(packageDir, value, field, outputs, active, diskFiles) {
+  const prefix = field === "imports" ? "#" : "./"
+  const patterns = Object.keys(value)
+    .filter(key => key.includes("*") && key.startsWith(prefix))
+    .sort((a, b) => b.indexOf("*") - a.indexOf("*") || b.length - a.length)
+  if (!patterns.length) return new Set()
+  const authoredExact = new Set(Object.keys(value).filter(key => !key.includes("*") && !generatedPatternRoute(value[key])))
+  const winnerOf = exact => {
+    if (authoredExact.has(exact)) return exact
+    for (const pattern of patterns) {
+      const star = matchPattern(pattern, exact)
+      if (star !== undefined && star !== "") return pattern
+    }
+    return undefined
+  }
+  const allNative = [...new Set([...Object.keys(outputs).filter(source => native.test(source)), ...diskFiles()])]
+  const compact = new Set()
+  for (const key of patterns) {
+    const item = value[key]
+    const leaves = targets(instantiate(item, "*")).filter(target => target.includes("*") && native.test(target))
+    if (!leaves.length) continue
+    if (!leaves.every(leaf => emittedTarget(leaf, active) !== undefined)) continue
+    let allCovered = true
+    for (const source of allNative) {
+      for (const leaf of leaves) {
+        const star = matchPattern(leaf, source)
+        if (star === undefined || !star) continue
+        const exact = key.replaceAll("*", star)
+        if (winnerOf(exact) !== key) continue
+        if (!Object.hasOwn(active, source)) { allCovered = false; break }
+      }
+      if (!allCovered) break
+    }
+    if (allCovered) compact.add(key)
+  }
+  return compact
+}
+
 /** Route native entries only to files the package's actual compile produced. */
 export function routeEmittedExports(packageDir, outputs, { restore = false, onGraph, onPacking, typescript, moduleOutputs } = {}) {
   const path = join(packageDir, "package.json")
@@ -290,7 +409,9 @@ export function routeEmittedExports(packageDir, outputs, { restore = false, onGr
   const graph=restore?{outputs,summary:{mode:"restore"}}:runtimeComponentOutputs(packageDir,outputs,pkg,typescript)
   onGraph?.(graph.summary)
   const active=graph.outputs,component=graph.summary.mode==="component"
-  const walk = (value, condition) => {
+  let cachedDiskNative
+  const diskNative = () => cachedDiskNative ??= listDiskNativeFiles(packageDir)
+  const walk = (value, condition, allowWildcard = false) => {
     const prior = original(value)
     if (prior !== undefined) value = prior
     // An earlier toolchain wrote a converted module's entry as { types: its
@@ -300,23 +421,24 @@ export function routeEmittedExports(packageDir, outputs, { restore = false, onGr
     if (legacy !== undefined) return { types: value.types, "vibelang-source": value.default, default: legacy }
     if (typeof value === "string") {
       if (restore || metadata.has(condition)) return value
-      const target = component && value.includes("*") ? undefined : emittedTarget(value, active)
+      const target = component && value.includes("*") && !allowWildcard ? undefined : emittedTarget(value, active)
       return target === undefined ? value : { types: value, "vibelang-source": value, default: target }
     }
-    if (Array.isArray(value)) return value.map(item => walk(item, condition))
-    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, metadata.has(key) ? item : walk(item, key)]))
+    if (Array.isArray(value)) return value.map(item => walk(item, condition, allowWildcard))
+    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, metadata.has(key) ? item : walk(item, key, allowWildcard)]))
     return value
   }
   for (const field of ["exports", "imports"]) if (field in pkg) {
     const value=pkg[field]
     if (!value || typeof value!=="object" || Array.isArray(value) || original(value)!==undefined) {pkg[field]=walk(value);continue}
+    const compactWildcards = !restore && component ? compactableWildcards(packageDir, value, field, outputs, active, diskNative) : new Set()
     const next={}
     for(const [key,item] of Object.entries(value)) {
       if(generatedPatternRoute(item) && (restore || !targets(item).some(target=>Object.hasOwn(active,target)))) continue
-      const routed=metadata.has(key)?item:walk(item,key)
+      const routed=metadata.has(key)?item:walk(item,key,compactWildcards.has(key))
       next[key]=generatedPatternRoute(item)?markPatternRoute(routed):routed
     }
-    if(component) for(const [key,item] of Object.entries(value)) if(key.includes("*") && (field==="imports"?key.startsWith("#"):key.startsWith("./"))) {
+    if(component) for(const [key,item] of Object.entries(value)) if(key.includes("*") && !compactWildcards.has(key) && (field==="imports"?key.startsWith("#"):key.startsWith("./"))) {
       const leaves=targets(instantiate(item,"*")).filter(target=>target.includes("*")&&native.test(target))
       for(const source of Object.keys(active)) for(const leaf of leaves) {
         const star=matchPattern(leaf,source)
@@ -326,7 +448,7 @@ export function routeEmittedExports(packageDir, outputs, { restore = false, onGr
         next[exact]=markPatternRoute(walk(instantiate(item,star)))
       }
     }
-    pkg[field]=next
+    pkg[field] = !restore && compactWildcards.size ? compactExportMap(next).map : next
   }
   const privateModules = excludePrivateModules(packageDir, pkg, moduleOutputs, { restore })
   const packing = syncPackPolicy(packageDir, pkg)
