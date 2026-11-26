@@ -209,10 +209,15 @@ if (process.argv[2] === "--bundle") {
   await bundle(process.argv[3], process.argv[4], JSON.parse(process.argv[5]), process.argv[6] === "deferred")
 } else {
   for (const [mode, numRuns, rule] of [["emit", 10, integration], ["build", 2, integration + "; " + mapping], ["invalid", 2, errors]]) {
+    // Bun's plugin API ignores input source maps (README.md, Limitations), pinned by
+    // bun-source-map.json in regressions so it XPASSes once Bun composes plugin maps.
+    // Default bundlers-build runs cover all six map-composing adapters alongside that
+    // pinned Bun regression; explicit FC_BUNDLERS still selects any subset verbatim.
+    const selected = !process.env.FC_BUNDLERS && mode === "build" ? bundlers.filter(name => name !== "bun") : bundlers
     test(`bundlers-${mode}`, async () => {
       await checkProperty(fc, { name: `bundlers-${mode}`, rule,
-        command: `FC_BUNDLERS=${bundlers.join(",")} node --test test/bundlers.property.test.mjs`,
-        arbitrary: projectArbitrary(fc).map(input => ({ ...input, bundlers })), numRuns, regressions, check: input => checkProject(input, mode),
+        command: `FC_BUNDLERS=${selected.join(",")} node --test test/bundlers.property.test.mjs`,
+        arbitrary: projectArbitrary(fc).map(input => ({ ...input, bundlers: selected })), numRuns, regressions, check: input => checkProject(input, mode),
         artifacts: input => mode === "invalid" ? projectFiles(input, false, true).files : projectArtifacts(input), diagnostics: () => failureDiagnostics })
     })
   }
