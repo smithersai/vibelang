@@ -1,0 +1,20 @@
+import { Data } from "effect";
+export namespace Outer {
+    /** Outer type docs. */
+    export data Item { A; B { readonly value: number } }
+    /** Outer constructor docs. */
+    export const Item = Data.taggedEnum<Item>();
+    export namespace Inner {
+        /** Inner constructor before data. */
+        export const Item = Data.taggedEnum<Item>();
+        /** Inner type docs. */
+        export data Item { A }
+    }
+}
+export effect function use(b: Outer.Item): number!! {
+    const a = Outer.Item.A();
+    return match (b) {
+        when { _tag: "A" }: a._tag === "A" ? 0 : 1;
+        when { _tag: "B", let value }: value;
+    };
+}

@@ -25,32 +25,99 @@ func (p *Parser) vibelangSynthesizedSchemaType(node *ast.Node) bool {
 }
 
 // Work on the completed lexical statement list, so a written alias before or
-// after the schema has the same effect. Removing only the synthesized node
-// leaves each written declaration's location, JSDoc and modifiers untouched.
-// A second schema or written alias keeps the existing duplicate-name errors.
+// after the schema (or a written Data.taggedEnum<Name>() constant before or
+// after a nongeneric data declaration, #179) has the same effect. Removing only
+// the synthesized node leaves each written declaration's location, JSDoc and
+// modifiers untouched. A second declaration or written companion keeps the
+// existing duplicate-name errors.
 func (p *Parser) vibelangWrittenSchemaTypes(statements []*ast.Node) []*ast.Node {
+	isNongenericDataCompanion := func(node *ast.Node) (string, bool) {
+		if !IsDataConstructors(node) {
+			return "", false
+		}
+		decl := node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+		if decl.Type() != nil || !ast.IsIdentifier(decl.Name()) {
+			return "", false
+		}
+		return decl.Name().Text(), true
+	}
+	isWrittenDataConstructors := func(node *ast.Node) (string, bool) {
+		if IsDataConstructors(node) || node.Kind != ast.KindVariableStatement || ast.HasSyntacticModifier(node, ast.ModifierFlagsAmbient) {
+			return "", false
+		}
+		list := node.AsVariableStatement().DeclarationList.AsVariableDeclarationList()
+		if list.Flags&ast.NodeFlagsConst == 0 || len(list.Declarations.Nodes) != 1 {
+			return "", false
+		}
+		decl := list.Declarations.Nodes[0]
+		if !ast.IsIdentifier(decl.Name()) || decl.AsVariableDeclaration().ExclamationToken != nil || decl.Type() != nil {
+			return "", false
+		}
+		call := decl.Initializer()
+		if call == nil || call.Kind != ast.KindCallExpression || call.AsCallExpression().QuestionDotToken != nil || len(call.Arguments()) != 0 {
+			return "", false
+		}
+		typeArgs := call.TypeArguments()
+		if len(typeArgs) != 1 || typeArgs[0].Kind != ast.KindTypeReference {
+			return "", false
+		}
+		ref := typeArgs[0].AsTypeReferenceNode()
+		if ref.TypeArguments != nil || !ast.IsIdentifier(ref.TypeName) || ref.TypeName.Text() != decl.Name().Text() {
+			return "", false
+		}
+		callee := call.Expression()
+		if !ast.IsPropertyAccessExpression(callee) || callee.AsPropertyAccessExpression().QuestionDotToken != nil {
+			return "", false
+		}
+		if !ast.IsIdentifier(callee.Expression()) || callee.Expression().Text() != "Data" || !ast.IsIdentifier(callee.Name()) || callee.Name().Text() != "taggedEnum" {
+			return "", false
+		}
+		return decl.Name().Text(), true
+	}
 	var companions map[string]int
+	var dataCompanions map[string]int
 	for _, node := range statements {
 		if p.vibelangSynthesizedSchemaType(node) {
 			if companions == nil {
 				companions = make(map[string]int)
 			}
 			companions[node.Name().Text()]++
+		} else if name, ok := isNongenericDataCompanion(node); ok {
+			if dataCompanions == nil {
+				dataCompanions = make(map[string]int)
+			}
+			dataCompanions[name]++
 		}
 	}
-	if companions == nil {
+	if companions == nil && dataCompanions == nil {
 		return statements
 	}
-	written := make(map[string]int)
+	var written map[string]int
+	var writtenData map[string]int
 	for _, node := range statements {
-		if !p.vibelangSynthesizedSchemaType(node) && vibelangSchemaTypeQuery(node) {
+		if companions != nil && !p.vibelangSynthesizedSchemaType(node) && vibelangSchemaTypeQuery(node) {
+			if written == nil {
+				written = make(map[string]int)
+			}
 			written[node.Name().Text()]++
+		} else if dataCompanions != nil {
+			if name, ok := isWrittenDataConstructors(node); ok {
+				if writtenData == nil {
+					writtenData = make(map[string]int)
+				}
+				writtenData[name]++
+			}
 		}
 	}
 	out := statements[:0]
 	for _, node := range statements {
-		if p.vibelangSynthesizedSchemaType(node) && companions[node.Name().Text()] == 1 && written[node.Name().Text()] == 1 {
+		if companions != nil && p.vibelangSynthesizedSchemaType(node) && companions[node.Name().Text()] == 1 && written[node.Name().Text()] == 1 {
 			continue
+		}
+		if dataCompanions != nil {
+			if name, ok := isNongenericDataCompanion(node); ok && dataCompanions[name] == 1 && writtenData[name] == 1 {
+				continue
+			}
 		}
 		out = append(out, node)
 	}

@@ -1,0 +1,5 @@
+import { Data } from "effect";
+/** Type docs. */
+export data Item { A }
+/** Constructor docs. */
+export const Item = Data.taggedEnum<Item>();
