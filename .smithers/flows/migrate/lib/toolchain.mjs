@@ -6,9 +6,10 @@
 // staging (setup takes --vibelang-version instead).
 import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { accessSync, chmodSync, constants, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { must, quote, readJson, writeJson } from "./util.mjs"
 
 async function pack(dir, out) {
@@ -190,4 +191,86 @@ export function assertPhasesAgree(phases) {
     }
   }
   return firstArtifact
+}
+
+const nativeExecutable = process.platform === "win32" ? "vibelang.exe" : "vibelang"
+
+function resolveInstalledNativeBinary(vibelangPackagePath) {
+  const pkgDir = dirname(vibelangPackagePath)
+  const local = join(pkgDir, "native", nativeExecutable)
+  if (existsSync(local)) return local
+  const target = `${process.platform}-${process.arch}`
+  const name = process.platform === "win32" ? `@smthrs/cli-${target}` : `vibelang-${target}`
+  try {
+    const manifest = createRequire(vibelangPackagePath).resolve(`${name}/package.json`)
+    const candidate = join(dirname(manifest), "bin", nativeExecutable)
+    return existsSync(candidate) ? candidate : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Verifies that installed `vibelang` packages in `target` actually carry an
+ * executable native compiler binary (and match `staged.nativeSha256` when a
+ * staged toolchain is pinned), catching incomplete or stale restored
+ * dependency caches before build/test execution (#167).
+ */
+export function verifyInstalledCompiler({ target, packages = [{ dir: "." }], toolchain, requirePackage = true } = {}) {
+  const root = resolve(target)
+  const expectedSha256 = toolchain?.kind === "staged" && existsSync(join(toolchain.dir, "toolchain.json"))
+    ? readToolchain(toolchain.dir).nativeSha256 ?? null
+    : null
+  const dirs = [...new Set([".", ...packages.map(pkg => pkg.dir ?? ".")])]
+  const checked = []
+  const missing = []
+  for (const dir of dirs) {
+    const manifestPath = join(root, dir, "package.json")
+    if (!existsSync(manifestPath)) continue
+    let manifest
+    try { manifest = readJson(manifestPath) } catch { continue }
+    const spec = manifest.dependencies?.vibelang ?? manifest.devDependencies?.vibelang
+    if (!spec) continue
+    let vibelangPkg
+    try { vibelangPkg = createRequire(manifestPath).resolve("vibelang/package.json") } catch { vibelangPkg = null }
+    if (!vibelangPkg) {
+      if (requirePackage) missing.push({ package: dir, spec, reason: "installed vibelang package is missing from node_modules" })
+      continue
+    }
+    const installedVersion = readJson(vibelangPkg).version ?? null
+    const binary = resolveInstalledNativeBinary(vibelangPkg)
+    if (!binary) {
+      missing.push({ package: dir, spec, vibelangPackage: vibelangPkg, version: installedVersion, reason: "installed vibelang package is missing its native compiler binary" })
+      continue
+    }
+    let stats
+    try { stats = statSync(binary) } catch { stats = null }
+    if (!stats?.isFile() || stats.size === 0) {
+      missing.push({ package: dir, spec, vibelangPackage: vibelangPkg, version: installedVersion, binary, reason: "installed native compiler binary is empty or not a regular file" })
+      continue
+    }
+    if (process.platform !== "win32") {
+      try { accessSync(binary, constants.X_OK) } catch {
+        missing.push({ package: dir, spec, vibelangPackage: vibelangPkg, version: installedVersion, binary, reason: "installed native compiler binary is not executable" })
+        continue
+      }
+    }
+    const actualSha256 = fileDigest(binary)
+    if (expectedSha256 && actualSha256 !== expectedSha256) {
+      missing.push({ package: dir, spec, vibelangPackage: vibelangPkg, version: installedVersion, binary, expectedSha256, actualSha256, reason: "installed native compiler binary digest mismatch against staged toolchain" })
+      continue
+    }
+    checked.push({ package: dir, spec, vibelangPackage: vibelangPkg, version: installedVersion, binary, nativeSha256: actualSha256 })
+  }
+  return { ok: missing.length === 0, expectedSha256, checked, missing }
+}
+
+/** Fails fast with a dependency-cache integrity error when any installed vibelang lacks its native compiler binary (#167). */
+export function assertInstalledCompiler(options) {
+  const receipt = verifyInstalledCompiler(options)
+  if (!receipt.ok) {
+    const details = receipt.missing.map(item => `${item.package}: ${item.reason}`).join("; ")
+    throw new Error(`dependency cache integrity failure (not a compiler semantic failure): ${details}; refresh/reinstall dependencies without stale cache`)
+  }
+  return receipt
 }

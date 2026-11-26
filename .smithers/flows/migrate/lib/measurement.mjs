@@ -9,12 +9,16 @@ import * as Wire from "./wire.mjs"
 import { readdirSync } from "node:fs"
 import { compareTests, runTests } from "./tests.mjs"
 import { assertReadableTests } from "./test-receipts.mjs"
+import { assertInstalledCompiler } from "./toolchain.mjs"
 import { must, quote, readJson, readJsonIf, writeJson } from "./util.mjs"
 
 export async function runMeasurementJob(manifest) {
   const receipts = {}, builds = {}, packs = {}
   for (const side of manifest.sides) {
-    if (side.install) await must(side.install, { cwd: side.target, log: join(manifest.out, side.name + "-install.log") })
+    if (side.install) {
+      await must(side.install, { cwd: side.target, log: join(manifest.out, side.name + "-install.log") })
+      if (manifest.build?.packages) assertInstalledCompiler({ target: side.target, packages: manifest.build.packages, toolchain: manifest.build.toolchain, requirePackage: false })
+    }
     if (manifest.build) builds[side.name] = await prepareBuilds({ ...manifest.build, target: side.target }, manifest.out, side.name)
     if (manifest.build) packs[side.name] = await packRepository({ ...manifest.build, target: side.target }, join(manifest.out, side.name + "-packs"), { baseline: manifest.packBaseline })
     receipts[side.name] = await runTests({ command: manifest.test.command, report: manifest.test.report,

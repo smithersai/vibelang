@@ -71,7 +71,7 @@ import { declarationRouteLeaks } from "./route-declarations.mjs"
 import { routeSourceDeclarationImports, sourceDeclarationPrefix } from "./source-declaration-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { wireNodeTests } from "./node-tests.mjs"
-import { assertPhasesAgree, bindCompilerArtifact, compilerArtifactOf, phaseCompilers, readToolchain } from "./toolchain.mjs"
+import { assertInstalledCompiler, assertPhasesAgree, bindCompilerArtifact, compilerArtifactOf, phaseCompilers, readToolchain } from "./toolchain.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
 import { appendJsonl, batchName, chunkedRunner, isDeclarationFile, must, packageKey, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
 import { importerPaths } from "./importer-files.mjs"
@@ -613,6 +613,7 @@ export async function upgradeEffect(options) {
   let commit = null
   if (changed.length) {
     await install("upgraded")
+    if (vibelang.manifests.length) assertInstalledCompiler({ target: t, packages: config.packages, toolchain: config.toolchain, requirePackage: config.install !== "true" })
     assertBaselineSafe(p, { includeSetup: false })
     upgradedBuild = await prepareBuilds(config, logs, "upgraded")
     after = await testRun("upgraded")
@@ -1224,6 +1225,7 @@ export async function setup(options) {
   // before the baseline is measured; setup's commit holds the edit.
   const returnedSpecifiers = await repairReturnedSpecifiers(t)
   if (returnedSpecifiers.length) wired?.warnings.push("returned modules' native names rewritten to TypeScript: " + returnedSpecifiers.map(e => e.file + ": " + e.from + " -> " + e.to).join(", "))
+  const installedCompiler = assertInstalledCompiler({ target: t, packages: config.packages, toolchain: config.toolchain, requirePackage: config.install !== "true" && config.wire !== false })
   const compiler = compilerOf(config)
   const { stdout: version } = await must(`${quote(compiler)} --version`)
 
@@ -1285,7 +1287,7 @@ export async function setup(options) {
   const result = {
     at: new Date().toISOString(),
     jj: { initialized: upgrade.jj.initialized, base: upgrade.jj.base, baseCommit: upgrade.jj.baseCommit, upgradeCommit: upgrade.jj.commit, setupCommit: setupCommit ?? upgrade.jj.commit, bookmark: config.bookmark },
-    compiler: { artifact: compilerArtifactOf(config.toolchain), path: compiler, version: version.trim(), toolchain: config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir) : config.toolchain },
+    compiler: { artifact: compilerArtifactOf(config.toolchain), path: compiler, version: version.trim(), toolchain: config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir) : config.toolchain, installed: installedCompiler },
     declarationOracle: Object.fromEntries(Object.entries(declarationOracle).map(([dir, o]) => [dir, o.unavailable ? { unavailable: o.unavailable } : { compiler: o.compiler, unproven: o.files.length }])),
     effect: upgrade.effect,
     wired,
