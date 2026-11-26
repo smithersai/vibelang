@@ -3,5 +3,8 @@
   "test": "src/load-all.test.vibe",
   "files": {
     "load-all.test.vibe": "src/load-all.test.vibe"
+  },
+  "reference": {
+    "reference/profile.vibe": "src/profile.vibe"
   }
 }

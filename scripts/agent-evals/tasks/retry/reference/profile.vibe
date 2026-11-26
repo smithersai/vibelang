@@ -1,0 +1,11 @@
+import { Store, Unavailable } from "./store.vibe"
+
+// load reads a profile name from the Store and normalizes it.
+export effect function load(id: string) {
+  const store = try Store
+  const name = try retry(store.get(id), {
+    times: 3,
+    while: (error) => error instanceof Unavailable,
+  })
+  return name.trim().toUpperCase()
+}

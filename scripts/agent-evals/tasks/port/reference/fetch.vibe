@@ -1,0 +1,7 @@
+export error Timeout { ms: number }
+
+// fetchWithRetry runs fetchOnce, retrying a Timeout twice, and upper-cases the result.
+export effect function fetchWithRetry(fetchOnce: () => string!Timeout) {
+  const value = try retry(fetchOnce(), Schedule.recurs(2))
+  return value.toUpperCase()
+}

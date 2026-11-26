@@ -3,9 +3,9 @@ import { load } from "./profile.vibe"
 import { Missing, Store, Unavailable } from "./store.vibe"
 
 // A Store that fails with Unavailable for its first `failures` calls.
-function flakyStore(failures: number, calls: { mutable count: number }) {
+function flakyStore(failures: number, calls: { count: number }) {
   return Layer.succeed(Store, {
-    get(id: string) {
+    effect get(id: string) {
       calls.count += 1
       if (calls.count <= failures) throw new Unavailable({ attempt: calls.count })
       if (id === "") throw new Missing({ id })
@@ -14,46 +14,44 @@ function flakyStore(failures: number, calls: { mutable count: number }) {
   })
 }
 
-it.effect("loads a name", effect () => {
+it.effect("loads a name", () => effect {
   const calls = { count: 0 }
   provide flakyStore(0, calls) {
-    const actual = load("ada")
+    const actual = try load("ada")
     try Effect.try(() => assert.strictEqual(actual, "ADA"))
   }
   try Effect.try(() => assert.strictEqual(calls.count, 1))
 })
 
-it.effect("retries Unavailable", effect () => {
+it.effect("retries Unavailable", () => effect {
   const calls = { count: 0 }
   provide flakyStore(2, calls) {
-    const actual = load("ada")
+    const actual = try load("ada")
     try Effect.try(() => assert.strictEqual(actual, "ADA"))
   }
   try Effect.try(() => assert.strictEqual(calls.count, 3))
 })
 
-it.effect("gives up after 3 retries", effect () => {
+it.effect("gives up after 3 retries", () => effect {
   const calls = { count: 0 }
   provide flakyStore(10, calls) {
-    try Effect.catch(effect {
-      load("ada")
-      try Effect.try(() => assert.fail("expected Unavailable"))
-    }, effect (error) => {
-      try Effect.try(() => assert.instanceOf(error, Unavailable))
-    })
+    const outcome = try exit(load("ada"))
+    match (outcome) {
+      when Exit.Failure(let cause): try Effect.try(() => assert.instanceOf(Cause.squash(cause), Unavailable));
+      when Exit.Success(let _value): try Effect.try(() => assert.fail("expected Unavailable"));
+    }
   }
   try Effect.try(() => assert.strictEqual(calls.count, 4))
 })
 
-it.effect("does not retry Missing", effect () => {
+it.effect("does not retry Missing", () => effect {
   const calls = { count: 0 }
   provide flakyStore(0, calls) {
-    try Effect.catch(effect {
-      load("")
-      try Effect.try(() => assert.fail("expected Missing"))
-    }, effect (error) => {
-      try Effect.try(() => assert.instanceOf(error, Missing))
-    })
+    const outcome = try exit(load(""))
+    match (outcome) {
+      when Exit.Failure(let cause): try Effect.try(() => assert.instanceOf(Cause.squash(cause), Missing));
+      when Exit.Success(let _value): try Effect.try(() => assert.fail("expected Missing"));
+    }
   }
   try Effect.try(() => assert.strictEqual(calls.count, 1))
 })

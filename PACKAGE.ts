@@ -780,6 +780,14 @@ const targets = {
     sandbox: "none",
     timeout: "10m"
   }),
+  "agent-evals": S.Shell.Test({
+    summary: "Run the agent-evals reference and base regression suite against its committed baseline.",
+    shell: 'out=$(mktemp "${TMPDIR:-/tmp}/agent-evals-run.XXXXXX.json") && trap \'rm -f "$out"\' EXIT && .smithers/node_modules/.bin/smthrs eval run agent-evals --root .smithers --output "$out" && .smithers/node_modules/.bin/smthrs eval compare "$out" --root .smithers',
+    data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
+    tools: [node],
+    sandbox: "none",
+    timeout: "10m"
+  }),
   "schedule-coverage-census": S.Cron({
     schedule: "0,30 * * * *",
     refresh: [scheduleRefresh],

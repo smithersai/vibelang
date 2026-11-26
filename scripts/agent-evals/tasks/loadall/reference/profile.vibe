@@ -1,0 +1,30 @@
+import { Missing, Store } from "./store.vibe"
+
+// load reads a profile name from the Store and normalizes it.
+export effect function load(id: string) {
+  const store = try Store
+  const name = try store.get(id)
+  return name.trim().toUpperCase()
+}
+
+// loadAll loads each profile with at most 4 concurrent calls, keeping order and skipping Missing.
+export effect function loadAll(ids: ReadonlyArray<string>) {
+  const settled = try forEach(
+    ids,
+    effect (id) => (
+      effect {
+        const value = try load(id)
+        return Option.some(value)
+      } catch effect (error) => match (error) {
+        when Missing: Option.none();
+        default: throw error;
+      }
+    ),
+    { concurrency: 4 }
+  )
+  const results: Array<string> = []
+  for (const item of settled) {
+    if (Option.isSome(item)) results.push(item.value)
+  }
+  return results
+}

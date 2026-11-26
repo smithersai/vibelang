@@ -1,0 +1,13 @@
+import { Store } from "./store.vibe"
+
+// load reads a profile name from the Store and normalizes it.
+export effect function load(id: string) {
+  const store = try Store
+  const name = try store.get(id.trim())
+  return name.trim().toUpperCase()
+}
+
+// display formats a profile for a log line.
+export effect function display(id: string) {
+  return `profile ${id}: ${try load(id)}`
+}

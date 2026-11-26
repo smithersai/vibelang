@@ -4,5 +4,11 @@
   "files": {
     "fetch.ts": "src/fetch.ts",
     "fetch.test.vibe": "src/fetch.test.vibe"
-  }
+  },
+  "reference": {
+    "reference/fetch.vibe": "src/fetch.vibe"
+  },
+  "referenceDelete": [
+    "src/fetch.ts"
+  ]
 }

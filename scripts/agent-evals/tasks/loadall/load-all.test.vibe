@@ -4,12 +4,12 @@ import { Missing, Store } from "./store.vibe"
 
 // A Store that takes 20 ms per call, records how many calls overlap, and
 // fails with Missing for ids that start with "x".
-function countingStore(state: { mutable running: number; mutable peak: number }) {
+function countingStore(state: { running: number; peak: number }) {
   return Layer.succeed(Store, {
-    get(id: string) {
+    effect get(id: string) {
       state.running += 1
       state.peak = Math.max(state.peak, state.running)
-      sleep("20 millis")
+      try sleep("20 millis")
       state.running -= 1
       if (id.startsWith("x")) throw new Missing({ id })
       return id
@@ -17,19 +17,19 @@ function countingStore(state: { mutable running: number; mutable peak: number })
   })
 }
 
-it.live("loads every id in order, skipping Missing ones", effect () => {
+it.live("loads every id in order, skipping Missing ones", () => effect {
   const state = { running: 0, peak: 0 }
   provide countingStore(state) {
-    const actual = loadAll(["ada", "xeno", "bob"])
+    const actual = try loadAll(["ada", "xeno", "bob"])
     try Effect.try(() => assert.deepStrictEqual(actual, ["ADA", "BOB"]))
   }
 })
 
-it.live("loads at most 4 ids at once", effect () => {
+it.live("loads at most 4 ids at once", () => effect {
   const state = { running: 0, peak: 0 }
   const ids = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
   provide countingStore(state) {
-    const actual = loadAll(ids)
+    const actual = try loadAll(ids)
     try Effect.try(() => assert.strictEqual(actual.length, 10))
   }
   try Effect.try(() => assert.strictEqual(state.peak, 4))

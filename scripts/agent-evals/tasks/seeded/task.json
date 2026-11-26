@@ -4,5 +4,8 @@
   "files": {
     "profile.vibe": "src/profile.vibe",
     "trim.test.vibe": "src/trim.test.vibe"
+  },
+  "reference": {
+    "reference/profile.vibe": "src/profile.vibe"
   }
 }
