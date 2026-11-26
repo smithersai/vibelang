@@ -1,6 +1,6 @@
 # VibeLang in .ts files
 
-`vibelang-typescript` is an experimental source-checkout preview of [open VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md) and is not published to npm. Use [the regular `.vibe` integration](existing-project.md) whenever you can rename files.
+`vibelang-typescript` is an experimental source-checkout preview of [VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md) and is not published to npm. Use [the regular `.vibe` integration](existing-project.md) whenever you can rename files.
 
 The compiler treats a `.ts` file whose first line is `// @vibe` as VibeLang and installs under the name `typescript` so existing `tsc` scripts reach it; unmarked files stay TypeScript. Use this only as a last resort: the [`vibelang` CLI](vibelang-cli.md), [Vite and Vitest](vite.md), and [Set up VibeLang](../setup.md) plugins keep stock TypeScript tools intact, whereas stock parsers ignore `// @vibe` and can reject syntax or compile with different semantics.
 

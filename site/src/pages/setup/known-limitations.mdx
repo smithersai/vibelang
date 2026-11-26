@@ -8,7 +8,7 @@ description: "VibeLang is in early alpha."
 VibeLang is in early alpha.
 
 - Platforms: [macOS arm64/x64, Linux arm64/x64, Windows arm64/x64](/getting-started/004-installation#prerequisites). The npm and Bun starter rehearsal runs on Linux x64; the other five binaries are cross-built.
-- Bun runtime: use `1.4.2` or newer for [complete source-loader support](/setup/vibelang-cli#run-sources-with-bun). Older versions can misresolve computed imports or corrupt Unicode import paths.
+- Bun runtime: use `1.4.2` or newer. See [Run sources with Bun](/setup/vibelang-cli#run-sources-with-bun). Older versions can misresolve computed imports or corrupt Unicode import paths.
 - Effect: [`effect@4.1.1` exactly](/setup/existing-project); other versions are unsupported.
 - Stock TypeScript: run `vibelang` first to emit adjacent `.d.vibe.ts` declaration sidecars and the `.d.ts` files that re-export them, then enable `allowArbitraryExtensions` so stock TypeScript tools can [read `.vibe` imports](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules), including a `.ts` file's `./x.js` import. These tools read the declarations; they do not check the VibeLang implementation. `vibelang-ts-mapper`, a TypeScript 7.1 content mapper that lets stock TypeScript check `.vibe` and `.vibex` files, is experimental and unpublished. It is tested with `typescript@7.1.0-beta`, which runs it only under `tsc --runExternalCode`. Add both extensions to `contentMappers.extensions` and set `compilerOptions.jsx` as for `.tsx`; the mapper preserves JSX for TypeScript to check.
 - Editors: [VS Code and Cursor use the bundled VSIX](/setup/vscode). VS Code Marketplace and Open VSX publishing are not ready.
@@ -27,9 +27,9 @@ callee's callable type, such as `() => number!NotFound`, instead of erasing it.
 
 The experimental TypeScript mapper keeps an exported function’s written Effect contract, such as `number!!`, even when its body is pure. Its projected type has no `$plain` member.
 
-After the supported CLI, plugins and editor routes, the experimental [TypeScript shim](/setup/typescript-shim) is a last resort for projects that cannot change TypeScript file names. Under open VIP-42, the `vibelang` compiler recognizes a `.ts` file whose first line is `// @vibe`; the `vibelang-typescript` replacement package that runs it as `tsc` is a source-checkout preview and is not published to npm. Stock readers can accept a marked file with different meaning.
+After the supported CLI, plugins and editor routes, the experimental [TypeScript shim](/setup/typescript-shim) is a last resort for projects that cannot change TypeScript file names. Under VIP-42, the `vibelang` compiler recognizes a `.ts` file whose first line is `// @vibe`; the `vibelang-typescript` replacement package that runs it as `tsc` is a source-checkout preview and is not published to npm. Stock readers can accept a marked file with different meaning.
 
-Mapper failures `EK9001` through `EK9006` have [repair guidance in the diagnostic reference](/vibelang-features/diagnostic-code-map#typescript-mapper-failures).
+Mapper failures `EK9001` through `EK9007` have [repair guidance in the diagnostic reference](/vibelang-features/diagnostic-code-map#typescript-mapper-failures).
 
 In a `.vibex` file, `return` inside a `do` expression in a JSX attribute or child container reports `EK0204`, although [VIP-39](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0039-vibex.md) says it leaves the enclosing function. For example, `export function f() { return <Box v={do { return 7 }} /> }` fails. Move the `do` expression into a statement of its own before the element: `const v = do { return 7 }; return <Box v={v} />`.
 

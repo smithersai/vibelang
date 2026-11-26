@@ -180,3 +180,58 @@ test("tsc checks imports from a .vibe source in an ordinary .ts consumer", { ski
   assert.match(result.stdout, /hello\.ts\(2,14\): error TS2322/)
   assert.doesNotMatch(result.stdout, /TS2307/)
 })
+
+test("typescript/lib/tsc and typescript/bin/tsc resolve through package exports and run the compiler", { skip }, (t) => {
+  const root = project(t)
+  for (const subpath of ["typescript/lib/tsc", "typescript/bin/tsc"]) {
+    const resolved = spawnSync(process.execPath, [
+      "--input-type=module", "-e",
+      `import { fileURLToPath } from "node:url"; console.log(fileURLToPath(import.meta.resolve(${JSON.stringify(subpath)})))`
+    ], { cwd: root, encoding: "utf8" })
+    assert.equal(resolved.status, 0, resolved.stderr)
+    const binPath = resolved.stdout.trim()
+    const run = spawnSync(binPath, ["--version"], { cwd: root, encoding: "utf8", env: { ...process.env, VIBELANG_BINARY: native } })
+    assert.equal(run.status, 0, run.stderr)
+    assert.match(run.stdout, /^VibeLang \d+\.\d+\.\d+ \(TypeScript 7\.1/)
+  }
+})
+
+test("a stock TypeScript project with no .vibe files compiles cleanly with zero EK diagnostics", { skip }, (t) => {
+  const root = project(t, {
+    "src/hello.ts": "export function add(a: number, b: number): number { return a + b }\n"
+  })
+  const result = tsc(root)
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.equal(result.stdout, "")
+  assert.doesNotMatch(result.stderr, /EK\d+/)
+  const run = spawnSync(process.execPath, [
+    "--input-type=module", "-e",
+    `import { add } from ${JSON.stringify(pathToFileURL(join(root, "out/hello.js")).href)}; console.log(add(2, 3))`
+  ], { cwd: root, encoding: "utf8" })
+  assert.equal(run.status, 0, run.stderr)
+  assert.equal(run.stdout.trim(), "5")
+})
+
+test("a mixed .ts and .vibe project emits JS and declarations and executes under Node", { skip }, (t) => {
+  const root = project(t, {
+    "src/model.vibe": 'export effect function label(name: string) { return `mixed:${name}` }\n',
+    "src/hello.ts": 'import { Effect } from "effect"\nimport { label } from "./model.vibe"\nexport const run = () => Effect.runPromise(label("ok"))\n'
+  })
+  const result = tsc(root, ["--rewriteRelativeImportExtensions"])
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.ok(existsSync(join(root, "out/model.js")))
+  assert.ok(existsSync(join(root, "out/hello.js")))
+  assert.ok(existsSync(join(root, "out/hello.d.ts")))
+  const run = spawnSync(process.execPath, [
+    "--input-type=module", "-e",
+    `import { run } from ${JSON.stringify(pathToFileURL(join(root, "out/hello.js")).href)}; console.log(await run())`
+  ], { cwd: root, encoding: "utf8" })
+  assert.equal(run.status, 0, run.stderr)
+  assert.equal(run.stdout.trim(), "mixed:ok")
+})
+
+test("tsc --api reaches the native TypeScript 7 RPC server command", { skip }, (t) => {
+  const root = project(t)
+  const result = tsc(root, ["--api", "--help"])
+  assert.match(result.stderr + result.stdout, /--async|use JSON-RPC protocol/)
+})

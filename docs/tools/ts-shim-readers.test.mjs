@@ -16,5 +16,5 @@ test("the prelude collision remains an open proposal question", () => {
   const text = read("../design/vips/0042-vibelang-in-ts-files-open.md")
   assert.match(text, /## Open question/)
   assert.match(text, /prelude/)
-  assert.match(text, /\*\*Status:\*\* open/)
+  assert.match(text, /\*\*Status:\*\* accepted/)
 })

@@ -2,7 +2,7 @@
 
 > **Warning:** VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
 
-A source-checkout preview, not published to npm, implementing [open VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md).
+A source-checkout preview, not published to npm, implementing [VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md).
 
 The package runs VibeLang's compiler under the name `typescript`. A project keeps its `.ts` files, its `tsc` scripts and its editor, and a `.ts` file whose first line is `// @vibe` compiles as VibeLang. Every other `.ts` file keeps TypeScript's verdict.
 
@@ -51,7 +51,7 @@ check needs npm registry access and exits nonzero if any tool fails.
 | fork-ts-checker-webpack-plugin 9.2.0 | The checker cannot call `readConfigFile`. Webpack also needs a loader for `.vibe`. |
 | typescript-eslint 8.74.0, type-aware rule | The plugin rejects the TypeScript 7 API during startup. |
 | TypeDoc 0.28.20 | Startup fails reading `SyntaxKind.PropertyDeclaration`. |
-| vue-tsc 3.3.14 | Resolving the package subpath `typescript/lib/tsc` fails. |
+| vue-tsc 3.3.14 | Needs the classic TypeScript JavaScript compiler API beyond the `typescript/lib/tsc` binary entry. |
 | svelte-check 4.7.8 | The default mode rejects a sole TypeScript 7 installation and requests a TypeScript 6 companion for its TS7 modes. |
 | Knip 6, unresolved imports | The configured scan exits 0. This checks import resolution only. |
 | ts-jest 29.4.15 | Its transformer rejects the missing classic JavaScript compiler API before executing the test. |

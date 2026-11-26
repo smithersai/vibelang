@@ -21,6 +21,8 @@
   "type": "module",
   "exports": {
     ".": "./lib/version.cjs",
+    "./bin/tsc": "./bin/tsc",
+    "./lib/tsc": "./lib/tsc",
     "./package.json": "./package.json"
   },
   "bin": {
