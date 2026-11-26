@@ -62,6 +62,30 @@
       "flows": []
     },
     {
+      "id": "release",
+      "description": "Release VibeLang to npm: check the checkout, build the platform binaries and packages, rehearse the install from a throwaway registry, ask a maintainer to approve the exact tarballs and for npm's one-time password, publish, and verify the published packages",
+      "summary": "Check, build, rehearse, approve, publish, and verify a VibeLang release.",
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/release/flow.ts",
+      "capabilities": ["fs:read:**", "fs:write:**", "proc:spawn:*", "net:get:*", "net:post:*"],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "spec-review",
+      "description": "Run the specification's acceptance gate on one revision: four reviewers each answer with a verdict and a grade, and the panel's record says whether all four answered LGTM with A- or better",
+      "summary": "Run the four-reviewer specification acceptance gate on one revision.",
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/spec-review/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
       "id": "ts-bump",
       "description": "Move the TypeScript fork to a newer upstream commit: merge upstream's changes three ways, move the pin, regenerate the Effect rules' shims, build, run the fork's targets, and report what to change",
       "summary": null,

@@ -27,7 +27,9 @@ export const releasePatterns = [
   ".smithers/flows/ci-health/test/*.test.mjs",
   ".smithers/flows/first-bad/test/*.test.mjs",
   ".smithers/flows/fuzz-campaign/test/*.test.mjs",
+  ".smithers/flows/release/test/*.test.mjs",
   ".smithers/flows/site-deploy/test/*.test.mjs",
+  ".smithers/flows/spec-review/test/*.test.mjs",
   ".smithers/flows/test/*.test.mjs"
 ] as const
 export const specLinterFiles = [
