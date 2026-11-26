@@ -48,6 +48,7 @@ async function main(argv) {
     emittedProjects: many(options["emitted-project"]),
     routeBundledImports: Boolean(options["route-bundled-imports"]),
     includePrivateDeclarations: Boolean(options["include-private-declarations"]),
+    consumerTests: Boolean(options["consumer-tests"]),
     test: options.test,
     main: options.main,
     afterConvert: many(options["after-convert"]),

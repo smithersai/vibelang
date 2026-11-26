@@ -41,3 +41,38 @@ export function localPackageDependencies(root, byName) {
     return dependency ? [dependency] : []
   }))]
 }
+
+/**
+ * Transitive downstream workspace consumer packages that depend on any package
+ * in `touchedDirs` and define a `scripts.test` command, sorted by directory (#396).
+ */
+export function dependentConsumerPackages(root, manifests, touchedDirs) {
+  const byName = new Map(manifests.filter(m => m.manifest?.name).map(m => [m.manifest.name, m]))
+  const byDir = new Map(manifests.map(m => [m.dir, m]))
+  const depsOf = localPackageDependencies(root, byName)
+  const rdeps = new Map()
+  for (const pkg of manifests) {
+    for (const dep of depsOf(pkg)) {
+      if (dep.dir === pkg.dir) continue
+      const set = rdeps.get(dep.dir) ?? new Set()
+      set.add(pkg.dir)
+      rdeps.set(dep.dir, set)
+    }
+  }
+  const touched = new Set(touchedDirs)
+  const visited = new Set()
+  const queue = [...touched]
+  while (queue.length) {
+    const dir = queue.shift()
+    for (const consumer of rdeps.get(dir) ?? []) {
+      if (visited.has(consumer)) continue
+      visited.add(consumer)
+      queue.push(consumer)
+    }
+  }
+  return [...visited]
+    .filter(dir => !touched.has(dir))
+    .map(dir => byDir.get(dir))
+    .filter(pkg => pkg && typeof pkg.manifest?.scripts?.test === "string" && pkg.manifest.scripts.test.trim() !== "")
+    .sort((a, b) => a.dir.localeCompare(b.dir))
+}

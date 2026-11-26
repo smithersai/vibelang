@@ -5,7 +5,8 @@ import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
 import { restorePrivateResolverExports } from "./import-meta-platform.mjs"
 import { formatResult as formatApiIdentity } from "./api-identity.mjs"
 import { prepareToolchainPublication, stagedToolchainSpecs } from "./toolchain-publication.mjs"
-import { prepareBuilds } from "./builds.mjs"
+import { prepareBuilds, workspacePackages } from "./builds.mjs"
+import { dependentConsumerPackages } from "./workspace-dependencies.mjs"
 import { checkConvertedPaths } from "./converted-paths.mjs"
 import { compareDistLists } from "./dist-list.mjs"
 import { packLoadBaseline, verifyPackLoad } from "./pack-load.mjs"
@@ -258,6 +259,7 @@ export function makeConfig(options) {
     ...(options.typecheckSourceRoots?.length ? { typecheckSourceRoots: options.typecheckSourceRoots } : {}),
     // A private workspace package other packages consume has an API too; a run opts in to holding it to identity.
     ...(options.includePrivateDeclarations ? { declarations: { includePrivate: true } } : {}),
+    ...(options.consumerTests ? { consumerTests: options.consumerTests } : {}),
     toolchain: options.toolchain ? { kind: "staged", dir: resolve(options.toolchain) } : { kind: "npm", version: options.vibelangVersion },
     // Each recorded batch goes on this bookmark, one commit on top of the last.
     bookmark: options.bookmark ?? "vibe",
@@ -1234,6 +1236,9 @@ export async function setup(options) {
   const baselineBuild = await prepareBuilds(config, logs, "baseline", { distList: true })
   const tests = await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, "baseline.vitest.json"), log: join(logs, "baseline-tests.log") })
   writeJson(join(p.baseline, "tests.json"), { code: tests.code, tests: tests.tests, build: baselineBuild })
+  const consumerBaseline = config.consumerTests
+    ? await baselineConsumerTests({ config, baselinePath: join(p.baseline, "consumer-tests.json"), logs })
+    : null
   assertBaselineSafe(p)
   // What a consumer outside this tree gets from each published package, nothing migrated.
   const packBaseline = await packLoadBaseline({ config, logs })
@@ -1295,6 +1300,7 @@ export async function setup(options) {
     agents,
     upstreamTests: upgrade.tests,
     tests: testsOf(tests),
+    ...(consumerBaseline ? { consumerTests: consumerBaseline } : {}),
     wiringRegressions: wiring && { newFailures: wiring.newFailures, missing: wiring.missing, exit: { before: upstream.code, after: tests.code } },
     compile,
     compileBaselineVersion: 2,
@@ -2111,6 +2117,100 @@ async function foreignBatchChanges(target, changed, batch) {
   return foreignChanges(changed, { ...batch, manifestSnapshots })
 }
 
+/**
+ * Baselines every downstream workspace consumer package that imports any of
+ * `config.packages` and writes `baseline/consumer-tests.json` (#396).
+ */
+export async function baselineConsumerTests({ config, baselinePath, logs }) {
+  const t = config.target
+  const manifests = await workspacePackages(config)
+  const consumers = Array.isArray(config.consumerTests)
+    ? config.consumerTests
+    : dependentConsumerPackages(t, manifests, config.packages.map(pkg => pkg.dir)).map(pkg => ({
+      dir: pkg.dir,
+      name: pkg.manifest.name ?? pkg.dir,
+      command: pkg.manifest.scripts.test,
+      report: config.test.report
+    }))
+  const results = {}
+  for (const consumer of consumers) {
+    const receipt = await runTests({
+      command: consumer.command,
+      report: consumer.report ?? config.test.report,
+      cwd: join(t, consumer.dir),
+      root: t,
+      jsonFile: join(logs, `baseline-consumer-${slug(consumer.dir)}.vitest.json`),
+      log: join(logs, `baseline-consumer-${slug(consumer.dir)}.log`)
+    })
+    results[consumer.dir] = { name: consumer.name ?? consumer.dir, command: consumer.command, code: receipt.code, tests: receipt.tests, total: receipt.total, passed: receipt.passed, failed: receipt.failed, skipped: receipt.skipped }
+  }
+  const snapshot = { state: "complete", consumers: results }
+  writeJson(baselinePath, snapshot)
+  return snapshot
+}
+
+/**
+ * Runs downstream importing consumer tests for the packages touched by a batch
+ * and compares each against the matched original baseline (#396).
+ */
+export async function verifyConsumerTests({ config, baselinePath, logs, touchedDirs, renames = [] }) {
+  if (!config.consumerTests) return { state: "not-run", ok: true, consumers: {}, failures: [] }
+  const t = config.target
+  const manifests = await workspacePackages(config)
+  const consumers = Array.isArray(config.consumerTests)
+    ? config.consumerTests
+    : dependentConsumerPackages(t, manifests, touchedDirs).map(pkg => ({
+      dir: pkg.dir,
+      name: pkg.manifest.name ?? pkg.dir,
+      command: pkg.manifest.scripts.test,
+      report: config.test.report
+    }))
+  if (!consumers.length) return { state: "not-run", ok: true, reason: "no dependent consumer packages with tests for touched packages", consumers: {}, failures: [] }
+  const baseline = readJsonIf(baselinePath)
+  if (!baseline || baseline.state !== "complete") {
+    return { state: "not-run", ok: false, reason: "missing matched original consumer-test baseline; rerun setup with --consumer-tests", consumers: {}, failures: [] }
+  }
+  const results = {}
+  const failures = []
+  for (const consumer of consumers) {
+    const base = baseline.consumers?.[consumer.dir]
+    if (!base) {
+      failures.push({ consumer: consumer.dir, reason: "missing original baseline entry for dependent consumer", newFailures: ["(missing consumer baseline)"], missing: [], skipped: [] })
+      continue
+    }
+    const actual = await runTests({
+      command: consumer.command,
+      report: consumer.report ?? config.test.report,
+      cwd: join(t, consumer.dir),
+      root: t,
+      jsonFile: join(logs, `consumer-${slug(consumer.dir)}.vitest.json`),
+      log: join(logs, `consumer-${slug(consumer.dir)}.log`)
+    })
+    const comparison = compareTests(base, actual, { renames })
+    results[consumer.dir] = {
+      name: consumer.name ?? consumer.dir,
+      command: consumer.command,
+      code: actual.code,
+      total: actual.total,
+      passed: actual.passed,
+      failed: actual.failed.length,
+      skipped: actual.skipped,
+      ...comparison
+    }
+    if (!comparison.ok) {
+      failures.push({
+        consumer: consumer.dir,
+        name: consumer.name ?? consumer.dir,
+        command: consumer.command,
+        newFailures: comparison.newFailures,
+        missing: comparison.missing,
+        skipped: comparison.skipped
+      })
+    }
+  }
+  return { state: "complete", ok: failures.length === 0, consumers: results, failures }
+}
+
 export async function verify(options) {
   assertBaselineSafe(paths(options.run))
   const { p, config, plan: thePlan } = loadRun(options.run)
@@ -2143,6 +2243,8 @@ export async function verify(options) {
   const testRenames = (thePlan.batches ?? []).slice(0, Number(b)).flatMap((_, i) =>
     readJsonIf(p.codemod(batchName(i)))?.renames ?? [])
   const testResults = compareTests(baselineTests, tests, { renames: testRenames })
+  const touchedDirs = [...new Set(files.map(f => packageOf(config, f.planned)?.dir).filter(Boolean))]
+  const consumerTests = await verifyConsumerTests({ config, baselinePath: join(p.baseline, "consumer-tests.json"), logs, touchedDirs, renames: testRenames })
   const upstreamPacks = readJsonIf(join(p.baseline, "upstream-packs.json"))
   const candidatePacks = measurement?.packs?.candidate ?? await packRepository(config, join(logs, "candidate-packs"), { baseline: upstreamPacks })
   const migratedPackSources = Object.fromEntries(config.packages.map(pkg => [pkg.dir,
@@ -2221,6 +2323,7 @@ export async function verify(options) {
     formatted,
     tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped,
       status: testsPassed(tests) ? "passed" : "failing", failedNames: tests.failed, baseline: { code: baselineTests.code, failed: baselineTests.tests ? Object.keys(baselineTests.tests).filter(name => baselineTests.tests[name] === "failed") : [] }, ...testResults },
+    consumerTests,
     build: measurement?.builds?.candidate ?? candidateBuild,
     declarations,
     measurement, hooks, packs,
@@ -2238,6 +2341,7 @@ export async function verify(options) {
     declarationOracle: { unproven, unavailable: Object.fromEntries(Object.entries(oracle ?? {}).filter(([, o]) => o.unavailable).map(([dir, o]) => [dir, o.unavailable])) },
     checks: {
       tests: testResults.ok,
+      consumerTests: consumerTests.ok,
       packs: packs.ok,
       testEdits: testDiffBefore.ok && testDiff.ok && (measurement?.ok ?? true),
       selectors: selectorChecks.every(proof => proof.pass),
