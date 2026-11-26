@@ -617,26 +617,76 @@ export function readAllowList(path) {
   return { entries: list.filter(valid), invalid: list.filter(entry => !valid(entry)) }
 }
 
+// Encoded module body names follow moduleDeclarationFileNamePart (lowercase ASCII,
+// digits, underscores, and -<hex>- escapes such as -24-call-24-ts for $call$ts).
+const validIdentifier = /^[$_\p{ID_Start}][$\p{ID_Continue}]*$/u
+function isCompanionBodyName(part) {
+  if (/^[A-Za-z_$][\w$]*$/.test(part)) return true
+  if (!/^(?:[a-z0-9_]|-[0-9a-f]+-)+$/.test(part)) return false
+  let decoded = ""
+  for (const match of part.matchAll(/([a-z0-9_])|-([0-9a-f]+)-/g)) {
+    if (match[1] !== undefined) {
+      decoded += match[1]
+    } else {
+      const code = Number.parseInt(match[2], 16)
+      if (!Number.isFinite(code) || code > 0x10ffff) return false
+      const ch = String.fromCodePoint(code)
+      if (/^[a-z0-9_]$/.test(ch)) return false
+      decoded += ch
+    }
+  }
+  return validIdentifier.test(decoded)
+}
+const companionExt = /\.[cm]?jsx?$/
+const siblingImport = /\b(?:from|import)\s*\(?\s*["']\.\/([^"'/]+)["']|\brequire\s*\(\s*["']\.\/([^"'/]+)["']/g
+
+/**
+ * The transitive emitted JavaScript companion closure for `file` starting from
+ * `emitted`, together with any referenced companion names that were absent on disk.
+ * Covers VIP-40 bodies (including encoded names like `$call$ts` -> `-24-call-24-ts.js`)
+ * and `<stem>.platform.js(x)` siblings (#395).
+ */
+export function companionClosureOf(file, emitted, read = path => existsSync(path) ? readFileSync(path, "utf8") : null) {
+  const base = posix.basename(file)
+  const stem = base.replace(/\.vibex?$/, "")
+  const dir = dirname(emitted.path)
+  const companions = new Map()
+  const missing = new Set()
+  const seen = new Set([emitted.path])
+  const queue = [emitted.text]
+  const isCompanion = name => {
+    if (name === stem + ".platform.js" || name === stem + ".platform.jsx" ||
+      name === stem + ".platform.mjs" || name === stem + ".platform.cjs") return true
+    if (!name.startsWith(base + ".") || !companionExt.test(name)) return false
+    return isCompanionBodyName(name.slice(base.length + 1).replace(companionExt, ""))
+  }
+  while (queue.length) {
+    const current = queue.shift()
+    for (const m of current.matchAll(siblingImport)) {
+      const name = m[1] ?? m[2]
+      if (!isCompanion(name)) continue
+      const path = join(dir, name)
+      if (seen.has(path)) continue
+      seen.add(path)
+      const text = read(path)
+      if (text !== null && text !== undefined) {
+        companions.set(path, { path, text })
+        queue.push(text)
+      } else {
+        missing.add(name)
+      }
+    }
+  }
+  return { companions: [...companions.values()], missing: [...missing].sort() }
+}
+
 /**
  * The emitted JavaScript of the VIP-40 bodies that emitted, the JavaScript of
  * the module file (repository-relative), imports or re-exports: x.vibe's body
  * `platform` emits beside x.js as `x.vibe.platform.js`.
  */
 export function bodyCompanionsOf(file, emitted, read = path => existsSync(path) ? readFileSync(path, "utf8") : null) {
-  const base = posix.basename(file)
-  // The platform split's sibling, x.platform.ts beside x.vibe, emits as x.platform.js.
-  const stem = base.replace(/\.vibex?$/, "")
-  const companions = new Map()
-  for (const m of emitted.text.matchAll(/\b(?:from|import)\s*["']\.\/([^"'/]+)["']/g)) {
-    const name = m[1]
-    const sibling = name === stem + ".platform.js" || name === stem + ".platform.jsx"
-    if (!sibling && (!name.startsWith(base + ".") || !/^[A-Za-z_$][\w$]*\.jsx?$/.test(name.slice(base.length + 1)))) continue
-    const path = join(dirname(emitted.path), name)
-    if (companions.has(path)) continue
-    const text = read(path)
-    if (text !== null && text !== undefined) companions.set(path, { path, text })
-  }
-  return [...companions.values()]
+  return companionClosureOf(file, emitted, read).companions
 }
 
 /** The package directory that holds a repository path, the longest of `packages`, and the emitted JavaScript of the module there. */
@@ -682,8 +732,10 @@ export function lostWrapperCheck({ ts, files, original, emitted, renamed = () =>
       if (!inTestDirectory(file)) cannotRead(file, "no emitted JavaScript for it")
       continue
     }
+    const { companions, missing } = companionClosureOf(file, after, read)
+    if (missing.length) cannotRead(file, "missing emitted companion(s): " + missing.join(", "))
     modules++
-    const found = lostWrappers({ ts, original: before.text, originalPath: before.path, emitted: after.text, emittedPath: after.path, companions: bodyCompanionsOf(file, after, read) })
+    const found = lostWrappers({ ts, original: before.text, originalPath: before.path, emitted: after.text, emittedPath: after.path, companions })
     paired += found.paired
     unpaired.push(...found.unpaired.map(entry => ({ file, ...entry })))
     inlined.push(...found.inlined.map(entry => ({ file, ...entry })))

@@ -22,7 +22,7 @@ const walk = (dir, found = []) => {
   }
   return found
 }
-const originalPath = file => [".ts", ".tsx"].map(extension => file.replace(/\.vibex?$/, extension)).find(path => existsSync(join(o.orig, path)))
+const originalPath = file => [".ts", ".tsx", ".mts", ".cts"].map(extension => file.replace(/\.vibex?$/, extension)).find(path => existsSync(join(o.orig, path)))
 const emittedPath = file => {
   if (o.js) return join(o.js, file.replace(/\.vibex$/, ".jsx").replace(/\.vibe$/, ".js"))
   let dir = dirname(file)
@@ -41,6 +41,7 @@ for (const e of result.excused) console.log(`EXCUSED ${e.file}: ${e.allowedBecau
 for (const u of result.unchecked) console.log(`UNCHECKED ${u.file}: ${u.reason}`)
 for (const u of result.unpaired) console.log(`UNPAIRED ${u.file}:${u.line} ${u.function}: returned Effect ${u.effectReturns}x, no emitted function by that path; read it`)
 const newModules = all.length - files.length
+if (result.modules === 0) console.log("NO_PAIRS: zero migrated modules compared; comparing zero pairs cannot pass")
 console.log(`lost-wrappers: modules ${result.modules}, functions paired ${result.paired}, flagged ${result.flags.length}, allowed ${result.allowed.length}, unpaired ${result.unpaired.length}, unchecked ${result.unchecked.length}, new modules ${newModules}`)
 if (o.json) writeFileSync(o.json, JSON.stringify(result, null, 1))
-process.exit(result.blocking.length || result.unchecked.length ? 1 : 0)
+process.exit(result.modules === 0 || result.blocking.length || result.unchecked.length ? 1 : 0)

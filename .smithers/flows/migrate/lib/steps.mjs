@@ -2063,15 +2063,37 @@ export async function checkLostWrappers({ config, p, plan, batch, migrated, emit
   const dirs = config.packages.map(pkg => pkg.dir)
   const written = new Set(emittedJs.filter(entry => !entry.restored).map(entry => entry.package))
   const scratch = dir => join(p.batch(batch), "lost-wrapper-js", slug(dir))
-  for (const pkg of config.packages) {
-    if (written.has(pkg.dir) || !migrated.some(file => emittedPathOf(file, dirs)?.dir === pkg.dir)) continue
-    await emitPackageJs({ compiler: compilerOf(config), tsconfigs: Wire.projectsOf(ts, join(t, pkg.dir), pkg.tsconfig), packageDir: join(t, pkg.dir), root: t, log: join(logs, `lost-wrapper-js-${slug(pkg.dir)}.log`), outDir: scratch(pkg.dir) })
-  }
-  const emitted = file => {
+  const emittedAt = file => {
     const at = emittedPathOf(file, dirs)
     if (!at) return null
-    const path = written.has(at.dir) ? join(t, at.path) : join(scratch(at.dir), posix.relative(posix.join(at.dir, ".vibelang/js"), at.path))
-    return existsSync(path) ? { path, text: readFileSync(path, "utf8") } : null
+    const primary = written.has(at.dir) ? join(t, at.path) : null
+    if (primary && existsSync(primary)) return primary
+    const fallback = join(scratch(at.dir), posix.relative(posix.join(at.dir, ".vibelang/js"), at.path))
+    return existsSync(fallback) ? fallback : null
+  }
+  for (const pkg of config.packages) {
+    const pkgMigrated = migrated.filter(file => emittedPathOf(file, dirs)?.dir === pkg.dir)
+    if (!pkgMigrated.length) continue
+    const pkgDir = join(t, pkg.dir)
+    if (!written.has(pkg.dir)) {
+      await emitPackageJs({ compiler: compilerOf(config), tsconfigs: Wire.projectsOf(ts, pkgDir, pkg.tsconfig), packageDir: pkgDir, root: t, log: join(logs, `lost-wrapper-js-${slug(pkg.dir)}.log`), outDir: scratch(pkg.dir) })
+    }
+    // Emit any additional owning tsconfig*.json (e.g. examples/build configs) when
+    // migrated modules remain without emitted JS after the primary config (#395).
+    if (pkgMigrated.some(file => !emittedAt(file))) {
+      const seen = new Set(Wire.projectsOf(ts, pkgDir, pkg.tsconfig))
+      const extra = readdirSync(pkgDir)
+        .filter(name => /^tsconfig(?:\..+)?\.json$/.test(name) && !seen.has(name))
+        .flatMap(name => Wire.projectsOf(ts, pkgDir, name))
+        .filter(name => !seen.has(name))
+      if (extra.length) {
+        await emitPackageJs({ compiler: compilerOf(config), tsconfigs: [...new Set(extra)], packageDir: pkgDir, root: t, log: join(logs, `lost-wrapper-extra-js-${slug(pkg.dir)}.log`), outDir: scratch(pkg.dir) })
+      }
+    }
+  }
+  const emitted = file => {
+    const path = emittedAt(file)
+    return path ? { path, text: readFileSync(path, "utf8") } : null
   }
   const renamed = new Set((plan?.batches ?? []).flatMap((_, i) => readJsonIf(p.codemodState(batchName(i)))?.renames ?? []).map(r => r.to))
   return lostWrapperCheck({ ts, files: migrated, original: file => originalSourceOf(p, plan, file), emitted, renamed: file => renamed.has(file), allow: readAllowList(p.lostWrapperAllow) })
