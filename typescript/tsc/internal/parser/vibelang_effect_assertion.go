@@ -76,6 +76,9 @@ func (p *Parser) parseVibeLangAssertionType() *ast.TypeNode {
 	if !p.isVibeLangFile() {
 		return p.parseType()
 	}
+	savedStart := p.vibeLangAssertionStart
+	p.vibeLangAssertionStart = p.nodePos() + 1
+	defer func() { p.vibeLangAssertionStart = savedStart }()
 	key := effectAssertionChoiceKey{pos: p.scanner.TokenStart(), omitAt: p.vibeLangOmitRequirementAt,
 		diagnostics: len(p.diagnostics), slotDepth: p.vibeLangSlotDepth,
 		flags: p.contextFlags, contexts: p.parsingContexts, asi: p.vibeLangExpressionASI,

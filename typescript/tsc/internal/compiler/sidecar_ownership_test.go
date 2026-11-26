@@ -196,3 +196,66 @@ func TestSidecarPruningLegacyOwnershipReceipt(t *testing.T) {
 		t.Fatal("the native declaration did not move with its sidecar")
 	}
 }
+
+type forbiddenWalkFS struct {
+	vfs.FS
+	t         *testing.T
+	forbidden map[string]bool
+}
+
+func (f *forbiddenWalkFS) GetAccessibleEntries(path tspath.RootedDirectoryPath) vfs.Entries {
+	if f.forbidden[string(path)] {
+		f.t.Errorf("sidecar pruning walked forbidden ancestor directory %q", path)
+	}
+	return f.FS.GetAccessibleEntries(path)
+}
+
+func TestSidecarPruningDoesNotWalkFilesystemRootOrAncestors(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		rootDir   string
+		forbidden []string
+	}{
+		{
+			name:      "filesystemRoot",
+			rootDir:   "/",
+			forbidden: []string{"/", "/unrelated", "/tmp"},
+		},
+		{
+			name:      "ancestorDir",
+			rootDir:   "/tmp",
+			forbidden: []string{"/", "/tmp", "/tmp/other"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := fmt.Sprintf(`{"compilerOptions":{"strict":true,"target":"es2022","module":"nodenext","moduleResolution":"nodenext","types":[],"rootDir":%q,"outDir":".emit","noEmit":false},"include":["src/**/*"]}`, tc.rootDir)
+			base := bundled.WrapFS(vfstest.FromMap(map[string]any{
+				"/tmp/project/tsconfig.json": cfg,
+				"/tmp/project/src/keep.vibe": "export const keep = 1;\n",
+				"/tmp/project/src/drop.vibe": "export const drop = 2;\n",
+				"/tmp/other/sibling.txt":     "do not scan\n",
+				"/unrelated/host.txt":        "do not scan\n",
+			}, tspath.CaseSensitive))
+			forbidden := map[string]bool{}
+			for _, dir := range tc.forbidden {
+				forbidden[dir] = true
+			}
+			watched := &forbiddenWalkFS{FS: base, t: t, forbidden: forbidden}
+
+			emitOwnedSidecars(t, watched, "/tmp/project/tsconfig.json")
+			requireOwnedSidecar(t, base, "/tmp/project/src/keep.d.vibe.ts")
+			requireOwnedSidecar(t, base, "/tmp/project/src/drop.d.vibe.ts")
+
+			// Deleting drop.vibe must still prune its stale sidecar inside the project
+			// without walking rootDir or any ancestor outside configDir.
+			if err := base.Remove("/tmp/project/src/drop.vibe"); err != nil {
+				t.Fatal(err)
+			}
+			emitOwnedSidecars(t, watched, "/tmp/project/tsconfig.json")
+			requireOwnedSidecar(t, base, "/tmp/project/src/keep.d.vibe.ts")
+			if base.FileExists("/tmp/project/src/drop.d.vibe.ts") || base.FileExists("/tmp/project/src/drop.d.ts") {
+				t.Fatal("stale sidecar inside project was not pruned")
+			}
+		})
+	}
+}

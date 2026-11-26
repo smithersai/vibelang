@@ -287,7 +287,12 @@ func (e *emitter) emitDeclarationFile(emitResolver printer.EmitResolver, sourceF
 
 	// create a printer to print the nodes
 	printHandlers := printer.PrintHandlers{}
-	if spanMap := contentMappedSource.SpanMap(); emitDeclarationMap && spanMap != nil {
+	if emitDeclarationMap && contentMappedSource.EmbeddedModule() != nil {
+		// Embedded bodies retain the positions of the enclosing source, including
+		// the initial source registered before the first declaration is printed.
+		original := newOriginalMapSource(contentMappedSource)
+		printHandlers.SourceMapSource = func(*ast.SourceFile) sourcemap.Source { return original }
+	} else if spanMap := contentMappedSource.SpanMap(); emitDeclarationMap && spanMap != nil {
 		originalSource := newOriginalMapSource(contentMappedSource)
 		printHandlers.MapSourcePosition = func(source sourcemap.Source, pos int) (sourcemap.Source, int, bool) {
 			if source.FileName() != contentMappedSource.FileName() {

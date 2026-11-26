@@ -1,3 +1,3 @@
 main.vibe(2,5): error EK0406
 main.vibe(6,7): error EK0406
-main.vibe(9,26): error EK0406
+main.vibe(9,28): error EK0406

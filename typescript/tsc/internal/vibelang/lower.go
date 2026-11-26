@@ -506,6 +506,9 @@ func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 	}
 	run := tx.Factory().NewYieldExpression(tx.Factory().NewToken(ast.KindAsteriskToken), call)
 	tx.EmitContext().SetOriginal(run, node)
+	if node.Flags&ast.NodeFlagsVibeLangTry != 0 || isTryCall(node) {
+		tx.EmitContext().SetSourceMapRange(run, node.Loc)
+	}
 	return run
 }
 

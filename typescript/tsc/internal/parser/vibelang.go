@@ -358,7 +358,7 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 			})
 		}
 		dependencies = p.parseVibeLangSlot(allowObject)
-		if !omittedError && dependencies.End() == last.End() {
+		if !omittedError && dependencies.End() == last.End() && (p.token != ast.KindExclamationToken || p.hasPrecedingLineBreak()) {
 			start := scanner.SkipTrivia(p.sourceText, result.Pos())
 			p.parseErrorAtRange(last, diagnostics.X_0_at_the_end_of_a_type_is_not_valid_TypeScript_syntax_Did_you_mean_to_write_1, "!", p.sourceText[start:errors.End()])
 		}
@@ -370,18 +370,25 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 	name := p.vibelangSynthesized(p.factory.NewQualifiedName(module, member), bang)
 	arguments := p.newNodeList(span, []*ast.Node{result, errors, dependencies})
 	reference := p.vibelangSpanning(p.factory.NewTypeReferenceNode(name, arguments), span)
-	// Appendix A assigns EK0302 to A!!B!C. Recover the left grouping so
-	// one specific error replaces the native missing-semicolon cascade.
-	// An omitted R or a bare expression assertion keeps its existing boundary.
-	if omittedError && dependencies.Flags&ast.NodeFlagsReparsed == 0 &&
-		p.token == ast.KindExclamationToken && !p.hasPrecedingLineBreak() && p.lookAhead(func(p *Parser) bool {
-		p.nextToken()
-		return !p.hasPrecedingLineBreak() && p.isStartOfVibeLangSlot()
-	}) {
-		nested := p.parseVibeLangEffectType(reference)
-		at := core.NewTextRange(scanner.SkipTrivia(p.sourceText, nested.Pos()), nested.End())
-		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, at, "EK", diagnostics.CategoryError, 302, VibeLangExtraEffectSlotMessage))
-		return nested
+	// A third separator is invalid in a type. In an assertion, a bang
+	// without a following slot belongs to the surrounding expression.
+	if !omitted && p.token == ast.KindExclamationToken && !p.hasPrecedingLineBreak() {
+		hasSlot := p.lookAhead(func(p *Parser) bool {
+			p.nextToken()
+			return !p.hasPrecedingLineBreak() && p.isStartOfVibeLangSlot()
+		})
+		if hasSlot || p.vibeLangAssertionStart != result.Pos()+1 {
+			end := p.tokenRange().End()
+			if hasSlot {
+				// Retain the nested reference for recovery and editor navigation.
+				reference = p.parseVibeLangEffectType(reference)
+				end = reference.End()
+			} else {
+				p.nextToken()
+			}
+			at := core.NewTextRange(scanner.SkipTrivia(p.sourceText, result.Pos()), end)
+			p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, at, "EK", diagnostics.CategoryError, 302, VibeLangExtraEffectSlotMessage))
+		}
 	}
 	// A postfix ? after the type is TypeScript's, as parsePostfixTypeOrHigher
 	// gives it: the tuple parser makes [A!E?] and [A!!?] optional elements, and

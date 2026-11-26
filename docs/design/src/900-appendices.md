@@ -1078,7 +1078,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1133 records)</summary>
+<summary>Parser and lowering hooks (1135 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1932,6 +1932,8 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_do.go:anonymousDoValue ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: identify anonymous source values so a do temporary does not infer a new native name |
 | ` parser/vibelang_do.go:doLowering.finish ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: finish an earlier operand or spread before the following do expression runs |
 | ` parser/vibelang_do.go:doLowering.method ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: preserve a member callee and its receiver before a later do expression |
+| ` parser/vibelang_do.go:Parser.jsxDoNeedsStatements ` | ` admission:do ` | ` 002-running.md ` | ` support ` | VIP-2 and VIP-39: outward completions require statement lowering in JSX attributes |
+| ` parser/vibelang_do.go:doLowering.jsxAttributes ` | ` admission:do ` | ` 002-running.md ` | ` support ` | VIP-39: evaluate the component and preceding attributes before a lifted do |
 | ` parser/vibelang_do.go:doLowering.orderedWith ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: finish do-bearing operands in native source evaluation order |
 | ` parser/vibelang_do.go:doLowering.propertyKey ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: finish a computed property key and its native conversion before later do work |
 | ` parser/vibelang_do.go:doLowering.stringify ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: preserve native template substitution conversion before a later do expression |

@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -81,7 +82,7 @@ func (p *Program) pruneOwnedSidecar(sidecar string, output vfs.FS) error {
 // pruneStaleOwnedSidecars removes sidecar declarations, native forwarders, and
 // receipts owned solely by this project that are no longer among selected live
 // outputs (for example after a .vibe or .vibex source is deleted or renamed).
-func (p *Program) pruneStaleOwnedSidecars(selected map[tspath.PathKey]bool, output vfs.FS) {
+func (p *Program) pruneStaleOwnedSidecars(ctx context.Context, selected map[tspath.PathKey]bool, output vfs.FS) {
 	if output == nil {
 		return
 	}
@@ -92,7 +93,7 @@ func (p *Program) pruneStaleOwnedSidecars(selected map[tspath.PathKey]bool, outp
 	visited := map[tspath.PathKey]bool{}
 	var walk func(dir string)
 	walk = func(dir string) {
-		if dir == "" {
+		if dir == "" || (ctx != nil && ctx.Err() != nil) {
 			return
 		}
 		dirPath := tspath.RootedDirectoryPathFromNormalized(dir)
@@ -125,6 +126,9 @@ func (p *Program) pruneStaleOwnedSidecars(selected map[tspath.PathKey]bool, outp
 			}
 		}
 		for _, sub := range entries.Directories {
+			if ctx != nil && ctx.Err() != nil {
+				return
+			}
 			switch sub {
 			case "node_modules", ".git", ".jj":
 				continue
@@ -137,7 +141,13 @@ func (p *Program) pruneStaleOwnedSidecars(selected map[tspath.PathKey]bool, outp
 	if options.VibeLang != nil && options.VibeLang.SidecarDir != "" {
 		walk(options.VibeLang.SidecarDir)
 	}
-	if root := p.vibeSidecarSourceRoot(); root != "" {
+	// Do not walk a filesystem root or an ancestor above configDir (such as
+	// --rootDir /, which bundlers pass to mirror full paths); project sources
+	// outside configDir are covered by p.files below, and sibling rootDirs
+	// remain covered here.
+	if root := p.vibeSidecarSourceRoot(); root != "" &&
+		tspath.GetRootLength(root) < len(root) &&
+		!tspath.ContainsPath(root, configDir, p.caseSensitivity) {
 		walk(root)
 	}
 	for _, file := range p.files {

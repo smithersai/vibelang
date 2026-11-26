@@ -83,7 +83,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	gateOnDiagnostics := projectSidecarOptions || p.Options().NoEmitOnError.IsTrue()
 	if len(sources) == 0 {
 		if output != nil && !gateOnDiagnostics {
-			p.pruneStaleOwnedSidecars(nil, output)
+			p.pruneStaleOwnedSidecars(ctx, nil, output)
 		}
 		return nil
 	}
@@ -113,7 +113,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	}
 	if len(emittable) == 0 {
 		if output != nil && !gateOnDiagnostics {
-			p.pruneStaleOwnedSidecars(selected, output)
+			p.pruneStaleOwnedSidecars(ctx, selected, output)
 		}
 		return &EmitResult{EmitSkipped: true}
 	}
@@ -348,7 +348,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 		}
 	}
 	if output != nil && (!gateOnDiagnostics || !result.EmitSkipped) {
-		p.pruneStaleOwnedSidecars(selected, output)
+		p.pruneStaleOwnedSidecars(ctx, selected, output)
 	}
 	result.EmittedFiles = emittedFiles
 	return result

@@ -1,1 +1,0 @@
-nothrow-impl EK0406 is reported for the @throws tag on a function and on a service member, and not for the tag on a call signature in a type literal (main.vibe line 9). Appendix B, EK0406: a @throws tag in .vibe source "including on a service member or function-type signature".

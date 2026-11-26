@@ -1,4 +1,4 @@
-// expect: TS1005
+// expect: TS1005 TS1110
 type X = number!(string?)
 
 // Appendix A: cov-ch900a-slot-suffix-question.fail — spec-rule: docs/design/src/900-appendices.md#9579c9b3ec53d3dc

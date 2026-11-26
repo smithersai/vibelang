@@ -366,6 +366,10 @@ func classBases(c *checker.Checker, class *checker.Type) (*checker.Type, *checke
 		identifier = c.GetNeverType()
 	}
 	key := c.NewTypeReference(c.GetDeclaredTypeOfSymbol(service), []*checker.Type{identifier, shape})
+	if _, written := writtenKey(declaration); written == nil && !hasDefaultValue(declaration) {
+		// Context.ServiceClass narrows the inherited static key to its identifier literal.
+		key = c.GetIntersectionType([]*checker.Type{key, c.NewReadonlyPropertyType(serviceKeyName, c.GetStringLiteralType(s.key(declaration)))})
+	}
 	return key, s.instanceOf(declaration)
 }
 

@@ -11,8 +11,13 @@ const dir = fileURLToPath(new URL(".", import.meta.url))
 const emitted = readFileSync(new URL("out/main.jsx", import.meta.url), "utf8")
 assert.match(emitted, /class Timeout[\s\S]*<App\s*\/>/)
 for (const file of ["trailing.vibex", "ambiguous.vibex"]) {
-  const result = spawnSync(compiler, [file, "--jsx", "preserve", "--noCheck", "--noEmit", "--pretty", "false"], { cwd: dir, encoding: "utf8", timeout: 60000 })
-  assert.equal(result.status, 2, result.stdout + result.stderr)
+  const check = (...files) => spawnSync(compiler, [...files, "--jsx", "preserve", "--noCheck", "--noEmit", "--pretty", "false"], { cwd: dir, encoding: "utf8", timeout: 60000 })
+  const result = check(file)
+  // A syntax error skips this input's sidecar. A valid sibling emits its own.
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  const withOutput = check(file, "main.vibex")
+  assert.equal(withOutput.status, 2, withOutput.stdout + withOutput.stderr)
+  assert.equal(withOutput.stdout, result.stdout)
   assert.match(result.stdout, /error TS\d+:/)
   if (file === "trailing.vibex") {
     assert.match(result.stdout, /error TS1005:/)

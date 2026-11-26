@@ -1,1 +1,0 @@
-cov-vibex VIP-2/39 outward return, break and continue from a JSX do expression are rejected with EK0204.

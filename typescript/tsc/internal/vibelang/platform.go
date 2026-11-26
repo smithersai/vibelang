@@ -844,9 +844,8 @@ func isPlatformCallee(c *checker.Checker, call *ast.Node) bool {
 	return ok
 }
 
-// inFormerPlatformBoundary preserves the migration warning for the first
-// argument of a global callback call even though callback now uses its native
-// signature and no longer uses the compatibility hatch lowering.
+// Keep the migration warning in callbacks that the former global sync and
+// callback hatches accepted, including sync callbacks with explicit inputs.
 func inFormerPlatformBoundary(node *ast.Node) bool {
 	if inHatch(node) {
 		return true
@@ -857,8 +856,14 @@ func inFormerPlatformBoundary(node *ast.Node) bool {
 			continue
 		}
 		callee := call.Expression()
-		if ast.IsIdentifier(callee) && callee.Text() == "callback" &&
-			isVibeLangFile(ast.GetSourceFileOfNode(call)) && !shadowed(call, "callback") {
+		if !ast.IsIdentifier(callee) {
+			continue
+		}
+		name := callee.Text()
+		if name != "callback" && !(name == "sync" && ast.IsFunctionExpressionOrArrowFunction(ast.SkipParentheses(n))) {
+			continue
+		}
+		if isVibeLangFile(ast.GetSourceFileOfNode(call)) && !shadowed(call, name) {
 			return true
 		}
 	}

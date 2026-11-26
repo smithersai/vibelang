@@ -1,2 +1,2 @@
-// expect: codes=204 KindReturnStatement
+// expect: valid KindReturnStatement KindJsxSelfClosingElement
 function f() { return <Box v={do { return 7 }} /> }

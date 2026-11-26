@@ -9,6 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // do { … } is exactly TC39's do expression (VIP-2), pinned to this snapshot
@@ -950,6 +951,13 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 			ast.KindAwaitExpression, ast.KindYieldExpression, ast.KindSpreadElement, ast.KindPrefixUnaryExpression,
 			ast.KindPostfixUnaryExpression, ast.KindTemplateSpan, ast.KindTemplateExpression, ast.KindArrayLiteralExpression,
 			ast.KindSpreadAssignment, ast.KindObjectLiteralExpression, ast.KindConditionalExpression, ast.KindTaggedTemplateExpression:
+		case ast.KindJsxExpression, ast.KindJsxSpreadAttribute:
+			// Frameworks may evaluate an attribute lazily. Keep an ordinary do
+			// inline unless a completion needs the enclosing activation.
+			if !p.jsxDoNeedsStatements(p.vibelangDos[do]) {
+				return nil
+			}
+		case ast.KindJsxAttribute, ast.KindJsxAttributes, ast.KindJsxSelfClosingElement:
 		case ast.KindPropertyAccessExpression, ast.KindElementAccessExpression:
 			if n.Flags&ast.NodeFlagsOptionalChain != 0 {
 				return nil
@@ -1666,6 +1674,8 @@ func (l *doLowering) expr(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		} else {
 			t.Template = l.expr(t.Template, pre)
 		}
+	case ast.KindJsxSelfClosingElement:
+		l.jsxAttributes(e.AsJsxSelfClosingElement(), pre)
 	case ast.KindTemplateExpression:
 		// An untagged template converts each substitution to a string as
 		// it reaches it, so an earlier one is converted, not only read,
@@ -1721,6 +1731,61 @@ func setExpression(e, x *ast.Node) {
 		e.AsTemplateSpan().Expression = x
 	case ast.KindComputedPropertyName:
 		e.AsComputedPropertyName().Expression = x
+	}
+}
+
+// Only an outward completion requires hoisting a JSX attribute.
+func (p *Parser) jsxDoNeedsStatements(d *doExpression) bool {
+	needed := false
+	forEachDoStatement(d.block, func(n *ast.Node) {
+		switch n.Kind {
+		case ast.KindReturnStatement, ast.KindAwaitExpression, ast.KindYieldExpression:
+			needed = true
+		case ast.KindBreakStatement, ast.KindContinueStatement:
+			needed = needed || !jumpTargetWithin(n, d.arrow)
+		case ast.KindVariableDeclarationList:
+			needed = needed || n.Flags&ast.NodeFlagsBlockScoped == 0
+		}
+	})
+	return needed
+}
+
+// A lifted attribute must observe the component and preceding props once,
+// before the do runs. Materializing a spread also snapshots its getters.
+func (l *doLowering) jsxAttributes(element *ast.JsxSelfClosingElement, pre *[]*ast.Node) {
+	tag := element.TagName
+	if !ast.IsJsxNamespacedName(tag) && !(ast.IsIdentifier(tag) && scanner.IsIntrinsicJsxName(tag.Text())) {
+		element.TagName = l.spill(tag, pre)
+	}
+	attributes := element.Attributes.AsJsxAttributes().Properties.Nodes
+	last := -1
+	for i := len(attributes) - 1; i >= 0; i-- {
+		if l.marked[attributes[i]] {
+			last = i
+			break
+		}
+	}
+	for i := 0; i <= last; i++ {
+		attribute := attributes[i]
+		if ast.IsJsxSpreadAttribute(attribute) {
+			spread := attribute.AsJsxSpreadAttribute()
+			value := l.expr(spread.Expression, pre)
+			if i < last {
+				at := l.p.sourceRange(attribute)
+				copy := l.p.vibelangSpanning(l.p.factory.NewSpreadAssignment(value), at)
+				object := l.p.vibelangSpanning(l.p.factory.NewObjectLiteralExpression(l.p.newNodeList(at, []*ast.Node{copy}), false), at)
+				value = l.spill(object, pre)
+			}
+			spread.Expression = value
+			l.p.overrideParentInImmediateChildren(attribute)
+		} else if init := attribute.Initializer(); init != nil && ast.IsJsxExpression(init) {
+			prop := init.AsJsxExpression()
+			prop.Expression = l.expr(prop.Expression, pre)
+			if i < last {
+				prop.Expression = l.spill(prop.Expression, pre)
+			}
+			l.p.overrideParentInImmediateChildren(init)
+		}
 	}
 }
 

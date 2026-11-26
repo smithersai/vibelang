@@ -70,6 +70,7 @@ type Parser struct {
 	// Expression termination is scoped by the expression’s actual caller.
 	vibeLangExpressionASI     bool
 	vibeLangOmitRequirementAt int
+	vibeLangAssertionStart    int // one-based node position of the current as/satisfies type
 	vibeLangAssertionChoices  map[effectAssertionChoiceKey]int
 
 	scanner *scanner.Scanner
@@ -1932,10 +1933,14 @@ func (p *Parser) parseObjectBindingElement() *ast.Node {
 	pos := p.nodePos()
 	dotDotDotToken := p.parseOptionalToken(ast.KindDotDotDotToken)
 	tokenIsIdentifier := p.isBindingIdentifier()
+	awaitBinding := p.isVibeLangFile() && p.token == ast.KindAwaitKeyword
 	reservedName, nameRange := p.isReservedFiberName(), p.tokenRange()
 	propertyName := p.parsePropertyName()
 	var name *ast.Node
-	if tokenIsIdentifier && p.token != ast.KindColonToken {
+	if (tokenIsIdentifier || awaitBinding) && p.token != ast.KindColonToken {
+		if awaitBinding {
+			p.parseErrorAtRange(nameRange, diagnostics.Identifier_expected_0_is_a_reserved_word_that_cannot_be_used_here, "await")
+		}
 		if reservedName {
 			p.rejectReservedFiberName(nameRange)
 		}
@@ -5213,10 +5218,17 @@ func (p *Parser) parseBinaryExpressionRest(precedence ast.OperatorPrecedence, le
 				if ast.IsBinaryExpression(lastOperand) {
 					lastPrecedence = ast.GetBinaryOperatorPrecedence(lastOperand.AsBinaryExpression().OperatorToken.Kind)
 				}
+				asserted := p.parseVibeLangAssertionType()
 				if operator == ast.KindSatisfiesKeyword {
-					leftOperand = p.makeSatisfiesExpression(leftOperand, p.parseVibeLangAssertionType())
+					leftOperand = p.makeSatisfiesExpression(leftOperand, asserted)
 				} else {
-					leftOperand = p.makeAsExpression(leftOperand, p.parseVibeLangAssertionType())
+					leftOperand = p.makeAsExpression(leftOperand, asserted)
+				}
+				// A remaining bang after an Effect shorthand asserts the value,
+				// as if the assertion were parenthesized: (x as A!!)!.
+				if p.token == ast.KindExclamationToken && !p.hasPrecedingLineBreak() &&
+					ast.IsTypeReferenceNode(asserted) && asserted.AsTypeReferenceNode().TypeName.Flags&ast.NodeFlagsReparsed != 0 {
+					leftOperand = p.parseCallExpressionRest(pos, leftOperand)
 				}
 				// Stop if the next operator would bind before the last operator when the assertion is erased.
 				nextOperator := p.reScanGreaterThanToken()

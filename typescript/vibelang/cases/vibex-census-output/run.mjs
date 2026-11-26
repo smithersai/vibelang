@@ -48,11 +48,11 @@ const stock = resolve(process.env.EFFECT_NODE_MODULES, "typescript/bin/tsc")
 const results = []
 const base = { target:"ES2022", module:"ESNext", moduleResolution:"Bundler", jsx:"preserve", strict:true, types:[], skipLibCheck:true, declaration:true, outDir:"out", rootDir:"." }
 function check(key, body) { try { body(); results.push({key,ok:true}) } catch(e) { results.push({key,ok:false,error:String(e.stack || e)}) } }
-function compile(key, files, options={}, native=false) {
+function compile(key, files, options={}, native=false, vibe) {
  const cwd = join(dir,"out","projects",key); mkdirSync(cwd,{recursive:true})
  writeFileSync(join(cwd,"package.json"),'{"type":"module"}')
  for(const [name,source] of Object.entries(files)) { mkdirSync(dirname(join(cwd,name)),{recursive:true}); writeFileSync(join(cwd,name),source) }
- writeFileSync(join(cwd,"tsconfig.json"),JSON.stringify({compilerOptions:{...base,...options},files:Object.keys(files).filter(p=>!p.endsWith(".json")&&!p.startsWith("node_modules/"))}))
+ writeFileSync(join(cwd,"tsconfig.json"),JSON.stringify({compilerOptions:{...base,...options},vibe,files:Object.keys(files).filter(p=>!p.endsWith(".json")&&!p.startsWith("node_modules/"))}))
  const run = spawnSync(native ? process.execPath : compiler, native ? [stock,"-p",cwd,"--pretty","false"] : ["-p",cwd,"--pretty","false"],{encoding:"utf8",timeout:60000})
  assert.notEqual(run.status,null,run.error?.message || "compile timed out")
  return { cwd, text:run.stdout+run.stderr, codes:[...run.stdout.matchAll(/error (TS|EK)([0-9]+)/g)].map(m=>m[1]+m[2]).sort(), status:run.status }
@@ -94,11 +94,13 @@ check("sidecar-consumer",()=>{
  const a=compile("sidecar-source",{"App.vibex":"export const n = 1"},{}); clean(a)
  const b=compile("sidecar-consumer",{"App.d.vibex.ts":read(a,"App.d.vibex.ts"),"main.ts":'import {n} from "./App.vibex"; const check: 1 = n; export {check}'},{noEmit:true,allowArbitraryExtensions:true},true);clean(b)
 })
+// Resolution probes deliberately select competing source and declaration inputs.
+// Keep required compatibility writes in their own directory (VIP-27).
 for(const [specifier,order] of Object.entries({"./App":["ts","tsx","vibe","vibex","d.ts","js"],"./App.js":["ts","tsx","vibe","vibex","d.ts","js"],"./App.jsx":["tsx","ts","vibex","vibe","d.ts","jsx","js"],"./App.vibe":["vibe","d.ts"],"./App.vibex":["vibex","d.ts"]})) check("resolution:"+specifier,()=>{
  for(let start=0;start<order.length;start++) {
   const files={"main.vibe":'import {kind} from "'+specifier+'"; export const selected: "'+order[start]+'" = kind'}
   for(const ext of order.slice(start)) files["App."+ext]=ext==="d.ts"?'export declare const kind: "'+ext+'"':'export const kind = "'+ext+'"'
-  const a=compile("resolution-"+specifier.replaceAll("/","_").replaceAll(".","_")+"-"+start,files,{noEmit:true,declaration:false,allowJs:true,checkJs:true,allowImportingTsExtensions:true});clean(a)
+  const a=compile("resolution-"+specifier.replaceAll("/","_").replaceAll(".","_")+"-"+start,files,{noEmit:true,declaration:false,allowJs:true,checkJs:true,allowImportingTsExtensions:true},false,{sidecarDir:".sidecars"});clean(a)
  }
 })
 for(const mode of ["preserve","react"]) for(const kind of ["none","declarations","only","noEmit"]) check("collision:"+mode+":"+kind,()=>{
@@ -153,7 +155,7 @@ for(const [key,files,options] of [
  const config={...options,noEmit:true,allowImportingTsExtensions:true,declaration:false}
  const nativeFiles=Object.fromEntries(Object.entries(files).map(([p,v])=>[p.replaceAll(".vibex",".tsx").replaceAll(".vibe",".ts"),v.replaceAll(".vibex",".tsx").replaceAll(".vibe",".ts")]))
  const b=compile("context-native-"+key,nativeFiles,config,true);clean(b)
- const a=compile("context-"+key,files,config);clean(a)
+ const a=compile("context-"+key,files,config,false,{sidecarDir:".sidecars"});clean(a)
 })
 check("nodenext-extension",()=>{
  const opts={module:"NodeNext",moduleResolution:"NodeNext",noEmit:true,declaration:false}

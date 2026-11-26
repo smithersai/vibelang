@@ -72,14 +72,13 @@ func catchExecutionHeads(n *ast.Node, visit func(*ast.Node)) {
 }
 
 func checkCatchExecutionHead(c *checker.Checker, file *ast.SourceFile, call, left, fallback *ast.Node) bool {
-	if malformedCatchHandler(call, fallback) != nil {
-		return false
-	}
+	malformed := malformedCatchHandler(call, fallback) != nil
 	found := false
 	catchExecutionHeads(left, func(head *ast.Node) {
 		found = true
-		reportAt(c, file, tsFormSpan(file, head), EK0505)
-
+		if !malformed {
+			reportAt(c, file, tsFormSpan(file, head), EK0505)
+		}
 	})
 	if found {
 		// Match diagnostic anchors: satisfies points at its keyword,
