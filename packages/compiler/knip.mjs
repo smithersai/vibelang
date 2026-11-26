@@ -15,22 +15,85 @@
 // the module's JavaScript imports. Bodies are left out: no
 // TypeScript parser reads VibeLang's own forms. The compiler's ESTree
 // (`vibelang --estree`) finds them, as for vibelang/eslint.
-import { statSync } from "node:fs"
-import { dirname, resolve } from "node:path"
+import { readFileSync, statSync } from "node:fs"
+import { basename, dirname, resolve } from "node:path"
 import { parseESTree } from "./eslint.mjs"
 
-// Knip's .js aliases stop at built-in TypeScript extensions. Preserve their
-// precedence and redirect the analysis copy only when native source exists.
-function reExport(text, node, path) {
+function isForwardingDeclarationText(text, specifier) {
+  const quoted = `"${specifier}"`
+  return text === `export * from ${quoted};\n` ||
+    text === `export * from ${quoted};\nexport { default } from ${quoted};\n` ||
+    text === `import vibe = require(${quoted});\nexport = vibe;\n`
+}
+
+// A VibeLang forwarding declaration (VIP-27): x.d.ts holding only the re-export
+// of its native sidecar that the compiler writes, in one of its three forms.
+// Any other x.d.ts is hand-written and keeps TypeScript's precedence in Knip.
+function isNativeDeclaration(filePath, specifier) {
+  try {
+    return isForwardingDeclarationText(readFileSync(filePath, "utf8"), specifier)
+  } catch {
+    return false
+  }
+}
+
+function isGeneratedForwardingDeclaration(text, filePath) {
+  if (!filePath.endsWith(".d.ts") || /\.d\.[^./\\]+\.ts$/.test(filePath)) return false
+  const stem = filePath.slice(0, -".d.ts".length)
+  return [".vibe", ".vibex"].some((ext) =>
+    statSync(stem + ext, { throwIfNoEntry: false })?.isFile() &&
+    isForwardingDeclarationText(text, "./" + basename(stem) + ext))
+}
+
+// Knip's .js/.jsx aliases stop at built-in TypeScript extensions. Preserve
+// their precedence (including hand-written .d.ts files) and redirect the
+// analysis copy only when a native .vibe/.vibex source owns the stem.
+function resolveNativeTypeSpecifier(specifier, filePath) {
+  if (typeof specifier !== "string") return undefined
+  const match = /^(\.{1,2}\/.*)\.(js|jsx)$/.exec(specifier)
+  if (!match) return undefined
+  const [, stem, ext] = match
+  const dir = dirname(filePath)
+  const exists = (suffix) => statSync(resolve(dir, stem + suffix), { throwIfNoEntry: false })?.isFile()
+  if (ext === "jsx") {
+    if ([".jsx", ".tsx"].some(exists)) return undefined
+    return exists(".vibex") ? stem + ".vibex" : undefined
+  }
+  if ([".js", ".ts", ".tsx"].some(exists)) return undefined
+  const nativeExt = [".vibe", ".vibex"].find(exists)
+  if (!nativeExt) return undefined
+  const dtsPath = resolve(dir, stem + ".d.ts")
+  if (statSync(dtsPath, { throwIfNoEntry: false })?.isFile() &&
+    !isNativeDeclaration(dtsPath, "./" + basename(stem) + nativeExt)) {
+    return undefined
+  }
+  return stem + nativeExt
+}
+
+function isTypeOnlyModuleDeclaration(node) {
+  if (!node?.source) return false
+  if (node.type === "ImportDeclaration") {
+    return node.importKind === "type" ||
+      (Array.isArray(node.specifiers) && node.specifiers.length > 0 &&
+        node.specifiers.every((specifier) => specifier.importKind === "type"))
+  }
+  if (node.type === "ExportAllDeclaration") {
+    return node.exportKind === "type"
+  }
+  if (node.type === "ExportNamedDeclaration" && !node.declaration) {
+    return node.exportKind === "type" ||
+      (Array.isArray(node.specifiers) && node.specifiers.length > 0 &&
+        node.specifiers.every((specifier) => specifier.exportKind === "type"))
+  }
+  return false
+}
+
+function rewriteTypeSpecifier(text, node, filePath) {
   const original = text.slice(...node.range)
-  const specifier = node.source?.value
-  if (node.exportKind !== "type" || !/^\.{1,2}\/.*\.js$/.test(specifier)) return original
-  const stem = specifier.slice(0, -3)
-  const exists = ext => statSync(resolve(dirname(path), stem + ext), { throwIfNoEntry: false })?.isFile()
-  if ([".js", ".ts", ".tsx", ".d.ts"].some(exists)) return original
-  const extension = [".vibe", ".vibex"].find(exists)
-  if (!extension) return original
-  return text.slice(node.range[0], node.source.range[0]) + JSON.stringify(stem + extension) +
+  if (!isTypeOnlyModuleDeclaration(node)) return original
+  const rewritten = resolveNativeTypeSpecifier(node.source?.value, filePath)
+  if (!rewritten) return original
+  return text.slice(node.range[0], node.source.range[0]) + JSON.stringify(rewritten) +
     text.slice(node.source.range[1], node.range[1])
 }
 
@@ -49,7 +112,7 @@ export function compile(text, path = "file.vibe") {
   const imports = (body) => {
     for (const node of body) {
       if (node.type === "ImportDeclaration") {
-        lines.push(source(node))
+        lines.push(rewriteTypeSpecifier(text, node, path))
         for (const specifier of node.specifiers) {
           imported.add(specifier.local.name)
           if (specifier.type === "ImportNamespaceSpecifier") namespaces.add(specifier.local.name)
@@ -79,7 +142,7 @@ export function compile(text, path = "file.vibe") {
   }
   program.body.forEach((node, i) => {
     const doc = docs(node, i ? program.body[i - 1].range[1] : 0)
-    if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(doc + reExport(text, node, path))
+    if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(doc + rewriteTypeSpecifier(text, node, path))
     // TypeScript gives a statement's JSDoc to its first declaration only.
     else if (node.type === "ExportNamedDeclaration") lines.push(...stubs(node.declaration, typeReads(node.declaration)).map((stub, i) => (i ? "" : doc) + stub))
     else if (node.type === "ExportDefaultDeclaration") {
@@ -196,6 +259,45 @@ function visit(node, see) {
   for (const [key, value] of Object.entries(node)) {
     if (key !== "range" && key !== "loc" && value !== null && typeof value === "object") visit(value, see)
   }
+}
+
+/**
+ * Returns a TypeScript module for Knip with type-only relative .js/.jsx
+ * imports and re-exports redirected to adjacent .vibe/.vibex sources when
+ * no real JS/TS or hand-written .d.ts target exists.
+ *
+ * @param {string} text The file's text.
+ * @param {string} [path] Its path, for resolving relative specifiers.
+ */
+export function compileTypeScript(text, path = "file.ts") {
+  if (/\.d\.vibex?\.ts$/i.test(path) || isGeneratedForwardingDeclaration(text, path)) return ""
+  if (/\.d\.(?:[^./\\]+\.)?[cm]?ts$/i.test(path) || !/\.(?:js|jsx)["']/.test(text)) return text
+  const program = parseESTree(text, path)
+  const replacements = []
+  for (const node of program.body) {
+    if (!isTypeOnlyModuleDeclaration(node)) continue
+    const rewritten = resolveNativeTypeSpecifier(node.source?.value, path)
+    if (rewritten) replacements.push([node.source.range[0], node.source.range[1], JSON.stringify(rewritten)])
+  }
+  if (replacements.length === 0) return text
+  let out = text
+  for (const [start, end, replacement] of replacements.sort((a, b) => b[0] - a[0])) {
+    out = out.slice(0, start) + replacement + out.slice(end)
+  }
+  return out
+}
+
+/**
+ * Ready-made Knip compilers map covering .vibe/.vibex modules and TypeScript
+ * barrels that re-export or import types from .vibe/.vibex via .js/.jsx specifiers.
+ */
+export const compilers = {
+  vibe: compile,
+  vibex: compile,
+  ts: compileTypeScript,
+  tsx: compileTypeScript,
+  mts: compileTypeScript,
+  cts: compileTypeScript
 }
 
 export default compile

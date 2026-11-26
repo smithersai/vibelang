@@ -603,6 +603,15 @@ import vibelang from "vibelang/knip"
 export default { compilers: { vibe: vibelang, vibex: vibelang }, ignore: ["**/*.d.vibe.ts", "**/*.d.vibex.ts"] }
 ```
 
+When TypeScript barrels also write type-only relative `.js`/`.jsx` imports or re-exports pointing to `.vibe`/`.vibex` modules (for example `export type { Public } from "./model.js"`), use the exported `compilers` map so Knip resolves them to native source even when generated forwarding `.d.ts` sidecars are present:
+
+```js
+// knip.config.js
+import { compilers } from "vibelang/knip"
+
+export default { compilers, ignore: ["**/*.d.vibe.ts", "**/*.d.vibex.ts"] }
+```
+
 ## How the package finds the native compiler
 
 `vibelang` is a small Node launcher. In 0.0.13, the native compiler comes from one of six

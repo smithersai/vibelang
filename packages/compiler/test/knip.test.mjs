@@ -4,13 +4,14 @@
 // VIP-34: Knip sees real Vibe imports and exports; ESLint, register and bundler suites are complementary tool readers.
 import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { execFileSync } from "node:child_process"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import compile from "../knip.mjs"
+import compile, { compilers, compileTypeScript } from "../knip.mjs"
 
 // vibelang/knip gives Knip a .vibe module's imports and exports as TypeScript.
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
@@ -204,4 +205,140 @@ test("Knip follows a type-only .js re-export to model.vibe", { skip }, async (t)
   writeFileSync(join(cwd, "model.ts"), "export type Public = string\n")
   const barrel = 'export type { Public } from "./model.js"'
   assert.ok(compile(barrel, join(cwd, "barrel.vibe")).includes(barrel))
+})
+
+test("Knip follows inline type-only re-exports, type-only imports, .jsx -> .vibex, and .ts barrels with generated sidecars (#228)", { skip }, async (t) => {
+  const { main } = await import("knip")
+  const { createOptions } = await import("knip/session")
+  const cwd = realpathSync(mkdtempSync(join(tmpdir(), "knip-reexport-228-")))
+  t.after(() => rmSync(cwd, { recursive: true, force: true }))
+  mkdirSync(join(cwd, "node_modules"))
+  symlinkSync(join(repo, "packages/compiler"), join(cwd, "node_modules/vibelang"))
+  writeFileSync(join(cwd, "package.json"), '{"private":true,"type":"module"}')
+  writeFileSync(join(cwd, "tsconfig.json"), JSON.stringify({
+    compilerOptions: {
+      target: "ES2022",
+      module: "NodeNext",
+      moduleResolution: "NodeNext",
+      strict: true,
+      noEmit: true,
+      allowImportingTsExtensions: true,
+      allowArbitraryExtensions: true,
+      jsx: "preserve",
+      types: []
+    },
+    include: ["*.ts", "*.vibe", "*.vibex"]
+  }, null, 2))
+  writeFileSync(join(cwd, "knip.config.js"), `import { compilers } from "vibelang/knip"
+    export default {
+      entry: ["entry.ts"],
+      project: ["*.ts", "*.vibe", "*.vibex", "!*.d.ts", "!*.d.vibe.ts", "!*.d.vibex.ts"],
+      compilers
+    }`)
+  writeFileSync(join(cwd, "model.vibe"), [
+    "export interface Public { value: string }",
+    "export interface InlineType { id: number }",
+    "export interface ImportedType { ok: boolean }",
+    "export type UnusedModel = number",
+    ""
+  ].join("\n"))
+  writeFileSync(join(cwd, "view.vibex"), [
+    "export interface ViewProps { label: string }",
+    "export type UnusedView = string",
+    ""
+  ].join("\n"))
+  writeFileSync(join(cwd, "barrel-ts.ts"), [
+    'export type { Public } from "./model.js"',
+    'export { type InlineType } from "./model.js"',
+    'export type { ViewProps } from "./view.jsx"',
+    ""
+  ].join("\n"))
+  writeFileSync(join(cwd, "barrel-vibe.vibe"), [
+    'import { type ImportedType } from "./model.js"',
+    'export { type Public as RePublic } from "./model.js"',
+    "export function check(x: ImportedType): boolean { return x.ok }",
+    ""
+  ].join("\n"))
+  writeFileSync(join(cwd, "entry.ts"), [
+    'import type { InlineType, Public, ViewProps } from "./barrel-ts.js"',
+    'import { check, type RePublic } from "./barrel-vibe.vibe"',
+    "export const use = (a: Public, b: InlineType, c: RePublic, d: ViewProps) => [a.value, b.id, c.value, d.label, check({ ok: true })]",
+    ""
+  ].join("\n"))
+
+  // Emit real VibeLang sidecars (model.d.ts + model.d.vibe.ts, view.d.ts + view.d.vibex.ts).
+  execFileSync(native, ["-p", join(cwd, "tsconfig.json"), "--noEmit"], { cwd })
+  assert.ok(existsSync(join(cwd, "model.d.ts")), "expected forwarding model.d.ts sidecar")
+  assert.ok(existsSync(join(cwd, "model.d.vibe.ts")), "expected model.d.vibe.ts sidecar")
+
+  // Knip still follows type-only .js/.jsx specifiers directly to model.vibe & view.vibex
+  // rather than letting forwarding model.d.ts (`export * from "./model.vibe"`) hide unused exports.
+  const options = await createOptions({ cwd, args: { "no-config-hints": true } })
+  options.isShowProgress = false
+  const { issues } = await main(options)
+  assert.deepEqual(Object.keys(issues.unresolved), [])
+  assert.deepEqual(Object.keys(issues.files), [])
+  assert.deepEqual(Object.values(issues.types["model.vibe"] ?? {}).map((issue) => issue.symbol), ["UnusedModel"])
+  assert.deepEqual(Object.values(issues.types["view.vibex"] ?? {}).map((issue) => issue.symbol), ["UnusedView"])
+
+  // Runtime/mixed re-exports keep their original .js specifier.
+  const mixed = 'export { type Public, runtimeVal } from "./model.js"\n'
+  assert.equal(compileTypeScript(mixed, join(cwd, "barrel-ts.ts")), mixed)
+  assert.ok(compile(mixed, join(cwd, "barrel-vibe.vibe")).includes(mixed.trim()))
+  assert.equal(typeof compilers.ts, "function")
+
+  // A hand-written .d.ts (not a VibeLang forwarding stub) keeps TypeScript precedence.
+  writeFileSync(join(cwd, "hand.vibe"), "export interface Hand { x: number }\n")
+  writeFileSync(join(cwd, "hand.d.ts"), "export interface Hand { x: number }\n")
+  const handReexport = 'export type { Hand } from "./hand.js"\n'
+  assert.equal(compileTypeScript(handReexport, join(cwd, "barrel-ts.ts")), handReexport)
+  assert.ok(compile(handReexport, join(cwd, "barrel-vibe.vibe")).includes(handReexport.trim()))
+})
+
+test("stock TypeScript and TypeDoc resolve type-only .js re-exports via emitted sidecars without rewriting source (#228)", { skip }, (t) => {
+  const ts = createRequire(join(modules, "typescript/package.json"))("typescript")
+  const cwd = realpathSync(mkdtempSync(join(tmpdir(), "ts-reexport-228-")))
+  t.after(() => rmSync(cwd, { recursive: true, force: true }))
+  mkdirSync(join(cwd, "src"), { recursive: true })
+  writeFileSync(join(cwd, "tsconfig.json"), JSON.stringify({
+    compilerOptions: {
+      target: "ES2022",
+      module: "NodeNext",
+      moduleResolution: "NodeNext",
+      strict: true,
+      noEmit: true,
+      allowArbitraryExtensions: true,
+      skipLibCheck: true,
+      types: []
+    },
+    include: ["src"]
+  }, null, 2))
+  const barrelSource = 'export type { Public } from "./model.js"\n'
+  writeFileSync(join(cwd, "src/model.vibe"), "export interface Public { value: string }\n")
+  writeFileSync(join(cwd, "src/barrel.ts"), barrelSource)
+  writeFileSync(join(cwd, "src/barrel-vibe.vibe"), barrelSource)
+  writeFileSync(join(cwd, "src/entry.ts"), [
+    'import type { Public } from "./barrel.js"',
+    'import type { Public as VibePublic } from "./barrel-vibe.vibe"',
+    "export const read = (a: Public, b: VibePublic): string => a.value + b.value",
+    ""
+  ].join("\n"))
+
+  execFileSync(native, ["-p", join(cwd, "tsconfig.json"), "--noEmit"], { cwd })
+  assert.equal(readFileSync(join(cwd, "src/barrel.ts"), "utf8"), barrelSource)
+
+  // Stock TypeScript (the compiler API TypeDoc uses) resolves both ./barrel.js -> ./model.js
+  // and ./barrel-vibe.vibe -> ./model.vibe with zero diagnostics and no moduleSuffixes setting.
+  const config = ts.readConfigFile(join(cwd, "tsconfig.json"), ts.sys.readFile)
+  assert.equal(config.error, undefined)
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, cwd)
+  const program = ts.createProgram(parsed.fileNames, parsed.options)
+  const diagnostics = ts.getPreEmitDiagnostics(program).map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n"))
+  assert.deepEqual(diagnostics, [])
+  const checker = program.getTypeChecker()
+  const entryFile = program.getSourceFile(join(cwd, "src/entry.ts"))
+  assert.ok(entryFile)
+  const readExport = checker.getExportsOfModule(checker.getSymbolAtLocation(entryFile)).find((s) => s.name === "read")
+  assert.ok(readExport)
+  assert.equal(checker.typeToString(checker.getTypeOfSymbolAtLocation(readExport, entryFile)), "(a: Public, b: Public) => string")
 })
