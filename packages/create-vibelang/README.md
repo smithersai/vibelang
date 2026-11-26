@@ -22,6 +22,7 @@ then retry with a new or empty directory.
 | --- | --- |
 | `-h`, `--help` | Print usage and exit without creating a project. |
 | `-v`, `--version` | Print the scaffolder version and exit. |
+| `--smithers` | Add `WORKSPACE.ts` and `PACKAGE.ts` build targets using `@smthrs/targets` and `@smthrs/cli` (`smthrs ci //...`). |
 | `--no-install` | Copy the app without installing dependencies. |
 | `--no-git` | Accepted for compatibility with `bun create`; nothing changes. |
 

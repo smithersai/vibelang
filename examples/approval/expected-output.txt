@@ -1,4 +1,6 @@
-automatic: released v1
 review: deploy v1 to staging: yes
-review: deploy v1 to production: no
-scripted: production declined
+review: deploy v1 to production: yes
+approved: released v1
+review: deploy v2 to staging: yes
+review: deploy v2 to production: no
+declined: production declined

@@ -1,9 +1,10 @@
-# Approval service
+# Durable approval workflow
 
-One release program asks an `Approval` service for staging and production approval.
-The automatic implementation approves both requests. The scripted reviewer uses
-supplied answers and defaults to denial when the script runs out. The business
-function depends on `Approval`, without choosing the implementation.
+One `Release` workflow parks on durable staging and production approval waits
+(`Experimental.Human.confirm`), then runs the `Deploy` task once both are
+approved. `reviewRelease` spawns a run with `Experimental.Durable.spawn`,
+reads each open approval from `Experimental.Durable.waiting`, and resumes the
+workflow with `Experimental.Human.answer`.
 
 From this directory, with `vibelang` on `PATH`:
 
@@ -13,18 +14,10 @@ bun run build
 bun run start
 ```
 
-Features: a `service` declaration, an explicit service lookup with `try`, and
-local implementations supplied by `provide`. The corresponding Effect TypeScript
-business program is:
+Features: experimental `task` and `workflow` declarations (`vibe.experimental: ["builtins"]`),
+VIP-56 durable human approval waits (`Experimental.Human.confirm` and
+`Experimental.Human.answer`), and `Experimental.Durable.memory` / `waiting` / `spawn`.
 
-```ts
-const release = Effect.fnUntraced(function* (version: string) {
-  const approval = yield* Approval
-  if (!(yield* approval.approve(`deploy ${version} to staging`))) return "staging declined"
-  if (!(yield* approval.approve(`deploy ${version} to production`))) return "production declined"
-  return `released ${version}`
-})
-```
-
-The example shows the same business program succeeding automatically and declining
-production under the scripted policy.
+The example runs two durable releases: `v1` approves both staging and
+production and runs `Deploy`, while `v2` approves staging and declines
+production.

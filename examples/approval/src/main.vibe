@@ -1,36 +1,54 @@
-export service Approval {
-  approve(request: string): boolean!!
-}
-
-// The business program knows neither the reviewer nor the approval policy.
-export effect function release(version: string) {
-  const approval = try Approval
-  if (!try approval.approve(`deploy ${version} to staging`)) return "staging declined"
-  if (!try approval.approve(`deploy ${version} to production`)) return "production declined"
-  return `released ${version}`
-}
-
-export effect function autoApprove(version: string) {
-  provide Approval = { effect approve(_request: string) { return true } } {
-    return try release(version)
+task Deploy {
+  static readonly tier = "irreversible"
+  static readonly idempotencyKey = (version: string) => `deploy:${version}`
+  effect call(version: string): string!never {
+    return `released ${version}`
   }
 }
 
-export effect function scriptedReview(version: string, decisions: ReadonlyArray<boolean>) {
-  let next = 0
-  provide Approval = {
-    effect approve(request: string) {
-      const approved = decisions[next] ?? false
-      next++
-      try Console.log(`review: ${request}: ${approved ? "yes" : "no"}`)
-      return approved
-    }
-  } {
-    return try release(version)
+// The workflow parks on each approval wait without holding a process, then
+// resumes when an answer is recorded through Experimental.Human.answer.
+export workflow Release {
+  effect call(version: string) {
+    const staging = try Experimental.Human.confirm("staging", `deploy ${version} to staging`, { timeout: "6 hours" })
+    if (!staging) return "staging declined"
+    const production = try Experimental.Human.confirm("production", `deploy ${version} to production`, { timeout: "6 hours" })
+    if (!production) return "production declined"
+    return try Deploy(version)
   }
+}
+
+effect function waitForApproval(run: string, name: string) {
+  while (true) {
+    const waits = try Experimental.Durable.waiting(run)
+    const found = waits.find((wait) => wait.reason === "approval" && wait.name === name)
+    if (found !== undefined) return found
+    try Effect.sleep("2 millis")
+  }
+}
+
+export effect function reviewRelease(version: string, stagingApproved: boolean, productionApproved: boolean) {
+  const handle = try Experimental.Durable.spawn(Release, { version })
+  const stagingWait = try waitForApproval(handle.id, "staging")
+  const stagingPrompt = (stagingWait.request as Experimental.Human.Question).prompt
+  try Console.log(`review: ${stagingPrompt}: ${stagingApproved ? "yes" : "no"}`)
+  try Experimental.Human.answer(Release, handle.id, "staging", stagingApproved)
+
+  if (stagingApproved) {
+    const prodWait = try waitForApproval(handle.id, "production")
+    const prodPrompt = (prodWait.request as Experimental.Human.Question).prompt
+    try Console.log(`review: ${prodPrompt}: ${productionApproved ? "yes" : "no"}`)
+    try Experimental.Human.answer(Release, handle.id, "production", productionApproved)
+  }
+
+  return try handle.result
 }
 
 export effect function main() {
-  try Console.log(`automatic: ${try autoApprove("v1")}`)
-  try Console.log(`scripted: ${try scriptedReview("v1", [true, false])}`)
+  provide Layer.provideMerge(Release.layer, Experimental.Durable.memory) {
+    const approved = try reviewRelease("v1", true, true)
+    try Console.log(`approved: ${approved}`)
+    const declined = try reviewRelease("v2", true, false)
+    try Console.log(`declined: ${declined}`)
+  }
 }

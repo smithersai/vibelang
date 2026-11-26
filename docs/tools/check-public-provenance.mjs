@@ -104,6 +104,8 @@ export function provenance(file, text) {
     if (repositoryPage(file)) rest = rest.replace(repositoryPathAllowed, "")
     // Contributors copy the CLI invocation for a build label from this guide.
     if (file === "CONTRIBUTING.md") rest = rest.replace(/\bsmthrs(?= (?:ci|run) \/\/)/g, "")
+    // The scaffolder README documents its --smithers option and smthrs ci command.
+    if (file === "packages/create-vibelang/README.md") rest = rest.replace(/--smithers|\bsmthrs(?= ci \/\/)/g, "")
     if (product.test(rest) && !productPages.has(file)) problems.push(`${i + 1}: the hosting product's name`)
     if (branchLink.test(line)) problems.push(`${i + 1}: a link to the vibe branch instead of main`)
   })

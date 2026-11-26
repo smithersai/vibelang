@@ -8,13 +8,16 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, s
 import { basename, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const usage = "Usage: create-vibelang [directory] [--no-install]"
+const usage = "Usage: create-vibelang [directory] [--smithers] [--no-install]"
+const smithersVersion = "1.0.0-rc.18"
 const own = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"))
 
 let target
 let install = true
+let smithers = false
 for (const arg of process.argv.slice(2)) {
   if (arg === "--no-install") install = false
+  else if (arg === "--smithers") smithers = true
   else if (arg === "--no-git") continue // accepted; create-vibelang never runs git init
   else if (arg === "-h" || arg === "--help") {
     console.log(usage)
@@ -56,6 +59,20 @@ try {
   manifest.dependencies["vibelang-runtime"] = own.version
   manifest.devDependencies["vibelang"] = own.version
   manifest.devDependencies["vibelang-vite"] = own.version
+  if (smithers) {
+    manifest.scripts.ci = "smthrs ci //..."
+    manifest.devDependencies["@smthrs/cli"] = smithersVersion
+    manifest.devDependencies["@smthrs/targets"] = smithersVersion
+    writeFileSync(join(directory, "WORKSPACE.ts"), smithersWorkspace(manifest.name))
+    writeFileSync(join(directory, "PACKAGE.ts"), smithersPackage())
+    const gitignorePath = join(directory, ".gitignore")
+    if (existsSync(gitignorePath)) {
+      const existing = readFileSync(gitignorePath, "utf8")
+      if (!existing.includes(".flows/")) {
+        writeFileSync(gitignorePath, existing.replace(/\n?$/, "\n# Smithers local build cache.\n.flows/\n"))
+      }
+    }
+  }
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n")
   if (manager === "pnpm") writeFileSync(join(directory, "pnpm-workspace.yaml"), pnpmWorkspace(manifest))
 
@@ -95,13 +112,62 @@ Next steps:
   cd ${shellQuote(target)}${install ? "" : `\n  ${manager} install`}
   ${manager} run start    build and run src/main.vibe
   ${manager} run dev      rebuild and restart on every save
-  ${manager} run test     run the .vibe tests with Vitest
+  ${manager} run test     run the .vibe tests with Vitest${smithers ? `\n  ${manager} run ci       run the Smithers build, test, and check targets` : ""}
 
 Editor support for VS Code or Cursor, after the install:
   code --install-extension node_modules/vibelang/editor/vibelang.vsix
   cursor --install-extension node_modules/vibelang/editor/vibelang.vsix
 
 VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.`)
+
+function smithersWorkspace(name) {
+  return `import { Smithers as S } from "@smthrs/targets"
+
+export const Workspace = S.Workspace(${JSON.stringify(name)}, {
+  repository: "local",
+  cache: S.Cache({ directory: ".flows" }),
+  host: S.Host({ bins: ["node"] }),
+  discovery: { prune: ["dist", ".vibe", ".flows"] }
+})
+`
+}
+
+function smithersPackage() {
+  return `import { Smithers as S } from "@smthrs/targets"
+
+const node = S.Host.bin("node")
+const srcs = S.Filegroup({
+  srcs: S.glob(["src/**", "tsconfig.json", "tsconfig.test.json", "vitest.config.ts", "package.json"])
+})
+
+export const Package = S.Package({
+  targets: {
+    build: S.Shell.Build({
+      summary: "Compile src/**/*.vibe with vibelang.",
+      shell: "./node_modules/.bin/vibelang",
+      data: [srcs],
+      tools: [node],
+      outDirs: ["dist", ".vibe"],
+      sandbox: "none"
+    }),
+    test: S.Shell.Test({
+      summary: "Run the Vitest suite over .vibe sources.",
+      shell: "./node_modules/.bin/vitest run",
+      data: [srcs],
+      tools: [node],
+      sandbox: "none"
+    }),
+    check: S.Shell.Test({
+      summary: "Check formatting and lint rules on .vibe sources and tests.",
+      shell: "./node_modules/.bin/vibelang format --check && ./node_modules/.bin/vibelang lint -p tsconfig.test.json",
+      data: [srcs],
+      tools: [node],
+      sandbox: "none"
+    })
+  }
+})
+`
+}
 
 // packageName turns a directory name into a valid npm package name.
 function packageName(name) {

@@ -3,7 +3,7 @@
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
 import { on } from "node:events"
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { delimiter, join } from "node:path"
 import { createInterface } from "node:readline"
@@ -196,4 +196,63 @@ console.log(plain(4))
   assert.equal(failed.status, 1, failed.output)
   assert.match(failed.output, /1 failed/)
   assert.match(failed.output, /greeting\.test\.vibe:6:\d+/)
+})
+
+test("create-vibelang --smithers produces a project where smthrs ci passes", {
+  skip: !existsSync(binary) || !existsSync(join(root, "packages/runtime/dist/index.js"))
+    ? "run the documented workspace setup to build the compiler and runtime" : false,
+  timeout: 180_000
+}, (t) => {
+  const scratch = mkdtempSync(join(tmpdir(), "vibelang-smithers-e2e-"))
+  t.after(() => rmSync(scratch, { recursive: true, force: true }))
+  const app = join(scratch, "smithers-app")
+  const created = run(process.execPath, [join(root, "packages/create-vibelang/bin/create-vibelang.mjs"), app, "--smithers", "--no-install"], scratch)
+  assert.equal(created.status, 0, created.output)
+  const manifestPath = join(app, "package.json")
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
+  const packed = run("npm", ["pack", join(root, "packages/runtime"), "--pack-destination", scratch, "--ignore-scripts", "--json", "--silent"], scratch)
+  assert.equal(packed.status, 0, packed.output)
+  const runtimeTarball = `file:${join(scratch, JSON.parse(packed.stdout)[0].filename)}`
+  const packedVite = run("npm", ["pack", join(root, "packages/vite"), "--pack-destination", scratch, "--ignore-scripts", "--json", "--silent"], scratch)
+  assert.equal(packedVite.status, 0, packedVite.output)
+  const viteTarball = `file:${join(scratch, JSON.parse(packedVite.stdout)[0].filename)}`
+  const stagedCompiler = join(scratch, "compiler")
+  const compilerManifest = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8"))
+  cpSync(join(root, "packages/compiler"), stagedCompiler, {
+    recursive: true,
+    filter: (path) => !/\/(?:native|node_modules|test)$/.test(path) && !path.endsWith(".zip")
+  })
+  const exeName = process.platform === "win32" ? "vibelang.exe" : "vibelang"
+  mkdirSync(join(stagedCompiler, "native"), { recursive: true })
+  copyFileSync(binary, join(stagedCompiler, "native", exeName))
+  const plugin = run(join(stagedCompiler, "native", exeName), ["--write-dprint-plugin", stagedCompiler], scratch)
+  assert.equal(plugin.status, 0, plugin.output)
+  delete compilerManifest.optionalDependencies
+  compilerManifest.files = [...new Set([...(compilerManifest.files ?? []), "native", "dprint-plugin.json"])]
+  writeFileSync(join(stagedCompiler, "package.json"), JSON.stringify(compilerManifest, null, 2) + "\n")
+  const packedCompiler = run("npm", ["pack", stagedCompiler, "--pack-destination", scratch, "--ignore-scripts", "--json", "--silent"], scratch)
+  assert.equal(packedCompiler.status, 0, packedCompiler.output)
+  const compilerTarball = `file:${join(scratch, JSON.parse(packedCompiler.stdout)[0].filename)}`
+  manifest.dependencies["vibelang-runtime"] = runtimeTarball
+  manifest.devDependencies["vibelang"] = compilerTarball
+  manifest.devDependencies["vibelang-vite"] = viteTarball
+  manifest.overrides = { ...manifest.overrides, "vibelang-runtime": runtimeTarball }
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n")
+  const installed = run("bun", ["install"], app)
+  assert.equal(installed.status, 0, installed.output)
+  const ci = run(join(app, "node_modules/.bin/smthrs"), ["ci", "//...", "--format", "json"], app)
+  assert.equal(ci.status, 0, ci.output)
+  const report = JSON.parse(ci.stdout)
+  assert.equal(report.ok, true, ci.output)
+  assert.equal(report.counts.failed, 0, ci.output)
+  for (const label of ["//:build", "//:test", "//:check"]) {
+    assert.equal(report.results.find((entry) => entry.label === label)?.status, "ran", `${label} must run`)
+  }
+  const cached = run(join(app, "node_modules/.bin/smthrs"), ["ci", "//...", "--format", "json"], app)
+  assert.equal(cached.status, 0, cached.output)
+  const cachedReport = JSON.parse(cached.stdout)
+  assert.equal(cachedReport.ok, true, cached.output)
+  assert.equal(cachedReport.counts.failed, 0, cached.output)
+  assert.equal(cachedReport.counts.ran, 0, cached.output)
+  assert.equal(cachedReport.counts.hit, cachedReport.results.length, cached.output)
 })
