@@ -1285,7 +1285,7 @@ async function runSelfTest(): Promise<boolean> {
     const forkFile = parseDeclarationFile(forkText)
     const ticks = forkFile.units.find((u) => u.name === "ticks")
     const plain = "Effect.sync(() => 1)"
-    const flipped = "Effect.sync(() => $gen(function* () { return 1 }))"
+    const flipped = "Effect.sync(effect () => 1)"
     if (!ticks) check("unexported baseline", false, "the fork's main.d.ts does not print ticks; the probe export did not reach it")
     else {
       const mapperFile = parseDeclarationFile(mapperText ?? "")

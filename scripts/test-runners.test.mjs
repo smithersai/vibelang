@@ -1,6 +1,6 @@
 import { declaredFileCommands } from "./declared-command.mjs"
 import assert from "node:assert/strict"
-import { readdirSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
+import { readdirSync, readFileSync, realpathSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"
@@ -73,7 +73,8 @@ const runs = [
   [".smithers/flows/effect-bump/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
   ["docs/tools/*.test.*", "root-test-shards.ts", "docs/tools/*.test.*"],
   ["packages/runtime/tests/**", "packages/PACKAGE.ts", "cd packages/runtime && bun test"],
-  ["packages/runtime/tests/entry-exports.node.test.mjs", "packages/PACKAGE.ts", "node --test packages/runtime/tests/entry-exports.node.test.mjs"],
+  ["packages/runtime/tests/entry-exports.node.test.mjs", "packages/PACKAGE.ts", '"entry-exports.node.test.mjs"'],
+  ["packages/ts-mapper/test/*.test.mjs", "PACKAGE.ts", "bash packages/ts-mapper/test/e2e.sh"],
   // Exact-file leaves are inventoried in package-test-inventory.test.mjs; compatibility Suites are checked below.
   ["packages/compiler/test/*.test.mjs", "packages/PACKAGE.ts", "node --test --test-concurrency=4 --test-reporter=../../scripts/testing/node-failures.mjs "],
   ["packages/compiler/test/tools/*.test.mjs", "packages/compiler/test/tools/run.sh", "./*.test.mjs"],
@@ -85,6 +86,8 @@ const runs = [
   [".smithers/flows/ts-bump/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/ts-bump/test/*.test.mjs"],
   [".smithers/flows/ci-health/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/ci-health/test/*.test.mjs"],
   [".smithers/flows/first-bad/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/first-bad/test/*.test.mjs"],
+  [".smithers/flows/release/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/release/test/*.test.mjs"],
+  [".smithers/flows/spec-review/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/spec-review/test/*.test.mjs"],
   [".smithers/flows/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/test/*.test.mjs"],
   ["packages/vite/test/*.test.mjs", "packages/vite/test/run.sh", "test/*.test.mjs"],
   ["packages/typescript-shim/test/*.test.mjs", "packages/test-inventory.json", '"typescript-shim/test/'],
@@ -111,7 +114,6 @@ const unrun = [
   ["typescript/tools/**", "upstream TypeScript's own tooling, outside VibeLang's packages"],
   ["typescript/packages/**", "upstream TypeScript's own packages, outside VibeLang's"],
   ["editors/vscode/**", "validate.sh's vscode step runs them, outside the build graph"],
-  ["packages/ts-mapper/test/**", "validate.sh's go step runs them, outside the build graph"],
   ["packages/create-vibelang/test/e2e.test.mjs", "requires workspace compiler/runtime/Vite setup; scripts/e2e.sh covers the install/build/run path"],
   ["packages/create-vibelang/test/format.test.mjs", "requires VIBELANG_DPRINT and the built compiler formatting plugin"],
   ["packages/create-vibelang/test/create.property.test.mjs", "requires real packed compiler/runtime packages and package-manager installs for the scaffold build matrix"],
@@ -292,7 +294,7 @@ test("entrypoint audit agrees with Node across import forms and ignores quoted e
     fc.constantFrom(...corpus.forms), fc.constantFrom(" ", "\n", " /* gap */ "),
     fc.boolean(), fc.boolean(),
     async (form, gap, dots, escaped) => {
-      const dir = mkdtempSync(join(tmpdir(), "vibelang-suite-audit-"))
+      const dir = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-suite-audit-")))
       const slot = Symbol.for("vibelang-suite-audit-modules")
       const previous = globalThis[slot]
       try {
@@ -331,7 +333,7 @@ test("entrypoint audit agrees with Node across import forms and ignores quoted e
 
 test("entrypoint audit agrees with Node for a multi-suite forwarder and repeated imports", async () => {
   await fc.assert(fc.asyncProperty(fc.boolean(), fc.boolean(), fc.boolean(), async (repeat, reverse, multiline) => {
-    const dir = mkdtempSync(join(tmpdir(), "vibelang-multi-suite-audit-"))
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-multi-suite-audit-")))
     const slot = Symbol.for("vibelang-multi-suite-audit-modules")
     const previous = globalThis[slot]
     try {

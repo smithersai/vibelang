@@ -23,7 +23,9 @@ export async function runDocs(root: string, out: string, scope: string, fork: st
   const pages = fixture ? ["self-test.md"] : markdownPages(path.join(root, "docs/user"))
   for (const page of pages) {
     const markdown = fixture ? path.join(base, page) : page
-    if (fixture) fs.writeFileSync(markdown, '```vibe\nfunction f(xs: Items) {\n  xs.forEach((x) => {\n    log(x)\n    g(x)\n  })\n}\n```')
+    // The planted block type-checks in the fork, but its join operand has no
+    // Fiber annotation, so the mapper reports exactly one EK9005 there.
+    if (fixture) fs.writeFileSync(markdown, '```vibe\nexport effect function f(fibers: Array<Fiber.Fiber<number>>) {\n  const first = fibers[0]\n  return join first\n}\n```')
     const blocks = extract(fs.readFileSync(markdown,"utf8"))
     if (!blocks.length) continue
     const dir = path.join(base, `page-${projects.length}`)

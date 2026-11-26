@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -10,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestStdioStreams(t *testing.T) {
@@ -55,8 +53,9 @@ func TestStdioStreams(t *testing.T) {
 // separation of stdout/stderr through the compiled command. An instrumented
 // binary also measures paths that os.Exit keeps outside in-process tests.
 func TestCommandProcesses(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
-	defer cancel()
+	// go test -timeout bounds the instrumented build: a cold `go build -cover`
+	// exceeded a fixed two-minute deadline on a 4-vCPU box (#595).
+	ctx := t.Context()
 	dir := t.TempDir()
 	binary := filepath.Join(dir, "vibelang-mapper")
 	build := exec.CommandContext(ctx, "go", "build", "-cover", "-coverpkg=github.com/microsoft/TypeScript/tsc/cmd/vibelang-mapper", "-o", binary, ".")

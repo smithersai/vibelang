@@ -57,13 +57,16 @@ effect_dir="${EFFECT_DIR:-$cache/node_modules/effect}"
 
 step "install locked property-test dependencies"
 (cd "$package" && bun install --frozen-lockfile --ignore-scripts --no-cache --omit peer)
+[ -d "$root/docs/tools/node_modules" ] || (cd "$root/docs/tools" && bun install --silent)
 
 step "go test ./internal/vibelangmapper"
 (cd "$root/typescript/tsc" && TS7_VERSION="$ts7_version" VIBELANG_REQUIRE_STOCK_TYPESCRIPT=1 CGO_ENABLED=0 go test -trimpath ./internal/vibelangmapper/)
 
 step "forms table matches its generator"
-[ -d "$root/docs/tools/node_modules" ] || (cd "$root/docs/tools" && bun install --silent)
 bash "$root/scripts/check-forms-table.sh"
+
+step "prelude names match projector names.go"
+node --test "$here/prelude-names.test.mjs"
 
 step "build bin/vibelang-mapper"
 (cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$package/bin/vibelang-mapper" -trimpath ./cmd/vibelang-mapper)
@@ -89,7 +92,7 @@ VIBEX_MAPPER="$package/bin/vibelang-mapper" VIBEX_STOCK="$tsc" \
   VIBEX_RUNTIME="$runtime" VIBEX_EFFECT="$effect_dir" \
   node --test "$here/vibex.property.test.mjs"
 
-step "cross-file impure recursion stays stack-safe (B)"
+step "cross-file effect recursion stays stack-safe (B)"
 node "$here/cross-file-stack.mjs" "$package/bin/vibelang-mapper" "$work"
 
 step "tsc --runExternalCode"

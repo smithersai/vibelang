@@ -327,6 +327,51 @@ test("bun-served-layouts", async () => {
   })
 })
 
+// bun-served-layouts drives the hook through the build object it registers
+// with, 300 times; a Bun process and a compile per run would not fit its
+// budget. This test checks the same claims through the real Bun.build: each
+// served spelling bundles the .vibe module, and a .js name whose basename only
+// another directory's .vibe shares reaches Bun's own resolution of the .ts.
+test("Bun.build serves the spellings bun-served-layouts claims", { skip: !hasBun && "bun is not on PATH" }, () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bun-served-")))
+  try {
+    write(root, {
+      ".git/HEAD": "ref: refs/heads/main\n",
+      "package.json": '{"type":"module"}',
+      "tsconfig.json": JSON.stringify({ compilerOptions: { module: "ESNext", moduleResolution: "Bundler", target: "ESNext", types: [], skipLibCheck: true }, include: ["src", "other"] }),
+      "src/leaf.vibe": 'export const leaf = "vibe:leaf"\n',
+      "src/a.b.vibe": 'export const dotted = "vibe:a.b"\n',
+      "src/helper.ts": 'export const helper = "ts:helper"\n',
+      "other/helper.vibe": 'export const helper = "vibe:other"\n',
+      "src/main.ts": [
+        'import { leaf as explicit } from "./leaf.vibe"',
+        'import { leaf as rewritten } from "./leaf.js"',
+        'import { leaf as extensionless } from "./leaf"',
+        'import { dotted } from "./a.b.js"',
+        'import { helper } from "./helper.js"',
+        "console.log(JSON.stringify([explicit, rewritten, extensionless, dotted, helper]))",
+        ""
+      ].join("\n"),
+      "build.mjs": [
+        "const { default: vibelang } = await import(process.env.PLUGIN)",
+        'const result = await Bun.build({ entrypoints: ["src/main.ts"], target: "bun", outdir: "out", plugins: [vibelang()] }).catch((error) => error)',
+        'if (!result.success) { console.error(String(result.errors ?? result.logs)); process.exit(1) }',
+        ""
+      ].join("\n")
+    })
+    mkdirSync(join(root, "node_modules"))
+    symlinkSync(fileURLToPath(new URL("../../compiler", import.meta.url)), join(root, "node_modules/vibelang"))
+    const plugin = new URL("../src/bun.js", import.meta.url).href
+    const build = spawnSync("bun", ["build.mjs"], { cwd: root, encoding: "utf8", env: { ...process.env, PLUGIN: plugin } })
+    assert.equal(build.status, 0, build.stderr)
+    const run = spawnSync("bun", ["out/main.js"], { cwd: root, encoding: "utf8" })
+    assert.equal(run.status, 0, run.stderr)
+    assert.deepEqual(JSON.parse(run.stdout), ["vibe:leaf", "vibe:leaf", "vibe:leaf", "vibe:a.b", "ts:helper"])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 const nativeIndexJsxRule = "docs/design/vips/0039-vibex.md: `.ts` and `.tsx` are unchanged; packages/unplugin/README.md: an extensionless name matches only where a VibeLang file or index exists"
 
 function checkNativeIndexJsx({ depth, leadingDot, trailingSlash, tag, runtimeName }) {

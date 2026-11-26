@@ -515,7 +515,8 @@
     "unplugin/test/eval-files.test.mjs",
     "unplugin/test/worker-imports.test.mjs",
     "unplugin/test/missing-backend.test.mjs",
-    "unplugin/test/unincluded-module.test.mjs"
+    "unplugin/test/unincluded-module.test.mjs",
+    "unplugin/test/teardown-twins.test.mjs"
   ],
   "compiler-tools": [
     "compiler/test/tools/babel.test.mjs",

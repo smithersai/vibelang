@@ -1,17 +1,20 @@
 import assert from "node:assert/strict"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, watch, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, relative } from "node:path"
 import { test } from "node:test"
 import fc from "fast-check"
+import { createServer } from "vite"
+import { findBinary } from "../../compiler/binary.mjs"
 import { unplugin } from "../src/index.js"
+import vibelangVite from "../src/vite.js"
 
 // A failed build's host watcher observes files, without recursively following
 // directories that did not exist when its watches were registered.
-async function recovery(framework, segments, extension, command = "build") {
-  const root = mkdtempSync(join(tmpdir(), "unplugin-missing-directory-"))
+async function recovery(framework, segments, extension) {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "unplugin-missing-directory-")))
   const plugin = unplugin.raw({ root }, { framework })
-  if (framework === "vite") plugin.vite.configResolved({ root, command })
+  if (framework === "vite") plugin.vite.configResolved({ root, command: "build" })
   const watched = new Set(), observers = []
   let timer
   try {
@@ -43,14 +46,8 @@ export function projects({ root, project }) {
     await plugin.buildStart.call(context)
     await assert.rejects(plugin.load.call(context, source), /Cannot find module/)
     await plugin.buildEnd(new Error("unresolved import"))
-    if (command === "serve") {
-      assert.ok(watched.has(root), "the server retains its existing parent directory watch")
-      assert.ok([...watched].every(file => !relative(root, file).startsWith("..")),
-        "a server load must not register a build-only notification file")
-      return
-    }
     const signal = new Promise((accept, reject) => {
-      timer = setTimeout(() => reject(new Error(framework + ": no file notification for a new directory index")), 5000)
+      timer = setTimeout(() => reject(new Error(framework + ": no file notification for a new directory index")), 15000)
       for (const file of watched) {
         if (existsSync(file) && statSync(file).isFile())
           observers.push(watch(file, () => accept(file)))
@@ -84,5 +81,31 @@ for (const framework of ["vite", "rolldown", "rollup"]) {
   })
 }
 
-test("Vite serve retains native directory watching without build notifications", () =>
-  recovery("vite", ["missing"], "vibe", "serve"))
+// Vite serve through a real dev server and the real compiler: the server's
+// own watcher sees the new directory index, the plugin registers no
+// build-only notification file, and the next load compiles the restored import.
+test("Vite serve retains native directory watching without build notifications", { timeout: 120000 }, async (t) => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "unplugin-serve-missing-")))
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }))
+  writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
+    compilerOptions: { module: "ESNext", moduleResolution: "Bundler", target: "ESNext", types: [], skipLibCheck: true },
+    include: ["*.vibe", "missing"]
+  }))
+  writeFileSync(join(root, "main.vibe"), 'import { value } from "./missing"\nexport { value }\n')
+  const server = await createServer({ root, configFile: false, logLevel: "silent", appType: "custom",
+    optimizeDeps: { noDiscovery: true, include: [] },
+    server: { middlewareMode: true, hmr: false }, plugins: [vibelangVite({ root, compiler: findBinary() })] })
+  t.after(() => server.close())
+  await assert.rejects(server.ssrLoadModule("/main.vibe"), /TS2307/)
+  // chokidar files the root under its parent; every other watched path is inside it.
+  const watched = Object.entries(server.watcher.getWatched()).flatMap(([dir, names]) => names.map(name => join(dir, name)))
+  assert.deepEqual(watched.filter(path => path !== root && relative(root, path).startsWith("..")), [],
+    "a server load must not register a build-only notification file")
+  const target = join(root, "missing", "index.vibe")
+  // chokidar reports the file as add or change, after the addDir of its directory.
+  const seen = new Promise(resolve => server.watcher.on("all", (_event, file) => { if (file === target) resolve() }))
+  mkdirSync(dirname(target))
+  writeFileSync(target, 'export const value = "restored"\n')
+  await seen
+  assert.equal((await server.ssrLoadModule("/main.vibe")).value, "restored")
+})

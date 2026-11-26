@@ -81,7 +81,7 @@ export type SourceDeclaration = {
 
 // `service class Names` is the older spelling of `service Names` (EK2120).
 const headPattern =
-  /^(export\s+)?(default\s+)?(declare\s+)?(abstract\s+)?(async\s+)?(function\s*\*?|const|let|var|class|interface|type|service|control|error|schema|layer|enum|namespace)\s+(?:class\s+)?([A-Za-z_$][\w$]*)/
+  /^(export\s+)?(default\s+)?(declare\s+)?(abstract\s+)?(async\s+|effect\s+)?(function\s*\*?|const|let|var|class|interface|type|service|control|error|schema|layer|enum|namespace)\s+(?:class\s+)?([A-Za-z_$][\w$]*)/
 
 // matchClose returns the index just past the bracket that closes code[open].
 function matchClose(code: string, open: number): number {

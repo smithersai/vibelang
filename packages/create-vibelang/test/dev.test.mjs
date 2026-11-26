@@ -40,7 +40,7 @@ else setTimeout(() => {
  let output = "", edited = false
  const consume = data => {
   output += data
-  if (!edited && output.includes("BEFORE")) {
+  if (!edited && output.includes("BEFORE") && output.includes("Waiting for file changes")) {
    edited = true
    writeFileSync(join(root, "source.txt"), "AFTER")
   }

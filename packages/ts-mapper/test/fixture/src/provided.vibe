@@ -8,12 +8,12 @@ const SilentLive = Layer.succeed(Greeting, { text: effect () => "" })
 // types as Effect.provide: the block's requirements drop Greeting.
 export effect function provided() {
   provide Greeting = { text: effect () => "hi" } {
-    return try Greeting.text()
+    return try (try Greeting).text()
   }
 }
 
 export effect function mixed() {
   provide SilentLive, Greeting = { text: effect () => "hi" } {
-    return try Greeting.text()
+    return try (try Greeting).text()
   }
 }

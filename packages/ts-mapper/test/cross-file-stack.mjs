@@ -1,6 +1,10 @@
 // Exercise Emit's imported-call boundary against the runtime built by e2e.sh.
 // Keep locals live across the call, as runtime/tests/fastcalls.test.ts does:
 // an eager cross-file cycle overflows far below the 100,000-call assertion.
+//
+// Deep recursion is written `effect`, running recursive calls with `try`
+// (SKILL.md); a plain function keeps JavaScript's stack limit by design.
+// The control below proves this fixture overflows when the calls are eager.
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
@@ -13,26 +17,29 @@ const locals = Array.from({ length: 80 }, (_, i) => `let v${i} = n + ${i}`).join
 const sum = Array.from({ length: 80 }, (_, i) => `v${i}`).join(" + ")
 
 // body retains all 80 locals while descending and checks every return frame.
-// probe is unknown to the mapper but returns plain data: it establishes
-// impurity without adding a suspension that could hide an eager-call bug.
-function body(name, callee, decrement) {
-  return `export function ${name}(n: number) {
-  probe(n)
+function body(kind, name, callee, decrement) {
+  return `export ${kind} ${name}(n: number) {
   if (n === 0) return 0
   ${locals}
-  const r = ${callee}(n${decrement ? " - 1" : ""})
+  const r = ${kind === "function" ? "" : "try "}${callee}(n${decrement ? " - 1" : ""})
   return r + ${decrement ? 1 : 0} + (${sum}) - (${sum})
 }\n`
 }
 
-for (const helpers of [false, true]) {
-  const dir = path.join(work, helpers ? "cross-file-helpers" : "cross-file")
+// The eager control: the same cycle as plain functions overflows, so the
+// effect runs below exercise the stack-safe path rather than a shallow fixture.
+const cases = [
+  { name: "eager", kind: "function", helpers: false },
+  { name: "direct", kind: "effect function", helpers: false },
+  { name: "with acyclic helpers", kind: "effect function", helpers: true },
+]
+for (const { name, kind, helpers } of cases) {
+  const dir = path.join(work, `cross-file-${name.replaceAll(" ", "-")}`)
   fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(path.join(dir, "probe.js"), "export const probe = n => n\n")
   for (const [file, own, other, target] of [["a", "f", "b", "g"], ["b", "g", "a", "f"]]) {
-    const source = `import { ${target} } from "./${other}.vibe"\nimport { probe } from "./probe.js"\n` +
-      body(own, helpers ? `${own}Helper` : target, !helpers) +
-      (helpers ? body(`${own}Helper`, target, true) : "")
+    const source = `import { ${target} } from "./${other}.vibe"\n` +
+      body(kind, own, helpers ? `${own}Helper` : target, !helpers) +
+      (helpers ? body(kind, `${own}Helper`, target, true) : "")
     const input = path.join(dir, `${file}.vibe`)
     const output = path.join(dir, `${file}.js`)
     fs.writeFileSync(input, source)
@@ -40,12 +47,15 @@ for (const helpers of [false, true]) {
     assert.equal(emitted.status, 0, emitted.stdout + emitted.stderr)
     assert.equal(emitted.stderr, "", "Emit diagnostics")
   }
+  const run = kind === "function"
+    ? `assert.throws(() => f(100000), RangeError)`
+    : `assert.equal(await Effect.runPromise(f(100000)), 100000)`
   fs.writeFileSync(path.join(dir, "run.mjs"), `
 import { Effect } from "effect"
 import { f } from "./a.js"
 import assert from "node:assert/strict"
-assert.equal(await Effect.runPromise(f(100000)), 100000)
-console.log("ok   cross-file ${helpers ? "with acyclic helpers" : "direct"}: 100000")
+${run}
+console.log("ok   cross-file ${name}: ${kind === "function" ? "overflows" : "100000"}")
 `)
   const ran = spawnSync(process.execPath, [path.join(dir, "run.mjs")], { encoding: "utf8", timeout: 60000 })
   assert.equal(ran.status, 0, ran.stdout + ran.stderr)

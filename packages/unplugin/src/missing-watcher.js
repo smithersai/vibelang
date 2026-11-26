@@ -11,8 +11,9 @@ export function missingSourceWatcher(debug = () => {}) {
   const file = join(directory, "changed")
   writeFileSync(file, "0")
   const targets = new Map(), watchers = new Map()
-  let timer, revision = 0, closed = false, failure
+  let timer, poll, revision = 0, closed = false, failure
   const acknowledge = () => { clearInterval(timer); timer = undefined }
+  const stopPoll = () => { clearInterval(poll); poll = undefined }
   function write() {
     try {
       writeFileSync(file, String(++revision))
@@ -25,6 +26,7 @@ export function missingSourceWatcher(debug = () => {}) {
   }
   function notify() {
     if (closed || timer) return
+    stopPoll()
     write()
     // An event can arrive before the bundler finishes arming its error watches.
     // Keep it pending until the next build acknowledges the notification.
@@ -73,10 +75,19 @@ export function missingSourceWatcher(debug = () => {}) {
       if (!needed.has(path)) { watcher.close(); watchers.delete(path) }
     }
     if (changed) notify()
+    else if (targets.size > 0 && !timer && !poll) {
+      // Backstop platforms where fs.watch misses an immediate create during startup (macOS FSEvents).
+      poll = setInterval(() => {
+        if (closed || timer) { stopPoll(); return }
+        try { refresh() } catch (error) { failure = error; notify() }
+      }, 250)
+      poll.unref()
+    }
     return changed
   }
   function clear() {
     acknowledge()
+    stopPoll()
     for (const watcher of watchers.values()) watcher.close()
     watchers.clear()
     targets.clear()

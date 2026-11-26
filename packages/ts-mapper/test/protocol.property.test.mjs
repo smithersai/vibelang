@@ -44,7 +44,8 @@ function project(input) {
   const generated = projectFiles(input.project, input.project.options), files = { ...generated.files }
   const entry = Object.keys(files).find(file => /\/n0\.vibe$/.test(file))
   const effectful = input.form !== "plain", failure = input.form === "failure"
-  const contract = effectful ? `number!${failure ? "MapperFailure" : ""}!` : "number"
+  // A!E!R, with omitted trailing channels: number!MapperFailure, number!! for E = R = never.
+  const contract = effectful ? (failure ? "number!MapperFailure" : "number!!") : "number"
   // Chapters 10/13/17: explicit contracts, hatch inputs and typed failures.
   files[entry] += `${failure ? "export error MapperFailure { value: number }\n" : ""}export ${effectful ? "effect " : ""}function probe(mapperValue: number): ${contract} {\n` +
     (failure ? "  if (mapperValue < 0) throw new MapperFailure({ value: mapperValue })\n" : "") +
@@ -256,12 +257,16 @@ test("the stock mapper accepts and emits a plain project", async () => {
 for (const [name, rule, check] of [["mapper-positions", spansRule, positions], ["mapper-renderings", renderRule, renderings]]) {
   test(name, async () => {
     for (const [key, value] of Object.entries({ work, mapper, stock, compiler })) assert.ok(value, `missing ${key}; run bash test/e2e.sh`)
+    let accepted = 0
     await checkProperty(fc, { name, rule, arbitrary, numRuns: 10, regressions, artifacts, diagnostics: () => failureDiagnostics || diagnostics,
       command: "bash test/e2e.sh", check: async input => {
         diagnostics = ""
         trace(`${name} form=${input.form} modules=${input.project.modules.length}`)
         const root = mkdtempSync(join(resolve(work), "M1-")), p = project(input)
-        try { write(root, p.files); await check(root, input, p) }
+        try {
+          write(root, p.files)
+          if (await check(root, input, p) === true) accepted++
+        }
         catch (error) {
           failureDiagnostics = diagnostics
           process.stderr.write(`M1 ${name} failed: ${error.message}\n${typeof error.actual === "string" ? error.actual.slice(-3000) : ""}\n`)
@@ -269,5 +274,6 @@ for (const [name, rule, check] of [["mapper-positions", spansRule, positions], [
         }
         finally { rmSync(root, { recursive: true, force: true }) }
       } })
+    if (name === "mapper-renderings") assert.ok(accepted > 0, "mapper-renderings must accept at least one generated project, not refuse every run")
   })
 }

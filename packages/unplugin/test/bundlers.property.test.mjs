@@ -1,5 +1,5 @@
-// Run via sh test/run.sh. FC_BUNDLERS can select additional nightly adapters.
-// Normal runs always cover webpack, Rollup and esbuild, including deferred Rollup.
+// Run via sh test/run.sh. Normal runs cover all seven adapters, including
+// deferred Rollup; FC_BUNDLERS selects a subset when reproducing one lane.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
@@ -16,8 +16,9 @@ import { unplugin } from "../src/index.js"
 const here = fileURLToPath(new URL(".", import.meta.url))
 const self = fileURLToPath(import.meta.url)
 const compiler = process.env.VIBELANG_BINARY
-const bundlers = (process.env.FC_BUNDLERS || "webpack,rollup,esbuild").split(",")
-assert.ok(bundlers.every(name => ["webpack", "rollup", "esbuild", "rspack", "rolldown", "vite", "bun"].includes(name)), "unsupported FC_BUNDLERS adapter")
+const adapters = ["webpack", "rollup", "esbuild", "rspack", "rolldown", "vite", "bun"]
+const bundlers = process.env.FC_BUNDLERS ? process.env.FC_BUNDLERS.split(",") : adapters
+assert.ok(bundlers.every(name => adapters.includes(name)), "unsupported FC_BUNDLERS adapter")
 const integration = "docs/design/history/src/428-part4-ch28-tooling.md: Packages and versions, Building and testing; docs/design/history/src/326-part3-ch26-compiled.md: Modules (D364/D365/D403)"
 const mapping = "docs/design/history/src/428-part4-ch28-tooling.md: Debugging (original .vibe positions)"
 const errors = "docs/design/history/src/428-part4-ch28-tooling.md: Diagnostics (D61: errors at .vibe spans, nonzero exit)"
