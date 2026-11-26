@@ -24,7 +24,7 @@ Mapper diagnostics come from the production mapper's `--print` entry; stock
 TypeScript checks through its content mapper and maps positions to original
 sources. The fork checks the same materialized sources. A matching fork diagnostic
 at the same source file, line, and code is excluded. A stock diagnostic mentioning
-D251 is grouped under D251 while retaining its TS code in the CSV. Exact duplicate
+DataRunAnnotation is grouped under DataRunAnnotation while retaining its TS code in the CSV. Exact duplicate
 sites from the mapper and stock are counted once. Markdown line numbers use the
 snippet writer's prefix offsets. Mapper byte offsets are decoded as UTF-8.
 

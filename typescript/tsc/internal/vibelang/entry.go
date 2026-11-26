@@ -33,8 +33,8 @@ type entryPlatform struct {
 	effect, experimental platformBundle
 }
 
-// nodeRuntime is the runtime of a file that names Node, Bun or no platform
-// (D135).
+// nodeRuntime is the runtime of a legacy entry file that names Node, Bun or no
+// platform (retired by VIP-26 / EK2601; legacy history D135).
 var nodeRuntime = platformBundle{platformNodeModule, "NodeRuntime"}
 
 // entryPlatforms are the platforms a platform import can name.

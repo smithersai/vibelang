@@ -99,7 +99,7 @@ export async function runDocs(root: string, out: string, scope: string, fork: st
   }))
   const rows = results.flatMap(r => r.rows).sort((a,b) => a.file.localeCompare(b.file,"en") || a.line-b.line || a.column-b.column || a.code.localeCompare(b.code,"en"))
   const codes: Record<string,number> = {}
-  for (const row of rows) { const code = row.message.includes("D251:") ? "D251" : row.code; codes[code]=(codes[code]??0)+1 }
+  for (const row of rows) { const code = row.message.includes("data in a run position;") ? "DataRunAnnotation" : row.code; codes[code]=(codes[code]??0)+1 }
   const summary = {modules:projects.reduce((n,p)=>n+p.sources.length,0),newDiagnostics:rows.length,affectedModules:new Set(rows.map(r=>r.file)).size,codes:Object.fromEntries(Object.entries(codes).sort()),unresolved:results.flatMap(r=>r.unresolved ? [r.unresolved] : [])}
   const line = `docs: ${summary.modules} modules, ${summary.newDiagnostics} new diagnostics in ${summary.affectedModules} modules (${Object.entries(summary.codes).map(([c,n])=>`${c} ${n}`).join(", ")}); ${summary.unresolved.length} unresolved projects excluded`
   if (!fixture) {

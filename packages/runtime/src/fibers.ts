@@ -43,7 +43,8 @@ export type AwaitedError<T> =
   : never
 
 /**
- * D167: `await x` waits for a Fiber (joining it), a Deferred, or every one of
+ * Retained legacy (history D167, superseded by D225/D226 and VIP-18): `await x`
+ * waits for a Fiber (joining it), a Deferred, or every one of
  * an array or object of them, keeping the shape. When one fails, the fibers
  * still running are interrupted and the failure propagates, as Effect.all
  * fails fast.
@@ -148,7 +149,8 @@ export type Selected<P extends ReadonlyArray<Program>, D extends boolean> =
   | (D extends true ? { readonly index: -1; readonly value: undefined } : never)
 
 /**
- * D168: `select` starts each case in its own fiber, in the order written,
+ * Retained legacy (history D168, superseded by D197): `select` starts each case
+ * in its own fiber, in the order written,
  * and the first to finish wins: its value is the result, or its failure
  * propagates. The other cases are interrupted. A case that finishes while
  * the cases are starting stops the rest from starting, so of cases that are

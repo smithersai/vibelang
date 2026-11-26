@@ -104,7 +104,7 @@ func checkSchemaValue(c *checker.Checker, file *ast.SourceFile, value *ast.Node,
 	}
 	switch {
 	case isNonFieldSchema(value):
-		// A member of the body that is not a field (D247): a method, a
+		// A member of the body that is not a field (VIP-15, detail 247): a method, a
 		// signature, an accessor or a property without a type.
 		d := report(c, value, EK1505, memberText(file, value))
 		note(d, "A schema body lists the decoded keys; a method belongs on a schema error, and a key set is a Record<K, V> field.")

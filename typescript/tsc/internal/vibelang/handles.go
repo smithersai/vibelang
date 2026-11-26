@@ -7,7 +7,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// Handle statements (D132), the statement form of handle:
+// Retained legacy: handle statements are retired with EK3501 while VIP-35
+// remains open (legacy history D132, D18):
 //
 //	try {
 //	  return release(version)

@@ -29,10 +29,11 @@ export const wire = <const L extends readonly [Layer.Any, ...Array<Layer.Any>]>(
 }
 
 // ---------------------------------------------------------------------------
-// Control operations and handlers (D2, D16-D18), on the continuation kernel
+// Retained legacy control operations and handlers (retired with EK3501 while
+// VIP-35 is open; legacy history D2, D16-D18), on the continuation kernel
 // ---------------------------------------------------------------------------
 
-/** D2: control operations are abstract classes that `extend Control`; the compiler rewrites them. */
+/** Retained legacy (retired with EK3501, VIP-35 open; legacy D2): control operations are abstract classes that `extend Control`. */
 export abstract class Control {}
 
 interface ControlInfo {

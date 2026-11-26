@@ -24,7 +24,7 @@ package vibelang
 // "effect/http").
 //
 // The tables are generated from effect@4.1.1's package.json exports and
-// each subpath's dist/<subpath>/index.d.ts, the version VibeLang pins (D1);
+// each subpath's dist/<subpath>/index.d.ts, the version VibeLang pins (VIP-32; formerly history D30/D305);
 // Regenerate with node scripts/generate-effect-subpaths.mjs --write.
 // TestEffectSubpathNamesMatchEffect checks them against the installed
 // package. Files below a module's own directory, such as

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -157,37 +156,46 @@ func TestDiagnosticTextsStartAsSentences(t *testing.T) {
 	}
 }
 
-// Every code that historical Chapter 28 has not retired suggests a repair.
-// Its sentinel keeps the historical spelling; TestRegistryMatchesSpec checks
-// the current Appendix B identifiers independently.
+// Every active code in Appendix B of the live specification has a non-empty
+// rule and chapter/repair cell and corresponds to a live registered code.
 func TestRegistryRowsSuggestRepairs(t *testing.T) {
-	spec, err := os.ReadFile("../../../../docs/design/history/src/428-part4-ch28-tooling.md")
-	if os.IsNotExist(err) {
-		// The old Chapter 28 registry lives in docs/design/history; the new
-		// specification has no registry until VIP-34's diagnostics are assigned.
-		// Without the history copy, the Go registry is the source of truth.
-		t.Skip("the specification has no Chapter 28 registry until VIP-34's diagnostics appendix lands")
-	}
+	spec, err := os.ReadFile("../../../../docs/design/src/900-appendices.md")
 	if err != nil {
 		t.Fatal(err)
 	}
+	text := string(spec)
+	start := strings.Index(text, "## Appendix B. Diagnostics")
+	if start < 0 {
+		t.Fatal("the specification has no Appendix B. Diagnostics")
+	}
+	appendix := text[start:]
+	if next := strings.Index(appendix[1:], "\n## "); next >= 0 {
+		appendix = appendix[:next+1]
+	}
+	rowRe := regexp.MustCompile(`^\| (?:interim )?` + "`" + `(EK(?:38\d{2,}|\d{4}))` + "`" + ` \|`)
 	var rows int
-	for _, line := range strings.Split(string(spec), "\n") {
-		if !regexp.MustCompile(`^\| EK\d{4} \|`).MatchString(line) {
+	for _, line := range strings.Split(appendix, "\n") {
+		match := rowRe.FindStringSubmatch(line)
+		if match == nil {
 			continue
 		}
 		rows++
 		cells := strings.Split(line, "|")
-		if len(cells) < 6 {
-			t.Errorf("registry row has %d cells: %s", len(cells), line)
+		if len(cells) < 5 {
+			t.Errorf("Appendix B row has %d cells: %s", len(cells), line)
 			continue
 		}
-		code, reports, repair := strings.TrimSpace(cells[1]), strings.TrimSpace(cells[2]), strings.TrimSpace(cells[3])
-		if repair == "" && !strings.HasPrefix(reports, "Retired") {
-			t.Errorf("%s has no suggested repair", code)
+		code := match[1]
+		rule := strings.TrimSpace(cells[2])
+		chapter := strings.TrimSpace(cells[4])
+		if rule == "" {
+			t.Errorf("%s has an empty rule cell in Appendix B", code)
+		}
+		if chapter == "" && !strings.Contains(strings.ToLower(rule), "retired") {
+			t.Errorf("%s has no chapter or repair reference in Appendix B", code)
 		}
 	}
-	if rows < 100 || !slices.ContainsFunc(strings.Split(string(spec), "\n"), func(line string) bool { return strings.HasPrefix(line, "| EK2003 |") }) {
-		t.Fatalf("read %d registry rows; the lint no longer reads Chapter 28", rows)
+	if rows < 100 || !strings.Contains(appendix, "| `EK0401` |") {
+		t.Fatalf("read %d Appendix B rows; expected at least 100 live diagnostic rows", rows)
 	}
 }

@@ -102,7 +102,7 @@ import { Exit } from "effect";
 	cmd = exec.Command(stock, "--ignoreConfig", "--noEmit", "--skipLibCheck", "--strict", "--target", "esnext", "--module", "nodenext", "main.ts")
 	cmd.Dir = dir
 	out, err = cmd.CombinedOutput()
-	if err == nil || strings.Count(string(out), "error TS") != 1 || !strings.Contains(string(out), "D251: data in a run position") {
+	if err == nil || strings.Count(string(out), "error TS") != 1 || !strings.Contains(string(out), "data in a run position;") {
 		t.Fatalf("real data cast lost its boundary: %v\n%s", err, out)
 	}
 }

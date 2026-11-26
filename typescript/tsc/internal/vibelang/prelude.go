@@ -13,9 +13,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
-// The prelude (design decisions D4 and D48) is the names every .vibe file sees
-// without an import: Effect, Schema, Layer, TaggedError, Control, Scope, pipe,
-// wire, fork, join, handle, resume, resumeWith, abandon, and Experimental (D313). They are the exports of
+// The prelude (VIP-14, VIP-33; legacy history D4, D48, D313) is the names
+// every .vibe file sees without an import: Effect, Schema, Layer, TaggedError,
+// Scope, pipe, fork, join, and Experimental, plus retained legacy names wire
+// (denied by VIP-24) and Control, handle, resume, resumeWith, abandon (retired
+// with EK3501 while VIP-35 is open). They are the exports of
 // vibelang-runtime, which declares each with the right meanings: Effect
 // is the namespace and the type Effect<A, E, R>, Scope the namespace and the
 // type Scope.Scope.
@@ -137,7 +139,7 @@ var preludeModules = map[string]string{
 	"$uninterruptibleBlock": runtimeModule,
 	"$restoreBlock":         runtimeModule,
 	"$interruptibleBlock":   runtimeModule,
-	// Pattern matching (D206-D225, match.go): the parser writes match and is
+	// Pattern matching (VIP-7; legacy history D206-D218, match.go): the parser writes match and is
 	// with these helpers; customMatcher is the proposal's Symbol.customMatcher.
 	"$is":               runtimeModule,
 	"$extract":          runtimeModule,

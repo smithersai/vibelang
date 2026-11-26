@@ -177,7 +177,7 @@ type YieldR<Eff> = Eff extends EffectModule.Effect<infer _A, infer _E, infer R> 
 
 // Keep the value and channels inferred even in a rejected body. A non-iterable
 // $run result would poison those declarations with any/unknown (gate 1).
-type DataRunAnnotation = "D251: data in a run position; wrap the call in sync((): Exit.Exit<A, E> => call()) to keep it data"
+type DataRunAnnotation = "data in a run position; wrap the call in sync((): Exit.Exit<A, E> => call()) to keep it data"
 type ValidYields<Y> = [Extract<Y, DataRunAnnotation>] extends [never] ? unknown : DataRunAnnotation
 
 /** A function body: `function f() { body }` projects to `function f() { return $gen(function* () { body }) }`. */

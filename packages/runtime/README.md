@@ -254,7 +254,7 @@ or runtime references valid in first-release `.vibe` source.
 | `ReferenceKey` (type) | Name the static side of a compiled service class with a static default in its declaration file | D40, D45 |
 | `$control` | Retained legacy helper: register one kernel operation per control method | D2 |
 | `Control` | Retained legacy control base; first-release references report `EK3501` | D2, D4 |
-| `wire` | Compose layers in the dependent-first order computed by the compiler | D27 |
+| `wire` | Retained legacy (denied by VIP-24): compose layers in the dependent-first order computed by the compiler | VIP-24, legacy D27 |
 | `Continuation` (type) | Type the clause-local, one-shot continuation token: `Continuation<V, E, H>` | D16, D50 |
 | `handle` | Retained legacy handler; first-release references report `EK3501` | D16, D50 |
 | `resume` | Retained legacy continuation resume; first-release references report `EK3501` | D16 |

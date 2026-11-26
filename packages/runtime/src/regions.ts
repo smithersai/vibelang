@@ -41,12 +41,13 @@ export const $finally = <A, E, R, X, E2, R2>(
   finalizer: Effect.Effect<X, E2, R2>
 ): Effect.Effect<A, E | E2, R | R2> => Effect.onExit(self, () => Effect.asVoid(finalizer))
 
-/** A block with `using` or `fork`: a Scope region whose Scope is not put in the Context (D14). */
+/** Retained legacy: a block with `using` (VIP-8 denied special resource syntax, warning EK0801; legacy D14) creates a Scope region whose Scope is not put in the Context. */
 export const $region = <A, E, R>(body: (scope: Scope.Scope) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.scopedWith(body)
 
 /**
- * `using x = e` (D342, D401, D490) is one Effect program for every
+ * Retained legacy (VIP-8 denied special `using` resource syntax, warning EK0801;
+ * legacy history D342, D401, D490): `using x = e` is one Effect program for every
  * initializer, whatever `e`'s type: `Effect.acquireRelease(e, release,
  * { interruptible: true })` with the block's Scope. Its `restore` runs `e`
  * with the interruptibility in force where the `using` stands, as `yield* e`

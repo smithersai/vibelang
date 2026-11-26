@@ -652,14 +652,14 @@
     "reason": "The parent golden already reports EK0403 on legacyParse(text) outside the hatch callback. This remains the same accepted VIP-4 negative control; changing the independent clock diagnostic's expected code does not introduce a new foreign-call restriction."
   },
   {
-    "code": "TS2345",
+    "code": "TS2554",
     "case": "typescript/vibelang/cases/hatch-input-without-parameter.fail",
     "vip": "VIP-6",
     "approval": {
       "by": "Maintainer decision",
       "reference": "docs/design/vips/0006-effect-globals.md: Status: accepted, 2026-10-28. This cites existing published authority, not a new approval."
     },
-    "reason": "The existing fixture program is byte-identical after comment removal. Accepted VIP-6 retires the special hatch arity diagnostic in favor of ordinary Effect functions and native argument errors; this changes existing EK4405 ownership to TS2345 without introducing a newly refused program."
+    "reason": "The existing fixture program is byte-identical after comment removal. Accepted VIP-6 retires the special hatch arity diagnostic in favor of ordinary Effect functions and native argument errors; this changes existing EK4405 ownership to TS2554 without introducing a newly refused program."
   },
   {
     "code": "EK2801",

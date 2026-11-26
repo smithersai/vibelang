@@ -622,6 +622,22 @@ test("retired continuation contracts have no active registration or Appendix row
  assert.equal(audit.appendix.has("EK9210"),false)
 })
 
+test("every retirement allowlist EK code is either live-registered or a formally retired identity-renumbering receipt",async()=>{
+ const {loadIdentity}=await import("./diagnostic-identity.mjs")
+ const audit=loadIdentity(repository)
+ const entries=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"))
+ const appendix=readFileSync(new URL("../design/src/900-appendices.md",import.meta.url),"utf8")
+ const isRetired=code=>new RegExp("The old `" + code + "` is retired").test(appendix)
+ const dangling=rows=>rows
+  .filter(({code})=>code.startsWith("EK"))
+  .filter(row=>!audit.registered.has(row.code)&&!(row.identityRenumbering&&isRetired(row.code)))
+  .map(row=>row.code)
+ assert.deepEqual(dangling(entries),[])
+ assert.equal(audit.registered.has("EK9006"),true,"EK9006 is live in vibelangmapper")
+ assert.deepEqual(dangling([{code:"EK9999"}]),["EK9999"])
+ assert.deepEqual(dangling([{code:"EK9999",identityRenumbering:"docs/design/diagnostic-identity-renames.json"}]),["EK9999"])
+})
+
 test("retired subclass constructor identity has no active registration, row or replay", async () => {
  const {loadIdentity}=await import("./diagnostic-identity.mjs")
  const inventory=loadIdentity()

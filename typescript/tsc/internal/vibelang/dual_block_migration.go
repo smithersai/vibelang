@@ -22,7 +22,9 @@ func init() {
 // tool.
 const dualBlockMigrationNote = "Through VibeLang 0.0.10, a block after an Effect dual took the place of its program. Write it as an effect block there."
 
-// legacyDualBlockForm is where D188 placed a block param through 0.0.10.
+// Retained legacy migration helper: VIP-11 denied trailing blocks (legacy
+// history D188, accepted through VibeLang 0.0.10).
+// legacyDualBlockForm is where legacy D188 placed a block param through 0.0.10.
 type legacyDualBlockForm uint8
 
 const (

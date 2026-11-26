@@ -444,15 +444,14 @@ type runnerSite int
 const (
 	runnerCall  runnerSite = iota // the argument of a root runner's call
 	runnerTest                    // a test that it.effect registers
-	runnerEntry                   // an entry module's main, which its entry statement runs (D135)
+	runnerEntry                   // legacy entry module's main (retired by VIP-26 / EK2601; legacy D135)
 )
 
 // checkRunners reports EK9211 at a runner whose program still needs a
 // service that a wire call in the program leaves unprovided: the dependency
-// path names the provider that needs it. An entry module's main is checked
-// as a root runner's program, since its entry statement runs it with
-// NodeRuntime.runMain or the runtime's copy of it (D135, D122), with the
-// services of the platform layer the entry provides it (D312): EK3205, a
+// path names the provider that needs it. A legacy entry module's main (retired
+// by VIP-26 / EK2601; legacy D135, D122, D312) is checked as a root runner's
+// program with the services of the platform layer the entry provides: EK3205, a
 // warning, since a module that exports main may also be a library whose
 // importer, maybe in another program, provides its services. A main that
 // another module of the program imports is not checked (mainImported).

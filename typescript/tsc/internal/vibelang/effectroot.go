@@ -12,7 +12,7 @@ package vibelang
 // the root, which would load every module.
 //
 // effectRootNames is generated from effect@4.1.1's dist/index.d.ts, the
-// version VibeLang pins (D1); TestEffectRootNamesMatchEffect checks it against
+// version VibeLang pins (VIP-32; formerly history D30/D305); TestEffectRootNamesMatchEffect checks it against
 // the installed package.
 
 // effectRootModule is the effect package's root, which a .vibe file that

@@ -5,7 +5,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// Handlers (design chapter 9, D16-D18, D50).
+// Retained legacy: continuation handlers are retired with EK3501 while VIP-35
+// remains open (history chapter 9, legacy D16-D18, D50).
 //
 //	handle(() => checkout("c-42"), Approval, {
 //	  approve(request, k) {

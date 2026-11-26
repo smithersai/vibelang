@@ -10,12 +10,13 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// A call to code that is not Effect needs a declared trust level (design D5,
-// D22, D23, D51). Nothing in a plain function's type says whether it throws,
+// A call to foreign TypeScript code needs a failure contract (VIP-4, VIP-27;
+// supersedes legacy package-trust history D5, D22, D23, D51 where bare calls
+// reported EK4401). Nothing in a plain function's type says whether it throws,
 // so each kind of callee has a rule:
 //
 //	formatName(user)          // plain TypeScript: EK0403 without a boundary
-//	parsePortTrusted(text)    // @vibelang trusted, @throws {PortError}: PortError joins E
+//	parsePortTrusted(text)    // @throws {PortError} (or legacy @vibelang trusted): PortError joins E
 //	JSON.parse(text)          // a built-in: SyntaxError joins E
 //	Option.some(1)            // pinned effect export typed never: no wrapper needed
 //	Option.getOrThrow(o)      // pinned effect export typed Error: wrap in Effect.try
@@ -23,7 +24,7 @@ import (
 //
 // The foreign-call gate applies only to code a fiber runs: a module's top level, and the
 // plain callbacks it passes to TypeScript functions, are JavaScript, where an
-// exception fails the module's import or the caller's callback (D51).
+// exception fails the module's import or the caller's callback (VIP-4; legacy D51).
 
 // trustKind is the trust level of a call's callee.
 type trustKind uint8
@@ -31,21 +32,21 @@ type trustKind uint8
 const (
 	trustUnknown  trustKind = iota // no declaration to judge, as for a callee of type any
 	trustES                        // VibeLang code, or a parameter of a .vibe function
-	trustEffect                    // an export of a trusted package (D22, D261)
-	trustBuiltin                   // a JavaScript built-in that TypeScript's lib files declare (D5)
-	trustTagged                    // a declaration tagged @vibelang trusted (D23)
+	trustEffect                    // an export of the pinned effect package (VIP-4; legacy D22, D261)
+	trustBuiltin                   // a JavaScript built-in that TypeScript's lib files declare (VIP-4; legacy D5)
+	trustTagged                    // a declaration with a legacy @vibelang trusted tag (retired by VIP-4/VIP-27; legacy D23)
 	trustPlatform                  // a platform package such as @types/node, which EK4402 reports
 	trustForeign                   // any other function: EK0403 outside a boundary
 )
 
 // trust is what VibeLang knows about calling one callee.
 type trust struct {
-	declaration *ast.Node // the tagged declaration, retained for D249 migration edits
+	declaration *ast.Node // the tagged declaration, retained for legacy D249 migration edits
 	kind        trustKind
 	failures    []failure // the exceptions that are expected failures, which join E
 	promise     bool      // the call returns a Promise
 	unreachable string    // a @throws type that names no class, as written
-	value       bool      // the callee is a trusted(impl, [Errors]) value, which lists its failures in its type (D514)
+	value       bool      // the callee is a legacy trusted(impl, [Errors]) value (retired by VIP-4/VIP-27; legacy D514)
 	unknown     bool      // a written @throws {unknown} or {any}: an affirmative may-throw contract, unlike no tag (detail 255)
 }
 

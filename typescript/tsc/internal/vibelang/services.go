@@ -10,11 +10,12 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// Services and control operations (design D1, D2, D41, D45, D501).
+// Services (VIP-9; legacy abstract-class services from history D1, D41, D45
+// are rejected with EK4854, and legacy Control operations from history D2 are
+// retired with EK3501 while VIP-35 is open).
 //
-// An abstract class in a .vibe file whose instance members are all abstract
-// declares a service, and one that extends Control declares a control
-// operation. A service is the class Effect TypeScript writes (D501):
+// A `service` declaration lowers to Effect TypeScript's Context.Service class
+// (VIP-9, history D501):
 //
 //	class Users extends Context.Service<Users, {
 //	  find(id: string): Effect<User, UserNotFound, never>

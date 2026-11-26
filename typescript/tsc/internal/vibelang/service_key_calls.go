@@ -6,7 +6,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// A service key called with arguments is EK9214 (Chapter 4, D415): get the
+// A service key called with arguments is EK9214 (VIP-9, VIP-34; legacy history D415 used EK3007): get the
 // service, then call it (VIP-10), so Fn(3) for
 // service Fn: (n: number) => number means (try Fn)(3). It replaces
 // TypeScript's TS2348, whose suggestion of new would be EK3003, and its quick

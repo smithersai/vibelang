@@ -6,7 +6,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// Checks of layer declarations (D129). The parser turns
+// Retained legacy check of layer declarations (VIP-11/VIP-12 reject layer
+// declarations with EK2121; setup-order check EK9209 preserves legacy history
+// D129/D221). The parser turns
 //
 //	layer UsersLive: Users { setup; find(id) { ... } }
 //

@@ -52,8 +52,8 @@ const importStarted = (url: string): Promise<{ readonly main?: unknown }> => {
 }
 
 /**
- * D135: runs an entry module's main when the host started the module. The
- * module ends with
+ * Retained legacy (retired by VIP-26 / EK2601; legacy history D135): runs an
+ * entry module's main when the host started the module. The module ends with
  * `$entry(import.meta.main, import.meta.url, main, () => NodeRuntime.runMain(main()))`.
  *
  * - `started` false: the module was imported; nothing runs.
@@ -91,7 +91,8 @@ export const $entry = (started: boolean | undefined, url: string | undefined, ma
 }
 
 /**
- * D135: the runner of an entry module's main,
+ * Retained legacy (retired by VIP-26 / EK2601; legacy history D135): the runner
+ * of an entry module's main,
  * `$entry(import.meta.main, import.meta.url, main, () => $runMain(main()))`,
  * when `@effect/platform-node` does not resolve from the module. It behaves as
  * `NodeRuntime.runMain`: Effect's runner reports a failure nothing reported,

@@ -8,7 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
-// Pattern matching (D206-D225). The parser writes `match (x) { when P: v; }`
+// Pattern matching (VIP-7; legacy history D206-D218). The parser writes `match (x) { when P: v; }`
 // and `x is P` as TypeScript the checker narrows (vibelang_match.go in package
 // parser). A match without a default arm ends in a call of $noMatch with the
 // subject, so the subject's type there is what no arm matched: when the

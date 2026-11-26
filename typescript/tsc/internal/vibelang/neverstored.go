@@ -8,17 +8,15 @@ import (
 
 func init() { fileChecks = append(fileChecks, checkNeverStored) }
 
-// checkNeverStored reports EK1012 where a call that runs never succeeds and
-// what it would give is stored: a variable's initializer, an object literal's
-// field, an array literal's element, or the right side of an assignment. A
-// call runs where it stands (D147), and only a declared Effect type holds a
-// program instead (D262, D265, D269), so the binding, field or element never
-// holds a value: `const missing = Effect.fail(new Missing())` fails the
-// function at the const, and `{ follow: followUntil() }` runs the loop while
-// the object is built, where Effect TypeScript stores both programs to run
-// later. A stored value that can never exist is no use, so the warning names
-// the spellings that say what was meant: store a function, or the declared
-// Effect type, to keep the program; a statement or a throw to run it here.
+// checkNeverStored reports EK1012 where a `try` expression that runs never
+// succeeds and what it would give is stored: a variable's initializer, an
+// object literal's field, an array literal's element, or the right side of an
+// assignment. Under VIP-5 only `try` runs an Effect (superseding legacy
+// auto-run history D147, D262, D265, D269), so `const missing = try
+// Effect.fail(new Missing())` fails the function at the const and the binding
+// never holds a value. A stored value that can never exist is no use, so the
+// warning names the spellings that say what was meant: drop `try` (or store a
+// function) to keep the program, or use a statement or `throw` to fail here.
 func checkNeverStored(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool

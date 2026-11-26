@@ -213,9 +213,9 @@ func isEffectSubtype(c *checker.Checker, t *checker.Type) bool {
 
 // checkThrow reports what an Effect function's throw statement fails with:
 // an Effect value (EK4815), any or unknown (EK4811), or a global Error
-// (EK4804). Only effect code's throw is a typed failure (VIP-4, D282). A
-// plain function's throw is EK0401 (Plain code never throws, chapter 3), and
-// none of these advisories is about it.
+// (EK4804). Only effect code's throw is a typed failure (VIP-4; supersedes
+// legacy D282). A plain function's throw is EK0401 (Plain code never throws,
+// chapter 3), and none of these advisories is about it.
 func (r *ruleCheck) checkThrow(statement *ast.Node) {
 	fn := ast.GetContainingFunction(statement)
 	value := statement.Expression()

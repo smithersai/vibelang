@@ -7,24 +7,26 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// A block with using owns a resource Scope, closed on every exit path.
+// Retained legacy `using` resource-region lowering (VIP-8 denied special
+// resource syntax and reports warning EK0801 for `using` in effect code;
+// legacy history D25, D342, D401, D490).
 // Plain keyword fork instead belongs to the current fiber (VIP-17), so no
 // resource region is introduced for it and a helper's return does not end its
 // child's lifetime.
 //
-// A using declaration supplies its region's Scope to the whole initializer.
+// A legacy using declaration supplies its region's Scope to the whole initializer.
 // Other programs keep the Scope their caller supplies.
 // using runs its initializer with the block's Scope, so every release an
 // acquisition there registers runs when the block exits, and exactly one
-// owner releases the value (D401): the acquisition, when it recorded the
+// owner releases the value (legacy D401): the acquisition, when it recorded the
 // value's release (Effect.acquireRelease and Effect.acquireDisposable, as the
 // runtime gives them), and otherwise using, which disposes a value with a
 // disposal method once. TypeScript checks that the value is a Disposable,
 // null, or undefined unless the initializer requires Scope (TS2850). using
-// is one Effect program for every initializer, whatever its type (D490):
+// is one Effect program for every initializer, whatever its type (legacy D490):
 // Effect.acquireRelease(e, release, { interruptible: true }), which runs e
 // with the interruptibility in force where the using stands, as yield* runs
-// it, each acquisition in e keeping its own policy (D25), and adds no mask
+// it, each acquisition in e keeping its own policy (legacy D25), and adds no mask
 // of its own. The block supplies Scope to the whole initializer, each
 // operand it evaluates included, so a generic R in its requirements leaves
 // as Exclude<R, Scope>. for (using x of values) takes each
