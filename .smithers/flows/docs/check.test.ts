@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { test, expect } from "bun:test";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -82,15 +83,15 @@ test("the shipped skill numbers each language rule once and in order", async () 
 
 test("contributing gives a graph command for every check and names the pull request check run", async () => {
   const output = render(await readSources())["CONTRIBUTING.md"]!
-  const workflow = await readFile(join(repository, ".github/workflows/mq-pregate.yml"), "utf8")
-  const event = /^\s+types: \[([^\]]+)\]/m.exec(workflow)![1]!
-  expect(workflow).toContain("repository_dispatch:")
+  expect(existsSync(join(repository, ".github/workflows/mq-pregate.yml"))).toBe(false)
+  expect(existsSync(join(repository, ".github/workflows/go-cache.yml"))).toBe(false)
   expect(await readFile(join(repository, "scripts/ci.sh"), "utf8")).toContain("smthrs")
   const rows = output.split("## Test your change\n\n")[1]!.split("\n\n")[0]!.split("\n").slice(2)
   expect(rows).toHaveLength(7)
   for (const row of rows) expect(row).toMatch(/\| `smthrs ci \/\/[^\s`]+` \|$/)
-  expect(output).toContain("`.github/workflows/mq-pregate.yml`")
-  expect(output).toContain("`" + event + "`")
+  expect(output).not.toContain(".github/workflows/mq-pregate.yml")
+  expect(output).not.toContain("mq-pregate")
+  expect(output).toContain("`smthrs ci`")
   expect(output).toContain("[the build graph](docs/maintainers/build.md)")
   expect(output).not.toContain("The repository has no CI or commit statuses.")
   const pr = Bun.YAML.parse(await readFile(join(repository, ".github/workflows/pr-check.yml"), "utf8"))

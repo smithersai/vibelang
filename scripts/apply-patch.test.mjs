@@ -6,12 +6,9 @@ import path from "node:path"
 import { test } from "node:test"
 import { constants as zlibConstants, createGzip, gzipSync } from "node:zlib"
 
-// The hosted pre-gate applies a queued change from the dispatch payload, which GitHub caps at 65,535 characters. 69
-// entries in two days (2026-10-30/31) were over it with gzip and waited for one of four nyc workers; xz brings about a
-// quarter of them under it. This runs the workflow's own apply step on xz and gzip payloads.
+// scripts/apply-patch.sh applies a base64-encoded xz or gzip patch payload.
 const repo = new URL("../", import.meta.url)
-const workflow = fs.readFileSync(new URL(".github/workflows/mq-pregate.yml", repo), "utf8")
-const applyStep = workflow.match(/- name: Apply the change\n\s+run: (.+)\n/)?.[1]
+const applyStep = `printf '%s' "$PRE_PATCH" | sh scripts/apply-patch.sh`
 
 const diff = `diff --git a/a.txt b/a.txt
 --- a/a.txt
@@ -47,8 +44,8 @@ const xz = (bytes) => {
 const apply = (dir, packed) =>
   spawnSync("bash", ["-eo", "pipefail", "-c", applyStep], { cwd: dir, encoding: "utf8", env: { ...process.env, PRE_PATCH: packed.toString("base64") } })
 
-test("the workflow's apply step finds its run line", () => {
-  assert.ok(applyStep, "mq-pregate.yml has a one-line `Apply the change` step")
+test("the apply-patch helper script exists", () => {
+  assert.ok(fs.existsSync(new URL("scripts/apply-patch.sh", repo)), "scripts/apply-patch.sh exists")
 })
 
 for (const [name, pack] of [["xz", xz], ["gzip", gzipSync]]) {

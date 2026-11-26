@@ -140,7 +140,6 @@
       "scripts/synthetic-target.test.mjs",
       ".smithers/flows/ci-health/test/duplicate-scores.test.mjs",
       "scripts/lsp-framing.test.mjs",
-      "scripts/mq-pregate.test.mjs",
       ".smithers/flows/ci-health/test/go-cache.test.mjs",
       ".smithers/flows/ci-health/test/steps.test.mjs",
       "scripts/grammar-authority.test.mjs",

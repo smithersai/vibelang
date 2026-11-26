@@ -11,7 +11,6 @@ const { classifyPlan, browserPrerequisites } = existsSync(helper)
   ? await import(helper.href)
   : { classifyPlan: () => true }
 const root = new URL("../", import.meta.url).pathname
-const workflow = readFileSync(new URL("../.github/workflows/mq-pregate.yml", import.meta.url), "utf8")
 const node = (label, dependencies = [], target = "Shell.Test") => ({ label, dependencies, target })
 const plan = (targets, roots = ["//:release"]) => ({ roots, targets, warnings: [] })
 
@@ -70,18 +69,6 @@ test("generated known dependency graphs retain browser and unknown descendants",
     }
     assert.deepEqual(leaf.dependencies, [], "classification must not mutate the plan")
   }
-})
-
-test("hosted browser installation uses the real selector output", () => {
-  const select = workflow.match(/      - name: Select browser prerequisites\n([\s\S]*?)(?=\n      - )/)
-  assert.ok(select, "missing browser selection step")
-  assert.match(select[1], /^        id: browser$/m)
-  assert.match(select[1], /cd \.smithers && bun install --frozen-lockfile/)
-  assert.match(select[1], /node scripts\/ci-browser-needed\.mjs >> "\$GITHUB_OUTPUT"/)
-  const install = workflow.match(/      - name: Install Chromium\n([\s\S]*?)(?=\n      - |\n      #)/)
-  assert.match(install[1], /^        if: steps\.browser\.outputs\.needed == 'true'$/m)
-  assert.match(install[1], /npm ci --no-audit --no-fund/)
-  assert.match(install[1], /npx playwright install --with-deps chromium/)
 })
 
 test("the actual planner preserves an indirect browser prerequisite", { skip: !browserPrerequisites }, t => {

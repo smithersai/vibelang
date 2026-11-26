@@ -58,8 +58,6 @@ export const buildContractFiles = [
   "scripts/testing/migrate-shards.mjs",
   "scripts/testing/node-failures.mjs",
   "scripts/go-test-progress.mjs",
-  ".github/workflows/go-cache.yml",
-  ".github/workflows/mq-pregate.yml",
   "typescript/vibelang/smoke.sh",
   "typescript/vibelang/lsp-smoke.sh",
   "packages/vite/test/run.sh",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { execFileSync, spawnSync } from "node:child_process"
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, chmodSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, chmodSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { stripTypeScriptTypes } from "node:module"
@@ -217,8 +217,9 @@ test("an empty paths file and ordinary CI preserve the requested selection", t =
   }
 })
 
-test("hosted gates select changed paths against their tested base", () => {
-  assert.match(read(".github/workflows/mq-pregate.yml"), /CI_GATE_BASE="\$PRE_BASE".*CI_RESULTS=/)
+test("the pre-gate uses scripts/ci.sh directly and no mq-pregate GitHub workflow remains", () => {
+  assert.equal(existsSync(new URL("../.github/workflows/mq-pregate.yml", import.meta.url)), false)
+  assert.match(read("scripts/ci.sh"), /CI_GATE_BASE/)
 })
 
 test("template edits select the native starter contract in build-only gates", () => {
