@@ -56,13 +56,13 @@ bun run test    # Run Vitest on src/**/*.test.vibe via vibelang-vite
 Use `runSync` only when you know the entire program completes synchronously:
 
 ```vibe
-// run: try Console.log(total)
+// run: try Console.log(try total)
 effect function subtotal() {
   return 7 * 8
 }
 
-const total = Effect.runSync(subtotal())
-// total: number (56)
+const total = Effect.try(() => Effect.runSync(subtotal()))
+// total: Effect<number, Cause.UnknownError> (56)
 // Output: 56
 ```
 

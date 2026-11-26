@@ -38,7 +38,7 @@ effect function firstAlert() {
 ## Calling services between yields
 
 ```vibe
-// run: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, "x".repeat(1001)); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
+// run: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, try Effect.try(() => "x".repeat(1001))); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
 import * as NodeServices from "@effect/platform-node/NodeServices"
 
 effect function* fileTexts(directory: string) {

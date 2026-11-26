@@ -1,7 +1,7 @@
 /**
  * The capability vocabulary and its pure functions: text form, glob
- * matching, rule evaluation and effect tiers. Ported from Smithers'
- * `@smthrs/capability`. Nothing here holds state or needs a service.
+ * matching, rule evaluation and effect tiers. Nothing here holds state or
+ * needs a service.
  *
  * @internal
  */

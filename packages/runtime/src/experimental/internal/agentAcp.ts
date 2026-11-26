@@ -16,8 +16,6 @@
  *
  * Errors carry codes only: an agent's error message can quote its task.
  *
- * Ported from the ACP client of Smithers' agent package.
- *
  * @internal
  */
 

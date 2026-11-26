@@ -7,7 +7,7 @@ VibeLang is a fork of TypeScript for Effect programs. Follow these steps in orde
 ## 1. Check the tools
 
 - **Node:** run `node --version` and require Node `22.22.3` (`22.x`) or Node `24.11.1` or later.
-- **Bun (optional):** run `bun --version` and require `1.4.0` or later (`1.4.2`+ to [run sources with Bun](setup/vibelang-cli.md#run-sources-with-bun)).
+- **Bun (optional):** run `bun --version` and require `1.4.2` or later (needed to [run sources with Bun](setup/vibelang-cli.md#run-sources-with-bun)).
 - **Registry:** run `npm view vibelang@0.0.13 version` and expect `0.0.13`. `E404` means the configured registry lacks that version — report the registry and error before continuing.
 
 Version 0.0.13 publishes native binaries for macOS, Linux, and Windows on arm64 and x64 (rehearsed end-to-end with npm and Bun on Linux x64).

@@ -1,7 +1,6 @@
 /**
  * Effect's `DecisionModel` over Jev, the evaluation model the Vercel AI
- * Gateway serves, or over any `LanguageModel`, ported from Smithers'
- * `Evaluator.layerVercelGateway` and `Evaluator.layerFromSeat`. Both speak
+ * Gateway serves, or over any `LanguageModel`. Both speak
  * Jev's question and answer shapes; this module maps Effect's decisions onto
  * them and back.
  *

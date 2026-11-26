@@ -64,3 +64,12 @@ test("archive scan rejects reviewer credits in emitted comments and escaped map 
   assert.ok(findings.some(line => line.includes("kernel.js:1: [reviewer provenance]")))
   assert.ok(findings.some(line => line.includes("kernel.js.map#sourcesContent[0]:1: [reviewer provenance]")))
 })
+
+test("create-vibelang allows documented --smithers scaffolder tokens while keeping prose and other packages strict", () => {
+  const opts = { packageName: "create-vibelang" }
+  assert.deepEqual(productMentions("| `--smithers` | Add `WORKSPACE.ts` using `@smthrs/targets` (`smthrs ci //...`). |", "package/README.md", opts), [])
+  assert.deepEqual(productMentions('  return `import { Smithers as S } from "@smthrs/targets"', "package/bin/create-vibelang.mjs", opts), [])
+  assert.equal(productMentions("Ported from Smithers' retry policy.", "package/bin/create-vibelang.mjs", opts).length, 1)
+  assert.equal(productMentions("const x = '--smithers'", "package/template/src/main.vibe", opts).length, 1)
+  assert.equal(productMentions("const x = '--smithers'", "package/bin/create-vibelang.mjs", { packageName: "vibelang-runtime" }).length, 1)
+})

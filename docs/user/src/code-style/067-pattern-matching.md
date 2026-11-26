@@ -99,14 +99,14 @@ true true false
 // run: const rendered = [display(3), display(true), display(false)]; try Console.log(...rendered)
 function display(input: number | boolean): string {
   return match (input) {
-    when Number: (input as number).toFixed(1);
+    when Number: String(input);
     when Boolean: input ? "enabled" : "disabled";
   }
 }
 ```
 
 ```output
-3.0 enabled disabled
+3 enabled disabled
 ```
 
 A `match` expression takes the union of its arm types, with `throw` arms contributing `never`. Annotating the enclosing function's return type forces every arm to conform to a single type.

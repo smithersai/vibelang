@@ -40,10 +40,10 @@ service CredentialsClient {
 effect function authenticate(secret: string) {
   const client = try CredentialsClient
   const token = Redacted.make(secret)
-  const raw = Redacted.value(token)
+  const raw = try Effect.try(() => Redacted.value(token))
   return try client.authenticate(raw)
 }
-// boolean!!CredentialsClient
+// boolean!Cause.UnknownError!CredentialsClient
 ```
 
 ```output
@@ -60,7 +60,10 @@ effect function useOnce(raw: string) {
   const client = try CredentialsClient
   const token = Redacted.make(raw)
   return try ensuring(
-    effect { return try client.authenticate(Redacted.value(token)) },
+    effect {
+      const value = try Effect.try(() => Redacted.value(token))
+      return try client.authenticate(value)
+    },
     sync(() => Redacted.wipeUnsafe(token))
   )
 }

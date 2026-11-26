@@ -308,7 +308,7 @@ const manifest = []
 for (const entry of order) {
   if (entry.name === "vibelang") writeDprintPlugin(entry.dir, manifest)
   const [packed] = JSON.parse(execFileSync("npm", ["pack", entry.dir, "--pack-destination", tarballs, "--json", "--silent"], { encoding: "utf8" }))
-  problems.push(...packedHygiene(join(tarballs, packed.filename)).map(line => entry.name + ": " + line))
+  problems.push(...packedHygiene(join(tarballs, packed.filename), { packageName: entry.name }).map(line => entry.name + ": " + line))
   const paths = new Map(packed.files.map((file) => [file.path, file]))
   for (const required of entry.required) {
     if (!paths.has(required)) problems.push(`${entry.name}: tarball lacks ${required}`)

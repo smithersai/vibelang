@@ -109,7 +109,7 @@ Checks validate without transforming—they never trim, round, or change case:
 - **Numbers & BigInts**: strict and inclusive bounds, `isBetween`, `isInt`, `isMultipleOf`, and the `BigInt`-suffixed equivalents (`isGreaterThanBigInt`, `isBetweenBigInt`, etc.).
 
 ```vibe
-// run: try Console.log(Schema.is(ShipDate)(new Date("2026-06-01T00:00:00Z")), Schema.is(ShipDate)(new Date("invalid"))); try Console.log(Schema.is(try sync(() => boundedPriceSchema()))(try sync(() => BigDecimal.fromStringUnsafe("1.25")))); try Console.log(Schema.is(HoldDuration)(Duration.seconds(5)), Schema.is(HoldDuration)(Duration.seconds(31)))
+// run: try Console.log(Schema.is(ShipDate)(new Date("2026-06-01T00:00:00Z")), Schema.is(ShipDate)(new Date("invalid"))); try Console.log(Schema.is(boundedPriceSchema())(BigDecimal.make(125n, 2))); try Console.log(Schema.is(HoldDuration)(Duration.seconds(5)), Schema.is(HoldDuration)(Duration.seconds(31)))
 const ShipDate = Schema.Date.check(
   Schema.isBetweenDate({
     minimum: new Date("2026-01-01T00:00:00.000Z"),
@@ -118,7 +118,7 @@ const ShipDate = Schema.Date.check(
 )
 
 function boundedPriceSchema() {
-  const zero = BigDecimal.fromNumberUnsafe(0)
+  const zero = BigDecimal.make(0n, 0)
   return Schema.BigDecimal.check(Schema.isGreaterThanOrEqualToBigDecimal(zero))
 }
 

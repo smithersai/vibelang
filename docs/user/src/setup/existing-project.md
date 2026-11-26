@@ -7,7 +7,6 @@ Install VibeLang in a project with an existing `package.json`, verify the compil
 Call your own `.ts` functions and npm packages through `Effect.try` when they may throw, or `tryPromise` for Promises ([TypeScript boundaries](../vibelang-features/114-vibelang-for-effect-users.md#keep-platform-work-in-effect)):
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-13, VIP-14
 import { parseSettings } from "./settings.ts"
 error BadSettings { cause: unknown }
 

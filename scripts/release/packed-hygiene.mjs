@@ -4,12 +4,23 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-export function productMentions(text, file) {
+const createVibelangScaffolderFiles = new Set(["package/README.md", "package/bin/create-vibelang.mjs"])
+
+export function productMentions(text, file, options = {}) {
   const findings = []
+  const allowScaffolder = options.packageName === "create-vibelang" && createVibelangScaffolderFiles.has(file)
   for (const [index, line] of text.split(/\r?\n/).entries()) {
-    const prose = line
+    let prose = line
       .replace(/\b(?:https?:\/\/|git\+https?:\/\/)?github\.com\/smithersai\/[\w./#?=&%+~:@-]+/gi, "")
       .replace(/@[a-z0-9._~-]+\/[a-z0-9._~-]+/gi, "")
+    if (allowScaffolder) {
+      prose = prose
+        .replace(/--smithers|\bsmthrs(?= ci \/\/)/g, "")
+        .replace(/import \{ Smithers as S \} from ""/g, "")
+        .replace(/\b(?:const|let|function) smithers(?:Version|Workspace|Package)?\b/g, "")
+        .replace(/\b(?:if \(smithers\)|smithers = true|\$\{smithers \?|smithersVersion|smithersWorkspace\(|smithersPackage\()/g, "")
+        .replace(/# Smithers local build cache\.|run the Smithers build, test, and check targets/g, "")
+    }
     if (/smithers|\bsmthrs\b/i.test(prose)) findings.push(`${file}:${index + 1}: ${line.slice(0, 400)}`)
   }
   return findings
@@ -29,7 +40,7 @@ export function reviewerMentions(text, file) {
   return findings
 }
 
-export function packedHygiene(archive) {
+export function packedHygiene(archive, options = {}) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-packed-hygiene-"))
   const findings = []
   try {
@@ -41,13 +52,13 @@ export function packedHygiene(archive) {
         if (entry.isDirectory()) walk(path, file)
         else if (entry.isFile()) {
           const text = readFileSync(path, "utf8")
-          findings.push(...productMentions(text, file), ...reviewerMentions(text, file))
+          findings.push(...productMentions(text, file, options), ...reviewerMentions(text, file))
           if (file.endsWith(".map")) {
             const map = JSON.parse(text)
             for (const [index, source] of (map.sourcesContent ?? []).entries()) {
               if (source != null) {
                 const location = file + "#sourcesContent[" + index + "]"
-                findings.push(...productMentions(source, location), ...reviewerMentions(source, location))
+                findings.push(...productMentions(source, location, options), ...reviewerMentions(source, location))
               }
             }
           }

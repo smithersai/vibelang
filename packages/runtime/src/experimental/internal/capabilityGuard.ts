@@ -1,8 +1,7 @@
 /**
  * The checked versions of the platform services: each operation is turned
  * into a capability, the kernel is asked, and only then does the operation
- * reach the service underneath. Ported from the host services of Smithers'
- * `@smthrs/kernel`, without its pinned directory descriptors.
+ * reach the service underneath.
  *
  * @internal
  */

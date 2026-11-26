@@ -20,8 +20,6 @@
  * - Calls settle one at a time, in the order the cell issued them, so a cell
  *   that is run again reaches the same calls in the same order.
  *
- * Ported from the QuickJS binding of Smithers' agent harness.
- *
  * @internal
  */
 import * as Data from "effect/Data"

@@ -16,8 +16,6 @@
  *   checks a completion claim against the run's evidence; a judge that cannot
  *   be reached fails the run and never approves.
  *
- * Ported from the cell-first controller of Smithers' agent harness.
- *
  * @internal
  */
 import * as Cause from "effect/Cause"

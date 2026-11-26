@@ -1,7 +1,7 @@
 /**
- * The rate card, in USD per million tokens, ported from Smithers' model
- * package. cacheWrite is the 5-minute cache write; cacheWrite1h the 1-hour
- * one. This file is the table's source: edit it by hand.
+ * The rate card, in USD per million tokens. cacheWrite is the 5-minute
+ * cache write; cacheWrite1h the 1-hour one. This file is the table's source:
+ * edit it by hand.
  *
  * @internal
  */

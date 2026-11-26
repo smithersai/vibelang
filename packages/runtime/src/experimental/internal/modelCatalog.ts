@@ -1,6 +1,5 @@
 /**
- * Static facts about provider models and USD prices for their calls, ported
- * from Smithers' `ModelCatalog` and `Pricing`.
+ * Static facts about provider models and USD prices for their calls.
  *
  * @internal
  */

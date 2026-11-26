@@ -1,7 +1,7 @@
 /**
  * Quota parking: whether a provider's refusal is a window a durable run waits
- * out, and until when. The classification half of Smithers' `QuotaPolicy`,
- * read from Effect's `AiError`: Effect's provider clients already turn a
+ * out, and until when. Classifies quota windows from Effect's `AiError`:
+ * Effect's provider clients already turn a
  * `Retry-After` header into `RateLimitError.retryAfter`, so no text is parsed
  * here.
  *

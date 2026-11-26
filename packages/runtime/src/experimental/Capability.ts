@@ -42,8 +42,6 @@
  * it, and nothing widens it again. A ceiling grants nothing: an operation
  * inside it still needs the store's allow.
  *
- * Ported from Smithers' `@smthrs/capability` and `@smthrs/kernel`.
- *
  * @experimental
  * @since 0.0.13
  */
