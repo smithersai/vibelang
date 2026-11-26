@@ -117,3 +117,33 @@ test('rendered user docs drop the snippet checker experimental marker, not the c
   assert.match(page, /const marker = "\/\/ experimental: builtins"/)
   assert.match(page, /The prose marker \/\/ experimental: builtins stays/)
 })
+
+test('release notes site page assembles unreleased entries from docs/user/changes/ (#472)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'vibelang-user-docs-changes-'))
+  try {
+    cpSync(new URL('.', import.meta.url), join(root, 'site/scripts'), { recursive: true })
+    mkdirSync(join(root, 'site/src/pages'), { recursive: true })
+    mkdirSync(join(root, 'docs/user/src/setup'), { recursive: true })
+    mkdirSync(join(root, 'docs/user/changes'), { recursive: true })
+    mkdirSync(join(root, 'docs/tools'), { recursive: true })
+    for (const file of ['release-changes.mjs', 'release-publication-checks.mjs']) {
+      cpSync(new URL('../../docs/tools/' + file, import.meta.url), join(root, 'docs/tools/' + file))
+    }
+    writeFileSync(join(root, 'docs/user/inventory.md'), '## V4 sidebar in order\n### Setup\n- [Release notes](src/setup/release-notes.md)\n')
+    writeFileSync(join(root, 'docs/user/src/setup/release-notes.md'), [
+      '# Release notes', '',
+      '## 9.8.8 (unreleased)', '',
+      '### Bugs fixed since 9.8.7', '',
+      '- Existing fix.', '',
+      '## 9.8.7', '',
+      '### Bugs fixed since 9.8.6', '',
+      '- Prior release fix.', ''
+    ].join('\n'))
+    writeFileSync(join(root, 'docs/user/changes/vite-fix.md'), 'Vite plugin now resolves relative `.vibe` imports cleanly.\n')
+    const result = spawnSync(process.execPath, [join(root, 'site/scripts/sync-user-docs.mjs'), join(root, 'docs/user')], { encoding: 'utf8' })
+    assert.equal(result.status, 0, result.stderr)
+    const page = readFileSync(join(root, 'site/src/pages/setup/release-notes.mdx'), 'utf8')
+    assert.match(page, /- Existing fix\./)
+    assert.match(page, /- Vite plugin now resolves relative `\.vibe` imports cleanly\./)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})

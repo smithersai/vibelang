@@ -129,13 +129,13 @@ The end-to-end check runs setup, then scaffolds, installs, builds, runs and test
     {
       heading: "Pull requests",
       body: `1. Link the accepted issue: \`Closes #123\`.
-2. Change one thing. Add a test that fails without the change, and update the examples and diagnostics it affects. Every fix commit must add one line to the top release-notes section's \`Bugs fixed since <last published version>\` list and update every doc page its change affects, in the same commit. If the bug is listed under \`Known bugs\`, remove that line and add its \`Bugs fixed\` line in the same commit.
+2. Change one thing. Add a test that fails without the change, and update the examples and diagnostics it affects. Every fix commit must add a change entry file in \`docs/user/changes/\` (one kebab-case \`.md\` file per fix, or \`<topic>.upgrade.md\` for upgrade rows; see [docs/user/changes/README.md](docs/user/changes/README.md)) instead of editing \`release-notes.md\` directly, and update every doc page its change affects, in the same commit. If the bug is listed under \`Known bugs\`, remove that line and add its change entry in the same commit.
 3. Describe the behavior before and after, any syntax or API break, and the commands you ran with their results.
 4. Open a draft for early feedback. {{merge}}
 
 Before submitting, fetch and rebase onto current \`vibe\`, then run \`smthrs ci //:release-notes\` from the repository root. Describe each user-facing symptom and its corrected behavior in plain words, once. This checks duplicate fixes and internal-only wording even while the candidate is unreleased. It uses the recorded publication data; no registry query is needed for this per-change check.
 
-After publishing, finalize that release's heading and record npm's actual version with \`node docs/tools/release-history.mjs --record\`, then start a \`## <next version> (unreleased)\` section in [the release notes](docs/user/src/setup/release-notes.md), with a \`### Bugs fixed since <last published version>\` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.`
+After publishing, fold any remaining change entries with \`node docs/tools/release-changes.mjs --fold\`, finalize that release's heading and record npm's actual version with \`node docs/tools/release-history.mjs --record\`, then start a \`## <next version> (unreleased)\` section in [the release notes](docs/user/src/setup/release-notes.md), with a \`### Bugs fixed since <last published version>\` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.`
     },
     {
       heading: "Style",

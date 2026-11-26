@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url"
 const root = fileURLToPath(new URL("../../", import.meta.url))
 const semver = String.raw`\d+\.\d+\.\d+(?:-[\w.-]+)?`
 // VIP pages record decisions as written, including the Effect version they cite ("In 4.1.0 ...").
-const historical = /(?:^|\/)(?:release-notes|compiler-gaps)\.(?:md|mdx)$|^site\/src\/pages\/vips\//
+const historical = /(?:^|\/)(?:release-notes|compiler-gaps)\.(?:md|mdx)$|^site\/src\/pages\/vips\/|^docs\/user\/changes\//
 
 // vibelang-typescript stands where the typescript package stands, and tools
 // read its version as TypeScript's, so a peer range such as ">=5" accepts it:

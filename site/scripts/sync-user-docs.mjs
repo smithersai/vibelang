@@ -47,6 +47,8 @@ const release = process.env.VIBELANG_SITE_RELEASE_FILE ? JSON.parse(fs.readFileS
 const renderSiteRelease = release ? (await import('../../docs/tools/published-site.mjs')).renderSiteRelease : (_rel, text) => text
 const sourceEffect = release ? JSON.parse(fs.readFileSync(path.join(docsDir, '../packages/runtime/package.json'), 'utf8')).peerDependencies.effect : undefined
 const renderRelease = (rel, text) => renderSiteRelease(rel, text, release, sourceEffect)
+const releaseChangesTool = path.resolve(source, '../tools/release-changes.mjs')
+const releaseChanges = fs.existsSync(releaseChangesTool) ? await import(releaseChangesTool) : undefined
 
 // Pages: every .md file under docs/user/src, keyed by its path from src/.
 const pages = fs
@@ -123,7 +125,11 @@ function convertLink(href, fromRel) {
 }
 
 function convertPage(rel) {
-  const raw = renderRelease(rel, stripDecisionReferences(publishRunDirectives(fs.readFileSync(path.join(srcDir, rel), 'utf8'))))
+  let sourceText = fs.readFileSync(path.join(srcDir, rel), 'utf8')
+  if (rel === 'setup/release-notes.md' && releaseChanges) {
+    sourceText = releaseChanges.assembleReleaseNotes(sourceText, releaseChanges.readChanges(path.resolve(source, '../..')))
+  }
+  const raw = renderRelease(rel, stripDecisionReferences(publishRunDirectives(sourceText)))
   const parts = readFences(raw.split('\n'))
   const out = []
   for (let i = 0; i < parts.length; i++) {

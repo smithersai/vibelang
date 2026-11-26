@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readReleaseNotes } from "./release-changes.mjs"
 
 const repository = fileURLToPath(new URL("../../", import.meta.url))
 const snapshotPath = "docs/tools/release-publication-snapshot.json"
@@ -75,7 +76,7 @@ export function assertRecordedPublication(notes, version, lastPublishedVersion) 
 }
 
 export function checkRecordedPublication(root = repository) {
-  const notes = readFileSync(resolve(root, "docs/user/src/setup/release-notes.md"), "utf8")
+  const notes = readReleaseNotes(root)
   const version = JSON.parse(readFileSync(resolve(root, "packages/compiler/package.json"), "utf8")).version
   const snapshot = readPublicationSnapshot(root)
   assertRecordedPublication(notes, version, snapshot.version)
@@ -91,7 +92,7 @@ export function recordPublicationSnapshot(root, version) {
     const change = next.map((part, i) => part - previous[i]).find(part => part !== 0) ?? 0
     assert.ok(change >= 0, "recording npm publication never moves history backwards")
   }
-  const notes = readFileSync(resolve(root, "docs/user/src/setup/release-notes.md"), "utf8")
+  const notes = readReleaseNotes(root)
   const compiler = JSON.parse(readFileSync(resolve(root, "packages/compiler/package.json"), "utf8")).version
   assertRecordedPublication(notes, compiler, version)
   writeFileSync(file, JSON.stringify(snapshot, null, 2) + "\n")

@@ -674,6 +674,118 @@ const declarationPreservation = S.Shell.Test({
   timeout: "5m"
 })
 
+const docsProjectionPrelude = S.Generate({
+  command: "node scripts/generate-projection-prelude.mjs --write",
+  changes: ["packages/compiler/prelude.d.ts"],
+  data: [Packages.tree, S.Filegroup({ srcs: [S.file("scripts/generate-projection-prelude.mjs")] })],
+  mode: "check",
+  sandbox: "none"
+})
+const docsDirectiveReaders = S.Generate({
+  command: "node packages/compiler/generate-directive-readers.mjs --write",
+  changes: ["packages/vite/src/vibe-directive.js", "packages/unplugin/src/vibe-directive.js"],
+  data: [Packages.tree],
+  mode: "check",
+  sandbox: "none"
+})
+const docsApiIdentity = S.Generate({
+  command: "node scripts/sync-api-identity.mjs --write",
+  changes: [
+    ".smithers/flows/migrate/lib/api-identity.mjs",
+    ".smithers/flows/migrate/lib/api-identity-nominal.mjs",
+    ".smithers/flows/migrate/lib/api-identity-diagnostics-cache.mjs",
+    ".smithers/flows/migrate/lib/api-identity-ambient.mjs",
+    ".smithers/flows/migrate/lib/api-identity-ownership.mjs"
+  ],
+  data: [S.Filegroup({ srcs: [...S.glob(["scripts/sync-api-identity.mjs", "scripts/api-identity*.mjs", ".smithers/flows/migrate/lib/api-identity*.mjs"])] })],
+  mode: "check",
+  sandbox: "none"
+})
+const docsLintCodes = S.Generate({
+  command: "node docs/tools/lint-codes.mjs --write",
+  changes: [
+    "docs/design/inventory/lint-codes.json",
+    "docs/tools/lint-code-assignments.json",
+    "docs/design/src/007-tooling.md",
+    "docs/design/src/900-appendices.md"
+  ],
+  data: [Tsc.tree, S.Filegroup({ srcs: [...S.glob(["docs/tools/lint-codes.mjs", "docs/tools/lint-code-assignments.json", "docs/design/inventory/lint-codes.json", "docs/design/src/007-tooling.md", "docs/design/src/900-appendices.md"])] })],
+  mode: "check",
+  sandbox: "none"
+})
+const docsImportedLintReference = S.Generate({
+  command: "node docs/tools/generate-imported-lint-reference.mjs --write",
+  changes: ["docs/user/src/vibelang-features/imported-lint-diagnostics.md"],
+  data: [Tsc.tree, S.Filegroup({ srcs: [...S.glob(["docs/tools/generate-imported-lint-reference.mjs", "docs/design/inventory/lint-codes.json", "docs/user/src/vibelang-features/imported-lint-diagnostics.md"])] })],
+  mode: "check",
+  sandbox: "none"
+})
+const docsThrowsInventory = S.Generate({
+  command: "node docs/tools/throws-inventory.mjs --write",
+  changes: ["docs/design/inventory/throws.json"],
+  data: [Tsc.tree, S.Filegroup({ srcs: [...S.glob(["docs/tools/throws-*.mjs", "docs/tools/package.json", "docs/tools/bun.lock", "docs/design/inventory/throws.json"])] })],
+  mode: "check",
+  sandbox: "none"
+})
+const docsReleaseDocs = S.Generate({
+  command: "node docs/tools/release-docs.mjs --write",
+  changes: ["README.md", ".smithers/instructions/app.md", "site/src/index.mdx", "site/src/pages/index.mdx", "docs/user", "docs/design/src", "packages", "examples"],
+  data: [tree],
+  mode: "check",
+  sandbox: "none"
+})
+const docsDiagnosticRegistry = S.Generate({
+  command: "node scripts/generate-diagnostic-registry.mjs",
+  changes: ["typescript/tsc/internal/core/vibe_diagnostic_registry.go"],
+  data: [Tsc.tree, S.Filegroup({ srcs: [S.file("scripts/generate-diagnostic-registry.mjs"), S.file("docs/design/src/900-appendices.md")] })],
+  mode: "check",
+  sandbox: "none"
+})
+const docsFlowDocs = S.Generate({
+  command: "cd .smithers && bun run flows/docs/generate.ts",
+  changes: [
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "MAINTAINERS.md",
+    "README.md",
+    "templates/app/AGENTS.md",
+    ".smithers/generated.json",
+    "docs/design/src/900-appendices.md",
+    "typescript/tsc/internal/vibelangfuzz/testdata/grammar_admission.tsv",
+    "typescript/tsc/internal/core/vibe_diagnostic_registry.go"
+  ],
+  data: [tree],
+  mode: "check",
+  sandbox: "none"
+})
+const docsSiteSources = S.Generate({
+  command: "bun site/scripts/build-docs.ts --sources",
+  changes: ["site/sidebar.ts", "site/src/pages"],
+  data: [tree],
+  mode: "check",
+  sandbox: "none"
+})
+const docsMigrateContext = S.Generate({
+  command: "node .smithers/flows/migrate/build-context.mjs",
+  changes: [".smithers/flows/migrate/context.md"],
+  data: [Packages.tree, S.Filegroup({ srcs: [...S.glob([".smithers/flows/migrate/build-context.mjs", ".smithers/flows/migrate/rules.md", ".smithers/flows/migrate/context.md", ".smithers/flows/convert/**", "docs/user/src/platform/platform-globals.md"])] })],
+  mode: "check",
+  sandbox: "none"
+})
+const docsGeneratorTargets = [
+  docsProjectionPrelude,
+  docsDirectiveReaders,
+  docsApiIdentity,
+  docsLintCodes,
+  docsImportedLintReference,
+  docsThrowsInventory,
+  docsReleaseDocs,
+  docsDiagnosticRegistry,
+  docsFlowDocs,
+  docsSiteSources,
+  docsMigrateContext
+]
+
 const scheduleRefresh = S.Shell.Run({
   summary: "Fetch main@github, advance the schedule workspace when main moves, and prepare toolchains.",
   shell: 'jj git fetch --remote github && target=$(jj --ignore-working-copy log --no-graph -r main@github -T commit_id) && cur=$(jj --ignore-working-copy log --no-graph -r @- -T commit_id) && { [ "$target" = "$cur" ] || jj new main@github; } && sh scripts/ci.sh --prepare-only',
@@ -1777,7 +1889,24 @@ const targets = {
     sandbox: "none",
     timeout: "30m"
   }),
+  "docs-projection-prelude": docsProjectionPrelude,
+  "docs-directive-readers": docsDirectiveReaders,
+  "docs-api-identity": docsApiIdentity,
+  "docs-lint-codes": docsLintCodes,
+  "docs-imported-lint-reference": docsImportedLintReference,
+  "docs-throws-inventory": docsThrowsInventory,
+  "docs-release-docs": docsReleaseDocs,
+  "docs-diagnostic-registry": docsDiagnosticRegistry,
+  "docs-flow-docs": docsFlowDocs,
+  "docs-site-sources": docsSiteSources,
+  "docs-migrate-context": docsMigrateContext,
+  "docs-generators": S.Suite({ tests: docsGeneratorTargets }),
   "docs-check": check("Generated docs, tracked-leak and case-collision checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),
+  "release-changes": check(
+    "Validate unreleased release-note entries in docs/user/changes/.",
+    "node docs/tools/release-changes.mjs --check",
+    [], [node]
+  ),
   "release-notes": check(
     "Check the candidate release notes before submitting a change.",
     "VIBELANG_RELEASE_NOTES_FINAL=1 node --test docs/tools/release-docs.test.mjs",

@@ -190,7 +190,7 @@ test("contributor release-note guidance runs the strict guard before submission"
   expect(pullRequests).toContain("once")
   const fixture = await mkdtemp(join(tmpdir(), "release-note-guidance-"))
   try {
-    for (const name of ["release-docs.test.mjs", "release-docs.mjs", "release-publication-checks.mjs", "release-history.mjs"]) {
+    for (const name of ["release-docs.test.mjs", "release-docs.mjs", "release-publication-checks.mjs", "release-history.mjs", "release-changes.mjs"]) {
       await mkdir(join(fixture, "docs/tools"), { recursive: true })
       await writeFile(join(fixture, "docs/tools", name), await readFile(join(repository, "docs/tools", name)))
     }
@@ -209,7 +209,7 @@ test("contributor release-note guidance runs the strict guard before submission"
       const fixtureNotes = sourceNotes.replace(/^## .+$/m, "## " + candidate + " (unreleased)")
       await writeFile(join(fixture, "packages/compiler/package.json"), JSON.stringify({ version: candidate }))
       const heading = /^### Bugs fixed since .+$/m.exec(fixtureNotes)![0]
-      const bullet = /^- .+$/m.exec(fixtureNotes)![0]
+      const bullet = /^- .+$/m.exec(fixtureNotes.slice(fixtureNotes.indexOf(heading)))![0]
       for (const [label, text, status] of [
         ["valid", fixtureNotes, 0],
         ["duplicate", fixtureNotes.replace(heading, heading + "\n" + bullet), 1],

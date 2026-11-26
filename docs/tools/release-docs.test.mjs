@@ -1,4 +1,5 @@
 import { assertRecordedPublication, assertReleaseHistory } from "./release-history.mjs"
+import { readReleaseNotes } from "./release-changes.mjs"
 import { assertReleasePublication, assertReleaseContrast, finalPublication } from "./release-publication-checks.mjs"
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -17,7 +18,7 @@ const releaseVersion = release => release.split("\n")[0].replace(/ \(unreleased\
 test("the top release names the previous published version in its bug heading", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   const version = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8")).version
-  assertReleaseHistory(readFileSync(join(root, "docs/user/src/setup/release-notes.md"), "utf8"), version)
+  assertReleaseHistory(readReleaseNotes(root), version)
 })
 
 test("release history rejects a next-development section when the compiler candidate is unpublished", () => {
@@ -95,8 +96,8 @@ test("an unreleased section keeps install pins and version-derived text on the c
 test("contribution rules require each fix's changelog and affected docs in the same commit", () => {
   for (const path of ["../../CONTRIBUTING.md", "../../.smithers/flows/docs/project.ts"]) {
     const text = readFileSync(new URL(path, import.meta.url), "utf8")
-    assert.match(text, /Every fix commit must add one line to the top release-notes section.s/)
-    assert.match(text, /Bugs fixed since <last published version>/)
+    assert.match(text, /Every fix commit must add a change entry file in \\?`docs\/user\/changes\/\\?`/)
+    assert.match(text, /release-changes\.mjs --fold/)
     assert.match(text, /update every doc page its change affects, in the same commit/)
   }
 })
@@ -299,8 +300,9 @@ test("the 0.0.11 bug list covers the receiver report and service-alias diagnosti
 test("current release notes describe user fixes without internal CI or fuzz bookkeeping", {
   skip: !finalPublication()
 }, () => {
-  const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
-  const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
+  const root = fileURLToPath(new URL("../../", import.meta.url))
+  const notes = readReleaseNotes(root)
+  const version = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8")).version
   assertReleasePublication(notes, version)
 })
 
@@ -310,7 +312,7 @@ test("release history follows the last npm publication", {
 }, () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   const version = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8")).version
-  const notes = readFileSync(join(root, "docs/user/src/setup/release-notes.md"), "utf8")
+  const notes = readReleaseNotes(root)
   assertRecordedPublication(notes, version, process.env.VIBELANG_LAST_PUBLISHED_VERSION)
 })
 
@@ -318,8 +320,9 @@ test("release history follows the last npm publication", {
 test("current publication notes omit internal contrast audit records", {
   skip: !finalPublication()
 }, () => {
-  const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
-  const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
+  const root = fileURLToPath(new URL("../../", import.meta.url))
+  const notes = readReleaseNotes(root)
+  const version = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8")).version
   assertReleaseContrast(notes, version)
 })
 
@@ -327,8 +330,9 @@ test("current publication notes omit internal contrast audit records", {
 test("current publication notes omit compiler-options vet records", {
   skip: !finalPublication()
 }, () => {
-  const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
-  const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
+  const root = fileURLToPath(new URL("../../", import.meta.url))
+  const notes = readReleaseNotes(root)
+  const version = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8")).version
   const releases = notes.split(/^## /m).slice(1)
   const candidate = releases.findIndex(release => releaseVersion(release) === version)
   assert.ok(candidate >= 0)
