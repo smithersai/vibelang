@@ -127,14 +127,18 @@ func init() {
 }
 
 // checkProgramStarts reports EK1005 when code already running in a fiber
-// calls a root runner instead of composing the Effect.
+// calls a root runner instead of composing the Effect. Synchronous parameter
+// initializers, class fields, and static blocks run outside any fiber (VIP-1,
+// D282) where try and fork.detached are invalid, so they follow effectCodeOwner.
 func checkProgramStarts(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsCallExpression(node) {
-			if kind := runnerOf(c, node); kind != notRunner && !isRunnerCallee(c, node) && !outsideFibers(c, a, node) {
-				reportNestedRunner(c, file, node, kind)
+			if kind := runnerOf(c, node); kind != notRunner && !isRunnerCallee(c, node) && !inHatch(node) {
+				if owner := effectCodeOwner(node); owner != nil && a.isEffect(owner) {
+					reportNestedRunner(c, file, node, owner, kind)
+				}
 			}
 		}
 		return node.ForEachChild(visit)
@@ -207,9 +211,9 @@ func isRunnerCallee(c *checker.Checker, call *ast.Node) bool {
 
 // reportNestedRunner reports EK1005 for call, a runner inside code a fiber
 // runs.
-func reportNestedRunner(c *checker.Checker, file *ast.SourceFile, call *ast.Node, kind runnerKind) {
+func reportNestedRunner(c *checker.Checker, file *ast.SourceFile, call, owner *ast.Node, kind runnerKind) {
 	runner := nodeText(file, call.Expression())
-	d := report(c, call.Expression(), EK1005, runner, runningFunctionName(enclosingFunction(call)))
+	d := report(c, call.Expression(), EK1005, runner, runningFunctionName(owner))
 	if kind == testRunner {
 		note(d, "Register tests at the module's top level, or in a describe callback.")
 		return

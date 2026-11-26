@@ -1,0 +1,32 @@
+// expect-result: [1,2,3,4]
+// A parameter default, class field initializer, and class static block run
+// synchronously outside the enclosing effect function's fiber (VIP-1, D282):
+// neither try nor fork.detached is valid there, so a runner is not EK1005.
+import { Effect, Exit } from "effect"
+
+function unwrapExit<A>(exit: Exit.Exit<A>): A {
+  return Exit.isSuccess(exit) ? exit.value : (0 as A)
+}
+
+export effect function withDefault(x = Effect.runSyncExit(Effect.succeed(1))) {
+  return unwrapExit(x)
+}
+
+export effect function withClassBoundaries() {
+  class Box {
+    instanceValue = unwrapExit(Effect.runSyncExit(Effect.succeed(2)))
+    static staticField = unwrapExit(Effect.runSyncExit(Effect.succeed(3)))
+    static staticBlock: number
+    static {
+      Box.staticBlock = unwrapExit(Effect.runSyncExit(Effect.succeed(4)))
+    }
+  }
+  const box = new Box()
+  return [box.instanceValue, Box.staticField, Box.staticBlock]
+}
+
+export effect function main() {
+  const a = try withDefault()
+  const rest = try withClassBoundaries()
+  return [a, ...rest]
+}

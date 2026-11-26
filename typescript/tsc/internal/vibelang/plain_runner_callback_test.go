@@ -23,6 +23,10 @@ func TestPlainRunnerCallbackBoundaries(t *testing.T) {
 		{"nested", "const transform = (f: () => void) => f(); transform(() => transform(() => { run(Effect.void) }));", 0, 0},
 		{"explicit-effect", "const f = effect () => { run(Effect.void) };", 1, 0},
 		{"direct-effect", "run(Effect.void);", 1, 0},
+		{"do-in-effect", "return do { run(Effect.void) };", 1, 0},
+		{"class-instance-field", "class C { v = Effect.runSyncExit(Effect.void) } return new C();", 0, 0},
+		{"class-static-field", "class C { static v = Effect.runSyncExit(Effect.void) } return C.v;", 0, 0},
+		{"class-static-block", "class C { static { Effect.runSyncExit(Effect.void) } } return C;", 0, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "export const a = effect { const run = Effect.runSyncWith(try Effect.context<never>()); " + tc.body + " }\n"
@@ -74,6 +78,16 @@ func TestEK1005SuggestionCompiles(t *testing.T) {
 			if d.Category() == diagnostics.CategoryError {
 				t.Fatalf("suggested replacement %q failed to compile: %s\n%s", want, d.String(), replaced)
 			}
+		}
+	}
+}
+
+func TestEK1005AllowsSyncParameterDefaults(t *testing.T) {
+	source := "export effect function withDefault(x = Effect.runSyncExit(Effect.succeed(1))) { return x }\n"
+	p, file, _, _ := editorProgram(t, source)
+	for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), file), p.GetSemanticDiagnostics(t.Context(), file)...) {
+		if d.Category() == diagnostics.CategoryError {
+			t.Fatalf("unexpected diagnostic in sync parameter default: %s", d.String())
 		}
 	}
 }
