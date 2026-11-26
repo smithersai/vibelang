@@ -443,6 +443,9 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   const moduleReads = new Set([...moduleKeptReads, ...wrappers.flatMap((w) => [...w.reads])])
   const reexportedReads = reexportedNames.filter((n) => moduleReads.has(n)).sort()
   const moduleImports = imports.map((i) => importText(i, source, ts, (b) => moduleReads.has(b.name))).filter(Boolean)
+  const droppedFirstImport = imports[0] === source.statements[0] && !importText(imports[0], source, ts, (b) => moduleReads.has(b.name))
+  const fileComment = droppedFirstImport ? leadingComments(source, imports[0]).trimEnd() : ""
+  const moduleHeader = [...leadingHeader(source), ...(fileComment ? [fileComment] : [])]
   const head = [...moduleImports]
   if (wrappers.length) head.push(`import * as ${namespace} from "${sibling}"`)
   // An import is not narrowed inside a closure the way a local const is, so a
@@ -477,7 +480,11 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
     }
     else for (const name of [...d.names].filter((n) => alias.has(n))) body.push(`const ${name}: typeof ${alias.get(name)} = ${alias.get(name)}`)
   }
-  const moduleText = joinParts(leadingHeader(source), head, body)
+  // Keep leading module JSDoc detached from the first declaration when all
+  // original imports that separated them moved to the sibling (#302).
+  const needsDocBarrier = imports[0] === source.statements[0] && !moduleImports.length &&
+    moduleHeader.some((block) => /\/\*\*/.test(block))
+  const moduleText = joinParts(moduleHeader, needsDocBarrier ? ["export {}"] : [], head, body)
   // The sibling: the module's header, the imports the moved code reads, the
   // moved code as written, then an export of each private declaration the
   // module reads or its inferred types name.
@@ -1354,7 +1361,11 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   if (!reexports && (exports_.length || typeExports.length || reexportsDefault)) {
     return { refused: `${file}: ${[...exports_, ...typeExports, ...(reexportsDefault ? ["default"] : [])].join(", ")} would be declared by \`module ${name}\`, a new public declaration file; platformModuleBodies allows it` }
   }
-  const module = joinParts(leadingHeader(source), head, [body], [...from, ...bound], [...kept.map((d) => inferredTypes.text(d.statement, operations?.edits.get(d.statement))), ...wrappers.map((w) => w.text(name, alias.get(w.name)))])
+  const headerBlocks = [...leadingHeader(source), ...(fileComment ? [fileComment] : [])]
+  const bodyHead = fileComment ? head.slice(1) : head
+  const needsDocBarrier = imports[0] === source.statements[0] && !bodyHead.length &&
+    headerBlocks.some((block) => /\/\*\*/.test(block))
+  const module = joinParts(headerBlocks, needsDocBarrier ? ["export {}"] : [], bodyHead, [body], [...from, ...bound], [...kept.map((d) => inferredTypes.text(d.statement, operations?.edits.get(d.statement))), ...wrappers.map((w) => w.text(name, alias.get(w.name)))])
   return { module, name, moved: [...movedList.flatMap((d) => [...d.names]), ...(operations?.helpers.map((h) => h.name) ?? [])], kept: kept.flatMap((d) => [...d.names]), throwing: throwSeed.flatMap((d) => [...d.names]),
     ...(operations ? { hostOperations: operations.helpers.map((h) => h.name) } : {}), wrapped: wrappers.map((w) => w.name) }
 }
