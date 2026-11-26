@@ -1518,9 +1518,47 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
         return b && sameExportDocs(ts, b.checker, b.symbol, a?.text ?? "", b.text, a?.symbol)
       })
     }
+    // Extract the ambient symbol keys (global:<name> / module:<specifier>) a file
+    // contributes. Any unrecognized statement produces "*" so order checking fails closed.
+    const ambientSymbolsOf = source => {
+      const symbols = new Set()
+      const addDecl = node => {
+        if (ts.isInterfaceDeclaration(node) || ts.isClassDeclaration(node) || ts.isFunctionDeclaration(node) ||
+          ts.isTypeAliasDeclaration(node) || ts.isEnumDeclaration(node)) {
+          if (node.name && ts.isIdentifier(node.name)) symbols.add("global:" + node.name.text)
+          else symbols.add("*")
+        } else if (ts.isVariableStatement(node)) {
+          for (const decl of node.declarationList.declarations) {
+            if (ts.isIdentifier(decl.name)) symbols.add("global:" + decl.name.text)
+            else symbols.add("*")
+          }
+        } else if (ts.isModuleDeclaration(node)) {
+          if (ts.isStringLiteral(node.name)) symbols.add("module:" + node.name.text)
+          else if (node.flags & ts.NodeFlags.GlobalAugmentation) {
+            if (node.body && ts.isModuleBlock(node.body)) for (const inner of node.body.statements) addDecl(inner)
+            else symbols.add("*")
+          } else if (ts.isIdentifier(node.name)) symbols.add("global:" + node.name.text)
+          else symbols.add("*")
+        } else if (!ts.isEmptyStatement(node) && !ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) {
+          symbols.add("*")
+        }
+      }
+      if (!ts.isExternalModule(source)) {
+        for (const statement of source.statements) addDecl(statement)
+      } else {
+        for (const statement of source.statements) {
+          if (ts.isModuleDeclaration(statement) &&
+            ((statement.flags & ts.NodeFlags.GlobalAugmentation) || ts.isStringLiteral(statement.name))) {
+            addDecl(statement)
+          }
+        }
+      }
+      return symbols
+    }
     const ambient = (roots, base) => {
-      const isolated = ts.createProgram(Object.values(roots), compilerOptions, host)
-      const sources = new Map(), texts = new Map(), order = [], copies = []
+      const sortedRoots = Object.keys(roots).sort().map(key => roots[key])
+      const isolated = ts.createProgram(sortedRoots, compilerOptions, host)
+      const sources = new Map(), texts = new Map(), order = [], copies = [], symbols = new Map()
       const docChecker = options.lazyAmbientDocumentation ? undefined : isolated.getTypeChecker()
       for (const source of isolated.getSourceFiles()) {
         if (source.hasNoDefaultLib) continue
@@ -1544,33 +1582,56 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
           key = workspace ? "workspace:" + JSON.stringify(workspace) : "shared:" + file
         }
         order.push(key)
+        const contributed = ambientSymbolsOf(source)
+        if (!symbols.has(key)) symbols.set(key, contributed)
+        else for (const sym of contributed) symbols.get(key).add(sym)
         // Two installed copies of one package are one origin only when their
         // bytes match here and their closures match in the proof below.
         if (!sources.has(key)) { sources.set(key, file); texts.set(key, source.text) }
         else if (texts.get(key) === source.text) copies.push([sources.get(key), file])
         else result.environmentDiagnostics.push({ blocking: true, file, diagnostic: "Ambiguous ambient declaration origin: " + key })
       }
-      return { sources, order, copies }
+      return { sources, order, copies, symbols }
     }
-    const { sources: ambientLeft, order: leftOrder, copies: leftCopies } = ambient(left, before)
-    const { sources: ambientRight, order: rightOrder, copies: rightCopies } = ambient(right, after)
-    // Global overload precedence follows source-file binding order.
-    // Equal per-file closures cannot prove a reordered ambient environment.
-    // A duplicate copy adds declarations at both ends of the merge order, so
-    // the first and the last load of every origin must both agree.
+    const { sources: ambientLeft, order: leftOrder, copies: leftCopies, symbols: leftSymbols } = ambient(left, before)
+    const { sources: ambientRight, order: rightOrder, copies: rightCopies, symbols: rightSymbols } = ambient(right, after)
+    // Global overload precedence follows source-file binding order for files
+    // contributing to the same ambient symbol (#390). Reordering strictly
+    // disjoint ambient contributors is commutative in TypeScript's binder,
+    // while any shared symbol (or unrecognized construct "*") still requires
+    // identical first-load and last-load origin order on both sides.
     const loadOrders = order => [[...new Set(order)], [...new Set([...order].reverse())].reverse()]
     const leftOrders = loadOrders(leftOrder), rightOrders = loadOrders(rightOrder)
     const orderDifference = [0, 1].find(end => JSON.stringify(leftOrders[end]) !== JSON.stringify(rightOrders[end]))
     if (orderDifference !== undefined) {
-      const beforeOrder = leftOrders[orderDifference], afterOrder = rightOrders[orderDifference]
-      let firstDifference = 0
-      while (firstDifference < Math.min(beforeOrder.length, afterOrder.length) &&
-        beforeOrder[firstDifference] === afterOrder[firstDifference]) firstDifference++
-      result.environmentDiagnostics.push({ blocking: true,
-        diagnostic: "Ambient declaration load order differs; shared-program comparison is unavailable",
-        beforeSources: beforeOrder.length, afterSources: afterOrder.length, firstDifference })
-      result.comparisonComplete = false
-      return result
+      const allSymbols = new Set([
+        ...[...leftSymbols.values()].flatMap(set => [...set]),
+        ...[...rightSymbols.values()].flatMap(set => [...set])
+      ])
+      let conflictingSymbol = allSymbols.has("*") ? "*" : null
+      if (!conflictingSymbol) {
+        for (const sym of [...allSymbols].sort()) {
+          const lSub = leftOrder.filter(key => leftSymbols.get(key)?.has(sym))
+          const rSub = rightOrder.filter(key => rightSymbols.get(key)?.has(sym))
+          const lOrders = loadOrders(lSub), rOrders = loadOrders(rSub)
+          if ([0, 1].some(end => JSON.stringify(lOrders[end]) !== JSON.stringify(rOrders[end]))) {
+            conflictingSymbol = sym
+            break
+          }
+        }
+      }
+      if (conflictingSymbol) {
+        const beforeOrder = leftOrders[orderDifference], afterOrder = rightOrders[orderDifference]
+        let firstDifference = 0
+        while (firstDifference < Math.min(beforeOrder.length, afterOrder.length) &&
+          beforeOrder[firstDifference] === afterOrder[firstDifference]) firstDifference++
+        result.environmentDiagnostics.push({ blocking: true,
+          diagnostic: "Ambient declaration load order differs; shared-program comparison is unavailable",
+          beforeSources: beforeOrder.length, afterSources: afterOrder.length, firstDifference,
+          ...(conflictingSymbol !== "*" ? { conflictingSymbol } : {}) })
+        result.comparisonComplete = false
+        return result
+      }
     }
     const ambientProof = equivalentModules(ts, program, host, Object.fromEntries(ambientLeft), Object.fromEntries(ambientRight), externalGroups, documentation)
     for (const key of new Set([...ambientLeft.keys(), ...ambientRight.keys()])) {
