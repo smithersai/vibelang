@@ -1,8 +1,10 @@
 import { testPath } from "./test-files.mjs"
 import { ownedPaths, packageManager, repositoryPackages } from "./wire.mjs"
 import { must, quote, run, writeJson } from "./util.mjs"
+import { compareApiIdentity } from "./api-identity.mjs"
 import { posix, resolve } from "node:path"
 import { mkdtempSync, rmSync, statSync } from "node:fs"
+import { tmpdir } from "node:os"
 // Export routing and packing must describe the same public runtime tree.
 // Keep receipts outside js/: only js/ (including its loader records) is public.
 import { createHash } from "node:crypto"
@@ -112,7 +114,42 @@ export function excludeSidecars(root, pkg) {
   return [...changed, ".npmignore"]
 }
 
-/** Strict file-list gate: only recorded source renames are allowed. */
+/**
+ * Extracts each export subpath's ordered condition keys and flags any published
+ * `vibelang-source` condition or `.vibe`/`.vibex` target (#410).
+ */
+export function exportConditionSurface(manifest) {
+  const raw = manifest?.publishConfig?.exports ?? manifest?.exports
+  const exportConditions = {}
+  const sourceConditions = []
+  if (raw === undefined || raw === null) return { exportConditions, sourceConditions }
+  const map = typeof raw === "object" && !Array.isArray(raw) && Object.keys(raw).some(key => key.startsWith("."))
+    ? raw
+    : { ".": raw }
+  const collectKeys = (value, subpath, trail) => {
+    if (typeof value === "string") {
+      if (/\.vibex?$/.test(value)) sourceConditions.push({ subpath, path: trail, target: value, reason: "published export targets native .vibe source" })
+      return []
+    }
+    if (Array.isArray(value)) return value.flatMap((item, idx) => collectKeys(item, subpath, [...trail, `[${idx}]`]))
+    if (!value || typeof value !== "object") return []
+    const keys = []
+    for (const [key, child] of Object.entries(value)) {
+      keys.push(key)
+      if (key === "vibelang-source") {
+        sourceConditions.push({ subpath, path: [...trail, key], target: typeof child === "string" ? child : null, reason: "published export adds vibelang-source condition" })
+      }
+      collectKeys(child, subpath, [...trail, key])
+    }
+    return keys
+  }
+  for (const [subpath, value] of Object.entries(map)) {
+    exportConditions[subpath] = collectKeys(value, subpath, [])
+  }
+  return { exportConditions, sourceConditions }
+}
+
+/** Strict file-list and export-map contract gate: only recorded source renames are allowed. */
 export function comparePacks(baseline, candidate, migrated = {}) {
   if (!baseline?.packages || !candidate?.packages) return { ok: false, reason: "missing upstream pack baseline; rerun upgrade-effect", packages: {} }
   const packages = {}
@@ -132,8 +169,28 @@ export function comparePacks(baseline, candidate, migrated = {}) {
     }))
     const missing = [...original].filter(file => !normalized.has(file)).sort()
     const extra = [...normalized].filter(file => !original.has(file)).sort()
-    packages[dir] = { ok: !sidecars.length && !sidecarTargets.length && !missing.length && !extra.length, sidecars, sidecarTargets, missing, extra,
-      ...(sidecars.length || sidecarTargets.length ? { reason: "declaration sidecars must not ship; point published types at built .d.ts files" } : {}) }
+    const baselineSourceKeys = new Set((before.sourceConditions ?? []).map(item => JSON.stringify([item.subpath, item.path])))
+    const sourceConditions = (after.sourceConditions ?? []).filter(item => !baselineSourceKeys.has(JSON.stringify([item.subpath, item.path])))
+    const conditionChanges = []
+    if (before.exportConditions && after.exportConditions) {
+      for (const subpath of new Set([...Object.keys(before.exportConditions), ...Object.keys(after.exportConditions)])) {
+        const bConds = before.exportConditions[subpath] ?? null
+        const aConds = after.exportConditions[subpath] ?? null
+        if (JSON.stringify(bConds) !== JSON.stringify(aConds)) {
+          conditionChanges.push({ subpath, before: bConds, after: aConds })
+        }
+      }
+    }
+    const reasons = []
+    if (sidecars.length || sidecarTargets.length) reasons.push("declaration sidecars must not ship; point published types at built .d.ts files")
+    if (sourceConditions.length || conditionChanges.length) reasons.push("published export-map conditions changed or introduced native source conditions (#410)")
+    packages[dir] = {
+      ok: !sidecars.length && !sidecarTargets.length && !missing.length && !extra.length && !sourceConditions.length && !conditionChanges.length,
+      sidecars, sidecarTargets, missing, extra,
+      ...(sourceConditions.length ? { sourceConditions } : {}),
+      ...(conditionChanges.length ? { conditionChanges } : {}),
+      ...(reasons.length ? { reason: reasons.join("; ") } : {})
+    }
   }
   return { ok: Object.values(packages).every(item => item.ok), packages, skipped: excluded }
 }
@@ -191,10 +248,89 @@ function readTarEntries(archive) {
     paxPath = null
     gnuLongName = null
     const clean = fullName.replace(/^\.\//, "")
+    if (typeflag === "1" || typeflag === "2") throw new Error("tar archive contains disallowed link entry: " + fullName)
     if (typeflag === "5" || clean.endsWith("/")) continue
     entries.push({ name: clean, body })
   }
   return entries
+}
+
+/**
+ * Materializes a packed `.tgz` archive into an isolated directory outside any
+ * workspace so API qualification consumes only actual packed bytes (#335).
+ */
+export function materializePackArchive(archive, destination) {
+  const root = resolve(destination)
+  mkdirSync(root, { recursive: true })
+  const entries = readTarEntries(archive)
+  const files = []
+  for (const entry of entries) {
+    const rel = entry.name.replace(/^package\//, "")
+    const normalized = posix.normalize(rel)
+    if (!normalized || normalized === "." || normalized.startsWith("/") || normalized === ".." || normalized.startsWith("../")) {
+      throw new Error("packed archive entry escapes package root: " + entry.name)
+    }
+    const target = resolve(root, normalized)
+    if (target !== root && !target.startsWith(root + sep)) {
+      throw new Error("packed archive entry escapes destination: " + entry.name)
+    }
+    mkdirSync(dirname(target), { recursive: true })
+    writeFileSync(target, entry.body)
+    files.push(normalized)
+  }
+  const manifestFile = join(root, "package.json")
+  if (!existsSync(manifestFile)) throw new Error("packed archive is missing package/package.json: " + archive)
+  const manifest = JSON.parse(readFileSync(manifestFile, "utf8"))
+  return { directory: root, manifest, files: files.sort() }
+}
+
+/**
+ * Compares the public declaration API of two packed `.tgz` archives by
+ * materializing both outside any workspace and disallowing sidecar targets or
+ * out-of-archive fallback paths (#335).
+ */
+export function comparePackedDeclarations(ts, baselineArchive, candidateArchive, options = {}) {
+  const scratch = mkdtempSync(join(tmpdir(), "vibelang-packed-api-"))
+  try {
+    const before = materializePackArchive(baselineArchive, join(scratch, "before"))
+    const after = materializePackArchive(candidateArchive, join(scratch, "after"))
+    const diagnostics = []
+    const refs = value => typeof value === "string" ? [value]
+      : value && typeof value === "object" ? Object.values(value).flatMap(refs) : []
+    for (const [label, side] of [["baseline", before], ["candidate", after]]) {
+      const manifest = { ...side.manifest, ...side.manifest.publishConfig }
+      for (const field of ["types", "typings", "main", "module", "exports", "imports"]) {
+        for (const target of refs(manifest[field])) {
+          if (isSidecar(target)) {
+            diagnostics.push({ blocking: true, side: label, diagnostic: `packed ${label} manifest references sidecar target: ${target}` })
+          }
+          if (target.startsWith("./") && !target.includes("*")) {
+            const rel = posix.normalize(target.slice(2))
+            if (rel.startsWith("../") || rel === "..") {
+              diagnostics.push({ blocking: true, side: label, diagnostic: `packed ${label} manifest target escapes package root: ${target}` })
+            } else if (!existsSync(join(side.directory, rel))) {
+              diagnostics.push({ blocking: true, side: label, diagnostic: `packed ${label} manifest target is missing from archive (workspace fallback prohibited): ${target}` })
+            }
+          }
+        }
+      }
+    }
+    if (diagnostics.length) {
+      return {
+        identical: false,
+        comparisonComplete: false,
+        nameDifferences: [],
+        typeDifferences: [],
+        docDifferences: [],
+        environmentDiagnostics: diagnostics,
+        packed: { baselineFiles: before.files, candidateFiles: after.files }
+      }
+    }
+    const result = compareApiIdentity(ts, before.directory, after.directory, options)
+    return { ...result, packed: { baselineFiles: before.files, candidateFiles: after.files } }
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
 }
 
 export async function packRepository(config, out, { upstream = false, baseline } = {}) {
@@ -253,7 +389,8 @@ export async function packRepository(config, out, { upstream = false, baseline }
       const refs = value => typeof value === "string" ? (isSidecar(value) ? [value] : [])
         : value && typeof value === "object" ? Object.values(value).flatMap(refs) : []
       const sidecarTargets = ["types", "typings", "main", "module", "exports", "imports"].flatMap(field => refs(published[field]))
-      packages[pkg.dir] = { name: published.name, files, sidecarTargets }
+      const { exportConditions, sourceConditions } = exportConditionSurface(published)
+      packages[pkg.dir] = { name: published.name, files, sidecarTargets, exportConditions, sourceConditions }
       save()
     } finally {
       if (generated && !prior.has(generated)) unlinkSync(join(root, generated))
