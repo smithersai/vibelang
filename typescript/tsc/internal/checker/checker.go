@@ -8827,9 +8827,6 @@ func (c *Checker) resolveCallExpression(node *ast.Node, candidatesOutArray *[]*S
 	// Function interface, since they have none by default. This is a bit of a leap of faith
 	// that the user will not add any.
 	callSignatures := c.getSignaturesOfType(apparentType, SignatureKindCall)
-	if len(callSignatures) == 0 {
-		callSignatures = c.callSignaturesFromHooks(node, funcType)
-	}
 	numConstructSignatures := len(c.getSignaturesOfType(apparentType, SignatureKindConstruct))
 	// TS 1.0 Spec: 4.12
 	// In an untyped function call no TypeArgs are permitted, Args can be any argument list, no contextual
@@ -9359,12 +9356,6 @@ func (c *Checker) chooseOverload(s *CallState, relation *Relation) *Signature {
 		}
 		return candidate
 	}
-	var rank func(*Signature) int
-	if len(s.candidates) > 1 {
-		rank = c.candidateRanker(s.node)
-	}
-	var best *Signature
-	bestRank := -1
 	for candidateIndex, candidate := range s.candidates {
 		if !c.hasCorrectTypeArgumentArity(candidate, s.typeArguments) || !c.hasCorrectArity(s.node, s.args, candidate, s.signatureHelpTrailingComma) {
 			continue
@@ -9431,19 +9422,9 @@ func (c *Checker) chooseOverload(s *CallState, relation *Relation) *Signature {
 			}
 		}
 		s.candidates[candidateIndex] = checkCandidate
-		if rank == nil {
-			return checkCandidate
-		}
-		candidateRank := rank(checkCandidate)
-		if candidateRank < 0 {
-			s.candidatesForArgumentError = append(s.candidatesForArgumentError, checkCandidate)
-			continue
-		}
-		if candidateRank > bestRank {
-			best, bestRank = checkCandidate, candidateRank
-		}
+		return checkCandidate
 	}
-	return best
+	return nil
 }
 
 func (c *Checker) hasCorrectArity(node *ast.Node, args []*ast.Node, signature *Signature, signatureHelpTrailingComma bool) bool {
@@ -9596,7 +9577,6 @@ func (c *Checker) checkTypeArguments(signature *Signature, typeArgumentNodes []*
 }
 
 func (c *Checker) isSignatureApplicable(node *ast.Node, args []*ast.Node, signature *Signature, relation *Relation, checkMode CheckMode, reportErrors bool, diagnosticOutput *[]*ast.Diagnostic) bool {
-	defer c.enterCallCandidate(node, signature)()
 	if ast.IsJsxCallLike(node) {
 		return c.checkApplicableSignatureForJsxCallLikeElement(node, signature, relation, checkMode, reportErrors, diagnosticOutput)
 	}
@@ -9627,7 +9607,6 @@ func (c *Checker) isSignatureApplicable(node *ast.Node, args []*ast.Node, signat
 	} else {
 		argCount = len(args)
 	}
-	var checkedArguments []CheckedArgument
 	for i := range argCount {
 		arg := args[i]
 		if !ast.IsOmittedExpression(arg) {
@@ -9642,7 +9621,6 @@ func (c *Checker) isSignatureApplicable(node *ast.Node, args []*ast.Node, signat
 			} else {
 				checkArgType = argType
 			}
-			checkedArguments = append(checkedArguments, CheckedArgument{Node: arg, Type: checkArgType, Target: paramType})
 			effectiveCheckArgumentNode := c.getEffectiveCheckNode(arg)
 			if !c.checkTypeRelatedToAndOptionallyElaborate(checkArgType, paramType, relation, core.IfElse(reportErrors, effectiveCheckArgumentNode, nil), effectiveCheckArgumentNode, headMessage, diagnosticOutput) {
 				c.maybeAddMissingAwaitInfo(arg, checkArgType, paramType, relation, reportErrors, diagnosticOutput)
@@ -9670,7 +9648,7 @@ func (c *Checker) isSignatureApplicable(node *ast.Node, args []*ast.Node, signat
 			return false
 		}
 	}
-	return c.acceptCandidateByHooks(node, signature, checkedArguments, checkMode&(CheckModeSkipContextSensitive|CheckModeSkipGenericFunctions) == 0)
+	return true
 }
 
 func (c *Checker) maybeAddMissingAwaitInfo(errorNode *ast.Node, source *Type, target *Type, relation *Relation, reportErrors bool, diagnosticOutput *[]*ast.Diagnostic) {
@@ -9733,7 +9711,6 @@ func (c *Checker) getEffectiveCheckNode(argument *ast.Node) *ast.Node {
 }
 
 func (c *Checker) inferTypeArguments(node *ast.Node, signature *Signature, args []*ast.Node, checkMode CheckMode, context *InferenceContext) []*Type {
-	defer c.enterCallCandidate(node, signature)()
 	if ast.IsJsxOpeningLikeElement(node) {
 		return c.inferJsxTypeArguments(node, signature, checkMode, context)
 	}
@@ -9998,13 +9975,6 @@ func (c *Checker) reportCallResolutionErrors(node *ast.Node, s *CallState, signa
 		last := s.candidatesForArgumentError[len(s.candidatesForArgumentError)-1]
 		var diags []*ast.Diagnostic
 		c.isSignatureApplicable(s.node, s.args, last, c.assignableRelation, CheckModeNormal, true /*reportErrors*/, &diags)
-		// A language's ranking rule can reject an otherwise assignable
-		// argument (for example a running program whose success is never).
-		if len(diags) == 0 {
-			if rank := c.candidateRanker(s.node); rank != nil && rank(last) < 0 {
-				diags = append(diags, NewDiagnosticForNode(s.node, diagnostics.No_overload_matches_this_call))
-			}
-		}
 		diags = c.filterCallArgumentDiagnostics(s.node, diags)
 		for _, diagnostic := range diags {
 			if len(s.candidatesForArgumentError) > 1 {
@@ -12716,7 +12686,7 @@ func (c *Checker) checkAssertion(node *ast.Node, checkMode CheckMode) *Type {
 
 func (c *Checker) checkAssertionDeferred(node *ast.Node) {
 	typeNode := node.Type()
-	exprType := c.getRegularTypeOfObjectLiteral(c.getBaseTypeOfLiteralType(c.applyAssertionOperandTypeHooks(node, c.assertionLinks.Get(node).exprType)))
+	exprType := c.getRegularTypeOfObjectLiteral(c.getBaseTypeOfLiteralType(c.assertionLinks.Get(node).exprType))
 	targetType := c.getTypeFromTypeNode(typeNode)
 	if !c.isErrorType(targetType) {
 		widenedType := c.getWidenedType(exprType)

@@ -566,6 +566,7 @@ const jsPlugins = new Map(await Promise.all((oxlint.jsPlugins ?? []).map(async (
   return [name ?? pluginName(plugin.meta?.name ?? packageName, specifier), { ...plugin, rules }]
 })))
 // typescript-eslint refuses TypeScript 7, so its rules join only where it loads.
+let tseslintFailure = null
 const tseslint = await import("typescript-eslint").then(({ default: loaded }) => {
   const unused = loaded.plugin.rules["no-unused-vars"]
   if (!unused?.create) return loaded
@@ -581,7 +582,7 @@ const tseslint = await import("typescript-eslint").then(({ default: loaded }) =>
     return unused.create(adapted)
   } }
   return { ...loaded, plugin: { ...loaded.plugin, rules: { ...loaded.plugin.rules, "no-unused-vars": rule } } }
-}, () => null)
+}, (error) => { tseslintFailure = error; return null })
 const core = await import("eslint/use-at-your-own-risk").then(({ builtinRules }) => builtinRules, () => null)
 const typed = new Set(Object.keys(tseslint?.plugin?.rules ?? {}))
 // Without typescript-eslint, ESLint's core no-unused-vars reads TypeScript as
@@ -610,6 +611,9 @@ const adaptedUnused = coreUnused && { ...coreUnused, create(context) {
 } }
 const levels = { allow: "off", deny: "error", off: "off", warn: "warn", error: "error", 0: "off", 1: "warn", 2: "error" }
 const missing = new Set()
+// Every TypeScript-aware rule the configuration enabled that this pass cannot
+// run because typescript-eslint did not load (#110).
+const typedUnrun = new Set()
 // Oxlint does not run these two on TypeScript files, whose checker reports
 // them (TS2378, TS2393); VibeLang's checker reports them in .vibe files.
 const typescriptChecked = new Set(["getter-return", "no-dupe-class-members"])
@@ -622,7 +626,10 @@ const rules = (settings = {}) => Object.fromEntries(Object.entries(settings).fla
   const typedName = "@typescript-eslint/" + rule
   // A core rule typescript-eslint extends for TypeScript, as Oxlint's does, is typescript-eslint's.
   if (plugin === "typescript" || plugin === "@typescript-eslint" || ((plugin === "" || plugin === "eslint") && typed.has(rule))) {
-    if (!typed.has(rule)) { if (levels[level] !== "off") missing.add(name); return [] }
+    if (!typed.has(rule)) {
+      if (levels[level] !== "off") { missing.add(name); if (!tseslint) typedUnrun.add(typedName) }
+      return []
+    }
     // The source parser has no TypeScript program. Keep type-aware rules on
     // the native projection pass, which owns the configured type information.
     if (tseslint.plugin.rules[rule].meta?.docs?.requiresTypeChecking) return []
@@ -664,6 +671,9 @@ const configs = [
 const unrun = [...missing].filter((name) => name.includes("/") && !nativePlugins.has(name.slice(0, name.lastIndexOf("/"))))
 if (strict && unrun.length) throw new Error("Oxlint rules unavailable on .vibe files: " + unrun.join(", "))
 if (unrun.length) console.error("vibelang: " + unrun.length + " Oxlint rules do not run on .vibe files: " + unrun.sort().join(", "))
+// The native projection pass may still run these on projected TypeScript;
+// this source pass does not, and nothing here stands in for them.
+if (typedUnrun.size) console.error("vibelang: typescript-eslint did not load (" + String(tseslintFailure?.message ?? tseslintFailure).split("\\n")[0] + "); " + typedUnrun.size + " @typescript-eslint rules the configuration enables do not run in the .vibe source pass: " + [...typedUnrun].sort().join(", "))
 return configs
 }
 export default await configFor()

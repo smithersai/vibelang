@@ -1,4 +1,4 @@
-// expect: TS2345
+// expect: TS2554
 // VIP-6 permits captures; unmatched explicit inputs retain native argument errors.
 effect function size(r: { name: string }) {
   return try sync(() => { return r.name.length }, r)

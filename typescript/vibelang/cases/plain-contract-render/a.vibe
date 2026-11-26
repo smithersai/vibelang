@@ -2,4 +2,6 @@
 // defect, so the function never fails.
 import { checked } from "./check.ts"
 
-export const render = effect (valid: boolean): string!! => try sync((ok: boolean) => checked(ok), valid)
+export const render = effect (valid: boolean): string!! => try runtimeSync((ok: boolean) => checked(ok), valid)
+
+import { sync as runtimeSync } from "vibelang-runtime"

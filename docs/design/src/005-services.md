@@ -570,14 +570,14 @@ const output = Console$.log("hi")
 
 `Crypto` is the DOM's: effect 4.1.1 has no root module `Crypto` (VIP-14, amended). Effect's cryptography is the `effect/crypto` namespaces (`Digest`, `Mac`, `SecureRandom`, …), in scope by rule 3 below.
 
-The prelude preserves each imported signature’s thrown contract. An npm signature without `@throws` throws `unknown`, so these non-effectful calls use `Effect.try` bridges; an actual explicit annotation keeps its ordinary contract ([Thrown types](003-failures.md#thrown-types)).
+The prelude preserves each imported signature’s thrown contract. The pinned Effect contracts give `pipe`, `Array.head` and `Option.some` a thrown type of `never`, so these calls can run directly in effect code. A non-effectful npm signature without a written or shipped contract throws `unknown` ([Thrown types](003-failures.md#thrown-types)).
 
 ```vibe es
 effect function preludeExamples() {
   const Port = Schema.Number
-  const two = try Effect.try(() => pipe(1, (n: number) => n + 1)) // a root function, from effect/Function
-  const first = try Effect.try(() => Effect.Array.head([1, 2]))  // JavaScript's Array keeps the bare name
-  const o = try Effect.try(() => Option.some(1)) // Effect's Option: the DOM's Option is platform-specific
+  const two = pipe(1, (n: number) => n + 1) // a root function, from effect/Function
+  const first = Effect.Array.head([1, 2])  // JavaScript's Array keeps the bare name
+  const o = Option.some(1) // Effect's Option: the DOM's Option is platform-specific
   return { Port, two, first, o }
 }
 ```
@@ -591,9 +591,9 @@ import { pipe as pipe$ } from "effect/Function"
 function preludeExamples() {
   return Effect.gen(function* () {
     const Port = Schema.Number
-    const two = yield* Effect.try(() => pipe$(1, (n: number) => n + 1))
-    const first = yield* Effect.try(() => Array$.head([1, 2]))
-    const o = yield* Effect.try(() => Option.some(1))
+    const two = pipe$(1, (n: number) => n + 1)
+    const first = Array$.head([1, 2])
+    const o = Option.some(1)
     return { Port, two, first, o }
   })
 }

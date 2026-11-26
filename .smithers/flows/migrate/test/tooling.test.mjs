@@ -427,3 +427,33 @@ test("YAML .prettierrc and commented dprint.json produce located warnings instea
   assert.ok(result.warnings.some(w => w.includes(".prettierrc") && w.includes("vibelang/prettier")), JSON.stringify(result.warnings))
   assert.ok(result.warnings.some(w => w.includes("dprint.json")), JSON.stringify(result.warnings))
 })
+// #110: typescript-eslint refuses TypeScript 7. The .vibe source pass then
+// cannot run any @typescript-eslint rule, so it names every one the original
+// configuration enabled instead of dropping them silently. Only the native
+// projection pass can still run them; the report claims no parity.
+test("without typescript-eslint, the lint config reports every TypeScript-aware rule the configuration enabled", async t => {
+  const oxlintrc = {
+    rules: { "typescript/no-explicit-any": "error", "@typescript-eslint/no-floating-promises": ["warn", {}], "typescript/no-namespace": "off", "eslint/no-debugger": "warn" },
+    overrides: [{ files: ["src/**/*.ts"], rules: { "typescript/consistent-type-imports": "deny" } }]
+  }
+  const root = fixture(t, {
+    "package.json": '{"scripts":{"lint":"oxlint"}}',
+    ".oxlintrc.json": JSON.stringify(oxlintrc),
+    "node_modules/vibelang/package.json": '{"name":"vibelang","type":"module","exports":{"./eslint":"./eslint.mjs"}}',
+    "node_modules/vibelang/eslint.mjs": "export default { parseForESLint() {} }\n",
+    "node_modules/typescript-eslint/package.json": '{"name":"typescript-eslint","type":"module","exports":"./index.mjs"}',
+    "node_modules/typescript-eslint/index.mjs": 'throw new Error("typescript-eslint does not support TS 7.0.")\n'
+  })
+  wireDeveloperTools({ root, specsFor })
+  const errors = []
+  t.mock.method(console, "error", (...args) => { errors.push(args.join(" ")) })
+  const config = (await import(join(root, ".vibelang/eslint.config.mjs"))).default
+  t.mock.restoreAll()
+  const report = errors.find(line => line.includes("typescript-eslint"))
+  assert.ok(report, "expected a typescript-eslint report, got: " + JSON.stringify(errors))
+  assert.match(report, /does not support TS 7\.0/)
+  for (const rule of ["@typescript-eslint/consistent-type-imports", "@typescript-eslint/no-explicit-any", "@typescript-eslint/no-floating-promises"]) assert.ok(report.includes(rule), rule)
+  assert.equal(report.includes("no-namespace"), false)
+  assert.doesNotMatch(report, /parity/i)
+  for (const entry of config) for (const name of Object.keys(entry.rules ?? {})) assert.doesNotMatch(name, /^@typescript-eslint\//)
+})

@@ -3,25 +3,19 @@
 // run-seconds: 300
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, existsSync } from "node:fs"
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { createRequire } from "node:module"
 import { pathToFileURL } from "node:url"
+import { referenceModules } from "../../test/vip7-reference.mjs"
 import { Effect } from "effect"
 import { main } from "./out/main.js"
 const reference = mkdtempSync(join(tmpdir(), "vip38-stock-twin-"))
 try {
   mkdirSync(join(reference, "node_modules"))
-  let effect410 = process.env.EFFECT_410_NODE_MODULES ? join(process.env.EFFECT_410_NODE_MODULES, "effect") : new URL("../../../.cache/effect-4.1.0/node_modules/effect", import.meta.url).pathname
-  if (!existsSync(join(effect410, "package.json")) && !process.env.EFFECT_410_NODE_MODULES) {
-    const install = spawnSync("npm", ["install", "--prefix", reference, "--ignore-scripts", "--no-audit", "--no-fund", "--no-save", "--package-lock=false", "effect@4.1.0"], { cwd: reference, encoding: "utf8", timeout: 90000 })
-    assert.ifError(install.error)
-    assert.equal(install.status, 0, "stock Effect install: " + install.stdout + install.stderr)
-    effect410 = join(reference, "node_modules/effect")
-  }
-  assert.equal(JSON.parse(readFileSync(join(effect410, "package.json"), "utf8")).version, "4.1.0")
-  if (effect410 !== join(reference, "node_modules/effect")) symlinkSync(effect410, join(reference, "node_modules/effect"))
+  const effect410 = join(referenceModules(process.env.EFFECT_410_NODE_MODULES, ["effect"]), "effect")
+  symlinkSync(effect410, join(reference, "node_modules/effect"))
   writeFileSync(join(reference, "package.json"), '{"type":"module"}')
   writeFileSync(join(reference, "main.ts"), readFileSync(new URL("./typescript/main.ts", import.meta.url), "utf8"))
   const stock = new URL("../../../../docs/tools/node_modules/typescript/bin/tsc", import.meta.url).pathname

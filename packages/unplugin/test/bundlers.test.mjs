@@ -172,6 +172,15 @@ async function watchEdits(bundler, root, watcher) {
   await edit(join(root, "src/shop.vibe"), 'receipt("ordered"', 'receipt("booked"', watcher)
   await watcher.next("with the .vibe edit", (event) => event.ok && printsEventually(bundler, root, "booked 2 tea"))
 
+  // format.vibe's module declaration is served from the compiled parent under
+  // its canonical name (VIP-40); a rebuild after the parent changes bundles
+  // the new body, not a cached one.
+  const format = join(root, "src/format.vibe")
+  await edit(format, ".join(separator)", ".join(separator + separator)", watcher)
+  await watcher.next("with the module body edit", (event) => event.ok && printsEventually(bundler, root, "booked  2  tea"))
+  await edit(format, ".join(separator + separator)", ".join(separator)", watcher)
+  await watcher.next("with the module body restored", (event) => event.ok && printsEventually(bundler, root, "booked 2 tea"))
+
   // order.ts is a type-only import: only the compiler reads it.
   const order = join(root, "src/order.ts")
   await edit(order, "quantity: number", "quantity: string", watcher)
@@ -291,6 +300,17 @@ Bun.build = (options) => { unlinkSync(${JSON.stringify(asset)}); return build(op
       const result = await bundleOnce(bundler, root)
       assert.deepEqual(result.event, { ok: true }, result.stderr)
       assert.equal(await runBundle(bundler, root), expected.replace(/\n?$/, "\nhello, dep\n"))
+    })
+
+    it(`${bundler}: the next build bundles an edited module body (VIP-40)`, { skip }, async (t) => {
+      const root = await fixture(t, `${bundler}-body`)
+      const first = await bundleOnce(bundler, root)
+      assert.deepEqual(first.event, { ok: true }, first.stderr)
+      assert.equal(await runBundle(bundler, root), expected)
+      await edit(join(root, "src/format.vibe"), ".join(separator)", ".join(separator + separator)")
+      const second = await bundleOnce(bundler, root)
+      assert.deepEqual(second.event, { ok: true }, second.stderr)
+      assert.match(await runBundle(bundler, root), /ordered {2}2 {2}tea/)
     })
 
     it(`${bundler}: an extensionless import reaches the .vibe file TypeScript resolves it to`, { skip }, async (t) => {
@@ -422,13 +442,14 @@ Bun.build = (options) => { unlinkSync(${JSON.stringify(asset)}); return build(op
   }
 })
 
-for (const bundler of ["webpack", "rspack", "rollup", "esbuild"]) {
+// Every adapter, the twins included: each loads the backend on its own path.
+for (const bundler of Object.keys(bundlers)) {
   it(`${bundler} reports a missing project instead of retrying forever`, async (t) => {
     const root = await fixture(t, `${bundler}-missing`)
     await rm(join(root, "tsconfig.json"))
     // The guard proves the bundler ends; it is 60 s, a stage's budget on a loaded build
     // host: at 15 s webpack's start outran it in two post-merges (median 2.1 s, max 16.4 s).
-    const result = spawnSync(process.execPath, ["--no-warnings", build, bundler], {
+    const result = spawnSync(runtime(bundler), ["--no-warnings", build, bundler], {
       cwd: root, encoding: "utf8", timeout: 60_000
     })
     assert.equal(result.signal, null, `${bundler} did not end within 60 s: ${result.stdout}${result.stderr}`)

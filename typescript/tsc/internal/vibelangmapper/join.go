@@ -337,6 +337,14 @@ func vipKeywords(file *ast.SourceFile, text string, lint bool) []keyword {
 						}
 					} else if end := body.End(); catchFollows(text, end) {
 						with = "(()=> "
+						// Replacing effect with an opening parenthesis must preserve
+						// the original statement boundary across the reparse.
+						for parent := node.Parent; parent != nil && scanner.SkipTrivia(text, parent.Pos()) == at; parent = parent.Parent {
+							if parent.Kind == ast.KindExpressionStatement && isStatementListItem(parent) {
+								with = ";(()=>"
+								break
+							}
+						}
 						keywords = append(keywords, keyword{end, ")"})
 					} else if word := tryOfBlock(text, node); word >= 0 {
 						// try effect { … } reparses as a call of try on (), so

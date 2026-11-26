@@ -118,6 +118,7 @@
 import { createHash } from "node:crypto"
 import { CaseCommands, nearDeadline, runnerSeconds } from "./harness-command.mjs"
 import fs from "node:fs"
+import { createRequire } from "node:module"
 import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -445,14 +446,22 @@ function linkNodeModules(dir) {
   link(path.join(effectModules, "effect"), path.join(modules, "effect"))
   // Copy the published files, rather than linking the checkout: realpath
   // resolution through a link exposes the runtime's development dependencies
-  // and hides the case's optional platform peers. The runtime has only peers,
-  // so it needs no private production node_modules.
+  // and hides the case's optional platform peers.
   const runtime = path.join(modules, "vibelang-runtime")
   const manifest = JSON.parse(fs.readFileSync(path.join(runtimeDir, "package.json"), "utf8"))
   fs.mkdirSync(runtime, { recursive: true })
   for (const file of ["package.json", ...manifest.files]) {
     const source = path.join(runtimeDir, file)
     if (fs.existsSync(source)) fs.cpSync(source, path.join(runtime, file), { recursive: true, dereference: true })
+  }
+  const runtimeRequire = createRequire(path.join(runtimeDir, "package.json"))
+  for (const name of Object.keys(manifest.dependencies ?? {})) {
+    const source = runtimeRequire.resolve.paths(name).map(base => path.join(base, name))
+      .find(dir => fs.existsSync(path.join(dir, "package.json")))
+    if (!source) throw new Error(`runtime dependency ${name} is missing from the VIBELANG_RUNTIME installation`)
+    const at = path.join(runtime, "node_modules", name)
+    fs.mkdirSync(path.dirname(at), { recursive: true })
+    link(source, at)
   }
   const stubs = path.join(dir, "stubs")
   for (const stub of fs.existsSync(stubs) ? fs.readdirSync(stubs) : []) {
@@ -835,7 +844,8 @@ async function main() {
         const home = path.join(workDir, "home", name)
         fs.mkdirSync(temporary, { recursive: true })
         fs.mkdirSync(home, { recursive: true })
-        env = { ...process.env, TMPDIR: temporary, TMP: temporary, TEMP: temporary, HOME: home, USERPROFILE: home,
+        env = { ...process.env, VIP7_REFERENCE_CACHE: process.env.VIP7_REFERENCE_CACHE || path.join(root, "vibelang/.cache/stock-reference"),
+          TMPDIR: temporary, TMP: temporary, TEMP: temporary, HOME: home, USERPROFILE: home,
           XDG_CACHE_HOME: path.join(home, ".cache"), XDG_CONFIG_HOME: path.join(home, ".config"),
           XDG_DATA_HOME: path.join(home, ".local/share"),
           BUN_INSTALL_CACHE_DIR: path.join(home, ".bun/install/cache"),

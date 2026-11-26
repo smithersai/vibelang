@@ -24,7 +24,7 @@ function disposable(events: string[], name: string) {
 effect function iterator(fail: boolean) {
   const events: string[] = []
   const outcome = try exit(effect {
-    for (using x of try sync((e: string[]) => elements(e), events)) {
+    for (using x of try runtimeSync((e: string[]) => elements(e), events)) {
       events.push("body")
       try sleep("1 millis")
       if (fail) throw new Bad()
@@ -37,7 +37,7 @@ effect function iteratorInterrupted() {
   const events: string[] = []
   const started = try Deferred.make<void>()
   effect function child() {
-    for (using x of try sync((e: string[]) => elements(e), events)) {
+    for (using x of try runtimeSync((e: string[]) => elements(e), events)) {
       events.push("body")
       try Deferred.succeed(started, undefined)
       try sleep("10 seconds")
@@ -84,7 +84,7 @@ effect function stream(fail: boolean) {
 effect function labeled() {
   const events: string[] = []
   outer: for (const i of [1, 2]) {
-    for (using x of try sync((e: string[]) => elements(e), events)) {
+    for (using x of try runtimeSync((e: string[]) => elements(e), events)) {
       events.push(`body ${i}`)
       try sleep("1 millis")
       if (i === 1) continue outer
@@ -107,3 +107,5 @@ export effect function main() {
     labeled: try labeled(),
   }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

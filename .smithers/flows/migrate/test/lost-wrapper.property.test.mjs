@@ -97,3 +97,31 @@ test("an emit moved into a module body's companion checks as the same emit in th
     assert.equal(viaBody.paired, direct.paired)
   }), { numRuns: 200 })
 })
+
+// #129: a t3code guard flagged `page.omitted += 1; return yield* Effect.void`
+// becoming `page.omitted += 1; return;`. That branch hands back void either
+// way, so it must stay clean. A generator branch that handed back a value and
+// now ends in a bare `return` loses that value, and must flag.
+const generatorHolders = {
+  gen: (body) => ({ text: `export const target = (page) => Effect.gen(function* () { ${body} })\n`, emitted: (body) => `export const target = Effect.fnUntraced(function* (page) { ${body} })\n` }),
+  fn: (body) => ({ text: `export const target = Effect.fnUntraced(function* (page) { ${body} })\n`, emitted: (body) => `export const target = Effect.fnUntraced(function* (page) { ${body} })\n` }),
+  method: (body) => ({ text: `export class K { *target(page) { ${body} } }\n`, emitted: (body) => `export class K { *target(page) { ${body} } }\n` }),
+}
+const branchOf = (ret) => `if (page.full) { page.omitted += 1; ${ret} } const value = yield* page.next; return value;`
+test("a void generator early return written as a bare return never flags", () => {
+  fc.assert(fc.property(fc.constantFrom(...Object.keys(generatorHolders)), fc.constantFrom("return yield* Effect.void;", "return undefined;", "return;", "return void 0;"), (holder, before) => {
+    const held = generatorHolders[holder](branchOf(before))
+    const result = lostWrappers({ ts, original: prefix + held.text, emitted: prefix + held.emitted(branchOf("return;")) })
+    assert.deepEqual(result.flags, [])
+  }), { numRuns: 60 })
+})
+test("a generator that handed back a value and now returns bare flags", () => {
+  fc.assert(fc.property(fc.constantFrom(...Object.keys(generatorHolders)), fc.constantFrom("page.count", "page.count + 1", "page.count > 0", "yield* page.load"), (holder, value) => {
+    const original = `if (page.full) { page.omitted += 1; return ${value}; } return ${value};`
+    const held = generatorHolders[holder](original)
+    const emitted = `if (page.full) { page.omitted += 1; ${value === "yield* page.load" ? "yield* page.load;" : ""} return; } return;`
+    const result = lostWrappers({ ts, original: prefix + held.text, emitted: prefix + held.emitted(emitted) })
+    assert.equal(result.flags.length, 1, JSON.stringify(result))
+    assert.equal(result.flags[0].lostGeneratorValues, 2)
+  }), { numRuns: 60 })
+})

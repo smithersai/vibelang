@@ -1,0 +1,11 @@
+// expect: EK0404
+export function plain(): Promise<boolean> {
+  return new Promise(r => r(true))
+}
+export effect function effectful() {
+  return new Promise(r => r(true))
+}
+export const topLevel = new Promise(r => r(true))
+export const block = effect {
+  return new Promise(r => r(true))
+}

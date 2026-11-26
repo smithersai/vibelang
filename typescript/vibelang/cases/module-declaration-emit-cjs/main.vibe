@@ -82,8 +82,8 @@ export effect function describe(shape: Shape): string!! {
 
 export effect function program() {
   const counter = try sync(() => new Counter())
-  const counted = try sync((counter) => counter.increment(), counter)
-  try Console.log(JSON.stringify({
+  const counted = try runtimeSync((counter) => counter.increment(), counter)
+  const result = {
     cleaned: try sync(() => clean(" ab ")),
     upper: try sync(() => clean(" ab ", Mode.Upper)),
     doubled: try sync(() => tools.double("x")),
@@ -93,5 +93,8 @@ export effect function program() {
     level,
     counted,
     described: try describe({ width: 1, height: 2 }),
-  }))
+  }
+  try Console.log(try Effect.orDie(Effect.try(() => JSON.stringify(result))))
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

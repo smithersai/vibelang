@@ -440,19 +440,14 @@ func assertionDroppedChannel(c *checker.Checker, assertion *ast.Node) (string, [
 	return "", nil
 }
 
-// checkNew reports EK4812 at new Promise outside a hatch, and outside a
-// lambda that compiles to a plain callback, such as the one
-// Effect.promise(() => new Promise(…)) calls.
+// checkNew reports EK4812 only where an Effect body constructs a global Promise.
 func (r *ruleCheck) checkNew(node *ast.Node) {
 	callee := node.Expression()
-	if !ast.IsIdentifier(callee) || callee.Text() != "Promise" || inHatch(node) || !isGlobal(r.c, r.c.GetSymbolAtLocation(callee)) {
-		return
-	}
-	if fn := ast.GetContainingFunction(node); fn != nil && isLambda(fn) && isLowerable(fn) && !r.a.isEffect(fn) {
+	if !ast.IsIdentifier(callee) || callee.Text() != "Promise" || !inEffectCode(node) || inHatch(node) || !isGlobal(r.c, r.c.GetSymbolAtLocation(callee)) {
 		return
 	}
 	d := report(r.c, callee, EK4812)
-	note(d, "Wrap a callback API with callback((resume) => …), or a promise you already have with sync(promise).")
+	note(d, "Wrap a callback API with callback((resume) => …), or use tryPromise(() => …) for a Promise.")
 }
 
 // isGlobal reports whether the standard library declares symbol. Other

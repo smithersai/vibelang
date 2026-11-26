@@ -101,5 +101,3 @@ func TestVibexResolutionNodeNextESM(t *testing.T) {
 		}
 	}
 }
-
-// VIP-39: vibex source file-kind selection

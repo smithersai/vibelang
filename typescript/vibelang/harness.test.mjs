@@ -311,13 +311,21 @@ for (const outcome of ["different", "unavailable", "unexpected exit", "signal", 
   })
 }
 
-test("runtime files use the case's peers without exposing development dependencies", (t) => {
+test("runtime files resolve declared dependencies and the case's peers", (t) => {
   const { root, harness, compiler } = fixture(t)
   const runtime = path.join(root, "runtime")
   fs.mkdirSync(path.join(runtime, "node_modules/@scope/platform"), { recursive: true })
   fs.writeFileSync(path.join(runtime, "node_modules/@scope/platform/package.json"), '{"type":"module","exports":"./index.js"}')
   fs.writeFileSync(path.join(runtime, "node_modules/@scope/platform/index.js"), 'export const name = "development"')
-  fs.writeFileSync(path.join(runtime, "dist/index.js"), 'export { name } from "@scope/platform"')
+  const manifestPath = path.join(runtime, "package.json")
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"))
+  fs.writeFileSync(manifestPath, JSON.stringify({ ...manifest, dependencies: { "@scope/helper": "1.0.0" } }))
+  // A package manager may hoist a production dependency above the runtime.
+  const helper = path.join(root, "node_modules/@scope/helper")
+  fs.mkdirSync(helper, { recursive: true })
+  fs.writeFileSync(path.join(helper, "package.json"), '{"type":"module","exports":"./index.js"}')
+  fs.writeFileSync(path.join(helper, "index.js"), 'export const label = "runtime dependency"')
+  fs.writeFileSync(path.join(runtime, "dist/index.js"), 'import { label } from "@scope/helper"; import { name as peer } from "@scope/platform"; export const name = label + " and " + peer')
   fs.writeFileSync(compiler, `#!/usr/bin/env node
 import fs from "node:fs"
 fs.mkdirSync("out", { recursive: true })
@@ -327,7 +335,7 @@ fs.writeFileSync("out/main.js", 'import { name } from "vibelang-runtime"; consol
   fs.mkdirSync(path.join(at, "expected"), { recursive: true })
   fs.mkdirSync(path.join(at, "stubs/platform"), { recursive: true })
   fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
-  fs.writeFileSync(path.join(at, "expected/stdout.txt"), "the project's peer\n")
+  fs.writeFileSync(path.join(at, "expected/stdout.txt"), "runtime dependency and the project's peer\n")
   fs.writeFileSync(path.join(at, "stubs/platform/package.json"), '{"name":"@scope/platform","type":"module","exports":"./index.js"}')
   fs.writeFileSync(path.join(at, "stubs/platform/index.js"), 'export const name = "the project\'s peer"')
   const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: runtime }

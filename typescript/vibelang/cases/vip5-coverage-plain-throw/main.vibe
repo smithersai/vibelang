@@ -7,6 +7,7 @@
 // rule-evidence: docs/design/vips/0005-try-runs-effects.md#f6f31d29697a0221
 // VIP-5: The throw stays a JavaScript exception, so the result is
 import { Effect } from "effect"
+import { defect } from "./foreign.js"
 export effect function main(): Effect.Effect<number,unknown> {
-  return Effect.fail("plain") catch (e: string) => { throw e }
+  return Effect.fail("plain") catch effect (e: string) => try defect(e)
 }

@@ -40,16 +40,6 @@ func (c *Checker) IsCheckingSignatureOf(fn *ast.Node) bool {
 	return c.signatureChecks()[fn] > 0
 }
 
-// IsResolvingTypeOf reports whether the type of symbol, a variable, parameter
-// or property, is being resolved: its declaration's initializer is being
-// checked. An extension that resolves a call reading symbol there, as a hook
-// deciding a lambda's form in that initializer does, would report TypeScript's
-// circularity error (TS7022) for a reference that TypeScript itself checks
-// only once symbol has a type.
-func (c *Checker) IsResolvingTypeOf(symbol *ast.Symbol) bool {
-	return c.findResolutionCycleStartIndex(symbol, TypeSystemPropertyNameType) >= 0
-}
-
 // IsResolvingReturnTypeOf reports whether the return type of signature is
 // being inferred from its body. Asking for it there is TypeScript's
 // circularity error (TS7024), and the function that encloses the cycle gets

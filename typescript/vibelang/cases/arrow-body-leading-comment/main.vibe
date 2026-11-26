@@ -27,7 +27,7 @@ const parse = effect (text: string) =>
 
 const step = effect (n: number) =>
   // A comment before a sync hatch.
-  try sync((n) => n + 1, n)
+  try runtimeSync((n) => n + 1, n)
 
 const stepped = effect (n: number) =>
   /* A block comment
@@ -37,3 +37,5 @@ const stepped = effect (n: number) =>
 export effect function main() {
   return [try both(), try joined(), try traced(3), try parse("[1]"), try step(2), try stepped(4)]
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

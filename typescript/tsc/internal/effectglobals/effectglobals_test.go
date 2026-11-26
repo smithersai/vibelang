@@ -18,7 +18,7 @@ func TestExportsMatchEffect(t *testing.T) {
 	}
 	declarations, err := os.ReadFile(filepath.Join(modules, "effect", "dist", "Effect.d.ts"))
 	if err != nil {
-		t.Skipf("effect is not installed: %v", err)
+		t.Fatalf("read installed Effect declarations (run bun install --frozen-lockfile in experiments): %v", err)
 	}
 	var manifest struct{ Version string }
 	data, err := os.ReadFile(filepath.Join(modules, "effect", "package.json"))

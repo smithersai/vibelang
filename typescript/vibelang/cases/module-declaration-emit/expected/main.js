@@ -18,8 +18,8 @@ export function describe(shape) {
 export function main() {
     return Effect_1.gen(function* main() {
         const counter = yield* Effect_1.sync(() => new Counter());
-        const counted = yield* Effect_1.sync(((counter) => counter.increment()).bind(undefined, counter));
-        yield* Console.log(JSON.stringify({
+        const counted = yield* runtimeSync((counter) => counter.increment(), counter);
+        const result = {
             cleaned: yield* Effect_1.sync(() => clean(" ab ")),
             upper: yield* Effect_1.sync(() => clean(" ab ", Mode.Upper)),
             doubled: yield* Effect_1.sync(() => tools.double("x")),
@@ -29,7 +29,9 @@ export function main() {
             level,
             counted,
             described: yield* describe({ width: 1, height: 2 }),
-        }));
+        };
+        yield* Console.log(yield* Effect.orDie(Effect.try(() => JSON.stringify(result))));
     });
 }
 await Effect.runPromise(main());
+import { sync as runtimeSync } from "vibelang-runtime";

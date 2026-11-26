@@ -266,21 +266,18 @@ function select(paths, cwd, found, ignoreFiles, nested) {
 
 // What a type-aware rule's program reads beside the projected modules: the
 // project files, and the packages its imports resolve to.
-function mirrorProgramFiles(tree, root, dirs) {
-  for (const dir of dirs) {
-    for (let at = dir; ; at = dirname(at)) {
-      const rooted = relative(root, at)
-      if (rooted.startsWith("..")) break
-      for (const entry of readdirSync(at, { withFileTypes: true })) {
-        if (entry.isFile() && /^(?:tsconfig.*\.json|package\.json)$/.test(entry.name)) {
-          mkdirSync(join(tree, rooted), { recursive: true })
-          if (!existsSync(join(tree, rooted, entry.name))) copyFileSync(join(at, entry.name), join(tree, rooted, entry.name))
-        } else if (entry.name === "node_modules" && !existsSync(join(tree, rooted, entry.name))) {
-          mkdirSync(join(tree, rooted), { recursive: true })
-          symlinkSync(join(at, entry.name), join(tree, rooted, entry.name))
-        }
-      }
-      if (rooted === "") break
+function mirrorProgramFiles(tree, root, dir = root) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const file = join(dir, entry.name)
+    const target = join(tree, relative(root, file))
+    if (entry.name === "node_modules" || (entry.isFile() && /(?:\.[cm]?tsx?$|^tsconfig.*\.json$|^package\.json$)/.test(entry.name))) {
+      // A selected native module already occupies its TypeScript twin's path.
+      if (existsSync(target)) continue
+      mkdirSync(dirname(target), { recursive: true })
+      if (entry.name.endsWith(".json")) copyFileSync(file, target)
+      else symlinkSync(file, target, entry.name === "node_modules" ? "dir" : "file")
+    } else if (entry.isDirectory() && !skipped.has(entry.name)) {
+      mirrorProgramFiles(tree, root, file)
     }
   }
 }
@@ -342,7 +339,7 @@ export async function lintProjected({ config, base, cwd = process.cwd(), paths =
       modules.set(virtual, { file: real, segments: projection.mappings ?? [] })
     })
     output.number_of_files = modules.size
-    if (config.options?.typeAware || forward.includes("--type-aware")) mirrorProgramFiles(tree, root, new Set([...modules.values()].map(({ file }) => dirname(file))))
+    if (config.options?.typeAware || forward.includes("--type-aware")) mirrorProgramFiles(tree, root)
     const run = runOxlint(binary, ["-f", "json", "--no-error-on-unmatched-pattern", ...forward, ...inTreePaths(paths, cwd, root, tree)], tree)
     if (run.error) throw run.error
     let result

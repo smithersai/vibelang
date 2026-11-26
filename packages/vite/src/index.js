@@ -178,7 +178,7 @@ async function loadBackend(root) {
     } catch {
       continue
     }
-    return import(pathToFileURL(path).href)
+    return { ...(await import(pathToFileURL(path).href)), backendPath: path }
   }
   throw new Error("vibelang-vite needs the vibelang package: npm install --save-dev vibelang")
 }
@@ -288,10 +288,22 @@ export default function vibelang(options = {}) {
   function loaded() {
     modules ??= Promise.resolve(closing).then(() => loadBackend(root)).then(async (value) => {
       backend = value
-      current = await acquireProjects(backend, { root, project, compiler: backend.findCompiler(root, options.compiler), debug })
+      current = await acquireProjects(backend, { root, project, compiler: compilerPath(), debug })
       return current
     })
     return modules
+  }
+
+  // The compiler: the compiler option, VIBELANG_BINARY, or root's vibelang
+  // install; else the vibelang package whose backend loaded, beside this
+  // plugin, as vibelang-unplugin does. A root without its own install, such
+  // as an app in a monorepo, still compiles.
+  function compilerPath() {
+    try {
+      return backend.findCompiler(root, options.compiler)
+    } catch {
+      return join(dirname(backend.backendPath), "bin/vibelang")
+    }
   }
 
   const contractFiles = new Map()
@@ -323,7 +335,7 @@ export default function vibelang(options = {}) {
     const text = readFileSync(file, "utf8")
     let entry = writtenImports.get(from)
     if (entry?.project !== selected || entry.text !== text) {
-      const result = backend.projectImports({ root: backend.packageRoot(selected), project: selected, compiler: backend.findCompiler(root, options.compiler) })
+      const result = backend.projectImports({ root: backend.packageRoot(selected), project: selected, compiler: compilerPath() })
       entry = { project: selected, text, imports: new Set(result.imports.filter(item => canonical(item.importer) === from).map(item => cleanId(item.specifier))) }
       writtenImports.set(from, entry)
     }
@@ -384,7 +396,7 @@ export default function vibelang(options = {}) {
   async function loadModule(file) {
     const result = await (await loaded()).load(file, { projectWarnings: "once" })
     rememberContracts(result)
-    const output = relativeOutput(result, file, backend, () => backend.findCompiler(root, options.compiler), debug)
+    const output = relativeOutput(result, file, backend, compilerPath, debug)
     if (output.writtenImports?.size) writtenNames.set(file, output.writtenImports)
     else writtenNames.delete(file)
     return output
@@ -519,7 +531,8 @@ export default function vibelang(options = {}) {
       }
       // A package's exports can name JSX source even when its import is bare.
       if (this.resolve) return this.resolve(source, importerOnDisk(importer), { ...resolveOptions, skipSelf: true }).then(resolved => {
-        if (resolved && isModuleId(source) && cleanId(resolved.id).endsWith(".vibex")) return { ...resolved, id: servedId(cleanId(resolved.id)) + resolved.id.slice(cleanId(resolved.id).length) }
+        // A \0 id is another plugin's virtual module, whatever its suffix.
+        if (resolved && !resolved.id.startsWith("\0") && isModuleId(source) && cleanId(resolved.id).endsWith(".vibex")) return { ...resolved, id: servedId(cleanId(resolved.id)) + resolved.id.slice(cleanId(resolved.id).length) }
         return resolved
       })
       return
@@ -636,7 +649,7 @@ export default function vibelang(options = {}) {
       // caches these objects across requests, so each caller owns its copy.
       const output = { code, map: structuredClone(map) }
       if (!hasWorkerImports(code)) return output
-      const parse = compilerParser(backend, () => backend.findCompiler(root, options.compiler), debug)
+      const parse = compilerParser(backend, compilerPath, debug)
       return workerOutput(output, file, { parse, replace: ({ module }) => workerUrl(this, loadOptions, module) })
     },
     // Import analysis runs after ordinary transforms. Compile in load so this
@@ -652,7 +665,7 @@ export default function vibelang(options = {}) {
         if (![...(graph?.getModuleById(id)?.importedModules ?? [])].some(module => module.file?.includes("%"))) return
         await loaded()
         return moduleUrls(code, id, {
-          base: urlBase, graph, backend, compiler: () => backend.findCompiler(root, options.compiler),
+          base: urlBase, graph, backend, compiler: compilerPath,
           debug, versions: urlVersions, rewritten: rewrittenUrls
         })
       }

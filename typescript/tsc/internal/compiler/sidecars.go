@@ -24,13 +24,6 @@ import (
 // reference paths resolve from the final sidecar location, independently of
 // a consumer's config. VibeLang's resolver still prefers the matching source.
 
-// SidecarPath returns the declaration sidecar of a VibeLang file beside it:
-// x.d.vibe.ts for x.vibe and x.d.vibex.ts for x.vibex.
-func SidecarPath(fileName string) string {
-	extension := tspath.VibeLangSourceExtension(fileName)
-	return strings.TrimSuffix(fileName, extension) + ".d" + extension + ".ts"
-}
-
 // Sidecar output follows declarationDir's source-root rules in TypeScript 5.9:
 // explicit rootDir, the config directory for composite projects, otherwise the
 // common directory of emitted sources. Declaration inputs and referenced projects

@@ -18,7 +18,6 @@ const stock = process.env.VIBELANG_STOCK_TSC || join(repo, "packages/runtime/nod
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const runtime = process.env.VIBELANG_RUNTIME || join(repo, "packages/runtime")
 const fixture = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-sidecar-source-identity.json", import.meta.url), "utf8"))
-const raw = process.env.VIBELANG_SIDECAR_IDENTITY_RAW === "1"
 const sourceIdentityQuote = "A non-relative import reaching a known compatibility declaration uses its available mapped source only when TypeScript's final resolved path is outside `node_modules`."
 
 test("the sidecar identity oracle quotes the current specification and literal source hashes", () => {
@@ -76,24 +75,7 @@ function inspect(input, literal) {
 function check(input, literal) {
   const runs = inspect(input, literal)
   assert.equal(runs.stock.status, 0, "invalid stock TypeScript control:\n" + runs.stock.output)
-  const key = [input.brand, input.generic, input.mode, input.form].join(":")
-  const pending = !raw && fixture.knownFailure?.keys.includes(key)
-  if (pending) {
-    assert.notEqual(runs.native.status, 0, "XPASS " + fixture.knownFailure.key + " " + key + ": retire this key")
-    assert.deepEqual(runs.native.codes, ["TS2345"], "only the exact nominal identity disagreement is pending")
-    assert.match(runs.native.output, /app\/src\/a[.]ts\(3,\d+\): error TS2345:/)
-    const n = input.name
-    if (input.brand === "hash") {
-      // TypeScript abbreviates generic private-identifier types, so this
-      // diagnostic carries the conflicting member instead of module paths.
-      assert.match(runs.native.output, /Property '#brand'.*refers to a different member/)
-    } else {
-      assert.ok(runs.native.output.includes("/lib/src/" + n + ".d.vibe"), "diagnostic must name the compatibility declaration")
-      assert.ok(runs.native.output.includes("/lib/src/" + n + '").' + n), "diagnostic must name the source class")
-    }
-  } else {
-    assert.equal(runs.native.status, 0, "VIP27 source and sidecar represent one module:\n" + runs.native.output)
-  }
+  assert.equal(runs.native.status, 0, "VIP27 source and sidecar represent one module:\n" + runs.native.output)
 }
 
 test("alchemy-36: package sidecar and relative source imports have one nominal class identity", () => {

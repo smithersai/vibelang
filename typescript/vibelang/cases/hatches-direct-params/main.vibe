@@ -1,25 +1,31 @@
-// A hatch called directly gives an async function exactly its inputs, then
-// the AbortSignal when the overload TypeScript chose passes one and the
-// function declares a parameter for it: the rule sync and try follow when
-// called as values (D230, D232, hatches-value-signal). A rest parameter
-// collects only the inputs, a parameter typed for something else gets no
-// signal, and interruption aborts a signal the function receives.
+// The imported sync adapter passes the supplied inputs to a foreign function.
+// Rest and default parameters retain their JavaScript behavior. When a
+// foreign function takes an optional number, a thunk passes only that number.
+// Effect.promise passes an AbortSignal explicitly to the cancellable API.
+// The promise hatches also preserve these choices for inline functions.
+// Interruption aborts the same signal the foreign function received.
 module foreign {
+  /** @throws {never} */
   export async function count(...xs: number[]) {
     return xs.length
   }
+  /** @throws {never} */
   export async function anyCount(...xs: unknown[]) {
     return xs.length
   }
+  /** @throws {never} */
   export async function second(a: number, b?: number) {
     return typeof b
   }
+  /** @throws {never} */
   export async function defaulted(a: number, b: number = 5) {
     return a + b
   }
+  /** @throws {never} */
   export async function echo(value: number, signal: AbortSignal) {
     return { value, signal: signal instanceof AbortSignal }
   }
+  /** @throws {never} */
   export function untilAborted(events: string[], signal: AbortSignal): Promise<string> {
     return new Promise((resolve) => signal.addEventListener("abort", () => {
       events.push("aborted")
@@ -32,22 +38,24 @@ import { count, anyCount, second, defaulted, echo, untilAborted } from foreign
 // expect-result: {"rest":2,"triedRest":2,"mappedRest":2,"unknownRest":2,"optional":"undefined","triedOptional":"undefined","defaulted":6,"input":{"value":42,"signal":true},"tried":{"value":7,"signal":true},"literalRest":2,"literalOptional":"undefined","literalSignal":true,"literalNone":1,"timedOut":"timed out","events":["aborted"]}
 export effect function main() {
   const events: string[] = []
-  const rest = try sync(count, 1, 2)
+  const rest = try runtimeSync(count, 1, 2)
   const triedRest = try Effect.tryPromise(() => count(1, 2))
   const mappedRest = try Effect.tryPromise({ try: () => count(1, 2), catch: (e) => e })
-  const unknownRest = try sync(anyCount, 1, 2)
-  const optional = try sync(second, 1)
+  const unknownRest = try runtimeSync(anyCount, 1, 2)
+  const optional = try Effect.promise(() => second(1))
   const triedOptional = try Effect.tryPromise(() => second(1))
-  const sum = try sync(defaulted, 1)
-  const input = try sync(echo, 42)
+  const sum = try runtimeSync(defaulted, 1)
+  const input = try runtimeSync(echo, 42)
   const tried = try Effect.tryPromise((signal) => echo(7, signal))
-  const literalRest = try sync(async (...xs: number[]) => xs.length, 1, 2)
-  const literalOptional = try sync(async (a: number, b?: number) => typeof b, 1)
+  const literalRest = try runtimeSync(async (...xs: number[]) => xs.length, 1, 2)
+  const literalOptional = try Effect.promise(() => (async (a: number, b?: number) => typeof b)(1))
   const literalSignal = try Effect.tryPromise((signal) => (async (n: number, signal: AbortSignal) => signal instanceof AbortSignal)(3, signal))
   const literalNone = try sync(async () => 1)
-  const timedOut = timeout(sync(untilAborted, events), "10 millis") catch () => "timed out"
+  const timedOut = timeout(Effect.promise(signal => untilAborted(events, signal)), "10 millis") catch () => "timed out"
   return {
     rest, triedRest, mappedRest, unknownRest, optional, triedOptional, defaulted: sum, input, tried,
     literalRest, literalOptional, literalSignal, literalNone, timedOut, events
   }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

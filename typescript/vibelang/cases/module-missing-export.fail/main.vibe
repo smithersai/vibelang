@@ -14,5 +14,7 @@ module text {
 import { clean, missing, hidden } from text
 
 export effect function main() {
-  return try sync((value) => clean(value) + missing + hidden, " a ")
+  return try runtimeSync((value) => clean(value) + missing + hidden, " a ")
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

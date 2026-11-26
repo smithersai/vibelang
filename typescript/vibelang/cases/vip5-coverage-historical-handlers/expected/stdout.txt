@@ -1,1 +1,1 @@
-historical value, named, block and async handlers
+literal catch handlers match the native Effect results

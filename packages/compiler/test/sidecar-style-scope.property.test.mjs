@@ -14,7 +14,7 @@ const ts = require("typescript")
 const native = process.env.VIBELANG_BINARY ?? fileURLToPath(new URL("../native/vibelang", import.meta.url))
 const tick = String.fromCharCode(96)
 const quote = tick + "allowArbitraryExtensions" + tick + " resolves it, so plain " + tick + "tsc" + tick + " and TypeDoc understand imports of " + tick + ".vibe" + tick + " files."
-const fixture = JSON.parse(readFileSync(new URL("./property-regressions/r14-sidecar-style-scope.json", import.meta.url), "utf8"))
+const fixture = JSON.parse(readFileSync(new URL("./property-regressions/sidecar-package-style-scope.json", import.meta.url), "utf8"))
 test("source-adjacent declaration references keep stock sidecar resolution", () => {
   assert.ok(readFileSync(SpecPath("001-functions.md"), "utf8").includes(quote))
 })
@@ -73,7 +73,7 @@ function check(input) {
     rmSync(root, { recursive: true, force: true })
   }
 }
-test("r14-astra-1: package declaration spelling leaves source sidecars usable", () => check(fixture.input))
+test("regression: package declaration spelling leaves source sidecars usable", () => check(fixture.input))
 // Chapter 007 / declaration styles affect public output and preserve source sidecars: docs/design/src/007-tooling.md#5c254cd19b4bd101
 // Chapter 007 / declaration styles affect public output and preserve source sidecars: docs/design/src/007-tooling.md#d05c35efbaf324ec
 test("sidecar scope spans retired settings, quote choices, reexports and import types", () => {

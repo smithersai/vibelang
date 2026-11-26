@@ -7,7 +7,9 @@ effect function later() {
 }
 
 export effect function main() {
-  const fine = try sync(async (later) => runPromise(later()), later)
+  const fine = try runtimeSync(async (later) => runPromise(later()), later)
   runPromise(later())
   return fine
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

@@ -15,7 +15,24 @@
 // the module's JavaScript imports. Bodies are left out: no
 // TypeScript parser reads VibeLang's own forms. The compiler's ESTree
 // (`vibelang --estree`) finds them, as for vibelang/eslint.
+import { statSync } from "node:fs"
+import { dirname, resolve } from "node:path"
 import { parseESTree } from "./eslint.mjs"
+
+// Knip's .js aliases stop at built-in TypeScript extensions. Preserve their
+// precedence and redirect the analysis copy only when native source exists.
+function reExport(text, node, path) {
+  const original = text.slice(...node.range)
+  const specifier = node.source?.value
+  if (node.exportKind !== "type" || !/^\.{1,2}\/.*\.js$/.test(specifier)) return original
+  const stem = specifier.slice(0, -3)
+  const exists = ext => statSync(resolve(dirname(path), stem + ext), { throwIfNoEntry: false })?.isFile()
+  if ([".js", ".ts", ".tsx", ".d.ts"].some(exists)) return original
+  const extension = [".vibe", ".vibex"].find(exists)
+  if (!extension) return original
+  return text.slice(node.range[0], node.source.range[0]) + JSON.stringify(stem + extension) +
+    text.slice(node.source.range[1], node.range[1])
+}
 
 /**
  * Returns the TypeScript module Knip reads for a .vibe file.
@@ -62,7 +79,7 @@ export function compile(text, path = "file.vibe") {
   }
   program.body.forEach((node, i) => {
     const doc = docs(node, i ? program.body[i - 1].range[1] : 0)
-    if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(doc + source(node))
+    if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(doc + reExport(text, node, path))
     // TypeScript gives a statement's JSDoc to its first declaration only.
     else if (node.type === "ExportNamedDeclaration") lines.push(...stubs(node.declaration, typeReads(node.declaration)).map((stub, i) => (i ? "" : doc) + stub))
     else if (node.type === "ExportDefaultDeclaration") {

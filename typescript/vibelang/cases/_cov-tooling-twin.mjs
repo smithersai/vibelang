@@ -1,10 +1,11 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, symlinkSync, rmSync } from "node:fs"
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, symlinkSync, rmSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { join, dirname } from "node:path"
 import { tmpdir } from "node:os"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { referenceModules } from "../test/vip7-reference.mjs"
 import ts from "../../../docs/tools/node_modules/typescript/lib/typescript.js"
 
 // Compare exported call signatures and the specified Exit observations using
@@ -13,15 +14,9 @@ export async function compareTwin(url, name, samples, observe = value => value) 
   const caseDir = dirname(fileURLToPath(url)), root = mkdtempSync(join(tmpdir(), "cov-tooling-twin-"))
   try {
     assert.equal(ts.version, "5.9.3")
-    let effect = process.env.EFFECT_410_NODE_MODULES ? join(process.env.EFFECT_410_NODE_MODULES,"effect") : fileURLToPath(new URL("../../.cache/effect-4.1.0/node_modules/effect",import.meta.url))
-    mkdirSync(join(root,"node_modules"))
-    if (!existsSync(join(effect,"package.json")) && !process.env.EFFECT_410_NODE_MODULES) {
-      const install=spawnSync("npm",["install","--prefix",root,"--ignore-scripts","--no-audit","--no-fund","--no-save","--package-lock=false","effect@4.1.0"],{cwd:root,encoding:"utf8",timeout:90000})
-      assert.ifError(install.error);assert.equal(install.status,0,"stock Effect install: "+install.stdout+install.stderr)
-      effect=join(root,"node_modules/effect")
-    }
-    assert.equal(JSON.parse(readFileSync(join(effect,"package.json"),"utf8")).version,"4.1.0")
-    if(effect!==join(root,"node_modules/effect"))symlinkSync(effect,join(root,"node_modules/effect"))
+    const effect = join(referenceModules(process.env.EFFECT_410_NODE_MODULES, ["effect"]), "effect")
+    mkdirSync(join(root, "node_modules"))
+    symlinkSync(effect, join(root, "node_modules/effect"))
     writeFileSync(join(root,"package.json"),'{"type":"module"}')
     for (const file of readdirSync(join(caseDir,"typescript")).filter(f=>f.endsWith(".ts"))) writeFileSync(join(root,file),readFileSync(join(caseDir,"typescript",file),"utf8"))
     const compiled=spawnSync(process.execPath,[fileURLToPath(new URL("../../../docs/tools/node_modules/typescript/bin/tsc",import.meta.url)),"--target","ES2022","--module","NodeNext","--strict","--skipLibCheck","--declaration","--outDir","out","main.ts"],{cwd:root,encoding:"utf8",timeout:30000})

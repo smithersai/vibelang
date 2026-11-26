@@ -38,14 +38,16 @@ const files = (dir: string) => S.Filegroup({
 })
 
 // `go test` over one package pattern, keyed on the module's sources, that
-// package's files and the `go` launcher. Go's own test cache in GOCACHE also
-// replays unchanged packages inside a run.
+// package's files and the `go` launcher. The graph caches verified results.
 const goTest = (summary: string, pkgs: string, dir: string, run?: string) =>
   S.Shell.Test({
     summary,
     shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 " +
-      `go test -p 8 -timeout 25m -trimpath ${run ? "-run '" + run + "' " : ""}${pkgs}`,
-    data: [srcs, files(dir)],
+      `go test -count=1 -p 8 -timeout 25m -trimpath ${run ? "-run '" + run + "' " : ""}${pkgs}`,
+    data: [
+      srcs, files(dir),
+      ...(dir === "internal/effectglobals" || dir === "internal/ls" ? [S.file("//experiments/package.json"), S.file("//experiments/bun.lock")] : [])
+    ],
     tools: [S.Host.bin("go")],
     sandbox: "none",
     timeout: "30m"
@@ -59,7 +61,7 @@ export const Package = S.Package({
     "go-plugin-archive": S.Shell.Test({
       summary: "Archive unit and corpus tests without compiler dependencies.",
       shell: "cd typescript/tsc/internal/vibelangfmt && GOWORK=off GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 " +
-        "go test -p 8 -timeout 5m -trimpath -run '^(TestWriteArchive|FuzzWriteArchiveTemporaryOwnership)' pack.go pack_test.go pack_concurrent_test.go",
+        "go test -count=1 -p 8 -timeout 5m -trimpath -run '^(TestWriteArchive|FuzzWriteArchiveTemporaryOwnership)' pack.go pack_test.go pack_concurrent_test.go",
       data: [
         S.file("go.mod"), S.file("go.sum"),
         S.file("internal/vibelangfmt/pack.go"),

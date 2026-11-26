@@ -1117,7 +1117,7 @@ func (b *NodeBuilderImpl) lookupSymbolChainWorker(symbol *ast.Symbol, meaning as
 		debug.Assert(len(chain) > 0)
 	} else if parent := symbol.Parent(); parent != nil && symbol.Flags()&ast.SymbolFlagsTypeAlias != 0 && len(symbol.Declarations()) == 0 {
 		// A member type that a language extension gives a class, such as a
-		// VibeLang service's Shape (NewAliasedObjectType), is written with its
+		// VibeLang service's Shape, is written with its
 		// class, Users.Shape, wherever the type prints.
 		chain = append(chain, parent, symbol)
 	} else {

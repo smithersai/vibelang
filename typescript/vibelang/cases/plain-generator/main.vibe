@@ -55,8 +55,10 @@ export effect function main() {
   const caught = recovery.next().value
   const injected = recover(false)
   injected.next()
-  const passed = try sync((g: Generator<string, void, unknown>) => {
+  const passed = try runtimeSync((g: Generator<string, void, unknown>) => {
     try { g.throw(new Error("step")); return "kept" } catch (e) { return (e as Error).message }
   }, injected)
   return [first, rest, done, result.value, values, caught, passed, try Effect.gen(effectSteps)]
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

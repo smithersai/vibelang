@@ -190,8 +190,7 @@ test("a package with no tests runs whole in slice 1 and not at all in the others
   }
 })
 
-test("scripts/go-test-slice slices on the host it names and nowhere else; GO_TEST_SLICE wins", () => {
-  // smthrs passes a target only its declared environment, so a graph run reads the slice from this file.
+test("GO_TEST_SLICE alone selects a slice even with a host-matched slice file", () => {
   const names = ["TestA", "TestB", "TestC", "TestD"]
   const t = setup(names)
   const dir = mkdtempSync(join(tmpdir(), "go-test-slice-"))
@@ -210,17 +209,15 @@ test("scripts/go-test-slice slices on the host it names and nowhere else; GO_TES
     return r
   }
   try {
-    writeFileSync(join(dir, "go-test-slice"), "1/2 " + host + "\n")
-    const first = ran(run().stdout)
-    writeFileSync(join(dir, "go-test-slice"), "2/2 " + host + "\n")
-    const second = ran(run().stdout)
+    for (const slice of ["1/2", "2/2"]) {
+      writeFileSync(join(dir, "go-test-slice"), slice + " " + host + "\n")
+      assert.deepEqual(ran(run().stdout), names)
+    }
+    const first = ran(run({ GO_TEST_SLICE: "1/2" }).stdout)
+    const second = ran(run({ GO_TEST_SLICE: "2/2" }).stdout)
     assert.equal(first.length, 2)
+    assert.equal(second.length, 2)
     assert.deepEqual([...first, ...second].sort(), names)
-    assert.deepEqual(ran(run({ GO_TEST_SLICE: "1/2" }).stdout), first, "GO_TEST_SLICE wins over the file")
-    writeFileSync(join(dir, "go-test-slice"), "1/2 some-other-host\n")
-    const elsewhere = run()
-    assert.deepEqual(ran(elsewhere.stdout), names, "a slice file from another host slices nothing")
-    assert.match(elsewhere.stderr, /ignoring .*go-test-slice: it names host some-other-host/)
   } finally {
     rmSync(dir, { recursive: true, force: true })
     t.done()

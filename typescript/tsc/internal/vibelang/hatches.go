@@ -16,7 +16,7 @@ import (
 // The legacy sync hatch (design D148) runs plain TypeScript inside VibeLang:
 //
 //	const id = sync(crypto.randomUUID())                       // Effect.sync
-//	const n = sync((text) => text.length, text)                // inputs fill its parameters
+//
 // Native callback calls use Effect.callback directly.
 //
 // A hatch's first argument is TypeScript, not VibeLang: a call there does not
@@ -26,8 +26,7 @@ import (
 // runner may start a program (no EK1005). An execution form there is outside
 // effect code, as in any nested plain function: try is EK0501
 // (try_outside.go), fork and join are EK1701. VIP-6 permits ordinary lexical
-// captures. Legacy explicit inputs, the arguments after the function, still
-// fill its first parameters (D230). The inputs are VibeLang (D232). A
+// captures. Calls with extra inputs resolve against native Effect.sync. A
 // throw or rejection that may fail is wrapped with Effect's own Effect.try
 // or Effect.tryPromise, which replaced the try hatch (VIP-5).
 //
@@ -48,8 +47,9 @@ func hatchOf(call *ast.Node) string {
 	}
 	name := callee.Text()
 	// VIP-6: callback is Effect.callback, including a direct call.
-	// The legacy adapter remains available through an explicit runtime import.
-	if name == "callback" {
+	// Multi-argument sync calls also use the native Effect signature.
+	// Input-carrying adapters require an explicit runtime import.
+	if name == "callback" || len(call.Arguments()) > 1 {
 		return ""
 	}
 	if !isVibeLangFile(ast.GetSourceFileOfNode(call)) || shadowed(call, name) {

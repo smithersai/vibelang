@@ -18,7 +18,6 @@ const constructs = {
 `, [
     ["export function |load(id)", "effect function |load(id: string)"],
     ["|const value = yield*", "|const value = try"],
-    ["yield* |Effect", null, "skip"],
     ["return |value;", "return |value"],
     ["|function* load", null]
   ]],
@@ -90,8 +89,7 @@ export effect function walk() {
   return try (succeed(1) |> map(%, (count) => count + 1))
 }
 `, [
-    ["|count + 1", "|count + 1"],
-    ["succeed)(|1", null, "skip"]
+    ["|count + 1", "|count + 1"]
   ]],
   "match binding reads": [`export function settle(outcome: { _tag: "Answered"; text: string } | { _tag: "Failed"; reason: string }) {
   const settled = match (outcome) {
@@ -140,8 +138,7 @@ test("each construct maps as the contract's table says", async (t) => {
     const map = JSON.parse(readFileSync(file + ".map", "utf8"))
     const trace = new TraceMap(map)
     const mozilla = await new SourceMapConsumer(map)
-    for (const [generated, original, skip] of rows) {
-      if (skip) continue
+    for (const [generated, original] of rows) {
       try {
         const at = place(code, generated, "generated")
         const a = originalPositionFor(trace, at)

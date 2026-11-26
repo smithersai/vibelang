@@ -63,8 +63,12 @@ const methods={
    Object.assign(options,{noEmit:true})
    const source='import {Effect} from "effect"; export effect function main() { return Effect.fail("bad") catch (e) => Effect.succeed(7) }'
    put("main.vibe",source);config(["main.vibe"])
-   const r=invoke("-p",".","--pretty","false");assert.equal(r.status,0,r.text);assert.match(r.text,/warning EK38\d+:.*catch/i)
-   assert.match(readFileSync(join(dir,"main.vibe"),"utf8"),/catch effect\s*\([^)]*\)\s*=>\s*try/)
+   const r=invoke("-p",".","--pretty","false");assert.equal(r.status,0,r.text);assert.match(r.text,/warning EK0508:/)
+   assert.equal(readFileSync(join(dir,"main.vibe"),"utf8"),source)
+   put("main.vibe",source.replace("catch (e) =>", "catch effect (e) => try"))
+   const repaired=invoke("-p",".","--pretty","false")
+   assert.equal(repaired.status,0,repaired.text)
+   assert.doesNotMatch(repaired.text,/EK0508:/)
   })
  },
  "extractor-fix"(){

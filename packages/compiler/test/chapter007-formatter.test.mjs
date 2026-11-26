@@ -70,3 +70,15 @@ test("Chapter 007 / native quote styles keep values while reflected text can dif
   assert.equal(second(), "x")
   assert.notEqual(first.toString(), second.toString())
 })
+
+// The same pair as .vibe sources through the vibelang compiler: each keeps
+// its value, and each function's reflected text keeps its own quotes.
+test("Chapter 007 / native quote styles in .vibe keep values while reflected text follows the source", t => {
+  const single = compile(t, source, "file").observation
+  const double = compile(t, source.replace("'x'", '"x"'), "file").observation
+  assert.equal(single.value, "x")
+  assert.equal(double.value, "x")
+  assert.match(single.reflection, /'x'/)
+  assert.match(double.reflection, /"x"/)
+  assert.notEqual(single.reflection, double.reflection)
+})

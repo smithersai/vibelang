@@ -1,7 +1,8 @@
 // Preserving migration for decided detail 296. It runs before the compiler
 // retires .ts -> .vibe fallback, and also repairs an already-migrated corpus.
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
-import { basename, dirname, extname, join, resolve } from "node:path"
+import { createRequire } from "node:module"
+import { basename, dirname, extname, join, posix, resolve } from "node:path"
 import { applyEdits, editableImports } from "./imports.mjs"
 
 export function staleSpecifier(ts, root, file, written, options) {
@@ -75,4 +76,44 @@ export function migrateStaleSpecifiers(ts, root, files, { write = true } = {}) {
     if (changes.length && write) writeFileSync(join(root, file), applyEdits(text, changes))
   }
   return edits
+}
+
+/**
+ * The inverse of staleSpecifier for modules that returned to TypeScript
+ * (#391). In each importer (repository-relative), a relative `./x.vibe` or
+ * `./x.vibex` specifier whose target no longer exists and whose `./x.ts` or
+ * `./x.tsx` twin does names the twin again; a query or hash suffix stays.
+ * returned, when given, limits the rewrite to those TypeScript paths. Any
+ * other specifier, and a dangling one with no twin, is left as written.
+ */
+export function unflipReturned(root, importers, returned = null, { typescript = defaultTypeScript, write = true } = {}) {
+  const only = returned && new Set(returned.map(file => posix.normalize(file)))
+  const edits = []
+  for (const file of importers) {
+    if (!/\.(?:[cm]?[jt]sx?|vibex?)$/.test(file) || /\.d\.(?:[cm]?ts|vibex?\.ts)$/.test(file) || file.split("/").includes("node_modules")) continue
+    const path = join(root, file)
+    if (!existsSync(path)) continue
+    const text = readFileSync(path, "utf8")
+    if (!/\.vibex?\b/.test(text)) continue
+    const changes = []
+    for (const item of editableImports(typescript, file, text)) {
+      const at = item.specifier.slice(1).search(/[?#]/)
+      const name = at < 0 ? item.specifier : item.specifier.slice(0, at + 1), suffix = item.specifier.slice(name.length)
+      const match = /^(\.{1,2}\/.*)\.(vibex?)$/.exec(name)
+      if (!match) continue
+      const native = posix.normalize(posix.join(posix.dirname(file), name))
+      const twin = native.slice(0, -match[2].length) + (match[2] === "vibex" ? "tsx" : "ts")
+      if (existsSync(join(root, native)) || !existsSync(join(root, twin)) || only && !only.has(twin)) continue
+      const next = match[1] + "." + (match[2] === "vibex" ? "tsx" : "ts") + suffix
+      changes.push({ start: item.start, end: item.end, text: next })
+      edits.push({ file, from: item.specifier, to: next })
+    }
+    if (changes.length && write) writeFileSync(path, applyEdits(text, changes))
+  }
+  return edits
+}
+
+let loaded
+function defaultTypeScript() {
+  return loaded ??= createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("typescript")
 }

@@ -661,7 +661,9 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           return id === undefined ? undefined : { path: id }
         })
         // Bun.build ignores a plugin's source map, so the module is its JavaScript alone.
-        build.onLoad({ filter: /\.vibex?(?:\.[^./\\]+\.jsx?)?(?:\?.*)?$/ }, async ({ path }) => {
+        // A .ts module is compiled when it starts with the // @vibe directive
+        // (VIP-42); isCompiled decides, and leaves every other one to Bun.
+        build.onLoad({ filter: /(?:\.vibex?(?:\.[^./\\]+\.jsx?)?|\.[cm]?tsx?)(?:\?.*)?$/ }, async ({ path }) => {
           if (!isCompiled(path)) return undefined
           const { code, errors, warnings, error } = await loadModule(path)
           if (errors.length) throw new Error(errors.map(backend.formatDiagnostic).join("\n"))
@@ -671,6 +673,17 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           if (hasWorkerImports(code)) workerOutput({ code }, cleanId(path), { parse: compilerParser(backend, compilerPath, debug), replace: ({ module, specifier }) => workerUrl({}, cleanId(path), module, specifier) })
           return { contents: code, loader: isJsxModule(cleanId(path)) ? "jsx" : "js" }
         })
+      }
+    },
+    rollup: {
+      // Rollup's watch reuses a module's cached transform, map included, when
+      // load returns the same code. A parent .vibe module's code can stay the
+      // same while its source changes (an edit inside a module body), and its
+      // stale map then conflicts with the body's ("Multiple conflicting
+      // contents for sourcemap source"). The compile's own cache keeps
+      // reloading cheap, so a compiled module is never taken from Rollup's.
+      shouldTransformCachedModule({ id }) {
+        return declarations?.has(cleanId(id)) || isCompiled(id) ? true : undefined
       }
     },
     rolldown: {

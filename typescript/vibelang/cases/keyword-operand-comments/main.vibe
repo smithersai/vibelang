@@ -93,7 +93,7 @@ const parsed = effect (text: string) =>
 
 const stepped = effect (n: number) =>
   /* block */
-  try sync((n) => n + 1, n)
+  try runtimeSync((n) => n + 1, n)
 
 // return: match arms, in an Effect function and a plain function
 effect function matchEffect(x: string): number!! {
@@ -273,3 +273,5 @@ export effect function main() {
     byName: try byName()
   }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

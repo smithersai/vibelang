@@ -242,7 +242,6 @@ vip5-coverage-handler-block.fail/main.vibe
 vip5-coverage-handler-generator.fail/main.vibe
 vip5-coverage-handler-name.fail/main.vibe
 vip5-coverage-handler-value.fail/main.vibe
-vip5-coverage-historical-handlers/main.vibe
 vip5-coverage-outside.fail/main.vibe
 vip57-schema-service-boundary.fail/main.vibe
 vip57-schema-service-member.fail/main.vibe

@@ -12,6 +12,8 @@ import type * as Animations from "../Animations.js"
 import type * as AudioContext from "../AudioContext.js"
 import type * as FileReader from "../FileReader.js"
 import type * as ResizeObserver from "../ResizeObserver.js"
+import type * as MutationObserver from "../MutationObserver.js"
+import type * as IntersectionObserver from "../IntersectionObserver.js"
 import type * as Document from "../Document.js"
 import type * as BrowserInfo from "../BrowserInfo.js"
 import type * as Window from "../Window.js"
@@ -23,10 +25,13 @@ import * as ExperimentalBrowserAnimations from "./ExperimentalBrowserAnimations.
 import * as ExperimentalBrowserAudioContext from "./ExperimentalBrowserAudioContext.js"
 import * as ExperimentalBrowserFileReader from "./ExperimentalBrowserFileReader.js"
 import * as ExperimentalBrowserResizeObserver from "./ExperimentalBrowserResizeObserver.js"
+import * as ExperimentalBrowserMutationObserver from "./ExperimentalBrowserMutationObserver.js"
+import * as ExperimentalBrowserIntersectionObserver from "./ExperimentalBrowserIntersectionObserver.js"
 import * as ExperimentalBrowserDocument from "./ExperimentalBrowserDocument.js"
 import * as ExperimentalBrowserWindow from "./ExperimentalBrowserWindow.js"
 import * as ExperimentalBrowserInfo from "./ExperimentalBrowserInfo.js"
 import type * as Request from "../Request.js"
+import type * as Response from "../Response.js"
 import type * as Rpc from "../Rpc.js"
 import * as RpcExtension from "../internal/rpcBrowser.js"
 import * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
@@ -34,6 +39,7 @@ import * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
 import * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.js"
 import * as ExperimentalBrowserHeaders from "./ExperimentalBrowserHeaders.js"
 import * as ExperimentalBrowserRequest from "./ExperimentalBrowserRequest.js"
+import * as ExperimentalBrowserResponse from "./ExperimentalBrowserResponse.js"
 
 /**
  * The services of the browser bundle: the experimental `Crypto`, Effect's
@@ -46,6 +52,8 @@ export type ExperimentalBrowserServices =
   | AudioContext.AudioContext
   | FileReader.FileReader
   | ResizeObserver.ResizeObserver
+  | MutationObserver.MutationObserver
+  | IntersectionObserver.IntersectionObserver
   | Document.Document
   | BrowserInfo.BrowserInfo
   | Window.Window
@@ -55,6 +63,7 @@ export type ExperimentalBrowserServices =
   | MediaQuery.MediaQuery
   | Headers.Headers
   | Request.Request
+  | Response.Response
   | Rpc.WorkerHost
 
 /**
@@ -70,6 +79,8 @@ export const layer: Layer.Layer<ExperimentalBrowserServices> = Layer.mergeAll(
   ExperimentalBrowserInfo.layer,
   ExperimentalBrowserDocument.layer,
   ExperimentalBrowserResizeObserver.layer,
+  ExperimentalBrowserMutationObserver.layer,
+  ExperimentalBrowserIntersectionObserver.layer,
   ExperimentalBrowserFileReader.layer,
   ExperimentalBrowserAnimations.layer,
   ExperimentalBrowserAudioContext.layer,
@@ -78,5 +89,6 @@ export const layer: Layer.Layer<ExperimentalBrowserServices> = Layer.mergeAll(
   ExperimentalBrowserMediaQuery.layer,
   ExperimentalBrowserHeaders.layer,
   ExperimentalBrowserRequest.layer,
+  ExperimentalBrowserResponse.layer,
   RpcExtension.layer
 )

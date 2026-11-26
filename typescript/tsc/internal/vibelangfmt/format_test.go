@@ -619,8 +619,11 @@ func TestFormatModuleCases(t *testing.T) {
 				t.Fatal(err)
 			}
 			wantRefusal := ""
-			if filepath.Base(filepath.Dir(input)) == "module-declaration-forms.fail" {
+			switch filepath.Base(filepath.Dir(input)) {
+			case "module-declaration-forms.fail":
 				wantRefusal = "module text is declared twice"
+			case "module-declaration-effect-global-redeclared.fail":
+				wantRefusal = "module context is declared twice"
 			}
 			hostCalls := 0
 			once, err := Format(input, string(source), func(text string) (string, error) {
@@ -757,9 +760,9 @@ func TestFormatForms(t *testing.T) {
 	}
 }
 
-var vibeBlock = regexp.MustCompile("(?s)```vibe[^\n]*\n(.*?)```")
+var vibeBlock = regexp.MustCompile("(?s)(> )?```vibe[^\n]*\n(.*?)```")
 
-// TestFormatDocsCorpus formats every vibe block of the user docs that parses,
+// TestFormatDocsCorpus checks each VibeLang fence in the user docs for syntax,
 // and checks that formatting succeeds, keeps the program, and is stable.
 func TestFormatDocsCorpus(t *testing.T) {
 	formatter := dprintFormatter(t)
@@ -774,18 +777,29 @@ func TestFormatDocsCorpus(t *testing.T) {
 	if err != nil {
 		t.Skipf("no user docs: %v", err)
 	}
-	formatted, skipped := 0, 0
+	formatted := 0
 	for _, page := range pages {
 		text, err := os.ReadFile(page)
 		if err != nil {
 			t.Fatal(err)
 		}
 		for i, match := range vibeBlock.FindAllStringSubmatch(string(text), -1) {
-			source := match[1]
+			source := match[2]
+			if match[1] != "" {
+				lines := strings.Split(source, "\n")
+				for i, line := range lines {
+					if line == ">" {
+						lines[i] = ""
+					} else {
+						lines[i] = strings.TrimPrefix(line, "> ")
+					}
+				}
+				source = strings.Join(lines, "\n")
+			}
 			name := filepath.Base(page) + "#" + strconv.Itoa(i)
 			once, parsed, err := formatDocsBlock(name, source, formatter)
 			if !parsed {
-				skipped++
+				t.Errorf("%s: parser rejected docs block\n%s", name, source)
 				continue
 			}
 			if err != nil {
@@ -803,11 +817,7 @@ func TestFormatDocsCorpus(t *testing.T) {
 			formatted++
 		}
 	}
-	t.Logf("formatted %d docs blocks from %d pages; skipped %d that do not parse", formatted, len(pages), skipped)
-	const wantSkipped = 2
-	if skipped != wantSkipped {
-		t.Errorf("parser rejected %d docs blocks; want %d", skipped, wantSkipped)
-	}
+	t.Logf("formatted %d docs blocks from %d pages", formatted, len(pages))
 	if formatted < 500 {
 		t.Errorf("formatted only %d docs blocks", formatted)
 	}

@@ -1,8 +1,9 @@
 package parser_test
 
 import (
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
 func TestEffectAdjacentInitializerTokens(t *testing.T) {
@@ -20,8 +21,8 @@ func TestEffectAdjacentInitializerTokens(t *testing.T) {
 			file := parseVibe(t, source)
 			// !!== ends the type before ==: the initializer is still a syntax error.
 			if source == "const x:number!!==value" {
-				if len(file.Diagnostics()) == 0 {
-					t.Fatal("== must not become an initializer =")
+				if ds := file.Diagnostics(); len(ds) != 1 || ds[0].Code() != 1005 || source[ds[0].Pos():ds[0].End()] != "==" {
+					t.Fatalf("want TS1005 at ==, got %v", ds)
 				}
 				return
 			}

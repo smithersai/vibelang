@@ -5,6 +5,7 @@
 // the runtime's hatch, which tests each value, so the typed number is
 // always a number.
 module helpers {
+  /** @throws {never} */
   export function pick(flag: boolean): number | Promise<number> {
     return flag ? Promise.resolve(6) : 7
   }
@@ -13,11 +14,13 @@ import { pick } from helpers
 
 // expect-result: [1,2,5,6,7,42]
 export effect function main() {
-  const resolved: number = try sync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, true)
-  const plain: number = try sync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, false)
+  const resolved: number = try runtimeSync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, true)
+  const plain: number = try runtimeSync((flag: boolean): number | Promise<number> => flag ? Promise.resolve(1) : 2, false)
   const value: number = try sync([1].length > 1 ? 0 : Promise.resolve(5))
   const data = try sync(() => ({ then: 7, value: 42 }))
-  const picked: number = try sync(pick, true)
-  const pickedPlain: number = try sync(pick, false)
+  const picked: number = try runtimeSync(pick, true)
+  const pickedPlain: number = try runtimeSync(pick, false)
   return [resolved, plain, value, picked, pickedPlain, data.value]
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

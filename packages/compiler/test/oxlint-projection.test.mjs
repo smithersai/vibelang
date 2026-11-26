@@ -35,14 +35,14 @@ test("the documented command prints the projection and its span map", () => {
   for (const page of ["docs/user/src/setup/developer-tools.md", "packages/compiler/skills/vibelang/SKILL.md"]) {
     assert.match(readFileSync(join(repository, page), "utf8"), /vibelang --ts-projection src\/app\.vibe < src\/app\.vibe/, page)
   }
-  const source = "export function f() {\n  return 1\n}\n"
+  const source = "export effect function f() {\n  return 1\n}\n"
   const result = projection("src/app.vibe", source)
   assert.equal(result.status, 0, result.stderr)
   const { text, extension, mappings } = JSON.parse(result.stdout)
   assert.equal(extension, ".ts")
   assert.match(text, /\$gen\(function\* \(\)/)
   // The source's lines keep their numbers; the prelude import comes last.
-  assert.ok(text.split("\n")[0].startsWith("export function f()"), text)
+  assert.match(text.split("\n")[0], /^export\s+function f\(\)/)
   assert.match(text.trimEnd().split("\n").at(-1), /^import \{.*vibelang\/prelude/)
   for (const [virtualStart, virtualLength, originalStart, originalLength, kind] of mappings) {
     if (kind === 0) assert.equal(text.slice(virtualStart, virtualStart + virtualLength), source.slice(originalStart, originalStart + originalLength))
@@ -65,7 +65,7 @@ test("a .vibex file's JSX parses, and an undecidable pipe topic lowers", () => {
 })
 
 test("a report on generated code is dropped and counted", async (t) => {
-  const output = await lint(t, { "a.vibe": "export function f() {\n  return 1\n}\n" }, { plugins: ["eslint"], categories: { correctness: "off" }, rules: { "eslint/require-yield": "error", "eslint/no-unused-vars": "error" } })
+  const output = await lint(t, { "a.vibe": 'import { Effect } from "effect"\n' + "export effect function f() {\n  return 1\n}\n" }, { plugins: ["eslint"], categories: { correctness: "off" }, rules: { "eslint/require-yield": "error", "eslint/no-unused-vars": "error" } })
   assert.deepEqual(output.diagnostics, [])
   assert.ok(output.dropped["eslint(require-yield)"] >= 1, JSON.stringify(output.dropped))
   assert.ok(output.dropped["eslint(no-unused-vars)"] >= 1, JSON.stringify(output.dropped))
@@ -275,4 +275,21 @@ test("lintProjected reports unprojected diagnostics without crashing on EPIPE wh
   })
   const unprojected = result.output.diagnostics.filter((d) => d.code === "vibelang(unprojected)")
   assert.equal(unprojected.length, 6, JSON.stringify(result.output.diagnostics))
+})
+
+test("type-aware rules resolve .ts and .vibe imports identically when linting one file", async (t) => {
+  const config = { options: { typeAware: true }, plugins: ["typescript"], categories: { correctness: "off" },
+    rules: { "typescript/no-redundant-type-constituents": "error" } }
+  for (const extension of ["ts", "vibe"]) {
+    const declaration = "export interface Needs { readonly id: string }\n"
+    const output = await lint(t, {
+      "tsconfig.json": JSON.stringify({ compilerOptions: { strict: true, module: "esnext", moduleResolution: "bundler",
+        allowArbitraryExtensions: true, allowImportingTsExtensions: true, noEmit: true } }),
+      [`lib/dep.${extension}`]: declaration,
+      ...(extension === "vibe" ? { "lib/dep.d.vibe.ts": declaration } : {}),
+      "probe.vibe": `import type { Needs } from "./lib/dep.${extension}"\n` +
+        "export type Program = Needs | string\nexport type Control = any | string\n",
+    }, config, { paths: ["probe.vibe"] })
+    assert.deepEqual(output.diagnostics.map(d => [d.code, d.labels[0].span.line]), [["typescript(no-redundant-type-constituents)", 3]])
+  }
 })

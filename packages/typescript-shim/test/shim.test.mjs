@@ -160,3 +160,23 @@ for (const tsdk of ["node_modules/typescript", "node_modules/typescript/lib"]) {
     assert.match(version.stdout, /^VibeLang /, version.stderr)
   })
 }
+
+test("strict TypeScript consumers can import the shim's version metadata", { skip }, (t) => {
+  const root = project(t, { "src/hello.ts": `
+    import { version, versionMajorMinor } from "typescript"
+    export const versions: readonly string[] = [version, versionMajorMinor]
+  ` })
+  const result = tsc(root, ["--noEmit"])
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+})
+
+test("tsc checks imports from a .vibe source in an ordinary .ts consumer", { skip }, (t) => {
+  const root = project(t, {
+    "src/model.vibe": "export const message: string = 'mixed'\n",
+    "src/hello.ts": 'import { message } from "./model.vibe"\nexport const length: number = message\n'
+  })
+  const result = tsc(root, ["--noEmit", "--allowImportingTsExtensions"])
+  assert.equal(result.status, 2, result.stdout + result.stderr)
+  assert.match(result.stdout, /hello\.ts\(2,14\): error TS2322/)
+  assert.doesNotMatch(result.stdout, /TS2307/)
+})

@@ -49,26 +49,32 @@ test("observes source changes", () => expect(value).toBe(${value}))
     child.stderr.on("data", (text) => { output += text })
     let failure
     child.on("error", (error) => { failure = error })
-    async function waitFor(pattern, offset, phase, timeout = 10000) {
+    async function seen(pattern, offset, phase, timeout) {
       const started = Date.now()
       while (Date.now() - started < timeout) {
         assert.ifError(failure)
-        if (pattern.test(output.slice(offset))) return
+        if (pattern.test(output.slice(offset))) return true
         if (phase === "initial run" && /Unhandled error|[1-9] error/.test(output)) assert.fail(output.slice(-4000))
         assert.equal(child.exitCode, null, `${phase}: Bun exited\n${output.slice(-4000)}`)
         await delay(40)
       }
+      return false
+    }
+    // Bun may arm its watcher after it prints a result, and so miss an edit
+    // made at once. Repeat the edit until a rerun reports, instead of sleeping
+    // a guessed margin first.
+    async function edit(text, pattern, phase, timeout = 10000) {
+      const offset = output.length
+      const deadline = Date.now() + timeout
+      while (Date.now() < deadline) {
+        writeFileSync(join(root, name + ".vibe"), text)
+        if (await seen(pattern, offset, phase, Math.min(1000, deadline - Date.now()))) return
+      }
       assert.fail(`${phase}: no matching test result after a source edit\n${output.slice(-4000)}`)
     }
-    await waitFor(/1 pass/, 0, "initial run", 20000)
-    let offset = output.length
-    await delay(200)
-    writeFileSync(join(root, name + ".vibe"), source(value + 1))
-    await waitFor(/1 fail/, offset, "changed source")
-    offset = output.length
-    await delay(200)
-    writeFileSync(join(root, name + ".vibe"), source(value))
-    await waitFor(/1 pass/, offset, "restored source")
+    if (!await seen(/1 pass/, 0, "initial run", 20000)) assert.fail(`initial run: no test result\n${output.slice(-4000)}`)
+    await edit(source(value + 1), /1 fail/, "changed source")
+    await edit(source(value), /1 pass/, "restored source")
   } finally {
     if (child?.pid && child.exitCode === null && child.signalCode === null) {
       const exited = once(child, "exit")

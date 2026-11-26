@@ -62,8 +62,13 @@ func TestProjectReferenceModuleBodyOutputGuards(t *testing.T) {
 				files["/core/src/state.vibe.model.d.ts"] = "export interface Base<T> { readonly authored: T }"
 			}
 			program := referenceBodyProgram(t, files, false)
-			if len(program.GetSemanticDiagnostics(t.Context(), nil)) == 0 {
-				t.Fatal("an unverified or explicitly written declaration edge must retain its diagnostic")
+			file := program.GetSourceFile("/app/main.ts")
+			if file == nil {
+				t.Fatal("missing consumer")
+			}
+			ds := program.GetSemanticDiagnostics(t.Context(), file)
+			if len(ds) != 1 || ds[0].Code() != 2339 || file.Text()[ds[0].Pos():ds[0].End()] != "transform" {
+				t.Fatalf("expected TS2339 on the consumer's transform, got %v", ds)
 			}
 		})
 	}

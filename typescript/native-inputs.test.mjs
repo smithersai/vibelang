@@ -48,6 +48,23 @@ function fixture(t) {
   return { root, put, key }
 }
 
+test("installed Effect tests re-key when the experiments manifest or lockfile changes", t => {
+  const { put, key } = fixture(t)
+  const targets = ["//typescript/tsc:go-effectglobals", "//typescript/tsc:go-ls"]
+  put("experiments/package.json", '{"dependencies":{"effect":"4.1.0"}}')
+  put("experiments/bun.lock", "original pin")
+  let before = targets.map(key)
+  for (const [file, contents] of [
+    ["experiments/bun.lock", "updated pin"],
+    ["experiments/package.json", '{"dependencies":{"effect":"4.1.1"}}']
+  ]) {
+    put(file, contents)
+    const after = targets.map(key)
+    targets.forEach((target, i) => assert.notEqual(after[i], before[i], `${file} must invalidate ${target}`))
+    before = after
+  }
+})
+
 test("native build keys ignore fuzz-only changes while test inputs retain them", t => {
   const { put, key } = fixture(t)
   const before = nativeTargets.map(key)

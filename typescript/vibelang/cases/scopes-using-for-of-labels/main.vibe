@@ -34,7 +34,7 @@ effect function array(reverse: boolean) {
 
 effect function iterator(reverse: boolean) {
   const events: string[] = []
-  outer: inner: for (using x of try sync((e: string[]) => elements(e), events)) {
+  outer: inner: for (using x of try runtimeSync((e: string[]) => elements(e), events)) {
     events.push("body")
     try yieldNow
     if (events.length < 2) {
@@ -92,9 +92,9 @@ effect function cStyle() {
 effect function nested() {
   const events: string[] = []
   let i = 0
-  outer: alias: for (using x of try sync((e: string[]) => elements(e), events)) {
+  outer: alias: for (using x of try runtimeSync((e: string[]) => elements(e), events)) {
     i++
-    inner: innerAlias: for (using y of try sync((e: string[]) => elements(e), events)) {
+    inner: innerAlias: for (using y of try runtimeSync((e: string[]) => elements(e), events)) {
       events.push("body")
       try yieldNow
       if (i === 1) continue outer
@@ -114,3 +114,5 @@ export effect function main() {
     cStyle: try cStyle(), nested: try nested(),
   }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

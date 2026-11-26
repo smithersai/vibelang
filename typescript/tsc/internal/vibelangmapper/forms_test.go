@@ -218,8 +218,7 @@ func TestEmbeddedTableHeader(t *testing.T) {
 		}
 	}
 	// The pins are content, not only versions: recompute each digest from
-	// the installed package (docs/tools/node_modules, pinned by its bun.lock)
-	// and the runtime's sources.
+	// the tools install, the runtime's own dependencies, and the runtime sources.
 	nodeModules := os.Getenv("FORMS_NODE_MODULES")
 	if nodeModules == "" {
 		nodeModules = filepath.Join(repo, "docs", "tools", "node_modules")
@@ -231,6 +230,8 @@ func TestEmbeddedTableHeader(t *testing.T) {
 		dir, sources := filepath.Join(nodeModules, filepath.FromSlash(in.Package)), false
 		if in.Package == "vibelang-runtime" {
 			dir, sources = filepath.Join(repo, "packages", "runtime", "src"), true
+		} else if _, err := os.Stat(dir); os.IsNotExist(err) {
+			dir = filepath.Join(repo, "packages", "runtime", "node_modules", filepath.FromSlash(in.Package))
 		}
 		files, sum, err := PackageDigest(dir, sources)
 		if err != nil {

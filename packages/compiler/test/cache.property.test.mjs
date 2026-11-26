@@ -11,6 +11,7 @@ import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
 import { compileProjectSync, projects } from "../project.mjs"
 import { observedChild } from "./observed-child.mjs"
+import { pastRacyWindow, tree } from "./cache-harness.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
@@ -148,7 +149,7 @@ async function checkHistory(input, loaders = false) {
         writeFileSync(binary, readFileSync(binary))
         chmodSync(binary, statSync(binary).mode & 0o777)
       }
-      await sleep(120) // Existing cache timestamp safety window; concurrency itself uses barriers below.
+      await pastRacyWindow(tree(root)) // The cache's timestamp safety window; concurrency itself uses barriers below.
       modules.invalidate()
       const beforeLoad = calls(root)
       const [loaded, concurrent] = await Promise.all([modules.load(source), modules.load(source)])
@@ -223,7 +224,7 @@ test("cache-save: saves after compiler reads cannot publish stale results", asyn
         write(root, revisions({ width: 1, actions: [] })[0].files)
         const binary = join(root, "compiler.mjs"), app = join(root, "app"), source = join(app, "src/main.vibe")
         writeFileSync(binary, wrapper(root, 0)); writeFileSync(join(root, "arm"), "armed")
-        await sleep(120)
+        await pastRacyWindow(tree(root))
         const options = { root: app, project: join(app, "tsconfig.json"), compiler: binary, cache: { directory: join(root, "cache") },
           debug: line => { diagnostics = (diagnostics + line + "\n").slice(-12000) } }
         const modules = projects(options)

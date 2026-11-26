@@ -95,3 +95,16 @@ for (const [rule, code, vibe, ts] of vibeOnly) {
     assert.doesNotMatch(output, /TS5023/, output)
   })
 }
+
+test("floating-effect recognizes an Effect type imported from either source extension", { skip }, () => {
+  for (const extension of ["ts", "vibe"]) {
+    const result = lint({ "effecttsgo/floating-effect": "error" }, {
+      [`dep.${extension}`]: header + "export type Needs = Effect.Effect<number>\n",
+      "consumer.ts": header + `import type { Needs } from "./dep.${extension}"\n` +
+        "declare const work: Needs\nexport const task = Effect.gen(function* () { work; return 1 })\n",
+    })
+    assert.equal(result.status, 1, result.stdout + result.stderr)
+    assert.equal(result.stdout.match(/: error /g)?.length, 1, result.stdout)
+    assert.match(result.stdout, /consumer\.ts\(4,\d+\): error EK3801: floatingEffect:/)
+  }
+})

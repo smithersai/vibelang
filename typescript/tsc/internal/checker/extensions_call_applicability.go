@@ -23,11 +23,6 @@ func (c *Checker) IsResolvedCallApplicable(call *ast.Node) bool {
 		}
 	}
 	args := c.getEffectiveCallArguments(call)
-	if !c.hasCorrectArity(call, args, signature, false) || !c.isSignatureApplicable(call, args, signature, c.assignableRelation, CheckModeNormal, false, nil) {
-		return false
-	}
-	if rank := c.candidateRanker(call); rank != nil {
-		return rank(signature) >= 0
-	}
-	return true
+	return c.hasCorrectArity(call, args, signature, false) &&
+		c.isSignatureApplicable(call, args, signature, c.assignableRelation, CheckModeNormal, false, nil)
 }

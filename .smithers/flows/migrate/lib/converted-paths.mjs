@@ -20,7 +20,8 @@ const scheme = /^[a-z][a-z0-9+.-]*:/i
 const extensionName = /(?:^|[^a-z])ext(?:ension)?$|Ext(?:ension)?$/
 // Configuration properties whose string value a bundler or runner opens as a file.
 const entryKeys = new Set(["main", "entry", "entries", "entryPoint", "entryPoints", "entrypoint", "entrypoints", "input", "script", "worker"])
-const manifestKeys = new Set(["main", "module", "bin", "sideEffects"])
+// `files` is the published allowlist: an entry naming only a converted .ts drops it from the tarball (#409).
+const manifestKeys = new Set(["main", "module", "bin", "sideEffects", "files"])
 // Configuration properties that choose source files by a pattern, and calls that list them.
 const selectorKeys = new Set(["include", "exclude", "test", "filter", "entry", "entries", "input", "inputs"])
 const selectorCalls = new Set(["glob", "globSync", "globby", "globbySync"])
@@ -442,6 +443,7 @@ export function scanSource(ts, text, file, index) {
   const refusals = [], reports = [], consumed = new Set(), found = new Set()
   let opaque = 0
   const test = isTestFile(file)
+  const javascript = /\.[cm]?jsx?$/.test(file)
   const lineOf = node => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
   const shown = node => node.getText(source).replace(/\s+/g, " ").slice(0, 160)
   const refuse = (node, move, kind, reason) => {
@@ -684,6 +686,14 @@ export function scanSource(ts, text, file, index) {
     }
   }
   const visit = node => {
+    // The codemod rewrites a TypeScript importer, and the compiler checks it.
+    // Node loads a JavaScript script's import as written: a benchmark naming
+    // ../src/Relevance.ts fails once that file is Relevance.vibe (#397).
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && javascript && node.moduleSpecifier && isString(ts, node.moduleSpecifier) && !node.importClause?.isTypeOnly && !node.isTypeOnly) {
+      const value = node.moduleSpecifier.text
+      if (value.startsWith(".") && sourceName.test(stripped(value))) staticValue(node.moduleSpecifier, value, [value], "import")
+      return
+    }
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node) || ts.isImportTypeNode(node) || ts.isLiteralTypeNode(node) || (ts.isModuleDeclaration(node) && isString(ts, node.name))) return
     if (!json) {
       probes(node)
@@ -728,6 +738,42 @@ function scanText(text, file, index) {
   return { refusals, reports: [], opaque: 0 }
 }
 
+/**
+ * After a module returns to TypeScript, an importer can still name its
+ * deleted native file (#391, #397). Each relative module specifier of file,
+ * `./x.vibe` or `./x.vibex`, whose target is not live while its `./x.ts` or
+ * `./x.tsx` twin is, is a refusal of kind "returned".
+ */
+export function scanReturned(ts, text, file, live) {
+  if (!/\.vibex?\b/.test(text)) return []
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:[jt]sx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+  const refusals = [], seen = new Set()
+  const check = node => {
+    if (!node || !isString(ts, node)) return
+    const at = node.text.slice(1).search(/[?#]/)
+    const name = at < 0 ? node.text : node.text.slice(0, at + 1)
+    const match = /^\.{1,2}\/.*\.(vibex?)$/.exec(name)
+    if (!match) return
+    const target = posix.normalize(posix.join(posix.dirname(file), name))
+    const twin = target.slice(0, -match[1].length) + (match[1] === "vibex" ? "tsx" : "ts")
+    if (live.has(target) || !live.has(twin)) return
+    const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
+    if (seen.has(line + "\0" + target)) return
+    seen.add(line + "\0" + target)
+    refusals.push({ refusal: REFUSAL, module: target, to: twin, file, line, kind: "returned", expression: node.getText(source),
+      reason: "the module returned to TypeScript and this still names its deleted native file; name " + posix.basename(twin) + " again (unflipReturned)" })
+  }
+  const visit = node => {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) check(node.moduleSpecifier)
+    else if (ts.isCallExpression(node) && node.arguments[0] && (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+      ts.isIdentifier(node.expression) && node.expression.text === "require" || metaName(ts, node.expression) === "resolve")) check(node.arguments[0])
+    else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) check(node.argument.literal)
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return refusals
+}
+
 /** The modules a tracked tree has converted: x.vibe with no x.ts or x.mts beside it, x.vibex with no x.tsx. */
 export function convertedModules(tracked) {
   const live = new Set(tracked)
@@ -760,10 +806,15 @@ export function checkConvertedPaths({ ts, tracked, read, owned, generated }) {
   const files = scannedFiles(tracked, { owned, ...(generated ? { generated } : {}) })
   const refusals = [], reports = [], unreadable = []
   let opaque = 0
-  if (renames.length) for (const file of files) {
+  // Returns are discovered as well as conversions: with nothing converted,
+  // the tree is still read for native names a returned module left behind.
+  for (const file of files) {
+    if (!renames.length && !code.test(file)) continue
     let text
     try { text = read(file) } catch { unreadable.push(file); continue }
     if (text === null || text === undefined || text.includes("\0")) continue
+    if (code.test(file)) refusals.push(...scanReturned(ts, text, file, index.live))
+    if (!renames.length) continue
     const result = textData.test(file) ? scanText(text, file, index) : scanSource(ts, text, file, index)
     refusals.push(...result.refusals)
     reports.push(...result.reports)

@@ -28,7 +28,7 @@ function nested(n: 1): string {
 
 // The unmatched subject is a defect; a hatch reads its message.
 export effect function main() {
-  const unmatched = try sync((outer: (n: 1) => string, inner: (n: 1) => string) => {
+  const unmatched = try runtimeSync((outer: (n: 1) => string, inner: (n: 1) => string) => {
     const message = (f: (n: 1) => string) => {
       try {
         return f(2 as 1)
@@ -40,3 +40,5 @@ export effect function main() {
   }, classify, nested)
   return [classOf(42), ...unmatched]
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

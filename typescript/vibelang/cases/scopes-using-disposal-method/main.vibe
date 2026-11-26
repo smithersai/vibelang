@@ -25,9 +25,9 @@ module resources {
 import { both, replaceable, replace } from resources
 
 effect function work(events: string[]) {
-  using first = try sync((log: string[]) => both(log), events)
-  using second = try sync((log: string[]) => replaceable(log), events)
-  try sync((resource: Disposable, log: string[]) => replace(resource, log), second, events)
+  using first = try runtimeSync((log: string[]) => both(log), events)
+  using second = try runtimeSync((log: string[]) => replaceable(log), events)
+  try runtimeSync((resource: Disposable, log: string[]) => replace(resource, log), second, events)
   events.push("body")
 }
 
@@ -37,3 +37,5 @@ export effect function main() {
   try work(events)
   return events
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

@@ -191,6 +191,11 @@ const compilerTest = (files: readonly string[], names?: readonly string[]) => S.
     S.file("//docs/design/vips/0044-durable-values.md"), S.file("//docs/design/vips/0039-vibex.md"),
     S.file("//docs/design/vips/0027-declaration-output.md"), S.file("//docs/user/src/setup/developer-tools.md"),
     S.file("//examples/approval/src/main.vibe"), S.file("//scripts/declaration-api-oracle.mjs"),
+    // Read by quote and guide tests, and imported from outside the package.
+    S.file("//docs/design/src/000-intro.md"), S.file("//docs/user/src/setup/vibelang-cli.md"), S.file("//docs/user/src/setup/vite.md"),
+    S.file("unplugin/README.md"), S.file("vite/README.md"),
+    S.file("//scripts/resolution-matrix.mjs"), S.file("//scripts/is-main.mjs"), S.file("//docs/tools/spec-witness.mjs"),
+    ...workspaceFiles("typescript/vibelang/test/*.mjs"),
     ...workspaceFiles("typescript/vibelang/cases/schema-durable-serialization/**/*"),
     S.file("//typescript/vibelang/cases/tsforms-schemas/main.vibe"),
     S.file("//typescript/vibelang/cases/tsforms-schemas-fixed/main.vibe"), ...install],
@@ -520,6 +525,35 @@ const compilerEslintTest = S.Shell.Test({
   timeout: "30m"
 })
 
+// Targets for package tests no other target ran (#595, #630).
+const go = S.Host.bin("go")
+const goCache = "GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0"
+
+// The mapper and forms command-line tools' own tests, including the approval
+// rule for moved form decisions (cmd/vibelang-forms/decisions_test.go).
+const tsMapperCommands = S.Shell.Test({
+  summary: "Go tests of cmd/vibelang-mapper and cmd/vibelang-forms.",
+  shell: `cd typescript/tsc && ${goCache} go test -count=1 -p 8 -timeout 15m -trimpath ./cmd/vibelang-mapper ./cmd/vibelang-forms`,
+  data: [Tsc.srcs, Tsc["vibelangmapper-files"], runtimeDist, ...experimentInstall,
+    S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock")],
+  tools: [go, S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "20m"
+})
+
+// The starter scaffolded from templates/app with this checkout's compiler,
+// runtime and Vite plugin: check, build, run and dev (create-vibelang/test/e2e.test.mjs).
+const createVibelangE2e = S.Shell.Test({
+  summary: "create-vibelang end to end: a scaffolded starter checks, builds, runs and reloads in dev.",
+  shell: "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang node --test packages/create-vibelang/test/e2e.test.mjs",
+  data: [compilerNative, runtimeDist, compilerSupport, ...install, S.glob("create-vibelang/**", { exclude: ["create-vibelang/node_modules/**"] }),
+    S.glob("vite/src/**"), S.file("vite/package.json"), S.file("vite/bun.lock"), ...experimentInstall,
+    ...workspaceFiles("templates/app/**/*"), S.file("//docs/user/llms-essentials.md")],
+  tools: [S.Host.bin("node"), S.Host.bin("npm"), S.Host.bin("bun"), S.Host.bin("tar")],
+  sandbox: "none",
+  timeout: "15m"
+})
+
 export const Package = S.Package({
   targets: {
     ...Object.fromEntries([...compilerTestEntries, ...runtimeTestEntries, ...viteTestEntries, ...unpluginTestEntries,
@@ -533,6 +567,8 @@ export const Package = S.Package({
     "runtime-browser-test": runtimeBrowserTest,
     "runtime-test-runners": runtimeTestRunners,
     "ts-mapper-prelude-names": tsMapperPreludeNames,
+    "ts-mapper-commands": tsMapperCommands,
+    "create-vibelang-e2e": createVibelangE2e,
     "runtime-package": runtimePackageTest,
     "runtime-kernel-contracts": runtimeKernelContracts,
     "runtime-readme-exports": runtimeReadmeExports,

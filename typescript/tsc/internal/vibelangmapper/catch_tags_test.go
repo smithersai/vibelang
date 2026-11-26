@@ -121,7 +121,7 @@ func FuzzCatchDeclarationNamespaceAliases(f *testing.F) {
 		}
 	}
 	f.Fuzz(func(t *testing.T, alias, mode uint8) {
-		name := []string{"Effect_1", "$nativeTryEffect6", "NativeEffect", "Σ"}[alias%4]
+		name := []string{"Effect_1", "$cleanupEffect6", "NativeEffect", "Σ"}[alias%4]
 		mode %= 8
 		module := "effect/Effect"
 		if mode&1 != 0 {

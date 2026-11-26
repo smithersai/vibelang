@@ -5,6 +5,8 @@ import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "nod
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { referenceModules } from "./vip7-reference.mjs"
+
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const stock = join(repo, "docs/tools/node_modules/typescript/bin/tsc")
 
@@ -24,7 +26,7 @@ export async function compareChapter007Twin(caseURL, expected) {
   const reference = join(directory, "out/twin-control")
   rmSync(reference, { recursive: true, force: true })
   mkdirSync(join(reference, "node_modules"), { recursive: true })
-  const modules = chapter007EffectTwinModules(reference)
+  const modules = chapter007EffectTwinModules()
   symlinkSync(join(modules, "effect"), join(reference, "node_modules/effect"))
   writeFileSync(join(reference, "main.ts"), readFileSync(join(directory, "reference.ts"), "utf8"))
   const config = JSON.parse(readFileSync(join(directory, "tsconfig.json"), "utf8"))
@@ -44,19 +46,6 @@ export async function compareChapter007Twin(caseURL, expected) {
 
 // Standalone compiler tests and harness cases need the same independently
 // pinned native control even when the caller supplies only current runtime deps.
-export function chapter007EffectTwinModules(directory) {
-  assert.equal(JSON.parse(readFileSync(join(repo, "docs/tools/node_modules/typescript/package.json"), "utf8")).version, "5.9.3")
-  const provided = process.env.EFFECT_TWIN_NODE_MODULES
-  if (provided) {
-    assert.equal(JSON.parse(readFileSync(join(provided, "effect/package.json"), "utf8")).version, "4.1.0")
-    return provided
-  }
-  const root = join(directory, "effect410")
-  mkdirSync(root, { recursive: true })
-  writeFileSync(join(root, "package.json"), JSON.stringify({ private: true, type: "module", dependencies: { effect: "4.1.0" } }))
-  const installed = spawnSync("bun", ["install", "--ignore-scripts"], { cwd: root, encoding: "utf8", timeout: 90000 })
-  assert.equal(installed.status, 0, installed.stdout + installed.stderr)
-  const modules = join(root, "node_modules")
-  assert.equal(JSON.parse(readFileSync(join(modules, "effect/package.json"), "utf8")).version, "4.1.0")
-  return modules
+export function chapter007EffectTwinModules() {
+  return referenceModules(process.env.EFFECT_TWIN_NODE_MODULES, ["effect"])
 }

@@ -2,8 +2,6 @@ package module
 
 import (
 	"fmt"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/core"
@@ -37,13 +35,6 @@ func TestChapter007ResolutionCandidates(t *testing.T) {
 						want = "/p/" + name
 						break
 					}
-				}
-				if os.Getenv("VIBELANG_COVERAGE_RUN_PENDING") != "1" && (strings.HasSuffix(want, ".vibex") || row.specifier == "App.jsx" && strings.HasSuffix(want, ".vibe")) {
-					rule := "docs/design/src/007-tooling.md#68b01858a9dd37eb"
-					if row.specifier == "App.jsx" {
-						rule = "docs/design/src/007-tooling.md#d7ea782b75881b2e"
-					}
-					t.Skip(rule + ": candidate source extension is absent from this lookup; mask " + fmt.Sprintf("%07b", mask))
 				}
 				fs := vfstest.FromMap(files, tspath.CaseSensitive)
 				state := &resolutionState{resolver: &DefaultResolver{ResolutionData: &ResolutionData{}, fs: fs}, compilerOptions: &core.CompilerOptions{}}

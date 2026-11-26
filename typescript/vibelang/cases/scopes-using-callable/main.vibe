@@ -22,8 +22,8 @@ import { disposable, asyncDisposable } from resources
 effect function block() {
   const events: string[] = []
   {
-    using syncResource = try sync((e: string[]) => disposable("sync", e), events)
-    using asyncResource = try sync((e: string[]) => asyncDisposable("async", e), events)
+    using syncResource = try runtimeSync((e: string[]) => disposable("sync", e), events)
+    using asyncResource = try runtimeSync((e: string[]) => asyncDisposable("async", e), events)
     events.push("body")
     try yieldNow
   }
@@ -33,11 +33,11 @@ effect function block() {
 
 effect function loops() {
   const events: string[] = []
-  for (using resource of try sync((e: string[]) => [disposable("s1", e), disposable("s2", e)], events)) {
+  for (using resource of try runtimeSync((e: string[]) => [disposable("s1", e), disposable("s2", e)], events)) {
     events.push("sync body")
     try yieldNow
   }
-  for (using resource of try sync((e: string[]) => [asyncDisposable("a1", e), asyncDisposable("a2", e)], events)) {
+  for (using resource of try runtimeSync((e: string[]) => [asyncDisposable("a1", e), asyncDisposable("a2", e)], events)) {
     events.push("async body")
     try yieldNow
   }
@@ -49,3 +49,5 @@ effect function loops() {
 export effect function main() {
   return { block: try block(), loops: try loops() }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

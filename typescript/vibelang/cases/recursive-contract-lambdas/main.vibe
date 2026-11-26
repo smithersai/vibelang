@@ -21,7 +21,7 @@ const runBranch = effect (branch: Step, index: number): Effect.Effect<number, ne
 }
 
 const runRace = effect (branches: ReadonlyArray<Step>): Effect.Effect<number, never, never> =>
-  try Effect.raceAll(try sync(({ branches, execute }) => branches.map(execute), {
+  try Effect.raceAll(try runtimeSync(({ branches, execute }) => branches.map(execute), {
     branches,
     execute: effect (branch: Step, index: number): Effect.Effect<number, never, never> => try runBranch(branch, index)
   }))
@@ -120,3 +120,5 @@ export effect function main() {
     processTrigger: try processTrigger(2)
   }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

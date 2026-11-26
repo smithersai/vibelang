@@ -130,7 +130,10 @@ test("the nearest project is the closest tsconfig.json above a file, or none", (
   mkdirSync(join(root, "app/src/nested"), { recursive: true })
   writeFileSync(join(root, "app/tsconfig.json"), "{}")
   assert.equal(nearestProject(join(root, "app/src/nested/main.vibe")), join(root, "app/tsconfig.json"))
-  assert.equal(nearestProject(join(root, "elsewhere.vibe")), undefined)
+  // Above the fixture only a tsconfig.json the host's temporary directory
+  // happens to hold could be found, so compare with that instead of none.
+  assert.equal(nearestProject(join(root, "elsewhere.vibe")), nearestProject(root))
+  assert.notEqual(nearestProject(join(root, "elsewhere.vibe")), join(root, "app/tsconfig.json"))
 })
 
 const tsconfig = JSON.stringify({

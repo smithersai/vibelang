@@ -11,7 +11,7 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const require = createRequire(new URL("../../runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const binary = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
-const corpus = JSON.parse(readFileSync(new URL("./property-regressions/sl3-typed-destructured-catch.json", import.meta.url), "utf8"))
+const corpus = JSON.parse(readFileSync(new URL("./property-regressions/typed-destructured-catch.json", import.meta.url), "utf8"))
 const quote = "A `try { } catch { }` statement at the top level, or in a plain or `async` function, is JavaScript's, as in TypeScript."
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const runtime = process.env.VIBELANG_RUNTIME || join(repo, "packages/runtime")
@@ -61,7 +61,7 @@ function compile(source, extension) {
 
 // Written return types keep the controls plain on the transitional compiler.
 // The original unannotated program is retained separately as a crash witness
-// (r3: checkRetiredCatches read Node.Text of a binding pattern; fixed in c94a0a44c6cf).
+// (checkRetiredCatches read Node.Text of a binding pattern; fixed in c94a0a44c6cf).
 function check(input, literal) {
   const source = literal || sourceFor(input), native = compile(source, "ts"), vibe = compile(source, "vibe")
   assert.equal(native.panic, false, "native TypeScript control must not panic")

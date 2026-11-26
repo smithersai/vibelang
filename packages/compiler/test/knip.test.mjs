@@ -4,8 +4,9 @@
 // VIP-34: Knip sees real Vibe imports and exports; ESLint, register and bundler suites are complementary tool readers.
 import { requireOrSkip } from "./prerequisites.mjs"
 import { strict as assert } from "node:assert"
-import { existsSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
@@ -178,4 +179,29 @@ test("nested defaults and rest bindings preserve every exported name", { skip },
     "export const head = 0, renamed = 0, tail = 0",
     ""
   ].join("\n"))
+})
+
+test("Knip follows a type-only .js re-export to model.vibe", { skip }, async (t) => {
+  const { main } = await import("knip")
+  const { createOptions } = await import("knip/session")
+  const cwd = realpathSync(mkdtempSync(join(tmpdir(), "knip-reexport-")))
+  t.after(() => rmSync(cwd, { recursive: true, force: true }))
+  mkdirSync(join(cwd, "node_modules"))
+  symlinkSync(join(repo, "packages/compiler"), join(cwd, "node_modules/vibelang"))
+  writeFileSync(join(cwd, "package.json"), '{"private":true,"type":"module"}')
+  writeFileSync(join(cwd, "knip.config.js"), `import compile from "vibelang/knip"
+    export default { entry: ["entry.ts"], project: ["*.ts", "*.vibe"], compilers: { vibe: compile } }`)
+  writeFileSync(join(cwd, "entry.ts"), 'import type { Public } from "./barrel.vibe"\nexport const use = (item: Public) => item.value\n')
+  writeFileSync(join(cwd, "barrel.vibe"), 'export type { Public } from "./model.js"\n')
+  writeFileSync(join(cwd, "model.vibe"), "export interface Public { value: string }\nexport type Unused = number\n")
+  const options = await createOptions({ cwd, args: { "no-config-hints": true } })
+  options.isShowProgress = false
+  const { issues } = await main(options)
+  assert.deepEqual(Object.keys(issues.unresolved), [])
+  assert.deepEqual(Object.keys(issues.files), [])
+  assert.deepEqual(Object.values(issues.types["model.vibe"] ?? {}).map(issue => issue.symbol), ["Unused"])
+  // Knip prefers a real TypeScript module to its native fallback.
+  writeFileSync(join(cwd, "model.ts"), "export type Public = string\n")
+  const barrel = 'export type { Public } from "./model.js"'
+  assert.ok(compile(barrel, join(cwd, "barrel.vibe")).includes(barrel))
 })

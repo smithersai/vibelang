@@ -65,7 +65,9 @@ export effect function main() {
   } catch effect (error) => {
     refused = error._tag
   }
-  const inert = try sync((later) => typeof later(), later)
-  const viaRunner = try sync(async (later) => runPromise(later()), later)
+  const inert = try runtimeSync((later) => typeof later(), later)
+  const viaRunner = try runtimeSync(async (later) => runPromise(later()), later)
   return { id, doubled, awaited, fetched, parsed, bad, unknown, ticked, refused, inert, viaRunner }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

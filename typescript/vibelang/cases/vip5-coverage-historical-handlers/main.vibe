@@ -9,9 +9,9 @@
 import { Effect } from "effect"
 const fallback = () => 7
 export effect function main(): Effect.Effect<readonly unknown[]> {
-  const value = Effect.fail("x") catch 7
-  const named = Effect.fail("x") catch fallback
-  const block = Effect.fail("x") catch effect { return 9 }
-  const asyncValue = Effect.fail("x") catch async () => 10
-  return [value,named === fallback,block,typeof asyncValue.then === "function"]
+  const value = Effect.fail("x") catch () => 7
+  const named = Effect.fail("x") catch () => fallback
+  const block = Effect.fail("x") catch effect () => 9
+  const asyncValue = Effect.fail("x") catch effect () => try promise(() => Promise.resolve(10))
+  return [value,named === fallback,block,asyncValue]
 }

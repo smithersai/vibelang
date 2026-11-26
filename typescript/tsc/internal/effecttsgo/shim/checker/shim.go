@@ -57,7 +57,6 @@ type ArrayLiteralLinks = checker.ArrayLiteralLinks
 type ArrayToSingleTypeMapper = checker.ArrayToSingleTypeMapper
 type ArrayTypeMapper = checker.ArrayTypeMapper
 type AssertionLinks = checker.AssertionLinks
-type AssertionOperandTypeHook = checker.AssertionOperandTypeHook
 type AssignmentKind = checker.AssignmentKind
 
 const AssignmentKindCompound = checker.AssignmentKindCompound
@@ -96,12 +95,10 @@ const CachedTypeKindStringIndexType = checker.CachedTypeKindStringIndexType
 const CachedTypeKindSyntheticType = checker.CachedTypeKindSyntheticType
 const CachedTypeKindWidened = checker.CachedTypeKindWidened
 
-type CallCandidateHook = checker.CallCandidateHook
+type CallArgumentDiagnosticsFilterHook = checker.CallArgumentDiagnosticsFilterHook
+type CallExpressionReplacementHook = checker.CallExpressionReplacementHook
 type CallExpressionTypeHook = checker.CallExpressionTypeHook
-type CallSignaturesHook = checker.CallSignaturesHook
 type CallState = checker.CallState
-type CandidateFilterHook = checker.CandidateFilterHook
-type CandidateRankingHook = checker.CandidateRankingHook
 type CatchVariableTypeHook = checker.CatchVariableTypeHook
 type CheckMode = checker.CheckMode
 
@@ -115,7 +112,6 @@ const CheckModeSkipContextSensitive = checker.CheckModeSkipContextSensitive
 const CheckModeSkipGenericFunctions = checker.CheckModeSkipGenericFunctions
 const CheckModeTypeOnly = checker.CheckModeTypeOnly
 
-type CheckedArgument = checker.CheckedArgument
 type Checker = checker.Checker
 
 //go:linkname Checker_isBlockScopedNameDeclaredBeforeUse github.com/microsoft/TypeScript/tsc/internal/checker.(*Checker).isBlockScopedNameDeclaredBeforeUse
@@ -302,7 +298,7 @@ type extra_Checker struct {
 	subtypeReductionCache                  map[checker.CacheHashKey][]*checker.Type
 	cachedTypes                            map[checker.CachedTypeKey]*checker.Type
 	cachedSignatures                       map[checker.CachedSignatureKey]*checker.Signature
-	undefinedProperties                    map[string]*ast.Symbol
+	undefinedProperties                    map[*ast.Symbol]*ast.Symbol
 	narrowedTypes                          map[checker.NarrowedTypeKey]*checker.Type
 	assignmentReducedTypes                 map[checker.AssignmentReducedKey]*checker.Type
 	discriminatedContextualTypes           map[checker.DiscriminatedContextualTypeKey]*checker.Type
@@ -752,6 +748,7 @@ const ContextFlagsSkipBindingPatterns = checker.ContextFlagsSkipBindingPatterns
 
 type ContextualInfo = checker.ContextualInfo
 type ContextualReturnTypeHook = checker.ContextualReturnTypeHook
+type CopiedNameHook = checker.CopiedNameHook
 
 //go:linkname CreateModeMismatchDetails github.com/microsoft/TypeScript/tsc/internal/checker.CreateModeMismatchDetails
 func CreateModeMismatchDetails(program checker.Program, file *ast.SourceFile) checker.DiagnosticDetails
@@ -778,6 +775,7 @@ const DeclarationSpacesExportType = checker.DeclarationSpacesExportType
 const DeclarationSpacesExportValue = checker.DeclarationSpacesExportValue
 const DeclarationSpacesNone = checker.DeclarationSpacesNone
 
+type DeclaredTypeHook = checker.DeclaredTypeHook
 type DeclaredTypeLinks = checker.DeclaredTypeLinks
 type extra_DeclaredTypeLinks struct {
 	declaredType           *checker.Type
@@ -796,6 +794,7 @@ type DeferredTypeMapper = checker.DeferredTypeMapper
 type DiagnosticAndArguments = checker.DiagnosticAndArguments
 type DiagnosticDetails = checker.DiagnosticDetails
 type DiagnosticsFilterHook = checker.DiagnosticsFilterHook
+type DiagnosticsPreparationHook = checker.DiagnosticsPreparationHook
 type DiscriminatedContextualTypeKey = checker.DiscriminatedContextualTypeKey
 type Discriminator = checker.Discriminator
 type ElementFlags = checker.ElementFlags
@@ -840,6 +839,7 @@ type ExportTypeLinks = checker.ExportTypeLinks
 
 var ExpressionCheckedCallback = checker.ExpressionCheckedCallback
 
+type ExpressionReplacementHook = checker.ExpressionReplacementHook
 type ExpressionTypeHook = checker.ExpressionTypeHook
 type ExternalEmitHelpers = checker.ExternalEmitHelpers
 
@@ -882,6 +882,7 @@ func FormatTypeFlags(flags checker.TypeFlags) []string
 
 type FunctionExpressionTypeHook = checker.FunctionExpressionTypeHook
 type FunctionTypeMapper = checker.FunctionTypeMapper
+type GeneratorAnnotationHook = checker.GeneratorAnnotationHook
 
 //go:linkname GetDeclarationModifierFlagsFromSymbol github.com/microsoft/TypeScript/tsc/internal/checker.GetDeclarationModifierFlagsFromSymbol
 func GetDeclarationModifierFlagsFromSymbol(s *ast.Symbol) ast.ModifierFlags
@@ -1113,6 +1114,8 @@ const JsxReferenceKindComponent = checker.JsxReferenceKindComponent
 const JsxReferenceKindFunction = checker.JsxReferenceKindFunction
 const JsxReferenceKindMixed = checker.JsxReferenceKindMixed
 
+type LabelTransparentFunctionHook = checker.LabelTransparentFunctionHook
+
 var LanguageFeatureMinimumTarget = checker.LanguageFeatureMinimumTarget
 
 type LanguageFeatureMinimumTargetMap = checker.LanguageFeatureMinimumTargetMap
@@ -1301,6 +1304,7 @@ const ParseFlagsNone = checker.ParseFlagsNone
 const ParseFlagsType = checker.ParseFlagsType
 const ParseFlagsYield = checker.ParseFlagsYield
 
+type PatternInstanceofHook = checker.PatternInstanceofHook
 type PredicateSemantics = checker.PredicateSemantics
 
 const PredicateSemanticsAlways = checker.PredicateSemanticsAlways
@@ -1310,6 +1314,7 @@ const PredicateSemanticsSometimes = checker.PredicateSemanticsSometimes
 
 type Program = checker.Program
 type PropertiesTypesKey = checker.PropertiesTypesKey
+type PropertyDeclarationTypeHook = checker.PropertyDeclarationTypeHook
 
 //go:linkname PropertyNameOfType github.com/microsoft/TypeScript/tsc/internal/checker.PropertyNameOfType
 func PropertyNameOfType(t *checker.Type) (string, bool)
@@ -1347,23 +1352,17 @@ func RegisterAnnotatedReturnInferenceHook(hook checker.AnnotatedReturnInferenceH
 //go:linkname RegisterAnnotatedReturnTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterAnnotatedReturnTypeHook
 func RegisterAnnotatedReturnTypeHook(hook checker.AnnotatedReturnTypeHook)
 
-//go:linkname RegisterAssertionOperandTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterAssertionOperandTypeHook
-func RegisterAssertionOperandTypeHook(hook checker.AssertionOperandTypeHook)
+//go:linkname RegisterBindDiagnosticsFilterHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterBindDiagnosticsFilterHook
+func RegisterBindDiagnosticsFilterHook(hook checker.DiagnosticsFilterHook)
 
-//go:linkname RegisterCallCandidateHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterCallCandidateHook
-func RegisterCallCandidateHook(hook checker.CallCandidateHook)
+//go:linkname RegisterCallArgumentDiagnosticsFilterHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterCallArgumentDiagnosticsFilterHook
+func RegisterCallArgumentDiagnosticsFilterHook(hook checker.CallArgumentDiagnosticsFilterHook)
+
+//go:linkname RegisterCallExpressionReplacementHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterCallExpressionReplacementHook
+func RegisterCallExpressionReplacementHook(hook checker.CallExpressionReplacementHook)
 
 //go:linkname RegisterCallExpressionTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterCallExpressionTypeHook
 func RegisterCallExpressionTypeHook(hook checker.CallExpressionTypeHook)
-
-//go:linkname RegisterCallSignaturesHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterCallSignaturesHook
-func RegisterCallSignaturesHook(hook checker.CallSignaturesHook)
-
-//go:linkname RegisterCandidateFilterHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterCandidateFilterHook
-func RegisterCandidateFilterHook(hook checker.CandidateFilterHook)
-
-//go:linkname RegisterCandidateRankingHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterCandidateRankingHook
-func RegisterCandidateRankingHook(hook checker.CandidateRankingHook)
 
 //go:linkname RegisterCatchVariableTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterCatchVariableTypeHook
 func RegisterCatchVariableTypeHook(hook checker.CatchVariableTypeHook)
@@ -1374,14 +1373,26 @@ func RegisterClassBaseHook(hook checker.ClassBaseHook)
 //go:linkname RegisterContextualReturnTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterContextualReturnTypeHook
 func RegisterContextualReturnTypeHook(hook checker.ContextualReturnTypeHook)
 
+//go:linkname RegisterCopiedNameHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterCopiedNameHook
+func RegisterCopiedNameHook(hook checker.CopiedNameHook)
+
+//go:linkname RegisterDeclaredTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterDeclaredTypeHook
+func RegisterDeclaredTypeHook(hook checker.DeclaredTypeHook)
+
 //go:linkname RegisterDiagnosticsFilterHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterDiagnosticsFilterHook
 func RegisterDiagnosticsFilterHook(hook checker.DiagnosticsFilterHook)
+
+//go:linkname RegisterDiagnosticsPreparationHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterDiagnosticsPreparationHook
+func RegisterDiagnosticsPreparationHook(hook checker.DiagnosticsPreparationHook)
 
 //go:linkname RegisterEntityNameVisibilityHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterEntityNameVisibilityHook
 func RegisterEntityNameVisibilityHook(hook checker.EntityNameVisibilityHook)
 
 //go:linkname RegisterExpressionCheckedCallback github.com/microsoft/TypeScript/tsc/internal/checker.RegisterExpressionCheckedCallback
 func RegisterExpressionCheckedCallback(cb func(*checker.Checker, *ast.Node, checker.CheckMode, *checker.Type))
+
+//go:linkname RegisterExpressionReplacementHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterExpressionReplacementHook
+func RegisterExpressionReplacementHook(hook checker.ExpressionReplacementHook)
 
 //go:linkname RegisterExpressionTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterExpressionTypeHook
 func RegisterExpressionTypeHook(hook checker.ExpressionTypeHook)
@@ -1391,6 +1402,9 @@ func RegisterFlowNarrowingHook(hook checker.FlowNarrowingHook)
 
 //go:linkname RegisterFunctionExpressionTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterFunctionExpressionTypeHook
 func RegisterFunctionExpressionTypeHook(hook checker.FunctionExpressionTypeHook)
+
+//go:linkname RegisterGeneratorAnnotationHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterGeneratorAnnotationHook
+func RegisterGeneratorAnnotationHook(hook checker.GeneratorAnnotationHook)
 
 //go:linkname RegisterImplementedTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterImplementedTypeHook
 func RegisterImplementedTypeHook(hook checker.ImplementedTypeHook)
@@ -1407,6 +1421,9 @@ func RegisterInitializerContextualTypeHook(hook checker.InitializerContextualTyp
 //go:linkname RegisterIteratedElementTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterIteratedElementTypeHook
 func RegisterIteratedElementTypeHook(hook checker.IteratedElementTypeHook)
 
+//go:linkname RegisterLabelTransparentFunctionHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterLabelTransparentFunctionHook
+func RegisterLabelTransparentFunctionHook(hook checker.LabelTransparentFunctionHook)
+
 //go:linkname RegisterMemberReceiverHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterMemberReceiverHook
 func RegisterMemberReceiverHook(hook checker.MemberReceiverHook)
 
@@ -1418,6 +1435,12 @@ func RegisterModuleNameHook(hook checker.ModuleNameHook)
 
 //go:linkname RegisterNameResolutionHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterNameResolutionHook
 func RegisterNameResolutionHook(hook checker.NameResolutionHook)
+
+//go:linkname RegisterPatternInstanceofHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterPatternInstanceofHook
+func RegisterPatternInstanceofHook(hook checker.PatternInstanceofHook)
+
+//go:linkname RegisterPropertyDeclarationTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterPropertyDeclarationTypeHook
+func RegisterPropertyDeclarationTypeHook(hook checker.PropertyDeclarationTypeHook)
 
 //go:linkname RegisterQualifiedNameResolutionHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterQualifiedNameResolutionHook
 func RegisterQualifiedNameResolutionHook(hook checker.QualifiedNameResolutionHook)
@@ -1443,11 +1466,17 @@ func RegisterSpellingCandidatesHook(hook checker.SpellingCandidatesHook)
 //go:linkname RegisterSpellingSuggestionFilterHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterSpellingSuggestionFilterHook
 func RegisterSpellingSuggestionFilterHook(hook checker.SpellingSuggestionFilterHook)
 
+//go:linkname RegisterTransparentYieldFunctionHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterTransparentYieldFunctionHook
+func RegisterTransparentYieldFunctionHook(hook checker.TransparentYieldFunctionHook)
+
 //go:linkname RegisterUnwrappedReturnTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterUnwrappedReturnTypeHook
 func RegisterUnwrappedReturnTypeHook(hook checker.UnwrappedReturnTypeHook)
 
 //go:linkname RegisterUsingInitializerHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterUsingInitializerHook
 func RegisterUsingInitializerHook(hook checker.UsingInitializerHook)
+
+//go:linkname RegisterYieldExpressionResultTypeHook github.com/microsoft/TypeScript/tsc/internal/checker.RegisterYieldExpressionResultTypeHook
+func RegisterYieldExpressionResultTypeHook(hook checker.YieldExpressionResultTypeHook)
 
 type Relater = checker.Relater
 type Relation = checker.Relation
@@ -1463,6 +1492,7 @@ const RelationComparisonResultReportsUnreliable = checker.RelationComparisonResu
 const RelationComparisonResultSucceeded = checker.RelationComparisonResultSucceeded
 
 type RelationError = checker.RelationError
+type RemovedTypeKey = checker.RemovedTypeKey
 type ResolvingReturnTypeHook = checker.ResolvingReturnTypeHook
 type ReturnInferenceTargetHook = checker.ReturnInferenceTargetHook
 type ReverseMappedSymbolLinks = checker.ReverseMappedSymbolLinks
@@ -1633,6 +1663,7 @@ const TernaryUnknown = checker.TernaryUnknown
 
 type Tracer = checker.Tracer
 type TrackedSymbolArgs = checker.TrackedSymbolArgs
+type TransparentYieldFunctionHook = checker.TransparentYieldFunctionHook
 
 //go:linkname TryGetModuleSpecifierFromDeclaration github.com/microsoft/TypeScript/tsc/internal/checker.TryGetModuleSpecifierFromDeclaration
 func TryGetModuleSpecifierFromDeclaration(node *ast.Node) *ast.Node
@@ -1833,6 +1864,7 @@ const TypeFormatFlagsUseAliasDefinedOutsideCurrentScope = checker.TypeFormatFlag
 const TypeFormatFlagsUseFullyQualifiedType = checker.TypeFormatFlagsUseFullyQualifiedType
 const TypeFormatFlagsUseInstantiationExpressions = checker.TypeFormatFlagsUseInstantiationExpressions
 const TypeFormatFlagsUseSingleQuotesForStringLiteralType = checker.TypeFormatFlagsUseSingleQuotesForStringLiteralType
+const TypeFormatFlagsUseSourceScope = checker.TypeFormatFlagsUseSourceScope
 const TypeFormatFlagsUseStructuralFallback = checker.TypeFormatFlagsUseStructuralFallback
 const TypeFormatFlagsUseTypeOfFunction = checker.TypeFormatFlagsUseTypeOfFunction
 const TypeFormatFlagsWriteArrayAsGenericType = checker.TypeFormatFlagsWriteArrayAsGenericType
@@ -1981,6 +2013,8 @@ const WideningKindFunctionReturn = checker.WideningKindFunctionReturn
 const WideningKindGeneratorNext = checker.WideningKindGeneratorNext
 const WideningKindGeneratorYield = checker.WideningKindGeneratorYield
 const WideningKindNormal = checker.WideningKindNormal
+
+type YieldExpressionResultTypeHook = checker.YieldExpressionResultTypeHook
 
 //go:linkname ForEachYieldExpression github.com/microsoft/TypeScript/tsc/internal/checker.forEachYieldExpression
 func ForEachYieldExpression(body *ast.Node, visitor func(expr *ast.Node) bool) bool

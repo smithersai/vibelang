@@ -22,13 +22,15 @@ import { counted } from inputs
 // "iterate" and every run gave [1] (audit concurrency §5).
 export effect function main() {
   const seen: string[] = []
-  const xs = try sync((s: string[]) => counted(s), seen)
+  const xs = try runtimeSync((s: string[]) => counted(s), seen)
   const held: number[]!! = effect { return try $tryAllEffects($tryGlobals.Array.from(xs), { concurrency: "unbounded" }) }
   const made = [...seen]
   const runs = [try held, try held, try held]
-  const ys = try sync((s: string[]) => counted(s), [] as string[])
+  const ys = try runtimeSync((s: string[]) => counted(s), [] as string[])
   const settled = (try $tryAllEffects($tryGlobals.Array.from(ys), { concurrency: "unbounded", mode: "result" }))
-  const race = (try.race $tryGlobals.Array.from(try sync((s: string[]) => counted(s), [] as string[])))
-  const any = (try.any $tryGlobals.Array.from(try sync((s: string[]) => counted(s), [] as string[])))
+  const race = (try.race $tryGlobals.Array.from(try runtimeSync((s: string[]) => counted(s), [] as string[])))
+  const any = (try.any $tryGlobals.Array.from(try runtimeSync((s: string[]) => counted(s), [] as string[])))
   return { made, runs, settled: settled.map((r) => Result.getOrElse(r, () => 0)), race, any }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

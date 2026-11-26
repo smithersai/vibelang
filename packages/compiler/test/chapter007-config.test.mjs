@@ -63,6 +63,21 @@ test("Chapter 007 / stock tsc accepts custom root keys and rejects custom compil
   }
 })
 
+// The vibelang compiler reads the same files: root custom keys are accepted,
+// and an unknown compiler option is TS5023 as in stock tsc.
+test("Chapter 007 / vibelang accepts custom root keys and rejects an unknown compiler option", t => {
+  for (const name of names) {
+    const root = fixture(t)
+    put(root, name, { vibe: { effectGlobals: false }, custom: {}, files: ["main.ts"] })
+    const accepted = spawnSync(binary, ["-p", name, "--pretty", "false", "--noEmit"], { cwd: root, encoding: "utf8", timeout: 20000 })
+    assert.equal(accepted.status, 0, accepted.stdout + accepted.stderr)
+    put(root, name, { compilerOptions: { unknownOption: {} }, files: ["main.ts"] })
+    const rejected = spawnSync(binary, ["-p", name, "--pretty", "false", "--noEmit"], { cwd: root, encoding: "utf8", timeout: 20000 })
+    assert.notEqual(rejected.status, 0)
+    assert.match(rejected.stdout + rejected.stderr, /error TS5023: Unknown compiler option 'unknownOption'/)
+  }
+})
+
 // Chapter 007 / legacy root and nested config paths through extends: docs/design/src/007-tooling.md#08740b402d374195
 for (const name of names) {
   for (const nested of [false, true]) {

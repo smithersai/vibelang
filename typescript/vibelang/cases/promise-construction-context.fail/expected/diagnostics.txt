@@ -1,0 +1,4 @@
+main.vibe(6,10): error EK0404
+main.vibe(6,14): warning EK4812
+main.vibe(10,10): error EK0404
+main.vibe(10,14): warning EK4812

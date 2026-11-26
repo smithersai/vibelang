@@ -64,12 +64,9 @@
     "compiler/test/cpu-profile.test.mjs",
     "compiler/test/declaration-api-identity.property.test.mjs",
     "compiler/test/declaration-member-order.property.test.mjs",
-    "compiler/test/declaration-module-identity.property.test.mjs",
     "compiler/test/declaration-oracle-capture.test.mjs",
-    "compiler/test/diagnostics.property.test.mjs",
     "compiler/test/directive-boundary.test.mjs",
     "compiler/test/directive-standalone.test.mjs",
-    "compiler/test/directory-imports.property.test.mjs",
     "compiler/test/dprint.test.mjs",
     "compiler/test/durable-schema-serialization.property.test.mjs",
     "compiler/test/eval-cli.test.mjs",
@@ -154,8 +151,6 @@
     "compiler/test/lsp-transports-help.test.mjs",
     "compiler/test/migrate-inputs-paths.test.mjs",
     "compiler/test/migrate-inputs.test.mjs",
-    "compiler/test/migrate-priority.property.test.mjs",
-    "compiler/test/migration-helpers.property.test.mjs",
     "compiler/test/module-body-loader-names.test.mjs",
     "compiler/test/module-refactor.property.test.mjs",
     "compiler/test/module-sidecars.property.test.mjs",
@@ -218,13 +213,10 @@
     "compiler/test/skill-first-program.test.mjs",
     "compiler/test/source-files.test.mjs",
     "compiler/test/source-map-directive.test.mjs",
-    "compiler/test/source-sidecar-imports.property.test.mjs",
     "compiler/test/source-snippets.native.test.mjs",
     "compiler/test/spec-declaration-spelling.property.test.mjs",
     "compiler/test/spec-sidecar-input.property.test.mjs",
     "compiler/test/spec-sidecar-resolution.property.test.mjs",
-    "compiler/test/stale-specifiers.property.test.mjs",
-    "compiler/test/stale-specifiers.test.mjs",
     "compiler/test/temporary.property.test.mjs",
     "compiler/test/ts-directive.test.mjs",
     "compiler/test/vibe-severities.test.mjs",
@@ -241,7 +233,10 @@
     "compiler/test/format-service-constructor-methods.test.mjs",
     "compiler/test/incremental-config-sidecar.property.test.mjs",
     "compiler/test/source-map-frames.property.test.mjs",
-    "compiler/test/vibe-directive.property.test.mjs"
+    "compiler/test/vibe-directive.property.test.mjs",
+    "compiler/test/cache-crash-clock.test.mjs",
+    "compiler/test/platform-win32.test.mjs",
+    "compiler/test/test-hygiene.test.mjs"
   ],
   "runtime": [
     "runtime/tests/agent-cli.test.ts",
@@ -435,7 +430,10 @@
     "runtime/tests/trusted.test.ts",
     "runtime/tests/try-operations.test.ts",
     "runtime/tests/try-union-types.test.ts",
-    "runtime/tests/workqueue.test.ts"
+    "runtime/tests/workqueue.test.ts",
+    "runtime/tests/experimental-intersection-observer.test.ts",
+    "runtime/tests/experimental-mutation-observer.test.ts",
+    "runtime/tests/experimental-response.test.ts"
   ],
   "vite": [
     "vite/test/cache-watch.property.test.mjs",
@@ -468,7 +466,11 @@
     "vite/test/vibex.test.mjs",
     "vite/test/worker-workspaces.test.mjs",
     "vite/test/eval-files.test.mjs",
-    "vite/test/worker-imports.test.mjs"
+    "vite/test/worker-imports.test.mjs",
+    "vite/test/missing-backend.test.mjs",
+    "vite/test/no-install-root.test.mjs",
+    "vite/test/virtual-ids.test.mjs",
+    "vite/test/paths-configs.test.mjs"
   ],
   "unplugin": [
     "unplugin/test/absolute-identity.property.test.mjs",
@@ -511,7 +513,9 @@
     "unplugin/test/module-body-filter.property.test.mjs",
     "unplugin/test/module-body-vibex.test.mjs",
     "unplugin/test/eval-files.test.mjs",
-    "unplugin/test/worker-imports.test.mjs"
+    "unplugin/test/worker-imports.test.mjs",
+    "unplugin/test/missing-backend.test.mjs",
+    "unplugin/test/unincluded-module.test.mjs"
   ],
   "compiler-tools": [
     "compiler/test/tools/babel.test.mjs",

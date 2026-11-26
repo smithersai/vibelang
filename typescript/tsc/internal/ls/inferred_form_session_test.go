@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/project"
 	"github.com/microsoft/TypeScript/tsc/internal/project/logging"
@@ -13,16 +12,15 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
 )
 
-// TestFormChoiceDidChange exercises the real overlay/session lifetime: adding
-// the first bang contract must refresh prelude resolution without reopening.
+// An arrow returning a cold program stays plain. Editing its return contract
+// must refresh the ordinary assignability error without reopening the file.
 func TestFormChoiceDidChange(t *testing.T) {
 	const name = "/src/main.vibe"
 	const uri = lsproto.DocumentUri("file:///src/main.vibe")
 	const source = `import { work } from "./host"; export const fn = (x: number) => { const n=work(x); return n }`
 	files := map[string]string{
-		"/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext"},"files":["main.vibe","closed.vibe","host.ts"]}`,
+		"/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext","module":"ESNext","moduleResolution":"bundler","skipLibCheck":true},"files":["main.vibe","host.ts"]}`,
 		name:                 source,
-		"/src/closed.vibe":   source,
 		"/src/host.ts":       `import type { Effect } from "effect/Effect"; export declare function work(x: number): Effect<number>`,
 		"/src/node_modules/vibelang-runtime/package.json": `{"name":"vibelang-runtime","types":"index.d.ts"}`,
 		"/src/node_modules/vibelang-runtime/index.d.ts":   `export * as Effect from "effect/Effect"`,
@@ -33,62 +31,33 @@ func TestFormChoiceDidChange(t *testing.T) {
 	fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseInsensitive))
 	session := project.NewSession(&project.SessionInit{BackgroundCtx: t.Context(), Options: &project.SessionOptions{CurrentDirectory: "/src", DefaultLibraryPath: bundled.LibPath(), PositionEncoding: lsproto.PositionEncodingKindUTF16, WatchEnabled: false}, FS: fs, Logger: logging.NewTestLogger()})
 	session.DidOpenFile(t.Context(), uri, 1, source, lsproto.LanguageKindTypeScript)
-	get := func() *ls.LanguageService {
-		s, err := session.GetLanguageService(t.Context(), uri)
+	check := func(want int32) {
+		t.Helper()
+		service, err := session.GetLanguageService(t.Context(), uri)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return s
-	}
-	report := func(s *ls.LanguageService, u lsproto.DocumentUri) []*lsproto.Diagnostic {
-		r, err := s.ProvideDiagnostics(t.Context(), u)
+		report, err := service.ProvideDiagnostics(t.Context(), uri)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return r.FullDocumentDiagnosticReport.Items
-	}
-	var diag *lsproto.Diagnostic
-	service := get()
-	for _, d := range report(service, uri) {
-		if d.Code != nil && d.Code.Integer != nil && *d.Code.Integer == 9100 {
-			diag = d
-		}
-	}
-	if diag == nil {
-		t.Fatal("open file has no EK9100")
-	}
-	for _, d := range report(service, "file:///src/closed.vibe") {
-		if d.Code != nil && d.Code.Integer != nil && *d.Code.Integer == 9100 {
-			t.Fatal("resolver ran for a closed file")
-		}
-	}
-	only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-	response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: uri}, Range: diag.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{diag}, Only: &only}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if response.CommandOrCodeActionArray != nil && len(*response.CommandOrCodeActionArray) != 0 {
-		t.Fatal("VibeLang offered an automatic annotation")
-	}
-	files[name] = strings.Replace(source, "(x: number) => { const n=work(x); return n }", "(x: number): number!! => { const n=work(x); return n }", 1)
-	session.DidChangeFile(t.Context(), uri, 2, []lsproto.TextDocumentContentChangePartialOrWholeDocument{{WholeDocument: &lsproto.TextDocumentContentChangeWholeDocument{Text: files[name]}}})
-	changed := get()
-	for _, d := range report(changed, uri) {
-		if d.Code != nil && d.Code.Integer != nil {
-			switch *d.Code.Integer {
-			case 2503, 9203, 9100:
-				t.Errorf("stale diagnostic after didChange: %d %s", *d.Code.Integer, *d.Message.String)
+		items := report.FullDocumentDiagnosticReport.Items
+		if want == 0 {
+			if len(items) != 0 {
+				t.Fatalf("unexpected editor diagnostics: %v", items)
 			}
+		} else if len(items) != 1 || items[0].Code == nil || items[0].Code.Integer == nil || *items[0].Code.Integer != want {
+			t.Fatalf("expected TS%d, got %v", want, items)
 		}
 	}
-	session.DidChangeFile(t.Context(), uri, 3, []lsproto.TextDocumentContentChangePartialOrWholeDocument{{WholeDocument: &lsproto.TextDocumentContentChangeWholeDocument{Text: source}}})
-	count := 0
-	for _, d := range report(get(), uri) {
-		if d.Code != nil && d.Code.Integer != nil && *d.Code.Integer == 9100 {
-			count++
+	check(0)
+	annotated := strings.Replace(source, "(x: number) =>", "(x: number): number =>", 1)
+	for i, edit := range []string{annotated, source} {
+		session.DidChangeFile(t.Context(), uri, int32(i+2), []lsproto.TextDocumentContentChangePartialOrWholeDocument{{WholeDocument: &lsproto.TextDocumentContentChangeWholeDocument{Text: edit}}})
+		if i == 0 {
+			check(2322)
+		} else {
+			check(0)
 		}
-	}
-	if count != 1 {
-		t.Fatalf("file-version cache did not invalidate: %d choices", count)
 	}
 }

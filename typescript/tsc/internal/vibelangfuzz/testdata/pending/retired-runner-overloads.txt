@@ -1,1 +1,0 @@
-TestSyncRejectsInputCarryingHatch sync:extra-argument compiler VIP-6: remove the input-carrying sync overloads from the runtime declarations. See #648.

@@ -22,13 +22,5 @@
     "lib/src/Stage.d.vibe.ts": "6b6ac5eec29e8e9d2ad3a2ffea9c2d49ef871271db200dcb7ef777a8a4c84877",
     "lib/src/Use.ts": "e44308a0450e37992984ab65d766efbeb83fad2844f231cb019fac11a9fc78a6",
     "app/src/a.ts": "4110f6902749ada93ddfb5cb46d07c20db1018ccfc7a600149fd4783e85dab84"
-  },
-  "knownFailure": {
-    "key": "sidecar-source-module-identity",
-    "keys": [],
-    "codes": [
-      "TS2345"
-    ],
-    "observedResolvedOn": "4dfd9a19cad2"
   }
 }

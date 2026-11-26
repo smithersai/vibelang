@@ -1,5 +1,0 @@
-{
-  "key": "r14-astra-1:sidecar-package-style-scope",
-  "authority": "VIP-27; decided detail 263 scopes the option to package declarations",
-  "input": { "name": "b", "quote": "\"", "form": "import" }
-}

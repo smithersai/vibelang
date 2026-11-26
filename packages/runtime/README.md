@@ -334,7 +334,7 @@ Effect's interface. The layers are in
 `vibelang-runtime/experimental/platform-node` (`ExperimentalNodeServices`,
 `ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeStdio`, `ExperimentalNodeLocks`, `ExperimentalNodeHttpServer`), `vibelang-runtime/experimental/platform-bun`
 (`ExperimentalBunServices`, `ExperimentalBunFileSystem`, `ExperimentalBunCrypto`, `ExperimentalBunProcess`, `ExperimentalBunStdio`) and `vibelang-runtime/experimental/platform-browser`
-(`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`, `ExperimentalBrowserMediaQuery`, `ExperimentalBrowserInfo`, `ExperimentalBrowserWindow`, `ExperimentalBrowserDocument`, `ExperimentalBrowserResizeObserver`, `ExperimentalBrowserFileReader`, `ExperimentalBrowserAnimations`, `ExperimentalBrowserAudioContext`). A layer of a service
+(`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`, `ExperimentalBrowserMediaQuery`, `ExperimentalBrowserInfo`, `ExperimentalBrowserWindow`, `ExperimentalBrowserDocument`, `ExperimentalBrowserResizeObserver`, `ExperimentalBrowserIntersectionObserver`, `ExperimentalBrowserMutationObserver`, `ExperimentalBrowserResponse`, `ExperimentalBrowserFileReader`, `ExperimentalBrowserAnimations`, `ExperimentalBrowserAudioContext`). A layer of a service
 that extends Effect's provides the experimental service and Effect's service
 of the same name from one implementation; a `Crypto` layer provides the
 experimental `Crypto` and the platform's Effect crypto services, such as
@@ -360,6 +360,9 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/ChildProcess` | Experimental child-process compatibility helpers |
 | `vibelang-runtime/experimental/Headers` | Experimental header compatibility helpers |
 | `vibelang-runtime/experimental/NodeStream` | Experimental Node stream compatibility helpers |
+| `vibelang-runtime/experimental/IntersectionObserver` | Scoped stream of element intersection entries |
+| `vibelang-runtime/experimental/MutationObserver` | Scoped stream of mutation record batches |
+| `vibelang-runtime/experimental/Response` | Native Web Response construction with standard Headers |
 | `vibelang-runtime/experimental/Request` | Experimental request compatibility helpers |
 | `vibelang-runtime/experimental/Stdio` | Effect standard I/O plus `awaitInputClosed` |
 | `vibelang-runtime/experimental/Dns` | Typed DNS resolution |
@@ -404,6 +407,20 @@ Each pattern of `vibelang-runtime/experimental/Patterns` also has its own subpat
 `vibelang-runtime/experimental/patterns/*`, such as
 `vibelang-runtime/experimental/patterns/Panel`, so a declaration file can name a
 pattern's result type. `vibelang-runtime/experimental/patterns/internal` is closed.
+
+The Node, Bun and browser service bundles provide both `Experimental.Response` and
+`Experimental.Headers`. A VibeLang handler can copy incoming headers and return
+a native Web response with the following effect function:
+
+```ts
+export effect function reply(input: globalThis.Headers) {
+  const headers = try Experimental.Headers.Headers
+  const responses = try Experimental.Response.Response
+  const copied = try headers.copy(input)
+  const response: Response = try responses.create("ok", { headers: copied })
+  return response
+}
+```
 
 ### Browser conformance tests
 

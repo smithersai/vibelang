@@ -1266,7 +1266,7 @@ import type { ConformanceViolation } from "vibelang-runtime/experimental/Test"
 
 const subject = Effect.sync(() => Experimental.Durable.layerStore(Experimental.Durable.makeMemoryStore()))
 
-export effect function certify(): void!ConformanceViolation! {
+export effect function certify(): void!ConformanceViolation {
   for (const conformanceCase of Experimental.Test.conformance.engine()) {
     try conformanceCase.run(subject)
   }

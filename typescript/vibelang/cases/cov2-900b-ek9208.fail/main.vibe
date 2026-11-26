@@ -1,3 +1,6 @@
-// expect: EK9208
+// expect-clean
 // Chapter 900: Appendix B interim EK9208 static member shadows a service member — spec-rule: docs/design/src/900-appendices.md#a2dc96c4871b5486
 export service Users { static readonly key = "users"; key: string }
+// The service key and the instance member remain independently accessible.
+export const serviceKey: string = Users.key
+export const instanceKey = (users: Users.Shape): string => users.key

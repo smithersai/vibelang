@@ -2,5 +2,7 @@
 const parse = (text: string): number => Number(text)
 // Capturing parse does not require an explicit input.
 export effect function invalid(text: string) {
-  return try sync((input: typeof text): ReturnType<typeof parse> => parse(input), text)
+  return try runtimeSync((input: typeof text): ReturnType<typeof parse> => parse(input), text)
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

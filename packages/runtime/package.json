@@ -157,6 +157,16 @@
       "import": "./dist/experimental/ResizeObserver.js",
       "default": "./dist/experimental/ResizeObserver.js"
     },
+    "./experimental/MutationObserver": {
+      "types": "./dist/experimental/MutationObserver.d.ts",
+      "import": "./dist/experimental/MutationObserver.js",
+      "default": "./dist/experimental/MutationObserver.js"
+    },
+    "./experimental/IntersectionObserver": {
+      "types": "./dist/experimental/IntersectionObserver.d.ts",
+      "import": "./dist/experimental/IntersectionObserver.js",
+      "default": "./dist/experimental/IntersectionObserver.js"
+    },
     "./experimental/Rpc": {
       "types": "./dist/experimental/Rpc.d.ts",
       "import": "./dist/experimental/Rpc.js",
@@ -176,6 +186,11 @@
       "types": "./dist/experimental/Request.d.ts",
       "import": "./dist/experimental/Request.js",
       "default": "./dist/experimental/Request.js"
+    },
+    "./experimental/Response": {
+      "types": "./dist/experimental/Response.d.ts",
+      "import": "./dist/experimental/Response.js",
+      "default": "./dist/experimental/Response.js"
     },
     "./experimental/platform-browser": {
       "types": "./dist/experimental/platform-browser/index.d.ts",

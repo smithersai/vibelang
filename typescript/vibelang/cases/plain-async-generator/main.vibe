@@ -10,7 +10,7 @@ export async function* iterableIterator(): AsyncIterableIterator<number> { yield
 export async function* iterable(): AsyncIterable<number> { yield 6 }
 
 export effect function main() {
-  return try sync(async (steps, iterator, iterableIterator, iterable) => {
+  return try runtimeSync(async (steps, iterator, iterableIterator, iterable) => {
     const values: number[] = []
     for await (const value of steps()) values.push(value)
     const others = [(await iterator().next()).value]
@@ -19,3 +19,5 @@ export effect function main() {
     return [values, others]
   }, steps, iterator, iterableIterator, iterable)
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

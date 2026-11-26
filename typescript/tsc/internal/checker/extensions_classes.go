@@ -90,20 +90,6 @@ func (c *Checker) NewReadonlyPropertyType(name string, t *Type) *Type {
 	return c.newAnonymousType(nil, ast.SymbolTable{name: property}, nil, nil, nil)
 }
 
-// NewAliasedObjectType returns an object type whose properties are members,
-// symbols declared elsewhere, such as a class's instance members, and a type
-// alias symbol named aliasName whose declared type it is. The alias has
-// parent as its parent, so the type prints as Parent.AliasName, and it is
-// declared nowhere: a hook resolves the name.
-func (c *Checker) NewAliasedObjectType(members ast.SymbolTable, aliasName string, parent *ast.Symbol) (*Type, *ast.Symbol) {
-	alias := c.newSymbol(ast.SymbolFlagsTypeAlias, aliasName)
-	alias.SetParent(parent)
-	t := c.newAnonymousType(nil, members, nil, nil, nil)
-	t.alias = &TypeAlias{symbol: alias}
-	c.typeAliasLinks.Get(alias).declaredType = t
-	return t, alias
-}
-
 // NewObjectType returns an anonymous object type whose properties are
 // members, symbols declared elsewhere, such as a class's instance members.
 func (c *Checker) NewObjectType(members ast.SymbolTable) *Type {

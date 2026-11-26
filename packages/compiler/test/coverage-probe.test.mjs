@@ -1,4 +1,6 @@
-// Chapter 900: the probe oracle compares diagnostic messages, not file paths.
+// Self-test of the oracle typescript/vibelang/test/cov900-probe.mjs: it compares
+// diagnostic messages, not file paths. It runs no VibeLang code, so it is no
+// evidence for a spec rule.
 import assert from "node:assert/strict"
 import {test} from "node:test"
 import {diagnosticMessagesOf, interimSeverityQuote} from "../../../typescript/vibelang/test/cov900-probe.mjs"

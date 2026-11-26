@@ -32,9 +32,9 @@ async function fixture(t, item = corpus[0], value = item.answer) {
   return root
 }
 
-async function run(config, { preload = true, twice = false } = {}) {
+async function run(config, { preload = true, twice = false, flag = "--import" } = {}) {
   const entry = `vibelang-unplugin/${config.bundler}/register`
-  const args = [...(preload ? ["--import", entry] : []), ...(twice ? ["--import", entry] : []), runner, JSON.stringify(config)]
+  const args = [...(preload ? [flag, entry] : []), ...(twice ? [flag, entry] : []), runner, JSON.stringify(config)]
   const result = await runChild(process.execPath, args, {
     cwd: config.root, env: { ...process.env, VIBELANG_UNPLUGIN_DEBUG: "1" }
   })
@@ -69,6 +69,13 @@ for (const item of corpus) {
   test(item.bundler + ": node CommonJS require uses the native adapter", async t => {
     const root = await fixture(t, item)
     succeeded(await run({ root, bundler: item.bundler, access: "require" }))
+  })
+  // node --require resolves the subpath's "require" condition, not "import".
+  test(item.bundler + ": node --require preloads the register subpath through its require condition", async t => {
+    const root = await fixture(t, item)
+    const result = await run({ root, bundler: item.bundler }, { flag: "--require" })
+    succeeded(result)
+    assert.equal((result.trace.match(/registered .* source bundles/g) || []).length, 1)
   })
   test(item.bundler + ": node recovers after a source diagnostic", async t => {
     const root = await fixture(t, item)

@@ -18,6 +18,7 @@ import type * as Process from "../Process.js"
 import type * as Stdio from "../Stdio.js"
 import * as StdioExtension from "../internal/stdio.js"
 import type * as Request from "../Request.js"
+import type * as Response from "../Response.js"
 import type * as Rpc from "../Rpc.js"
 import * as RpcExtension from "../internal/rpcBun.js"
 import * as ExperimentalBunChildProcess from "./ExperimentalBunChildProcess.js"
@@ -25,6 +26,7 @@ import * as ExperimentalBunHeaders from "./ExperimentalBunHeaders.js"
 import * as ExperimentalBunNodeStream from "./ExperimentalBunNodeStream.js"
 import * as ExperimentalBunProcess from "./ExperimentalBunProcess.js"
 import * as ExperimentalBunRequest from "./ExperimentalBunRequest.js"
+import * as ExperimentalBunResponse from "./ExperimentalBunResponse.js"
 
 /**
  * The services of `@effect/platform-bun`'s `BunServices` and the
@@ -42,6 +44,7 @@ export type ExperimentalBunServices =
   | Process.Process
   | Stdio.Stdio
   | Request.Request
+  | Response.Response
   | Rpc.WorkerHost
 
 /**
@@ -60,6 +63,7 @@ export const layer: Layer.Layer<ExperimentalBunServices> = Layer.provideMerge(
     ExperimentalBunHeaders.layer,
     ExperimentalBunNodeStream.layer,
     ExperimentalBunRequest.layer,
+    ExperimentalBunResponse.layer,
     RpcExtension.layer,
     CryptoExtension.layer,
     FileSystemExtension.layer,

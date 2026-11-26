@@ -1,3 +1,5 @@
+// Self-test of the stock tsc oracle in scripts/resolution-matrix.mjs. It runs
+// no VibeLang code, so it is no evidence for a spec rule.
 import assert from "node:assert/strict"
 import { createRequire } from "node:module"
 import { test } from "node:test"

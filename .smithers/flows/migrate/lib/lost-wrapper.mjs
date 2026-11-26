@@ -380,6 +380,35 @@ const castAround = (ts, fn) => {
  * (outside nested functions), `generator` and `factory` (the function a
  * `Effect.fn` holds, a program at every call).
  */
+/**
+ * The returns of a generator body that hand back a value, outside nested
+ * functions. `return`, `return undefined`, `return void x` and
+ * `return yield* Effect.void` hand back nothing (#129).
+ */
+function generatorValues(ts, fn, bound) {
+  let values = 0
+  const voidish = (expression) => {
+    let e = expression
+    while (ts.isParenthesizedExpression(e)) e = e.expression
+    if (ts.isIdentifier(e) && e.text === "undefined") return true
+    if (ts.isVoidExpression(e)) return true
+    if (ts.isYieldExpression(e) && e.asteriskToken && e.expression) {
+      let inner = e.expression
+      while (ts.isParenthesizedExpression(inner)) inner = inner.expression
+      return ts.isPropertyAccessExpression(inner) && inner.name.text === "void" &&
+        ts.isIdentifier(inner.expression) && bound.namespaces.has(inner.expression.text)
+    }
+    return false
+  }
+  const visit = (node) => {
+    if (ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    if (ts.isReturnStatement(node) && node.expression && !voidish(node.expression)) values++
+    ts.forEachChild(node, visit)
+  }
+  if (fn.body && ts.isBlock(fn.body)) ts.forEachChild(fn.body, visit)
+  return values
+}
+
 export function functionsOf(ts, text, file = "module.ts") {
   const kind = file.endsWith("x") ? ts.ScriptKind.TSX : /\.[cm]?js$/.test(file) ? ts.ScriptKind.JS : ts.ScriptKind.TS
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind)
@@ -390,7 +419,8 @@ export function functionsOf(ts, text, file = "module.ts") {
     ordinals.set(path, ordinal + 1)
     const key = ordinal ? `${path}#${ordinal}` : path
     const shape = bodyShape(ts, fn, bound)
-    found.set(key, { ...shape, name: key, generator: !!fn.asteriskToken, factory, cast: castAround(ts, fn) || shape.castReturn, line: source.getLineAndCharacterOfPosition(fn.getStart(source)).line + 1 })
+    found.set(key, { ...shape, name: key, generator: !!fn.asteriskToken, factory, cast: castAround(ts, fn) || shape.castReturn, line: source.getLineAndCharacterOfPosition(fn.getStart(source)).line + 1,
+      generatorValues: fn.asteriskToken ? generatorValues(ts, fn, bound) : undefined })
     return key
   }
   // `named`: the path's last segment still waits for the function it names.
@@ -402,7 +432,13 @@ export function functionsOf(ts, text, file = "module.ts") {
       if (frames.test(callee) && node.arguments.length) { visit(node.arguments[0], path, named); return }
       node.arguments.forEach((argument, index) => {
         const value = unwrap(ts, argument)
-        if (generatorRunners.test(callee) && ts.isFunctionExpression(value)) { visit(value.body, path, false); return }
+        if (generatorRunners.test(callee) && ts.isFunctionExpression(value)) {
+          // The body's returns are the values of the function around it.
+          const owner = found.get(path)
+          if (owner && value.asteriskToken) owner.generatorValues = (owner.generatorValues ?? 0) + generatorValues(ts, value, bound)
+          visit(value.body, path, false)
+          return
+        }
         if (factory && ts.isStringLiteralLike(value)) return
         if (factory && index === 0) {
           // The compiler also writes `Effect.fnUntraced({ *run(x) { … } }.run)` to keep a name.
@@ -546,6 +582,13 @@ export function lostWrappers({ ts, original, originalPath = "original.ts", emitt
     const returned = fn.factory ? 1 : fn.generator ? 0 : fn.effects
     const counterpart = after.get(name)
     if (counterpart) paired++
+    // A generator whose returns handed back values, paired with one whose
+    // returns are all bare, lost every value its callers received (#129). A
+    // void early return, `return yield* Effect.void` as `return;`, loses none.
+    if (counterpart && fn.generatorValues > 0 && counterpart.generatorValues === 0) {
+      flags.push({ function: name, line: fn.line, effectReturns: returned, emittedEffectReturns: counterpart.effects, emittedReturns: counterpart.returns, cast: fn.cast, lostGeneratorValues: fn.generatorValues })
+      continue
+    }
     if (returned === 0) continue
     if (!counterpart) (program(holderOf(name)) ? inlined : unpaired).push({ function: name, line: fn.line, effectReturns: returned })
     else if (!keepsProgram(counterpart)) {

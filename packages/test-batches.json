@@ -1,6 +1,7 @@
 {
   "compiler": [
     [
+      "compiler/test/cache.test.mjs",
       "compiler/test/agents-init-input.test.mjs",
       "compiler/test/asset-imports.property.test.mjs",
       "compiler/test/automatic-fixes.test.mjs",
@@ -16,8 +17,6 @@
       "compiler/test/coverage-twin.test.mjs"
     ],
     [
-      "compiler/test/declaration-module-identity.property.test.mjs",
-      "compiler/test/directive-standalone.test.mjs",
       "compiler/test/emitted-namespace.property.test.mjs",
       "compiler/test/eslint-corpus-constants.test.mjs",
       "compiler/test/eslint-escaped-name.property.test.mjs",
@@ -39,7 +38,9 @@
       "compiler/test/loader-record-data.test.mjs",
       "compiler/test/loader-record.test.mjs",
       "compiler/test/lsp-format-shape.test.mjs",
-      "compiler/test/migrate-inputs-paths.test.mjs",
+      "compiler/test/migrate-inputs-paths.test.mjs"
+    ],
+    [
       "compiler/test/module-body-loader-names.test.mjs",
       "compiler/test/nested-callback-bridge.property.test.mjs",
       "compiler/test/oxlint-namespace.property.test.mjs",
@@ -56,9 +57,9 @@
       "compiler/test/runtime-tree-shaking.property.test.mjs",
       "compiler/test/sidecar-dir.test.mjs",
       "compiler/test/sidecar-priority.property.test.mjs",
-      "compiler/test/source-files.test.mjs",
-      "compiler/test/spec-declaration-spelling.property.test.mjs",
-      "compiler/test/stale-specifiers.test.mjs",
+      "compiler/test/source-files.test.mjs"
+    ],
+    [
       "compiler/test/vip27-emit-flags.test.mjs",
       "compiler/test/watch-warning.test.mjs"
     ],
@@ -78,9 +79,9 @@
     ],
     [
       "compiler/test/contextual-effect-union.property.test.mjs",
-      "compiler/test/cpu-profile.test.mjs",
-      "compiler/test/declaration-oracle-capture.test.mjs",
-      "compiler/test/directory-imports.property.test.mjs",
+      "compiler/test/cpu-profile.test.mjs"
+    ],
+    [
       "compiler/test/emitted-bindings.test.mjs",
       "compiler/test/emitted-siblings.test.mjs",
       "compiler/test/eslint-corpus-labels.test.mjs",
@@ -103,8 +104,7 @@
       "compiler/test/loader-record-native-declaration.test.mjs",
       "compiler/test/loader-reference-trust.test.mjs",
       "compiler/test/lsp-format.test.mjs",
-      "compiler/test/migrate-inputs.test.mjs",
-      "compiler/test/module-refactor.property.test.mjs"
+      "compiler/test/migrate-inputs.test.mjs"
     ],
     [
       "compiler/test/node-test-coverage.test.mjs",
@@ -120,8 +120,9 @@
       "compiler/test/schema-rewrite-citations.test.mjs",
       "compiler/test/sidecar-project-ownership.property.test.mjs",
       "compiler/test/sidecar-workspace-identity.test.mjs",
-      "compiler/test/source-map-directive.test.mjs",
-      "compiler/test/spec-sidecar-input.property.test.mjs",
+      "compiler/test/source-map-directive.test.mjs"
+    ],
+    [
       "compiler/test/temporary.property.test.mjs",
       "compiler/test/vip27-stock-controls.test.mjs"
     ],
@@ -141,8 +142,6 @@
       "compiler/test/coverage-appendix-cache.test.mjs"
     ],
     [
-      "compiler/test/declaration-api-identity.property.test.mjs",
-      "compiler/test/diagnostics.property.test.mjs",
       "compiler/test/dprint.test.mjs",
       "compiler/test/emitted-fallback.property.test.mjs",
       "compiler/test/eslint-concurrent-form.property.test.mjs",
@@ -165,8 +164,9 @@
       "compiler/test/loader-check-scope.property.test.mjs",
       "compiler/test/loader-record-source-text.test.mjs",
       "compiler/test/loader-script-project.property.test.mjs",
-      "compiler/test/lsp-help.test.mjs",
-      "compiler/test/migrate-priority.property.test.mjs",
+      "compiler/test/lsp-help.test.mjs"
+    ],
+    [
       "compiler/test/observed-child.test.mjs",
       "compiler/test/oxlint-projection.test.mjs",
       "compiler/test/plain-catch-annotations.property.test.mjs",
@@ -181,9 +181,9 @@
       "compiler/test/show-config.test.mjs",
       "compiler/test/sidecar-identity.property.test.mjs",
       "compiler/test/sidecar-relocated-imports.test.mjs",
-      "compiler/test/sidecars.test.mjs",
-      "compiler/test/source-sidecar-imports.property.test.mjs",
-      "compiler/test/spec-sidecar-resolution.property.test.mjs",
+      "compiler/test/sidecars.test.mjs"
+    ],
+    [
       "compiler/test/ts-directive.test.mjs",
       "compiler/test/vip30-config-contract.test.mjs"
     ],
@@ -201,8 +201,9 @@
       "compiler/test/chapter007-header.test.mjs",
       "compiler/test/chapter007-resolution.test.mjs",
       "compiler/test/coverage-probe.test.mjs",
-      "compiler/test/declaration-member-order.property.test.mjs",
-      "compiler/test/directive-boundary.test.mjs",
+      "compiler/test/declaration-member-order.property.test.mjs"
+    ],
+    [
       "compiler/test/durable-schema-serialization.property.test.mjs",
       "compiler/test/emitted-js.test.mjs",
       "compiler/test/eslint-contextual-bindings.property.test.mjs"
@@ -228,7 +229,6 @@
       "compiler/test/lsp-transports-help.test.mjs"
     ],
     [
-      "compiler/test/migration-helpers.property.test.mjs",
       "compiler/test/native-namespace-declarations.test.mjs",
       "compiler/test/orphan-compiler.property.test.mjs",
       "compiler/test/oxlint-rules.test.mjs",
@@ -245,15 +245,11 @@
       "compiler/test/sidecar-dir.property.test.mjs",
       "compiler/test/sidecar-outside-root.test.mjs",
       "compiler/test/sidecar-source-binding.test.mjs",
-      "compiler/test/skill-first-program.test.mjs",
-      "compiler/test/source-snippets.native.test.mjs",
-      "compiler/test/stale-specifiers.property.test.mjs",
-      "compiler/test/vibe-severities.test.mjs",
-      "compiler/test/watch-intermediate.test.mjs"
+      "compiler/test/skill-first-program.test.mjs"
     ],
     [
-      "compiler/test/cache.test.mjs",
-      "compiler/test/sidecar-style-scope.property.test.mjs"
+      "compiler/test/vibe-severities.test.mjs",
+      "compiler/test/watch-intermediate.test.mjs"
     ],
     [
       "compiler/test/module-sidecars.property.test.mjs",

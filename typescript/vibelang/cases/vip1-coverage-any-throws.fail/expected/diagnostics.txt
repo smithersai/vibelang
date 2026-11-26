@@ -1,1 +1,2 @@
-main.vibe(8,51): error EK0401
+main.vibe(8,51): error EK0403
+main.vibe(8,51): warning EK4409

@@ -192,7 +192,7 @@ effect function callableAsyncDispose() {
 effect function holderDispose() {
   using holder = try Effect.acquireRelease(
     effect { return ({ value: try sync(() => disposeDies()) }) },
-    effect (h) => try sync((holder) => holder.value[Symbol.dispose](), h)
+    effect (h) => try runtimeSync((holder) => holder.value[Symbol.dispose](), h)
   )
   throw new E()
 }
@@ -274,3 +274,5 @@ export effect function main() {
   const parity = try Effect.orDie(Effect.try(() => JSON.stringify(rows) === JSON.stringify(expected)))
   return { rows, seenExit, parity }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

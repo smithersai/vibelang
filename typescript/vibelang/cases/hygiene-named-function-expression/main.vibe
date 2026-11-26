@@ -31,6 +31,8 @@ export effect function main() {
   const fromNamed = try named()
   const fromDeclaration = try declaration()
   // Calling a Self in TypeScript builds an Effect.
-  const builds = try sync((a: Self, b: Self) => [Effect.isEffect(a()), Effect.isEffect(b())], fromNamed, fromDeclaration)
+  const builds = try runtimeSync((a: Self, b: Self) => [Effect.isEffect(a()), Effect.isEffect(b())], fromNamed, fromDeclaration)
   return [fromNamed === named, builds[0], fromDeclaration === declaration, builds[1], try byName(2), try deep(20000)]
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

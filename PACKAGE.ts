@@ -1465,7 +1465,7 @@ const targets = {
   ),
   "migration-style-severity-controls": check(
     "Migration style verification retains warning provenance and rejects promoted errors",
-    "node --test packages/compiler/test/diagnostics.property.test.mjs .smithers/flows/migrate/test/diagnostics.test.mjs",
+    "node --test .smithers/flows/migrate/test/diagnostics.property.test.mjs .smithers/flows/migrate/test/diagnostics.test.mjs",
     [],
     [node],
     "2m"
@@ -1721,11 +1721,28 @@ const targets = {
   // The tests' scope takes the graph's compiler and mapper executables instead
   // of linking both, and a third mapper copy, per test binary (scope_test.go).
   "go-vibelangmapper": goVibelang(
-    "Go tests of internal/vibelangmapper.",
-    `CGO_ENABLED=0 ${effect} VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc ` +
+    "Mapper checks against the pinned stock TypeScript compiler.",
+    `CGO_ENABLED=0 ${effect} VIBELANG_REQUIRE_STOCK_TYPESCRIPT=1 VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc ` +
       "VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper " +
       "node ../../scripts/go-test-progress.mjs go test -json -count=1 -p 8 -timeout 25m -trimpath ./internal/vibelangmapper/...",
     [Tsc["vibelangmapper-files"], Typescript.compiler, Typescript.mapper, S.file("//scripts/go-test-progress.mjs")]
+  ),
+  "ts-mapper-e2e": check(
+    "Stock TypeScript CLI, language server and emit through the mapper.",
+    "VIBELANG_BINARY=$PWD/typescript/built/local/tsc EFFECT_DIR=$PWD/experiments/node_modules/effect " +
+      "bash packages/ts-mapper/test/e2e.sh",
+    [Typescript.compiler, Packages["runtime-dist"]], [go, node, bun, S.Host.bin("npm"), S.Host.bin("jj"), S.Host.bin("git")], "45m"
+  ),
+  "ts-mapper-parity-self-test": check(
+    "Mutation self-test and negative probes of the mapper parity harness.",
+    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules bash packages/ts-mapper/test/parity/run.sh --self-test",
+    [Packages["runtime-dist"]], [go, node, bun, S.Host.bin("npm"), S.Host.bin("jj")], "30m"
+  ),
+  "go-vibelangfmt-dprint": check(
+    "Formatter projections and corpus tests with the pinned dprint host.",
+    "cd typescript/tsc && VIBELANG_DPRINT=$PWD/../../packages/compiler/node_modules/dprint/dprint " +
+      "VIBELANG_FORMAT_REQUIRE_DPRINT=1 CGO_ENABLED=0 go test -count=1 -trimpath ./internal/vibelangfmt/...",
+    [], [go], "30m"
   ),
   // The merge gate runs it with the compiler step, where //:go-vibelangfuzz
   // runs only post-merge: a fix that makes a pending input pass without

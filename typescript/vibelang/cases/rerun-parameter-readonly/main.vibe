@@ -10,7 +10,9 @@ export const property = effect (value: { mutable n: number }): Effect<number, ne
 // Plain exports are plain JavaScript functions (VIP-1).
 export function plain(n: number) { return ++n }
 export function plainRest(...values: number[]) { return values.pop() }
-export const hatch = effect (n: number): Effect<number, never, never> => try sync((n: number) => ++n, n)
+export const hatch = effect (n: number): Effect<number, never, never> => try runtimeSync((n: number) => ++n, n)
 export const shorthand = effect (n: number): Effect<{ n: number }, never, never> => ({ n })
 // Explicit program factories intentionally keep their eager outer state.
 export function factory(n: number): Effect<number, never, never> { return effect { return ++n } }
+
+import { sync as runtimeSync } from "vibelang-runtime"

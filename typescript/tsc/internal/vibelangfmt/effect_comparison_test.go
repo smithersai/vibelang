@@ -12,7 +12,7 @@ func TestEffectTypeComparisonProjection(t *testing.T) {
 			if host == "dprint" {
 				formatter = dprintFormatter(t)
 			}
-			for _, typ := range []string{"number!!", "(number!never!)", "number!never!never", "(number!!)"} {
+			for _, typ := range []string{"number!!", "(number!never)", "number!never!never", "(number!!)"} {
 				for _, operator := range []string{"<", "<="} {
 					for _, trivia := range []string{" ", " /* comparison */ ", "\n"} {
 						source := fmt.Sprintf("declare const value: unknown\nexport const result = value as %s%s%s 3\n", typ, trivia, operator)

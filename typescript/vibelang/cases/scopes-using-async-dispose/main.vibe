@@ -26,7 +26,7 @@ effect function openSync(name: string) {
 effect function openAsync(name: string) {
   try yieldNow
   events.push(`open ${name}`)
-  return try sync((n: string, log: string[]) => asyncResource(n, log), name, events)
+  return try runtimeSync((n: string, log: string[]) => asyncResource(n, log), name, events)
 }
 
 effect function releasing(name: string) {
@@ -50,3 +50,5 @@ export effect function main() {
   try work()
   return events
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

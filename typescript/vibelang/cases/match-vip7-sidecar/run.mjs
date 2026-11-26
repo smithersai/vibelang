@@ -1,4 +1,4 @@
-import { ensurePinnedReference } from "../../test/vip7-reference.mjs"
+import { referenceModules } from "../../test/vip7-reference.mjs"
 // run-seconds: 300
 import assert from "node:assert/strict"
 import { copyFileSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -9,13 +9,12 @@ import { spawnSync } from "node:child_process"
 import { Effect } from "effect"
 
 const here = dirname(fileURLToPath(import.meta.url))
-const cache = process.env.VIP7_REFERENCE_CACHE || resolve(here, "../../../.cache/match-vip7-reference")
+const cache = dirname(referenceModules())
 const run = (command, args) => {
   const child = spawnSync(command, args, { cwd: here, encoding: "utf8", timeout: 240000 })
   assert.ifError(child.error)
   assert.equal(child.status, 0, `${command}: ${child.stdout}\n${child.stderr}`)
 }
-await ensurePinnedReference(cache)
 mkdirSync(resolve(here, "reference/node_modules"), { recursive: true })
 rmSync(resolve(here, "reference/node_modules/effect"), { recursive: true, force: true })
 symlinkSync(resolve(cache, "node_modules/effect"), resolve(here, "reference/node_modules/effect"), "dir")

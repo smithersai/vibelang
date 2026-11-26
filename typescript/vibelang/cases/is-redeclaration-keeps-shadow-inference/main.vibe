@@ -7,5 +7,7 @@ export function compatible(a: string, b: any) {
   return ""
 }
 export effect function main() {
-  return try sync((compatible) => compatible("ada", 0), compatible)
+  return try runtimeSync((compatible) => compatible("ada", 0), compatible)
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

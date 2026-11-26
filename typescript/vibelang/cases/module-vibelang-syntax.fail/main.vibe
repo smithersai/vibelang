@@ -12,5 +12,5 @@ module text {
 import { clean } from text
 
 export effect function main() {
-  return try sync((value) => clean(value), " a ")
+  return try sync(() => clean(" a "))
 }

@@ -54,6 +54,7 @@ import { repairPrompt } from "./repair.mjs"
 import * as Jj from "./jj.mjs"
 import { assertSourcesCurrent, checkStack, manifestOf, manifestOfTree, producerOf, readManifest } from "./source-digest.mjs"
 import { resolveAliased, resolveRelative } from "./imports.mjs"
+import { unflipReturned } from "./stale-specifiers.mjs"
 import { restoreReferences } from "./references.mjs"
 import * as Upgrade from "./upgrade.mjs"
 import * as Wire from "./wire.mjs"
@@ -70,7 +71,7 @@ import { declarationRouteLeaks } from "./route-declarations.mjs"
 import { routeSourceDeclarationImports, sourceDeclarationPrefix } from "./source-declaration-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { wireNodeTests } from "./node-tests.mjs"
-import { bindCompilerArtifact, compilerArtifactOf, readToolchain } from "./toolchain.mjs"
+import { assertPhasesAgree, bindCompilerArtifact, compilerArtifactOf, phaseCompilers, readToolchain } from "./toolchain.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
 import { appendJsonl, batchName, chunkedRunner, isDeclarationFile, must, packageKey, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
 import { importerPaths } from "./importer-files.mjs"
@@ -203,6 +204,11 @@ const scopeFiles = (config) => config.packages.flatMap((pkg) => pkg.sources.flat
  */
 export async function importers(t) {
   return importerPaths(t, await Jj.trackedFiles(t))
+}
+
+/** Every tracked importer's relative native name of a module now TypeScript, rewritten to its twin (#391). */
+export async function repairReturnedSpecifiers(t) {
+  return unflipReturned(t, await importers(t))
 }
 
 /** A batch's files as they are now: each plan path, as .vibe when migrated. */
@@ -1213,6 +1219,11 @@ export async function setup(options) {
   const stock = await emitStockOracle(config, p, logs)
   // Under --no-wire, only a package of the run that has no VibeLang yet is wired.
   const wired = config.wire ? await wireTarget(config, logs) : await wireNewPackages(config, logs)
+  // A moved base can carry modules an earlier run returned to TypeScript while
+  // an importer still names the deleted native file (#391). Repair those names
+  // before the baseline is measured; setup's commit holds the edit.
+  const returnedSpecifiers = await repairReturnedSpecifiers(t)
+  if (returnedSpecifiers.length) wired?.warnings.push("returned modules' native names rewritten to TypeScript: " + returnedSpecifiers.map(e => e.file + ": " + e.from + " -> " + e.to).join(", "))
   const compiler = compilerOf(config)
   const { stdout: version } = await must(`${quote(compiler)} --version`)
 
@@ -1278,6 +1289,7 @@ export async function setup(options) {
     declarationOracle: Object.fromEntries(Object.entries(declarationOracle).map(([dir, o]) => [dir, o.unavailable ? { unavailable: o.unavailable } : { compiler: o.compiler, unproven: o.files.length }])),
     effect: upgrade.effect,
     wired,
+    ...(returnedSpecifiers.length ? { returnedSpecifiers } : {}),
     agents,
     upstreamTests: upgrade.tests,
     tests: testsOf(tests),
@@ -1941,7 +1953,12 @@ export async function revertMany(options) {
   }
   progress("rewrite", { files: results.length })
   const restored = results.flatMap(result => result.importEdits)
-  const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases, { preserve: restored })
+  const scope = await importers(config.target)
+  const importEdits = rewriteImports(config.target, scope, prepared.map(x => x.ts), aliases, { preserve: restored })
+  // The invariant every return keeps (#391): no relative native name of a
+  // returned module survives, whoever wrote it and whether or not a scope
+  // above resolved it.
+  importEdits.push(...unflipReturned(config.target, scope, prepared.map(x => x.ts)))
   for (const result of results) {
     const vibe = vibePath(result.file), entry = journal.modules[result.file]
     // An earlier attempt's rewrites stay in the receipt; this one adds its own.
@@ -2288,7 +2305,8 @@ export async function record(options) {
   const formatted = await formatWritten(t, written.filter(file => !isProtectedFile(file)), join(p.batch(b), "logs", "format.log"))
   const vibeFormatted = await formatRecorded(config, written, join(p.batch(b), "logs"))
   // Certify the emitted graph after all source formatting, before checking final bytes.
-  rememberPackingFiles(p, b, await emitMigratedJs(config, t, join(p.batch(b), "logs")))
+  const recordEmission = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
+  rememberPackingFiles(p, b, recordEmission)
   const afterFormat = await Jj.commitId(t, "@")
   await assertScope()
   if (thePlan.mode === "one-pass" && (formatted.code !== 0 || vibeFormatted.code !== 0)) throw new Error("record refused: formatter failed")
@@ -2329,10 +2347,18 @@ export async function record(options) {
   await assertScope()
   await assertSources()
   if (config.compilerArtifact) bindCompilerArtifact(config)
+  // The native compiler each phase ran; a receipt that mixes them is refused (#370).
+  const compilerPhases = phaseCompilers({
+    convert: readJsonIf(p.codemod(b))?.compilerArtifact,
+    check: readJsonIf(p.compile(b))?.compilerArtifact,
+    emit: recordEmission.filter(entry => !entry.restored && "compilerArtifact" in entry).map(entry => entry.compilerArtifact)
+  })
+  assertPhasesAgree(compilerPhases)
   const resultBase = {
     batch: b,
     bookmark: config.bookmark,
     compilerArtifact: config.compilerArtifact ?? null,
+    compilerPhases,
     files: rows,
     tokens,
     formatted,

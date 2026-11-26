@@ -67,8 +67,8 @@ export effect function main() {
   } catch effect (error) => {
     failed = error.reason
   }
-  const length = try sync((text) => safeLength(text), "   ")
-  const file = try sync(async (name) => later(name), "x.txt")
+  const length = try runtimeSync((text) => safeLength(text), "   ")
+  const file = try runtimeSync(async (name) => later(name), "x.txt")
   const greeting = try greet("Ada")
   const counted = try sync(() => {
     const counter = new Counter()
@@ -77,3 +77,5 @@ export effect function main() {
   })
   return { cleaned: value, failed, length, later: file, greeting, joined: ["a", "b"].join(separator) + suffix, counted }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

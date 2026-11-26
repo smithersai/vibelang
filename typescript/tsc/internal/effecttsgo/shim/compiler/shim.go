@@ -48,7 +48,17 @@ func GetDiagnosticsOfAnyProgram(ctx context.Context, program compiler.ProgramLik
 func HandleNoEmitOptions(ctx context.Context, program compiler.ProgramLike, files []*ast.SourceFile, emitBuildInfo func() *compiler.EmitResult) *compiler.EmitResult
 
 type ImplicitImportHook = compiler.ImplicitImportHook
+
+//go:linkname IsProjectEmit github.com/microsoft/TypeScript/tsc/internal/compiler.IsProjectEmit
+func IsProjectEmit() bool
+
 type LibFile = compiler.LibFile
+
+//go:linkname NativeDeclarationPath github.com/microsoft/TypeScript/tsc/internal/compiler.NativeDeclarationPath
+func NativeDeclarationPath(sidecar string) string
+
+//go:linkname NativeDeclarationText github.com/microsoft/TypeScript/tsc/internal/compiler.NativeDeclarationText
+func NativeDeclarationText(specifier string, sidecar string) string
 
 //go:linkname NewCachedFSCompilerHost github.com/microsoft/TypeScript/tsc/internal/compiler.NewCachedFSCompilerHost
 func NewCachedFSCompilerHost(fs vfs.FS, defaultLibraryPath tspath.RootedDirectoryPath, extendedConfigCache tsoptions.ExtendedConfigCache, trace func(msg *diagnostics.Message, args ...any), contentMapperProject contentmapper.Project) compiler.CompilerHost
@@ -61,6 +71,7 @@ func NewProgram(opts compiler.ProgramOptions) *compiler.Program
 
 type Program = compiler.Program
 type ProgramConfig = compiler.ProgramConfig
+type ProgramDiagnosticsHook = compiler.ProgramDiagnosticsHook
 type ProgramFactories = compiler.ProgramFactories
 type ProgramHosts = compiler.ProgramHosts
 type ProgramLike = compiler.ProgramLike
@@ -81,24 +92,31 @@ func RegisterFilterDiagnosticsForNoEmitOnErrorCallback(cb func(*core.CompilerOpt
 //go:linkname RegisterImplicitImportHook github.com/microsoft/TypeScript/tsc/internal/compiler.RegisterImplicitImportHook
 func RegisterImplicitImportHook(hook compiler.ImplicitImportHook)
 
+//go:linkname RegisterProgramDiagnosticsHook github.com/microsoft/TypeScript/tsc/internal/compiler.RegisterProgramDiagnosticsHook
+func RegisterProgramDiagnosticsHook(hook compiler.ProgramDiagnosticsHook)
+
+//go:linkname RegisterRecoverableSyntacticDiagnosticCallback github.com/microsoft/TypeScript/tsc/internal/compiler.RegisterRecoverableSyntacticDiagnosticCallback
+func RegisterRecoverableSyntacticDiagnosticCallback(cb func(*ast.Diagnostic) bool)
+
 //go:linkname RegisterScriptTransformerHook github.com/microsoft/TypeScript/tsc/internal/compiler.RegisterScriptTransformerHook
 func RegisterScriptTransformerHook(hook compiler.ScriptTransformerHook)
+
+//go:linkname RegisterSyntacticDiagnosticsHook github.com/microsoft/TypeScript/tsc/internal/compiler.RegisterSyntacticDiagnosticsHook
+func RegisterSyntacticDiagnosticsHook(hook compiler.SyntacticDiagnosticsHook)
 
 type ScriptTransformerHook = compiler.ScriptTransformerHook
 
 //go:linkname SetLoaderRoot github.com/microsoft/TypeScript/tsc/internal/compiler.SetLoaderRoot
 func SetLoaderRoot(root string)
 
-//go:linkname SidecarPath github.com/microsoft/TypeScript/tsc/internal/compiler.SidecarPath
-func SidecarPath(fileName string) string
+//go:linkname SetProjectSidecarOptions github.com/microsoft/TypeScript/tsc/internal/compiler.SetProjectSidecarOptions
+func SetProjectSidecarOptions(enabled bool)
 
 //go:linkname SortAndDeduplicateDiagnostics github.com/microsoft/TypeScript/tsc/internal/compiler.SortAndDeduplicateDiagnostics
 func SortAndDeduplicateDiagnostics(diagnostics []*ast.Diagnostic) []*ast.Diagnostic
 
 type SourceFileMayBeEmittedHost = compiler.SourceFileMayBeEmittedHost
 type SourceMapEmitResult = compiler.SourceMapEmitResult
+type SyntacticDiagnosticsHook = compiler.SyntacticDiagnosticsHook
 type WriteFile = compiler.WriteFile
 type WriteFileData = compiler.WriteFileData
-
-//go:linkname SetProjectSidecarOptions github.com/microsoft/TypeScript/tsc/internal/compiler.SetProjectSidecarOptions
-func SetProjectSidecarOptions(enabled bool)

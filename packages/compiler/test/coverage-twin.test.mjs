@@ -1,4 +1,6 @@
-// Chapter 900: negative controls for the stock-TypeScript type/Exit oracle.
+// Self-test of the oracle typescript/vibelang/test/cov900-twin.mjs: negative
+// controls for its stock-TypeScript type/Exit comparison. It is no evidence
+// for a spec rule.
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { createRequire } from "node:module"

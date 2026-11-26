@@ -15,9 +15,9 @@ function helper() {
 export effect function label(text: string) {
   const suffix = "!"
   // Allowed: an import, a global, a type, an error declaration, its own names.
-  const ok = try sync((value: Label) => {
+  const ok = try runtimeSync((value: Label) => {
     const local = Str.trim(value)
-    if (local === "") return new Bad({ reason: JSON.stringify(local) }).reason
+    if (local === "") return new Bad({ reason: quote(local) }).reason
     return local
   }, text)
   // Captures: a parameter, a local, a module constant, a module function,
@@ -32,3 +32,11 @@ export effect function label(text: string) {
 
 export effect function main() { return try label("text") }
 // Chapter 900: EK4405 diagnostic - spec-rule: docs/design/src/900-appendices.md#2a2db9a62b172ab6
+
+import { sync as runtimeSync } from "vibelang-runtime"
+
+module strings {
+  /** @throws {never} */
+  export function quote(text: string): string { return JSON.stringify(text) }
+}
+import { quote } from strings

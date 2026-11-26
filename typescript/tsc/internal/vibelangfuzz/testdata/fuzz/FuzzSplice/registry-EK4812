@@ -1,2 +1,2 @@
 go test fuzz v1
-string("-- main.vibe --\n  const pending = new Promise<number>((resolve) => resolve(1))\n")
+string("-- main.vibe --\neffect { let ok = new Promise<boolean>(r => r(true)); return ok }\n")

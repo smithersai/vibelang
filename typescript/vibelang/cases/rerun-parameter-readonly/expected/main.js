@@ -16,9 +16,10 @@ export const property = (value) => Effect_1.sync({ property: () => { return ++va
 export function plain(n) { return ++n; }
 export function plainRest(...values) { return values.pop(); }
 export const hatch = (n) => {
-    return Effect_1.gen(function* hatch() { return yield* Effect_1.sync(((n) => ++n).bind(undefined, n)); });
+    return Effect_1.gen(function* hatch() { return yield* runtimeSync((n) => ++n, n); });
 };
 export const shorthand = (n) => Effect_1.sync({ shorthand: () => { return ({ n }); } }.shorthand);
 // Explicit program factories intentionally keep their eager outer state.
 export function factory(n) { return Effect_1.sync(() => { return ++n; }); }
+import { sync as runtimeSync } from "vibelang-runtime";
 //# sourceMappingURL=main.js.map

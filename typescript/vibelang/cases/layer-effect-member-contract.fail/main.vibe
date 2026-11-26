@@ -34,7 +34,7 @@ export const VariableArrow = Layer.effect(Greeter, effect {
 export const Acquires = Layer.effect(Files, effect {
   return {
     effect open(name) {
-      return try Effect.acquireRelease(sync((name) => `handle:${name}`, name), effect (h) => try Console.log("closed", h))
+      return try Effect.acquireRelease(runtimeSync((name) => `handle:${name}`, name), effect (h) => try Console.log("closed", h))
     }
   }
 })
@@ -46,3 +46,5 @@ export const Fails = Layer.effect(Greeter, effect {
 export const Missing = Layer.effect(Greeter, effect {
   return {}
 })
+
+import { sync as runtimeSync } from "vibelang-runtime"

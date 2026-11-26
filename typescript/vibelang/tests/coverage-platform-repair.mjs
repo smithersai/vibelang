@@ -13,7 +13,7 @@ export async function verifyPlatformRepair(caseURL, kind, Effect) {
       : 'export effect function load(url:string) { const response=try Effect.tryPromise(()=>fetch(url)); return response.status }'
   const source = 'import { Effect } from "effect"\n' + body
   const native = 'import { Effect } from "effect"\n' + (kind === "method"
-    ? 'export class Client { constructor(readonly url:string) {} load() { return Effect.gen({self:this},function* () { const response=yield* Effect.tryPromise(()=>fetch(this.url)); return response.status }) } }'
+    ? 'export class Client {\n /** @throws {never} */\n constructor(readonly url:string) {} load() { return Effect.gen({self:this},function* () { const response=yield* Effect.tryPromise(()=>fetch(this.url)); return response.status }) } }'
     : kind === "meta"
       ? 'declare global { interface ImportMeta { readonly dirname:string } }\nexport function main() { return Effect.gen(function* () { return import.meta.dirname }) }'
       : 'export function load(url:string) { return Effect.gen(function* () { const response=yield* Effect.tryPromise(()=>fetch(url)); return response.status }) }')
@@ -26,7 +26,10 @@ export async function verifyPlatformRepair(caseURL, kind, Effect) {
   assert.equal(reference.status, 0, reference.output)
   const before = check(p)
   if (kind === "meta") assert.equal(before.status, 0, before.output)
-  else assert.match(before.output, /error EK4402:/)
+  else {
+    assert.equal(before.status, 0, before.output)
+    assert.match(before.output, /warning EK4402:/)
+  }
   // Declared metadata stays in its original module (chapter 5, import.meta).
   // Host operations still require an explicit TypeScript boundary.
   for (const [name, text] of Object.entries(reserved)) assert.equal(p.read(name), text)
@@ -51,7 +54,7 @@ export async function verifyPlatformRepair(caseURL, kind, Effect) {
   p.write("contracts.json", JSON.stringify(config))
   reference = nativeCheck(p, "contracts.json")
   assert.equal(reference.status, 0, reference.output)
-  if (kind === "method") assert.match(p.read("main.d.vibe.ts"), /@throws\s*\{never\}[\s\S]*?constructor/,
+  if (kind === "method") assert.match(p.read("build/manual.d.ts"), /@throws\s*\{never\}[\s\S]*?constructor/,
     "the explicit boundary must not add synchronous constructor throws")
   const originalFetch = globalThis.fetch
   const events = []

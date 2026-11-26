@@ -116,11 +116,8 @@ func TestSyncRejectsInputCarryingHatch(t *testing.T) {
 	control := vipCompile(t, w, Single(`export effect function run() { return try sync(() => 1) }`))
 	vipDiagnostics(t, control)
 	r := vipCompile(t, w, Single(`export effect function run() { return try sync((n: number) => n, 1) }`))
-	const key = "sync:extra-argument"
-	got := r3Errors(r.Diagnostics)
-	if len(got) == 0 {
-		Gap(t, "TestSyncRejectsInputCarryingHatch", key, "VIP-6: sync(f, x) must give TS2554")
-	}
 	vipDiagnostics(t, r, "TS2554")
-	ExpectPending(t, "TestSyncRejectsInputCarryingHatch", key)
+	adapter := vipCompile(t, w, Single(`import { sync as runtimeSync } from "vibelang-runtime"
+export effect function run() { return try runtimeSync((n: number) => n, 1) }`))
+	vipDiagnostics(t, adapter)
 }

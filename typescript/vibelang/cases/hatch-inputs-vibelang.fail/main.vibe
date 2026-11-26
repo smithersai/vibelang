@@ -6,8 +6,10 @@
 import { legacyParse } from "./legacy.ts"
 
 export effect function inputs(text: string) {
-  const inside = try sync((text) => legacyParse(text) + Date.now(), text)
-  const parsed = try sync((n) => n + 1, legacyParse(text))
-  const stamped = try sync((t) => t, performance.now())
+  const inside = try runtimeSync((text) => legacyParse(text) + Date.now(), text)
+  const parsed = try runtimeSync((n) => n + 1, legacyParse(text))
+  const stamped = try runtimeSync((t) => t, performance.now())
   return [inside, parsed, stamped]
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

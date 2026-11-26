@@ -30,20 +30,6 @@ func (c *Checker) CreateArrayType(elementType *Type, readonly bool) *Type {
 	return c.createArrayTypeEx(elementType, readonly)
 }
 
-// MapObjectType returns an object type with the properties and index
-// signatures of t, each with the type f gives its type.
-func (c *Checker) MapObjectType(t *Type, f func(*Type) *Type) *Type {
-	members := make(ast.SymbolTable)
-	for _, property := range c.getPropertiesOfType(t) {
-		members[property.Name()] = c.createSymbolWithType(property, f(c.getTypeOfSymbol(property)))
-	}
-	var indexInfos []*IndexInfo
-	for _, info := range c.getIndexInfosOfType(t) {
-		indexInfos = append(indexInfos, c.newIndexInfo(info.keyType, f(info.valueType), info.isReadonly, info.declaration, nil))
-	}
-	return c.newAnonymousType(nil /*symbol*/, members, nil /*callSignatures*/, nil /*constructSignatures*/, indexInfos)
-}
-
 // IteratedType returns the type that iterating t yields, as a for-of loop
 // over t does, or nil when t has no [Symbol.iterator] method.
 func (c *Checker) IteratedType(t *Type) *Type {

@@ -11,8 +11,10 @@ function plainUsing(): Array<string> {
 export effect function main() {
   const log: Array<string> = []
   try scoped(effect {
-    try acquireRelease(sync((l) => { l.push("acquired") }, log), () => sync((l) => { l.push("released") }, log))
+    try acquireRelease(runtimeSync((l) => { l.push("acquired") }, log), () => runtimeSync((l) => { l.push("released") }, log))
     log.push("used")
   })
   return { plain: plainUsing(), scoped: log }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

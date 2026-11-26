@@ -1,40 +1,14 @@
-// run-seconds: 180 (a reference install, then three stock TypeScript programs in this process)
+// run-seconds: 180 (three stock TypeScript programs in this process)
 // Chapter 004: independent TypeScript 5.9.3 / Effect 4.1.0 type and Exit control.
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
 import { createRequire } from "node:module"
-import { execFileSync } from "node:child_process"
-import { fileURLToPath, pathToFileURL } from "node:url"
+import { pathToFileURL } from "node:url"
 import { compareApiIdentity, formatResult } from "../../../scripts/api-identity.mjs"
-export function referenceModules() {
-  if (process.env.VIBELANG_MATCH_REFERENCE_NODE_MODULES) return process.env.VIBELANG_MATCH_REFERENCE_NODE_MODULES
-  return installReference(path.resolve(fileURLToPath(new URL("../../.cache/cov-ch004-reference/", import.meta.url))))
-}
-// installReference fills cache with the reference TypeScript and Effect unless
-// it already holds them. A cache that an interrupted install left without its
-// node_modules is replaced; it used to make the rename of the fresh staging
-// copy fail with ENOTEMPTY on every later run.
-export function installReference(cache, install = npmInstall) {
-  const installed = dir => fs.existsSync(path.join(dir, "node_modules/typescript/package.json"))
-  if (!installed(cache)) {
-    fs.mkdirSync(path.dirname(cache), { recursive: true })
-    const staging = fs.mkdtempSync(cache + "-")
-    try {
-      install(staging)
-      if (!installed(cache)) fs.rmSync(cache, { recursive: true, force: true })
-      try { fs.renameSync(staging, cache) } catch (error) {
-        if (!installed(cache)) throw error
-      }
-    } finally { fs.rmSync(staging, { recursive: true, force: true }) }
-  }
-  return path.join(cache, "node_modules")
-}
-function npmInstall(prefix) {
-  execFileSync("npm", ["install", "--prefix", prefix, "--ignore-scripts", "--no-audit", "--no-fund",
-    "--save-exact", "typescript@5.9.3", "effect@4.1.0"], { stdio: "pipe", timeout: 120_000 })
-}
+import { referenceModules } from "./vip7-reference.mjs"
+
 // VIP-27 permits an emitted @throws {never} contract absent from the stock
 // twin. The shared comparison still checks every exported type and authored doc.
 export function assertReferenceTypes(ts, dir, modules, sources = { before: "typescript/out", after: "out" }) {
@@ -66,7 +40,7 @@ export function assertReferenceTypes(ts, dir, modules, sources = { before: "type
   } finally { fs.rmSync(layout, { recursive: true, force: true }) }
 }
 export async function compare(dir, Effect, expected) {
-  const modules = referenceModules()
+  const modules = referenceModules(process.env.VIBELANG_MATCH_REFERENCE_NODE_MODULES)
   const require = createRequire(path.join(modules, "package.json"))
   const ts = require("typescript")
   assert.equal(ts.version, "5.9.3")

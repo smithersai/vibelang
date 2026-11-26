@@ -1,6 +1,7 @@
 // D272: tests remain the oracle. A source graph a test bundles without
 // native tool wiring stays TypeScript instead of rewriting that test.
-import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { nativeBundleProof } from "./native-bundle-proof.mjs"
@@ -420,4 +421,73 @@ export function testBundleDeferrals(root, selected, { paths = {}, ts, onWarning 
 export function assertNoTestBundleRename(root, files, options) {
   const deferred = testBundleDeferrals(root, files, options)
   if (deferred.length) throw new Error("cannot rename modules reached by unchanged test bundles:\n" + deferred.map(d => d.file + ": " + d.reason).join("\n"))
+}
+
+const resourceReads = new Set(["readFile", "readFileSync"])
+
+/**
+ * The repository resources selected tests read, beside the tests themselves
+ * (#71). A script graph alone omits them: a t3code server test read
+ * `readFile("docs/user/t3-connect-troubleshooting.md")` and failed in a bundle
+ * of its sources. Each selected test is read for a string-literal
+ * readFile/readFileSync path, resolved from its package directory and the
+ * repository root as a working directory can be either, and for
+ * `new URL("literal", import.meta.url)`, resolved from the test's directory.
+ * Only existing files inside root count; a computed path names nothing.
+ * Returns `files`, the tests and resources to bundle, and `resources`, each
+ * `{ path, digest, test, line, kind }` with the SHA-256 of its bytes.
+ */
+export function testResourceClosure(root, tests, { ts } = {}) {
+  ts ??= loadTypeScript([root, fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))])
+  const resources = new Map()
+  const inside = path => {
+    const normalized = posix.normalize(path)
+    return normalized && normalized !== "." && !normalized.startsWith("../") && !posix.isAbsolute(normalized) ? normalized : null
+  }
+  const ownerOf = test => {
+    for (let dir = posix.dirname(test); ; dir = posix.dirname(dir)) {
+      if (existsSync(join(root, dir, "package.json"))) return dir
+      if (dir === "." || dir === "/") return "."
+    }
+  }
+  for (const test of tests) {
+    const text = readFileSync(join(root, test), "utf8")
+    const source = ts.createSourceFile(test, text, ts.ScriptTarget.Latest, true, ts.getScriptKindFromFileName(test))
+    const unwrapped = node => {
+      while (node && (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isNonNullExpression(node))) node = node.expression
+      if (node && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "fileURLToPath" && node.arguments[0]) return unwrapped(node.arguments[0])
+      return node
+    }
+    const add = (candidates, node, kind) => {
+      const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
+      for (const candidate of candidates) {
+        const path = inside(candidate)
+        if (!path || resources.has(path) || !existsSync(join(root, path)) || !statSync(join(root, path)).isFile()) continue
+        resources.set(path, { path, digest: createHash("sha256").update(readFileSync(join(root, path))).digest("hex"), test, line, kind })
+      }
+    }
+    const urlOf = node => ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "URL" &&
+      node.arguments?.length === 2 && ts.isStringLiteralLike(node.arguments[0]) &&
+      node.arguments[1].getText(source).replace(/\s+/g, "") === "import.meta.url" ? node.arguments[0].text : null
+    const visit = node => {
+      const url = urlOf(node)
+      if (url !== null && !/^[a-z][a-z0-9+.-]*:/i.test(url)) {
+        let decoded = url.replace(/[?#].*$/, "")
+        try { decoded = decodeURIComponent(decoded) } catch {}
+        add([posix.join(posix.dirname(test), decoded)], node, "url")
+      }
+      if (ts.isCallExpression(node)) {
+        const callee = node.expression
+        const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text : null
+        const arg = unwrapped(node.arguments[0])
+        if (name && resourceReads.has(name) && arg && ts.isStringLiteralLike(arg) && !/^[a-z][a-z0-9+.-]*:/i.test(arg.text)) {
+          add(posix.isAbsolute(arg.text) ? [relative(root, arg.text).split("\\").join("/")] : [posix.join(ownerOf(test), arg.text), arg.text], node, name)
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+  }
+  const sorted = [...resources.values()].sort((a, b) => a.path.localeCompare(b.path))
+  return { files: [...new Set([...tests, ...sorted.map(r => r.path)])].sort(), resources: sorted }
 }

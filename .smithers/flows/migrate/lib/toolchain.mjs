@@ -159,3 +159,35 @@ export function bindCompilerArtifact(config, paths, { resume = false } = {}) {
   }
   return actual
 }
+
+/**
+ * The compiler each phase of a batch ran, as `{ revision, nativeDigest }`
+ * (#370). convert and check are one receipt's artifact each; emit is the list
+ * of its emission entries' artifacts, which must agree among themselves. A
+ * phase with no receipt (undefined) is absent; null is an untracked compiler.
+ */
+export function phaseCompilers({ convert, check, emit } = {}) {
+  const of = artifact => artifact ? { revision: artifact.revision ?? null, nativeDigest: artifact.nativeSha256 ?? artifact.nativeDigest } : null
+  const phases = {}
+  if (convert !== undefined) phases.convert = of(convert)
+  if (check !== undefined) phases.check = of(check)
+  if (emit?.length) {
+    const distinct = [...new Map(emit.map(of).map(item => [JSON.stringify(item), item])).values()]
+    if (distinct.length > 1) throw new Error("migration receipt mixes native compilers within emit: " + distinct.map(item => JSON.stringify(item)).join(" vs ") + "; reconvert in a fresh run")
+    phases.emit = distinct[0]
+  }
+  return phases
+}
+
+/** The one compiler every phase ran, or a refusal naming the phases that disagree. */
+export function assertPhasesAgree(phases) {
+  const entries = Object.entries(phases)
+  if (!entries.length) return null
+  const [first, firstArtifact] = entries[0]
+  for (const [phase, artifact] of entries.slice(1)) {
+    if (JSON.stringify(artifact) !== JSON.stringify(firstArtifact)) {
+      throw new Error("migration receipt mixes native compilers: " + first + " ran " + JSON.stringify(firstArtifact) + ", " + phase + " ran " + JSON.stringify(artifact) + "; a revision label cannot stand for different native bytes; reconvert in a fresh run")
+    }
+  }
+  return firstArtifact
+}

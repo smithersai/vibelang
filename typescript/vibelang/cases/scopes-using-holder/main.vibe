@@ -24,8 +24,8 @@ error Bad {}
 
 effect function acquire(events: string[]) {
   return try Effect.acquireRelease(
-    effect { return ({ value: try sync((log: string[]) => open(log), events) }) },
-    effect (holder) => try sync((h) => h.value[Symbol.dispose](), holder)
+    effect { return ({ value: try runtimeSync((log: string[]) => open(log), events) }) },
+    effect (holder) => try runtimeSync((h) => h.value[Symbol.dispose](), holder)
   )
 }
 
@@ -56,9 +56,9 @@ effect function pending() {
       effect {
         try Deferred.succeed(entered, undefined)
         try Deferred.await(gate)
-        return { value: try sync((log: string[]) => open(log), events) }
+        return { value: try runtimeSync((log: string[]) => open(log), events) }
       },
-      effect (holder) => try sync((h) => h.value[Symbol.dispose](), holder)
+      effect (holder) => try runtimeSync((h) => h.value[Symbol.dispose](), holder)
     )
     events.push("never runs")
   }
@@ -74,3 +74,5 @@ effect function pending() {
 export effect function main() {
   return { succeeds: try run("succeed"), fails: try run("fail"), dies: try run("die"), pending: try pending() }
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

@@ -11,7 +11,9 @@ export const plainBody = effect (pick: boolean): Effect.Effect<Prompt.Prompt<str
 export const effectBody = effect (pick: boolean): Effect.Effect<Prompt.Prompt<string>, never, never> => {
   const n = try Effect.succeed(1)
   if (pick) return try sync(() => Prompt.succeed(""))
-  return try sync((n: number) => Prompt.succeed(`x${n}`), n)
+  return try runtimeSync((n: number) => Prompt.succeed(`x${n}`), n)
 }
 
 export const noOperation = effect (): Effect.Effect<number, never, never> => { return 42 }
+
+import { sync as runtimeSync } from "vibelang-runtime"

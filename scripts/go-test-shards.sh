@@ -21,10 +21,7 @@
 # GO_TEST_SLICE_REBALANCE=n with the slice run's flags (no selector) deals every listed name longest first onto the
 # least-loaded of n slices, by testdata/shard-seconds.txt, writes the keys and runs no test. Commit a rebalance alone.
 # A package that lists no names runs whole in slice 1 and not at all in the others; a slice that holds no name of a
-# package with names runs nothing. smthrs gives a target only its declared environment, so under the
-# graph the slice comes from scripts/go-test-slice, one line "i/n <host>" (git-ignored), and applies only on the host it
-# names (uname -n): a CI machine that runs one slice writes it after committing its tree, and a copy that reaches any
-# other checkout slices nothing. GO_TEST_SLICE, when set, wins.
+# package with names runs nothing. Graph targets pass GO_TEST_SLICE in their declared environment.
 #
 # The processes share two threads per core, so each runs with GOMAXPROCS set to its share or to a smaller inherited
 # value. Six processes of GOMAXPROCS=4 on a 4-vCPU box took about 1600 s and put FuzzDeclarationIdentity at 15m50s of CPU,
@@ -41,12 +38,6 @@ default_shards=6
 [ "$cores" -ge 6 ] || default_shards=$cores
 shards=${GO_TEST_SHARDS:-$default_shards}
 slice=${GO_TEST_SLICE:-}
-slice_file=$(dirname "$0")/go-test-slice
-if [ -z "$slice" ] && [ -f "$slice_file" ]; then
-  read -r file_slice file_host < "$slice_file" || true
-  if [ "${file_host:-}" = "$(uname -n)" ]; then slice=$file_slice; else
-    echo "go-test-shards: ignoring $slice_file: it names host ${file_host:-(none)}, this is $(uname -n)" >&2; fi
-fi
 si=1 sn=1
 if [ -n "$slice" ]; then
   si=${slice%%/*} sn=${slice#*/}
@@ -269,7 +260,7 @@ for list in "$dir"/names*; do
     wait "$child"
     status=$?
     echo "go-test-shards: finished process $i: exit $status" >&2
-    echo "go-test-shards: process $i: $(wc -l < "$list") tests, exit $status, $(( $(date +%s) - start ))s" >> "$dir/out$i"
+    echo "go-test-shards: process $i: $(wc -l < "$list" | tr -d ' ') tests, exit $status, $(( $(date +%s) - start ))s" >> "$dir/out$i"
     echo $status > "$dir/status$i" ) &
   pids="$pids $!"
   n=$((n + 1))

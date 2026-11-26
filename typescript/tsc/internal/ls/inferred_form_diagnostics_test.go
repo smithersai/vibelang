@@ -14,16 +14,15 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs"
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
-// checkInferredDiagnosticEmit checks editor-only advice against the projection
-// while ordinary compiler diagnostics and emit stay independent.
+// checkInferredDiagnosticEmit checks a plain arrow returning an unrun Effect
+// in the compiler, the editor and the stock-TypeScript projection.
 func checkInferredDiagnosticEmit(t *testing.T, files map[string]string) {
 	t.Helper()
-	fs := inferredFileSystem(files)
+	fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseInsensitive))
 	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/src/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 	if len(errors) != 0 {
 		t.Fatalf("config: %v", errors)
@@ -34,14 +33,16 @@ func checkInferredDiagnosticEmit(t *testing.T, files map[string]string) {
 	})
 	service := ls.NewLanguageService(nil, p, snapshotTestHost{converters: converters}, "/src/main.vibe")
 	file := p.GetSourceFile("/src/main.vibe")
-	// Compiler collections must stay free of the editor-only resolver, even
-	// when the editor warning is configured as an error.
-	for _, d := range append(p.GetSemanticDiagnostics(t.Context(), file), p.GetSuggestionDiagnostics(t.Context(), file)...) {
-		if d.Code() == 2345 {
-			t.Fatalf("callback form changed: %s", d.MessageText())
-		}
-		if d.Code() == 9100 {
-			t.Fatal("EK9100 ran in the compiler")
+	if file == nil {
+		t.Fatal("main.vibe was not loaded")
+	}
+	for _, diagnostics := range [][]*ast.Diagnostic{
+		p.GetProgramDiagnostics(), p.GetGlobalDiagnostics(t.Context()), p.GetSyntacticDiagnostics(t.Context(), nil),
+		p.GetSemanticDiagnostics(t.Context(), nil), p.GetDeclarationDiagnostics(t.Context(), nil),
+		p.GetSuggestionDiagnostics(t.Context(), file),
+	} {
+		for _, d := range diagnostics {
+			t.Errorf("unexpected compiler diagnostic %d: %s", d.Code(), d.MessageText())
 		}
 	}
 	editor, err := service.ProvideDiagnostics(t.Context(), lsconv.FileNameToDocumentURI(file.FileName()))
@@ -57,7 +58,6 @@ func checkInferredDiagnosticEmit(t *testing.T, files map[string]string) {
 		if diag.Severity == nil || *diag.Severity != lsproto.DiagnosticSeverityWarning {
 			t.Fatal("EK9100 is not an editor warning")
 		}
-
 	}
 	projectorChoices := 0
 	for _, d := range vibelangmapper.Project(file.Text(), vibelangmapper.FileContext{}).Diagnostics {
@@ -65,11 +65,11 @@ func checkInferredDiagnosticEmit(t *testing.T, files map[string]string) {
 			projectorChoices++
 		}
 	}
-	if forkChoices != projectorChoices {
+	if projectorChoices != 0 || forkChoices != 0 {
 		t.Fatalf("fork choices=%d projector choices=%d", forkChoices, projectorChoices)
 	}
 	var emitted inferredEmit
-	p.Emit(t.Context(), compiler.EmitOptions{WriteFile: func(name tspath.RootedFilePath, text string, _ *compiler.WriteFileData) error {
+	result := p.Emit(t.Context(), compiler.EmitOptions{WriteFile: func(name tspath.RootedFilePath, text string, _ *compiler.WriteFileData) error {
 		if strings.HasSuffix(string(name), "main.js") {
 			emitted.JS = text
 		}
@@ -78,57 +78,30 @@ func checkInferredDiagnosticEmit(t *testing.T, files map[string]string) {
 		}
 		return nil
 	}})
-	if emitted.JS == "" || emitted.DTS == "" {
-		t.Fatal("no JavaScript emitted")
+	if result.EmitSkipped || len(result.Diagnostics) != 0 || !strings.Contains(emitted.JS, "work(x)") || !strings.Contains(emitted.DTS, "Effect<number") {
+		t.Fatalf("expected JavaScript and declarations, emit result: %+v", result)
 	}
 }
 
 // inferredEmit records declarations and JavaScript from the same program.
 type inferredEmit struct{ JS, DTS string }
 
-// inferredFileSystem resolves Effect through its external symlink when present,
-// so the same LS transaction and declaration consumer cover linked packages.
-func inferredFileSystem(files map[string]string) vfs.FS {
-	entries := make(map[string]any, len(files)+1)
-	for name, text := range files {
-		entries[name] = text
-	}
-	if _, linked := files["/external/experiments/node_modules/effect/package.json"]; linked {
-		entries["/src/node_modules/effect"] = vfstest.Symlink("/external/experiments/node_modules/effect")
-		entries["/src/node_modules/vibelang-runtime"] = vfstest.Symlink("/external/runtime")
-		entries["/external/runtime/node_modules/effect"] = vfstest.Symlink("/external/experiments/node_modules/effect")
-	}
-	return bundled.WrapFS(vfstest.FromMap(entries, tspath.CaseInsensitive))
-}
-
-// TestInferredFormFixDeclinesPausingPlainCallback checks that the fix offers
-// A pausing callback retains its projection choice and compiler diagnostics.
-func TestPausingCallbackRetainsProjectionChoice(t *testing.T) {
+func TestReturnedEffectNeedsNoFormChoice(t *testing.T) {
 	files := map[string]string{
-		"/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext","declaration":true},"files":["main.vibe","host.ts"]}`,
-		"/src/host.ts":       `import type { Effect } from "effect/Effect"; export declare function work(x: number): Effect<number,never,never>; export declare function takesPlain(f: (x: number) => number): number`,
-		"/src/main.vibe":     `import { work, takesPlain } from "./host"; export function run() { return takesPlain((x: number) => { try work(x); return x }) }`,
+		"/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext","module":"esnext","moduleResolution":"bundler","skipLibCheck":true,"declaration":true},"files":["main.vibe","host.ts"]}`,
+		"/src/host.ts":       `import type { Effect } from "effect/Effect"; export declare function work(x: number): Effect<number,never,never>`,
+		"/src/main.vibe":     `import { work } from "./host"; export const run = (x: number) => { const program = work(x); return program }`,
 		"/src/node_modules/vibelang-runtime/package.json": `{"name":"vibelang-runtime","types":"index.d.ts"}`,
 		"/src/node_modules/vibelang-runtime/index.d.ts":   `export * as Effect from "effect/Effect"`,
 		"/src/node_modules/effect/package.json":           `{"name":"effect","types":"index.d.ts"}`,
 		"/src/node_modules/effect/index.d.ts":             `export * as Effect from "./Effect"`,
 		"/src/node_modules/effect/Effect.d.ts":            `export interface Effect<A,E=never,R=never> { readonly "~effect/Effect": { readonly _A: (_:never)=>A; readonly _E: (_:never)=>E; readonly _R: (_:never)=>R } }`,
 	}
-	choices := 0
-	for _, d := range vibelangmapper.Project(files["/src/main.vibe"], vibelangmapper.FileContext{}).Diagnostics {
-		if d.Code == vibelangmapper.CodeFormChoice {
-			choices++
-		}
-	}
-	if choices == 0 {
-		t.Fatal("the projector asks for no annotation, so this case tests nothing")
-	}
 	checkInferredDiagnosticEmit(t, files)
 }
 
 // VIP-11 denies trailing blocks. Preserve the two historical inference fixtures
-// as rejection witnesses; only ordinary Effect arguments participate in the
-// successful inference and emit comparisons above.
+// as rejection witnesses alongside the ordinary Effect value above.
 func TestInferredFormRejectsRetiredTrailingBlocks(t *testing.T) {
 	for _, head := range []string{"host", "host()", "host(1)", "api.host", "api.host(1)"} {
 		for _, gap := range []string{" ", "  ", "\t"} {

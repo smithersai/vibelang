@@ -44,10 +44,6 @@ func mapperTestScope(t *testing.T, root string) string {
 	} else if err != nil {
 		t.Fatal(err)
 	}
-	scope := filepath.Join(root, "packages/ts-mapper/test/parity/out/work")
-	if _, err := os.Stat(filepath.Join(scope, "node_modules/vibelang-runtime/dist/index.js")); err == nil {
-		return scope
-	}
 	testScope.Do(func() { testScope.err = buildMapperTestScope(root) })
 	if testScope.err != nil {
 		t.Fatal(testScope.err)
@@ -103,13 +99,19 @@ func buildMapperTestScope(root string) error {
 			return err
 		}
 	}
-	for _, dir := range []string{"bin", "node_modules", "runtime-build/node_modules"} {
+	for _, dir := range []string{"bin", "node_modules/vibelang-runtime", "runtime-build"} {
 		if err := os.MkdirAll(filepath.Join(scope, dir), 0700); err != nil {
 			return err
 		}
 	}
-	for _, dir := range []string{"node_modules", "runtime-build/node_modules"} {
-		if err := os.Symlink(effect, filepath.Join(scope, dir, "effect")); err != nil {
+	if err := os.Symlink(effect, filepath.Join(scope, "node_modules/effect")); err != nil {
+		return err
+	}
+	runtime := filepath.Join(root, "packages/runtime")
+	// Compile and execute the copied runtime with its locked installation,
+	// including scoped packages and transitive peer dependencies.
+	for _, dir := range []string{"runtime-build", "node_modules/vibelang-runtime"} {
+		if err := os.Symlink(filepath.Join(runtime, "node_modules"), filepath.Join(scope, dir, "node_modules")); err != nil {
 			return err
 		}
 	}
@@ -118,7 +120,6 @@ func buildMapperTestScope(root string) error {
 			return err
 		}
 	}
-	runtime := filepath.Join(root, "packages/runtime")
 	if err := filepath.WalkDir(filepath.Join(runtime, "src"), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -129,9 +130,6 @@ func buildMapperTestScope(root string) error {
 		rel, err := filepath.Rel(runtime, path)
 		if err != nil {
 			return err
-		}
-		if experimentalPlatformSource(rel) {
-			return nil
 		}
 		return copyFile(path, filepath.Join(scope, "runtime-build", rel))
 	}); err != nil {
@@ -211,15 +209,6 @@ func mapperCLI(t *testing.T, root string) string {
 		return source
 	}
 	return filepath.Join(mapperTestScope(t, root), "bin/vibelang-mapper")
-}
-
-// experimentalPlatformSource reports whether rel, a path in packages/runtime,
-// is an experimental platform layer or its Node implementation (D313). They
-// import the optional @effect/platform-* packages and node: modules, which a
-// scope with only effect does not install, and no mapper test loads them.
-func experimentalPlatformSource(rel string) bool {
-	rel = filepath.ToSlash(rel)
-	return strings.HasPrefix(rel, "src/experimental/platform-") || strings.HasPrefix(rel, "src/experimental/internal/node")
 }
 
 func mapperEffectModules(root string) string {

@@ -1,5 +1,5 @@
 // run-seconds: 120
-import { ensurePinnedReference } from "../../test/vip7-reference.mjs"
+import { referenceModules } from "../../test/vip7-reference.mjs"
 import assert from "node:assert/strict"
 import { createRequire } from "node:module"
 import { mkdirSync, rmSync, symlinkSync } from "node:fs"
@@ -9,8 +9,7 @@ import { spawnSync } from "node:child_process"
 import { Effect } from "effect"
 import { main } from "./out/main.js"
 const here=dirname(fileURLToPath(import.meta.url))
-const cache=process.env.VIP7_REFERENCE_CACHE || resolve(here,"../../../.cache/do-flat-reference")
-await ensurePinnedReference(cache)
+const cache = dirname(referenceModules())
 mkdirSync(resolve(here,"typescript/node_modules"),{recursive:true})
 rmSync(resolve(here,"typescript/node_modules/effect"),{recursive:true,force:true})
 symlinkSync(resolve(cache,"node_modules/effect"),resolve(here,"typescript/node_modules/effect"),"dir")

@@ -223,7 +223,7 @@ func TestRelocatedSidecarPreservesLiteralDirectives(t *testing.T) {
 		} {
 			source := fmt.Sprintf(declaration, directive)
 			if got := relocatedSidecarText(source, "/public/main.d.ts", "/src", func(string) string { return "" }, tspath.CaseSensitive); got != source {
-				t.Errorf("sidecarText changed literal or block comment: got %q, want %q", got, source)
+				t.Errorf("relocatedSidecarText changed literal or block comment: got %q, want %q", got, source)
 			}
 			for _, directory := range []string{"/public", "/generated"} {
 				got := relocatedSidecarText(source, "/public/main.d.ts", directory, func(s string) string {

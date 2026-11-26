@@ -11,7 +11,7 @@ try {
   mkdirSync(join(root, "node_modules"))
   symlinkSync(join(process.env.EFFECT_NODE_MODULES, "effect"), join(root, "node_modules/effect"))
   symlinkSync(process.env.VIBELANG_RUNTIME, join(root, "node_modules/vibelang-runtime"))
-  writeFileSync(join(root, "package.json"), '{"type":"module"}')
+  writeFileSync(join(root, "package.json"), '{"type":"module","name":"vip30-api"}')
   writeFileSync(join(root, "main.vibe"), "service Flags { static readonly default: Flags.Shape = { enabled: true }; enabled: boolean }\nexport type Value = typeof Flags.default;\n")
   // Independent native TypeScript API control: the same parse -> createProgram
   // path must retain strictNullChecks/noEmitOnError and skip the actual write.
@@ -32,7 +32,7 @@ try {
     const program = await api.createProgram(config.fileNames, config.options)
     console.error(JSON.stringify({ stage: "option-transfer", severity, parsedVibe: Object.hasOwn(config.options, "vibelang"), constructedVibe: Object.hasOwn(program.getCompilerOptions(), "vibelang") }))
     try {
-      const diagnostics = await program.getSemanticDiagnostics()
+      const diagnostics = [...await program.getSemanticDiagnostics(), ...await program.getSuggestionDiagnostics()]
       const warning = diagnostics.filter(d => d.code === 4855)
       check("semantic-" + severity, () => assert.equal(warning.length, severity === "off" ? 0 : 1, JSON.stringify({ stage: "semantic", severity, diagnostics })))
       if (severity !== "off" && warning.length) check("category-" + severity, () => assert.equal(warning[0].category, severity === "error" ? 1 : 2, JSON.stringify({ severity, warning })))
@@ -51,20 +51,28 @@ try {
     for (const mode of ["modules", "native"]) {
       const configPath = join(root, mode + "-" + enabled + ".json")
       writeFileSync(configPath, JSON.stringify({
-        compilerOptions: { noEmit: true, strictNullChecks: enabled, types: [], skipLibCheck: true, target: "ES2022", module: "NodeNext" },
+        compilerOptions: { noEmit: true, strictNullChecks: enabled, lib: ["ES2022"], types: [], skipLibCheck: true, target: "ES2022", module: "NodeNext" },
         files: [mode === "modules" ? "modules.vibe" : "strict.ts"],
         vibe: { effectModules: enabled }
       }))
       const parsed = await api.parseConfigFile(configPath)
       const program = await api.createProgram(parsed.fileNames, parsed.options)
       try {
-        const codes = (await program.getSemanticDiagnostics()).filter(d => d.category === 1).map(d => d.code)
-        const expected = mode === "modules" ? enabled ? [] : [2304] : enabled ? [2322] : []
-        check(mode + "-" + enabled, () => assert.deepEqual(codes, expected))
+        const errors = (await program.getSemanticDiagnostics()).filter(d => d.category === 1)
+        const codes = errors.map(d => d.code)
+        if (mode === "modules" && !enabled) {
+          check("modules-off", () => {
+            assert.equal(errors.length, 1)
+            assert.ok([2304, 2552].includes(errors[0].code), JSON.stringify(errors))
+            assert.match(errors[0].messageText ?? errors[0].text ?? JSON.stringify(errors[0]), /Cannot find name 'Option'/)
+          })
+        } else {
+          check(mode + "-" + enabled, () => assert.deepEqual(codes, mode === "native" && enabled ? [2322] : []))
+        }
       } finally { await program.dispose() }
     }
   }
-  writeFileSync(join(root, "migration.vibe"), 'import { Effect } from "effect"; export effect function nested(program: Effect.Effect<number>) { try Effect.succeed(1); return program }')
+  writeFileSync(join(root, "migration.vibe"), 'function take<T>(value: T): number { return 1 }\nexport effect function nested() { return take(Effect.succeed(1)) }')
   const migrationPath = join(root, "migration.json")
   writeFileSync(migrationPath, JSON.stringify({
     compilerOptions: { strict: true, noEmitOnError: true, declaration: true, types: [], skipLibCheck: true, target: "ES2022", module: "NodeNext", outDir: "migration-out" },

@@ -10,9 +10,9 @@ effect function bad(s: string, data: object) {
   atob(s)
   structuredClone(() => 1)
   "x".repeat(-1)
-  "x".padStart(-1)
-  (1.5).toFixed(2)
-  (1.5).toPrecision(0)
+  "x".padStart(-1);
+  (1.5).toFixed(2);
+  (1.5).toPrecision(0);
   (1).toString(1)
   new Array(-1)
   "x".normalize(s)

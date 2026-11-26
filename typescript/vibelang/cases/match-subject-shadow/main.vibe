@@ -17,16 +17,16 @@ function expression(s: Shape): number {
 }
 
 // Existing matches still narrow the original subject in each arm.
-function display(input: number | boolean): string {
+effect function display(input: number | boolean): string!! {
   return match (input) {
-    when Number: input.toFixed(1);
+    when Number: try Effect.orDie(Effect.try(() => input.toFixed(1)));
     when Boolean: input ? "enabled" : "disabled";
   }
 }
 
 export effect function main() {
   let size = 0
-  const s: Shape = try sync((Shape) => Shape.Sq({ s: 5 }) as Shape, Shape)
+  const s: Shape = try runtimeSync((Shape) => Shape.Sq({ s: 5 }) as Shape, Shape)
   match (s) {
     when { _tag: "Sq", let s }: size = s * s;
     when { _tag: "Empty" }: size = 0;
@@ -34,5 +34,7 @@ export effect function main() {
   let calls = 0
   function subject() { calls++; return Shape.Sq({ s: 6 }) }
   const once = area(subject())
-  return [area(Shape.Sq({ s: 3 })), expression(Shape.Sq({ s: 4 })), size, calls, once, display(3)]
+  return [area(Shape.Sq({ s: 3 })), expression(Shape.Sq({ s: 4 })), size, calls, once, try display(3)]
 }
+
+import { sync as runtimeSync } from "vibelang-runtime"
