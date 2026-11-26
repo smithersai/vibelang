@@ -147,74 +147,16 @@ export const vipsSidebar = [
             "link": "/vips/0041-throw-expressions"
           },
           {
+            "text": "42. VibeLang in .ts files (// @vibe)",
+            "link": "/vips/0042-vibelang-in-ts-files-open"
+          },
+          {
             "text": "43. theorem and spec, proofs in TypeScript's own syntax",
             "link": "/vips/0043-theorems"
           },
           {
             "text": "44. Durable values",
             "link": "/vips/0044-durable-values"
-          }
-        ]
-      },
-      {
-        "text": "Denied",
-        "collapsed": true,
-        "items": [
-          {
-            "text": "8. Special syntax for Effect resources (using, a scoped keyword)",
-            "link": "/vips/0008-using-denied"
-          },
-          {
-            "text": "10. The Users.find(id) shorthand",
-            "link": "/vips/0010-service-call-shorthand-denied"
-          },
-          {
-            "text": "11. Trailing blocks",
-            "link": "/vips/0011-trailing-blocks-denied"
-          },
-          {
-            "text": "24. wire, automatic layer composition",
-            "link": "/vips/0024-wire-denied"
-          }
-        ]
-      },
-      {
-        "text": "Superseded",
-        "collapsed": true,
-        "items": [
-          {
-            "text": "25. Inline module declarations as a TypeScript escape",
-            "link": "/vips/0025-inline-modules-denied"
-          }
-        ]
-      },
-      {
-        "text": "Open",
-        "collapsed": true,
-        "items": [
-          {
-            "text": "35. Effect handlers (control, handle, resume, abandon)",
-            "link": "/vips/0035-handlers-open"
-          },
-          {
-            "text": "36. The declaration manifest",
-            "link": "/vips/0036-manifest-open"
-          },
-          {
-            "text": "37. Effectify the universe",
-            "link": "/vips/0037-effectify-the-universe-open"
-          },
-          {
-            "text": "42. VibeLang in .ts files",
-            "link": "/vips/0042-vibelang-in-ts-files-open"
-          },
-          {
-            "text": "53. Renaming VibeLang",
-            "link": "/vips/0053-rename-smithersscript-open"
-          },
-          {
-            "text": "54. One consistent model for platform-specific code",
-            "link": "/vips/0054-consistent-platform-code-open"
           },
           {
             "text": "55. task and workflow, durable steps and the plan the compiler derives",
@@ -229,11 +171,11 @@ export const vipsSidebar = [
             "link": "/vips/0057-workers-remote"
           },
           {
-            "text": "58. Capabilities: a permission kernel in the standard library",
+            "text": "58. Capabilities: a permission kernel in the standard library (+ task plan metadata)",
             "link": "/vips/0058-capabilities"
           },
           {
-            "text": "59. Eval declarations: a file kind and a function, no syntax",
+            "text": "59. Eval declarations: *.eval.vibe file kind and vibelang eval CLI (no grammar changes)",
             "link": "/vips/0059-eval-declarations"
           },
           {
@@ -289,8 +231,66 @@ export const vipsSidebar = [
             "link": "/vips/0072-std-observe"
           },
           {
-            "text": "73. Experimental.Patterns and PACKAGE.vibe: the reference engine's patterns and build graph, written in VibeLang",
+            "text": "73. Experimental.Patterns and PACKAGE.vibe",
             "link": "/vips/0073-std-patterns"
+          }
+        ]
+      },
+      {
+        "text": "Denied",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "8. Special syntax for Effect resources (using, a scoped keyword)",
+            "link": "/vips/0008-using-denied"
+          },
+          {
+            "text": "10. The Users.find(id) shorthand",
+            "link": "/vips/0010-service-call-shorthand-denied"
+          },
+          {
+            "text": "11. Trailing blocks",
+            "link": "/vips/0011-trailing-blocks-denied"
+          },
+          {
+            "text": "24. wire, automatic layer composition",
+            "link": "/vips/0024-wire-denied"
+          },
+          {
+            "text": "35. Effect handlers (control, handle, resume, abandon)",
+            "link": "/vips/0035-handlers-open"
+          },
+          {
+            "text": "36. The declaration manifest",
+            "link": "/vips/0036-manifest-open"
+          }
+        ]
+      },
+      {
+        "text": "Superseded",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "25. Inline module declarations as a TypeScript escape",
+            "link": "/vips/0025-inline-modules-denied"
+          }
+        ]
+      },
+      {
+        "text": "Open",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "37. Effectify the universe",
+            "link": "/vips/0037-effectify-the-universe-open"
+          },
+          {
+            "text": "53. Renaming VibeLang → **Vibe**",
+            "link": "/vips/0053-rename-smithersscript-open"
+          },
+          {
+            "text": "54. One consistent model for platform-specific code",
+            "link": "/vips/0054-consistent-platform-code-open"
           }
         ]
       }

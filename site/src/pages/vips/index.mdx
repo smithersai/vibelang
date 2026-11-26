@@ -5,7 +5,7 @@ description: "VibeLang improvement proposals (VIPs): each language decision, wit
 
 # VibeLang improvement proposals
 
-Will, VibeLang's owner, decides each VibeLang language decision as a VIP, one at a time. Nothing is part of the language until an accepted VIP or one of its public amendments states it; old VibeLang is only a reference. The most fundamental decisions come first, and the most controversial come next. Each accepted VIP is recorded here with Will's words. Where an accepted VIP or its public amendment disagrees with the specification, the VIP wins until the specification is rewritten to match it. Authorized clarifications are recorded in public amendments to the relevant VIP and its affected chapter, including the applicable pinned references and explicit reconciliation notes. VIPs never contradict each other: a later VIP that changes an earlier one also updates it.
+Will, VibeLang's owner, decides each VibeLang language decision as a VIP, one at a time. Nothing is part of the language until an accepted VIP or one of its public amendments states it; old VibeLang is only a reference. The most fundamental decisions come first, and the most controversial come next. Accepted VIPs record Will’s words when available. Some proposals record acceptance under his standing approval of recommendations. Where an accepted VIP or its public amendment disagrees with the specification, the VIP wins until the specification is rewritten to match it. Authorized clarifications are recorded in public amendments to the relevant VIP and its affected chapter, including the applicable pinned references and explicit reconciliation notes. VIPs never contradict each other: a later VIP that changes an earlier one also updates it.
 
 VibeLang ships no quick fixes or codemods of its own before its first release; they are tech debt, and they may come back after release. TypeScript's own code fixes stay. This rule replaces the earlier rule that every retirement ship a codemod and pass a retirement gate. Will, on the language's principles: “since vibelang hasn't been released yet if we have implemented --fix already thats tech debt. Maybe we do that after we release but it shouldn't be in the principles and it shouldn't be in the language yet.” Asked whether that applies to VibeLang now: “If we added --fix ourselves yes it shoudln't be there maybe we add it later but it's tech debt. If --fix was already in ts obviously it should still be there for ts though”.
 
@@ -44,8 +44,28 @@ VibeLang ships no quick fixes or codemods of its own before its first release; t
 | [39](/vips/0039-vibex) | `.vibex`: VibeLang with JSX | accepted 2026-10-31 |
 | [40](/vips/0040-module-declarations) | `module` declarations: TypeScript inside a `.vibe` file | accepted 2026-11-03 |
 | [41](/vips/0041-throw-expressions) | TC39 throw expressions | accepted 2026-11-02 |
+| [42](/vips/0042-vibelang-in-ts-files-open) | VibeLang in `.ts` files (`// @vibe`) | accepted 2026-11-23 |
 | [43](/vips/0043-theorems) | `theorem` and `spec`, proofs in TypeScript's own syntax | accepted 2026-11-07 |
 | [44](/vips/0044-durable-values) | Durable values | accepted 2026-11-06 |
+| [55](/vips/0055-durable-tasks-workflows) | `task` and `workflow`, durable steps and the plan the compiler derives | accepted 2026-11-23 |
+| [56](/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | accepted 2026-11-23 |
+| [57](/vips/0057-workers-remote) | `schema service` and worker imports | accepted 2026-11-23 |
+| [58](/vips/0058-capabilities) | Capabilities: a permission kernel in the standard library (+ task plan metadata) | accepted 2026-11-23 |
+| [59](/vips/0059-eval-declarations) | Eval declarations: `*.eval.vibe` file kind and `vibelang eval` CLI (no grammar changes) | accepted 2026-11-23 |
+| [60](/vips/0060-std-durable) | `Experimental.Durable`, the durable runtime | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [61](/vips/0061-std-triggers) | `Experimental.Trigger` and `Experimental.WorkQueue` | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [62](/vips/0062-std-model) | `Experimental.Model`: language models and decision models with no SDK | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [63](/vips/0063-std-agent) | `Experimental.Agent`: the agent loop, model-written scripts and coding-agent CLIs | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [64](/vips/0064-std-tools) | `Experimental.Tools`: the standard tools | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [65](/vips/0065-std-mcp) | `Experimental.McpClient`: MCP servers as toolkits | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [66](/vips/0066-std-memory) | `Experimental.Memory`: durable facts, notes, history and recall | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [67](/vips/0067-std-sandbox) | `Experimental.Sandbox`: provisioned machines | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [68](/vips/0068-std-secrets) | `Experimental.Secrets`: secrets a step uses without holding them | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [69](/vips/0069-std-eval) | `Experimental.Eval` and `Experimental.Scorer` | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [70](/vips/0070-std-fuzz) | `Experimental.Fuzz`: fuzzing and deterministic fiber simulation | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [71](/vips/0071-std-test) | `Experimental.Test`: doubles, assertions and conformance | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [72](/vips/0072-std-observe) | `Experimental.Otlp`: logs, metrics and traces over OTLP | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [73](/vips/0073-std-patterns) | `Experimental.Patterns` and `PACKAGE.vibe` | accepted 2026-11-23 (**standard library only — no compiler changes**) |
 
 ## Acceptance
 
@@ -63,7 +83,7 @@ Will's ruling of 2026-11-11 limits the alpha to the core VIPs and reopens the bu
 
 > "we need to dispatch [an] agent to get these experimental mark the VIP as not accepted and as open proposals please."
 
-Each of VIPs 55 to 72 needs Will's own approval to be accepted again. The alpha's supported language is the 33 accepted VIPs numbered 1 to 41. VIPs 43 and 44 stay accepted by Will and are outside the alpha's supported set.
+At that point, each of VIPs 55 to 72 needed Will’s own approval to be accepted again. The acceptance table above records his 2026-11-23 rulings. The alpha's supported language is the 33 accepted VIPs numbered 1 to 41. VIPs 43 and 44 stay accepted by Will and are outside the alpha's supported set.
 
 The specification as a whole is accepted when four independent reviewers each answer LGTM with a grade of A- or better on the same revision. Will's acceptance rule counts A-.
 
@@ -79,6 +99,8 @@ After acceptance, the automated checks keep later specification changes self-con
 | [10](/vips/0010-service-call-shorthand-denied) | The `Users.find(id)` shorthand | denied 2026-10-28 |
 | [11](/vips/0011-trailing-blocks-denied) | Trailing blocks | denied 2026-10-28 |
 | [24](/vips/0024-wire-denied) | `wire`, automatic layer composition | denied 2026-10-28 |
+| [35](/vips/0035-handlers-open) | Effect handlers (`control`, `handle`, `resume`, `abandon`) | denied 2026-11-23 |
+| [36](/vips/0036-manifest-open) | The declaration manifest | denied 2026-11-23 |
 
 ## Superseded
 
@@ -92,35 +114,13 @@ Listed for a future decision; not part of the language.
 
 | VIP | Title | Status |
 | --- | --- | --- |
-| [35](/vips/0035-handlers-open) | Effect handlers (`control`, `handle`, `resume`, `abandon`) | open 2026-10-29 |
-| [36](/vips/0036-manifest-open) | The declaration manifest | open 2026-10-29 |
-| [37](/vips/0037-effectify-the-universe-open) | Effectify the universe | open 2026-10-29 |
-| [42](/vips/0042-vibelang-in-ts-files-open) | VibeLang in `.ts` files | open 2026-11-05 |
-| [53](/vips/0053-rename-smithersscript-open) | Renaming VibeLang | open 2026-11-07 |
-| [54](/vips/0054-consistent-platform-code-open) | One consistent model for platform-specific code | open 2026-11-09 |
-| [55](/vips/0055-durable-tasks-workflows) | `task` and `workflow`, durable steps and the plan the compiler derives | open 2026-11-11, experimental |
-| [56](/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | open 2026-11-11, experimental |
-| [57](/vips/0057-workers-remote) | `schema service` and worker imports | open 2026-11-11, no implementation |
-| [58](/vips/0058-capabilities) | Capabilities: a permission kernel in the standard library | open 2026-11-11, no implementation |
-| [59](/vips/0059-eval-declarations) | Eval declarations: a file kind and a function, no syntax | open 2026-11-11, no implementation |
-| [60](/vips/0060-std-durable) | `Experimental.Durable`, the durable runtime | open 2026-11-11, experimental |
-| [61](/vips/0061-std-triggers) | `Experimental.Trigger` and `Experimental.WorkQueue` | open 2026-11-11, no implementation |
-| [62](/vips/0062-std-model) | `Experimental.Model`: language models and decision models with no SDK | open 2026-11-11, no implementation |
-| [63](/vips/0063-std-agent) | `Experimental.Agent`: the agent loop, model-written scripts and coding-agent CLIs | open 2026-11-11, no implementation |
-| [64](/vips/0064-std-tools) | `Experimental.Tools`: the standard tools | open 2026-11-11, no implementation |
-| [65](/vips/0065-std-mcp) | `Experimental.McpClient`: MCP servers as toolkits | open 2026-11-11, no implementation |
-| [66](/vips/0066-std-memory) | `Experimental.Memory`: durable facts, notes, history and recall | open 2026-11-11, experimental |
-| [67](/vips/0067-std-sandbox) | `Experimental.Sandbox`: provisioned machines | open 2026-11-11, no implementation |
-| [68](/vips/0068-std-secrets) | `Experimental.Secrets`: secrets a step uses without holding them | open 2026-11-11, no implementation |
-| [69](/vips/0069-std-eval) | `Experimental.Eval` and `Experimental.Scorer` | open 2026-11-11, experimental |
-| [70](/vips/0070-std-fuzz) | `Experimental.Fuzz`: fuzzing and deterministic fiber simulation | open 2026-11-11, experimental |
-| [71](/vips/0071-std-test) | `Experimental.Test`: doubles, assertions and conformance | open 2026-11-11, experimental |
-| [72](/vips/0072-std-observe) | `Experimental.Otlp`: logs, metrics and traces over OTLP | open 2026-11-11, no implementation |
-| [73](/vips/0073-std-patterns) | `Experimental.Patterns` and `PACKAGE.vibe`: the reference engine's patterns and build graph, written in VibeLang | open 2026-11-10, experimental |
+| [37](/vips/0037-effectify-the-universe-open) | Effectify the universe | RFP 2026-11-23 (request for proposal; future consideration) |
+| [53](/vips/0053-rename-smithersscript-open) | Renaming VibeLang → **Vibe** | revised 2026-11-23, needs Vibe rename plan |
+| [54](/vips/0054-consistent-platform-code-open) | One consistent model for platform-specific code | RFP 2026-11-23 (request for proposal) |
 | — | From the proposals page (`site/src/pages/proposals.mdx`), each to get its own VIP: [Durable execution](/proposals#durable-execution), [Compile-time evaluation (`comptime`)](/proposals#compile-time-evaluation), [Build-time host selection](/proposals#build-time-host-selection), [Validators derived from types](/proposals#validators-derived-from-types), [Typed asset imports](/proposals#typed-asset-imports), [Custom loaders](/proposals#custom-loaders), [Rust and Zig source imports](/proposals#rust-and-zig-source-imports), [Coding-agent library](/proposals#coding-agent-library), [Typed workers](/proposals#typed-workers), [Shared structs](/proposals#shared-structs), [Declarations in conditionals](/proposals#declarations-in-conditionals), [Toolchain commands](/proposals#toolchain-commands), [Bundler plugins](/proposals#bundler-plugins), [Mandatory compiler options](/proposals#mandatory-compiler-options), [TC39 adopt-early list](/proposals#tc39-adopt-early-list) | open 2026-10-29 |
 
 ## The built-in set
 
-VIPs 55 to 72 were accepted on 2026-11-09 under Will's standing approval of that date, which the 2026-11-11 acceptance ruling supersedes. On 2026-11-11 Will limited the alpha to the core VIPs, and all 18 became open proposals, listed under [Open](#open): none is part of the language. What is already built from them stays in the release as experimental only. Each VIP's Status line says whether an experimental implementation exists, names it, and says how to opt in.
+VIPs 55 to 72 were accepted on 2026-11-09 under Will's standing approval of that date, which the 2026-11-11 acceptance ruling supersedes. On 2026-11-11 Will limited the alpha to the core VIPs and reopened all 18 proposals. He accepted them on 2026-11-23, as recorded in the acceptance table above. Each VIP’s status line records the implementation and its availability.
 
 The [built-in set index](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set-index.md) and [comparative review and adopted decisions](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md) accompany VIPs 55–72. Each records the maintainers' decisions separately from Will's words.

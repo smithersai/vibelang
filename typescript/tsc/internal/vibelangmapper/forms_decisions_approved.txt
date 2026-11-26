@@ -2697,3 +2697,4 @@ typescript/vibelang/cases/vibelang-hatches/main.vibe:63:3 lambda: plain table ->
 typescript/vibelang/cases/vibelang-hatches/main.vibe:63:3 lambda: plain table -> program keyword # #663: The effect block constructs a program at this site.
 typescript/vibelang/cases/vibelang-runtime-name/main.vibe:17:10 lambda: program table -> effectFn table # #663: The migrated catch uses the handler form from the pinned Effect signature.
 typescript/vibelang/cases/vibelang-runtime-name/main.vibe:17:26 lambda: effectFn keyword -> effectFn table # #663: The migrated catch uses the handler form from the pinned Effect signature.
+examples/approval/src/main.vibe:3:36 lambda: effectFn keyword -> plain fallback # #473: task Deploy.idempotencyKey is a plain arrow replacing the earlier effect function at line 3.

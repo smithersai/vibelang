@@ -224,22 +224,7 @@ Older `service class` and `static readonly default` forms are retired; see [Migr
 
 ## Rules
 
-A concise reference of compiler checks on `service` declarations (see [Chapter 5 of the Specification](/spec/005-services) for the full formal rules):
-
-| Rule | Diagnostic | Fix |
-| --- | --- | --- |
-| Body required (even empty `{}` for whole-shape services) | `EK0906` | Add `{}`. |
-| No implementations, initializers, accessors, `effect` modifiers, call/construct/index signatures, or extra `static` members | `EK0902` | Keep only member signatures, `static readonly key`, and `static readonly defaultValue`. |
-| `static readonly key` must be a plain string literal | `EK0901` | Write `static readonly key = "app/Name"`. |
-| Local/block services or services outside a named package need an explicit key | `EK0903` | Add `static readonly key = "..."`. |
-| No `extends` or `implements` on a `service` | `EK0904` | Compose shapes with TypeScript types instead. |
-| No `export default service` | `EK0905` | Declare `service S { ... }`, then `export { S as default }`. |
-| No `declare service` in ambient contexts | `EK0907` | Use a native ambient `Context.Service` declaration. |
-| Separate multiple members on one line with `;` or `,` | `EK0908` | Insert `;` between members. |
-| No type parameters or captured enclosing type parameters | `EK3005` | Use concrete member types or method-level generics. |
-| Never construct (`new S()`), subclass (`extends S`), or test (`x instanceof S`) a service key | `EK3003`, `EK3002`, `EK3004` | Read the implementation with `try S` instead. |
-| Excess member on implementation or undeclared call-time requirement | `EK9201`, `EK3101` | Match `S.Shape` exactly and capture dependencies in the layer factory. |
-| `defaultValue` initializer runs in plain class-field context | `EK0501` | Compute effectful inputs beforehand and close over them in `() => shape`. |
+See [Services in the specification](/spec/005-services) for service declaration rules and diagnostics.
 
 ---
 

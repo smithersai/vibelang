@@ -44,7 +44,7 @@ Every type at a durable boundary must have a schema form under [VIP-15](/vips/00
 
 This amends VIP-15. Each row is written from the TypeScript type, as VIP-15's mapping is.
 
-| Type | Schema | JSON form | Today |
+| Type | Schema | JSON form | Before this VIP |
 | --- | --- | --- | --- |
 | `bigint` | `Schema.BigInt` | `"12345"` | Maps |
 | `undefined` | `Schema.Undefined` | `null` | Maps |
@@ -234,13 +234,13 @@ Run on `effect` 4.1.1 and `vibelang` 0.0.11:
 - Hashing through `Schema.toCodecJson` and `Canonical` gives equal `Set`s and `Map`s different hashes in 10 shapes, including a `Set` inside a struct, an array, a `Map` and a `Schema.Class`. With `sortCollections`, all 10 give one hash.
 - Records with different key order already hash the same, because `Canonical` sorts keys.
 - Arrays with different order keep different hashes, and a decoded snapshot iterates in sorted order.
-- Every Schema in the table type-checks as a named constant in a `schema` field. `Date`, `URL` and `Set<string>` are `EK2109` when written as field types.
+- Every Schema in the table type-checks as a named constant in a `schema` field. Before implementation, `Date` and `URL` reported `EK2109`. Mutable `Set<string>` still reports it.
 
 - All six serializers round-trip Rpc `Exit` frames, and four of them fail on a bare record.
 - A registry keyed by `contentType` misread real records in both colliding pairs.
 - On a real SQLite journal, a JSON process died, a binary process replayed its entry and wrote a binary one, and a JSON process then read both.
 
-Not verified: `sortCollections` exists only as a prototype, and no compiler change has been made.
+At the time of the original evidence, collection sorting had only been tested in the prototype. See the status clarification for the current implementation.
 
 ## Open questions
 

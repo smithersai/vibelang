@@ -11,14 +11,7 @@ VibeLang accesses files, paths, child processes, HTTP, crypto, and terminals thr
 
 ## Host boundaries (`EK4402`)
 
-`.vibe` files keep host I/O out of scope and report `EK4402` on:
-- Value imports of `node:*` modules or legacy/internal Node builtins (such as `_http_client` or `_tls_wrap`).
-- Host globals (`process`, `window`, `document`, `fetch`, `performance`, `crypto`, `Buffer`) anywhere in a `.vibe` file—including plain/async functions, nested callbacks, and `Effect.try` / `tryPromise` / `sync` / `callback` bodies.
-- Host-reaching methods on pure web constructors: `AbortSignal.timeout`, `URL.createObjectURL`, and `URL.revokeObjectURL` (pure `AbortSignal` and `URL` remain allowed).
-
-Erased type queries (`typeof`), local shadowed bindings, and `import.meta` (checked against your `ImportMeta` declarations, such as `vite/client` or `@types/node`) remain allowed.
-
-When no Effect or experimental service covers a host API, put the host call in a sibling `.ts` module (either as an Effect-returning factory, or as a small `.ts` helper called inside `Effect.try` / `tryPromise`).
+Use Effect services for host APIs in `.vibe` code. For example, use `FileSystem` for files and `HttpClient` for requests. Direct host access such as `fetch` or a `node:fs` value import reports `EK4402`. If no service covers an API, put the host call in a TypeScript module and call it through `Effect.try` or `Effect.tryPromise`. See [Platform globals](/platform/platform-globals) for replacements and [the specification](/spec/005-services#the-platform-standard-library) for the full rules.
 
 ## Using platform services
 

@@ -25,7 +25,7 @@ Editor formatting uses the formatter shipped with the installed `vibelang` packa
 
 ### Installing a preview tarball
 
-With the matching `vibelang@0.0.13` compiler available in your registry, pack
+With the matching `vibelang@0.0.14` compiler available in your registry, pack
 this directory with `npm pack`. From the consuming project, use the absolute
 tarball path as the value of the project's TypeScript dev dependency.
 

@@ -424,19 +424,7 @@ effect function decodeStoreError() {
 true
 ```
 
-## Declaration rules at a glance
-
-| Rule | Diagnostic | Fix |
-| --- | --- | --- |
-| No `extends` clause or `_tag` member on `error` / `schema error` | `EK2117` | Group errors with a union type (`type FileError = A \| B`), or use a plain `Data.TaggedError` class for custom inheritance. |
-| No custom `constructor` in `error` / `schema error` | `EK1301` | Use a factory function or plain `Data.TaggedError` class. |
-| No `type parameters` on `error` / `schema error` | `EK1303` | Use concrete fields or a TypeScript class. |
-| No `export default error E` | `EK1305` | Declare `error E`, then `export { E as default }`. |
-| No `declare error E` in ambient contexts | `EK1307` | Write a native ambient `declare class` instead. |
-
-User-written `static` members are forbidden in `error` and `schema error` bodies (`EK1302`; `EK1302` takes precedence over `EK1304` on rejected static elements). When migrating a class that needs static helpers, move them into a companion namespace or standalone export, or keep an explicit `TaggedError` class (the migration imports `TaggedError` from `vibelang-runtime`).
-
-For full specification rules on error declarations and `@throws` propagation, see [Failures in the Specification](/spec/003-failures) and the [Diagnostic code map](/vibelang-features/diagnostic-code-map).
+See [Failures in the specification](/spec/003-failures) for declaration rules, or use the [diagnostic code map](/vibelang-features/diagnostic-code-map) to look up a compiler error.
 
 ## Coming from Effect
 

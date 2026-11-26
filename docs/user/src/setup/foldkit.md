@@ -9,8 +9,8 @@ The complete app (counter, todo list, HTTP command) lives in [`examples/foldkit-
 ```sh
 mkdir my-app && cd my-app
 bun init -y
-bun add effect@4.1.1 @effect/platform-browser@4.1.1 foldkit@0.169.0 vibelang-runtime@0.0.13
-bun add -d vibelang@0.0.13 vibelang-vite@0.0.13 vite@8.3.4 vitest@5.1.0 happy-dom@20.14.6
+bun add effect@4.1.1 @effect/platform-browser@4.1.1 foldkit@0.169.0 vibelang-runtime@0.0.14
+bun add -d vibelang@0.0.14 vibelang-vite@0.0.14 vite@8.3.4 vitest@5.1.0 happy-dom@20.14.6
 ```
 
 `bun install` warns `incorrect peer dependency "effect@4.1.1"` because Foldkit 0.169.0 pins `effect` and `@effect/platform-browser` to 4.0.0; the example's tests and build pass on 4.1.1.

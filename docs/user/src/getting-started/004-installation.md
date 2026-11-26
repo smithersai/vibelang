@@ -18,7 +18,7 @@ cd my-app
 bun run start
 ```
 
-The native `vibelang` compiler compiles `.vibe` sources to JavaScript. Version 0.0.13 installs from npm.
+The native `vibelang` compiler compiles `.vibe` sources to JavaScript. Version 0.0.14 installs from npm.
 
 > **For agents.** Give a coding agent:
 >
@@ -34,7 +34,7 @@ Install Node 22.22.3 (22.x) or Node 24.11.1 or later. Bun is optional. If you us
 
 `vibelang` installs one platform binary via optional dependencies — keep optional dependencies enabled (avoid `--omit=optional`):
 
-| Platform | Package | Rehearsed for 0.0.13 |
+| Platform | Package | Rehearsed for 0.0.14 |
 | --- | --- | --- |
 | macOS on Apple silicon | `vibelang-darwin-arm64` | No |
 | macOS on Intel | `vibelang-darwin-x64` | No |
@@ -43,7 +43,7 @@ Install Node 22.22.3 (22.x) or Node 24.11.1 or later. Bun is optional. If you us
 | Windows on x64 | `@smthrs/cli-win32-x64` | No |
 | Windows on arm64 | `@smthrs/cli-win32-arm64` | No |
 
-Version 0.0.13 publishes six native packages; the release rehearsal creates, starts, and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built and not yet rehearsed on target hardware.
+Version 0.0.14 publishes six native packages; the release rehearsal creates, starts, and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built and not yet rehearsed on target hardware.
 
 ## Create a project
 
@@ -90,8 +90,8 @@ With Bun, if the root `package.json` uses only `resolutions`, add the pin there 
 Then install the pinned packages (for pnpm and Yarn, see [existing project](../setup/existing-project.md#2-install-the-packages)):
 
 ```sh
-bun add --exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
-bun add -d --exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
+bun add --exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
+bun add -d --exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 With npm, use `npm install --save-exact` and `npm install --save-dev --save-exact`.

@@ -5,7 +5,7 @@ description: "VIP-62: Experimental.Model: language models and decision models wi
 
 # VIP-62: `Experimental.Model`: language models and decision models with no SDK
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](/vips/#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. No implementation exists.
+**Status:** accepted by Will, 2026-11-23 — **standard library only (no compiler or language changes)**. Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". Implemented in the runtime as `Experimental.Model`.
 
 ## Will's words
 > Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
@@ -102,6 +102,10 @@ Only `Experimental.Model` is new in both examples.
 11. **A browser holds no key.** It provides `Model.proxied({ url })`, and a server mounts `Model.proxy`.
 12. **The permission is `model:call`.** Under [capabilities](/vips/0058-capabilities), a model request needs it.
 
+### Replay in the runtime
+
+A model call, stream or decision made inside a durable task gets its own journal entry. Its key uses the task's replay identity and retry attempt, the request digest and the occurrence within the enclosing named race. Equal prompts in separate races or task attempts can produce different answers. Recovery reuses each call's own recorded answer.
+
 ### What must be built
 
 - **Seat resolution and bundling.** A table from provider name to Effect's package, shipped with `vibelang-runtime` at the pinned Effect version ([VIP-32](/vips/0032-effect-version)).
@@ -114,7 +118,7 @@ Only `Experimental.Model` is new in both examples.
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - A decision model answers typed questions about one input in one call: [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 - Only `Experimental.Model` is new in both examples. [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).

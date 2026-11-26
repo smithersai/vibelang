@@ -62,7 +62,7 @@ Choose the form that fits your workload:
 All of these preserve input order in their results, regardless of which fiber finishes first.
 
 > **Watch out: `for concurrent` bounds execution, not iterator pulling.**
-> For parallel concurrency (`> 1` or unbounded), Effect materializes a non-array iterable first (an existing array is reused by reference without calling a custom iterator). Never pass an infinite generator to `for concurrent` — use a `Stream` with `for try` for pull-based incremental consumption ([runtime witness](/spec/008-runtime#iterable-lifecycle)).
+> For parallel concurrency (`> 1` or unbounded), Effect collects a non-array iterable before starting parallel work. Use a `Stream` with `for try` for incremental consumption ([runtime witness](/spec/008-runtime#iterable-lifecycle)).
 
 ## Interrupting work and running cleanup
 

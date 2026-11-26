@@ -91,9 +91,9 @@ provide(x)                         a call to provide: no "{" on the same line
 
 ### Contextual keywords
 
-<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four, written once as the production [DeclarationStart](/spec/900-appendices#declarationstart) and its five start productions under [Productions](/spec/900-appendices#productions).
+<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. [DeclarationStart](/spec/900-appendices#declarationstart) has seven alternatives. The experimental `task` and `workflow` starts also require a same-line binding name, with the extra lookahead restriction shown below.
 
-Where a TypeScript declaration can start (a `StatementListItem`, or after `export`), a `DeclarationStart` begins that declaration, longest alternative first. Anything else is ordinary TypeScript, where the word is an identifier: `const error = …`, `catch (error)`, `const e = error as Error`, `return data as User[]`, `const ok = schema satisfies Schema.Top` and `error instanceof NotFound;` (a reserved word is not a `BindingIdentifier`). After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration: a body's `{` and a `schema` alias's `=` may follow line breaks. The one production-specific rule is the bodyless `error` and `schema error` form, under [ErrorDeclaration](/spec/900-appendices#errordeclaration). No other line-break or disambiguation rule applies to these four words. For diagnostic recovery, a recognized service header missing its body is `EK0906`, an ordinary schema header missing its required body or admitted alias form is `EK1503`, and a data header missing its variant body is `EK1604`. A custom `service` in a native TypeScript ambient source context is `EK0907`, before the same missing-body recovery. Ambientness may be explicit or inherited through nested `declare namespace`, ambient external `declare module`, `declare global` or native declaration-file contexts where the source syntax otherwise occurs; neither `export` nor a complete body, key or default creates an ambient-service form. Ordinary native ambient declarations and generated `.d.ts` output keep their native rules. Recovery does not admit another declaration form or change contextual keyword classification, native TypeScript ambient declarations, independent type-parameter/member checks, or the admitted bodyless error forms.
+Where a TypeScript declaration can start (a `StatementListItem`, or after `export`), a `DeclarationStart` begins that declaration, longest alternative first. Anything else is ordinary TypeScript, where the word is an identifier: `const error = …`, `catch (error)`, `const e = error as Error`, `return data as User[]`, `const ok = schema satisfies Schema.Top` and `error instanceof NotFound;` (a reserved word is not a `BindingIdentifier`). After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration: a body's `{` and a `schema` alias's `=` may follow line breaks. The one production-specific rule is the bodyless `error` and `schema error` form, under [ErrorDeclaration](/spec/900-appendices#errordeclaration). For `task` and `workflow`, `as`, `satisfies` and `is` after the keyword keep their expression meaning. For diagnostic recovery, a recognized service header missing its body is `EK0906`, an ordinary schema header missing its required body or admitted alias form is `EK1503`, and a data header missing its variant body is `EK1604`. A custom `service` in a native TypeScript ambient source context is `EK0907`, before the same missing-body recovery. Ambientness may be explicit or inherited through nested `declare namespace`, ambient external `declare module`, `declare global` or native declaration-file contexts where the source syntax otherwise occurs; neither `export` nor a complete body, key or default creates an ambient-service form. Ordinary native ambient declarations and generated `.d.ts` output keep their native rules. Recovery does not admit another declaration form or change contextual keyword classification, native TypeScript ambient declarations, independent type-parameter/member checks, or the admitted bodyless error forms.
 
 ```text
 service Users                 one service: the body follows the name, as a class body does
@@ -114,11 +114,23 @@ error                         an expression statement: no name on the line
 Timeout                       then another
 ```
 
+The durable declaration lookahead leaves these expression forms available at a statement start:
+
+```vibe [VibeLang]
+const task = 1
+const workflow = 2
+type Job = number
+task as Job;
+workflow satisfies Job;
+task is 1;
+```
+
 **Other contextual keywords.** Each word below is a keyword only before the tokens listed, on the same line, and an ordinary identifier everywhere else. Each is tested wherever its production can appear.
 
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
 | `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](/spec/900-appendices#effectaccessor)), as TypeScript parses `async get x()`; on an `interface` or type literal member: a member name or `[`, where TypeScript parses an `async` modifier and reports TS1070 or TS1071, so that `EK0108` reports it; at a statement start, a name other than `as`, `satisfies` or `is`, then `(` or `<` ([EffectShorthand](/spec/900-appendices#effectshorthand)); `{` in an expression position only, so in a heritage clause (`class C extends effect { }`, `class C implements effect { }`, `interface I extends A, effect { }`) `effect` is an identifier and `{` starts the body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so `EK0105` reports them | [Functions](/spec/001-functions) |
+| `task`, `workflow` | at a declaration start, a same-line binding identifier other than `as`, `satisfies` or `is` | [Services](/spec/005-services#task-and-workflow-declarations) |
 | `concurrent` | after `for` (line break allowed), then `(` | [Running Effects](/spec/002-running#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](/spec/002-running#interruption-blocks) |
 | `provide` | at a statement start when a valid [ProvideStatement](/spec/900-appendices#providestatement) head parses, or bounded recovery relaxes only line breaks immediately before/after top-level provider commas; the ordinary provider grammar, no break after `provide` and same-line final `{` still apply; otherwise an identifier | [Services](/spec/005-services#provide-blocks) |
@@ -135,13 +147,19 @@ Each declaration production starts with its own start production (`ServiceDeclar
 #### DeclarationStart
 
 ```text
-DeclarationStart = ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart | TaskStart | WorkflowStart
+DeclarationStart = SchemaServiceStart | ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart | TaskStart | WorkflowStart
 ```
 
 #### ServiceStart
 
 ```text
 ServiceStart     = "service" [no LineTerminator here] BindingIdentifier
+```
+
+#### SchemaServiceStart
+
+```text
+SchemaServiceStart = "schema" [no LineTerminator here] "service" [no LineTerminator here] BindingIdentifier
 ```
 
 #### ErrorStart
@@ -211,7 +229,7 @@ EffectMethod = EffectClassMethod | EffectObjectMethod
 #### EffectClassMethod
 
 ```text
-EffectClassMethod = DecoratorList? Modifiers? EffectModifier [no LineTerminator here] ClassElementName TypeParameters? Params ReturnType? (Block | ";")   (TypeScript class methods and overload signatures, including semicolon insertion)
+EffectClassMethod = DecoratorList? Modifiers? EffectModifier [no LineTerminator here] ClassElementName "?"? TypeParameters? Params ReturnType? (Block | ";")   (TypeScript class methods and overload signatures, including semicolon insertion)
 ```
 
 #### EffectObjectMethod
@@ -307,7 +325,7 @@ ArrowParams = "(" FormalParameters ")"   (TypeScript's parenthesized async-arrow
 #### Modifiers
 
 ```text
-Modifiers = the class-member modifiers TypeScript allows before async (static, public, private, protected, override)
+Modifiers = the class-member modifiers TypeScript allows before async (static, public, private, protected, override), plus abstract for EK0108 recovery
 ```
 
 #### PipeExpression
@@ -640,13 +658,13 @@ The durable declarations below, from TaskStart to OptionMember, are experimental
 #### TaskStart
 
 ```text
-TaskStart        = "task"     [no LineTerminator here] BindingIdentifier
+TaskStart        = "task"     [no LineTerminator here] [lookahead ∉ { as, satisfies, is }] BindingIdentifier
 ```
 
 #### WorkflowStart
 
 ```text
-WorkflowStart    = "workflow" [no LineTerminator here] BindingIdentifier
+WorkflowStart    = "workflow" [no LineTerminator here] [lookahead ∉ { as, satisfies, is }] BindingIdentifier
 ```
 
 #### TaskDeclaration
@@ -677,6 +695,14 @@ OptionMember  = "static" "readonly" PropertyName Initializer   (one option, pass
 ServiceDeclaration = ServiceStart TypeParameters? ClassHeritage? "{" (ServiceMember Separator)* "}"   (a member that ends in a Block needs no Separator, as a class method)
                    | ServiceStart TypeParameters? ":" Type "{" (ServiceMember Separator)* "}"   (only KeyMember and DefaultMember are admitted; other members parse for EK0902)
 ```
+
+#### SchemaServiceDeclaration
+
+```text
+SchemaServiceDeclaration = SchemaServiceStart "{" ((MethodSignature | KeyMember) Separator)* "}"
+```
+
+The [schema service rules](/vips/0057-workers-remote#schema-service) restrict method parameters and return channels and define the generated RPC group.
 
 <a id="servicemember"></a>
 
@@ -761,8 +787,20 @@ Two members or fields with no `Separator` between them are a VibeLang syntax err
 #### SchemaDeclaration
 
 ```text
-SchemaDeclaration = SchemaStart "{" Field* "}"
+SchemaDeclaration = SchemaStart TypeParameters? "{" SchemaMember* "}"
                   | SchemaStart "=" Type
+```
+
+#### SchemaMember
+
+```text
+SchemaMember = Field | RejectedSchemaMember
+```
+
+#### RejectedSchemaMember
+
+```text
+RejectedSchemaMember = a TypeScript type member that is not a Field   (parses, then EK1505 rejects it)
 ```
 
 #### DataDeclaration
@@ -774,7 +812,13 @@ DataDeclaration = DataStart TypeParameters? "{" (Variant (Separator Variant)* Se
 #### Variant
 
 ```text
-Variant = IdentifierName ("{" Field* "}")?   (a "{" after the name is its field body, after any line breaks: the LineTerminator alternative of Separator does not apply before "{")
+Variant = IdentifierName ("{" Field* "}" | RejectedVariantPayload)?   (a "{" after the name is its field body, after any line breaks: the LineTerminator alternative of Separator does not apply before "{")
+```
+
+#### RejectedVariantPayload
+
+```text
+RejectedVariantPayload = a parenthesized payload after a variant name   (parses for EK1606 recovery)
 ```
 
 #### MatchExpression
@@ -955,7 +999,7 @@ schema User { role:             one field, role: "admin" | "user"
 
 A variant's `{` may follow a line break, as an error body's may; a line break before `{` is not a separator, so `data D { A` then `{ x: string } }` gives `A` the field `x`. `readonly` is allowed on any field; `error` and `data` fields are readonly either way. `data Empty {}` has no variants; it is an empty `Data.TaggedEnum`.
 
-**Declarations.** `ClassHeritage` is TypeScript's class heritage, `extends` and `implements` clauses. `ServiceDeclaration`, `ErrorDeclaration` and `SchemaErrorDeclaration` are deliberately wider than the language, so `service Repo<T> { }`, `service S extends Base { }`, `error E<T> { }` and `error E { static x = 1 }` reach the coded static rules of [Failures](/spec/003-failures#error-declarations) and [Services](/spec/005-services#static-rules) instead of a generic syntax error. The alternatives don't overlap: a member that parses as a `Field`, `PropertySignature`, `MethodSignature`, `KeyMember` or `DefaultMember` is that member, never a rejected one, so `service S { a: number, b: string }` uses interface separators. `ClassMethod` includes ordinary TypeScript method overloads, getters and setters, with their class modifiers and decorator checks. A getter is accepted and the setter rule rejects a setter; a constructor parses as `RejectedElement` but gets the specific constructor diagnostic before the catch-all row. `EffectMethod` and `ProducerMethod` start with `effect` and a name, which no ordinary `ClassMethod` does (`effect() { }` is a method named `effect`). A `ClassMethod`, `EffectMethod` or `ProducerMethod` in an error body follows TypeScript's class-method checks (`private m()`, `protected`, `override`), as any class can (VIP-13); a `static` one is rejected by the `static` rule. A member gets one diagnostic: the first row of its chapter's table that names it; the `RejectedElement` or `RejectedMember` row applies only when no other row does, and a member that a [Functions](/spec/001-functions) `effect` rule rejects (`effect get`, `effect set`, `effect constructor`) gets the applicable Functions diagnostics, with no extra error-body category diagnostic.
+**Declarations.** `ClassHeritage` is TypeScript's class heritage, `extends` and `implements` clauses. `ServiceDeclaration`, `ErrorDeclaration` and `SchemaErrorDeclaration` are deliberately wider than the language, so `service Repo<T> { }`, `service S extends Base { }`, `error E<T> { }` and `error E { static x = 1 }` reach the coded static rules of [Failures](/spec/003-failures#error-declarations) and [Services](/spec/005-services#static-rules) instead of a generic syntax error. Grammar recovery also admits type parameters on a schema declaration with a field body and non-field members within that body for `EK1502` and `EK1505`, a parenthesized variant payload for `EK1606`, and an `abstract` effect method for `EK0108`. The alternatives don't overlap: a member that parses as a `Field`, `PropertySignature`, `MethodSignature`, `KeyMember` or `DefaultMember` is that member, never a rejected one, so `service S { a: number, b: string }` uses interface separators. `ClassMethod` includes ordinary TypeScript method overloads, getters and setters, with their class modifiers and decorator checks. A getter is accepted and the setter rule rejects a setter; a constructor parses as `RejectedElement` but gets the specific constructor diagnostic before the catch-all row. `EffectMethod` and `ProducerMethod` start with `effect` and a name, which no ordinary `ClassMethod` does (`effect() { }` is a method named `effect`). A `ClassMethod`, `EffectMethod` or `ProducerMethod` in an error body follows TypeScript's class-method checks (`private m()`, `protected`, `override`), as any class can (VIP-13); a `static` one is rejected by the `static` rule. A member gets one diagnostic: the first row of its chapter's table that names it; the `RejectedElement` or `RejectedMember` row applies only when no other row does, and a member that a [Functions](/spec/001-functions) `effect` rule rejects (`effect get`, `effect set`, `effect constructor`) gets the applicable Functions diagnostics, with no extra error-body category diagnostic.
 
 ```text
 error E { id: string }            a Field
@@ -1039,7 +1083,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 \<details>
-\<summary>Parser and lowering hooks (1101 records)\</summary>
+\<summary>Parser and lowering hooks (1135 records)\</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1077,11 +1121,11 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang.go:Parser.vibelangCatchChain ` | ` admission:typed-catch ` | ` - ` | ` pending ` | VIP-5 forbids Effect try statements and typed catch clauses |
 | ` parser/vibelang.go:Parser.vibelangClauseBody ` | ` admission:typed-catch ` | ` - ` | ` pending ` | VIP-5 forbids Effect try statements and typed catch clauses |
 | ` parser/vibelang.go:Parser.vibelangClauseBodyOf ` | ` admission:typed-catch ` | ` - ` | ` pending ` | VIP-5 forbids Effect try statements and typed catch clauses |
-| ` parser/vibelang.go:Parser.isStartOfHandleClause ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
-| ` parser/vibelang.go:Parser.parseVibeLangHandleStatement ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
-| ` parser/vibelang.go:Parser.parseHandleClause ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
-| ` parser/vibelang.go:Parser.parseHandleOperation ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
-| ` parser/vibelang.go:Parser.vibelangClauseResumes ` | ` admission:handlers ` | ` - ` | ` pending ` | Open VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.isStartOfHandleClause ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.parseVibeLangHandleStatement ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.parseHandleClause ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.parseHandleOperation ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
+| ` parser/vibelang.go:Parser.vibelangClauseResumes ` | ` admission:handlers ` | ` - ` | ` pending ` | Denied by VIP-35; no admission for handler syntax |
 | ` parser/vibelang.go:Parser.parseSchemaDeclaration ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration ` | ` support ` | VIP-15 schema mapping |
 | ` parser/vibelang.go:Parser.parseSchemaDeclaration@jsdoc-field-type ` | ` admission:schema-jsdoc-field-type ` | ` - ` | ` pending ` | VIP-15 requires an ordinary source `Type` in `Field`; JSDoc type prefixes `?`, `??`, `!` and `*` instead become an unsupported schema type with `EK2109` and lose the native syntax rejection |
 | ` parser/vibelang.go:Parser.vibelangSchemaMember ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration ` | ` support ` | VIP-15 schema mapping |
@@ -1196,15 +1240,19 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_fibers.go:Parser.jumpKeywordRange ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17/19 fork and concurrent-loop helpers; legacy paths below |
 | ` parser/vibelang_fibers.go:isFunctionOrClassBoundary ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17/19 fork and concurrent-loop helpers; legacy paths below |
 | ` parser/vibelang_fibers.go:Parser.isVibeLangConcurrentFor ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19 concurrent loop |
-| ` parser/vibelang_fibers.go:Parser.nextTokenIsOpenParenOnSameLine ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` support ` | VIP-17/19 fork and concurrent-loop helpers; legacy paths below |
 | ` parser/vibelang_fibers.go:Parser.nextTokenStartsConcurrentDeclaration ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19 declaration and assignment head recovery distinguishes the head from a limit; invalid heads receive EK1906 |
 | ` parser/vibelang_fibers.go:Parser.parseVibeLangConcurrentFor ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19 concurrent loop |
 | ` parser/vibelang_concurrent_returns.go:Parser.doConcurrentItemJump ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent `, ` 002-running.md ` | ` recovery ` | VIP-19: forbidden jumps in concurrent item work retain EK1903, EK1904 or EK1905, including in computed names and decorators; admits no syntax |
 | ` parser/vibelang_fibers.go:Parser.rewriteConcurrentJumps ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19 concurrent loop |
 | ` parser/vibelang_match.go:Parser.isStartOfVibeLangMatch ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 900-appendices.md#AsyncMatchExpression ` | ` support ` | Appendix A: MatchExpression, AsyncMatchExpression; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
 | ` parser/vibelang_match.go:Parser.scanStartOfVibeLangMatch ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 900-appendices.md#AsyncMatchExpression ` | ` support ` | Appendix A: MatchExpression, AsyncMatchExpression; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
+| ` parser/vibelang_match.go:Parser.lookAheadToVibeLangMatch ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 900-appendices.md#AsyncMatchExpression ` | ` support ` | Appendix A: MatchExpression, AsyncMatchExpression; keeps the lookahead's verdict for each match word and context, so nested match( forms scan once; introduces no syntax |
+| ` parser/vibelang_match.go:Parser.nextMatchWord ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7: match, when, and, or and not are spelled literally; an escaped spelling reports TS1260; introduces no syntax |
 | ` parser/vibelang_match.go:Parser.isMatchWord ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.parseVibeLangMatch ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 900-appendices.md#AsyncMatchExpression ` | ` support ` | Appendix A: MatchExpression, AsyncMatchExpression; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
+| ` parser/vibelang_match.go:Parser.parseMatchArmBody ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | Appendix A: ArmBody is Expression[+In] or throw Expression; a comma before the next arm stays the EK0701 separator |
+| ` parser/vibelang_match.go:Parser.nextTokenStartsMatchArm ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | Appendix A: tells the comma operator in an ArmBody from a comma written for the arm separator; introduces no syntax |
+| ` parser/vibelang_match.go:Parser.skipToMatchArm ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` recovery ` | VIP-7: after a token that starts no arm, recovery resumes at the next separator or arm so EK0707 reports once |
 | ` parser/vibelang_match.go:Parser.combinatorWord ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.parseMatchPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.parseMatchUnaryPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
@@ -1215,6 +1263,8 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.isMatchMetaProperty ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: a pattern member expression may start with import.meta or new.target |
 | ` parser/vibelang_match.go:Parser.parseMatchMetaProperty ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: parse the MetaProperty that starts a pattern member expression |
 | ` parser/vibelang_match.go:Parser.parseMatchListPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
+| ` parser/vibelang_match.go:Parser.nextTokenEndsPatternKey ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned MatchProperty: let, const and var are property keys when the next token ends a key |
+| ` parser/vibelang_match.go:invalidRest ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned early error: a rest pattern is not a bare member expression (EK0707); introduces no syntax |
 | ` parser/vibelang_match.go:Parser.parseMatchListPattern@pattern-rest-ellipsis ` | ` admission:pattern-rest-ellipsis ` | ` - ` | ` pending ` | VIP-7 pinned `MatchRestElement` admits one ellipsis and an optional `MatchPattern`; a repeated ellipsis with a binding in a `var` loop condition reports only checker errors |
 | ` parser/vibelang_match.go:Parser.parseVibeLangIs@unhomed-pattern-grammar ` | ` admission:unhomed-pattern-grammar ` | ` - ` | ` pending ` | VIP-7 pinned `MatchList` puts its rest element last and a `MatchProperty` colon takes a `MatchPattern`; a binding `is` pattern with no lexical home reports only its placement error, which covers the `EK0707` of a missing pattern or of an element after the rest |
 | ` parser/vibelang_match.go:Parser.parseVibeLangIs@unhomed-pattern-subject ` | ` admission:unhomed-pattern-subject ` | ` - ` | ` pending ` | VIP-7 and VIP-17: a binding `is` pattern with no lexical home discards an outside-Effect `fork` or `join` subject before its context rejection; independent deferred pattern syntax errors retain their diagnostics |
@@ -1371,7 +1421,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_try.go:isVibeLangTry ` | ` admission:try ` | ` 900-appendices.md#TryExpression ` | ` support ` | VIP-5: try (try e) runs both layers; the inner try stays the operand |
 | ` parser/vibelang_try.go:holdsVibeLangTry ` | ` admission:try ` | ` 900-appendices.md#TryExpression ` | ` support ` | VIP-5: try (try (e)) runs both layers; parentheses around the inner try keep it the operand |
 | ` parser/vibelang_try.go:isVibeLangFormCall ` | ` admission:try ` | ` 900-appendices.md#TryExpression ` | ` support ` | VIP-5: try do \{ e \}, try match and try try.race [a, b] run the value the form gives; the form stays the operand |
-| ` parser/vibelang_retired_controls.go:Parser.retiredControlForm ` | ` admission:retired-control-forms ` | ` 000-intro.md ` | ` recovery ` | First-release handler retirement reports `EK3501`/`EK4607`; recovery retains diagnostics and existing lowering, never admission of open VIP-35 forms. |
+| ` parser/vibelang_retired_controls.go:Parser.retiredControlForm ` | ` admission:retired-control-forms ` | ` 000-intro.md ` | ` recovery ` | First-release handler retirement reports `EK3501`/`EK4607`; recovery retains diagnostics and existing lowering, never admission of forms denied by VIP-35. |
 | ` vibelang/catches.go:init ` | ` admission:catch-tests ` | ` 003-failures.md ` | ` support ` | Failure test support; legacy typed catch syntax audited separately |
 | ` vibelang/catches.go:isFailureTest ` | ` admission:catch-tests ` | ` 003-failures.md ` | ` support ` | Failure test support; legacy typed catch syntax audited separately |
 | ` vibelang/catches.go:failureTags ` | ` admission:catch-tests ` | ` 003-failures.md ` | ` support ` | Failure test support; legacy typed catch syntax audited separately |
@@ -1526,6 +1576,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/imports.go:lowering.outputSpecifier ` | ` admission:imports ` | ` 007-tooling.md ` | ` support ` | VIP-34 emitted module specifiers |
 | ` vibelang/imports.go:outputSpecifierText ` | ` admission:imports ` | ` 007-tooling.md ` | ` support ` | VIP-34 emitted module specifiers |
 | ` vibelang/imports.go:outputSpecifierTextWithJSX ` | ` admission:imports ` | ` 007-tooling.md ` | ` support ` | VIP-34 emitted module specifiers |
+| ` vibelang/imports.go:outputSpecifierTextForFormat ` | ` admission:imports ` | ` 007-tooling.md ` | ` support ` | VIP-34 emitted module specifiers |
 | ` vibelang/lower.go:newLowering ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
 | ` vibelang/lower.go:lowering.visit ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
 | ` vibelang/lower.go:lowering.visitSource ` | ` admission:function-lowering ` | ` 001-functions.md ` | ` support ` | Function lowering machinery; legacy implicit conversions below |
@@ -1784,7 +1835,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/wire.go:providedBy ` | ` admission:wire ` | ` - ` | ` pending ` | Legacy lowering has no accepted authority; census does not authorize its removal |
 | ` parser/vibelang_catch.go:Parser.parseVibeLangCatchRest@catch-value ` | ` admission:catch-value ` | ` 900-appendices.md#CatchHandler `, ` 002-running.md ` | ` recovery ` | VIP-5: a value handler is parsed only to report EK0509 (4488a715) |
 | ` parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration@effect-shorthand ` | ` admission:effect-shorthand ` | ` 900-appendices.md#EffectShorthand ` | ` recovery ` | VIP-1: explicitly specified recovery for EK0101; not language admission |
-| ` parser/vibelang.go:Parser.parseServiceDeclaration@control-declaration ` | ` admission:control-declaration ` | ` - ` | ` pending ` | Open VIP-35 does not admit control declarations |
+| ` parser/vibelang.go:Parser.parseServiceDeclaration@control-declaration ` | ` admission:control-declaration ` | ` - ` | ` pending ` | Denied by VIP-35; does not admit control declarations |
 | ` parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-aggregate ` | ` admission:join-aggregate ` | ` - ` | ` pending ` | VIP-17 admits grammar operand but not aggregate Fiber join semantics |
 | ` parser/vibelang_fibers.go:Parser.nextTokenStartsLegacyForkOperand ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` recovery ` | VIP-1/17: outside source Effect context, legacy fork operands are recognized only for their diagnostics and migration |
 | ` parser/vibelang_fibers.go:Parser.legacyForkOwnerHasOperand ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression ` | ` recovery ` | VIP-1/17: outside source Effect context, a named owner with an operand recovers for EK1701; a valid member access keeps its reading |
@@ -1869,9 +1920,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_fiber_context.go:Parser.isReservedFiberName@fiber-type-name ` | ` admission:fiber-type-name ` | ` 900-appendices.md ` | ` support ` | VIP-17: reserve `fork` and `join` at type alias, interface, enum and declaration type-parameter names in the source Effect context |
 | ` parser/vibelang_data.go:Parser.parseDataFields ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration ` | ` support ` | VIP-16 data members; a missing member separator recovers as `EK1605` |
 | ` parser/vibelang_data.go:dataMemberSeparatorDiagnostic ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration ` | ` recovery ` | VIP-16: `EK1605` reports a missing data member separator |
-| ` parser/vibelang_default_data_export.go:Parser.parseVibeLangDefaultDataExport ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration `, ` 900-appendices.md#SchemaDeclaration ` | ` recovery ` | Chapter 006: export default schema and export default data are EK1501 and EK1603; read as named exports only to keep the module boundary |
-| ` parser/vibelang_default_data_export.go:Parser.skipSchemaTypeParameters ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration ` | ` recovery ` | Chapter 006: schema type parameters are EK1502; read only so the declaration causes no second error |
-| ` parser/vibelang_default_data_export.go:Parser.vibelangDeclarationError ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration `, ` 900-appendices.md#SchemaDeclaration ` | ` recovery ` | Reports the Chapter 006 declaration syntax errors EK1501, EK1502 and EK1603 |
 | ` parser/vibelang_match.go:Parser.markUncovered ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 / Chapter 004 Coverage: `and` and `not` arms cover nothing (`EK4701`); flags their tests for the checker |
 | ` parser/vibelang_match.go:bindsBesideOneTest ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 / Chapter 004 Coverage: recognize binding-only operands without granting `and` exhaustive coverage |
 | ` parser/vibelang_match.go:onlyBinds ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 / Chapter 004 Coverage: recognize patterns that only bind and test key presence |
@@ -1889,6 +1937,8 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_do.go:anonymousDoValue ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: identify anonymous source values so a do temporary does not infer a new native name |
 | ` parser/vibelang_do.go:doLowering.finish ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: finish an earlier operand or spread before the following do expression runs |
 | ` parser/vibelang_do.go:doLowering.method ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: preserve a member callee and its receiver before a later do expression |
+| ` parser/vibelang_do.go:Parser.jsxDoNeedsStatements ` | ` admission:do ` | ` 002-running.md ` | ` support ` | VIP-2 and VIP-39: outward completions require statement lowering in JSX attributes |
+| ` parser/vibelang_do.go:doLowering.jsxAttributes ` | ` admission:do ` | ` 002-running.md ` | ` support ` | VIP-39: evaluate the component and preceding attributes before a lifted do |
 | ` parser/vibelang_do.go:doLowering.orderedWith ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: finish do-bearing operands in native source evaluation order |
 | ` parser/vibelang_do.go:doLowering.propertyKey ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: finish a computed property key and its native conversion before later do work |
 | ` parser/vibelang_do.go:doLowering.stringify ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: preserve native template substitution conversion before a later do expression |
@@ -1923,7 +1973,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_fiber_context.go:Parser.nextTokenIsEqualsGreaterThan ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression `, ` 900-appendices.md#JoinExpression ` | ` support ` | VIP-17 (amended): EK1702 rejects fork and join as bindings under [+Effect] |
 | ` parser/vibelang_fiber_context.go:Parser.nextTokenIsColonToken ` | ` admission:fork ` | ` 900-appendices.md#ForkExpression `, ` 900-appendices.md#JoinExpression ` | ` support ` | VIP-17 (amended): EK1702 rejects fork and join as bindings under [+Effect] |
 | ` parser/vibelang.go:Parser.parseSchemaDeclaration@schema-no-body ` | ` admission:schema-no-body ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` recovery ` | A schema header without a field body or alias reports `EK1503`; the saved witness remains a rejection control |
-| ` parser/vibelang.go:Parser.parseVibeLangEffectType@effect-type-line-break ` | ` admission:effect-type-line-break ` | ` - ` | ` pending ` | Appendix A: EffectType has [no LineTerminator here] between its bangs; `number !` then `!` on the next line compiles as `number!!` |
 | ` parser/vibelang_primitives.go:Parser.isStartOfVibeLangMaskBlock@interruption-outside-effect ` | ` admission:interruption-outside-effect ` | ` 900-appendices.md#Uninterruptible `, ` 900-appendices.md#Restore `, ` 900-appendices.md#Interruptible `, ` 002-running.md ` | ` recovery ` | VIP-22/EK2201: recognizes outside-Effect interruption blocks only to reject their placement; no admitted syntax |
 | ` vibelang/frames_lower.go:lowering.bindSuperMethod ` | ` admission:effect-function-support ` | ` 001-functions.md ` | ` support ` | VIP-1 Bindings: preserves the receiver of a super method or tag without reading its own call property; no new syntax |
 | ` parser/vibelang_match.go:Parser.inlineBinding ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: a name bound inside or and not patterns shares one cell |
@@ -1940,7 +1989,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/producers.go:isProducer@fiber-in-generator ` | ` admission:fiber-in-generator ` | ` 900-appendices.md#ForkExpression `, ` 900-appendices.md#JoinExpression ` | ` recovery ` | VIP-17: native plain-generator `fork` and `join` retain syntax rejection; the original operand-type-only witness remains a regression control |
 | ` parser/vibelang.go:Parser.parseServiceDeclaration@service-class ` | ` admission:service-class ` | ` 005-services.md `, ` 900-appendices.md ` | ` recovery ` | VIP-9 has no class token in ServiceStart; EK0909 rejects the retired spelling and retains its preserving migration |
 | ` parser/vibelang.go:Parser.parseVibeLangProvideStatement@provider-expression ` | ` admission:provider-expression ` | ` - ` | ` pending ` | Appendix A: Provider = LeftHandSideExpression "=" AssignmentExpression \| ConditionalExpression; `provide K => 1 { }` has no derivation and reports only old EK3207 |
-| ` parser/vibelang.go:Parser.parseVibeLangEffectType@effect-type-trailing-bang ` | ` admission:effect-type-trailing-bang ` | ` - ` | ` pending ` | VIP-3 and Appendix A: EffectType ends in an operand or the omitted-E `!!`; `type T = A!B!;` compiles with no diagnostic instead of reporting a dangling `!` |
 | ` parser/vibelang_errors.go:Parser.isVibeLangNoSeparator ` | ` admission:error ` | ` 900-appendices.md#ErrorBody `, ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-13/29/9: recover a missing member Separator for EK1306/EK0908; native class parsing stays separate |
 | ` parser/vibelang_errors.go:Parser.parseVibeLangNoSeparator ` | ` admission:error ` | ` 900-appendices.md#ErrorBody `, ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-13/29/9: recover a missing member Separator for EK1306/EK0908; native class parsing stays separate |
 | ` parser/vibelang_effect_channels.go:Parser.checkVibeLangEffectChannels ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | VIP-3 EK0301 syntax validation also under --noCheck; does not admit bare compound slots |
@@ -2088,6 +2136,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.restructureVibeLangDo ` | ` admission:is-binding-tdz ` | ` 004-match.md ` | ` support ` | VIP-7: give `do…while` conditions fresh loop-head binding cells |
 | ` vibelang/is_binding_tdz.go:lowering.resetIsBindingIteration ` | ` admission:is-binding-tdz ` | ` 004-match.md ` | ` support ` | VIP-7: reset `test` and `update` bindings after native environment copying |
 | ` parser/vibelang_fibers.go:Parser.concurrentHeadEnvironment ` | ` admission:for-concurrent ` | ` 002-running.md `, ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19: retain uninitialized RHS head cells and evaluate a written limit before their environment; introduces no additional syntax |
+| ` parser/vibelang_fibers.go:concurrentHeadCallIndex ` | ` admission:for-concurrent ` | ` 002-running.md `, ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19: find the loop call of a RHS head environment after its hoisted is-binding declarations; introduces no additional syntax |
 | ` parser/vibelang_fibers.go:VibeLangConcurrentCall ` | ` admission:for-concurrent ` | ` 002-running.md `, ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19: recognize a source loop through generated head environments without treating ordinary source blocks as loops |
 | ` parser/vibelang_match_cache.go:MatchPropertyCaches ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths |
 | ` parser/vibelang_match_cache.go:Parser.cachePatternRead ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: retain per-evaluation property observations while preserving native TypeScript checking paths |
@@ -2137,6 +2186,8 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.parseMatchPrimaryPattern@pattern-name-object ` | ` admission:pattern-name-object ` | ` - ` | ` pending ` | VIP-7 pinned `MemberExpressionPattern` has a member or extractor call, never a member followed by `ObjectPattern`; the parser consumes the field list after a name and leaves a static error |
 | ` parser/vibelang_match.go:Parser.parseMatchValueExpression@pattern-super-element ` | ` admission:pattern-super-element ` | ` - ` | ` pending ` | VIP-7 pinned `PatternMatchingMemberExpression` starts with `super . IdentifierName`, never bare `super`; the parser also consumes `super[key]` and leaves only ordinary checking errors |
 | ` parser/vibelang_service_type.go:Parser.vibelangServiceConstructorFieldNames ` | ` admission:service ` | ` 900-appendices.md#Member ` | ` support ` | VIP-9: preserve `constructor` member signatures through class formatting |
+| ` parser/vibelang_proofs.go:Parser.scanStartOfTheorem ` | ` admission:theorem ` | ` 900-appendices.md#TheoremDeclaration ` | ` support ` | VIP-43: theorem before identifier on the same line |
+| ` parser/vibelang_proofs.go:Parser.parseTheoremDeclaration ` | ` admission:theorem ` | ` 900-appendices.md#TheoremDeclaration ` | ` admitted ` | VIP-43 theorem declaration |
 | ` parser/vibelang_proofs.go:Parser.scanStartOfSpecFunction ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` support ` | VIP-43: spec before function, async function or effect function on the same line |
 | ` parser/vibelang_proofs.go:Parser.parseSpecFunctionDeclaration ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` admitted ` | VIP-43 spec function; async, effect, generator and overload forms parse for EK4302 |
 | ` parser/vibelang_proofs.go:Parser.joinModifiers ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` support ` | VIP-43: modifiers before and after spec form one list for EK4302 |
@@ -2144,6 +2195,33 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_proofs.go:Parser.parseVibeLangProofBlock ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` admitted ` | VIP-43 proof block; placement is EK4304 |
 | ` parser/vibelang_proofs.go:Parser.markProofStatements ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` support ` | VIP-43 proof statements: syntax decides, in a proof block and its if statements and blocks |
 | ` parser/vibelang_proofs.go:Parser.isProofStatementCall ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` support ` | VIP-43 proof statements: an unparenthesized, unescaped identifier callee without type arguments or optional chaining |
+| ` parser/vibelang_schema_service.go:IsSchemaServiceGroup ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcGroup companion check |
+| ` parser/vibelang_schema_service.go:IsSchemaServiceTransportError ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcClientError recognition |
+| ` parser/vibelang_schema_service.go:Parser.isStartOfVibeLangSchemaService ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service lookahead |
+| ` parser/vibelang_schema_service.go:Parser.parseSchemaServiceDeclaration ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` admitted ` | VIP-57 schema service declaration and RpcGroup companion |
+| ` parser/vibelang_schema_service.go:Parser.vibelangRpc ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service Rpc.make synthesis |
+| ` parser/vibelang_schema_service.go:Parser.vibelangRpcGroup ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcGroup.make class synthesis |
+| ` parser/vibelang_schema_service.go:Parser.vibelangRpcSchema ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service Rpc schema conversion |
+| ` parser/vibelang_schema_service.go:Parser.vibelangServiceHead ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service header span |
+| ` parser/vibelang_schema_service.go:Parser.vibelangTypeCopy ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service written type clone |
+| ` parser/vibelang_schema_service.go:SchemaServiceDeclaresTransportError ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcClientError union check |
+| ` parser/vibelang_schema_service.go:SchemaServiceGroupCall ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service RpcGroup.make call extractor |
+| ` parser/vibelang_schema_service.go:SchemaServiceParameter ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service parameter eligibility check |
+| ` parser/vibelang_schema_service.go:SchemaServiceRequirements ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service return requirement slot reader |
+| ` parser/vibelang_schema_service.go:SchemaServiceReturn ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service Effect/Stream return slot reader |
+| ` parser/vibelang_schema_service.go:vibelangRpcMemberName ` | ` admission:schema-service ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service member name check |
+| ` vibelang/worker_imports.go:checkWorkerImports ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import static checks (EK5702, EK5703) |
+| ` vibelang/worker_imports.go:hasWorkerImport ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import presence check |
+| ` vibelang/worker_imports.go:init ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import hook registration |
+| ` vibelang/worker_imports.go:isSchemaServiceIdentifier ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 schema service identifier recognition for worker exports |
+| ` vibelang/worker_imports.go:isWorkerImport ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 with \{ type: "worker" \} import attribute recognition |
+| ` vibelang/worker_imports.go:lowering.visitWorkerImport ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` admitted ` | VIP-57 worker import lowering to runtime.$worker |
+| ` vibelang/worker_imports.go:servicePlan.planWorkerImport ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import lowering plan |
+| ` vibelang/worker_imports.go:workerBinding ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import default binding check |
+| ` vibelang/worker_imports.go:workerBindings ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import binding cache |
+| ` vibelang/worker_imports.go:workerHandleInterface ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 Experimental.Rpc.WorkerHandle lookup |
+| ` vibelang/worker_imports.go:workerHandleType ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker import handle expression type hook |
+| ` vibelang/worker_imports.go:workerModuleServices ` | ` admission:worker-import ` | ` 900-appendices.md#ServiceDeclaration ` | ` support ` | VIP-57 worker module default Layer service resolution |
 
 \</details>
 
@@ -2177,13 +2255,13 @@ The old `EK9210` is retired and will never be reassigned: the first-release cont
 
 The old `EK0511` is retired and will never be reassigned: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`.
 
-Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). VibeLang's own rules take one hundred-block per VIP, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (VIP-34, amended). Imported lint rules use the growing `EK38` decimal suffix below (VIP-34, amended). A code assigned before that scheme is kept where its rule is unchanged, or only widened or downgraded: `EK0801`, `EK1010`, `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610`, `EK4701` and `EK4802`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; a row starting "suggestion" is an editor suggestion; an interim row starting "off by default" is a disabled warning. Other VibeLang rows are errors; the imported table gives each lint rule’s explicit default. Only a warning's code, or an `EK38xx` code, may appear in `vibe.severities` (VIP-30, amended): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Reused numbers: `EK2001` to `EK2005`, `EK2102` to `EK2104`, `EK3006`, `EK3007` and `EK3201` previously named different rules in the [old language’s diagnostic table](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/428-part4-ch28-tooling.md); in this table they mean only the rows below. The old `EK3008` is retired and will never be reassigned: its static service-key rule uses `EK0901`. VibeLang's own syntax errors have codes too, each in its VIP's block (`EK0509`, `EK1906`, `EK2005`, …). TypeScript's own diagnostics keep their `TS` codes. Diagnostic ownership follows the source rule, not the parser helper: new VibeLang productions, placement rules, adopted proposal early errors and explicit reconciliations use their owning VIP's `EK` code. Imported proposal syntax is not ordinary native TypeScript syntax. Independent errors in native embedded expressions and types keep their native diagnostics. Each Effect language-service rule that VIP-38 imports (`effecttsgo/*`) gets one stable `EK38xx` code, listed in a table generated from the pinned effect-tsgo version; the CLI prints the code and the rule name (`EK3801 floatingEffect: …`), a VIP-32 bump regenerates the table, and a code never changes once assigned. Every `EK38xx` code is a lint code that `vibe.severities` may set to any value, `"off"` included (VIP-38, amended). The [Imported lint codes](/spec/900-appendices#imported-lint-codes) table below is generated from that pin.
+Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). VibeLang's own rules take one hundred-block per VIP, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (VIP-34, amended). Imported lint rules use the growing `EK38` decimal suffix below (VIP-34, amended). A code assigned before that scheme is kept where its rule is unchanged, or only widened or downgraded: `EK0801`, `EK1010`, `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610`, `EK4701` and `EK4802`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; a row starting "suggestion" is an editor suggestion; an interim row starting "off by default" is a disabled warning. Other VibeLang rows are errors; the imported table gives each lint rule’s explicit default. Under VIP-30 as amended, `vibe.severities` accepts configurable VibeLang warnings and assigned imported lint codes. It rejects every interim code in the [transitional table](/spec/900-appendices#transitional-compiler-diagnostics): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Reused numbers: `EK2001` to `EK2005`, `EK2102` to `EK2104`, `EK3006`, `EK3007` and `EK3201` previously named different rules in the [old language’s diagnostic table](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/428-part4-ch28-tooling.md); in this table they mean only the rows below. The old `EK3008` is retired and will never be reassigned: its static service-key rule uses `EK0901`. VibeLang's own syntax errors have codes too, each in its VIP's block (`EK0509`, `EK1906`, `EK2005`, …). TypeScript's own diagnostics keep their `TS` codes. Diagnostic ownership follows the source rule, not the parser helper: new VibeLang productions, placement rules, adopted proposal early errors and explicit reconciliations use their owning VIP's `EK` code. Imported proposal syntax is not ordinary native TypeScript syntax. Independent errors in native embedded expressions and types keep their native diagnostics. Each Effect language-service rule that VIP-38 imports (`effecttsgo/*`) gets one stable `EK38xx` code, listed in a table generated from the pinned effect-tsgo version; the CLI prints the code and the rule name (`EK3801 floatingEffect: …`), a VIP-32 bump regenerates the table, and a code never changes once assigned. Every `EK38xx` code is a lint code that `vibe.severities` may set to any value, `"off"` included (VIP-38, amended). The [Imported lint codes](/spec/900-appendices#imported-lint-codes) table below is generated from that pin.
 
 The rows below that cite VIP-55 belong to the experimental durable declarations of the open proposal [VIP-55](/vips/0055-durable-tasks-workflows); they are not part of the language.
 
 The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed. The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`. The old module-declaration codes are retired by [VIP-40](/vips/0040-module-declarations#diagnostics); its current rules use `EK4001`–`EK4009`.
 
-Accepted [VIP-43](/vips/0043-theorems) numbers the rules in [Appendix F](/spec/900-appendices#details) 4301 to 4319 in its block. The compiler registers `EK4302`, `EK4304` to `EK4307`, `EK4309`, `EK4310`, `EK4314` and `EK4315` to `EK4319`, which have rows below; each other rule becomes a row here when the compiler registers it. Interim `EK4301` keeps its number until a coordinated renumber moves it out of the block, and the compiler registers rule 4301 only after that move.
+Accepted [VIP-43](/vips/0043-theorems) numbers the rules in [Appendix F](/spec/900-appendices#details) 4301 to 4319 in its block. The compiler registers `EK4302` to `EK4311`, `EK4314` and `EK4315` to `EK4319`, which have rows below; each other rule becomes a row here when the compiler registers it. Interim `EK4301` keeps its number until a coordinated renumber moves it out of the block, and the compiler registers rule 4301 only after that move.
 
 The additional retained compiler and migration assignments are `EK1011`, `EK2112`, `EK2113`, `EK2120`, `EK2121`, `EK9001`, `EK9002`, `EK9003` and `EK9004`. Their definitions and existing VIP authorities are listed in the table below.
 
@@ -2308,7 +2386,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK3003` | `new` on a service | 9 | [Services](/spec/005-services#static-rules) |
 | `EK3004` | `instanceof` a service, or a class pattern naming any `service` declaration, with or without `defaultValue` | 7, 9 | [Services](/spec/005-services#static-rules) |
 | `EK3005` | a generic service, or a service whose resolved member contracts capture an outer type parameter | 9 | [Services](/spec/005-services#static-rules) |
-| `EK3006` | an error code, an interim `EK92xx` code (even one printed as a warning) or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](/spec/007-tooling) |
+| `EK3006` | an error code, any interim code in the transitional table (including warnings) or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](/spec/007-tooling) |
 | `EK3007` | an unknown `vibe` key, or a `vibe` value of the wrong type other than a `severities` entry (`EK3006`), including a `severities` value that is not an object | 30 | [Configuration and tooling](/spec/007-tooling#config-files) |
 | `EK3009` | warning: root `vibelang.diagnostics` or `compilerOptions.vibelang.diagnostics` in any supported config or extended config needs migration; supported legacy settings still apply, and modern entries win | 30 | [Legacy severity maps](/spec/007-tooling#legacy-severity-maps) |
 | `EK3010` | warning: retired `trustedPackages` is ignored in `vibe` and supported legacy sections; remove the key and use the ordinary foreign-callable contract | 4, 30 | [Configuration](/spec/007-tooling#config-files) |
@@ -2326,12 +2404,15 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4008` | `export =` or `import x = require()` in a module body Replay example: main.vibe:4:3. | 40 | [Modules](/spec/001-functions#module-declarations) |
 | `EK4009` | `import.meta` in a module body | 40 | [Modules](/spec/001-functions#module-declarations) |
 | `EK4302` | a modifier or overload on a spec function: `export`, `export default`, `declare`, `async`, `effect`, `*`, or an overload signature | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
+| `EK4303` | A theorem parameter without a type annotation, an optional, rest, defaulted, destructured or `this` parameter, or a theorem return type | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
 | `EK4304` | a `proof { }` block outside a checked function, inside another proof context, or as the whole body of an `if`, `else`, loop or labeled statement | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
 | `EK4305` | a statement in a proof block other than a proof statement, a `const`, an `if` or a block, or a `const` that no later statement of its block uses | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
 | `EK4306` | in a proof block, `assume` or `ensures` other than as a direct statement of a function's leading proof block, `decreases` other than as a direct statement of a function's or loop's leading proof block, or `invariant` other than as a direct statement of a loop's leading proof block | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
 | `EK4307` | a second argument to `assert`, or any other reference to `by` in a proof context | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
+| `EK4308` | A call to a procedure, an impure trusted function included, in a verification expression anywhere except the initializer of a `const` that is a direct statement of a theorem body: in a hypothesis, an assertion, a contract, an invariant, a measure, an `if` condition, or a `const` in a proof block or nested in a theorem's `if` or block | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
 | `EK4309` | `ensures` in a function without a written return type, with a `void` or `undefined` return type, or whose argument is not an arrow with one untyped identifier parameter and an expression body | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
 | `EK4310` | a reference to a spec function outside a proof context or a spec function | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
+| `EK4311` | An expression in a verification position outside the verification expression forms, the [number rule](/spec/900-appendices#numbers) included | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
 | `EK4314` | a spec function that is not transparent: a loop, a `let`, an assignment, a proof block with an `assert`, or a call to a procedure | 43 | [Theorems and proofs](/spec/900-appendices#compiler-and-language-server) |
 | `EK4315` | `vibelang prove`: an obligation Dafny could not prove, such as a postcondition, an invariant, termination or an index in range | 43 | [Theorems and proofs](/spec/900-appendices#vibelang-prove) |
 | `EK4316` | `vibelang prove`: `lemmascript` is not installed or is not the pinned 0.6.6, `dafny` does not run from `PATH` or is not the pinned 4.11.0, the proof directory holds a program file or files `vibelang prove` did not write, or a module with a root is outside the selected config's directory | 43 | [Theorems and proofs](/spec/900-appendices#vibelang-prove) |
@@ -2360,12 +2441,17 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK5501` | a `task` or `workflow` body that is not one non-static `effect call` method and `static readonly` members with initializers, or a task `call` without a type on every parameter and a return type | 55 | [Services](/spec/005-services#durable-static-rules) |
 | `EK5502` | a task called outside a workflow's `effect call` | 55 | [Services](/spec/005-services#durable-static-rules) |
 | `EK5503` | two task or workflow declarations of one package with one tag: one written `static readonly key`, or one derived `<package>#<Name>` | 55 | [Services](/spec/005-services#durable-static-rules) |
-| `EK5504` | in a workflow's `effect call`, a `try` whose operand is not a call of a task or a workflow, `W.child(…)`, or `try.all`, `try.race` or `try.any` over such calls | 55 | [Services](/spec/005-services#durable-static-rules) |
+| `EK5504` | in a workflow's `effect call`, a `try` whose operand is not a call of a task or a workflow, `W.child(…)`, a durable wait (`Experimental.Durable.sleep`, `until`, a signal's `wait()`, `Experimental.Human`), or `try.all`, `try.race` or `try.any` over such calls; fiber waits (`sleep`, `timeout`) name `Experimental.Durable.sleep` or `try.race` with it | 55, 56 | [Services](/spec/005-services#durable-static-rules) |
 | `EK5505` | a workflow's `effect call` that reads the clock, randomness, or a module-level `let` or `var` of its file | 55 | [Services](/spec/005-services#durable-static-rules) |
 | `EK5506` | a loop statement, or an assignment, `++` or `--` to a variable, in a workflow's own `effect call` | 55 | [Services](/spec/005-services#durable-static-rules) |
 | `EK5507` | a workflow whose `try W(…)` steps reach the workflow again | 55 | [Services](/spec/005-services#durable-static-rules) |
 | `EK5508` | `W.to(…)`, a workflow's handoff to its next round, anywhere but as a `return` operand | 55 | [Services](/spec/005-services#durable-static-rules) |
 | `EK5509` | warning: a written `retryPolicy` object literal with neither `maxAttempts` nor `expirationMs`, no spread and no computed property name | 55 | [Services](/spec/005-services#durable-static-rules) |
+| `EK5601` | a durable wait (`Experimental.Durable.sleep`, `Experimental.Durable.until`, a signal's `wait()`, or `Experimental.Human.{confirm,ask,select,json}`) called in Effect code outside a workflow body | 56 | [Services](/spec/005-services#durable-static-rules) |
+| `EK5701` | a member of a `schema service` is a property, accessor, overload, generic method, or does not return an `Effect` or `Stream` | 57 | [Services](/spec/005-services#typed-services-across-worker-and-remote-boundaries-vip-57) |
+| `EK5702` | a module imported `with { type: "worker" }` has no default-export `Layer`, or provides a service that is not an exported `schema service` | 57 | [Services](/spec/005-services#typed-services-across-worker-and-remote-boundaries-vip-57) |
+| `EK5703` | a worker import uses named or namespace bindings instead of a default binding | 57 | [Services](/spec/005-services#typed-services-across-worker-and-remote-boundaries-vip-57) |
+| `EK5801` | warning: a task whose body requires `HttpClient` or `ChildProcessSpawner` declares no `static readonly tier`, so it defaults to `"sealed"` | 58 | [Services](/spec/005-services#durable-static-rules) |
 | `EK1011` | compiler dependency error: an Effect construct cannot resolve the installed Effect type; install the pinned peer before compiling. Example: `effect function f() { return 1 }` with no resolvable Effect package | 6, 32, 34 | [Tooling](/spec/007-tooling#the-effect-version) |
 | `EK2112` | warning: a legacy catch clause tests its failure's type; the preserving migration removes the annotation and tests the value with `match` or `is`. Example: `catch (e: NotFound) { recover(e) }` in legacy effect code Replay example: main.vibe:7:15; also EK2105. | 5, 34 | [Running Effects](/spec/002-running#catch) |
 | `EK2113` | warning: a legacy Cause-typed catch clause; migrate to matching `exit(program)` with `Exit.Success` and `Exit.Failure`. Example: `catch (cause: Cause.Cause<E>) { recover(cause) }` in legacy effect code Replay example: main.vibe:13:19. | 5, 34 | [Running Effects](/spec/002-running#catch) |
@@ -2382,7 +2468,7 @@ Trailing blocks are rejected by [VIP-11](/vips/0011-trailing-blocks-denied#amend
 
 The legacy bare prelude `Scope` type and same-named module-export shorthand have no diagnostic while the transitional compiler accepts them. Their [migration](/spec/007-tooling#legacy-prelude-shorthand) writes `Scope.Scope`, `Option.Option<A>` and `FileSystem.FileSystem.of(impl)`. Coordinated removal follows zero remaining migration-repository uses; afterwards the equivalent namespace imports report native `TS2709` for namespace-as-type uses and `TS2339` for absent namespace members. This compatibility allocates no `EK` code.
 
-A transitional compiler may still print compatibility diagnostics from the old language. The following inventory covers the `EK92xx` codes in its registry, separately from the normative rules above: an interim code does not establish a language rule or reserve a new VIP block. Their retirement follows the named VIPs; a compiler renumbering must update this inventory with the registry.
+A transitional compiler may still print compatibility diagnostics from the old language. The following inventory covers interim codes across all number ranges in its registry, separately from the normative rules above: an interim code does not establish a language rule or reserve a new VIP block. Their retirement follows the named VIPs; a compiler renumbering must update this inventory with the registry.
 
 | Emitted code | Rule | Retirement VIP | Replacement |
 | --- | --- | --- | --- |
@@ -2450,7 +2536,7 @@ A transitional compiler may still print compatibility diagnostics from the old l
 | interim `EK4809` | warning: legacy compiler compatibility — every service member requires the same service. The imported leaking-requirements lint has its assigned identity. Replay example: main.vibe:75:9; error. | 9, 38 | [Rule chapter](/spec/007-tooling) |
 | interim `EK4810` | warning: legacy compiler compatibility — an assertion removes part of an Effect's error or requirement channel. Keep the complete checked channel; imported unsafe-assertion lint has its own identity. Replay example: main.vibe:82:10; error. | 38 | [Rule chapter](/spec/007-tooling) |
 | interim `EK4811` | off by default (warning when enabled): legacy compiler compatibility — `any` or `unknown` enters an Effect channel. Legacy optional port of the imported error-context rule; default off. Replay example: main.vibe:87:9; error. | 38 | [Rule chapter](/spec/007-tooling) |
-| interim `EK4814` | warning: legacy compiler compatibility — a `Schema` class overrides its constructor. Decoding invokes the override. Imported schema-constructor lint has its own identity. Replay example: main.vibe:101:3. | 38 | [Rule chapter](/spec/007-tooling) |
+| interim `EK4814` | warning: legacy compiler compatibility — a `Schema` class overrides its constructor. Decoding invokes the override. Move work intended only for explicit construction to a factory function. This interim warning cannot appear in `vibe.severities`. The imported counterpart is `EK3883`. Replay example: main.vibe:101:3. | 38 | [Rule chapter](/spec/007-tooling) |
 | interim `EK4815` | warning: legacy compiler compatibility — an Effect value is thrown as an Effect failure. Throw the intended error value or use `try` to execute the Effect; imported lint has its own identity. Replay example: main.vibe:112:9; error. | 4, 38 | [Rule chapter](/spec/007-tooling) |
 | interim `EK4817` | off by default (warning when enabled): legacy compiler compatibility — `instanceof` tests a `Schema` class rather than schema membership. Use `Schema.is`; the optional legacy port defaults off. Replay example: main.vibe:107:10; error. | 38 | [Rule chapter](/spec/007-tooling) |
 | interim `EK4840` | off by default (warning when enabled): legacy compiler compatibility — an Option pipeline can be converted to legacy extension-method syntax. Keep native Option calls or accepted matching syntax; do not introduce unsupported extension methods. Replay example: main.vibe:5:54; warning. | 6, 34 | [Rule chapter](/spec/007-tooling) |
@@ -2466,13 +2552,14 @@ A transitional compiler may still print compatibility diagnostics from the old l
 | interim `EK9214` | error: a service key is called with arguments in the legacy service lowering. Read the implementation before calling it. EK3007 belongs only to configuration keys and values. Replay example: main.vibe:13:13. | 9, 30 | Compatibility identity examples |
 | interim `EK9005` | error: the stock-TypeScript projection cannot choose a lowering from written types. Its fatal refusal keeps the former mapper behavior; native editor advice retains EK9100. mapper example: form-choice. | 34 | Add the requested annotation or compile with the native compiler. |
 | interim `EK9006` | error: the stock-TypeScript projection cannot prove a data-method receiver or access form. Native editor annotation suggestions retain EK9101. mapper example: data-method. | 34 | Add the requested receiver type or call the module function explicitly. |
+| interim `EK9007` | error: the stock-TypeScript mapper encounters an effect `try` outside effect code. Move it into an effect function or block. | 5 | [Running Effects](/spec/002-running) |
 | interim `EK9100` | warning: the native editor reports a callable that needs an explicit annotation for its inferred lowering. It is absent from ordinary compiler diagnostics. Example: an inferred callable whose projection needs an explicit Effect return type; editor form example. | 34 | Write the annotation explicitly; the fatal projection identity is EK9005. |
 | interim `EK9101` | suggestion: the native editor reports the checker’s receiver type for a data-method access. Example: an inferred receiver at `todos.map()`; editor receiver example. | 34 | Write the receiver annotation explicitly; the fatal projection identity is EK9006. |
 
 For example, `effect function bad(): number!! { throw new Bad() }`, with `error Bad`, fails ordinary Effect return-type checking: its error type is `Bad`, rather than `never`. `effect function run() { return try succeed(1) }` is valid and gives `Success(1)`. Removing the old statement warning never permits skipping an infallible Effect.
 
 
-The compiler also prints `EK0204`, a compiler gap rather than a language rule. Where it still compiles a `do` to a function (a parameter default, a declaration in a for-loop initializer, a `for` loop's test and update, a class member, a `case` test, an optional chain, and the `catch` expressions, `throw` expressions and `fork` it writes as functions), it rejects a `return`, `var`, jump, `await` or `yield` that would leave the `do`. The admitted completions keep the meaning [Running Effects](/spec/002-running#parameter-defaults) gives; ordinary placement and early-error rules still apply. In particular, `function f(x = do { return null }) {}` returns `null` from `f`; the code retires when the compiler lowers those positions.
+The compiler also prints `EK0204`, a compiler gap rather than a language rule. Where it still compiles a `do` to a function (a parameter default, a declaration in a for-loop initializer, a `for` loop's test and update, a class member, a `case` test, an optional chain, and the `catch` expressions, `throw` expressions and `fork` it writes as functions), it rejects a `return`, `var`, jump, `await` or `yield` that would leave the `do`. The admitted completions keep the meaning [Running Effects](/spec/002-running#parameter-defaults) gives; ordinary placement and early-error rules still apply. The compiler moves supported identifier defaults for plain, async and effect callables. For example, `function f(x = do { return null }) {}` returns `null` from `f`, and `effect function f(x = do { return null }) {}` returns an Effect that succeeds with `null`. Native generators and unsupported parameter patterns can still report `EK0204`. The code retires when the compiler lowers those positions.
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
@@ -2664,7 +2751,7 @@ Listed for a future decision; not part of the language.
 
 VIPs 55 to 72, the built-in set, were accepted optimistically on 2026-11-09 and are open again since 2026-11-11; the [VIPs index](/vips/#open) lists them. What is built from them is experimental, and each one's Status line says what exists and how to opt in.
 
-The proposals page lists further ideas, each to get its own VIP: durable execution, compile-time evaluation, build-time host selection, validators derived from types, typed asset imports, custom loaders, Rust and Zig source imports, a coding-agent library, typed workers, shared structs, declarations in conditionals, toolchain commands, bundler plugins, mandatory compiler options and a TC39 adopt-early list.
+Accepted [VIP-55](/vips/0055-durable-tasks-workflows) defines durable tasks and workflows. [VIP-57](/vips/0057-workers-remote) defines typed workers. See the [VIP index](/vips/) for the status of other proposals.
 
 ## Appendix D. Flipping pending examples
 
@@ -2731,7 +2818,7 @@ export declare function decodeUnknownSync<T>(s: Schema.Decoder<T>): {
 
 **Outside the supported alpha.** VIP-43 remains outside the alpha's core supported set.
 
-Source: [VIP-43](/vips/0043-theorems), accepted 2026-11-07. The rules below are part of the language. The compiler implements spec functions and proof blocks, and reports `EK4302`, `EK4304` to `EK4307`, `EK4309`, `EK4310` and `EK4314` for them. `vibelang prove` proves their roots and reports `EK4315` to `EK4319`, but it does not yet run the audit of [Steps](/spec/900-appendices#steps), step 6, or read `vibe.proofDir`: the proof directory is `proofs` in the selected config's directory. It does not implement theorems yet: it reads `theorem` as an identifier, and it does not yet report rules 4301, 4303, 4308 and 4311 to 4313.
+Source: [VIP-43](/vips/0043-theorems), accepted 2026-11-07. The rules below are part of the language. The compiler implements spec functions and proof blocks, and reports `EK4302` to `EK4311` and `EK4314` for them. `vibelang prove` proves their roots and reports `EK4315` to `EK4319`, but it does not yet run the audit of [Steps](/spec/900-appendices#steps), step 6, or read `vibe.proofDir`: the proof directory is `proofs` in the selected config's directory. It does not implement theorems yet: it reads `theorem` as an identifier, and it does not yet report rules 4301, 4303, 4308 and 4311 to 4313.
 
 A theorem states a fact about plain functions for every input in the [model](/spec/900-appendices#the-trust-boundary). `vibelang prove` proves it by lowering the source to [LemmaScript](https://github.com/midspiral/LemmaScript)'s annotated TypeScript and running LemmaScript's `lsc` with the Dafny verifier. All proof syntax erases: compiled JavaScript and declarations are the same as for the program without it.
 
@@ -3322,15 +3409,15 @@ VIP-34 gives VIP-43 the block `EK43xx`, and its rules are numbered from 4301. Ea
 | --- | --- | --- |
 | `4301` | A `theorem` or `spec function` that is not a statement of a module's top level: in a block, a function body, a namespace or a `declare` context | Move it to the module's top level |
 | `EK4302` | A modifier or overload on a theorem or spec function: `export`, `export default`, `declare`, `async`, `effect`, `*`, or an overload signature | Remove it; theorems and spec functions are module-local |
-| `4303` | A theorem parameter without a type annotation, an optional, rest, defaulted, destructured or `this` parameter, or a theorem return type | Give each parameter a plain name and a type |
+| `EK4303` | A theorem parameter without a type annotation, an optional, rest, defaulted, destructured or `this` parameter, or a theorem return type | Give each parameter a plain name and a type |
 | `EK4304` | A `proof { }` block outside a checked function, inside another proof context, or as the whole body of an `if`, `else`, loop or labeled statement | Move the facts into a theorem, into a module-level plain function, or into a braced block |
 | `EK4305` | A statement in a theorem body or proof block outside the allowed forms: `let`, a loop, `return`, `throw`, a nested function, an expression statement other than a proof statement, or `assume` after another statement; a `const` that no later statement uses; a theorem with no `assert` | Use `const`, `if` and proof statements, and state at least one assertion |
 | `EK4306` | A proof statement outside its allowed place: `ensures`, `invariant` or `decreases` in a theorem; in a proof block, `assume` or `ensures` other than as a direct statement of a function's leading proof block, `decreases` other than as a direct statement of a function's or loop's leading proof block, and `invariant` other than as a direct statement of a loop's leading proof block | Move it to the leading proof block of the function or loop it describes |
 | `EK4307` | A second argument to `assert`, or any other reference to `by` in a proof context | Remove it; write proof steps in the proof file |
-| `4308` | A call to a procedure, an impure trusted function included, in a verification expression anywhere except the initializer of a `const` that is a direct statement of a theorem body: in a hypothesis, an assertion, a contract, an invariant, a measure, an `if` condition, or a `const` in a proof block or nested in a theorem's `if` or block | Move the call into a `const` at the theorem body's top level |
+| `EK4308` | A call to a procedure, an impure trusted function included, in a verification expression anywhere except the initializer of a `const` that is a direct statement of a theorem body: in a hypothesis, an assertion, a contract, an invariant, a measure, an `if` condition, or a `const` in a proof block or nested in a theorem's `if` or block | Move the call into a `const` at the theorem body's top level |
 | `EK4309` | `ensures` in a function without a written return type, with a `void` or `undefined` return type, or whose argument is not an arrow with one untyped identifier parameter and an expression body | Write the return type and `ensures((r) => …)` |
 | `EK4310` | A reference to a theorem, in an expression, a type query or an export specifier, or a reference to a spec function outside a proof context or a spec function | Call a plain function, or move the use into a proof |
-| `4311` | An expression in a verification position outside the verification expression forms, the [number rule](/spec/900-appendices#numbers) included | Rewrite it with the listed forms, or move the computation into a spec function |
+| `EK4311` | An expression in a verification position outside the verification expression forms, the [number rule](/spec/900-appendices#numbers) included | Rewrite it with the listed forms, or move the computation into a spec function |
 | `4312` | `==` or `!=` in verified code, or a comparison of a value whose type is not primitive: an operand of `===` or `!==`, an array element type for `includes`, `indexOf` or `lastIndexOf`, a `Set` element type or a `Map` key type | Compare primitive values, or write a spec function that compares the parts |
 | `4313` | Verified code outside VibeLang's layer of the verified subset: a VibeLang form, a class or `new`, mutation, a numeric form outside the number rule, a cast, `null`, a call of a non-callable target, an excluded reached type such as a function type, a reached variable other than a primitive `.vibe` constant, or a mutable collection type in a trusted function's signature | Keep reached code to plain TypeScript in the subset, write `with` or a spread instead of mutating, or make the callee trusted |
 | `EK4314` | A spec function that is not transparent: a loop, a `let`, an assignment, an `assert`, or a call to a procedure | Write it with expressions and recursion |

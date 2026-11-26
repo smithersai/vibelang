@@ -5,7 +5,7 @@ description: "VIP-58: Capabilities: a permission kernel in the standard library.
 
 # VIP-58: Capabilities: a permission kernel in the standard library
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](/vips/#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. No implementation exists.
+**Status:** accepted by Will, 2026-11-23 (standard library + task plan metadata; no grammar changes) and implemented. Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". The runtime exports `Experimental.Capability` (policy evaluator, grant stores, and platform service guards), `W.plan` / `Experimental.Durable.plan` exposes each reached task's declared `tier` and `capabilities`, task/workflow `capabilities` ceilings are enforced monotonically across layers, and `EK5801` warns when a task requiring `HttpClient` or `ChildProcessSpawner` omits `tier`.
 
 ## Will's words
 
@@ -92,11 +92,11 @@ Only an irreversible step needs an idempotency key to retry. Containment is lexi
 
 ### Host needs
 
-Pure evaluation runs everywhere. Enforcement needs the platform services it decorates, and directory handles for file confinement, which Node and Bun have. A host that cannot confine a path refuses the operation; it does not fall back to a lexical check.
+Pure evaluation runs everywhere. The runtime guard checks resolved file paths and HTTP redirect targets through the platform services it decorates. It operates on the resolved path, so confinement against concurrent filesystem changes still requires directory handles pinned by the host. Private-network enforcement also requires host-side address checks because the guard evaluates request URLs before DNS resolution.
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - The read succeeds. [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 - The write fails: no rule allows `fs:write`. [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).

@@ -33,7 +33,7 @@ cursor --install-extension node_modules/vibelang/editor/vibelang.vsix
 Other editors (including JetBrains via LSP4IJ) run `vibelang --lsp --stdio` for `*.vibe` and `*.ts` rooted at `vibe.config.json`, `tsconfig.json`, or `jsconfig.json`; disable the secondary TypeScript server to avoid duplicate diagnostics.
 
 - **Navigation & imports:** Outline, Rename, Find References, Call Hierarchy, and Organize Imports cover `.vibe` constructs (`module` declarations, shorthand pattern bindings, generic `schema` type imports, `for concurrent` completions, and retired `select` blocks that report `EK4607`).
-- **GitHub & built-in lint:** Add `*.vibe linguist-language=TypeScript` to `.gitattributes` (included in the starter). Effect's type-aware `effecttsgo/*` rules are built in ([Lint Effect code](/setup/vibelang-cli#lint-effect-code)).
+- **GitHub & built-in lint:** Add `*.vibe linguist-language=TypeScript` to `.gitattributes` (included in the starter). Effect's type-aware `effecttsgo/*` rules are built in ([Lint Effect code](/setup/vibelang-cli#lint-effect-code)), and `vibelang/oxlint` / `vibelang/eslint` integrate `.vibe` files with Oxlint and ESLint.
 - **Converting `async` functions:** Ordinary `async` functions keep `Promise<T>` in `.vibe`. Two editor refactors convert them to `effect` functions (wrapping each `await` in `Effect.tryPromise`, optionally generating a module-scope `error` per `await`). Conversion is withheld when semantics could change: `return`/`break`/`continue`/`throw` jumping out of an awaited `do` block, self-recursion or `Promise`-requiring contracts/overloads/index signatures, shadowed `Effect` or reserved `fork`/`join` bindings, non-primitive returns that could hide a `then` method, or async generators (write an Effect producer instead).
 
 ## Inspect inferred information
@@ -302,7 +302,7 @@ import { defineConfig } from "vitest/config"
 import vibelang from "vibelang-vite"
 
 export default defineConfig({
-  plugins: [vibelang()],
+  plugins: [vibelang({ project: "tsconfig.test.json" })],
   test: { include: ["src/**/*.test.vibe"] }
 })
 ```

@@ -5,7 +5,7 @@ description: "VIP-64: Experimental.Tools: the standard tools for files, search, 
 
 # VIP-64: `Experimental.Tools`: the standard tools for files, search, HTTP, the web, the shell and language servers
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](/vips/#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. No implementation exists.
+**Status:** accepted by Will, 2026-11-23 — **standard library only (no compiler or language changes)**. Will: "58 I accept. I accept every other language proposal but ones that don't require a change to the language and are purely library functions that don't require compiler changes at all should be marked as such". Implementation in progress (`Experimental.Tools`).
 
 ## Will's words
 
@@ -77,7 +77,7 @@ The reference engine's std package declares each tool as a reference engine flow
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - `Experimental.Tools`, in scope with no import, as [VIP-33](/vips/0033-platform-stdlib) rules. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 - Its code is `vibelang-runtime/experimental/Tools`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).

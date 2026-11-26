@@ -9,8 +9,12 @@ examples/alchemy-stack/src/api.vibe:44:68 lambda program keyword
 examples/alchemy-stack/src/stack.vibe:8:3 lambda program keyword
 examples/approval/src/entry.vibe:5:21 byname program table
 examples/approval/src/entry.vibe:5:36 byname program table
-examples/approval/src/main.vibe:14:24 lambda effectFn keyword
-examples/approval/src/main.vibe:22:5 lambda effectFn keyword
+examples/approval/src/main.vibe:12:10 lambda plain table
+examples/approval/src/main.vibe:12:10 lambda plain table
+examples/approval/src/main.vibe:12:3 lambda effectFn keyword
+examples/approval/src/main.vibe:24:30 lambda plain fallback
+examples/approval/src/main.vibe:3:36 lambda plain fallback
+examples/approval/src/main.vibe:4:3 lambda effectFn keyword
 examples/file-tree/src/entry.vibe:5:21 byname program table
 examples/file-tree/src/entry.vibe:5:36 byname program table
 examples/file-tree/src/main.vibe:29:38 lambda effectFn keyword
@@ -4362,6 +4366,10 @@ typescript/vibelang/cases/ek1005-runners.fail/main.vibe:68:22 lambda effectFn ke
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:69:34 lambda effectFn keyword
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:71:36 lambda plain fallback
 typescript/vibelang/cases/ek1005-runners.fail/main.vibe:72:22 lambda effectFn keyword
+typescript/vibelang/cases/ek1005-sync-boundaries/main.vibe:11:59 byname program table
+typescript/vibelang/cases/ek1005-sync-boundaries/main.vibe:17:51 byname program table
+typescript/vibelang/cases/ek1005-sync-boundaries/main.vibe:18:56 byname program table
+typescript/vibelang/cases/ek1005-sync-boundaries/main.vibe:21:55 byname program table
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:10:27 lambda dual fallback
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:15:28 lambda dual fallback
 typescript/vibelang/cases/ek1010-punctuator-warning/main.vibe:18:15 lambda effectFn table

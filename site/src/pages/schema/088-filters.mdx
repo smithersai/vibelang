@@ -126,7 +126,7 @@ const ShipDate = Schema.Date.check(
 )
 
 function boundedPriceSchema() {
-  const zero = BigDecimal.fromNumberUnsafe(0)
+  const zero = BigDecimal.make(0n, 0)
   return Schema.BigDecimal.check(Schema.isGreaterThanOrEqualToBigDecimal(zero))
 }
 
@@ -137,7 +137,7 @@ const HoldDuration = Schema.Duration.check(
 )
 // Run in an effect function:
 //   try Console.log(Schema.is(ShipDate)(new Date("2026-06-01T00:00:00Z")), Schema.is(ShipDate)(new Date("invalid")))
-//   try Console.log(Schema.is(try sync(() => boundedPriceSchema()))(try sync(() => BigDecimal.fromStringUnsafe("1.25"))))
+//   try Console.log(Schema.is(boundedPriceSchema())(BigDecimal.make(125n, 2)))
 //   try Console.log(Schema.is(HoldDuration)(Duration.seconds(5)), Schema.is(HoldDuration)(Duration.seconds(31)))
 ```
 

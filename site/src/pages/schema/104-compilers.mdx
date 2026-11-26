@@ -161,7 +161,7 @@ effect function receive(input: unknown) {
 }
 ```
 
-Import the generated module before touching its schemas and preserve its side effect in your bundler. AOT emits static functions (no `eval` / `new Function`), but must be regenerated whenever schemas or the Effect version change.
+The application excerpt needs the generated validator module from the preceding build. Import it before touching its schemas and preserve its side effect in your bundler. AOT emits static functions (no `eval` / `new Function`), but must be regenerated whenever schemas or the Effect version change.
 
 ## Low-level compiler APIs
 

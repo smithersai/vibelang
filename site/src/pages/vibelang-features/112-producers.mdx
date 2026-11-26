@@ -68,7 +68,7 @@ effect function firstLargeFile(directory: string) {
   }
   return found
 }
-// Run in an effect function: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, "x".repeat(1001)); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
+// Run in an effect function: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, try Effect.try(() => "x".repeat(1001))); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
 // Output: true
 ```
 

@@ -5,7 +5,7 @@ description: "VIP-56: Durable waits: timers, signals and human answers. A VibeLa
 
 # VIP-56: Durable waits: timers, signals and human answers
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](/vips/#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. An experimental implementation exists in the runtime: `Experimental.Durable.sleep`, signals and `Experimental.Human`. The compiler lowers none of them to plan nodes. It compiles only in a project that opts in with `"vibe": { "experimental": ["builtins"] }` ([VIP-30](/vips/0030-config-files#decision)); without it, the first use in a file is `EK3013`.
+**Status:** accepted by Will, 2026-11-23. Will: "56 I accept". Built 2026-11-23: runtime (`Experimental.Durable.sleep`, `until`, `signal`, `race`, `raceSteps`, `DeadlineExceeded`, declared-workflow targets on `send`/`answer`/`run`/`spawn`/`start`, `Experimental.Human`) and compiler (binding-resolved wait recognition, `EK5504` fiber-wait messages, `EK5601` `wait-outside-workflow`, `try.race`/`try.any` workflow lowering, `static readonly deadline`). *(Previously reopened 2026-11-11 awaiting Will's review.)*
 
 ## Will's words
 
@@ -137,16 +137,14 @@ The signal value and `Human` are thin library code over `WaitFor`, `DurableDefer
 
 ### Diagnostics
 
-Codes are assigned when this VIP is built.
-
-| Slug | When | The message names |
-| --- | --- | --- |
-| `workflow-try` | `try sleep(…)`, `timeout(…)` or another fiber wait in a workflow body | `Experimental.Durable.sleep`, or `try.race` with it |
-| `wait-outside-workflow` | A signal's `wait()`, a `Human` question or `Durable.sleep` in Effect code that is not a workflow body | `sleep`, or moving the wait into a workflow |
+| Code | Slug | When | The message names |
+| --- | --- | --- | --- |
+| `EK5504` | `workflow-try` | `try sleep(…)`, `timeout(…)` or another fiber wait in a workflow body | `Experimental.Durable.sleep`, or `try.race` with it |
+| `EK5601` | `wait-outside-workflow` | A signal's `wait()`, a `Human` question or `Durable.sleep` in Effect code that is not a workflow body | `sleep`, or moving the wait into a workflow |
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - A signal carries a typed value into a run. [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 - Both ends import one value: [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).

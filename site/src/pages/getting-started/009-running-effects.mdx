@@ -65,9 +65,9 @@ effect function subtotal() {
   return 7 * 8
 }
 
-const total = Effect.runSync(subtotal())
-// total: number (56)
-// Run in an effect function: try Console.log(total)
+const total = Effect.try(() => Effect.runSync(subtotal()))
+// total: Effect<number, Cause.UnknownError> (56)
+// Run in an effect function: try Console.log(try total)
 // Output: 56
 ```
 
@@ -84,7 +84,7 @@ effect function preparedMessage() {
 }
 
 const pending = Effect.runPromise(preparedMessage())
-// pending: Promise<string>
+// The pending value has type Promise<string>.
 // Run in an effect function: try Console.log(try promise(() => pending))
 // Output: prepared
 ```

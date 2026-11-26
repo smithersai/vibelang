@@ -115,7 +115,7 @@ function extract(value: Option.Option<string>) {
   }
 }
 
-const certain = Option.getOrThrow(Option.some("known"))
+const certain = Option.getOrElse(Option.some("known"), () => "fallback")
 // Run in an effect function:
 //   try Console.log(try Effect.try(() => JSON.stringify([extract(Option.some("Mina")), extract(Option.none())])))
 //   try Console.log(certain)

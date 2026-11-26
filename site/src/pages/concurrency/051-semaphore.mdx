@@ -22,10 +22,6 @@ effect function makeUploadLimit() {
   return try Semaphore.make(3)
 }
 // Semaphore.Semaphore!!
-
-effect function stringify(value: unknown) {
-  return try Effect.try(() => JSON.stringify(value))
-}
 // Run in an effect function:
 //   const limit = try makeUploadLimit()
 //   try Console.log(try Semaphore.withPermits(limit, 3, effect { return "three permits acquired" }))

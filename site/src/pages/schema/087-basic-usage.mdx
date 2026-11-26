@@ -94,11 +94,7 @@ A union accepts one of its members, exposed as `.members`. When alternatives ove
 
 For a tag absent from the wire representation, add a field with `Schema.tagDefaultOmit("Warehouse")`: decoding supplies the tag and encoding omits it. `NullOr`, `UndefinedOr`, and `NullishOr` accept values in addition to the wrapped schema; they do not make an object key optional.
 
-In a `schema` declaration, a `Record<K, V>` value schema must have required decoded keys. A `Readonly<Record<K, V>>` value schema must also keep those keys readonly. Conflicting or uncertain inferred flags, including aliased schema values built with `Schema.optionalKey` or `Schema.mutableKey`, report `EK2109`. Use an unmodified value schema and write the modifiers on the `Record` type. A required value union with `undefined` keeps finite keys present; readonly keys can still hold mutable arrays. To preserve existing decoding, write explicit Effect codecs with the same declaration types.
-
 ## Defining tuples with optional and rest elements
-
-A fixed tuple spread such as `[string, ...[number, boolean]]` contributes fixed positions, as `[string, number, boolean]` does. This includes readonly rest operands, nested fixed spreads and fixed positions after an array rest. Literal spreads also follow native tuple normalization: `[number?, ...[string]]` requires two positions, with `number | undefined` first. Nested array rests retain their repeating and trailing positions.
 
 ```vibe
 const Coordinate = Schema.Tuple([
@@ -129,9 +125,7 @@ true
 
 Tuples are readonly and position-sensitive. Optional elements use `optionalKey`; a present element must still match its schema. `TupleWithRest` takes a fixed tuple and a rest list: its first schema repeats, and later schemas are required trailing elements. `Readings` accepts a label, an optional finite reading, then booleans. It can end after the label, but booleans need the reading in its fixed position: `["sensor", 2, true]` is valid, `["sensor", true]` is not. `BoundedReadings` ends with a boolean after any repeated numbers.
 
-Tuple types in `schema` declarations are mutable unless written `readonly`; mutable tuples wrap the mapped tuple in `Schema.mutable`. With TypeScript's default optional-property setting, a `schema` declaration can also write named and optional tuple elements: `schema Position = readonly [name: string, count?: number]` maps to `Schema.Tuple([Schema.String, Schema.optional(Schema.Number)])`. Rest positions such as `readonly [string, ...number[], boolean]` use `Schema.TupleWithRest`, retaining the fixed prefix, repeating element and required trailing positions. TypeScript's tuple syntax checks still apply: required elements cannot follow optional elements, optional elements cannot follow a rest element, and a tuple cannot have two rest elements. Labels do not affect decoding. With `exactOptionalPropertyTypes` on, an optional element uses `Schema.optionalKey` and a present value must match its codec; an explicit `undefined` union keeps `Schema.optional`. Rest arrays may use `T[]`, `readonly T[]`, `Array<T>` or `ReadonlyArray<T>`, including qualified names and import aliases of the library types; the outer tuple's `readonly` modifier controls the tuple's mutability.
-
-A required position in a `schema` tuple must reference a schema whose decoded key is required. A reference to `Schema.optionalKey(Schema.Number)`, including an alias or an uncertain union of flags, reports `EK2109` in that position. Use the unmodified value schema for a required slot. If a present `undefined` is intended, `schema Slot = readonly [number | undefined]` accepts `[undefined]` but rejects `[]`. Keep an explicit `Schema.Tuple` constant when its optional-key behavior is intended. To preserve an existing tuple's decoding, expand the enclosing schema to explicit codecs and its type alias.
+Write `readonly` on a tuple type in a `schema` declaration to keep it readonly. The [schema mapping](/spec/006-data#schema-declarations) covers tuple spreads, optional positions and required decoded keys.
 
 Fixed elements are `.elements`, or `.schema.elements` on a tuple with rest, whose `.rest` describes the repeating and trailing schemas. Element annotations describe single positions.
 
@@ -288,27 +282,22 @@ false true false
 `mapFields` builds a new struct from transformed field descriptions. `optionalKey` permits omission; `optional` also accepts explicit `undefined`. `requiredKey` removes key optionality but keeps an existing `undefined` union. Field transformations drop whole-struct checks; reapply the ones that still describe the new shape.
 
 
-A `schema` declaration retains the runtime `Schema` dependency used by its generated initializer, including when an explicit `Schema` import has no other value use.
-
-For an older function-local or namespace `schema` alias, unsupported named, optional or rest tuples used to become `Schema.Unknown`. To keep that codec, write `Schema.Unknown` at the affected tuple position, retaining enclosing array or union mappings. Module-level aliases and struct fields keep their existing tuple behavior.
-
 ## Dates, URLs, bytes and read-only collections
 
-A standalone alias such as `schema Timestamp = Date` loads the Schema modules its mapping needs, just as a field declaration does.
+```vibe
+schema Timestamp = Date
+schema Request {
+  url: URL
+  headers: ReadonlyMap<string, string>
+}
+// Run in an effect function: try Console.log(Schema.is(Timestamp)(new Date(0)), Schema.is(Request)({ url: try Effect.try(() => new URL("https://example.com")), headers: new Map() }))
+```
 
-A `schema` field typed with the TypeScript library's `Date`, `URL`, `RegExp` or `Uint8Array` maps to `Schema.Date`, `Schema.URL`, `Schema.RegExp` or `Schema.Uint8Array`. `ReadonlySet<T>` maps to `Schema.ReadonlySet(S)` and `ReadonlyMap<K, V>` to `Schema.ReadonlyMap(K, V)`, with each type argument mapped as usual. The names mean the library's types, found by ordinary type lookup: a local `schema Date { … }` keeps its own Schema, and a local type-only declaration of the name supplies none, which reports `EK2109`. Effect has no mutable `Set` or `Map` schema, so `Set<T>` and `Map<K, V>` report `EK2109` with a note that names the read-only form. A field typed `Error` maps to `Schema.Defect()` refined to `Error` instances, so its JSON codec encodes the error's name and message. Qualified library names such as `globalThis.Date` and `globalThis.Error` select the same codecs when they resolve to those library types. Import aliases also follow the library binding: `import Native = globalThis.Date` lets a field or schema alias use `Native`. A user type alias alone does not supply a schema. Mapped library types may be imported with `import type`; their codecs do not read a value from that import. A value-only declaration with the same spelling does not hide the library type.
+```text
+true true
+```
 
-Schema aliases use the same mappings inside functions and namespaces. An unsupported type or a reference without a Schema value reports `EK2109` there too; for example, write `Schema.Unknown` instead of `unknown`.
-
-These mappings compose: `ReadonlyArray<ReadonlyMap<string, number>>` maps to `Schema.Array(Schema.ReadonlyMap(Schema.String, Schema.Number))`, and `ReadonlySet<Record<K, V>>` maps to `Schema.ReadonlySet` of the `Record`'s Schema. `Readonly<T>` maps only a `Record`, so `Readonly<ReadonlyMap<K, V>>` reports `EK2109`; write `ReadonlyMap<K, V>`. A `ReadonlyMap` key is any schema, so `ReadonlyMap<Date, number>` maps to `Schema.ReadonlyMap(Schema.Date, Schema.Number)`; a `Record` key must satisfy Effect's `Schema.Record.Key`, so `Record<Date, number>` reports `TS2345`, as its Effect TypeScript twin does.
-
-Effect's ordinary `Rpc.make` API takes explicit Schemas: pass the payload, success and error Schemas explicitly. A `schema` declaration supplies those Schema values, including the mapped types above. VibeLang has no separate `Rpc` declaration or `call` form that derives Schemas from a function signature.
-
-Hover and definition queries for mapped generic types use the written TypeScript binding, including type-only imports. The same queries work in schema aliases, functions and namespaces.
-
-Older compiler versions lowered unsupported keyword types in function-local or namespace `schema` aliases to `Schema.Unknown`. These aliases now report `EK2109`. Write `Schema.Unknown` explicitly when preserving that earlier codec and decoded type. Select a different schema explicitly when changing that contract.
-
-Tuple-rest generic names use the same type-binding lookup as other schema generics. A local type named `Array` or `ReadonlyArray` does not select a library mapping. For a previously accepted shadowed spelling, write the explicit tuple codec to preserve its decoder.
+These declarations use Effect’s codecs for dates, URLs and read-only collections. Use `ReadonlySet<T>` and `ReadonlyMap<K, V>` for collection fields. See [Schema declarations](/spec/006-data#schema-declarations) for the full list and library name resolution.
 
 ## Preserving optional schema decoding during an upgrade
 

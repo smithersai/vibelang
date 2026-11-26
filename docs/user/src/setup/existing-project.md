@@ -55,15 +55,15 @@ Pin `@effect/platform-node-shared` to `4.1.1` before installing so package manag
 Install with Bun:
 
 ```sh
-bun add --exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
-bun add -d --exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
+bun add --exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
+bun add -d --exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 Or with npm:
 
 ```sh
-npm install --save-exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
-npm install --save-dev --save-exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
+npm install --save-exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
+npm install --save-dev --save-exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 With pnpm, configure the [transitive pin](https://pnpm.io/settings/dependency-resolution#overrides) and allow `dprint`'s install script in `pnpm-workspace.yaml` (pnpm 11+ fails with `ERR_PNPM_IGNORED_BUILDS` otherwise):
@@ -76,8 +76,8 @@ allowBuilds:
 ```
 
 ```sh
-pnpm add --save-exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
-pnpm add --save-dev --save-exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
+pnpm add --save-exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
+pnpm add --save-dev --save-exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 **Yarn** — use the `node_modules` linker (Yarn 2+: add `nodeLinker: node-modules` to `.yarnrc.yml`), add the pin under root `package.json` [`resolutions`](https://yarnpkg.com/configuration/manifest#resolutions) (Yarn ignores `overrides`), and install `vite` explicitly if not already on Vite 7 or 8:
@@ -95,8 +95,8 @@ nodeLinker: node-modules
 ```
 
 ```sh
-yarn add --exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
-yarn add --dev --exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
+yarn add --exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
+yarn add --dev --exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
 yarn add --dev --exact vite@8
 ```
 
@@ -120,7 +120,7 @@ npx vibelang --version
 ```
 
 ```out
-VibeLang 0.0.13 (TypeScript 7.1.0-dev)
+VibeLang 0.0.14 (TypeScript 7.1.0-dev)
 ```
 
 ## 4. Port Effect TypeScript files

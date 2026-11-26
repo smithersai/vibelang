@@ -8,7 +8,7 @@ VibeLang is a fork of TypeScript for Effect programs. Follow these steps in orde
 
 - **Node:** run `node --version` and require Node `22.22.3` (`22.x`) or Node `24.11.1` or later.
 - **Bun (optional):** run `bun --version` and require `1.4.2` or later (needed to [run sources with Bun](setup/vibelang-cli.md#run-sources-with-bun)).
-- **Registry:** run `npm view vibelang@0.0.13 version` and expect `0.0.13`. `E404` means the configured registry lacks that version — report the registry and error before continuing.
+- **Registry:** run `npm view vibelang@0.0.14 version` and expect `0.0.14`. `E404` means the configured registry lacks that version — report the registry and error before continuing.
 
 Version 0.0.13 publishes native binaries for macOS, Linux, and Windows on arm64 and x64 (rehearsed end-to-end with npm and Bun on Linux x64).
 
@@ -56,7 +56,7 @@ Follow each matching page in order: **project → build or framework → editor*
 | Other LSP editor | [Other editors](setup/other-editors.md) |
 | Coding agents | [Coding agents](setup/coding-agents.md) |
 
-For webpack, Rspack, Rollup, Rolldown, esbuild, and `bun build`, install `vibelang@0.0.13` and `vibelang-unplugin@0.0.13` as dev dependencies and follow the [vibelang-unplugin configuration](https://www.npmjs.com/package/vibelang-unplugin#configure). Vite and Vitest use `vibelang-vite`.
+For webpack, Rspack, Rollup, Rolldown, esbuild, and `bun build`, install `vibelang@0.0.14` and `vibelang-unplugin@0.0.14` as dev dependencies and follow the [vibelang-unplugin configuration](https://www.npmjs.com/package/vibelang-unplugin#configure). Vite and Vitest use `vibelang-vite`.
 
 ## 4. Verify the setup
 
@@ -65,7 +65,7 @@ npx vibelang --version
 npx vibelang --noEmit
 ```
 
-Expect `VibeLang 0.0.13 (TypeScript 7.1.0-dev)` from the first command and empty output (exit 0) from the second. Then run the project's `build` and `test` scripts (both must exit 0) and report the pages followed and command outputs.
+Expect `VibeLang 0.0.14 (TypeScript 7.1.0-dev)` from the first command and empty output (exit 0) from the second. Then run the project's `build` and `test` scripts (both must exit 0) and report the pages followed and command outputs.
 
 ## Framework setup
 
@@ -75,7 +75,7 @@ Complete [Add VibeLang to an existing project](setup/existing-project.md) first.
 
 ![vibelang-unplugin in webpack](/videos/webpack.mp4)
 
-Install `vibelang-unplugin@0.0.13` as a dev dependency. Next's Turbopack does not run webpack plugins, so use `--webpack`. In `next.config.mjs`:
+Install `vibelang-unplugin@0.0.14` as a dev dependency. Next's Turbopack does not run webpack plugins, so use `--webpack`. In `next.config.mjs`:
 
 ```js
 import vibelang from "vibelang-unplugin/webpack"
@@ -105,7 +105,7 @@ Keep Next's generated type includes in `tsconfig.json`, and run `npm run check` 
 
 ### Astro with Vite
 
-Install `vibelang-vite@0.0.13` as a dev dependency. In `astro.config.mjs`:
+Install `vibelang-vite@0.0.14` as a dev dependency. In `astro.config.mjs`:
 
 ```js
 import { defineConfig } from "astro/config"

@@ -1,18 +1,11 @@
 ---
 title: "Platform globals"
-description: "Node.js and browser I/O reach a .vibe file only through Effect services (provided by a layer) or a TypeScript boundary (a .ts file or a native module declaration). Direct uses of host globals..."
+description: "Use Effect services or a TypeScript boundary for Node.js and browser I/O. Ordinary ECMAScript built-ins and pure web helpers such as URL and TextEncoder are available in .vibe. See the platform..."
 ---
 
 # Platform globals
 
-Node.js and browser I/O reach a `.vibe` file only through Effect services (provided by a layer) or a TypeScript boundary (a `.ts` file or a native `module` declaration). Direct uses of host globals (`process`, `Buffer`, `require`, `__dirname`, `fetch`, `setTimeout`, `crypto`, `performance`, `localStorage`, `postMessage`, etc.) and value imports of Node built-in modules (`node:fs`, `fs`, and legacy internal names like `_http_agent`, `_stream_readable`, `_tls_wrap`) report `EK4402` with their replacement.
-
-**What stays allowed vs. what reports `EK4402`:**
-
-- **Allowed — ECMAScript built-ins:** `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `Symbol`, `Date` (including `Date.now()`, `new Date()`), `Math.random()`, `Intl`, and `Temporal.Now` (when the configured lib declares `Temporal`). `Intl` is an ECMAScript library declaration and needs no web-utility allowlist entry. Use `try Clock.currentTimeMillis` and `try Random.next` where tests must control time or randomness.
-- **Allowed — pure web helpers:** `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `AbortController`, `AbortSignal`, `atob`, and `btoa`. Host methods on these helpers (`AbortSignal.timeout`, `URL.createObjectURL`, `URL.revokeObjectURL`) still report `EK4402` — including through constant aliases, named destructuring, read-only local `let` bindings, static `globalThis` accesses, or erased assertions (`AbortSignal[("timeout" as const)]`). Every other web/Node global (`Blob`, `FormData`, `EventTarget`, web streams) is `EK4402` as a value.
-- **Allowed — erased types & injected values:** Type-only imports (`import type { Server } from "node:http"`, `import type FS = require("node:fs")`), erased type queries, local shadows, and parameters/services typed as `Performance` or `Crypto` (still wrap potentially throwing calls like `try Effect.try(() => input.now())` in effect code). With `verbatimModuleSyntax`, inline type-only or empty imports/exports (`import { type Server } from "node:http"`, `import {} from "node:http"`, `export { type Stats } from "node:fs"`) retain runtime loads and report `EK4402`; rewrite to whole `import type` / `export type` or move runtime loads to TypeScript.
-- **Whole-file scope:** `EK4402` applies everywhere in `.vibe` — including plain/`async` functions and callbacks passed to `Effect.try`, `tryPromise`, `sync`, and `callback`. Bare `Headers`, `Response`, and `Event` name Effect namespaces in value position (DOM types in type position); their `globalThis.*` spellings report `EK4402`. Type-only host augmentations in `.ts`/`.d.ts` do not change a global's origin, and spelling suggestions never recommend banned host globals. See [the platform introduction](/platform/105-introduction).
+Use Effect services or a TypeScript boundary for Node.js and browser I/O. Ordinary ECMAScript built-ins and pure web helpers such as `URL` and `TextEncoder` are available in `.vibe`. See [the platform specification](/spec/005-services#the-platform-standard-library) for the treatment of type-only imports, aliases, and host methods such as `AbortSignal.timeout`.
 
 ## Replacements
 
@@ -85,7 +78,7 @@ Key semantic differences to keep in mind:
 | `crypto.verify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
 | `crypto.webcrypto` | `try (try Mac.Mac).sign(macKey, data)` |
 | `dispatchEvent` | `Stream.fromEventListener(target, "message")` |
-| `document` | escape to TypeScript for now: Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `document` | `try (try Experimental.Document.Document).current` |
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
 | `exports` | `export const name = value` |
 | `fetch` | `try HttpClient.get(url)` |
@@ -147,7 +140,7 @@ Key semantic differences to keep in mind:
 | `setImmediate` | `try yieldNow` |
 | `setInterval` | `fork effect { try repeat(program, Schedule.spaced("1 second")) }` |
 | `setTimeout` | `try sleep("1 second")` |
-| `window` | escape to TypeScript for now: Effect has no service for the DOM; try (try Experimental.Window.Window).current gives an API that takes it the page's Window, and other UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `window` | `try (try Experimental.Window.Window).current` |
 | `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
 | `window.ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
@@ -181,7 +174,7 @@ effect function replacements(
   const directory = (try Path.Path).resolve()
   const file = try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url))))
   const here = (try Path.Path).dirname(try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url)))))
-  const resolved = import.meta.resolve(specifier)
+  const resolved = try Effect.try(() => import.meta.resolve(specifier))
   const line = try (try Terminal.Terminal).readLine
   try Console.log(message)
   try Console.log(text)
@@ -331,9 +324,7 @@ A server that needs custom `createServer` options belongs in a `.ts` file, which
 
 `EK4402` and `EK0107` are static, lint-strength checks — not a security sandbox. Use process isolation for untrusted code.
 
-- **What `EK4402` tracks:** Direct reads, optional accesses, static `globalThis` / `globalThis.globalThis` members (dotted, quoted, or non-interpolated template keys), aliases (including `{ timeout }` object shorthand), value-level namespace aliases (`import M = WebAssembly.Module`), and host globals outside the table (`WebAssembly`, `FileReader`, window properties). Undeclared names keep TypeScript diagnostics (`TS2304`, `TS2591`); local shadows and erased type queries (`typeof timeout`) stay allowed.
-- **What `EK0107` bans anywhere in `.vibe`:** Dynamic `globalThis` use (copying, computed keys, `Reflect.get`), `eval`, the `Function` constructor (including `{ Function }`, but keeping `instanceof Function` and `Function.prototype` through grouping or erased assertions), `arguments`, `with`, reading `.constructor` from a function value (including `f?.constructor`, `f[("constructor")]`, and `{ constructor: C } = f`), and literal `data:` / `blob:` module URLs.
-- **Unchecked clock reads:** `Date.now()`, `Date()`, `new Date()`, and no-arg `Intl.DateTimeFormat().format()` compile without a diagnostic; pass `try Clock.currentTimeMillis` when tests need controlled time.
+Use `Clock.currentTimeMillis` when tests need to control the clock. For the compiler’s alias and global-name checks, see [the platform specification](/spec/005-services#the-platform-standard-library).
 
 ## Literal module URLs
 

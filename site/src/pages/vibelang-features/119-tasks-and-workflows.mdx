@@ -5,7 +5,7 @@ description: "A task is one journaled step of a durable run, and a workflow is a
 
 # Durable tasks and workflows
 
-> **Open proposal ([VIP-55](https://vibelang.sh/vips/0055-durable-tasks-workflows), [VIP-60](https://vibelang.sh/vips/0060-std-durable)), experimental, not part of the alpha.** Requires `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. Any release may change or remove it.
+> **Experimental (accepted [VIP-55](https://vibelang.sh/vips/0055-durable-tasks-workflows), [VIP-60](https://vibelang.sh/vips/0060-std-durable)).** Requires `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. Any release may change or remove it.
 
 A `task` is one journaled step of a durable run, and a `workflow` is a deterministic plan over tasks. Both have a class-shaped body with one `effect call` method and `static readonly` options. They run on `Experimental.Durable`, so crashed runs resume where they stopped and finished steps never run twice.
 
@@ -80,4 +80,5 @@ export effect function main() {
 | `EK5507` | Workflow recursively reaches itself through steps |
 | `EK5508` | `.to(...)` handoff used outside a `return` |
 | `EK5509` | Warning: `retryPolicy` omits both `maxAttempts` and `expirationMs` |
+| `EK5801` | Warning: a task requiring `HttpClient` or `ChildProcessSpawner` omits `static readonly tier`. It defaults to `"sealed"`. Declare the tier that describes the task’s effects. |
 | `EK2109` | Task parameter, success, or error type lacks a schema form |

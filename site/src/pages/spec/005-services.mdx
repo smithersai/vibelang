@@ -5,7 +5,7 @@ description: "Services and the environment, from the VibeLang specification: the
 
 # Services and the environment
 
-Sources: [VIP-9](/vips/0009-service-declarations), [VIP-12](/vips/0012-provide), [VIP-6](/vips/0006-effect-globals), [VIP-14](/vips/0014-effect-modules-in-scope), [VIP-33](/vips/0033-platform-stdlib).
+Sources: [VIP-9](/vips/0009-service-declarations), [VIP-12](/vips/0012-provide), [VIP-6](/vips/0006-effect-globals), [VIP-14](/vips/0014-effect-modules-in-scope), [VIP-33](/vips/0033-platform-stdlib), [VIP-55](/vips/0055-durable-tasks-workflows), [VIP-56](/vips/0056-durable-waits), [VIP-57](/vips/0057-workers-remote), [VIP-58](/vips/0058-capabilities).
 
 ## `service` declarations
 
@@ -28,7 +28,7 @@ service Auth {
 
 `service Name { members }` and `service Name: Type { … }` declare services. A recognized service header missing its required body is `EK0906`. A custom `service` declaration in any native TypeScript ambient source context is `EK0907`, ahead of the same declaration's missing-body recovery. This includes an explicit `declare service` prefix and inherited ambientness in `declare namespace`, ambient external `declare module`, `declare global`, or a native declaration-file context wherever custom source service syntax can otherwise occur. Nested regions and `export` do not escape inherited ambientness; a complete body, explicit key or `defaultValue` does not create an ambient service form. Supply the intended runtime declaration or import the actual service key; no ambient service API is introduced. `export default service S { }` is `EK0905`; write `export { S as default }`. An `abstract class` is not a service. A member is typed as in an `interface`, because it has no body to infer from, and may have any type, Effect or not, as `Context.Service` allows. For a method or property, an omitted type follows TypeScript's `noImplicitAny`: with the option on, `read()` is `TS7010` and an untyped property is `TS7008`; with it off, they are an `any` return and an `any` property. Explicit `read(): any` is valid under strict checking. VibeLang adds no diagnostic of its own and infers no Effect contract; fix `TS7010` by writing the intended return type ([VIP-9](/vips/0009-service-declarations#decision), amended). For throw tracking a VibeLang service member admits only `never`; a written `@throws` or `@rethrows` is `EK0406` ([Thrown types](/spec/003-failures#thrown-types)). A foreign implementation must satisfy that non-throwing contract.
 
-Legacy `service class Name { members }` is not a service production and reports `EK0909`. The preserving repair removes only `class`, keeping the key, member contracts and comments. Native `abstract class` declarations remain TypeScript classes. Both accepted body-only and whole-shape service declarations retain their existing rules.
+Legacy `service class Name { members }` is not a service production and reports `EK0909`. Remove `class` by hand and keep the key, member contracts and comments. Native `abstract class` declarations remain TypeScript classes. Both accepted body-only and whole-shape service declarations retain their existing rules.
 
 ### Meaning
 
@@ -575,14 +575,14 @@ const output = Console$.log("hi")
 
 `Crypto` is the DOM's: effect 4.1.1 has no root module `Crypto` (VIP-14, amended). Effect's cryptography is the `effect/crypto` namespaces (`Digest`, `Mac`, `SecureRandom`, …), in scope by rule 3 below.
 
-The prelude preserves each imported signature’s thrown contract. An npm signature without `@throws` throws `unknown`, so these non-effectful calls use `Effect.try` bridges; an actual explicit annotation keeps its ordinary contract ([Thrown types](/spec/003-failures#thrown-types)).
+The prelude preserves each imported signature’s thrown contract. The pinned Effect contracts give `pipe`, `Array.head` and `Option.some` a thrown type of `never`, so these calls can run directly in effect code. A non-effectful npm signature without a written or shipped contract throws `unknown` ([Thrown types](/spec/003-failures#thrown-types)).
 
 ```vibe [VibeLang]
 effect function preludeExamples() {
   const Port = Schema.Number
-  const two = try Effect.try(() => pipe(1, (n: number) => n + 1)) // a root function, from effect/Function
-  const first = try Effect.try(() => Effect.Array.head([1, 2]))  // JavaScript's Array keeps the bare name
-  const o = try Effect.try(() => Option.some(1)) // Effect's Option: the DOM's Option is platform-specific
+  const two = pipe(1, (n: number) => n + 1) // a root function, from effect/Function
+  const first = Effect.Array.head([1, 2])  // JavaScript's Array keeps the bare name
+  const o = Option.some(1) // Effect's Option: the DOM's Option is platform-specific
   return { Port, two, first, o }
 }
 ```
@@ -596,9 +596,9 @@ import { pipe as pipe$ } from "effect/Function"
 function preludeExamples() {
   return Effect.gen(function* () {
     const Port = Schema.Number
-    const two = yield* Effect.try(() => pipe$(1, (n: number) => n + 1))
-    const first = yield* Effect.try(() => Array$.head([1, 2]))
-    const o = yield* Effect.try(() => Option.some(1))
+    const two = pipe$(1, (n: number) => n + 1)
+    const first = Array$.head([1, 2])
+    const o = Option.some(1)
     return { Port, two, first, o }
   })
 }
@@ -610,7 +610,7 @@ Where `Effect` is the compiler's implicit binding, `Effect.M`, where `M` is a mo
 
 The restrictions below apply to VibeLang code. A named top-level `module` body is TypeScript and follows the same rules as a sibling `.ts` file (VIP-40).
 
-1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. Outside a [TypeScript module body](/spec/001-functions#module-declarations), a `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). A wrapper changes how a failure is represented, not whether the platform may be called. Code that needs the platform lives in a `.ts` file or a `module` body ([VIP-40](/vips/0040-module-declarations)).
+1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. Outside a [TypeScript module body](/spec/001-functions#module-declarations), a `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). The compiler temporarily reports some wrapped uses as migration warnings, as described below. A wrapper changes how a failure is represented. Code that needs the platform lives in a `.ts` file or a `module` body ([VIP-40](/vips/0040-module-declarations)).
 2. **What Effect lacks goes under `Experimental.X`,** named after the Effect module it extends, and is written so it can be proposed upstream. Nothing that Effect already provides is reimplemented.
    `Experimental` is in scope in every `.vibe` and `.vibex` file with no import, as Effect's modules are: emitted code imports it as `import { Experimental } from "vibelang-runtime"`. A local value declaration or an import named `Experimental` shadows it; a local type alias or interface of that name keeps its type meaning without hiding the namespace. It is VibeLang's own module, so `vibe.effectModules: false` and `vibe.effectGlobals: false` leave it in scope (VIP-33, clarified).
    The additions include `Experimental.Dns` (Effect's `effect/net/Dns` service extended only with TXT queries sent directly to a supplied authority) and `Experimental.Encoding.decodeBase64Lenient` (pure `Result`, no service or layer). Node DNS queries only the supplied server for TXT; Worker DNS uses TCP with recursion disabled and requires AA, or fails typed `Unsupported` when the host lacks that transport. NS/A discovery and all existing DNS members and records remain Effect's; the Worker adapter uses recursive DoH only for discovery. Effect already supplies strict `Base64` and `Base64Url`; only Node-compatible leniency is added. See [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis) for layers and guarantees.
@@ -620,7 +620,6 @@ The restrictions below apply to VibeLang code. A named top-level `module` body i
    A name that two subpaths export, or a subpath and the root, is not in scope bare: using it is a compile error (`EK1401`) that names every exporter and offers one import per exporter. In effect 4.1.1 this covers `Model` (`effect/ai`, `effect/schema`), `Prompt` (`effect/ai`, `effect/cli`) and `Utils` (`effect`, `effect/rpc`). `Model.make(…)` is that error; `import { Model } from "effect/ai"` fixes it.
 
 ```vibe [VibeLang]
-// expect-error: EK4402
 effect function readConfig(path: string) {
   const fs = try FileSystem.FileSystem               // the module FileSystem exports the service key FileSystem
   return try fs.readFileString(path)
@@ -629,8 +628,19 @@ import { NodeServices } from "@effect/platform-node"   // a platform package: im
 effect function main() {
   provide NodeServices.layer { try readConfig("app.json") }
 }
+```
+
+```vibe [VibeLang]
+// expect-warning: EK4402
 effect function page(url: string) {
-  return try tryPromise(() => fetch(url))            // error: a platform call, even inside tryPromise
+  return try tryPromise(() => fetch(url))             // migration warning, which becomes an error after retirement
+}
+```
+
+```vibe [VibeLang]
+// expect-error: EK4402
+function plainFetch(url: string) {
+  return fetch(url)                                  // error outside a formerly accepted wrapper
 }
 ```
 
@@ -652,7 +662,7 @@ A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem`
 | in a `.vibe` file, an `import` or `export … from` declaration, or an `import(…)` call with a string-literal specifier, whose specifier names a Node builtin with or without `node:` (`node:fs`, `fs`, `child_process`: Node's `module.builtinModules`), except an `import type` or `export type … from` declaration | `EK4402` |
 | a statically named value that reaches the platform (rule below) anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. Move the code to a TypeScript boundary or use the Effect service (`HttpClient` for `fetch`) while preserving run phase, captures, receiver and public types | `EK4402` |
 
-During migration, `EK4402` in a formerly accepted `sync`, `callback`, `Effect.try` or `Effect.tryPromise` callback is a warning. The restriction and preserving repair still apply; unwrapped host access and Node value imports remain errors. Source changes are explicit ([Tooling](/spec/007-tooling#explicit-source-changes)).
+During migration, `EK4402` in a formerly accepted `sync`, `callback`, `Effect.try` or `Effect.tryPromise` callback is a warning. The warning remains nonfatal while preserving migration cannot handle some captured or stateful wrappers. After that migration tier retires, the wrapped access is an error. Unwrapped host access and Node value imports are already errors. Source changes are explicit ([Tooling](/spec/007-tooling#explicit-source-changes)).
 
 <a id="reaches-the-platform"></a>`EK4402` asks one question of a statically named value: does the symbol it resolves to reach the platform, by doing I/O, starting a timer, or reading or changing host state? Statically named means an identifier, `.name`, `?.name`, `["name"]`, a template with no substitutions, or a destructured property with such a key, and an alias keeps the symbol it copies. Two kinds of symbol reach the platform:
 
@@ -784,13 +794,9 @@ yield* Console.log("hi")
 yield* Effect.sleep("10 millis")
 ```
 
-## Open proposals, not in the alpha
-
-The sections below restate open proposals. They are not part of the language and not part of the alpha.
-
 ## `task` and `workflow` declarations
 
-**Experimental.** This section restates [VIP-55](/vips/0055-durable-tasks-workflows), an open proposal, and [VIP-44](/vips/0044-durable-values)'s durable boundaries. It is not part of the language: it describes the compiler's experimental implementation, which compiles only in a project that opts in with `"vibe": { "experimental": ["builtins"] }` ([Configuration](/spec/007-tooling#config-files)); without it a declaration is `EK3013`.
+**Experimental.** This section restates [VIP-55](/vips/0055-durable-tasks-workflows) and [VIP-44](/vips/0044-durable-values)'s durable boundaries. The compiler implements these accepted declarations behind the alpha rollout opt-in `"vibe": { "experimental": ["builtins"] }` ([Configuration](/spec/007-tooling#config-files)); without it a declaration is `EK3013`.
 
 A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks ([VIP-55](/vips/0055-durable-tasks-workflows)). Both are written as `service` is: a class-shaped body with one `effect call` method and `static readonly` options.
 
@@ -826,7 +832,8 @@ The grammar is [TaskDeclaration](/spec/900-appendices#taskdeclaration) and [Work
 - A `task` declares a constant of the runtime's type `Task<P, A, E, R>`. `P` is the parameters of its `call`, and `A` and `E` are the success and error of its written `A!E` annotation. The annotation is the step's durable boundary, not its body's type: the body is checked against `A` and `E`, and the services it reads are inferred as `R`, the requirements of the task's implementation, never of a caller. A task's `call` writes every parameter type and its return type.
 - A `call` with no body declares a step whose implementation is supplied separately.
 - Each declaration carries its boundary's schemas, derived from the written types as a `schema` field's are ([VIP-44](/vips/0044-durable-values#what-the-compiler-generates)): `schemas.payload` holds one schema per parameter, keyed by the parameter's name, and `schemas.success` and `schemas.error` are the schemas of a written `A!E`'s `A` and `E`. `never` maps to `Schema.Never` and `void` to `Schema.Void`.
-- Each `static readonly` member is one option of the declaration, passed through under its own name.
+- Each `static readonly` member is one option of the declaration, passed through under its own name. `tier`, `capabilities` and `effects` are typed by `Experimental.Capability` ([VIP-58](/vips/0058-capabilities)): `tier` is `"sealed" | "compensable" | "irreversible"` (defaulting to `"sealed"` on a task), `capabilities` is a ceiling of capability patterns (omitted inherits the caller's ceiling; `[]` denies every guarded operation via `Experimental.Capability.attenuate`), and `effects` is an effect envelope.
+- `W.plan` exposes the workflow's derived static plan, listing each reached task's declared `tier` and `capabilities` without inferring authority from `R`. `Experimental.Durable.plan(W, …)` returns that plan and its SHA-256 digest without running any step.
 - A `workflow` declares a constant of the runtime's type `Workflow<P, A, E>`, with `A` and `E` from its `call`, written or inferred. Declarations run on `Experimental.Durable` ([VIP-60](/vips/0060-std-durable)): a task is a `Durable.task` and a workflow a `Durable.workflow`, each tagged with its key, whose payload is the call's arguments keyed by parameter name. `try W(a)` executes the workflow and needs Effect's `WorkflowEngine`, which `Experimental.Durable.memory`, `layerStore` and `layerSql` provide: a program that runs a workflow without one has a missing requirement. An equal payload joins the run that payload already started (VIP-44).
 - `T.layer` is the implementation of a task whose `call` has a body, and `T.toLayer(implementation)` supplies one for a task without. `W.layer` is the workflow's handler with the layers of the tasks and workflows its body calls; its requirements are the services those implementations read, so a program runs a workflow inside `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { … }`.
 - In a workflow's `call`, `try T(a)` is a step of the workflow's plan and gives the task's success.
@@ -844,5 +851,35 @@ The grammar is [TaskDeclaration](/spec/900-appendices#taskdeclaration) and [Work
 - A workflow whose `try W(…)` steps reach the workflow again, directly or through other workflows, is `EK5507`.
 - `W.to(…)` anywhere but as a `return` operand is `EK5508`.
 - A written `retryPolicy` object literal with neither `maxAttempts` nor `expirationMs` is the warning `EK5509`: such a policy never gives up. A spread or computed property name may supply a bound, so either suppresses this warning.
+- A task whose body requires `HttpClient` or `ChildProcessSpawner` without declaring `static readonly tier` is the warning `EK5801`: omitting `tier` defaults to `"sealed"`.
 - A workflow's written `A!E` leaves `R` unchecked: its body is a plan, and the workflows it calls need the engine only when they run.
 - Every parameter and written success and error type of a `call` is a durable boundary: a type with no schema form is `EK2109`, as in a `schema` declaration. A task's parameters are identifiers, not patterns or a rest parameter, and its annotation leaves the `R` slot out (`EK5501`).
+
+## Durable waits (VIP-56)
+
+[VIP-56](/vips/0056-durable-waits#decision) specifies replayable timers, typed signals and human answers as workflow plan nodes. Signals use their declared schema to encode the journaled value and decode it on delivery. The timer, signal and human-answer runtime APIs are implemented. The compiler recognizes waits in workflows, records race outcomes and checks the workflow deadline.
+
+## Typed services across worker and remote boundaries (VIP-57)
+
+[VIP-57](/vips/0057-workers-remote#decision) specifies `schema service` and imports with `with { type: "worker" }`. A schema service uses the ordinary service key and layer for local calls and derives an RPC group for its methods that return an Effect or a Stream. Parameters, successes or stream elements, and failures cross a worker or transport through their schemas. A worker import loads a handle to a module whose default layer provides schema services. The compiler lowers worker imports and the Vite and unplugin integrations emit worker entries.
+
+## Accepted standard-library VIPs
+
+These VIPs define standard-library APIs. The VIP links record accepted behavior and rollout status.
+
+| VIP | API | Implementation |
+| --- | --- | --- |
+| [60](/vips/0060-std-durable) | `Experimental.Durable` | Implemented |
+| [61](/vips/0061-std-triggers) | `Experimental.Trigger` and `Experimental.WorkQueue` | Implemented |
+| [62](/vips/0062-std-model) | `Experimental.Model` | Implemented |
+| [63](/vips/0063-std-agent) | `Experimental.Agent` | CLI adapters and interpreter implemented. Public agent loop pending. |
+| [64](/vips/0064-std-tools) | `Experimental.Tools` | In progress |
+| [65](/vips/0065-std-mcp) | `Experimental.McpClient` | In progress |
+| [66](/vips/0066-std-memory) | `Experimental.Memory` | Implemented |
+| [67](/vips/0067-std-sandbox) | `Experimental.Sandbox` | In progress |
+| [68](/vips/0068-std-secrets) | `Experimental.Secrets` | In progress |
+| [69](/vips/0069-std-eval) | `Experimental.Eval` and `Experimental.Scorer` | Implemented |
+| [70](/vips/0070-std-fuzz) | `Experimental.Fuzz` and `Experimental.FuzzSimulation` | Implemented |
+| [71](/vips/0071-std-test) | `Experimental.Test` | Implemented |
+| [72](/vips/0072-std-observe) | `Experimental.Otlp` and `Experimental.Logger` | In progress |
+| [73](/vips/0073-std-patterns) | `Experimental.Patterns` and the `PACKAGE.vibe` build-graph convention | Patterns implemented |

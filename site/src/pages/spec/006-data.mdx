@@ -5,7 +5,7 @@ description: "Data, from the VibeLang specification: the rules the accepted impr
 
 # Data
 
-Sources: [VIP-15](/vips/0015-schema-declarations), [VIP-16](/vips/0016-data-declarations), [VIP-28](/vips/0028-generic-data).
+Sources: [VIP-15](/vips/0015-schema-declarations), [VIP-16](/vips/0016-data-declarations), [VIP-28](/vips/0028-generic-data), [VIP-44](/vips/0044-durable-values).
 
 ## `schema` declarations
 
@@ -91,12 +91,19 @@ type Code = typeof Code.Type
 
 The optional rows below show the default with `exactOptionalPropertyTypes` off; the optional-wrapper rule after the table applies when it is on.
 
-In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. The generic built-ins `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution, not by spelling. A local or imported type binding can shadow a library type; a value-only binding does not by itself replace the separate library type binding. When the resolved binding is not a mapped built-in, apply the existing Schema-value lookup and arity rules. A reference with no suitable Schema value is `EK2109`: declare a schema or name a Schema value. This does not expand arbitrary user type aliases or introduce generic Schema declarations. The generic rows require these resolved library bindings; `T[]` and `readonly T[]` are syntax mappings independent of a written `Array` name.
+In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. The built-in names in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution. A local or imported type binding can shadow a library type; a value-only binding does not by itself replace the separate library type binding. When the resolved binding is not a mapped built-in, apply the existing Schema-value lookup and arity rules. A reference with no suitable Schema value is `EK2109`: declare a schema or name a Schema value. This does not expand arbitrary user type aliases or introduce generic Schema declarations. The generic rows require these resolved library bindings; `T[]` and `readonly T[]` are syntax mappings independent of a written `Array` name.
 
 | Type or field | Effect 4.1.1 schema |
 | --- | --- |
 | `(T)` | the mapping of `T`; parentheses only group |
 | `string`, `number`, `boolean`, `bigint`, `symbol` | `Schema.String`, `Schema.Number`, `Schema.Boolean`, `Schema.BigInt`, `Schema.Symbol` |
+| `Date` | `Schema.Date` |
+| `URL` | `Schema.URL` |
+| `RegExp` | `Schema.RegExp` |
+| `Uint8Array` | `Schema.Uint8Array` |
+| `Error` | `Schema.Defect().pipe(Schema.refine((u): u is Error => u instanceof Error))` |
+| `ReadonlySet<T>` | `Schema.ReadonlySet(S)` |
+| `ReadonlyMap<K, V>` | `Schema.ReadonlyMap(K, V)` |
 | single literal `"a"` | `Schema.Literal("a")` (likewise numeric, boolean and bigint literals) |
 | union consisting entirely of literals `"a" \| "b"` | `Schema.Literals(["a", "b"])` |
 | other union `A \| B` | `Schema.Union([A, B])`, each member mapped separately in source order |
@@ -116,6 +123,24 @@ In this table, `S`, `A` and `B` are the recursively mapped schemas of the corres
 | writable optional field `name?: T` | `name: Schema.mutableKey(Schema.optional(S))` |
 | readonly field `readonly name: T` | `name: S` |
 | readonly optional field `readonly name?: T` | `name: Schema.optional(S)` |
+
+`Set<T>` and `Map<K, V>` report `EK2109`. Use `ReadonlySet<T>` and `ReadonlyMap<K, V>` for collection fields.
+
+```vibe
+schema Order {
+  at: Date
+  tags: ReadonlySet<string>
+  links: ReadonlyMap<string, URL>
+}
+```
+
+```vibe
+// expect-error: EK2109
+schema MutableCollections {
+  tags: Set<string>
+  links: Map<string, URL>
+}
+```
 
 Parenthesized unions within a union are flattened in source order, as in TypeScript: `("a" | "b") | null` maps as `"a" | "b" | null`. In `("a" | "b")[]`, the element maps to `Schema.Literals(["a", "b"])`.
 
@@ -350,7 +375,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 | two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them (insert `;`) | `EK1504` |
 | a member of a `schema` body that is not a [Field](/spec/900-appendices#field): `schema S { m(): string }`, `schema S { [k: string]: number }` | `EK1505` |
 | a `schema` declaration in an ambient source context, explicit or inherited, as for a [service](/spec/005-services#static-rules); it comes ahead of the same declaration’s `EK1503` | `EK1506` |
-| a field type outside the mapping (including a shadowing type without a suitable Schema value), or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
+| a field type outside the mapping (including a shadowing type without a suitable Schema value), or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration | `EK2109` |
 
 
 A `schema error` keeps the error-declaration diagnostic `EK1305`; it does not use `EK1501`. A schema's named default export and an ordinary generic factory are normal TypeScript:

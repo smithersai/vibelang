@@ -44,13 +44,14 @@ service CredentialsClient {
   authenticate(token: string): boolean!!
 }
 
-effect function authenticate(token: Redacted.Redacted<string>) {
+effect function authenticate(secret: string) {
   const client = try CredentialsClient
+  const token = Redacted.make(secret)
   const raw = try Effect.try(() => Redacted.value(token))
   return try client.authenticate(raw)
 }
 // boolean!Cause.UnknownError!CredentialsClient
-// Run in an effect function: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try authenticate(Redacted.make("example-token")), try authenticate(Redacted.make("wrong-token"))) }
+// Run in an effect function: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try authenticate("example-token"), try authenticate("wrong-token")) }
 ```
 
 ```text
@@ -63,8 +64,15 @@ Call `Redacted.value` only at the point where the raw secret is required. Once e
 
 ```vibe
 effect function useOnce(raw: string) {
+  const client = try CredentialsClient
   const token = Redacted.make(raw)
-  return try ensuring(authenticate(token), sync(() => Redacted.wipeUnsafe(token)))
+  return try ensuring(
+    effect {
+      const value = try Effect.try(() => Redacted.value(token))
+      return try client.authenticate(value)
+    },
+    sync(() => Redacted.wipeUnsafe(token))
+  )
 }
 // Run in an effect function:
 //   provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try useOnce("example-token")) }

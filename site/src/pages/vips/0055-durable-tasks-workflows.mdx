@@ -5,7 +5,7 @@ description: "VIP-55: task and workflow, durable steps and the plan the compiler
 
 # VIP-55: `task` and `workflow`, durable steps and the plan the compiler derives
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](/vips/#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. An experimental implementation exists: the compiler parses and checks `task` and `workflow` declarations, which run on `Experimental.Durable`. It compiles only in a project that opts in with `"vibe": { "experimental": ["builtins"] }` ([VIP-30](/vips/0030-config-files#decision)); without it, the first use in a file is `EK3013`.
+**Status:** accepted by Will, 2026-11-23. Will: "55 I accept". The compiler parses and checks `task` and `workflow` declarations, which run on `Experimental.Durable` (currently behind `"vibe": { "experimental": ["builtins"] }` during alpha rollout until promoted). *(Previously reopened 2026-11-11 awaiting Will's review.)*
 
 ## Will's words
 
@@ -232,7 +232,7 @@ A durable boundary type with no schema form stays `EK2109`.
 
 ## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
+This record comes from the 2026-11-09 built-in set review. The Status line above records Will’s subsequent ruling.
 
 - The host also provides `ChildProcessSpawner` and a `LanguageModel` ([std-model](/vips/0062-std-model)). [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 - A `task` declaration has one `call` method and optional `static readonly` members. [Design](#task) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
