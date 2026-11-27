@@ -49,7 +49,7 @@ test(".smithers/factory.json preserves full apostrophe descriptions and kind: vi
   assert.equal(factoryJson.github.issues, "two-way")
   assert.equal(factoryJson.github.changes, "land")
   assert.ok(factoryJson.github.maintainers.includes("roninjin10"))
-  for (const protectedPath of [".smithers/**", ".github/workflows/**", "scripts/release/**", "WORKSPACE.ts", "PACKAGE.ts"]) {
+  for (const protectedPath of [".smithers", ".github", ".agents/uphill", "scripts/release", "PACKAGE.ts"]) {
     assert.ok(factoryJson.github.protectedPaths.includes(protectedPath), `missing protectedPath ${protectedPath}`)
   }
 })
