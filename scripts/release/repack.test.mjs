@@ -38,7 +38,8 @@ function fixture(t, options = {}) {
     for (const p of platforms.filter((p) => !p.includes(options.strippedPlugin ?? "none"))) plugin[dprintNames[p]] = { reference: `npm:${p.startsWith("win32-") ? `@smthrs/cli-${p}` : `vibelang-${p}`}@0.0.1/bin/${p.startsWith("win32") ? "vibelang.exe" : "vibelang"}`, checksum: "0".repeat(64) }
     writeFileSync(join(source, "dprint-plugin.json"), JSON.stringify(plugin, null, 2) + "\n")
   }
-  const [packed] = JSON.parse(execFileSync("npm", ["pack", source, "--pack-destination", tarballs, "--ignore-scripts", "--json", "--silent"], { encoding: "utf8" }))
+  const packResult = JSON.parse(execFileSync("npm", ["pack", source, "--pack-destination", tarballs, "--ignore-scripts", "--json", "--silent"], { encoding: "utf8" }))
+  const packed = Array.isArray(packResult) ? packResult[0] : packResult
   const packages = platforms.map((p) => (p.startsWith("win32-") ? `@smthrs/cli-${p}` : `vibelang-${p}`)).concat("vibelang-runtime", "vibelang-vite", "create-vibelang").map((name) => {
     const file = `${name.replace("@", "").replace("/", "-")}-0.0.1.tgz`
     writeFileSync(join(tarballs, file), `unchanged ${name}`)

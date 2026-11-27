@@ -98,7 +98,8 @@ export function repack(tarballs, skip = process.env.VIBELANG_SKIP ?? "") {
       const expected = payload(dir)
       const packedDir = join(scratch, "packed")
       mkdirSync(packedDir)
-      const [packed] = JSON.parse(execFileSync("npm", ["pack", dir, "--pack-destination", packedDir, "--ignore-scripts", "--json", "--silent"], { encoding: "utf8" }))
+      const packResult = JSON.parse(execFileSync("npm", ["pack", dir, "--pack-destination", packedDir, "--ignore-scripts", "--json", "--silent"], { encoding: "utf8" }))
+      const packed = Array.isArray(packResult) ? packResult[0] : packResult
       if (packed.name !== pkg.name || packed.version !== pkg.version || packed.filename !== entry.file) {
         throw new Error("repack: npm pack changed the package identity")
       }

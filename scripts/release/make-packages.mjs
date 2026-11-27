@@ -307,7 +307,8 @@ function writeDprintPlugin(dir, packed) {
 const manifest = []
 for (const entry of order) {
   if (entry.name === "vibelang") writeDprintPlugin(entry.dir, manifest)
-  const [packed] = JSON.parse(execFileSync("npm", ["pack", entry.dir, "--pack-destination", tarballs, "--json", "--silent"], { encoding: "utf8" }))
+  const packResult = JSON.parse(execFileSync("npm", ["pack", entry.dir, "--pack-destination", tarballs, "--json", "--silent"], { encoding: "utf8" }))
+  const packed = Array.isArray(packResult) ? packResult[0] : packResult
   problems.push(...packedHygiene(join(tarballs, packed.filename), { packageName: entry.name }).map(line => entry.name + ": " + line))
   const paths = new Map(packed.files.map((file) => [file.path, file]))
   for (const required of entry.required) {
