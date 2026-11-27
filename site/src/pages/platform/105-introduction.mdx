@@ -108,10 +108,10 @@ Both `HttpClient.get` and `response.json` can fail in `E`. Decode the returned `
 
 ## Installing runtime-specific packages
 
-Follow [Install the packages](/setup/existing-project#2-install-the-packages) for exact npm and Bun commands, including the `"@effect/platform-node-shared": "4.1.6"` override. Pin `effect` and every `@effect/platform-*` package to exactly `4.1.1`:
-- **Node.js / Deno**: `@effect/platform-node@4.1.1`
-- **Bun**: `@effect/platform-bun@4.1.1`
-- **Browser**: `@effect/platform-browser@4.1.1`
+Follow [Install the packages](/setup/existing-project#2-install-the-packages) for npm, Bun, pnpm, and Yarn commands. Keep `effect` and every `@effect/platform-*` package on matching stable `^4.1.0` releases (tested on `4.1.6`; no `@effect/platform-node-shared` override is required):
+- **Node.js / Deno**: `@effect/platform-node@^4.1.6`
+- **Bun**: `@effect/platform-bun@^4.1.6`
+- **Browser**: `@effect/platform-browser@^4.1.6`
 
 Compile `.vibe` and `.ts` sources with `npx vibelang` (`npx vibelang --noEmit` to type-check only), then execute the emitted JavaScript—never pass `.vibe` files directly to a TypeScript runner.
 

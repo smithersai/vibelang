@@ -107,6 +107,8 @@ const runs = [
   ["packages/create-vibelang/test/pin.property.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/pin.property.test.mjs"],
   ["packages/create-vibelang/test/cli-flags.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/cli-flags.test.mjs"],
   ["packages/create-vibelang/test/smithers-scaffold.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/smithers-scaffold.test.mjs"],
+  ["packages/create-vibelang/test/ui-scaffold.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/ui-scaffold.test.mjs"],
+  [".smithers/evals/agent-evals/benchmark-30/benchmark-30.test.ts", "PACKAGE.ts", ".smithers/evals/agent-evals/benchmark-30/benchmark-30.test.ts"],
   // A fixture project: coverage.test.mjs runs Vitest over it.
   ["packages/vite/test/coverage/test/*.test.ts", "packages/vite/test/coverage.test.mjs", "test/coverage"],
   // compiler-eslint-test runs run.sh, whose node --test line takes every test file beside it (#625).

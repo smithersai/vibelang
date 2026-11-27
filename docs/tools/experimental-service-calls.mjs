@@ -58,25 +58,31 @@ export function experimentalServiceMethods(repo = root) {
 }
 
 export function experimentalServiceCallProblems(text, file, services = experimentalServiceMethods()) {
-  const byModule = new Map(services.map(service => [service.module, service])), problems = []
+  const byModule = new Map(), problems = []
+  for (const service of services) {
+    const list = byModule.get(service.module) ?? []
+    list.push(service)
+    byModule.set(service.module, list)
+  }
   const references = /\bExperimental\.([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)(?:\.([A-Za-z_$][\w$]*))?/g
   for (const match of text.matchAll(references)) {
-    const service = byModule.get(match[1])
-    if (!service) continue
+    const moduleServices = byModule.get(match[1])
+    if (!moduleServices) continue
     const method = match[3] ?? match[2]
-    const invalid = match[3]
-      ? match[2] === service.key && service.keyMethods.includes(method)
-      : service.namespaceMethods.includes(method)
-    if (invalid) {
+    const offending = match[3]
+      ? moduleServices.find(service => match[2] === service.key && service.keyMethods.includes(method))
+      : moduleServices.find(service => service.namespaceMethods.includes(method))
+    if (offending) {
       const line = text.slice(0, match.index).split("\n").length
-      problems.push(file + ":" + line + ": look up Experimental." + service.module + "." + service.key + " before calling " + method)
+      problems.push(file + ":" + line + ": look up Experimental." + offending.module + "." + offending.key + " before calling " + method)
     }
   }
   // An Effect-valued member is already a program; running it needs no call.
   const valueCalls = /\(\s*try\s+Experimental\.([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\s*\)\s*\.\s*([A-Za-z_$][\w$]*)\s*(?=\()/g
   for (const match of text.matchAll(valueCalls)) {
-    const service = byModule.get(match[1])
-    if (!service || match[2] !== service.key || !service.effectValues.includes(match[3])) continue
+    const moduleServices = byModule.get(match[1])
+    const service = moduleServices?.find(item => match[2] === item.key && item.effectValues.includes(match[3]))
+    if (!service) continue
     const line = text.slice(0, match.index).split("\n").length
     problems.push(file + ":" + line + ": " + match[3] + " is an Effect value; run the member with try instead of calling it")
   }

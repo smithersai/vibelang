@@ -864,7 +864,7 @@ const targets = {
   ),
   "create-cli": S.Shell.Test({
     summary: "Run the scaffolder's fast CLI unit tests.",
-    shell: "node --test packages/create-vibelang/test/create.test.mjs packages/create-vibelang/test/dev.test.mjs packages/create-vibelang/test/filesystem.property.test.mjs packages/create-vibelang/test/pin.property.test.mjs packages/create-vibelang/test/cli-flags.test.mjs packages/create-vibelang/test/smithers-scaffold.test.mjs",
+    shell: "node --test packages/create-vibelang/test/create.test.mjs packages/create-vibelang/test/dev.test.mjs packages/create-vibelang/test/filesystem.property.test.mjs packages/create-vibelang/test/pin.property.test.mjs packages/create-vibelang/test/cli-flags.test.mjs packages/create-vibelang/test/smithers-scaffold.test.mjs packages/create-vibelang/test/ui-scaffold.test.mjs",
     data: [
       S.file("packages/create-vibelang/package.json"),
       S.file("packages/create-vibelang/bin/create-vibelang.mjs"),
@@ -873,6 +873,7 @@ const targets = {
       S.file("scripts/testing/property.mjs"),
       S.file("scripts/testing/property-slice.mjs"),
       S.glob("templates/app/**"),
+      S.glob("templates/effect-ui/**"),
       S.file("docs/user/llms-essentials.md")
     ],
     tools: [node, S.Host.bin("npm"), S.Host.bin("tar")],
@@ -897,6 +898,14 @@ const targets = {
     shell: 'out=$(mktemp "${TMPDIR:-/tmp}/agent-evals-run.XXXXXX.json") && trap \'rm -f "$out"\' EXIT && .smithers/node_modules/.bin/smthrs eval run agent-evals --root .smithers --output "$out" && .smithers/node_modules/.bin/smthrs eval compare "$out" --root .smithers',
     data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
     tools: [node],
+    sandbox: "none",
+    timeout: "10m"
+  }),
+  "agent-evals-benchmark-30": S.Shell.Test({
+    summary: "Run the 30-task reproducible AI Agent Reliability Benchmark.",
+    shell: "bun test .smithers/evals/agent-evals/benchmark-30/benchmark-30.test.ts",
+    data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
+    tools: [bun, node],
     sandbox: "none",
     timeout: "10m"
   }),

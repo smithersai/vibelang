@@ -1,4 +1,4 @@
-write fork { ... }
+write fork effect { ... }
 write uninterruptible { ... }
 write interruptible { ... }
 write restore { ... }

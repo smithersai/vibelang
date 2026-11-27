@@ -173,16 +173,16 @@ test("packs only MIT text when the root license is MIT first with trailing excep
   }
 })
 
-test("refuses a missing or drifting transitive Effect override before packing", (t) => {
+test("refuses a missing or drifting Effect baseline in the starter template before packing", (t) => {
   for (const pin of [undefined, "0.0.0"]) {
     const root = fixture(t)
     const path = join(root, "templates/app/package.json")
     const app = json(path)
-    app.overrides = { "@effect/platform-node-shared": pin }
+    app.dependencies.effect = pin
     writeFileSync(path, JSON.stringify(app))
     const result = assemble(root)
     assert.equal(result.status, 1, result.stderr)
-    assert.match(result.stderr, /@effect\/platform-node-shared override must match effect/)
+    assert.match(result.stderr, /template: effect .*, but the runtime baseline is/)
     assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
   }
 })

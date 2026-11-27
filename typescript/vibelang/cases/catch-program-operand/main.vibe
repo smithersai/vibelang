@@ -18,8 +18,8 @@ export effect function fallback() {
   return title
 }
 
-const succeeds: string!Missing! = effect { return "held" }
-const fails: string!Missing! = effect { throw new Missing() }
+const succeeds: string!Missing = effect { return "held" }
+const fails: string!Missing = effect { throw new Missing() }
 const programs = { member: succeeds, length: fails }
 
 // A yieldable error is a program that fails with itself.

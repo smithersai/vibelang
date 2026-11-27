@@ -75,6 +75,8 @@ export function freshBunInstallProblems(markdown, expected, file = "document") {
 
 export function userBunInstallProblems(repo = fileURLToPath(new URL("../../", import.meta.url))) {
   const expected = JSON.parse(readFileSync(join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies.effect
+  // VIP-32 amended: when runtime supports a caret Effect range (^4.1.0), no exact @effect/platform-node-shared override is required.
+  if (typeof expected === "string" && expected.startsWith("^")) return []
   return ["docs/user/src/setup/existing-project.md", "docs/user/src/getting-started/004-installation.md"].flatMap(file =>
     bunInstallProblems(readFileSync(join(repo, file), "utf8"), expected, file))
 }

@@ -1,6 +1,6 @@
 # Alchemy
 
-[Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs. This guide targets `alchemy` and `@alchemy.run/cloudflare` `2.0.0-beta.84`, `effect` `4.1.1`, and VibeLang `0.0.13`. Because Alchemy `2.0.0-beta.84` imports `effect/Crypto` (removed in Effect 4.1), apply the patch in [Install](#install) before importing `@alchemy.run/cloudflare`.
+[Alchemy](https://alchemy.run) declares cloud resources and Cloudflare Workers as Effect programs. This guide targets `alchemy` and `@alchemy.run/cloudflare` `2.0.0-beta.84`, `effect` `^4.1.0` (tested on `4.1.6`), and VibeLang `0.0.14`. Because Alchemy `2.0.0-beta.84` imports `effect/Crypto` (removed in Effect 4.1), apply the patch in [Install](#install) before importing `@alchemy.run/cloudflare`.
 
 The executable sources below use the pinned Alchemy patch and dependencies from [`examples/alchemy-stack`](https://github.com/smithersai/vibelang/tree/main/examples/alchemy-stack). One Vitest suite verifies both implementations.
 
@@ -11,20 +11,10 @@ mkdir my-stack && cd my-stack
 bun init -y
 ```
 
-Pin `@effect/platform-node-shared` in `package.json` before installing:
-
-```json
-{
-  "overrides": {
-    "@effect/platform-node-shared": "4.1.6"
-  }
-}
-```
-
 ```sh
-bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.1.1 \
-  @effect/platform-bun@4.1.1 @effect/platform-node@4.1.1 vibelang-runtime@0.0.14
-bun add -d vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.0.5 @effect/vitest@4.1.1
+bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.1.6 \
+  @effect/platform-bun@4.1.6 @effect/platform-node@4.1.6 vibelang-runtime@0.0.14
+bun add -d vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.0.5 @effect/vitest@4.1.6
 ```
 
 Copy `patches/alchemy@2.0.0-beta.84.patch` (from [alchemy-run/alchemy#2754](https://github.com/alchemy-run/alchemy/pull/2754)) along with `tsconfig.json`, `vitest.config.ts`, and `bunfig.toml` from the example, then register the patch in `package.json` and run `bun install`:

@@ -48,6 +48,8 @@ export function pnpmInstallProblems(markdown, expected, file = "document") {
 
 export function userPnpmInstallProblems(repo = fileURLToPath(new URL("../../", import.meta.url))) {
   const expected = JSON.parse(readFileSync(join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies.effect
+  // VIP-32 amended: when runtime supports a caret Effect range (^4.1.0), no exact @effect/platform-node-shared override is required.
+  if (typeof expected === "string" && expected.startsWith("^")) return []
   const pages = directory => readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
     entry.isDirectory() ? pages(join(directory, entry.name)) :
       entry.name.endsWith(".md") && entry.name !== "release-notes.md" ? [join(directory, entry.name)] : [])

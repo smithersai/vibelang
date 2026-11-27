@@ -3,7 +3,7 @@
 // VibeLang packages to its own version, and installs dependencies with the
 // package manager that ran it: `bun create vibelang@latest my-app` or
 // `npm create vibelang@latest my-app`. Pass `--ui` for the Effect UI browser
-// starter (`templates/effect-ui`), or `--smithers` for Smithers build targets.
+// starter (`templates/effect-ui`), or `--smithers` for build targets.
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
 import { basename, join, resolve } from "node:path"
@@ -32,7 +32,7 @@ for (const arg of process.argv.slice(2)) {
   else if (target === undefined) target = arg
   else fail(`unexpected argument ${arg}\n${usage}`)
 }
-if (ui && smithers) fail(`--ui and --smithers cannot be combined\n${usage}`)
+if (ui) if (smithers) fail(`--ui and --smithers cannot be combined\n${usage}`)
 target ??= "vibelang-app"
 const directory = resolve(target)
 const manager = packageManager()

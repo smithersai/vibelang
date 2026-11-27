@@ -77,18 +77,31 @@ export function initWasmCompiler(): Promise<boolean> {
 
   wasmLoadPromise = (async () => {
     try {
-      const probe = await fetch('/playground/vibelang.wasm', { method: 'HEAD' })
-      if (!probe.ok) return false
+      let wasmUrl = '/playground/vibelang.wasm'
+      let isGzipped = false
+      const rawProbe = await fetch(wasmUrl, { method: 'HEAD' })
+      if (!rawProbe.ok) {
+        if (typeof DecompressionStream !== 'function') return false
+        const gzProbe = await fetch('/playground/vibelang.wasm.gz', { method: 'HEAD' })
+        if (!gzProbe.ok) return false
+        wasmUrl = '/playground/vibelang.wasm.gz'
+        isGzipped = true
+      }
 
       const hasRuntime = await loadScript('/playground/wasm_exec.js')
       if (!hasRuntime || typeof window.Go !== 'function') return false
 
       const go = new window.Go()
-      const response = await fetch('/playground/vibelang.wasm')
+      const response = await fetch(wasmUrl)
       if (!response.ok) return false
 
       let instantiated: WebAssembly.WebAssemblyInstantiatedSource
-      if (typeof WebAssembly.instantiateStreaming === 'function') {
+      if (isGzipped) {
+        if (!response.body) return false
+        const decompressed = response.body.pipeThrough(new DecompressionStream('gzip'))
+        const bytes = await new Response(decompressed).arrayBuffer()
+        instantiated = await WebAssembly.instantiate(bytes, go.importObject)
+      } else if (typeof WebAssembly.instantiateStreaming === 'function') {
         try {
           instantiated = await WebAssembly.instantiateStreaming(response.clone(), go.importObject)
         } catch {

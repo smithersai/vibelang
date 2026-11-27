@@ -117,7 +117,7 @@ Be clear-eyed about the tradeoffs before adopting an alpha language:
 - **A syntax to learn.** Your team reads and reviews `.vibe` files. The [cheat sheet](/vibelang-features/115-cheat-sheet) covers the entire surface on one page.
 - **A compiler in the toolchain.** `vibelang` checks `.vibe` files. Stock `tsc` reads only the `.d.vibe.ts` declarations the compiler emits. Bundlers, test runners, and editors need the plugin or language server ([Set up VibeLang](/setup)).
 - **Alpha status.** VibeLang is v0. Breaking changes happen frequently; track them in the [release notes](/setup/release-notes).
-- **Pinned Effect version.** Compiled output requires `effect@4.1.1` exactly because the runtime hooks into fiber internals. You upgrade Effect when VibeLang does.
+- **Effect 4.1+ compatibility.** Compiled output targets stable `effect@^4.1.0` (tested on `4.1.6`) through public Effect 4 APIs and rejects `3.x`, `4.0.x`, `5.x`, and prereleases (`EK3201`).
 - **Platform rehearsal.** Native binaries ship for macOS, Linux, and Windows on arm64 and x64, with full release rehearsal running on Linux x64 ([Installation](/getting-started/004-installation)).
 
 If your team cannot take an alpha compiler yet, write Effect TypeScript. Because the two interoperate seamlessly, you can try VibeLang in a single file of an existing Effect project and remove it just as easily ([Existing project](/setup/existing-project)).

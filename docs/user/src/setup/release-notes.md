@@ -141,7 +141,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A refused `Experimental.Durable.rewind` (for an invalid position or an irreversible or compensable step) still claimed the run and fenced out the engine driving it. Rewind now validates the journal before claiming the run.
 
-- `Experimental.Process.kill(1, { group: true })` and `isRunning(1, { group: true })` passed `-1` to POSIX `kill`, which addresses every process rather than process group 1. Both now fail with `BadArgument` without calling the host.
+- `Experimental.Process.Process`'s `kill(1, { group: true })` and `isRunning(1, { group: true })` passed `-1` to POSIX `kill`, which addresses every process rather than process group 1. Both now fail with `BadArgument` without calling the host.
 
 - Concurrent branches calling the same `Experimental.Durable.task` could swap their recorded results after a crash or restart when earlier steps finished in a different order than replay. Task journal entries now match by payload identity as well as occurrence.
 

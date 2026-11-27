@@ -42,6 +42,8 @@ export function yarnInstallProblems(markdown, expected, directed = false, file =
 export function userYarnInstallProblems(repo = fileURLToPath(new URL("../../", import.meta.url))) {
   const read = file => readFileSync(join(repo, file), "utf8")
   const expected = JSON.parse(read("packages/runtime/package.json")).peerDependencies.effect
+  // VIP-32 amended: when runtime supports a caret Effect range (^4.1.0), no exact @effect/platform-node-shared override is required.
+  if (typeof expected === "string" && expected.startsWith("^")) return []
   const overview = read("docs/user/src/setup.md")
   const file = "docs/user/src/setup/existing-project.md"
   return yarnInstallProblems(read(file), expected, /\byarn add\b/.test(overview), file)

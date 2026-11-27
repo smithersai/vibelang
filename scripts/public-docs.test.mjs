@@ -40,12 +40,16 @@ test("the current release discloses static platform limits and the mask-end usin
   assert.match(read("docs/user/src/platform/platform-globals.md"), /## Limits of static checks/)
 })
 
-test("platform installation follows the canonical exact-version setup", () => {
+test("platform installation follows the canonical Effect setup", () => {
+  const runtime = JSON.parse(read("packages/runtime/package.json"))
+  const baseline = runtime.devDependencies?.effect ?? runtime.peerDependencies.effect
   const page = read("docs/user/src/platform/105-introduction.md")
   const installs = page.split("## Installing runtime-specific packages")[1]?.split(/^## /m)[0] ?? ""
   assert.ok(installs.includes("../setup/existing-project.md#2-install-the-packages"))
-  assert.ok(installs.includes('"@effect/platform-node-shared": "4.1.1"'))
-  for (const platform of ["node", "bun", "browser"]) assert.ok(installs.includes(`@effect/platform-${platform}@4.1.1`))
+  assert.ok(installs.includes(baseline))
+  for (const platform of ["node", "bun", "browser"]) {
+    assert.ok(installs.includes(`@effect/platform-${platform}@^${baseline}`) || installs.includes(`@effect/platform-${platform}@${baseline}`))
+  }
   assert.doesNotMatch(installs, /(?:npm install|bun add|deno add).*@effect\/platform-(?:node|bun|browser)(?!@)[\s\n]/)
 })
 

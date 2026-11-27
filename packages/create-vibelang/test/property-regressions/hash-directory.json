@@ -18,7 +18,7 @@
   "discovery": { "property": "scaffold-builds", "input": ["app#", "app"] },
   "command": "FC_PROPERTY=scaffold-builds-checkout-npm-00-new node --test test/create.property.test.mjs",
   "replay": "FC_PROPERTY=scaffold-builds-checkout-npm-00-new node --test test/create.property.test.mjs",
-  "errorPattern": "Cannot find module '/src/greeting[.]test[.]vibe'",
+  "errorPattern": "Cannot find module '/(src/greeting[.]test[.]vibe|node_modules/effect/dist/Effect[.]js)'",
   "error": "Vitest exits 1 before collecting tests: Cannot find module '/src/greeting.test.vibe'. Vite warns that the project root contains #. The CLI accepts the directory and --noEmit succeeds.",
   "note": "This is Vite's own handling of project paths containing #, reproduced without any VibeLang packages. Use a directory path without #. Discovery shrank app#; the saved input removes the remaining app prefix. Replay this input before discovery; the seed/path describe the original generator. A successful test run is XPASS.",
   "plainReproduction": {

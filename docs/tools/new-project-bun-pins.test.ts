@@ -11,10 +11,17 @@ const pin = (value: unknown, fence = tick.repeat(3)) =>
 const install = (version: string, fence = tick.repeat(3)) =>
   block("sh", "bun add effect@" + version + " @effect/platform-node@" + version, fence)
 
-test("the Alchemy setup pins the Node helper before installing Effect", () => {
-  const expected = JSON.parse(readFileSync(new URL("../../packages/runtime/package.json", import.meta.url), "utf8")).peerDependencies.effect
+test("the Alchemy setup aligns its Effect pin with the runtime", () => {
+  const runtime = JSON.parse(readFileSync(new URL("../../packages/runtime/package.json", import.meta.url), "utf8"))
+  const expected = runtime.peerDependencies.effect
+  const baseline = runtime.devDependencies?.effect ?? expected
   const page = readFileSync(new URL("../user/src/platform/alchemy.md", import.meta.url), "utf8")
-  expect(freshBunInstallProblems(page, expected)).toEqual([])
+  if (typeof expected === "string" && expected.startsWith("^")) {
+    expect(page).toContain(`effect@${baseline}`)
+    expect(page).toContain(`@effect/platform-node@${baseline}`)
+  } else {
+    expect(freshBunInstallProblems(page, expected)).toEqual([])
+  }
 })
 
 test("fresh projects need an exact active root pin before the install", () => {

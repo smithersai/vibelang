@@ -34,7 +34,7 @@ test("each row's status agrees with its VIP's Status line", () => {
     const vip = vips.get(n)!
     if (status === "Supported") expect([n, vip.status, n <= 41]).toEqual([n, "accepted", true])
     else if (status.startsWith("Accepted, not in the alpha")) expect([n, vip.status, n > 41]).toEqual([n, "accepted", true])
-    else if (/^(Accepted \(|Implemented on `main`)/.test(status)) expect(vip.status).toBe("accepted")
+    else if (/^(Accepted[ (;,]|Implemented (?:on `main`|in \d+\.\d+\.\d+))/.test(status)) expect(vip.status).toBe("accepted")
     else if (/^(RFP|Revised)\b/.test(status)) expect(vip.status).toBe(status.split(" ")[0].toLowerCase())
     else if (status === "Denied") expect([n, vip.status]).toEqual([n, "denied"])
     else if (status.startsWith("Superseded by VIP-")) expect([n, vip.status, /^\*Superseded by \[VIP-/m.test(vip.text)]).toEqual([n, "denied", true])
@@ -97,9 +97,9 @@ test("the 0.0.13 bug list names nothing from the open built-in set", () => {
   expect(bugs.split("\n").filter(line => leak.test(line))).toEqual([])
 })
 
-test("VIPs 56 through 59 distinguish main implementation from the published alpha", () => {
+test("VIPs 56 through 59 state their implementation status", () => {
   for (const n of [56, 57, 58, 59]) {
-    expect(rows.get(n)?.status).toStartWith("Implemented on `main`")
+    expect(rows.get(n)?.status).toMatch(/^Implemented (?:on `main`|in 0\.0\.14)/)
     expect(vips.get(n)?.line).toMatch(/implemented|built 2026/i)
   }
 })

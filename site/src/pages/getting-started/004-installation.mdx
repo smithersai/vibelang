@@ -70,46 +70,24 @@ See [Getting Started](/013-getting-started) for the starter files and [Running E
 
 ## Add VibeLang to an existing project
 
-Pin the transitive `@effect/platform-node-shared` helper in the root `package.json` before installing so package managers do not select a mismatched patch.
-
-For npm (or Bun when `overrides` exists or neither table exists):
-
-```json
-{
-  "overrides": {
-    "@effect/platform-node-shared": "4.1.6"
-  }
-}
-```
-
-With Bun, if the root `package.json` uses only `resolutions`, add the pin there instead — when both fields exist, [Bun uses only `overrides`](https://bun.com/docs/pm/overrides#resolutions) and ignores `resolutions`:
-
-```json
-{
-  "resolutions": {
-    "@effect/platform-node-shared": "4.1.6"
-  }
-}
-```
-
-Then install the pinned packages (for pnpm and Yarn, see [existing project](/setup/existing-project#2-install-the-packages)):
+No transitive `@effect/platform-node-shared` override or resolution is required — any stable `^4.1.0` Effect release works out of the box. Install VibeLang beside `effect@^4.1.0` (tested on `4.1.6`; for pnpm and Yarn, see [existing project](/setup/existing-project#2-install-the-packages)):
 
 ```sh
-bun add --exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
-bun add -d --exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
+bun add vibelang-runtime@0.0.14 effect@^4.1.6 @effect/platform-node@^4.1.6
+bun add -d vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@^4.1.6
 ```
 
-With npm, use `npm install --save-exact` and `npm install --save-dev --save-exact`.
+With npm, use `npm install` and `npm install --save-dev`.
 
 | Package | Install as | Purpose |
 | --- | --- | --- |
 | `vibelang-runtime` | Dependency | Small compiled-code helpers (e.g. `Symbol.customMatcher` polyfill); adds no runtime semantics |
-| `effect`, `@effect/platform-node` | Dependency | Effect 4.1.1 and Node platform |
+| `effect`, `@effect/platform-node` | Dependency | Effect `^4.1.0` (tested on `4.1.6`) and Node platform |
 | `vibelang` | Dev dependency | Compiler, language server, native binary, and VS Code extension |
 | `vibelang-vite` | Dev dependency | Compiles `.vibe` modules for Vite and Vitest |
-| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` 4.1.1 |
+| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` `^4.1.0` |
 
-**Version pinning:** `vibelang-runtime` requires `effect` 4.1.1 exactly — it depends on Effect internals and checks the exact version at load. The compiler reports `EK3201` if the resolved `effect` differs from `4.1.1`. VibeLang follows Effect 4.0.6's defect precedence, which 4.1.1 keeps: a failure whose cleanup crashes is a defect (see [release notes](/setup/release-notes)). Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at `4.1.1`, and keep `vibelang`, `vibelang-runtime`, and `vibelang-vite` at one matching version.
+**Effect compatibility:** `vibelang` and `vibelang-runtime` support any stable `effect` version `>=4.1.0 <5.0.0` (tested on `4.1.6`) and reject `3.x`, `4.0.x`, `5.x`, and prereleases with `EK3201`. VibeLang follows Effect 4.0.6's defect precedence, which Effect 4.1+ keeps: a failure whose cleanup crashes is a defect (see [release notes](/setup/release-notes)). Keep `effect`, `@effect/platform-node`, and `@effect/vitest` on matching `4.1.x` versions, and keep `vibelang`, `vibelang-runtime`, and `vibelang-vite` at one matching version.
 
 Add `tsconfig.json` (VibeLang checks `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`; VibeLang-specific options go under a top-level `"vibe"` key, which plain `tsc` ignores):
 
@@ -209,11 +187,11 @@ bun x --no-install vibelang --noEmit
 
 ### TypeScript declaration consumers
 
-Downstream projects checking emitted declarations with stock `tsc` require **TypeScript 5.7 or later** for `effect@4.1.1`, whose types use generic typed arrays like `Uint8Array<ArrayBuffer>` (introduced in TS 5.7). This consumer requirement is separate from VibeLang's TypeScript 7.1 checker; upgrade `typescript` rather than relying on `skipLibCheck`. Consumers also install `vibelang-runtime` beside `effect` ([Services and errors from TypeScript](/vibelang-features/114-vibelang-for-effect-users#services-and-errors-from-typescript)).
+Downstream projects checking emitted declarations with stock `tsc` require **TypeScript 5.7 or later** for `effect@^4.1.0` (tested on `4.1.6`), whose types use generic typed arrays like `Uint8Array<ArrayBuffer>` (introduced in TS 5.7). This consumer requirement is separate from VibeLang's TypeScript 7.1 checker; upgrade `typescript` rather than relying on `skipLibCheck`. Consumers also install `vibelang-runtime` beside `effect` ([Services and errors from TypeScript](/vibelang-features/114-vibelang-for-effect-users#services-and-errors-from-typescript)).
 
 ## Coming from Effect
 
-Install `vibelang` and `vibelang-runtime` beside `effect@4.1.1`. Write application logic in `.vibe` and keep TypeScript integrations in `.ts`; the compiler checks both as one program.
+Install `vibelang` and `vibelang-runtime` beside `effect@^4.1.0`. Write application logic in `.vibe` and keep TypeScript integrations in `.ts`; the compiler checks both as one program.
 
 ## Last resort: keep TypeScript file names
 

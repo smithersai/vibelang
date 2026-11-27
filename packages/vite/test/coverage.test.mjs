@@ -95,11 +95,11 @@ function tailFiles({ kind, trivia }) {
   }[kind]
   return {
     "src/tail-generated.vibe": `
-effect function task(n: number): number!Error! {
+effect function task(n: number): number!Error {
   if (n < 0) throw new Error("negative")
   return n
 }
-export effect function tail(n: number): number!Error! { return (${vibe}) }
+export effect function tail(n: number): number!Error { return (${vibe}) }
 `,
     "src/tail-generated.effect.ts": `
 import { Effect } from "effect"

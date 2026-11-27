@@ -151,6 +151,11 @@ jobs:
           echo "Timed out waiting for Vibe $VERSION packages to propagate on npm" >&2
           exit 1
 
+      - name: Build browser playground WASM bundle (gzip <= 25 MiB)
+        run: |
+          sh scripts/build-playground-wasm.sh --gzip
+          rm -f site/public/playground/vibelang.wasm
+
       - name: Deploy vibelang.sh
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -214,6 +219,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: typescript/tsc/go.mod
+          cache: true
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "26"
@@ -223,6 +232,11 @@ jobs:
 
       - name: Install pnpm
         run: npm install -g pnpm@12.18.0
+
+      - name: Build browser playground WASM bundle (gzip <= 25 MiB)
+        run: |
+          sh scripts/build-playground-wasm.sh --gzip
+          rm -f site/public/playground/vibelang.wasm
 
       - name: Deploy vibelang.sh
         env:
