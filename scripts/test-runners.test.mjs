@@ -53,6 +53,7 @@ const runs = [
   ["scripts/api-identity*.test.mjs", "root-test-shards.ts", "scripts/api-identity*.test.mjs"],
   ["scripts/audit/*.test.mjs", ".smithers/PACKAGE.ts", "bun test scripts/audit/render-lighthouse-report.test.mjs"],
   ["scripts/auth/*.test.mjs", ".smithers/PACKAGE.ts", "bun test scripts/auth/mint-sandbox-auth.test.mjs"],
+  ["scripts/factory/*.test.mjs", ".smithers/PACKAGE.ts", "bun test scripts/factory/project-factory.test.mjs"],
   ["scripts/wiki/*.test.mjs", ".smithers/PACKAGE.ts", "bun test scripts/wiki/wiki.test.mjs"],
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
   ["scripts/release/*.test.mjs", "root-test-shards.ts", "scripts/release/*.test.mjs"],
@@ -104,6 +105,8 @@ const runs = [
   ["packages/create-vibelang/test/dev.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/dev.test.mjs"],
   ["packages/create-vibelang/test/filesystem.property.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/filesystem.property.test.mjs"],
   ["packages/create-vibelang/test/pin.property.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/pin.property.test.mjs"],
+  ["packages/create-vibelang/test/cli-flags.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/cli-flags.test.mjs"],
+  ["packages/create-vibelang/test/smithers-scaffold.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/smithers-scaffold.test.mjs"],
   // A fixture project: coverage.test.mjs runs Vitest over it.
   ["packages/vite/test/coverage/test/*.test.ts", "packages/vite/test/coverage.test.mjs", "test/coverage"],
   // compiler-eslint-test runs run.sh, whose node --test line takes every test file beside it (#625).

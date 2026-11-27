@@ -150,4 +150,14 @@ if ! grep -q '^src/greet.vibe(1,[0-9]*): error TS1360: .*the prelude cannot reso
 fi
 echo "ok   TS1360 at greet.vibe line 1 names the fix"
 
+step "package unit and contract checks"
+node --test \
+  "$here/manifest.test.mjs" \
+  "$here/protocol-client.test.mjs" \
+  "$here/fixtures-integrity.test.mjs" \
+  "$here/parity-layout.test.mjs" \
+  "$here/prelude-structure.test.mjs" \
+  "$here/lsp-hover-script.test.mjs" \
+  "$here/property-regressions.test.mjs"
+
 step "e2e: all checks passed"

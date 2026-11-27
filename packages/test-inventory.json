@@ -543,8 +543,15 @@
     "compiler/test/source-maps/vitest.test.mjs"
   ],
   "typescript-shim": [
+    "typescript-shim/test/compatibility-script.test.mjs",
+    "typescript-shim/test/entrypoints.test.mjs",
+    "typescript-shim/test/exports-resolution.test.mjs",
     "typescript-shim/test/format.test.mjs",
+    "typescript-shim/test/launcher-guard.test.mjs",
+    "typescript-shim/test/manifest.test.mjs",
+    "typescript-shim/test/readme-contract.test.mjs",
     "typescript-shim/test/shim.test.mjs",
-    "typescript-shim/test/twin.test.mjs"
+    "typescript-shim/test/twin.test.mjs",
+    "typescript-shim/test/version-export.test.mjs"
   ]
 }

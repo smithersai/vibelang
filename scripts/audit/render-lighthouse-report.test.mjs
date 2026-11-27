@@ -206,6 +206,11 @@ test("renderLighthouseHtml normalizes Uphill value/change/before/after fields an
   assert.ok(html.includes("Regressions Since Baseline (1)"))
   assert.ok(html.includes("0 -> 50"))
   assert.ok(html.includes("toggle-all"))
+  assert.ok(html.includes("lh-kpi-strip"))
+  assert.ok(html.includes("lh-jumpbar"))
+  assert.ok(html.includes("copy-markdown"))
+  assert.ok(html.includes("print-report"))
+  assert.ok(html.includes('id="audit-md-data"'))
 })
 
 test("resolveExecutionTrust enforces untrusted PR isolation and trusted main separation", () => {

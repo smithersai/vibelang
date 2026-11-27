@@ -19,11 +19,11 @@ The public coding factory at `https://smithers.sh/smithersai/vibelang` adapts it
 
 All 5,709 build targets share `https://build.smithers.sh` as a content-addressed remote cache declared in `.smithers/WORKSPACE.ts`:
 
-| Context | Credential | Remote Cache Reads | Remote Cache Writes | Gate Authority |
-| --- | --- | --- | --- | --- |
-| Local / Contributor PR | `SMITHERS_CACHE_READ_TOKEN` | Allowed (fast cache hits) | Refused (`HTTP 403`) | Informational only |
-| Controlled Sandbox (`main`) | `SMITHERS_CACHE_WRITE_TOKEN` inside `cache-publish` environment | Allowed | Allowed (confined sandboxes only) | Authoritative |
-| Unconfined local shell (`sandbox: "none"`) | Any | Allowed | Client-refused (stays local) | Local verification |
+| Context | Reads | Writes | Gates |
+| --- | --- | --- | --- |
+| Contributor / PR (`READ_TOKEN`) | Allowed | Refused (`403`) | Informational |
+| Controlled `main` (`WRITE_TOKEN`) | Allowed | Confined only | Authoritative |
+| Unconfined shell (`sandbox: "none"`) | Allowed | Local only | Local check |
 
 Even when a write credential is present, `smthrs` refuses to upload outputs produced by unconfined (`sandbox: "none"`) targets. Only targets executed inside an enforced OS sandbox (macOS Seatbelt or Linux Bubblewrap with `network: none`) or a Smithers Cloud controlled sandbox publish to the shared trunk cache.
 

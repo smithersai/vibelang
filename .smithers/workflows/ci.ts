@@ -9,13 +9,18 @@ import { Schema } from "effect"
 // isolated Smithers Cloud machine at the exact commit SHA with registry-only
 // egress and zero repository secrets on untrusted fork PRs.
 
-const prepare = "sh scripts/ci.sh --prepare-only"
+const prepare = [
+  "jj git init --colocate || true",
+  "(cd packages/runtime && bun install --frozen-lockfile && bun run build)",
+  "sh scripts/ci.sh --prepare-only",
+  "ln -sfn ../../../packages/runtime/dist .smithers/node_modules/vibelang-runtime/dist"
+].join(" && ")
 
 const docsAndFactory = CiJob.make("docs-and-factory", {
   steps: [
     { name: "prepare", run: prepare },
     { name: "docs-check", run: "cd .smithers && bun run docs:check" },
-    { name: "factory-check", run: ".smithers/node_modules/.bin/smthrs ci //.smithers:factory-check --ui plain" },
+    { name: "factory-suite", run: ".smithers/node_modules/.bin/smthrs ci //.smithers:factory-suite --ui plain" },
     { name: "smithers-content", run: "bun docs/tools/check-smithers-content.ts" },
     { name: "repo-content", run: "node --test docs/tools/repo-content.test.mjs" }
   ]

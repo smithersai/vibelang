@@ -139,11 +139,8 @@
       "summary": "Validate and publish the Obsidian-compatible VibeLang Wiki and Mythical History.",
       "featured": true,
       "kind": "ts",
-      "path": ".smithers/flows/wiki/flow.ts",
-      "capabilities": [
-        "fs:read:**",
-        "proc:spawn:bun .smithers/scripts/wiki.ts *"
-      ],
+      "path": ".smithers/workflows/wiki.ts",
+      "capabilities": [],
       "model": null,
       "modelInvocable": true,
       "flows": []
@@ -154,11 +151,8 @@
       "summary": "Verify the Cloud MCP server and one-time-use sandbox authentication tooling.",
       "featured": false,
       "kind": "ts",
-      "path": ".smithers/flows/sandbox-auth/flow.ts",
-      "capabilities": [
-        "fs:read:**",
-        "proc:spawn:bun .smithers/scripts/mint-sandbox-auth.ts *"
-      ],
+      "path": ".smithers/workflows/sandbox-auth.ts",
+      "capabilities": [],
       "model": null,
       "modelInvocable": true,
       "flows": []

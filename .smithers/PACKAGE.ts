@@ -17,6 +17,7 @@ const factorySources = S.Filegroup({
     S.file("home.json"),
     S.file("merge.json"),
     S.file("scripts/project-factory.ts"),
+    S.file("//scripts/factory/project-factory.test.mjs"),
     S.file("//docs/tools/home.ts"),
     S.glob("flows/**", { exclude: ["**/node_modules/**", "**/fixture*/**"] }),
     S.glob("workflows/**"),
@@ -98,6 +99,14 @@ const authTest = S.Shell.Test({
   timeout: "1m"
 })
 
+const factoryTest = S.Shell.Test({
+  summary: "Verify QuickJS cloud workflow import boundaries, flow descriptions, and personalized home audiences.",
+  shell: "bun test scripts/factory/project-factory.test.mjs",
+  data: [factorySources],
+  tools: [bun],
+  timeout: "1m"
+})
+
 export const Package = S.Package({
   targets: {
     "factory-sources": factorySources,
@@ -112,13 +121,14 @@ export const Package = S.Package({
       sandbox: "none"
     }),
     "factory-check": factoryCheck,
+    "factory-test": factoryTest,
     "wiki-check": wikiCheck,
     "wiki-test": wikiTest,
     "audit-test": auditTest,
     "auth-test": authTest,
     "factory-suite": S.Suite({
-      summary: "Verify Smithers Cloud factory projection, Obsidian Wiki, Lighthouse audit, and one-time-use auth.",
-      tests: [factoryCheck, wikiCheck, wikiTest, auditTest, authTest]
+      summary: "Verify Smithers Cloud factory projection, QuickJS workflows, Obsidian Wiki, Lighthouse audit, and one-time-use auth.",
+      tests: [factoryCheck, factoryTest, wikiCheck, wikiTest, auditTest, authTest]
     })
   }
 })

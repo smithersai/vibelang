@@ -62,19 +62,19 @@ testing:
   go-unit-tests:
     "*": { target: 50 }
     typescript/tsc/internal/vibelang: { baseline: 1174 }
-    typescript/tsc/internal/vibelangestree: { baseline: 45 }
+    typescript/tsc/internal/vibelangestree: { baseline: 50 }
     typescript/tsc/internal/vibelangfmt: { baseline: 93 }
     typescript/tsc/internal/vibelangfuzz: { baseline: 1835 }
     typescript/tsc/internal/vibelangmapper: { baseline: 347 }
-    typescript/tsc/internal/vibelangprotocol: { baseline: 3 }
+    typescript/tsc/internal/vibelangprotocol: { baseline: 8 }
   go-fuzz-targets: { baseline: 932, target: 250 }
   pkg-test-files:
     "*": { target: 10 }
     packages/compiler: { baseline: 291 }
-    packages/create-vibelang: { baseline: 8 }
+    packages/create-vibelang: { baseline: 10 }
     packages/runtime: { baseline: 195 }
-    packages/ts-mapper: { baseline: 3 }
-    packages/typescript-shim: { baseline: 3 }
+    packages/ts-mapper: { baseline: 10 }
+    packages/typescript-shim: { baseline: 10 }
     packages/unplugin: { baseline: 44 }
     packages/vite: { baseline: 41 }
 

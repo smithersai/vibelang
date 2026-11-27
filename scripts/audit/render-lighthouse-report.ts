@@ -303,12 +303,13 @@ export function renderMarkdownSummary(summary: LighthouseAuditSummary): string {
     `- **Execution Trust**: ${trustLabel}`,
     `- **Shared Cache Policy**: \`${summary.cachePolicy}\` (\`${summary.cacheEndpoint}\`)`,
     "",
-    "| Category | Score | Passed Audits | Status |",
+    "| Category | Score | Passed | Status |",
     "| --- | ---: | ---: | --- |"
   ]
   for (const cat of summary.categories) {
+    const shortBand = cat.band === "average" ? "avg" : cat.band
     lines.push(
-      `| ${cat.title} | **${cat.score}** | ${cat.passedCount}/${cat.totalCount} | ${bandIcon(cat.band)} ${cat.band} |`
+      `| ${cat.title} | **${cat.score}** | ${cat.passedCount}/${cat.totalCount} | ${bandIcon(cat.band)} ${shortBand} |`
     )
   }
   if (summary.regressions.length > 0) {
@@ -375,6 +376,19 @@ export function renderLighthouseHtml(
             title: "Untrusted Contributor Execution",
             detail: "Encouraged for fast local and PR feedback. Read-only shared cache hits only; isolated from trunk cache writes and merge gates."
           }
+
+  const totalPassed = summary.categories.reduce((sum, c) => sum + c.passedCount, 0)
+  const totalAudits = summary.categories.reduce((sum, c) => sum + c.totalCount, 0)
+  const gatesPassing = (provenance.gates ?? []).filter((g) => g.status === "pass").length
+  const gatesTotal = (provenance.gates ?? []).length
+  const markdownPayload = JSON.stringify(renderMarkdownSummary(summary)).replace(/</g, "\\u003c")
+
+  const jumpLinksHtml = summary.categories
+    .map(
+      (cat) =>
+        `<a class="lh-jump-pill" href="#cat-${escapeHtml(cat.name)}">${escapeHtml(cat.title)} <span class="lh-score-chip lh-score-chip--${cat.band}">${cat.score}</span></a>`
+    )
+    .join("\n")
 
   const gaugeCards = summary.categories
     .map(
@@ -817,9 +831,31 @@ export function renderLighthouseHtml(
   .lh-gate-card__head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-bottom: 4px; }
   .lh-gate-card__detail { font-size: 12px; color: var(--muted); }
   .lh-controls-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .lh-kpi-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border);
+  }
+  .lh-kpi {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .lh-kpi__label { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .lh-kpi__value { font-family: var(--mono); font-size: 18px; font-weight: 700; margin-top: 4px; }
+  .lh-jumpbar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 18px; padding: 10px 14px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 12px;
+  }
+  .lh-jump-pill {
+    display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+    color: var(--text); font-size: 12.5px; font-weight: 500;
+    padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .lh-jump-pill:hover { border-color: var(--accent); color: var(--accent); }
   .lh-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 24px; }
   @media print {
-    .lh-topbar, .lh-controls { display: none !important; }
+    .lh-topbar, .lh-controls, .lh-jumpbar { display: none !important; }
     body { background: #fff; color: #000; }
     .lh-section, .lh-hero { break-inside: avoid; }
   }
@@ -838,6 +874,8 @@ export function renderLighthouseHtml(
     <a href="${escapeHtml(provenance.factoryUrl)}" target="_blank" rel="noopener">Factory</a>
     <a href="${escapeHtml(provenance.wikiUrl)}" target="_blank" rel="noopener">Wiki</a>
     <a href="${escapeHtml(provenance.mcpEndpoint)}" target="_blank" rel="noopener">Cloud MCP</a>
+    <button type="button" class="lh-btn" id="copy-markdown">Copy summary</button>
+    <button type="button" class="lh-btn" id="print-report">Print / PDF</button>
     <button type="button" class="lh-btn" id="theme-toggle">Toggle theme</button>
   </nav>
 </header>
@@ -864,7 +902,31 @@ export function renderLighthouseHtml(
       <span>${renderStatusGlyph("average")} 50-89 Improving</span>
       <span>${renderStatusGlyph("pass")} 90-100 Target met</span>
     </div>
+    <div class="lh-kpi-strip" aria-label="Audit KPI summary">
+      <div class="lh-kpi">
+        <div class="lh-kpi__label">Audits Passing</div>
+        <div class="lh-kpi__value">${totalPassed} / ${totalAudits}</div>
+      </div>
+      <div class="lh-kpi">
+        <div class="lh-kpi__label">Backpressure Gates</div>
+        <div class="lh-kpi__value">${gatesTotal > 0 ? `${gatesPassing} / ${gatesTotal}` : "n/a"}</div>
+      </div>
+      <div class="lh-kpi">
+        <div class="lh-kpi__label">Baseline Regressions</div>
+        <div class="lh-kpi__value">${regressions.length}</div>
+      </div>
+      <div class="lh-kpi">
+        <div class="lh-kpi__label">Cache Policy</div>
+        <div class="lh-kpi__value">${escapeHtml(provenance.cachePolicy)}</div>
+      </div>
+    </div>
   </section>
+
+  <nav class="lh-jumpbar" aria-label="Jump to category">
+    <a class="lh-jump-pill" href="#opportunities">Opportunities</a>
+    ${gatesTotal > 0 ? `<a class="lh-jump-pill" href="#gates">Gates</a>` : ""}
+    ${jumpLinksHtml}
+  </nav>
 
   <section class="lh-trust ${trustMeta.cls}" aria-label="Execution Trust Provenance">
     <div>
@@ -957,8 +1019,24 @@ export function renderLighthouseHtml(
     for (const el of audits) el.open = allExpanded;
     toggleAll.textContent = allExpanded ? "Collapse all" : "Expand all";
   });
+  const printBtn = document.getElementById("print-report");
+  printBtn?.addEventListener("click", () => window.print());
+  const copyBtn = document.getElementById("copy-markdown");
+  const mdEl = document.getElementById("audit-md-data");
+  copyBtn?.addEventListener("click", async () => {
+    try {
+      const mdText = JSON.parse(mdEl?.textContent || '""');
+      await navigator.clipboard.writeText(mdText);
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => { copyBtn.textContent = "Copy summary"; }, 1800);
+    } catch {
+      copyBtn.textContent = "Copy failed";
+      setTimeout(() => { copyBtn.textContent = "Copy summary"; }, 1800);
+    }
+  });
 })();
 </script>
+<script type="application/json" id="audit-md-data">${markdownPayload}</script>
 </body>
 </html>
 `

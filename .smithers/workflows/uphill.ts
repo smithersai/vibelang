@@ -10,6 +10,16 @@ import { Schema } from "effect"
 
 const auditJob = CiJob.make("lighthouse-audit", {
   steps: [
+    {
+      name: "prepare",
+      run: [
+        "jj git init --colocate || true",
+        "(cd packages/runtime && bun install --frozen-lockfile && bun run build)",
+        "(cd docs/tools && bun install --frozen-lockfile)",
+        "(cd .smithers && bun install --frozen-lockfile)",
+        "ln -sfn ../../../packages/runtime/dist .smithers/node_modules/vibelang-runtime/dist"
+      ].join(" && ")
+    },
     { name: "audit-report", run: "bun scripts/audit/run-audit.ts --ci" }
   ]
 })
