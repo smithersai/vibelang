@@ -4,6 +4,10 @@ VibeLang is v0, so a new version can change the language in breaking ways.
 Before you update, read the notes for every version between yours and the new
 one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
+## 0.0.15 (unreleased)
+
+### Bugs fixed since 0.0.14
+
 ## 0.0.14
 
 ### Naming & CLI (VIP-53)
