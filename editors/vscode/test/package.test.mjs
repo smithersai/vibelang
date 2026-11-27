@@ -102,3 +102,16 @@ test("every source map the VSIX JavaScript names is in the VSIX and carries its 
     assert.equal(sourcesContent?.length, sources.length, map + ": every source has its content")
   }
 })
+
+test("the VSIX ships Marketplace and Open VSX metadata, PNG icon, and CHANGELOG", () => {
+  const manifest = JSON.parse(packed("package.json").toString())
+  assert.equal(manifest.icon, "icons/vibelang.png")
+  assert.equal(manifest.galleryBanner?.theme, "dark")
+  assert.match(manifest.galleryBanner?.color ?? "", /^#[0-9a-f]{6}$/i)
+  assert.equal(manifest.qna, "https://github.com/smithersai/vibelang/issues")
+  assert.equal(manifest.homepage, "https://vibelang.sh")
+  assert.equal(manifest.bugs?.url, "https://github.com/smithersai/vibelang/issues")
+  assert.deepEqual(packed("icons/vibelang.png"), readFileSync(join(root, "icons/vibelang.png")))
+  const changelog = packed("changelog.md").toString("utf8")
+  assert.match(changelog, new RegExp(`^## ${manifest.version.replaceAll(".", "\\.")}\\b`, "m"))
+})

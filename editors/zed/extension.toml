@@ -1,0 +1,21 @@
+id = "vibelang"
+name = "Vibe"
+version = "0.0.14"
+schema_version = 1
+authors = ["VibeLang Maintainers"]
+description = "Vibe (VibeLang) language support: syntax highlighting and LSP diagnostics, hovers, completions, and navigation for .vibe and .vibex files."
+repository = "https://github.com/smithersai/vibelang"
+
+[language_servers.vibelang]
+name = "Vibe Language Server"
+languages = ["Vibe", "Vibe JSX"]
+
+[grammars.vibe]
+repository = "https://github.com/smithersai/vibelang"
+rev = "7b0fd5b58fed32be58ff11d3a1ae8eda233fd16d"
+path = "editors/tree-sitter-vibelang"
+
+[grammars.vibex]
+repository = "https://github.com/smithersai/vibelang"
+rev = "7b0fd5b58fed32be58ff11d3a1ae8eda233fd16d"
+path = "editors/tree-sitter-vibelang/vibex"

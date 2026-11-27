@@ -4,6 +4,13 @@
   "description": "Vibe (VibeLang) language support: the language server, diagnostics with EK codes, hovers with inferred contracts, and syntax highlighting for .vibe and .vibex files.",
   "version": "0.0.14",
   "publisher": "vibelang",
+  "icon": "icons/vibelang.png",
+  "galleryBanner": {
+    "color": "#11131c",
+    "theme": "dark"
+  },
+  "markdown": "github",
+  "qna": "https://github.com/smithersai/vibelang/issues",
   "license": "MIT",
   "homepage": "https://vibelang.sh",
   "repository": {
@@ -24,9 +31,10 @@
   ],
   "keywords": [
     "vibe",
-    "effect",
     "vibelang",
-    "typescript"
+    "effect",
+    "typescript",
+    "lsp"
   ],
   "capabilities": {
     "untrustedWorkspaces": {

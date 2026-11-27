@@ -13,7 +13,7 @@ npm install --no-audit --no-fund --legacy-peer-deps \
   tsup@9.0.0 tsdown@0.23.7 ts-loader@9.6.2 webpack@5.113.0 webpack-cli@7 \
   fork-ts-checker-webpack-plugin@9.2.0 ajv@8 eslint@10.15.0 typescript-eslint@8.74.0 \
   typedoc@0.28.20 vue-tsc@3.3.14 svelte-check@4.7.8 svelte@5 knip@6 \
-  jest@29 ts-jest@29.4.15 @types/jest@29 effect@4.1.1 vibelang-runtime@0.0.13
+  jest@29 ts-jest@29.4.15 @types/jest@29 effect@4.1.1 vibelang-runtime@0.0.14
 test "$(node -p 'require("typescript/package.json").name')" = vibelang-typescript
 cat >tsconfig.json <<'JSON'
 {"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","types":["jest"],"allowImportingTsExtensions":true,"rewriteRelativeImportExtensions":true,"skipLibCheck":true,"strict":true},"include":["src"]}

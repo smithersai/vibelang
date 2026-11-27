@@ -1,0 +1,125 @@
+name: Publish VS Code Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    paths:
+      - "editors/vscode/**"
+      - "scripts/release/publish-vscode.sh"
+      - ".github/workflows/publish-vscode.yml"
+  workflow_dispatch:
+    inputs:
+      publish_marketplace:
+        description: Publish to VS Code Marketplace (requires VSCE_PAT)
+        type: boolean
+        default: true
+      publish_openvsx:
+        description: Publish to Open VSX Registry (requires OVSX_PAT)
+        type: boolean
+        default: true
+      dry_run:
+        description: Package and verify only without publishing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-vscode-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package:
+    name: Build, test, and package VSIX
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "26"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install extension dependencies
+        working-directory: editors/vscode
+        run: bun install --frozen-lockfile
+
+      - name: Run VS Code extension unit and grammar tests
+        working-directory: editors/vscode
+        run: |
+          bun run test:unit
+          bun run test:grammar
+
+      - name: Verify release packaging (dry run)
+        run: sh scripts/release/publish-vscode.sh --dry-run --skip-install
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibelang-vsix
+          path: editors/vscode/vibelang.vsix
+          if-no-files-found: error
+
+  publish:
+    name: Publish to VS Code Marketplace and Open VSX
+    needs: package
+    if: >-
+      github.event_name != 'pull_request' &&
+      !(github.event_name == 'workflow_dispatch' && inputs.dry_run)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "26"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Verify tag matches extension version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          ext_version="$(node -p 'require("./editors/vscode/package.json").version')"
+          if [ "$tag_version" != "$ext_version" ]; then
+            echo "Tag v$tag_version does not match editors/vscode/package.json version $ext_version" >&2
+            exit 1
+          fi
+
+      - name: Publish to VS Code Marketplace
+        if: github.event_name != 'workflow_dispatch' || inputs.publish_marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${VSCE_PAT:-}" ]; then
+            echo "::notice::VSCE_PAT secret is not configured; skipping VS Code Marketplace publish."
+            exit 0
+          fi
+          sh scripts/release/publish-vscode.sh --marketplace
+
+      - name: Publish to Open VSX Registry
+        if: github.event_name != 'workflow_dispatch' || inputs.publish_openvsx
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${OVSX_PAT:-}" ]; then
+            echo "::notice::OVSX_PAT secret is not configured; skipping Open VSX publish."
+            exit 0
+          fi
+          sh scripts/release/publish-vscode.sh --openvsx

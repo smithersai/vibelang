@@ -8,7 +8,7 @@ The server reports a file's diagnostics when the editor asks (LSP 3.17 pull diag
 | --- | --- | --- |
 | VS Code, Cursor | The extension in [vscode/](vscode/README.md), shipped in `vibelang` as `node_modules/vibelang/editor/vibelang.vsix` | `bun run test` in `editors/vscode`, on VS Code 1.98.2 and 1.105.1 |
 | Neovim 0.10 or later | [nvim/vibelang.lua](nvim/vibelang.lua) and the [tree-sitter grammar](tree-sitter-vibelang/), below | `editors/nvim/test.sh`, on Neovim 0.10.3 with nvim-treesitter `master` |
-| Zed | Settings, below | No: Zed has no headless mode |
+| Zed | The extension in [zed/](zed/README.md) (or fallback settings below) | Extension manifest/queries validated; Zed has no headless mode |
 
 `.vibex` files contain JSX and use the TSX-derived `source.vibex` grammar in VS Code and Cursor. VibeLang forms are highlighted inside JSX containers; tag names, attribute strings and JSX text keep their JSX scopes.
 
@@ -76,7 +76,9 @@ declaration, following the normative appendix.
 
 ## Zed
 
-Zed defines languages through extensions, so these settings treat `.vibe` files as TypeScript and `.vibex` files as TSX and replace the binary of Zed's TypeScript server, `vtsls`, with `vibelang`. Put them in the project's `.zed/settings.json`, so other TypeScript projects keep `vtsls`:
+Install the Zed extension in [zed/](zed/README.md) (**zed: install dev extension** -> select `editors/zed`, or install **Vibe** once published in the Zed Extensions registry). It registers native **Vibe** (`.vibe`) and **Vibe JSX** (`.vibex`) languages using [tree-sitter-vibelang](tree-sitter-vibelang/) and launches workspace `node_modules/.bin/vibelang` (or `vibelang` on `PATH`) with `--lsp --stdio`.
+
+Without the extension, project settings can treat `.vibe` files as TypeScript and `.vibex` files as TSX and replace the binary of Zed's TypeScript server, `vtsls`, with `vibelang`. Put them in the project's `.zed/settings.json`, so other TypeScript projects keep `vtsls`:
 
 ```json
 {

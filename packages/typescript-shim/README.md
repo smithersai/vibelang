@@ -30,7 +30,7 @@ this directory with `npm pack`. From the consuming project, use the absolute
 tarball path as the value of the project's TypeScript dev dependency.
 
 ```json
-{ "devDependencies": { "typescript": "file:/absolute/path/vibelang-typescript-7.1.13.tgz" } }
+{ "devDependencies": { "typescript": "file:/absolute/path/vibelang-typescript-7.1.14.tgz" } }
 ```
 
 Run `npm install`, `pnpm install`, `yarn install`, or `bun install` to update

@@ -47,7 +47,7 @@ test("Known limitations has one experimental opt-in section that names each chec
     for (const phrase of [
       "cannot stop a program that sets out to reach an open-proposal module",
       "### What `EK3013` refuses",
-      "### Routes the check does not follow in 0.0.13",
+      "### Routes the check does not follow in 0.0.14",
       "These nine type-only spellings compile without the opt-in; they are erased and no experimental operation runs",
       "obtain a Durable engine without opting in",
       "`Readonly<typeof Experimental>`",

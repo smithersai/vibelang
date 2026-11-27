@@ -1,0 +1,110 @@
+name: 3-OS Native Release Rehearsal
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    paths:
+      - "typescript/tsc/**"
+      - "packages/compiler/**"
+      - "packages/runtime/**"
+      - "packages/vite/**"
+      - "packages/create-vibelang/**"
+      - "templates/app/**"
+      - "scripts/release/rehearse-native.mjs"
+      - "scripts/release/windows-smoke.mjs"
+      - ".github/workflows/rehearse-matrix.yml"
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rehearse-matrix-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  rehearse:
+    name: Native rehearsal (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+            goos: linux
+            goarch: amd64
+            exe: vibelang
+            with_bun: true
+          - os: macos-15
+            platform: darwin-arm64
+            goos: darwin
+            goarch: arm64
+            exe: vibelang
+            with_bun: true
+          - os: windows-latest
+            platform: win32-x64
+            goos: windows
+            goarch: amd64
+            exe: vibelang.exe
+            with_bun: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: typescript/tsc/go.mod
+          cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "26"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Print native toolchain versions
+        shell: bash
+        run: |
+          go version
+          node --version
+          npm --version
+          bun --version
+
+      - name: Build native VibeLang compiler for ${{ matrix.platform }}
+        shell: bash
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          mkdir -p packages/compiler/native
+          OUT_BIN="$PWD/packages/compiler/native/${{ matrix.exe }}"
+          (cd typescript/tsc && go build -trimpath -ldflags="-s -w -X github.com/microsoft/TypeScript/tsc/internal/vibelang.Revision=${GITHUB_SHA}" -o "$OUT_BIN" ./cmd/tsc)
+          "$OUT_BIN" --version
+
+      - name: Build vibelang-runtime
+        working-directory: packages/runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Run native starter scaffold, install, build, start, and test rehearsal
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXTRA_ARGS=""
+          if [ "${{ matrix.with_bun }}" = "true" ]; then
+            EXTRA_ARGS="--with-bun"
+          fi
+          node scripts/release/rehearse-native.mjs --binary "packages/compiler/native/${{ matrix.exe }}" $EXTRA_ARGS

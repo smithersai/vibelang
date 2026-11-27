@@ -23,7 +23,9 @@ code --install-extension node_modules/vibelang/editor/vibelang.vsix     # VS Cod
 cursor --install-extension node_modules/vibelang/editor/vibelang.vsix   # Cursor
 ```
 
-Then open the project directory. The extension isn't on the VS Code Marketplace or Open VSX yet; install it again after updating `vibelang`.
+Then open the project directory. When installed from the bundled VSIX, reinstall it after updating `vibelang`.
+
+Once published to the VS Code Marketplace and Open VSX Registry under extension ID `vibelang.vibelang`, you can also install it directly from the Extensions view in VS Code, Cursor, VSCodium, or other compatible editors.
 
 To build it from this repository, run `sh scripts/setup.sh` at the repository root, which builds the extension and prints the install commands, or build it alone:
 

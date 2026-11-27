@@ -1,28 +1,30 @@
 ---
 title: "Proposals"
-description: "Where each idea from VibeLang's earlier design stands in 0.0.13: shipped, proposed as a VIP, or without a proposal."
+description: "Where each idea from VibeLang's earlier design stands in 0.0.14: shipped, implemented opt-in, proposed as a VIP, denied, or without a proposal."
 ---
 
 # Proposals
 
 A change to VibeLang is decided as a VibeLang improvement proposal (VIP). The [VIP index](/vips/) lists every proposal and its status; an open VIP is not part of the language.
 
-VibeLang had an earlier design, documented on this site until October 2026, that kept functions eager and returned failures as `Result` values instead of building on Effect. This page records where each feature of that design stands today. A feature with no VIP is only an idea: to pursue one, propose it as a VIP.
+VibeLang had an earlier design, documented on this site until October 2026, that kept functions eager and returned failures as `Result` values instead of building on Effect. This page records where each feature of that design stands today in 0.0.14. A feature with no VIP is only an idea: to pursue one, propose it as a VIP.
 
 ## Summary
 
 | Idea from the earlier design | Where it stands | What to use today |
 | --- | --- | --- |
-| [Durable execution](#durable-execution) | Proposed in VIP-44, VIP-55, VIP-56 and VIP-60 | Effect's `effect/workflow` modules |
-| [Coding-agent library](#coding-agent-library) | VIP-62 and VIP-63 have experimental implementations; see VIP-64 and VIP-65 for related proposals | Effect's AI modules or the experimental model and agent modules |
-| [Typed workers](#typed-workers) | Proposed in VIP-57; not in 0.0.13 | Effect's `effect/workers` modules |
+| [Durable execution](#durable-execution) | Implemented (opt-in) in 0.0.14 for VIP-55, VIP-56, and VIP-60; VIP-44 accepted | `task` and `workflow` declarations (`vibe.experimental: ["builtins"]`), `Experimental.Durable`, or Effect's `effect/workflow` modules |
+| [Coding-agent library](#coding-agent-library) | VIP-62, VIP-63, VIP-64, and VIP-65 accepted (library-only) and implemented (opt-in) in 0.0.14 | `Experimental.Model`, `Experimental.Agent`, `Experimental.Tools`, `Experimental.McpClient`, or Effect's AI modules |
+| [Typed workers](#typed-workers) | Implemented (opt-in) in 0.0.14 (VIP-57) | `schema service`, worker imports (`with { type: "worker" }`), and `Experimental.Rpc`, or Effect's `effect/workers` modules |
+| [Capabilities and permissions](#capabilities-and-permissions) | Implemented (opt-in) in 0.0.14 (VIP-58) | `Experimental.Capability` and task/workflow `tier` & `capabilities` ceilings |
+| [Eval declarations](#eval-declarations) | Implemented (opt-in) in 0.0.14 (VIP-59) | `*.eval.vibe` suites with `Experimental.Eval` and `vibe eval` |
 | [Build-time host selection](#build-time-host-selection) | VIP-54 asks for one model of platform-specific code | Platform layers chosen at run time |
 | [Validators derived from types](#validators-derived-from-types) | Partly shipped as `schema` declarations (VIP-15) | `schema` declarations |
 | [Declarations in conditionals](#declarations-in-conditionals) | Partly shipped as `is` bindings (VIP-7) | `is` bindings in conditions |
 | [JSX source files](#jsx-source-files) | Shipped as `.vibex` (VIP-39) | `.vibex` files |
-| [Toolchain commands](#toolchain-commands) | Shipped under other names | `vibelang`, `create-vibelang`, the dprint plugin, Vitest |
+| [Toolchain commands](#toolchain-commands) | Shipped (including `vibe`, `vibe run`, `vibe format`, and `vibe eval` in 0.0.14) | `vibe` / `vibelang`, `create-vibelang`, `vibe format`, `vibe eval`, Vitest |
 | [Bundler plugins](#bundler-plugins) | Shipped | `vibelang-vite` and `vibelang-unplugin` |
-| [Effect handlers](#effect-handlers) | Open proposal VIP-35; not in 0.0.13 | Services and layers |
+| [Effect handlers](#effect-handlers) | Denied in VIP-35 (2026-11-23) | Services and layers |
 | [Compile-time evaluation](#compile-time-evaluation) | No VIP | Nothing |
 | [Typed asset imports](#typed-asset-imports) | No VIP | `FileSystem` reads at run time |
 | [Custom loaders](#custom-loaders) | No VIP | Nothing |
@@ -31,27 +33,41 @@ VibeLang had an earlier design, documented on this site until October 2026, that
 | [Mandatory compiler options](#mandatory-compiler-options) | No VIP | The starter sets `strict` |
 | [TC39 adopt-early list](#tc39-adopt-early-list) | No VIP | A different set of TC39 forms |
 
-## Proposed as VIPs
+## Implemented (opt-in) in 0.0.14
+
+These accepted VIPs are implemented in 0.0.14 behind `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json` (see the [release feature status](/setup/alpha)).
 
 ### Durable execution
 
-A workflow that journals each completed step, so a restart resumes the run instead of repeating finished work. [VIP-55](/vips/0055-durable-tasks-workflows) proposes `task` and `workflow` declarations, [VIP-56](/vips/0056-durable-waits) durable timers and signals, [VIP-60](/vips/0060-std-durable) the `Experimental.Durable` runtime, and [VIP-44](/vips/0044-durable-values) durable values. 0.0.13 includes an experimental implementation, described on [Tasks and workflows](/vibelang-features/119-tasks-and-workflows). Effect's `effect/workflow` modules (`Workflow`, `Activity`, `DurableClock`, `DurableDeferred`, `DurableQueue`) work from `.vibe` files.
+A workflow that journals each completed step, so a restart resumes the run instead of repeating finished work. [VIP-55](/vips/0055-durable-tasks-workflows) (`task` and `workflow` declarations), [VIP-56](/vips/0056-durable-waits) (durable timers, signals, human waits, workflow deadlines, and recorded `try.race`/`try.any` outcomes), and [VIP-60](/vips/0060-std-durable) (`Experimental.Durable`) are accepted and **implemented (opt-in) in 0.0.14**, described on [Tasks and workflows](/vibelang-features/119-tasks-and-workflows). [VIP-44](/vips/0044-durable-values) is accepted with its schema mapping supported via VIP-15. Effect's `effect/workflow` modules (`Workflow`, `Activity`, `DurableClock`, `DurableDeferred`, `DurableQueue`) also work from `.vibe` files.
 
 ### Coding-agent library
 
-A library for agents that write and run code on each turn in a sandbox with no ambient authority. [VIP-62](/vips/0062-std-model) proposes model calls, [VIP-63](/vips/0063-std-agent) the agent loop, [VIP-64](/vips/0064-std-tools) standard tools and [VIP-65](/vips/0065-std-mcp) MCP clients. The experimental runtime includes `Experimental.Model` and parts of `Experimental.Agent`. See the [release feature status](/setup/alpha). Effect's AI modules call models and tools from `.vibe` files.
+A library for agents that write and run code on each turn in a sandbox with no ambient authority. [VIP-62](/vips/0062-std-model) (`Experimental.Model`), [VIP-63](/vips/0063-std-agent) (`Experimental.Agent`), [VIP-64](/vips/0064-std-tools) (`Experimental.Tools`), and [VIP-65](/vips/0065-std-mcp) (`Experimental.McpClient`) are accepted as standard-library modules (no compiler changes) and implemented (opt-in) in 0.0.14. See the [release feature status](/setup/alpha). Effect's AI modules also call models and tools from `.vibe` files.
 
 ### Typed workers
 
-Calls across a worker boundary that keep their success and failure types, with derived transport codecs. [VIP-57](/vips/0057-workers-remote) proposes `schema service` and worker imports. 0.0.13 does not ship them. Effect's worker modules run code on worker threads.
+Calls across a worker boundary that keep their success and failure types, with derived transport codecs. [VIP-57](/vips/0057-workers-remote) (`schema service`, `with { type: "worker" }` imports, `Experimental.Rpc`, and worker entry chunks in `vibelang-vite` and `vibelang-unplugin`) is accepted and **implemented (opt-in) in 0.0.14**. Effect's worker modules also run code on worker threads.
+
+### Capabilities and permissions
+
+A capability-based permission kernel guarding platform services (`FileSystem`, `HttpClient`, `ChildProcessSpawner`) with monotonic ceilings on tasks and workflows. [VIP-58](/vips/0058-capabilities) (`Experimental.Capability`, task/workflow `tier` and `capabilities` metadata, plan inspection, and `EK5801`) is accepted and **implemented (opt-in) in 0.0.14**.
+
+### Eval declarations
+
+First-class evaluation suites discovered by file kind (`*.eval.vibe` / `*.eval.vibex`) and excluded from production bundles. [VIP-59](/vips/0059-eval-declarations) (`vibe eval` / `vibelang eval` with `--list`, `--live`, `--update`, and `--trials`, plus bundler import refusal) is accepted and **implemented (opt-in) in 0.0.14**.
+
+## Proposed as VIPs
 
 ### Build-time host selection
 
-Choosing a platform implementation at build time and dropping the others from the output. [VIP-54](/vips/0054-consistent-platform-code-open) is an early proposal for one consistent model of platform-specific code; it selects no model yet. Today a program provides a platform layer at run time.
+Choosing a platform implementation at build time and dropping the others from the output. [VIP-54](/vips/0054-consistent-platform-code-open) is an open request for proposal for one consistent model of platform-specific code; it selects no model yet. Today a program provides a platform layer at run time.
+
+## Denied proposals
 
 ### Effect handlers
 
-Effect handlers (`control`, `handle`, `resume`, `abandon`) remain an open proposal in [VIP-35](/vips/0035-handlers-open) and are not part of the first release. The compiler and runtime have no handler implementation. Use services and layers for the use cases on the [proposal status page](/vibelang-features/111-control-operations-and-handlers).
+Effect handlers (`control`, `handle`, `resume`, `abandon`) were **denied** on 2026-11-23 in [VIP-35](/vips/0035-handlers-open). The compiler and runtime have no handler implementation, and services, layers, and Effect cover their use cases without delimited continuations. See the [proposal status page](/vibelang-features/111-control-operations-and-handlers).
 
 ## Partly shipped
 
@@ -71,17 +87,17 @@ A `.vibex` file is a `.vibe` file read the way TypeScript reads `.tsx` ([VIP-39]
 
 ### Toolchain commands
 
-The earlier design planned one `vibe` command. Today each job has its own tool:
+The earlier design planned one `vibe` command. In 0.0.14, `vibe` and `vibe-format` ship alongside `vibelang` and `vibelang-format`:
 
-| Earlier command | VibeLang today |
+| Earlier command | Vibe in 0.0.14 |
 | --- | --- |
 | `vibe init` | `bun create vibelang my-app` or `npm create vibelang@latest my-app` |
-| `vibe check` | `vibelang --noEmit` |
-| `vibe compile --declaration` | `vibelang`, with `declaration` set in `tsconfig.json` |
-| `vibe run` | The starter's `start` script, which builds and runs Node |
-| `vibe test` | Vitest with `vibelang-vite` and `@effect/vitest` |
-| `vibe format` | dprint with the `vibelang` plugin ([Formatting](/setup/formatting)) |
-| `vibe lsp` | `vibelang --lsp --stdio` |
+| `vibe check` | `vibe --noEmit` (or `vibelang --noEmit`) |
+| `vibe compile --declaration` | `vibe`, with `declaration` set in `tsconfig.json` |
+| `vibe run` | `vibe run <file>` (or `vibelang run <file>`), shipped in 0.0.14 to execute `.vibe`, `.vibex`, and `// @vibe` entrypoints directly in Node with source maps |
+| `vibe test` | Vitest with `vibelang-vite` and `@effect/vitest` (and `vibe eval` for `*.eval.vibe` suites) |
+| `vibe format` | `vibe format` / `vibe-format` (dprint with the `vibelang` plugin; see [Formatting](/setup/formatting)) |
+| `vibe lsp` | `vibe --lsp --stdio` (or `vibelang --lsp --stdio`) |
 | `vibe inspect`, `vibe doctor` | No command; editor hovers show inferred contracts |
 
 ### Bundler plugins

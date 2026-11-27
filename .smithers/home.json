@@ -213,8 +213,8 @@
           "title": "Why VibeLang",
           "cards": [
             {
-              "title": "Every function is an Effect",
-              "text": "A call runs where it stands: no generators, no yield*."
+              "title": "Explicit effect functions",
+              "text": "Plain functions stay plain JavaScript; effect functions run Effects with try — no generators, no yield*."
             },
             {
               "title": "Typed errors",

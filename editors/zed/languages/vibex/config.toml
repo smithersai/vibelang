@@ -1,0 +1,18 @@
+name = "Vibe JSX"
+grammar = "vibex"
+path_suffixes = ["vibex"]
+line_comments = ["// "]
+block_comment = ["/*", "*/"]
+tab_size = 2
+hard_tabs = false
+autoclose_before = ";:.,=}])>"
+brackets = [
+  { start = "{", end = "}", close = true, newline = true },
+  { start = "[", end = "]", close = true, newline = true },
+  { start = "(", end = ")", close = true, newline = true },
+  { start = """, end = """, close = true, newline = false, not_in = ["comment", "string", "jsx_text"] },
+  { start = "'", end = "'", close = true, newline = false, not_in = ["comment", "string", "jsx_text"] },
+  { start = "`", end = "`", close = true, newline = false, not_in = ["comment", "string", "jsx_text"] },
+  { start = "/*", end = " */", close = true, newline = false, not_in = ["comment", "string", "jsx_text"] },
+]
+word_characters = ["$", "#"]
