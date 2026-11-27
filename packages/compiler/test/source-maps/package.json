@@ -7,7 +7,7 @@
     "test": "node --test"
   },
   "devDependencies": {
-    "@effect/vitest": "4.1.1",
+    "@effect/vitest": "4.1.6",
     "@jridgewell/remapping": "2.3.5",
     "@jridgewell/trace-mapping": "0.3.31",
     "@sentry/vite-plugin": "5.4.0",

@@ -24,7 +24,7 @@ try {
     vibelang: resolve("packages/compiler"),
     "vibelang-runtime": archive,
     "vibelang-vite": resolve("packages/vite")
-  }, manifest.peerDependencies.effect)
+  }, manifest.devDependencies?.effect ?? manifest.peerDependencies.effect)
   run("bun", ["install"], example)
   run(resolve("packages/compiler/native/vibelang"), ["-p", example], repository)
   run("bun", ["run", "test"], example)

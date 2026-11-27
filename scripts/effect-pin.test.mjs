@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { RUNTIME, SOURCES, drift, manifests, rewrite, write } from "./effect-pin.mjs"
+import { RANGE_SOURCES, RUNTIME, SOURCES, UNPINNED_EFFECT_PACKAGES, drift, manifests, pinned, rewrite, write } from "./effect-pin.mjs"
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
@@ -73,8 +73,59 @@ test("a test's ignored fixture copy is not a pin", (t) => {
   assert.deepEqual(drift(root), [])
 })
 
-test("rewrite refuses an edit that reaches beyond the pins", () => {
-  assert.throws(() => rewrite('{"scripts":{"effect":"node effect.mjs"},"dependencies":{"effect":"4.0.6"}}', ["effect"], "4.1.0"), /more than their pins/)
+test("rewrite updates only dependency sections and leaves scripts untouched", () => {
+  const input = '{"scripts":{"effect":"node effect.mjs"},"dependencies":{"effect":"4.0.6"}}'
+  const out = rewrite(input, ["effect"], "4.1.0")
+  assert.equal(out, '{"scripts":{"effect":"node effect.mjs"},"dependencies":{"effect":"4.1.0"}}')
+})
+
+test("published peers keep ^4.1.0 range while repo baseline pins exact version, and @effect/ui packages are exempt", (t) => {
+  for (const pkg of ["@effect/language-service", "@effect/ui", "@effect/ui-kit", "@effect/ui-devtools", "@effect/ui-opentui"]) {
+    assert.equal(pinned(pkg), false, pkg + " must be exempt from Effect core pin")
+    assert.ok(UNPINNED_EFFECT_PACKAGES.has(pkg))
+  }
+  assert.equal(pinned("effect"), true)
+  assert.equal(pinned("@effect/platform-node"), true)
+
+  const root = fixture({
+    [RUNTIME]: JSON.stringify({
+      name: "vibelang-runtime",
+      peerDependencies: { effect: "^4.1.0", "@effect/platform-node": "^4.1.0" },
+      devDependencies: { effect: "4.1.6", "@effect/platform-node": "4.1.6" },
+    }, null, 2) + "\n",
+    "packages/compiler/package.json": JSON.stringify({
+      name: "vibelang",
+      peerDependencies: { effect: "4.1.1" },
+    }, null, 2) + "\n",
+    [SOURCES[0][0]]: 'export const PINNED_EFFECT_VERSION = "4.1.1"\nexport const SUPPORTED_EFFECT_RANGE = "^4.1.0"\n',
+    [RANGE_SOURCES[1][0]]: 'const PINNED_EFFECT_VERSION = "4.1.6"\nconst SUPPORTED_EFFECT_RANGE = "^4.0.0"\n',
+    "examples/ui-app/package.json": JSON.stringify({
+      dependencies: {
+        effect: "4.1.1",
+        "@effect/ui": "0.1.0",
+        "@effect/ui-kit": "0.1.0",
+        "@effect/ui-devtools": "0.1.0",
+        "@effect/ui-opentui": "0.1.0",
+      }
+    }, null, 2) + "\n",
+  })
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+
+  assert.deepEqual(drift(root).map((d) => [d.file, d.section, d.name, d.pin, d.expected]), [
+    ["examples/ui-app/package.json", "dependencies", "effect", "4.1.1", "4.1.6"],
+    ["packages/compiler/package.json", "peerDependencies", "effect", "4.1.1", "^4.1.0"],
+    [SOURCES[0][0], "source", "literal", "4.1.1", "4.1.6"],
+    [RANGE_SOURCES[1][0], "source-range", "range", "^4.0.0", "^4.1.0"],
+  ])
+  write(root)
+  assert.deepEqual(drift(root), [])
+  assert.equal(JSON.parse(readFileSync(path.join(root, "packages/compiler/package.json"), "utf8")).peerDependencies.effect, "^4.1.0")
+  const uiApp = JSON.parse(readFileSync(path.join(root, "examples/ui-app/package.json"), "utf8"))
+  assert.equal(uiApp.dependencies.effect, "4.1.6")
+  assert.equal(uiApp.dependencies["@effect/ui"], "0.1.0")
+  assert.equal(uiApp.dependencies["@effect/ui-kit"], "0.1.0")
+  assert.equal(uiApp.dependencies["@effect/ui-devtools"], "0.1.0")
+  assert.equal(uiApp.dependencies["@effect/ui-opentui"], "0.1.0")
 })
 
 

@@ -15,10 +15,11 @@ const require = createRequire(new URL("../../packages/compiler/package.json", im
 const fc = require("fast-check")
 const read = path => JSON.parse(readFileSync(path, "utf8"))
 
-test("the compiler declares the runtime's exact, required Effect peer", () => {
+test("the compiler declares the runtime's required Effect ^4.1.0 peer range", () => {
   const compiler = read(join(repo, "packages/compiler/package.json"))
   const runtime = read(join(repo, "packages/runtime/package.json"))
-  assert.match(runtime.peerDependencies.effect, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/)
+  assert.match(runtime.peerDependencies.effect, /^\^4\.[1-9]\d*\.0$/)
+  assert.match(runtime.devDependencies.effect, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/)
   assert.equal(compiler.peerDependencies?.effect, runtime.peerDependencies.effect)
   assert.notEqual(compiler.peerDependenciesMeta?.effect?.optional, true)
 })
@@ -52,50 +53,50 @@ test("the metadata fixture loads the real packager and stops before building or 
   assert.equal(existsSync(join(root, "packages/runtime/dist")), false, "metadata rejection must not build the runtime")
 })
 
-test("release rejects missing, ranged, optional and mismatched compiler Effect peers before packaging", t => {
+test("release rejects missing, invalid, optional and mismatched compiler Effect peers before packaging", t => {
   const root = metadataFixture(t)
   const path = join(root, "packages/compiler/package.json")
   const original = read(path)
-  const pin = read(join(root, "packages/runtime/package.json")).peerDependencies.effect
+  const range = read(join(root, "packages/runtime/package.json")).peerDependencies.effect
   const invalid = fc.oneof(
-    fc.constantFrom(undefined, null, "*", "^" + pin, "~" + pin, ">=" + pin, "latest", [pin], {}),
+    fc.constantFrom(undefined, null, "*", "~4.1.0", ">=4.1.0", "^4.0.0", "latest", [range], {}),
     fc.tuple(fc.nat({ max: 20 }), fc.nat({ max: 20 }), fc.nat({ max: 20 }))
-      .map(parts => parts.join(".")).filter(value => value !== pin),
+      .map(parts => parts.join(".")),
   )
   fc.assert(fc.property(invalid, peer => {
     const manifest = { ...original, peerDependencies: { effect: peer } }
     writeFileSync(path, JSON.stringify(manifest))
     const result = spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build"], { encoding: "utf8", timeout: 10_000 })
     assert.notEqual(result.status, 0)
-    assert.match(result.stderr, /vibelang: effect peer must match the runtime's exact pin/)
-  }), { seed: 320011, numRuns: 30, examples: [[undefined], ["^" + pin], ["4.0.7"]] })
-  writeFileSync(path, JSON.stringify({ ...original, peerDependencies: { effect: pin }, peerDependenciesMeta: { effect: { optional: true } } }))
+    assert.match(result.stderr, /vibelang: effect peer must match the runtime's range/)
+  }), { seed: 320011, numRuns: 30, examples: [[undefined], ["4.1.6"], ["4.0.7"]] })
+  writeFileSync(path, JSON.stringify({ ...original, peerDependencies: { effect: range }, peerDependenciesMeta: { effect: { optional: true } } }))
   const optional = spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build"], { encoding: "utf8", timeout: 10_000 })
   assert.notEqual(optional.status, 0)
   assert.match(optional.stderr, /vibelang: effect peer must be required/)
 })
 
-test("release rejects a matching Effect range and accepts matching exact pins", t => {
+test("release rejects invalid Effect ranges and accepts matching ^4.1.0 ranges", t => {
   const root = metadataFixture(t)
   const compilerPath = join(root, "packages/compiler/package.json")
   const runtimePath = join(root, "packages/runtime/package.json")
   const compiler = read(compilerPath)
   const runtime = read(runtimePath)
-  const pin = runtime.peerDependencies.effect
-  for (const effect of ["^" + pin, "~" + pin, ">=" + pin, "*"]) {
+  const range = runtime.peerDependencies.effect
+  for (const effect of ["4.1.6", "^4.0.0", "^3.19.0", "~4.1.0", ">=4.1.0", "*"]) {
     writeFileSync(compilerPath, JSON.stringify({ ...compiler, peerDependencies: { effect } }))
     writeFileSync(runtimePath, JSON.stringify({ ...runtime, peerDependencies: { ...runtime.peerDependencies, effect } }))
     const result = spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build"], { encoding: "utf8", timeout: 10_000 })
     assert.notEqual(result.status, 0)
-    assert.match(result.stderr, /vibelang-runtime: effect peer must be an exact version/)
+    assert.match(result.stderr, /vibelang-runtime: effect peer must be a \^4\.x\.0 range/)
   }
-  writeFileSync(compilerPath, JSON.stringify({ ...compiler, peerDependencies: { effect: pin } }))
+  writeFileSync(compilerPath, JSON.stringify({ ...compiler, peerDependencies: { effect: range } }))
   writeFileSync(runtimePath, JSON.stringify(runtime))
-  const exact = spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build"], { encoding: "utf8", timeout: 10_000 })
+  const valid = spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build"], { encoding: "utf8", timeout: 10_000 })
   // This fixture intentionally has no native binaries; its metadata must pass.
-  assert.notEqual(exact.status, 0)
-  assert.match(exact.stderr, /missing .*dist-npm\/bin/)
-  assert.doesNotMatch(exact.stderr, /effect peer must/)
+  assert.notEqual(valid.status, 0)
+  assert.match(valid.stderr, /missing .*dist-npm\/bin/)
+  assert.doesNotMatch(valid.stderr, /effect peer must/)
 })
 
 test("plugin READMEs, starter README, ts-mapper peer pin, and Vite docs match actual behavior", (t) => {

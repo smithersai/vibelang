@@ -20,7 +20,8 @@ test("the compiler entry shares every core helper with the public package", asyn
   }
 })
 
-for (const version of ["4.1.1", "4.1.0", "3.19.0"]) {
+const acceptedInternal = new Set(["4.1.0", "4.1.1", "4.1.4", "4.1.6", "4.2.0"])
+for (const version of ["4.1.6", "4.1.1", "4.2.0", "4.0.6", "4.1.6-next.1", "3.19.0"]) {
   test(`the compiler entry preserves the Node and Bun guard for Effect ${version}`, async () => {
     const dir = mkdtempSync(join(tmpdir(), "vibelang-core-entry-"))
     try {
@@ -39,12 +40,12 @@ for (const version of ["4.1.1", "4.1.0", "3.19.0"]) {
       for (const executable of ["node", process.execPath]) {
         const result = Bun.spawnSync([executable, "main.js"], { cwd: dir, timeout: 10_000 })
         const output = result.stdout.toString() + result.stderr.toString()
-        if (version === "4.1.1") {
+        if (acceptedInternal.has(version)) {
           expect(result.exitCode).toBe(0)
           expect(output.trim()).toBe("42")
         } else {
           expect(result.exitCode).not.toBe(0)
-          expect(output).toContain(`requires effect@4.1.1; found effect@${version}`)
+          expect(output).toContain(`requires effect@^4.1.0 (tested on 4.1.6); found effect@${version}`)
           expect(output).not.toContain("ERR_PACKAGE_PATH_NOT_EXPORTED")
         }
       }
@@ -54,12 +55,12 @@ for (const version of ["4.1.1", "4.1.0", "3.19.0"]) {
         writeFileSync(join(dir, "bundle.js"), await bundled.outputs[0].text())
         const result = Bun.spawnSync(["node", "bundle.js"], { cwd: dir, timeout: 10_000 })
         const output = result.stdout.toString() + result.stderr.toString()
-        if (version === "4.1.1") {
+        if (acceptedInternal.has(version)) {
           expect(result.exitCode).toBe(0)
           expect(output.trim()).toBe("42")
         } else {
           expect(result.exitCode).not.toBe(0)
-          expect(output).toContain(`requires effect@4.1.1; found effect@${version}`)
+          expect(output).toContain(`requires effect@^4.1.0 (tested on 4.1.6); found effect@${version}`)
         }
       }
     } finally { rmSync(dir, { recursive: true, force: true }) }

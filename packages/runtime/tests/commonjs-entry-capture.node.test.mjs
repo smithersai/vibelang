@@ -18,11 +18,11 @@ function loadBridge(source, path, abi, rejectVersion = false) {
     if (id === "./version-guard.cjs") return {
       checkEffectVersion(version) {
         stages.push("version")
-        assert.equal(version, "4.1.1")
+        assert.equal(version, "4.1.6")
         if (rejectVersion) throw new Error("incompatible Effect")
       },
     }
-    if (id === "effect/package.json") return { version: "4.1.1" }
+    if (id === "effect/package.json") return { version: "4.1.6" }
     assert.equal(id, path)
     stages.push("abi")
     return abi

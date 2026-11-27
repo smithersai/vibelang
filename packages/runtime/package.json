@@ -314,17 +314,17 @@
     "test": "bun run build && bun test --timeout 30000"
   },
   "dependencies": {
-    "@effect/ai-anthropic": "4.1.1",
-    "@effect/ai-openai": "4.1.1",
-    "@effect/ai-openai-compat": "4.1.1",
+    "@effect/ai-anthropic": "4.1.6",
+    "@effect/ai-openai": "4.1.6",
+    "@effect/ai-openai-compat": "4.1.6",
     "@jitl/quickjs-singlefile-browser-release-sync": "0.32.0",
     "quickjs-emscripten-core": "0.32.0"
   },
   "peerDependencies": {
-    "@effect/platform-browser": "4.1.1",
-    "@effect/platform-bun": "4.1.1",
-    "@effect/platform-node": "4.1.1",
-    "effect": "4.1.1"
+    "@effect/platform-browser": "^4.1.0",
+    "@effect/platform-bun": "^4.1.0",
+    "@effect/platform-node": "^4.1.0",
+    "effect": "^4.1.0"
   },
   "peerDependenciesMeta": {
     "@effect/platform-browser": {
@@ -338,17 +338,17 @@
     }
   },
   "devDependencies": {
-    "@effect/platform-browser": "4.1.1",
-    "@effect/platform-bun": "4.1.1",
-    "@effect/platform-node": "4.1.1",
+    "@effect/platform-browser": "4.1.6",
+    "@effect/platform-bun": "4.1.6",
+    "@effect/platform-node": "4.1.6",
     "@types/node": "26.6.5",
-    "effect": "4.1.1",
+    "effect": "4.1.6",
     "fast-check": "4.10.2",
     "playwright": "1.64.1",
     "typescript": "5.9.3"
   },
   "overrides": {
-    "@effect/platform-node-shared": "4.1.1"
+    "@effect/platform-node-shared": "4.1.6"
   },
   "engines": {
     "node": "^22.22.3 || >=24.11.1",

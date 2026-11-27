@@ -13,24 +13,24 @@
     "check": "vibe format --check && vibe lint -p tsconfig.test.json"
   },
   "dependencies": {
-    "effect": "4.1.1",
-    "@effect/platform-node": "4.1.1",
+    "effect": "4.1.6",
+    "@effect/platform-node": "4.1.6",
     "vibelang-runtime": "0.0.14"
   },
   "devDependencies": {
     "vibelang": "0.0.14",
     "vite": "8.3.5",
     "vitest": "5.1.0",
-    "@effect/vitest": "4.1.1",
+    "@effect/vitest": "4.1.6",
     "vibelang-vite": "0.0.14"
   },
   "engines": {
     "node": "^22.22.3 || >=24.11.1"
   },
   "overrides": {
-    "@effect/platform-node-shared": "4.1.1"
+    "@effect/platform-node-shared": "4.1.6"
   },
   "resolutions": {
-    "@effect/platform-node-shared": "4.1.1"
+    "@effect/platform-node-shared": "4.1.6"
   }
 }

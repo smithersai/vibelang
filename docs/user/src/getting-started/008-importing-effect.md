@@ -67,11 +67,12 @@ When two modules share a name, four rules decide:
 3. A name exported by two different subpaths requires an explicit import (`EK1401`).
 4. Any explicit import or local declaration shadows the implicit global.
 
-These are the exact resolutions for `effect@4.1.1`:
+These are the exact resolutions for `effect@4.1.6`:
 
 <!-- D310 collisions: TestEffectNameCollisionsDocumented checks this table -->
 | Name | Modules | Without an import |
 | --- | --- | --- |
+| `Chat` | `effect/ai`, `effect/chat` | nothing: import the one you mean (rule 3) |
 | `Event` | `effect/eventlog` | Effect's module; the DOM type keeps its name |
 | `Headers` | `effect/http` | Effect's module; the DOM type keeps its name |
 | `KeyFormat` | `effect/crypto` | Effect's module; the DOM type keeps its name |
@@ -119,7 +120,7 @@ function firstOr(values: Chunk.Chunk<number>, fallback: number): number {
 Modules that export a same-named service:
 
 <!-- D311 services: TestModuleServicesDocumented checks this list -->
-`AddressResolver`, `Aead`, `AtomRegistry`, `Chat`, `ChildProcessSpawner`, `Cipher`, `CircuitBreaker`, `CliConfig`, `Clock`, `ConfigProvider`, `Console`, `DatagramSocket`, `DecisionModel`, `DevToolsClient`, `Digest`, `Dns`, `EmbeddingModel`, `EventJournal`, `EventLog`, `EventLogEncryption`, `EventLogRemote`, `EventLogServerUnencrypted`, `FileSystem`, `GraphQLProtocol`, `HttpClient`, `HttpPlatform`, `HttpRouter`, `HttpServer`, `HttpServerRequest`, `IdGenerator`, `Jwks`, `K8sHttpClient`, `Kdf`, `KeyAgreement`, `KeyValueStore`, `KeyWrap`, `LanguageModel`, `Mac`, `McpClient`, `McpServer`, `MessageStorage`, `OtlpSerialization`, `Path`, `Persistence`, `Random`, `RateLimiter`, `Reactivity`, `Redis`, `ResponseIdTracker`, `RpcSerialization`, `RunnerHealth`, `RunnerStorage`, `Runners`, `Scheduler`, `SecureRandom`, `Sharding`, `ShardingConfig`, `Signature`, `Socket`, `SocketServer`, `SqlClient`, `Stdio`, `Terminal`, `TerminalCapabilities`, `Tokenizer`, `Tracer`, `UserDirectories`, `WorkflowEngine`.
+`AddressResolver`, `Aead`, `AtomRegistry`, `ChatHandler`, `ChatTest`, `ChildProcessSpawner`, `Cipher`, `CircuitBreaker`, `CliConfig`, `Clock`, `ConfigProvider`, `Console`, `DatagramSocket`, `DecisionModel`, `DevToolsClient`, `Digest`, `Dns`, `EmbeddingModel`, `EventJournal`, `EventLog`, `EventLogEncryption`, `EventLogRemote`, `EventLogServerUnencrypted`, `FileSystem`, `GraphQLProtocol`, `HttpClient`, `HttpPlatform`, `HttpRouter`, `HttpServer`, `HttpServerRequest`, `IdGenerator`, `Jwks`, `K8sHttpClient`, `Kdf`, `KeyAgreement`, `KeyValueStore`, `KeyWrap`, `LanguageModel`, `Mac`, `McpClient`, `McpServer`, `MessageStorage`, `OtlpSerialization`, `Password`, `Path`, `Persistence`, `Random`, `RateLimiter`, `Reactivity`, `Redis`, `ResponseIdTracker`, `RpcSerialization`, `RunnerHealth`, `RunnerStorage`, `Runners`, `Scheduler`, `SecureRandom`, `Sharding`, `ShardingConfig`, `Signature`, `Socket`, `SocketServer`, `SqlClient`, `Stdio`, `Terminal`, `TerminalCapabilities`, `Tokenizer`, `Tracer`, `UserDirectories`, `WorkflowEngine`.
 <!-- end D311 services -->
 
 Names with both an Effect namespace (value position) and an ambient DOM type (bare type position — use `FileSystem.FileSystem` for Effect's type):

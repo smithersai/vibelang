@@ -22,7 +22,8 @@ export function prepareExample(source, destination, packages, effect) {
 if (isMain(import.meta.url)) {
   const [repository, destination, runtime] = process.argv.slice(2)
   if (!repository || !destination || !runtime) throw new Error("usage: prepare-examples.mjs <repository> <destination> <runtime.tgz>")
-  const effect = JSON.parse(readFileSync(join(repository, "packages/runtime/package.json"), "utf8")).peerDependencies.effect
+  const runtimePkg = JSON.parse(readFileSync(join(repository, "packages/runtime/package.json"), "utf8"))
+  const effect = runtimePkg.devDependencies?.effect ?? runtimePkg.peerDependencies?.effect
   const packages = {
     vibelang: join(repository, "packages/compiler"),
     "vibelang-runtime": runtime,

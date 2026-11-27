@@ -36,7 +36,8 @@ const stepsPerSlice = 4096
 export class World {
   readonly buckets: Array<[priority: number, tasks: Array<() => void>]> = []
   readonly timers: Array<Timer> = []
-  readonly slices = new WeakMap<Fiber.Fiber<unknown, unknown>, number>()
+  readonly slices = new WeakMap<Fiber.Fiber<unknown, unknown>, { readonly budget: number; readonly base: number }>()
+  readonly lastOpCount = new WeakMap<Fiber.Fiber<unknown, unknown>, number>()
   readonly schedule: Fuzz.ScheduleTape
   readonly quanta: ReadonlyArray<number>
   // Virtual time in integer nanoseconds, so sub-millisecond sleeps keep their precision.
@@ -56,13 +57,23 @@ export class World {
   readonly scheduler: Scheduler.Scheduler = {
     executionMode: "sync",
     shouldYield: (fiber) => {
-      // The run loop resets the operation count at the start of every slice, so a count of one is a new slice.
-      if (fiber.currentOpCount === 1) {
+      // Start a new slice whenever the previous slice preempted or the run loop
+      // reset the fiber's op count (Effect 4.1.6 starts auto-yielded resumptions
+      // above op count 1 after executing the saved instruction).
+      let slice = this.slices.get(fiber)
+      const prev = this.lastOpCount.get(fiber)
+      if (slice === undefined || prev === undefined || fiber.currentOpCount <= prev) {
         const word = this.schedule.next()
         const index = word === 0 ? 0 : 1 + Math.floor(word / 0x100000000 * (this.quanta.length - 1))
-        this.slices.set(fiber, this.quanta[index])
+        slice = { budget: this.quanta[index], base: fiber.currentOpCount - 1 }
+        this.slices.set(fiber, slice)
       }
-      return fiber.currentOpCount >= this.slices.get(fiber)!
+      this.lastOpCount.set(fiber, fiber.currentOpCount)
+      if (fiber.currentOpCount - slice.base >= slice.budget) {
+        this.slices.delete(fiber)
+        return true
+      }
+      return false
     },
     makeDispatcher: () => ({
       scheduleTask: (task, priority) => this.enqueue(task, priority),

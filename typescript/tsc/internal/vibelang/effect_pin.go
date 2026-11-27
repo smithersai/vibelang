@@ -8,19 +8,48 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	stdmaps "maps"
 	"slices"
+	"strconv"
 	"strings"
 )
 
-// VIP-32: dependency pins belong to the project, never to an Effect use site.
-var EK3201 = message(3201, errorCategory, "The resolved effect is {0}; VibeLang {1} pins {2}: upgrade both together.")
+// VIP-32 (amended): VibeLang accepts any stable Effect >=4.1.0 <5.0.0 (^4.1.0),
+// tested against supportedEffectVersion. Dependency constraints belong to the
+// project, never to an Effect use site.
+var EK3201 = message(3201, errorCategory, "The resolved effect is {0}; VibeLang {1} requires {2} (tested on {3}): upgrade both together.")
 var effectPinDiagnostic = EK3201
 
 func init() { registerDiagnostic(EK3201) }
 
-var platformPinDiagnostic = EK3201.With("The resolved {0} is {1}; VibeLang {2} pins {3}: upgrade both together.")
+var platformPinDiagnostic = EK3201.With("The resolved {0} is {1}; VibeLang {2} requires {3} (tested on {4}): upgrade both together.")
 
 func init() {
 	compiler.RegisterProgramDiagnosticsHook(effectPinDiagnostics)
+}
+
+// isSupportedEffectVersion reports whether version is a stable semver
+// satisfying ^4.1.0 (>=4.1.0 <5.0.0, no prereleases or build suffixes).
+func isSupportedEffectVersion(version string) bool {
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 {
+		return false
+	}
+	var nums [3]int
+	for i, part := range parts {
+		if len(part) == 0 || (len(part) > 1 && part[0] == '0') {
+			return false
+		}
+		for j := range len(part) {
+			if part[j] < '0' || part[j] > '9' {
+				return false
+			}
+		}
+		n, err := strconv.Atoi(part)
+		if err != nil {
+			return false
+		}
+		nums[i] = n
+	}
+	return nums[0] == 4 && nums[1] >= 1
 }
 
 func effectPinDiagnostics(p *compiler.Program) []*ast.Diagnostic {
@@ -28,16 +57,17 @@ func effectPinDiagnostics(p *compiler.Program) []*ast.Diagnostic {
 	if config := p.CommandLine().ConfigFile; config != nil {
 		anchor = config.SourceFile
 	}
+
 	versions := map[string]string{}
 	add := func(name, version string) {
-		if version != "" && version != supportedEffectVersion {
+		if version != "" && !isSupportedEffectVersion(version) {
 			if _, exists := versions[name]; !exists {
 				versions[name] = version
 			}
 		}
 	}
-	// Resolve from every project source: a pinned package in a monorepo
-	// does not prove that a sibling resolves the pin.
+	// Resolve from every project source: a compatible package in one workspace
+	// member does not prove that a sibling resolves a supported version.
 	for _, file := range p.SourceFiles() {
 		if !isVibeLangFile(file) || p.IsSourceFileFromExternalLibrary(file) {
 			continue
@@ -70,14 +100,14 @@ func effectPinDiagnostics(p *compiler.Program) []*ast.Diagnostic {
 	var result []*ast.Diagnostic
 	for _, name := range slices.Sorted(stdmaps.Keys(versions)) {
 		version := versions[name]
-		message := format(platformPinDiagnostic.Text, []any{name, version, Version, supportedEffectVersion})
+		message := format(platformPinDiagnostic.Text, []any{name, version, Version, supportedEffectRange, supportedEffectVersion})
 		if name == effectRootModule {
-			message = format(effectPinDiagnostic.Text, []any{version, Version, supportedEffectVersion})
+			message = format(effectPinDiagnostic.Text, []any{version, Version, supportedEffectRange, supportedEffectVersion})
 		}
 		d := ast.NewExternalDiagnostic(anchor, core.NewTextRange(0, 0), diagnosticSource, errorCategory, EK3201.Code, message)
-		// The compiler knows only its own pin, not whether any VibeLang
-		// release pins the resolved version, so the note offers none.
-		note(d, "Install {0}@{1} where this project resolves it: VibeLang {2} supports no other {0} version.", name, supportedEffectVersion, Version)
+		// The compiler names only its own supported range and tested baseline,
+		// never an unknown VibeLang release for the resolved version.
+		note(d, "Install {0}@{1} (or any stable {2}) where this project resolves it: VibeLang {3} supports {0}@{2}.", name, supportedEffectVersion, supportedEffectRange, Version)
 		result = append(result, d)
 	}
 	return result

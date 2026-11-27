@@ -102,7 +102,18 @@ var effectThrowsCurated = map[string]string{
 	"effect/dist/BigDecimal:remainderUnsafe()()":  "RangeError",
 	"effect/dist/BigInt:divideUnsafe()":           "RangeError",
 	"effect/dist/BigInt:divideUnsafe()()":         "RangeError",
+	"effect/dist/BigInt:nthRootUnsafe()":          "RangeError",
+	"effect/dist/BigInt:nthRootUnsafe()()":        "RangeError",
 	"effect/dist/BigInt:sqrtUnsafe":               "RangeError",
+	"effect/dist/Rational:divideUnsafe()":         "RangeError",
+	"effect/dist/Rational:divideUnsafe()()":       "RangeError",
+	"effect/dist/Rational:fromNumberUnsafe":       "RangeError",
+	"effect/dist/Rational:fromStringUnsafe":       "Error",
+	"effect/dist/Rational:makeUnsafe":             "RangeError",
+	"effect/dist/Rational:nthRootUnsafe()":        "RangeError",
+	"effect/dist/Rational:nthRootUnsafe()()":      "RangeError",
+	"effect/dist/Rational:powUnsafe()":            "RangeError",
+	"effect/dist/Rational:powUnsafe()()":          "RangeError",
 	"effect/dist/Number:divideUnsafe()":           "RangeError",
 	"effect/dist/Number:divideUnsafe()()":         "RangeError",
 
@@ -184,8 +195,82 @@ var effectThrowsCurated = map[string]string{
 	"effect/dist/net/NetAddress:macAddressFromStringUnsafe":                  "NetAddressError",
 	"effect/dist/net/NetAddress:socketAddressFromInputUnsafe":                "NetAddressError",
 
+	// Chat.
+	"effect/dist/chat/ChatInteraction:encodeValue": "Schema.SchemaError | Error",
+
 	// Observability.
 	"effect/dist/observability/OtlpResource:serviceNameUnsafe": "Error",
+}
+
+// effectUIPackages are the official Effect UI packages whose pure constructors
+// and builders carry no @throws tags. Non-throwing constructors and builders
+// from these packages are treated as @throws {never}, while throwing helpers
+// (*Unsafe, *OrThrow, decode*Sync, encode*Sync, asserts) still report EK0403.
+var effectUIPackages = []string{
+	"@effect/ui",
+	"@effect/ui-kit",
+	"@effect/ui-devtools",
+	"@effect/ui-opentui",
+}
+
+// isEffectUIPackage reports whether name is one of the supported Effect UI packages.
+func isEffectUIPackage(name string) bool {
+	return slices.Contains(effectUIPackages, name)
+}
+
+// effectUIThrowsName reports whether an Effect UI callable name follows one of
+// the throwing naming conventions (*Unsafe, *OrThrow, decode*Sync, encode*Sync, asserts).
+func effectUIThrowsName(name string) bool {
+	for strings.HasSuffix(name, "()") {
+		name = strings.TrimSuffix(name, "()")
+	}
+	if name == "" {
+		return false
+	}
+	if strings.HasSuffix(name, "Unsafe") || strings.Contains(name, "OrThrow") {
+		return true
+	}
+	if (strings.HasPrefix(name, "decode") || strings.HasPrefix(name, "encode")) && strings.HasSuffix(name, "Sync") {
+		return true
+	}
+	if name == "asserts" || (len(name) > len("asserts") && strings.HasPrefix(name, "asserts") && name[len("asserts")] >= 'A' && name[len("asserts")] <= 'Z') {
+		return true
+	}
+	return false
+}
+
+// effectUIThrows reports whether a callable declared in an Effect UI package
+// matches a throwing naming convention on its declaration key or Effect UI callee symbol.
+func effectUIThrows(c *checker.Checker, call *ast.Node, decl *ast.Node) bool {
+	for _, part := range strings.Split(effectKey(decl), ".") {
+		if effectUIThrowsName(part) {
+			return true
+		}
+	}
+	if call != nil {
+		if sym := calleeSymbol(c, call); sym != nil {
+			if sym.Flags()&ast.SymbolFlagsAlias != 0 {
+				sym = c.GetAliasedSymbol(sym)
+			}
+			for _, d := range sym.Declarations() {
+				if f := ast.GetSourceFileOfNode(d); f != nil && isEffectUIPackage(packageOf(c, f)) {
+					if effectUIThrowsName(sym.Name()) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+// effectUITrust returns the trust classification for a call into an Effect UI
+// package when no explicit @throws JSDoc tag overrides it.
+func effectUITrust(c *checker.Checker, call *ast.Node, decl *ast.Node) *trust {
+	if effectUIThrows(c, call, decl) {
+		return &trust{kind: trustForeign, promise: returnsPromise(c, call), unknown: true}
+	}
+	return &trust{kind: trustEffect}
 }
 
 //go:embed effect_throws_table.txt

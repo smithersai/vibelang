@@ -11,7 +11,7 @@ package vibelang
 // emitted JavaScript imports each used name from its own module, never from
 // the root, which would load every module.
 //
-// effectRootNames is generated from effect@4.1.1's dist/index.d.ts, the
+// effectRootNames is generated from effect@4.1.6's dist/index.d.ts, the
 // version VibeLang pins (VIP-32; formerly history D30/D305); TestEffectRootNamesMatchEffect checks it against
 // the installed package.
 
@@ -42,6 +42,7 @@ var effectRootNames = map[string]effectRootExport{
 	"ChannelSchema":        {module: "effect/ChannelSchema", namespace: true},
 	"Chunk":                {module: "effect/Chunk", namespace: true},
 	"Clock":                {module: "effect/Clock", namespace: true},
+	"Codegen":              {module: "effect/Codegen", namespace: true},
 	"Combiner":             {module: "effect/Combiner", namespace: true},
 	"Config":               {module: "effect/Config", namespace: true},
 	"ConfigProvider":       {module: "effect/ConfigProvider", namespace: true},
@@ -109,6 +110,7 @@ var effectRootNames = map[string]effectRootExport{
 	"Pull":                 {module: "effect/Pull", namespace: true},
 	"Queue":                {module: "effect/Queue", namespace: true},
 	"Random":               {module: "effect/Random", namespace: true},
+	"Rational":             {module: "effect/Rational", namespace: true},
 	"RcMap":                {module: "effect/RcMap", namespace: true},
 	"RcRef":                {module: "effect/RcRef", namespace: true},
 	"Record":               {module: "effect/Record", namespace: true},

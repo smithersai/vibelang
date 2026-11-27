@@ -544,6 +544,7 @@ import type { ExcludeReason as $D152Effect_ExcludeReason } from "effect/Types"
 import type { ExcludeTag as $D152Effect_ExcludeTag } from "effect/Types"
 import type { ExtractReason as $D152Effect_ExtractReason } from "effect/Types"
 import type { ExtractTag as $D152Effect_ExtractTag } from "effect/Types"
+import type { IsUnion as $D152Effect_IsUnion } from "effect/Types"
 import type { NarrowReason as $D152Effect_NarrowReason } from "effect/Types"
 import type { NoInfer as $D152Effect_NoInfer } from "effect/Types"
 import type { OmitReason as $D152Effect_OmitReason } from "effect/Types"
@@ -1804,7 +1805,7 @@ interface $D152Method_flip {
 }
 interface $D152Method_catchTag {
     "catchTag"<A, E, R, const K extends $D152Stream_Tags<E> | $D152Stream_Arr.NonEmptyReadonlyArray<$D152Stream_Tags<E>>, R1, E1, A1, A2 = $D152Stream_unassigned, E2 = never, R2 = never>(this: $D152Stream_Stream<A, E, R>, k: K, f: (e: $D152Stream_ExtractTag<E, K extends $D152Stream_Arr.NonEmptyReadonlyArray<string> ? K[number] : K>) => $D152Stream_Stream<A1, E1, R1>, orElse?: ((e: $D152Stream_ExcludeTag<E, K extends $D152Stream_Arr.NonEmptyReadonlyArray<string> ? K[number] : K>) => $D152Stream_Stream<A2, E2, R2>) | undefined): $D152Stream_Stream<A | A1 | Exclude<A2, $D152Stream_unassigned>, E1 | E2 | (A2 extends $D152Stream_unassigned ? $D152Stream_ExcludeTag<E, K extends $D152Stream_Arr.NonEmptyReadonlyArray<string> ? K[number] : K> : never), R | R1 | R2>;
-    "catchTag"<A, E, R, const K extends $D152Effect_Tags<E> | $D152Effect_Arr.NonEmptyReadonlyArray<$D152Effect_Tags<E>>, R1, E1, A1, A2 = $D152Effect_unassigned, E2 = never, R2 = never>(this: ($D152Effect_Effect<A, E, R>) & $D152EffectReceiver, k: K, f: (e: $D152Effect_ExtractTag<E, K extends $D152Effect_Arr.NonEmptyReadonlyArray<string> ? K[number] : K>) => $D152Effect_Effect<A1, E1, R1>, orElse?: ((e: $D152Effect_ExcludeTag<E, K extends $D152Effect_Arr.NonEmptyReadonlyArray<string> ? K[number] : K>) => $D152Effect_Effect<A2, E2, R2>) | undefined): $D152Effect_Effect<A | A1 | Exclude<A2, $D152Effect_unassigned>, E1 | E2 | (A2 extends $D152Effect_unassigned ? $D152Effect_ExcludeTag<E, K extends $D152Effect_Arr.NonEmptyReadonlyArray<string> ? K[number] : K> : never), R | R1 | R2>;
+    "catchTag"<A, E = any, R = unknown, const K extends $D152Effect_Tags<E> | $D152Effect_Arr.NonEmptyReadonlyArray<$D152Effect_Tags<E>> = never, R1 = unknown, E1 = unknown, A1 = unknown, A2 = $D152Effect_unassigned, E2 = never, R2 = never>(this: ($D152Effect_Effect<A, E, R>) & $D152EffectReceiver, k: K, f: (e: $D152Effect_ExtractTag<E, K extends $D152Effect_Arr.NonEmptyReadonlyArray<string> ? K[number] : K>) => $D152Effect_Effect<A1, E1, R1>, orElse?: ((e: $D152Effect_ExcludeTag<E, K extends $D152Effect_Arr.NonEmptyReadonlyArray<string> ? K[number] : K>) => $D152Effect_Effect<A2, E2, R2>) | undefined): $D152Effect_Effect<A | A1 | Exclude<A2, $D152Effect_unassigned>, E1 | E2 | (A2 extends $D152Effect_unassigned ? $D152Effect_ExcludeTag<E, K extends $D152Effect_Arr.NonEmptyReadonlyArray<string> ? K[number] : K> : never), R | R1 | R2>;
 }
 interface $D152Method_catchTags {
     "catchTags"<R, E, A, Cases extends {
@@ -1866,13 +1867,10 @@ interface $D152Method_catchReasons {
 }[keyof Cases]>;
     "catchReasons"<A, E, R, K extends $D152Effect_Tags<E>, Cases extends {
     [RK in $D152Effect_ReasonTags<$D152Effect_ExtractTag<E, K>>]+?: (reason: $D152Effect_ExtractReason<$D152Effect_ExtractTag<E, K>, RK>, error: $D152Effect_NarrowReason<$D152Effect_ExtractTag<E, K>, RK>) => $D152Effect_Effect<any, any, any>;
-}, A2 = $D152Effect_unassigned, E2 = never, R2 = never>(this: ($D152Effect_Effect<A, E, R>) & $D152EffectReceiver, errorTag: K, cases: Cases, orElse?: ((reason: $D152Effect_ExcludeReason<$D152Effect_ExtractTag<$D152Effect_NoInfer<E>, K>, Extract<keyof Cases, string>>, error: $D152Effect_OmitReason<$D152Effect_ExtractTag<$D152Effect_NoInfer<E>, K>, Extract<keyof Cases, string>>) => $D152Effect_Effect<A2, E2, R2>) | undefined): $D152Effect_Effect<A | Exclude<A2, $D152Effect_unassigned> | {
-    [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => $D152Effect_Effect<infer A, any, any> ? A : never;
-}[keyof Cases], $D152Effect_ExcludeTag<E, K> | E2 | (A2 extends $D152Effect_unassigned ? $D152Effect_ExtractTag<E, K> : never) | {
-    [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => $D152Effect_Effect<any, infer E, any> ? E : never;
-}[keyof Cases], R | R2 | {
-    [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => $D152Effect_Effect<any, any, infer R> ? R : never;
-}[keyof Cases]>;
+}, A2 = never, E2 = never, R2 = never, Ret extends $D152Effect_Effect<any, any, any> = $D152Effect_Effect<A2, E2, R2>>(this: ($D152Effect_Effect<A, E, R>) & $D152EffectReceiver, errorTag: K, cases: Cases, orElse: (reason: $D152Effect_ExcludeReason<$D152Effect_ExtractTag<$D152Effect_NoInfer<E>, K>, RequiredCaseKeys<Cases>>, error: $D152Effect_OmitReason<$D152Effect_ExtractTag<$D152Effect_NoInfer<E>, K>, RequiredCaseKeys<Cases>>) => Ret): $D152Effect_Effect<A | $D152Effect_Success<Ret | CaseReturn<Cases>>, $D152Effect_ExcludeTag<E, K> | UnhandledParent<E, K, string> | $D152Effect_Error<Ret | CaseReturn<Cases>>, R | $D152Effect_Services<Ret | CaseReturn<Cases>>>;
+    "catchReasons"<A, E, R, K extends $D152Effect_Tags<E>, Cases extends {
+    [RK in $D152Effect_ReasonTags<$D152Effect_ExtractTag<E, K>>]+?: (reason: $D152Effect_ExtractReason<$D152Effect_ExtractTag<E, K>, RK>, error: $D152Effect_NarrowReason<$D152Effect_ExtractTag<E, K>, RK>) => $D152Effect_Effect<any, any, any>;
+}, A2 = never, E2 = never, R2 = never, Ret extends $D152Effect_Effect<any, any, any> = $D152Effect_Effect<A2, E2, R2>>(this: ($D152Effect_Effect<A, E, R>) & $D152EffectReceiver, errorTag: K, cases: Cases, orElse?: ((reason: $D152Effect_ExcludeReason<$D152Effect_ExtractTag<$D152Effect_NoInfer<E>, K>, RequiredCaseKeys<Cases>>, error: $D152Effect_OmitReason<$D152Effect_ExtractTag<$D152Effect_NoInfer<E>, K>, RequiredCaseKeys<Cases>>) => Ret) | undefined): $D152Effect_Effect<A | $D152Effect_Success<Ret | CaseReturn<Cases>>, $D152Effect_ExcludeTag<E, K> | UnhandledParent<E, K, RequiredCaseKeys<Cases>> | $D152Effect_Error<Ret | CaseReturn<Cases>>, R | $D152Effect_Services<Ret | CaseReturn<Cases>>>;
 }
 interface $D152Method_unwrapReason {
     "unwrapReason"<A, E, R, K extends $D152Stream_Effect.TagsWithReason<E>>(this: $D152Stream_Stream<A, E, R>, errorTag: K): $D152Stream_Stream<A, $D152Stream_ExcludeTag<E, K> | $D152Stream_ReasonOf<$D152Stream_ExtractTag<E, K>>, R>;

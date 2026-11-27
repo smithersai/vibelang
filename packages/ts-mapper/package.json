@@ -8,7 +8,9 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
-    "./prelude": { "types": "./prelude.d.ts" },
+    "./prelude": {
+      "types": "./prelude.d.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": ["bin", "prelude.d.ts"],
@@ -20,7 +22,7 @@
     }
   },
   "peerDependencies": {
-    "effect": "4.1.1",
+    "effect": "^4.1.0",
     "vibelang-runtime": "0.0.14"
   },
   "devDependencies": {

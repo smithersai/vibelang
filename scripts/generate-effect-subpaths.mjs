@@ -10,7 +10,8 @@ if (args.some((arg) => arg !== "--write") || args.length > 1) {
 }
 const effect = resolve(process.env.EFFECT_NODE_MODULES || resolve(root, "docs/tools/node_modules"), "effect")
 const pkg = JSON.parse(readFileSync(resolve(effect, "package.json"), "utf8"))
-const pin = JSON.parse(readFileSync(resolve(root, "packages/runtime/package.json"), "utf8")).peerDependencies.effect
+const runtimePkg = JSON.parse(readFileSync(resolve(root, "packages/runtime/package.json"), "utf8"))
+const pin = runtimePkg.devDependencies?.effect ?? runtimePkg.peerDependencies?.effect
 if (pkg.version !== pin) throw new Error("Effect " + pkg.version + " does not match runtime pin " + pin)
 
 function modules(index) {

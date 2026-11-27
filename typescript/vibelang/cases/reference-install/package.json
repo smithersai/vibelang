@@ -2,7 +2,7 @@
   "name": "vibelang-stock-case-reference",
   "private": true,
   "dependencies": {
-    "effect": "4.1.0",
+    "effect": "4.1.6",
     "typescript": "5.9.3"
   }
 }

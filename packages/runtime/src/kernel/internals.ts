@@ -1,4 +1,4 @@
-// Structural access to Effect 4.1.1 fiber internals.
+// Structural access to Effect 4.x fiber internals (isolated to the experimental continuation kernel; core runtime primitives use public Effect APIs).
 //
 // The kernel needs three things the public Fiber interface does not expose:
 // the continuation stack (`_stack`), the interruptibility flag, and the
@@ -37,7 +37,7 @@ export interface FiberInternals {
 export const asInternals = (fiber: unknown): FiberInternals => {
   const f = fiber as FiberInternals
   if (!Array.isArray(f._stack) || typeof f.interruptible !== "boolean" || typeof f.setContext !== "function") {
-    throw new Error("Unexpected FiberImpl shape: the kernel prototype only supports effect@4.1.1")
+    throw new Error("Unexpected FiberImpl shape: the kernel prototype requires effect@^4.1.0")
   }
   return f
 }

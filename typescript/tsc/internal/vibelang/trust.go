@@ -118,6 +118,9 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 	if module, ok := pinnedEffectModule(c, file); ok {
 		return tagged(c, call, candidates, effectTrust(c, call, decl, module))
 	}
+	if isEffectUIPackage(packageOf(c, file)) {
+		return tagged(c, call, append(candidates, decl), effectUITrust(c, call, decl))
+	}
 	switch pkg := packageOf(c, file); {
 	case isTrustedPackage(c, ast.GetSourceFileOfNode(call), pkg):
 		return tagged(c, call, candidates, &trust{kind: trustEffect})

@@ -224,6 +224,7 @@ func knownCallbackSignatureThrows(c *checker.Checker, signature *checker.Signatu
 		}
 		return thrown
 	}
+	effectUI := isEffectUIPackage(packageOf(c, file))
 	var thrown []*checker.Type
 	for _, host := range sourceSignatureHosts(decl) {
 		if ast.IsTypeAliasDeclaration(host) {
@@ -244,6 +245,9 @@ func knownCallbackSignatureThrows(c *checker.Checker, signature *checker.Signatu
 				}
 			}
 		}
+	}
+	if len(thrown) == 0 && effectUI && effectUIThrows(c, nil, decl) {
+		return []*checker.Type{c.GetUnknownType()}
 	}
 	return thrown
 }

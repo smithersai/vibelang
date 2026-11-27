@@ -7,14 +7,14 @@
     "start": "node dist/entry.js"
   },
   "dependencies": {
-    "effect": "4.1.1",
-    "@effect/platform-node": "4.1.1",
+    "effect": "4.1.6",
+    "@effect/platform-node": "4.1.6",
     "vibelang-runtime": "0.0.14"
   },
   "devDependencies": {
     "vibelang": "0.0.14"
   },
   "overrides": {
-    "@effect/platform-node-shared": "4.1.1"
+    "@effect/platform-node-shared": "4.1.6"
   }
 }

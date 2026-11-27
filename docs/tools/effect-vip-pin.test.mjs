@@ -5,33 +5,50 @@ import fc from "fast-check"
 
 const vip = (name) => readFileSync(new URL("../design/vips/" + name, import.meta.url), "utf8")
 
-const effectPin = (decision) => {
-  const pin = /the pin is (?:effect|`effect`) (\d+\.\d+\.\d+)(?![\d.])/.exec(decision)?.[1]
-  assert.ok(pin, "VIP-32 names no pin")
-  return pin
+const effectBaseline = (decision) => {
+  const version = /tested baseline `(\d+\.\d+\.\d+)`(?![\d.])/.exec(decision)?.[1]
+    ?? /the pin is (?:effect|`effect`) (\d+\.\d+\.\d+)(?![\d.])/.exec(decision)?.[1]
+  assert.ok(version, "VIP-32 names no Effect baseline")
+  return version
 }
 
-test("VIP module and resource references use the accepted Effect pin", () => {
-  const decision = vip("0032-effect-version.md")
-  assert.ok(decision.includes("During alpha, VibeLang pins exactly one Effect version."))
-  const pin = effectPin(decision)
-  assert.ok(vip("0014-effect-modules-in-scope.md").includes("149 in effect " + pin))
-  assert.ok(vip("0008-using-denied.md").includes("## Effect's scope functions (effect " + pin + ")"))
-})
+const effectRange = (decision) => {
+  const range = /Effect `(\^\d+\.\d+\.\d+)` semver range/.exec(decision)?.[1]
+  assert.ok(range, "VIP-32 names no Effect semver range")
+  return range
+}
 
-// rule-evidence: docs/design/vips/0032-effect-version.md#9b6571022cf245d5 | **Amended 2026-11-03: the pin is `effect` 4.1.1; the `4.1` minimum means the pin never moves below `4.1`**.
-test("VIP-32: the published peers, the runtime guard and the compiler check the accepted pin, never below 4.1", () => {
-  const pin = effectPin(vip("0032-effect-version.md"))
+test("VIP-32: the published peers, runtime guard, and compiler enforce the accepted ^4.1.0 range and tested baseline", () => {
+  const decision = vip("0032-effect-version.md")
+  const baseline = effectBaseline(decision)
+  const range = effectRange(decision)
   const repo = (file) => readFileSync(new URL("../../" + file, import.meta.url), "utf8")
   const peer = (dir) => JSON.parse(repo("packages/" + dir + "/package.json")).peerDependencies.effect
+  const dev = JSON.parse(repo("packages/runtime/package.json")).devDependencies.effect
   assert.deepEqual({
-    compiler: peer("compiler"),
-    runtime: peer("runtime"),
-    guard: /^const PINNED_EFFECT_VERSION = "([^"]*)"$/m.exec(repo("packages/runtime/src/version-guard.cts"))?.[1],
-    checker: /^const supportedEffectVersion = "([^"]*)"$/m.exec(repo("typescript/tsc/internal/vibelang/effectavailable.go"))?.[1],
-  }, { compiler: pin, runtime: pin, guard: pin, checker: pin })
-  const [major, minor] = pin.split(".").map(Number)
-  assert.ok(major > 4 || (major === 4 && minor >= 1), "the pin " + pin + " is below the 4.1 minimum")
+    compilerPeer: peer("compiler"),
+    runtimePeer: peer("runtime"),
+    tsMapperPeer: peer("ts-mapper"),
+    guardRange: /^const SUPPORTED_EFFECT_RANGE = "([^"]*)"$/m.exec(repo("packages/runtime/src/version-guard.cts"))?.[1],
+    checkerRange: /^const supportedEffectRange = "([^"]*)"$/m.exec(repo("typescript/tsc/internal/vibelang/effectavailable.go"))?.[1],
+  }, {
+    compilerPeer: range,
+    runtimePeer: range,
+    tsMapperPeer: range,
+    guardRange: range,
+    checkerRange: range,
+  })
+  assert.deepEqual({
+    runtimeDev: dev,
+    guardBaseline: /^const PINNED_EFFECT_VERSION = "([^"]*)"$/m.exec(repo("packages/runtime/src/version-guard.cts"))?.[1],
+    checkerBaseline: /^const supportedEffectVersion = "([^"]*)"$/m.exec(repo("typescript/tsc/internal/vibelang/effectavailable.go"))?.[1],
+  }, {
+    runtimeDev: baseline,
+    guardBaseline: baseline,
+    checkerBaseline: baseline,
+  })
+  const [major, minor] = baseline.split(".").map(Number)
+  assert.ok(major > 4 || (major === 4 && minor >= 1), "the baseline " + baseline + " is below the 4.1 minimum")
 })
 
 const versionParts = fc.tuple(
@@ -40,21 +57,21 @@ const versionParts = fc.tuple(
   fc.integer({ min: 0, max: 999 }),
 )
 
-test("fast-check: code formatting preserves an explicit Effect pin", () => {
+test("fast-check: code formatting preserves an explicit Effect baseline", () => {
   fc.assert(fc.property(versionParts, fc.boolean(), (parts, code) => {
     const version = parts.join(".")
     const spelling = code ? "`effect`" : "effect"
     const decision = "- **Amended 2026-11-03: the pin is " + spelling + " " + version
       + ", and 4.1 is the earliest supported version**"
-    assert.equal(effectPin(decision), version)
+    assert.equal(effectBaseline(decision), version)
   }), {
     seed: 32021,
     numRuns: 512,
-    examples: [[[4, 1, 1], true], [[4, 1, 1], false], [[10, 20, 30], true]],
+    examples: [[[4, 1, 6], true], [[4, 1, 6], false], [[10, 20, 30], true]],
   })
 })
 
-test("fast-check: absent or malformed pins report the missing decision", () => {
+test("fast-check: absent or malformed baselines report the missing decision", () => {
   fc.assert(fc.property(versionParts, fc.constantFrom(
     "missing", "partial", "range", "extra", "open", "close",
   ), (parts, kind) => {
@@ -67,9 +84,9 @@ test("fast-check: absent or malformed pins report the missing decision", () => {
       open: "the pin is `effect " + version,
       close: "the pin is effect` " + version,
     }[kind]
-    assert.throws(() => effectPin(text), {
+    assert.throws(() => effectBaseline(text), {
       name: "AssertionError",
-      message: "VIP-32 names no pin",
+      message: "VIP-32 names no Effect baseline",
     })
   }), { seed: 32022, numRuns: 384 })
 })

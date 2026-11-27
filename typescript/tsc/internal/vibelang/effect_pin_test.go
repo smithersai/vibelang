@@ -31,18 +31,37 @@ func pinDiagnostics(t *testing.T, program *compiler.Program, file *ast.SourceFil
 	return pins, others
 }
 
-// VIP-32, 007 "The Effect version", decided detail 70: a resolved effect other
-// than the pin is EK3201, once, naming both versions and the VibeLang release.
-// Chapter 007 / resolved mismatched Effect reports one EK3201 naming both versions: docs/design/src/007-tooling.md#4078b3e12cdd2a36
-// Chapter 007 / resolved mismatched Effect reports one EK3201 naming both versions: docs/design/src/007-tooling.md#f26e9374b3808522
+func TestIsSupportedEffectVersion(t *testing.T) {
+	accepted := []string{"4.1.0", "4.1.1", "4.1.4", "4.1.6", "4.2.0", "4.12.9"}
+	for _, v := range accepted {
+		if !isSupportedEffectVersion(v) {
+			t.Errorf("isSupportedEffectVersion(%q) = false, want true", v)
+		}
+	}
+	rejected := []string{
+		"", "3.19.0", "3.99.0", "4.0.0", "4.0.3", "4.0.6",
+		"5.0.0", "5.1.0", "4.1.0-next.1", "4.1.1-next.1", "4.1.6-next.1",
+		"4.2.0-beta.0", "4.1.6+build.1", "4.1", "04.1.0", "4.1.0.0", "latest",
+	}
+	for _, v := range rejected {
+		if isSupportedEffectVersion(v) {
+			t.Errorf("isSupportedEffectVersion(%q) = true, want false", v)
+		}
+	}
+}
+
+// VIP-32 (amended): a resolved effect outside stable ^4.1.0 (>=4.1.0 <5.0.0,
+// no prereleases) reports EK3201 once on the project config, naming the
+// resolved version, VibeLang version, supported range, and tested baseline.
 func TestEffectPinMismatch(t *testing.T) {
 	for _, test := range []struct {
 		name, fixture, version string
 	}{
-		{"older minor", "testdata/effect-pin/effect-4.0.3", "4.0.3"},
-		{"previous patch", "testdata/effect-pin/effect-4.1.0", "4.1.0"},
-		{"newer patch", "testdata/effect-pin/effect-4.1.2", "4.1.2"},
-		{"prerelease of the pin", "testdata/effect-pin/effect-4.1.1-next.1", "4.1.1-next.1"},
+		{"older major 3.x", "testdata/effect-pin/effect-3.19.0", "3.19.0"},
+		{"older minor 4.0.x", "testdata/effect-pin/effect-4.0.3", "4.0.3"},
+		{"next major 5.x", "testdata/effect-pin/effect-5.0.0", "5.0.0"},
+		{"prerelease 4.1.1-next.1", "testdata/effect-pin/effect-4.1.1-next.1", "4.1.1-next.1"},
+		{"prerelease 4.1.6-next.1", "testdata/effect-pin/effect-4.1.6-next.1", "4.1.6-next.1"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			packages := map[string]string{"effect": "typescript/tsc/internal/vibelang/" + test.fixture}
@@ -56,12 +75,11 @@ func TestEffectPinMismatch(t *testing.T) {
 					t.Fatalf("%q: want one EK3201, got %d: %v", source, len(pins), program.GetSemanticDiagnostics(t.Context(), file))
 				}
 				text := pins[0].MessageText()
-				// rule-evidence: docs/design/vips/0032-effect-version.md#2b98b32c1ca369f2 | Any other resolved version, including `4.1.0`, is `EK3201`; the minimum does not admit a supported version range.
-				// rule-evidence: docs/design/vips/0032-effect-version.md#1cc56090e3b485bb | **Amended 2026-10-30: an off-pin Effect is a compile error.** VibeLang declares `effect` as an exact `peerDependency`, and the compiler reads the resolved `effect/package.json`: a version other than the pin is `EK3201` ("the resolved effect is X; VibeLang Y pins Z: upgrade both together"), in the editor and in CI.
-				if want := fmt.Sprintf("The resolved effect is %s; VibeLang %s pins %s: upgrade both together.", test.version, Version, supportedEffectVersion); text != want {
+				want := fmt.Sprintf("The resolved effect is %s; VibeLang %s requires %s (tested on %s): upgrade both together.", test.version, Version, supportedEffectRange, supportedEffectVersion)
+				if text != want {
 					t.Fatalf("%q: EK3201 text %q, want %q", source, text, want)
 				}
-				for _, part := range []string{test.version, Version, supportedEffectVersion, "upgrade both together"} {
+				for _, part := range []string{test.version, Version, supportedEffectRange, supportedEffectVersion, "upgrade both together"} {
 					if !strings.Contains(text, part) {
 						t.Fatalf("%q: EK3201 text %q lacks %q", source, text, part)
 					}
@@ -74,14 +92,18 @@ func TestEffectPinMismatch(t *testing.T) {
 	}
 }
 
-// The pinned version, a package without a version, and no effect at all report
-// no EK3201: the first is right, the others are what the missing names say.
+// Any stable effect in ^4.1.0 (>=4.1.0 <5.0.0), a package without a version,
+// and no effect at all report no EK3201.
 func TestEffectPinQuiet(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		packages map[string]string
 	}{
-		{"pinned", map[string]string{"effect": "packages/runtime/node_modules/effect", "vibelang-runtime": "packages/runtime"}},
+		{"tested baseline", map[string]string{"effect": "packages/runtime/node_modules/effect", "vibelang-runtime": "packages/runtime"}},
+		{"4.1.0", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0"}},
+		{"4.1.2", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.2"}},
+		{"4.1.4", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.4"}},
+		{"4.2.0", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.2.0"}},
 		{"no version", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-unversioned"}},
 		{"no effect", map[string]string{}},
 	} {
@@ -94,11 +116,11 @@ func TestEffectPinQuiet(t *testing.T) {
 	}
 }
 
-// Every selected package must use the pin, independently of source order.
+// Every selected package must resolve a supported Effect version, independently of source order.
 func TestEffectPinMismatchAfterPinnedFile(t *testing.T) {
 	for _, reverse := range []bool{false, true} {
-		t.Run(fmt.Sprint(reverse), func(t *testing.T) {
-			_, file, _, _ := editorProgramWith(t, "export const n: number = 1", map[string]string{"effect": "packages/runtime/node_modules/effect"})
+		t.Run(fmt.Sprintf("reverse=%v", reverse), func(t *testing.T) {
+			_, file, _, _ := editorProgramWith(t, "export const n: number = 1", map[string]string{"effect": "packages/runtime/node_modules/effect", "vibelang-runtime": "packages/runtime"})
 			dir := filepath.Dir(file.FileName().AsString())
 			nested := filepath.Join(dir, "nested")
 			if err := os.MkdirAll(filepath.Join(nested, "node_modules"), 0755); err != nil {
@@ -134,7 +156,7 @@ func TestEffectPinMismatchAfterPinnedFile(t *testing.T) {
 				t.Fatalf("want one EK3201 for later package, got pins=%v others=%v", pins, others)
 			}
 			if pins[0].File() == nil || !strings.HasSuffix(pins[0].File().FileName().AsString(), "/tsconfig.json") {
-				t.Fatalf("off-pin diagnostic belongs to the other package: %v", pins[0])
+				t.Fatalf("off-range diagnostic belongs to the other package: %v", pins[0])
 			}
 		})
 	}
@@ -145,7 +167,7 @@ func TestEffectPinMismatchAfterPinnedFile(t *testing.T) {
 func TestEffectPinFileCountProperty(t *testing.T) {
 	property := func(raw uint8, reverse bool) bool {
 		count := 1 + int(raw%24)
-		_, file, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0"})
+		_, file, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.0.3"})
 		dir := filepath.Dir(file.FileName().AsString())
 		names := []string{"main.vibe"}
 		for i := 1; i < count; i++ {
@@ -194,19 +216,26 @@ func TestEffectPinFileCountProperty(t *testing.T) {
 	}
 }
 
-// Every platform peer has its own single project diagnostic. Root and
-// subpath imports, and an unused installed peer, cannot change that count.
+// Every platform peer outside ^4.1.0 has its own single project diagnostic,
+// while any stable platform peer in ^4.1.0 (e.g. 4.1.1, 4.1.6, 4.2.0) passes.
 func TestEffectPlatformPinMismatch(t *testing.T) {
-	for _, version := range []string{"4.1.0", supportedEffectVersion} {
-		t.Run(version, func(t *testing.T) {
-			_, file, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0"})
+	for _, tc := range []struct {
+		version string
+		want    int
+	}{
+		{"4.0.3", 5},
+		{"4.1.4", 1},
+		{supportedEffectVersion, 1},
+	} {
+		t.Run(tc.version, func(t *testing.T) {
+			_, file, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.0.3"})
 			dir := filepath.Dir(file.FileName().AsString())
 			for _, name := range []string{"platform-node", "platform-bun", "platform-browser", "platform-node-shared"} {
 				pkg := filepath.Join(dir, "node_modules/@effect", name)
 				if err := os.MkdirAll(pkg, 0755); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.WriteFile(filepath.Join(pkg, "package.json"), []byte(fmt.Sprintf(`{"name":"@effect/%s","version":"%s","types":"index.d.ts"}`, name, version)), 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(pkg, "package.json"), []byte(fmt.Sprintf(`{"name":"@effect/%s","version":"%s","types":"index.d.ts"}`, name, tc.version)), 0600); err != nil {
 					t.Fatal(err)
 				}
 				if err := os.WriteFile(filepath.Join(pkg, "index.d.ts"), []byte("export declare const value: number"), 0600); err != nil {
@@ -220,15 +249,11 @@ func TestEffectPlatformPinMismatch(t *testing.T) {
 			}
 			program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
 			pins, _ := pinDiagnostics(t, program, nil)
-			want := 5
-			if version == supportedEffectVersion {
-				want = 1
-			}
-			if len(pins) != want {
-				t.Fatalf("want %d project pins, got %v", want, pins)
+			if len(pins) != tc.want {
+				t.Fatalf("want %d project pins, got %v", tc.want, pins)
 			}
 			for _, d := range pins {
-				if d.File() == nil || !strings.HasSuffix(d.File().FileName().AsString(), "/tsconfig.json") || !strings.Contains(d.MessageText(), "4.1.0") || !strings.Contains(d.MessageText(), supportedEffectVersion) {
+				if d.File() == nil || !strings.HasSuffix(d.File().FileName().AsString(), "/tsconfig.json") || !strings.Contains(d.MessageText(), "4.0.3") || !strings.Contains(d.MessageText(), supportedEffectRange) || !strings.Contains(d.MessageText(), supportedEffectVersion) {
 					t.Fatal(d)
 				}
 			}
@@ -237,7 +262,7 @@ func TestEffectPlatformPinMismatch(t *testing.T) {
 }
 
 func TestEffectPinCommandLineProject(t *testing.T) {
-	original, _, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0"})
+	original, _, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.0.3"})
 	config := original.CommandLine()
 	config.ConfigFile = nil
 	config.CompilerOptions().ConfigFilePath = ""
@@ -250,7 +275,7 @@ func TestEffectPinCommandLineProject(t *testing.T) {
 }
 
 func TestEffectPinConcurrentProjectRequests(t *testing.T) {
-	program, _, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0"})
+	program, _, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.0.3"})
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Go(func() {

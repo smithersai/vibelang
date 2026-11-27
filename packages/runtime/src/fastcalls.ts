@@ -10,13 +10,11 @@
 // L2 and L3 are language changes of decision (B), the move of code
 // generation to the projector. None of these helpers changes what a call
 // computes, only how fast it gets there.
+import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { NodeInspectSymbol } from "effect/Inspectable"
-import { pipeArguments } from "effect/Pipeable"
-import { SingleShotGen } from "effect/Utils"
-import { contA, evaluate, ExitTypeId, type FiberInternals, identifier } from "./kernel/internals.js"
 
 // ---------------------------------------------------------------------------
 // L3: the run check
@@ -24,8 +22,7 @@ import { contA, evaluate, ExitTypeId, type FiberInternals, identifier } from "./
 
 const EffectTypeId = Effect.TypeId
 const ServiceTypeId = Context.ServiceTypeId
-// Config's type id (Config.ts:30); effect does not export it.
-const ConfigTypeId = "~effect/Config"
+const EffectIdentifier = "~effect/Effect/identifier"
 
 /**
  * L3's run check: whether the value a call returned runs where the call
@@ -42,12 +39,12 @@ const ConfigTypeId = "~effect/Config"
  */
 export const $isRun = (value: unknown): boolean => {
   if (value === null || (typeof value !== "object" && typeof value !== "function")) return false
-  const v = value as { [identifier]?: unknown; sql?: unknown }
-  // Effect 4.1.1 uses a string key, including for errors from another realm.
+  const v = value as { [EffectIdentifier]?: unknown; sql?: unknown }
+  // Effect 4 uses a string key, including for errors from another realm.
   // D24 SQL statements carry their query as data, including structural
   // adapters without effect/sql's nominal Statement marker.
-  return EffectTypeId in v && typeof v.sql !== "string" && !("~effect/sql/Statement" in v) && !(ConfigTypeId in v) && !(ServiceTypeId in v) &&
-    v[identifier] !== "YieldableError" && !(v instanceof Error)
+  return EffectTypeId in v && typeof v.sql !== "string" && !("~effect/sql/Statement" in v) && !Config.isConfig(v) && !(ServiceTypeId in v) &&
+    v[EffectIdentifier] !== "YieldableError" && !(v instanceof Error)
 }
 
 // ---------------------------------------------------------------------------
@@ -120,66 +117,37 @@ class FastCallRanTwice extends Error {
 const ran: unique symbol = Symbol("vibelang/fast/ran")
 
 /**
- * A body that suspended: a one-shot Effect that runs the Effect the body
- * yielded and then resumes the same body on the fiber. It is also the
- * body's frame on the fiber stack, the frame Effect.gen pushes (its Iterator
- * primitive, internal/effect.ts:1413), so handlers capture and resume it like
- * any generator frame, and interruption and cleanup see an ordinary
- * generator. A class of its own costs less than Effect.gen's suspend and
- * Iterator pair: the suspending fast call is faster than the slow call
- * (README).
+ * A body that suspended: a one-shot Effect built on public `Effect.gen` that
+ * runs the Effect the body yielded and then resumes the same generator on the
+ * fiber without touching private fiber internals.
  */
-class Pending {
-  constructor(
-    private readonly body: Iterator<unknown, unknown, unknown>,
-    // The Effect the body yielded, until the fiber runs it.
-    private step: unknown
-  ) {}
-
-  [evaluate](fiber: FiberInternals): unknown {
-    const step = this.step
-    if (step === ran) return Exit.die(new FastCallRanTwice())
-    this.step = ran
-    fiber._stack.push(this)
-    return step
-  }
-
-  // The fiber's own generator step: Exits resolve in place, anything else
-  // waits for the fiber with this frame on its stack.
-  [contA](value: unknown, fiber: FiberInternals): unknown {
-    const body = this.body
+function pendingEffect(
+  body: Iterator<unknown, unknown, unknown>,
+  firstStep: unknown
+): Effect.Effect<any, any, any> {
+  let step: unknown = firstStep
+  const effect = Effect.gen(function* () {
+    const current = step
+    if (current === ran) return yield* Effect.die(new FastCallRanTwice())
+    step = ran
+    let value: unknown = yield* (current as Effect.Effect<any, any, any>)
     while (true) {
       const state = body.next(value)
-      if (state.done) return Exit.succeed(state.value)
-      const step = state.value as any
-      if (step[ExitTypeId] === undefined) {
-        fiber._stack.push(this)
-        return step
+      if (state.done) return state.value
+      const next = state.value
+      if (Exit.isExit(next)) {
+        if (Exit.isFailure(next)) return yield* next
+        value = next.value
+        continue
       }
-      if (step._tag === "Failure") return step
-      value = step.value
+      value = yield* (next as Effect.Effect<any, any, any>)
     }
-  }
+  })
+  const summary = { _id: "Effect", op: "vibelang/FastCall" }
+  Object.defineProperty(effect, "toJSON", { value: () => summary, configurable: true })
+  Object.defineProperty(effect, NodeInspectSymbol, { value: () => summary, configurable: true })
+  return effect
 }
-
-// The rest of the Effect protocol (internal/core.ts:67-80), so a Pending is
-// an Effect to $isRun, yield*, pipe, and inspection.
-Object.assign(Pending.prototype, {
-  [EffectTypeId]: (Effect.void as any)[EffectTypeId],
-  [identifier]: "vibelang/FastCall",
-  [Symbol.iterator](this: Pending) {
-    return new SingleShotGen(this)
-  },
-  pipe(this: Pending) {
-    return pipeArguments(this, arguments)
-  },
-  toJSON() {
-    return { _id: "Effect", op: "vibelang/FastCall" }
-  },
-  [NodeInspectSymbol](this: { toJSON(): unknown }) {
-    return this.toJSON()
-  }
-})
 
 /**
  * Finishes a fast entry whose body's first step did not finish it, from
@@ -198,8 +166,8 @@ export function $settle<Eff extends Effect.Effect<any, any, any>, A>(
     while (true) {
       if (s.done) return $done(s.value)
       const step = s.value as any
-      if (step[ExitTypeId] === undefined) return new Pending(it, step) as any
-      if (step._tag === "Failure") return step
+      if (!Exit.isExit(step)) return pendingEffect(it, step) as any
+      if (Exit.isFailure(step)) return step as any
       s = it.next(step.value)
     }
   } catch (defect) {

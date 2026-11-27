@@ -2,7 +2,6 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as K from "./kernel/kernel.js"
 
 // The primitives of a .vibe file that have their own syntax (D176-D180):
 // `catch (cause: Cause)` (retired by D217; it still compiles), `throw cause`, `finally (exit)`, and the
@@ -11,15 +10,15 @@ import * as K from "./kernel/kernel.js"
 
 /**
  * `catch (cause: Cause)` (D176) catches every reason a failure holds,
- * expected failures, defects, and interrupts, as Effect.catchCause does. A
- * control operation's abandonment unwinds through it untouched.
+ * expected failures, defects, and interrupts, delegating directly to public
+ * Effect.catchCause (VIP-35 handlers were denied; core catch does not depend on
+ * continuation kernel internals).
  */
 export const $catchCause = <A, E, R, B, E2, R2>(
   self: Effect.Effect<A, E, R>,
   handler: (cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
 ): Effect.Effect<A | B, E2, R | R2> =>
-  Effect.catchCause(self, (cause): Effect.Effect<B, E2, R2> =>
-    K.isAbortCause(cause) ? Effect.failCause(cause as Cause.Cause<never>) : handler(cause))
+  Effect.catchCause(self, handler)
 
 /** What `$failureOf` returns when a cause holds no expected failure. */
 export const $noFailure: unique symbol = Symbol.for("vibelang/noFailure")

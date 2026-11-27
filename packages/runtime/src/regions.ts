@@ -2,17 +2,16 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Scope from "effect/Scope"
-import * as K from "./kernel/kernel.js"
 import { $direct } from "./fastcalls.js"
 import { isRecorded } from "./resources.js"
 
 export const $normal = { kind: "normal" } as const
 
-/** D13, D306: `catch` recovers the first expected failure of a cause with no defect, as `Effect.catch` does (the kernel's `catchExpected`). */
-export const $catch: <A, E, R, B, E2, R2>(
+/** D13, D306: `catch` recovers the first expected failure of a cause with no defect, delegating directly to public `Effect.catch`. */
+export const $catch = <A, E, R, B, E2, R2>(
   self: Effect.Effect<A, E, R>,
   handler: (error: E) => Effect.Effect<B, E2, R2>
-) => Effect.Effect<A | B, E2, R | R2> = K.catchExpected
+): Effect.Effect<A | B, E2, R | R2> => Effect.catch(self, handler)
 
 /**
  * A catch expression (D236): `program catch fallback` and
@@ -24,7 +23,7 @@ export const $catch: <A, E, R, B, E2, R2>(
 export const $catchExpression = <A, E, R, B, E2, R2>(
   self: () => Effect.Effect<A, E, R>,
   handler: (error: E) => Effect.Effect<B, E2, R2>
-): Effect.Effect<A | B, E2, R | R2> => K.catchExpected(Effect.suspend(self), handler)
+): Effect.Effect<A | B, E2, R | R2> => Effect.catch(Effect.suspend(self), handler)
 
 /**
  * A typed catch clause, `catch (e: NotFound)`, tests the caught failure with
@@ -145,6 +144,19 @@ const SuppressedError: SuppressedConstructor = (globalThis as { SuppressedError?
     }
   }
 
+// Defect precedence (D305): when a cause holds a Die, each Fail (except a
+// Stream's Done signal) becomes a Die of the same error with its annotations,
+// using only public Cause APIs.
+const electDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<E> => {
+  const reasons = cause.reasons
+  if (!reasons.some(Cause.isDieReason) || !reasons.some(Cause.isFailReason)) return cause
+  return Cause.fromReasons(reasons.map((reason): Cause.Reason<E> =>
+    Cause.isFailReason(reason) && !Cause.isDone(reason.error)
+      ? Cause.annotate(Cause.die(reason.error), Cause.reasonAnnotations(reason)).reasons[0] as Cause.Reason<E>
+      : reason
+  ))
+}
+
 // The cause that each SuppressedError the runtime made stands for (D340).
 const joined = new WeakMap<object, Cause.Cause<unknown>>()
 
@@ -162,7 +174,7 @@ const defectFor = (cause: Cause.Cause<unknown>): unknown => {
   let thrown = values[0]
   for (let i = 1; i < values.length; i++) {
     thrown = new SuppressedError(values[i], thrown, "A cleanup failed while another failure was in flight")
-    joined.set(thrown as Suppressed, K.electDefects(Cause.fromReasons(cause.reasons.slice(0, i + 1))))
+    joined.set(thrown as Suppressed, electDefects(Cause.fromReasons(cause.reasons.slice(0, i + 1))))
   }
   return thrown
 }
@@ -192,7 +204,7 @@ export const $finallyFailure = (pending: unknown, thrown: unknown): unknown => {
     return new ExpectedFailure(failure.error, cause)
   }
   const suppressed = new SuppressedError(defectOf(thrown), defectOf(pending), "A cleanup failed while another failure was in flight")
-  joined.set(suppressed, K.electDefects(cause))
+  joined.set(suppressed, electDefects(cause))
   return suppressed
 }
 

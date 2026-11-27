@@ -5,7 +5,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-const supportedEffectVersion = "4.1.1"
+const supportedEffectVersion = "4.1.6"
+const supportedEffectRange = "^4.1.0"
 
 func init() { fileChecks = append(fileChecks, checkEffectAvailable) }
 
@@ -28,7 +29,7 @@ func checkEffectAvailable(c *checker.Checker, file *ast.SourceFile) {
 		if isLowerable(node) && node.Type() == nil && a.isEffect(node) && a.effectTypeOf(node, c.GetUnknownType()) == nil {
 			d := report(c, functionNameNode(node), EK1011, functionDisplayName(node))
 			if version != "" {
-				note(d, "This file resolves effect@{0}, but its declarations are unsupported. VibeLang requires effect@{1}; install it with: npm install effect@{1}.", version, supportedEffectVersion)
+				note(d, "This file resolves effect@{0}, but its declarations are unsupported. VibeLang requires effect@{1}; install a supported version with: npm install effect@{2}.", version, supportedEffectRange, supportedEffectVersion)
 			} else {
 				note(d, "Install effect where this file can resolve it: the JavaScript VibeLang writes for {0} imports it.", functionDisplayName(node))
 			}

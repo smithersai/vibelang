@@ -25,91 +25,61 @@ effect function settings(text: string) {
 ## 1. Check package.json
 
 - **ESM required:** `package.json` must set `"type": "module"`. Check how that affects any existing `.js` files first.
-- **Exact Effect pin:** `vibelang-runtime` requires `effect` 4.1.1 exactly. It depends on Effect internals and checks the exact version at load. VibeLang follows Effect 4.0.6's defect precedence, which 4.1.1 keeps: a failure whose cleanup crashes is a defect ([release notes](../setup/release-notes.md)). Upgrade your existing project to `effect@4.1.1` and verify its tests pass before converting files to `.vibe`.
+- **Supported Effect range (`^4.1.0`):** `vibelang` and `vibelang-runtime` support any stable `effect` version `>=4.1.0 <5.0.0` (tested on `4.1.6`), and reject `3.x`, `4.0.x`, `5.x`, and prereleases at compile and load time (`EK3201`). Core runtime constructs use public Effect 4 APIs, so no `@effect/platform-node-shared` override or resolution is required. VibeLang follows Effect 4.0.6's defect precedence, which Effect 4.1+ keeps: a failure whose cleanup crashes is a defect ([release notes](../setup/release-notes.md)). Upgrade your existing project to a stable Effect `^4.1.0` release (such as `effect@4.1.6`) and verify its tests pass before converting files to `.vibe`.
 - **Published libraries:** Keep `vibelang-runtime` (and `vibelang` if launching source children via `vibelang/register` or `vibelang/bun`) in production `dependencies` at a registry version, not a local `file:` path.
 
 ## 2. Install the packages
 
-Pin `@effect/platform-node-shared` to `4.1.1` before installing so package managers do not pick a mismatched patch.
-
-**npm** — merge into the root `package.json`:
-
-```json
-{
-  "overrides": {
-    "@effect/platform-node-shared": "4.1.1"
-  }
-}
-```
-
-**Bun** — merge into whichever pin table the root `package.json` already uses. If only `resolutions` exists, add the pin there (when both exist, [Bun uses only `overrides`](https://bun.com/docs/pm/overrides#resolutions)); if neither exists, use `overrides` above:
-
-```json
-{
-  "resolutions": {
-    "@effect/platform-node-shared": "4.1.1"
-  }
-}
-```
+No transitive `@effect/platform-node-shared` override or resolution is needed — any stable `^4.1.0` Effect release works out of the box.
 
 Install with Bun:
 
 ```sh
-bun add --exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
-bun add -d --exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
+bun add vibelang-runtime@0.0.14 effect@^4.1.6 @effect/platform-node@^4.1.6
+bun add -d vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@^4.1.6
 ```
 
 Or with npm:
 
 ```sh
-npm install --save-exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
-npm install --save-dev --save-exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
+npm install vibelang-runtime@0.0.14 effect@^4.1.6 @effect/platform-node@^4.1.6
+npm install --save-dev vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@^4.1.6
 ```
 
-With pnpm, configure the [transitive pin](https://pnpm.io/settings/dependency-resolution#overrides) and allow `dprint`'s install script in `pnpm-workspace.yaml` (pnpm 11+ fails with `ERR_PNPM_IGNORED_BUILDS` otherwise):
+With pnpm, allow `dprint`'s install script in `pnpm-workspace.yaml` (pnpm 11+ fails with `ERR_PNPM_IGNORED_BUILDS` otherwise):
 
 ```yaml
-overrides:
-  "@effect/platform-node-shared": "4.1.1"
 allowBuilds:
   dprint: true
 ```
 
 ```sh
-pnpm add --save-exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
-pnpm add --save-dev --save-exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
+pnpm add vibelang-runtime@0.0.14 effect@^4.1.6 @effect/platform-node@^4.1.6
+pnpm add --save-dev vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@^4.1.6
 ```
 
-**Yarn** — use the `node_modules` linker (Yarn 2+: add `nodeLinker: node-modules` to `.yarnrc.yml`), add the pin under root `package.json` [`resolutions`](https://yarnpkg.com/configuration/manifest#resolutions) (Yarn ignores `overrides`), and install `vite` explicitly if not already on Vite 7 or 8:
+**Yarn** — use the `node_modules` linker (Yarn 2+: add `nodeLinker: node-modules` to `.yarnrc.yml`) and install `vite` explicitly if not already on Vite 7 or 8:
 
 ```yaml
 nodeLinker: node-modules
 ```
 
-```json
-{
-  "resolutions": {
-    "@effect/platform-node-shared": "4.1.1"
-  }
-}
-```
-
 ```sh
-yarn add --exact vibelang-runtime@0.0.14 effect@4.1.1 @effect/platform-node@4.1.1
-yarn add --dev --exact vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@4.1.1
-yarn add --dev --exact vite@8
+yarn add vibelang-runtime@0.0.14 effect@^4.1.6 @effect/platform-node@^4.1.6
+yarn add --dev vibelang@0.0.14 vibelang-vite@0.0.14 vitest@5.1.0 @effect/vitest@^4.1.6
+yarn add --dev vite@8
 ```
 
 | Package | Install as | Purpose |
 | --- | --- | --- |
 | `vibelang-runtime` | Dependency | Small helpers used by compiled code |
-| `effect`, `@effect/platform-node` | Dependency | Effect 4.1.1 and Node platform |
+| `effect`, `@effect/platform-node` | Dependency | Effect `^4.1.0` (tested on `4.1.6`) and Node platform |
 | `vibelang` | Dev dependency | Compiler, language server, native binary, and VS Code extension |
 | `vibelang-vite` | Dev dependency | Compiles `.vibe` modules for Vite and Vitest |
-| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` 4.1.1 |
+| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` `^4.1.0` |
 | `vite` | Dev dependency | Vite 7 or 8 (explicit peer for Yarn) |
 
-Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at `4.1.1`, keep `vibelang`, `vibelang-runtime`, and `vibelang-vite` at one version, and keep optional dependencies enabled so `vibelang` installs its platform binary.
+Keep `vibelang`, `vibelang-runtime`, and `vibelang-vite` at one version, keep `effect` and `@effect/platform-*` on stable `^4.1.0` releases, and keep optional dependencies enabled so `vibelang` installs its platform binary.
 
 VibeLang uses TypeScript 7, which rejects removed options such as `moduleResolution: "node"` / `"node10"` and `baseUrl` (TS5108 / TS5102); see the [TypeScript 7 migration notes](https://github.com/microsoft/typescript-go/blob/main/CHANGES.md).
 

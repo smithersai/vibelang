@@ -33,7 +33,7 @@ const fixture = (version: string, runtimeVersion = runtimeMetadata.version) => {
 
 for (const kernelFirst of [false, true]) {
   test(`package: static runtime and kernel imports (${kernelFirst ? "kernel first" : "runtime first"})`, () => {
-    const dir = fixture("4.1.1")
+    const dir = fixture("4.1.6")
     try {
       const imports = [
         'import { Effect, $bind } from "vibelang-runtime";',
@@ -54,7 +54,8 @@ for (const kernelFirst of [false, true]) {
   }, 30_000)
 }
 
-for (const version of ["4.1.1", "4.1.0", "4.1.2", "3.99.0"]) {
+const acceptedVersions = new Set(["4.1.0", "4.1.1", "4.1.4", "4.1.6", "4.2.0"])
+for (const version of ["4.1.6", "4.1.1", "4.1.4", "4.2.0", "4.0.6", "4.1.6-next.1", "5.0.0", "3.99.0"]) {
   test(`package: Node, Bun, and browser bundles check effect@${version}`, async () => {
     const runtimeVersion = version === "3.99.0" ? "9.8.7-test.1" : runtimeMetadata.version
     const dir = fixture(version, runtimeVersion)
@@ -73,15 +74,14 @@ for (const version of ["4.1.1", "4.1.0", "4.1.2", "3.99.0"]) {
       for (const command of commands) {
         const result = spawnBounded(command, { cwd: dir, timeout: 10_000 })
         const output = result.stdout.toString() + result.stderr.toString()
-        if (version === "4.1.1") {
+        if (acceptedVersions.has(version)) {
           expect(result.exitCode).toBe(0)
           expect(output.trim()).toBe("42")
         } else {
-          // rule-evidence: docs/design/vips/0032-effect-version.md#5896fc765c34f201 | **Amended 2026-10-29: repos that already use VibeLang.** The published `vibelang-runtime` enforces its exact Effect pin, so the Effect upgrade lands together with the VibeLang release pinned to the new Effect, not before it (found while upgrading Smithers).
           expect(result.exitCode).not.toBe(0)
-          expect(output).toContain(`${runtimeMetadata.name}@${runtimeVersion} requires effect@4.1.1`)
+          expect(output).toContain(`${runtimeMetadata.name}@${runtimeVersion} requires effect@^4.1.0 (tested on 4.1.6)`)
           expect(output).toContain(`found effect@${version}`)
-          expect(output).toContain("npm install effect@4.1.1")
+          expect(output).toContain("npm install effect@4.1.6")
         }
       }
     } finally {
@@ -90,10 +90,13 @@ for (const version of ["4.1.1", "4.1.0", "4.1.2", "3.99.0"]) {
   }, 60_000)
 }
 
-test("package: the ES-module and CommonJS guards pin the same Effect version", () => {
+test("package: the ES-module and CommonJS guards declare the same Effect baseline and range", () => {
   const pin = (file: string) => readFileSync(join(packageDir, "src", file), "utf8").match(/PINNED_EFFECT_VERSION = "([0-9.]+)"/)?.[1]
-  expect(pin("version.ts")).toBeDefined()
+  const range = (file: string) => readFileSync(join(packageDir, "src", file), "utf8").match(/SUPPORTED_EFFECT_RANGE = "([^"]+)"/)?.[1]
+  expect(pin("version.ts")).toBe("4.1.6")
   expect(pin("version-guard.cts")).toBe(pin("version.ts"))
+  expect(range("version.ts")).toBe("^4.1.0")
+  expect(range("version-guard.cts")).toBe(range("version.ts"))
 })
 
 // A compile has the harness's compile budget, 120 s: alone this tsc run takes 6 s at load 118,
@@ -122,8 +125,8 @@ test("package: a missing Effect 3 export cannot hide the version mismatch", asyn
       const result = spawnBounded(command, { cwd: dir, timeout: 10_000 })
       const output = result.stdout.toString() + result.stderr.toString()
       expect(result.exitCode).not.toBe(0)
-      expect(output).toContain("requires effect@4.1.1; found effect@3.19.0")
-      expect(output).toContain("npm install effect@4.1.1")
+      expect(output).toContain("requires effect@^4.1.0 (tested on 4.1.6); found effect@3.19.0")
+      expect(output).toContain("npm install effect@4.1.6")
       expect(output).not.toContain("does not provide an export")
       expect(output).not.toContain("Export named")
     }
@@ -171,8 +174,8 @@ test("package: the version check does not resolve an incompatible Effect graph",
       const result = spawnBounded(command, { cwd: dir, timeout: 10_000 })
       const output = result.stdout.toString() + result.stderr.toString()
       expect(result.exitCode).not.toBe(0)
-      expect(output).toContain("requires effect@4.1.1; found effect@3.19.0")
-      expect(output).toContain("npm install effect@4.1.1")
+      expect(output).toContain("requires effect@^4.1.0 (tested on 4.1.6); found effect@3.19.0")
+      expect(output).toContain("npm install effect@4.1.6")
       expect(output).not.toContain("ERR_PACKAGE_PATH_NOT_EXPORTED")
     }
   } finally {

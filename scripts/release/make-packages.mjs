@@ -88,19 +88,21 @@ expect(typescriptShim.version === typescriptShimVersion(), `vibelang-typescript:
 expect(typescriptShim.engines?.node === nodeEngine, `vibelang-typescript: engines.node ${typescriptShim.engines?.node}, expected ${nodeEngine}`)
 expect(unplugin.peerDependencies?.vibelang === version, `vibelang-unplugin: peer vibelang ${unplugin.peerDependencies?.vibelang}, expected ${version}`)
 expect(tsMapper.peerDependencies?.["vibelang-runtime"] === version, `vibelang-ts-mapper: peer vibelang-runtime ${tsMapper.peerDependencies?.["vibelang-runtime"]}, expected ${version}`)
-const effect = runtime.peerDependencies?.effect
-expect(typeof effect === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(effect),
-  "vibelang-runtime: effect peer must be an exact version")
-expect(compiler.peerDependencies?.effect === effect,
-  "vibelang: effect peer must match the runtime's exact pin " + effect)
-expect(tsMapper.peerDependencies?.effect === effect,
-  `vibelang-ts-mapper: effect peer must match the runtime's exact pin ${effect}`)
+const effectPeer = runtime.peerDependencies?.effect
+const effectBaseline = runtime.devDependencies?.effect ?? effectPeer
+expect(typeof effectPeer === "string" && /^\^4\.[1-9]\d*\.0$/.test(effectPeer),
+  "vibelang-runtime: effect peer must be a ^4.x.0 range (>=4.1.0)")
+expect(typeof effectBaseline === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(effectBaseline),
+  "vibelang-runtime: devDependencies.effect must be an exact tested version")
+expect(compiler.peerDependencies?.effect === effectPeer,
+  "vibelang: effect peer must match the runtime's range " + effectPeer)
+expect(tsMapper.peerDependencies?.effect === effectPeer,
+  `vibelang-ts-mapper: effect peer must match the runtime's range ${effectPeer}`)
 expect(compiler.peerDependenciesMeta?.effect?.optional !== true,
   "vibelang: effect peer must be required")
-expect(template.dependencies?.effect === effect, `template: effect ${template.dependencies?.effect}, but the runtime requires ${effect}`)
-expect(template.dependencies?.["@effect/platform-node"] === effect, `template: @effect/platform-node must match effect ${effect}`)
-expect(template.devDependencies?.["@effect/vitest"] === effect, `template: @effect/vitest must match effect ${effect}`)
-expect(template.overrides?.["@effect/platform-node-shared"] === effect, `template: @effect/platform-node-shared override must match effect ${effect}`)
+expect(template.dependencies?.effect === effectBaseline, `template: effect ${template.dependencies?.effect}, but the runtime baseline is ${effectBaseline}`)
+expect(template.dependencies?.["@effect/platform-node"] === effectBaseline, `template: @effect/platform-node must match effect ${effectBaseline}`)
+expect(template.devDependencies?.["@effect/vitest"] === effectBaseline, `template: @effect/vitest must match effect ${effectBaseline}`)
 // The checkout's revision, the one build-binaries.sh recorded, and each
 // target's receipt must agree: a binary an earlier run left behind has the
 // same version as this one.

@@ -71,7 +71,8 @@ export function releaseDocsProblems(repository = root, write = false) {
   const version = JSON.parse(readFileSync(join(repository, "packages/compiler/package.json"), "utf8")).version
   if (!new RegExp("^" + semver + "$").test(version)) throw new Error("Invalid compiler version: " + version)
   const runtime = join(repository, "packages/runtime/package.json")
-  const effect = existsSync(runtime) ? JSON.parse(readFileSync(runtime, "utf8")).peerDependencies?.effect : undefined
+  const runtimeManifest = existsSync(runtime) ? JSON.parse(readFileSync(runtime, "utf8")) : undefined
+  const effect = runtimeManifest?.devDependencies?.effect ?? runtimeManifest?.peerDependencies?.effect
   const problems = []
   const examples = join(repository, "examples")
   if (existsSync(examples)) for (const entry of readdirSync(examples, { withFileTypes: true })) {

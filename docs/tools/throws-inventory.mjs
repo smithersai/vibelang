@@ -133,7 +133,8 @@ export function generateThrowsInventory() {
   const effectPackage = JSON.parse(read(resolve(effectDir, "package.json")))
   const manifest = JSON.parse(read(resolve(root, "docs/tools/package.json")))
   const runtime = JSON.parse(read(resolve(root, "packages/runtime/package.json")))
-  if (effectPackage.version !== manifest.devDependencies.effect || effectPackage.version !== runtime.peerDependencies.effect)
+  const runtimeEffect = runtime.devDependencies?.effect ?? runtime.peerDependencies?.effect
+  if (effectPackage.version !== manifest.devDependencies.effect || effectPackage.version !== runtimeEffect)
     throw new Error("Install the pinned Effect version in docs/tools before generating throws.json")
   if (ts.version !== manifest.devDependencies.typescript) throw new Error("Install the pinned TypeScript parser")
   const version = read(resolve(root, "typescript/tsc/internal/core/version.go")).match(/var version = "([^"]+)"/)?.[1]
