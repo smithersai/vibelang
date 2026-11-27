@@ -39,8 +39,10 @@ jobs:
         with:
           bun-version: "1.4.2"
 
-      - name: Install .smithers workspace dependencies
-        run: (cd .smithers && bun install --frozen-lockfile)
+      - name: Install .smithers and runtime workspace dependencies
+        run: |
+          (cd packages/runtime && bun install --frozen-lockfile && bun run build)
+          (cd .smithers && bun install --frozen-lockfile)
 
       - name: Run Uphill
         uses: wevm/uphill@main

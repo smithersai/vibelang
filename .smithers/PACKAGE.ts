@@ -1,4 +1,5 @@
 import { Smithers as S } from "@smthrs/targets"
+import { Package as Packages } from "../packages/PACKAGE.ts"
 
 // Factory projection, Obsidian Wiki, Lighthouse Backpressure Audit, and
 // one-time-use Cloud MCP auth targets for smithersai/vibelang.
@@ -59,7 +60,7 @@ const authSources = S.Filegroup({
 const factoryCheck = S.Shell.Test({
   summary: "Verify .smithers/factory.json and .smithers/home.json match .smithers/FACTORY.ts without drift.",
   shell: "bun .smithers/scripts/project-factory.ts --check",
-  data: [factorySources],
+  data: [factorySources, Packages["runtime-dist"]],
   tools: [bun],
   sandbox: "none",
   timeout: "1m"

@@ -89,7 +89,7 @@ function parseCodeFlowMetadata(source: string): {
   capabilities: string[]
   modelInvocable: boolean
 } {
-  const descMatch = /description:\s*["'`]([^"'`\n]+)["'`]/.exec(source)
+  const descMatch = /description:\s*(?:"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`([^`\n]*)`)/.exec(source)
   const capMatch = /capabilities:\s*(\[[^\]]*\])/.exec(source)
   const invMatch = /modelInvocable:\s*(true|false)/.exec(source)
   let capabilities: string[] = []
@@ -102,7 +102,7 @@ function parseCodeFlowMetadata(source: string): {
     }
   }
   return {
-    description: descMatch?.[1] ?? "",
+    description: (descMatch?.[1] ?? descMatch?.[2] ?? descMatch?.[3] ?? "").trim(),
     capabilities,
     modelInvocable: invMatch ? invMatch[1] === "true" : true
   }

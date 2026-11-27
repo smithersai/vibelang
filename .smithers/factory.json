@@ -111,7 +111,7 @@
     },
     {
       "id": "ci-health",
-      "description": "Rank the build graph",
+      "description": "Rank the build graph's slow, slower and flaky targets from CI's results and logs, with the tests and causes behind each",
       "summary": "Find slow, regressed, and flaky checks in build results.",
       "featured": true,
       "kind": "ts",
@@ -165,7 +165,7 @@
     },
     {
       "id": "release",
-      "description": "Release VibeLang to npm: check the checkout, build the platform binaries and packages, rehearse the install from a throwaway registry, ask a maintainer to approve the exact tarballs and for npm",
+      "description": "Release VibeLang to npm: check the checkout, build the platform binaries and packages, rehearse the install from a throwaway registry, ask a maintainer to approve the exact tarballs and for npm's one-time password, publish, and verify the published packages",
       "summary": "Check, build, rehearse, approve, publish, and verify a VibeLang release.",
       "featured": false,
       "kind": "ts",
@@ -219,7 +219,7 @@
     },
     {
       "id": "docs",
-      "description": "Generate CONTRIBUTING, MAINTAINERS and the agent files from project.ts, and count each doc",
+      "description": "Generate CONTRIBUTING, MAINTAINERS and the agent files from project.ts, and count each doc's tokens",
       "summary": "Generate CONTRIBUTING, MAINTAINERS, and AGENTS files from project.ts.",
       "featured": false,
       "kind": "ts",
@@ -243,7 +243,7 @@
     },
     {
       "id": "ts-bump",
-      "description": "Move the TypeScript fork to a newer upstream commit: merge upstream",
+      "description": "Move the TypeScript fork to a newer upstream commit: merge upstream's changes three ways, move the pin, regenerate the Effect rules' shims, build, run the fork's targets, and report what to change",
       "summary": "Advance the TypeScript 7 Go fork pin and regenerate Effect rule shims.",
       "featured": false,
       "kind": "ts",
