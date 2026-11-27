@@ -1,6 +1,6 @@
 # What is in the alpha
 
-Vibe 0.0.14 (published on npm as `vibelang`) is the official alpha. It supports the 33 accepted VIPs numbered 1 to 41 (the core language). Implemented experimental features beyond the core, including accepted `task` and `workflow` declarations, `theorem` declarations, and the `Experimental` stdlib modules below, require `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`.
+Vibe 0.0.15 (published on npm as `vibelang`) is the official alpha. It supports the 33 accepted VIPs numbered 1 to 41 (the core language) plus VIP-74 (`schema data`) and VIP-75 (concise tagged `catch { when … }`). Implemented experimental features beyond the core, including accepted `task` and `workflow` declarations, `theorem` declarations, and the `Experimental` stdlib modules below, require `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`.
 
 `Experimental` holds two kinds of module: VIP-33's platform additions (`Experimental.FileSystem`, `Experimental.Encoding`, and peers) are core and need no opt-in, while open-proposal modules marked experimental below require it.
 
@@ -73,5 +73,5 @@ File a [bug report](https://github.com/smithersai/vibelang/issues/new?template=b
 | [71](https://vibelang.sh/vips/0071-std-test) | `Experimental.Test`: doubles, assertions and conformance for agentic programs | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [72](https://vibelang.sh/vips/0072-std-observe) | `Experimental.Otlp`: logs, metrics and traces over OTLP, scrubbed and bounded | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [73](https://vibelang.sh/vips/0073-std-patterns) | `Experimental.Patterns` and `PACKAGE.vibe`: the reference engine's patterns and build graph, written in Vibe | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
-| [74](https://vibelang.sh/vips/0074-schema-data) | Serializable tagged unions: `schema data` | Implemented on `main`: lowers `schema data Name { … }` to `Schema.TaggedUnion` + type alias |
-| [75](https://vibelang.sh/vips/0075-tagged-catch) | Concise tagged `catch` (`e catch { when … }`) | Implemented on `main`: effectful `when` / `default` arms with residual error narrowing |
+| [74](https://vibelang.sh/vips/0074-schema-data) | Serializable tagged unions: `schema data` | Implemented in 0.0.15: lowers `schema data Name { … }` to `Schema.TaggedUnion` + type alias |
+| [75](https://vibelang.sh/vips/0075-tagged-catch) | Concise tagged `catch` (`e catch { when … }`) | Implemented in 0.0.15: effectful `when` / `default` arms with residual error narrowing |

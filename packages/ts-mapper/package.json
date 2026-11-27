@@ -23,7 +23,7 @@
   },
   "peerDependencies": {
     "effect": "^4.1.0",
-    "vibelang-runtime": "0.0.14"
+    "vibelang-runtime": "0.0.15"
   },
   "devDependencies": {
     "fast-check": "4.10.2",

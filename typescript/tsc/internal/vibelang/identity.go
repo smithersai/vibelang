@@ -10,7 +10,7 @@ import (
 
 // Version is the VibeLang version of this compiler. It matches the
 // version in packages/compiler/package.json.
-const Version = "0.0.14"
+const Version = "0.0.15"
 
 // Revision is the source revision a release binary was built from. The
 // release build sets it at link time (scripts/release/build-binaries.sh);
@@ -32,7 +32,7 @@ func ReleaseRevision() string { return releaseRevision }
 // version it is built on:
 //
 //	$ vibelang --version
-//	VibeLang 0.0.14 (TypeScript 7.1.0-dev)
+//	VibeLang 0.0.15 (TypeScript 7.1.0-dev)
 func init() {
 	releaseRevision = Revision
 	base := "TypeScript " + core.Version()

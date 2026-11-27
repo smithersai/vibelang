@@ -2,6 +2,10 @@
 
 All notable changes to the Vibe (`vibelang.vibelang`) VS Code / Open VSX extension are documented in this file.
 
+## 0.0.15
+
+- Updated language server integration for Vibe 0.0.15, including `effect@^4.1.0` compatibility (tested on `4.1.6`), `@effect/ui` throws-table support, `schema data` (VIP-74), and concise tagged `e catch { when … }` (VIP-75).
+
 ## 0.0.14
 
 - Adopted the **Vibe** display name alongside `vibelang` identifiers and CLI binaries (`vibe`, `vibe-format`).

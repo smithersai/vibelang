@@ -1,6 +1,6 @@
 {
   "name": "vibelang-vite",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Compile Vibe (VibeLang) source modules in Vite and Vitest",
   "keywords": [
     "vibe",
@@ -37,7 +37,7 @@
     "test": "sh test/run.sh"
   },
   "peerDependencies": {
-    "vibelang": "0.0.14",
+    "vibelang": "0.0.15",
     "vite": ">=7 <9"
   },
   "devDependencies": {

@@ -13,13 +13,13 @@
     "@effect/ui-devtools": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6",
     "@effect/ui-kit": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6",
     "effect": "4.1.6",
-    "vibelang-runtime": "0.0.14"
+    "vibelang-runtime": "0.0.15"
   },
   "devDependencies": {
     "@effect/vitest": "4.1.6",
     "happy-dom": "20.14.6",
-    "vibelang": "0.0.14",
-    "vibelang-vite": "0.0.14",
+    "vibelang": "0.0.15",
+    "vibelang-vite": "0.0.15",
     "vite": "8.3.5",
     "vitest": "5.1.0"
   },

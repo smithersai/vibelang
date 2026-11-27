@@ -4,9 +4,30 @@ VibeLang is v0, so a new version can change the language in breaking ways.
 Before you update, read the notes for every version between yours and the new
 one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
-## 0.0.15 (unreleased)
+## 0.0.15
+
+### Effect 4.1+ compatibility and Effect UI support
+
+- **Semver `effect@^4.1.0` support (VIP-32 amended, tested on `4.1.6`):** Core runtime helpers (`$catch`, `$catchExpression`, `$catchCause`, `$settle`/`$fast`, `uninterruptible`, `restore`) now delegate to public Effect 4 APIs without reaching into `FiberImpl` internals. `vibelang` and `vibelang-runtime` now accept any stable `effect` release `>=4.1.0 <5.0.0` without requiring an `@effect/platform-node-shared` override, while still rejecting `3.x`, `4.0.x`, `5.x`, and prereleases with `EK3201`.
+- **Typed `@effect/ui` throws-table support:** Non-throwing constructors and builders from `@effect/ui`, `@effect/ui-kit`, `@effect/ui-devtools`, and `@effect/ui-opentui` compile directly inside `effect` functions without false `EK0403` errors, while throwing helpers (`*Unsafe`, `*OrThrow`, `decode*Sync`, `encode*Sync`, `asserts`) still require `Effect.try`.
+- **Effect UI starter and showcase examples:** `create-vibelang --ui` scaffolds a strict Vite + `@effect/ui` + `@effect/ui-kit` + `@effect/ui-devtools` browser starter with an async `Command.Service` counter and `Story`/`HtmlScene` Vitest tests. Added three runnable examples (`examples/effect-ui-domains`, `examples/effect-ui-uploads`, and `examples/effect-ui-snake` sharing one `.vibe` core across `@effect/ui/html` and `@effect/ui-opentui`) and the [Effect UI setup guide](effect-ui.md).
+
+### New language features
+
+- **Serializable tagged unions with `schema data` (VIP-74):** `schema data Name { VariantA; VariantB { field: Type } }` lowers to Effect 4's `Schema.TaggedUnion` plus its companion `type Name = typeof Name.Type`, with VIP-15 field mapping, `match` exhaustiveness checking (`EK4701`), declaration emit, formatting, ESTree, and mapper projection.
+- **Concise tagged `catch` (VIP-75):** `e catch { when Tag: value; when Other(let err): try recover(err); }` evaluates VIP-7 pattern arms directly in effect context and automatically rethrows unmatched failures with flow-narrowed residual error types, matching `Effect.catchTag`/`Effect.catchTags`.
+
+### Browser Playground, lean runtime core, and editor tooling
+
+- **Interactive browser Playground (`/play`):** `vibelang.sh/play` now runs the Go WebAssembly Vibe compiler (`vibelang.wasm.gz`, with an instant zero-wait fallback) alongside curated presets, Effect UI live previews, and shareable URLs.
+- **Lean `vibelang-runtime/core` subpath & strict runtime types:** `vibelang-runtime` now exports a lean `vibelang-runtime/core` subpath with zero static imports from `experimental/` or `kernel/` (~2.5 KiB gzipped browser overhead), removes explicit `any` annotations across `packages/runtime/src/`, and preserves the Effect version guard and `Symbol.customMatcher` initialization on bare imports.
+- **Native Zed extension & VS Code Marketplace packaging:** Added a complete Zed extension in `editors/zed/` (tree-sitter grammars and workspace-aware `vibelang --lsp --stdio` discovery) and VS Code / Open VSX packaging metadata (256x256 PNG icon, gallery banner, changelog).
+- **Tighter packaged agent skill:** `packages/compiler/skills/vibelang/SKILL.md` is trimmed from 22.1 kB to 17.2 kB while keeping every syntax form, `EK` rule, and idiomatic example intact.
 
 ### Bugs fixed since 0.0.14
+
+- Replaced remaining compiler `panic()` paths in AST conversion, ESTree serialization, and mapper rendering with structured error returns or safe fallbacks so malformed inputs report diagnostics instead of crashing the compiler process.
+- Updated `vibelang-typescript` documentation and package checks to state its TypeScript 7 programmatic API and `tsserver` boundaries clearly.
 
 ## 0.0.14
 

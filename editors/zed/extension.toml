@@ -1,6 +1,6 @@
 id = "vibelang"
 name = "Vibe"
-version = "0.0.14"
+version = "0.0.15"
 schema_version = 1
 authors = ["VibeLang Maintainers"]
 description = "Vibe (VibeLang) language support: syntax highlighting and LSP diagnostics, hovers, completions, and navigation for .vibe and .vibex files."

@@ -1,6 +1,6 @@
 {
   "name": "create-vibelang",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Create a Vibe (VibeLang) application: bun create vibelang my-app",
   "keywords": [
     "vibe",

@@ -12,12 +12,12 @@
     "@effect/platform-node": "4.1.6",
     "alchemy": "2.0.0-beta.84",
     "effect": "4.1.6",
-    "vibelang-runtime": "0.0.14"
+    "vibelang-runtime": "0.0.15"
   },
   "devDependencies": {
     "@effect/vitest": "4.1.6",
-    "vibelang": "0.0.14",
-    "vibelang-vite": "0.0.14",
+    "vibelang": "0.0.15",
+    "vibelang-vite": "0.0.15",
     "vitest": "5.0.5"
   },
   "overrides": {
