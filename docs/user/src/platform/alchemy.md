@@ -16,7 +16,7 @@ Pin `@effect/platform-node-shared` in `package.json` before installing:
 ```json
 {
   "overrides": {
-    "@effect/platform-node-shared": "4.1.1"
+    "@effect/platform-node-shared": "4.1.6"
   }
 }
 ```

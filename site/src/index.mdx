@@ -220,9 +220,7 @@ Effect's functions and modules are in scope without imports. `error`, `service`,
 
 {/* compatibility:start */}
 
-> **Compatibility.** Use exactly `effect@4.1.1`; keep `@effect/platform-node` and `@effect/vitest` at `4.1.1` when used.
->
-> Existing projects need an `@effect/platform-node-shared` override. The starter includes the pins and override.
+> **Compatibility.** Supports `effect@^4.1.0` (tested on `effect@4.1.6`); keep `@effect/platform-node` and `@effect/vitest` on matching `4.1.x` versions when used. No `@effect/platform-node-shared` override is required.
 >
 > Use `vibe` (or `vibelang`) to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
 >

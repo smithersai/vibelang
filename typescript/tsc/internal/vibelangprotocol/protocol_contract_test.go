@@ -4,21 +4,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
 )
-
-func protocolRepoRoot(t *testing.T) string {
-	t.Helper()
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("unable to resolve test file path")
-	}
-	return filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", ".."))
-}
 
 func readRepoFile(t *testing.T, rel string) string {
 	t.Helper()

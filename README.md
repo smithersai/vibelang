@@ -21,9 +21,7 @@ Published on npm as [`vibelang`](https://www.npmjs.com/package/vibelang) (provid
 <p align="center"><img src="site/public/alpha-to-beta.svg" alt="From alpha to beta, with no dates: alpha works and is slop, behaviour settles, a person reads every line, then beta isn't slop." width="100%"></p>
 
 <!-- compatibility:start -->
-> **Compatibility.** Use exactly `effect@4.1.1`; keep `@effect/platform-node` and `@effect/vitest` at `4.1.1` when used.
->
-> Existing projects need an `@effect/platform-node-shared` override. The starter includes the pins and override.
+> **Compatibility.** Supports `effect@^4.1.0` (tested on `effect@4.1.6`); keep `@effect/platform-node` and `@effect/vitest` on matching `4.1.x` versions when used. No `@effect/platform-node-shared` override is required.
 >
 > Use `vibe` (or `vibelang`) to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
 >

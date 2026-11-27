@@ -36,8 +36,7 @@ export function renderReleasePage(path, text, version, effect) {
     // release pins. Keep the version out of the hand-written copy.
     const code = value => String.fromCharCode(96) + value + String.fromCharCode(96)
     const compatibility = [
-      "**Compatibility.** Use exactly " + code("effect@" + effect) + "; keep " + code("@effect/platform-node") + " and " + code("@effect/vitest") + " at " + code(effect) + " when used.",
-      "Existing projects need an " + code("@effect/platform-node-shared") + " override. The starter includes the pins and override.",
+      "**Compatibility.** Supports " + code("effect@^4.1.0") + " (tested on " + code("effect@" + effect) + "); keep " + code("@effect/platform-node") + " and " + code("@effect/vitest") + " on matching " + code("4.1.x") + " versions when used. No " + code("@effect/platform-node-shared") + " override is required.",
       "Use " + code("vibe") + " (or " + code("vibelang") + ") to check " + code(".vibe") + " source. Stock " + code("tsc") + " and " + code("vue-tsc") + " see only the " + code("x.d.vibe.ts") + " declarations the compiler writes, which resolve " + code(".vibe") + " imports when " + code("allowArbitraryExtensions") + " is on.",
       "For mixed editing in VS Code, let the Vibe server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.",
     ]
@@ -88,10 +87,6 @@ export function releaseDocsProblems(repository = root, write = false) {
         }
       }
     }
-    if (effect && manifest.dependencies?.["@effect/platform-node"] && manifest.overrides?.["@effect/platform-node-shared"] !== effect) {
-      manifest.overrides = { ...manifest.overrides, "@effect/platform-node-shared": effect }
-      changed = true
-    }
     if (changed) {
       if (write) writeFileSync(file, JSON.stringify(manifest, null, 2) + "\n")
       else problems.push(relative(repository, file) + ": example package pins must match the release and Effect manifests")
@@ -109,7 +104,6 @@ export function releaseDocsProblems(repository = root, write = false) {
       continue
     }
     const generated = renderReleasePage(path, current, version, effect)
-    if (effect && ["docs/user/src/setup/existing-project.md", "docs/user/src/getting-started/004-installation.md"].includes(path) && !generated.includes('"@effect/platform-node-shared": "' + effect + '"')) problems.push(path + ": missing @effect/platform-node-shared override for effect " + effect)
     if (current === generated) continue
     if (write && (!path.startsWith("site/src/pages/") || path === "site/src/pages/index.mdx")) writeFileSync(file, generated)
     else if (!write) problems.push(path + ": stale VibeLang version; expected " + version + " from packages/compiler/package.json")

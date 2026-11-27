@@ -388,9 +388,9 @@ Keep the DOM mount (`document.getElementById("root")!`) in a small `src/entry.ts
 
 All three flagship examples install real `@effect/ui` packages, compile under `strict: true` and `exactOptionalPropertyTypes: true`, pass `vibe --noEmit`, Vitest `Story`/`HtmlScene` suites, and `vite build`:
 
-- [effect-ui-domains](https://github.com/smithersai/vibelang/tree/vibe/examples/effect-ui-domains) — Full-stack domain search with shared `HttpApi`, `schema` models, `schema error SearchUnavailable`, `service Domains` + `Layer.effect`, `Query.Service`, `@effect/ui-kit` (`Button`, `Dialog`, `Select`), and Effect TS parity tests.
-- [effect-ui-uploads](https://github.com/smithersai/vibelang/tree/vibe/examples/effect-ui-uploads) — Concurrent uploads with `Command.Service` (`mode: "switch"`) fiber interruption, exhaustive `match` views, a VIP-21 `effect function*` progress `Subscription`, and `@effect/ui-devtools`.
-- [effect-ui-snake](https://github.com/smithersai/vibelang/tree/vibe/examples/effect-ui-snake) — One `.vibe` Snake core mounted to both `@effect/ui/html` (browser) and `@effect/ui-opentui` (terminal).
+- [effect-ui-domains](https://github.com/smithersai/vibelang/tree/main/examples/effect-ui-domains) — Full-stack domain search with shared `HttpApi`, `schema` models, `schema error SearchUnavailable`, `service Domains` + `Layer.effect`, `Query.Service`, `@effect/ui-kit` (`Button`, `Dialog`, `Select`), and Effect TS parity tests.
+- [effect-ui-uploads](https://github.com/smithersai/vibelang/tree/main/examples/effect-ui-uploads) — Concurrent uploads with `Command.Service` (`mode: "switch"`) fiber interruption, exhaustive `match` views, a VIP-21 `effect function*` progress `Subscription`, and `@effect/ui-devtools`.
+- [effect-ui-snake](https://github.com/smithersai/vibelang/tree/main/examples/effect-ui-snake) — One `.vibe` Snake core mounted to both `@effect/ui/html` (browser) and `@effect/ui-opentui` (terminal).
 
 ## Next
 

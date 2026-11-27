@@ -180,16 +180,14 @@ test("historical platform guidance is retained and the launcher recognizes scope
   assert.match(launcher, /@smthrs\/cli-/)
 })
 
-test("the starter and existing-project instructions pin the transitive Effect peer", () => {
+test("the runtime manifest declares the supported Effect 4.x range without requiring transitive overrides", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
-  const effect = JSON.parse(readFileSync(join(root, "packages/runtime/package.json"), "utf8")).peerDependencies.effect
-  const app = JSON.parse(readFileSync(join(root, "templates/app/package.json"), "utf8"))
-  assert.equal(app.overrides?.["@effect/platform-node-shared"], effect)
-  for (const page of ["docs/user/src/setup/existing-project.md", "docs/user/src/getting-started/004-installation.md"]) {
-    assert.ok(readFileSync(join(root, page), "utf8").includes('"@effect/platform-node-shared": "' + effect + '"'), page)
-  }
-  assert.equal(renderReleasePage("page.md", '{"overrides":{"@effect/platform-node-shared": "4.0.6"}}', "9.8.7", effect),
-    '{"overrides":{"@effect/platform-node-shared": "' + effect + '"}}')
+  const runtime = JSON.parse(readFileSync(join(root, "packages/runtime/package.json"), "utf8"))
+  assert.equal(runtime.peerDependencies.effect, "^4.1.0")
+  const baseline = runtime.devDependencies.effect
+  assert.match(baseline, /^4\.\d+\.\d+$/)
+  assert.equal(renderReleasePage("page.md", '{"overrides":{"@effect/platform-node-shared": "4.0.6"}}', "9.8.7", baseline),
+    '{"overrides":{"@effect/platform-node-shared": "' + baseline + '"}}')
 })
 
 test("example installs use published pins and the release gate updates them", () => {
@@ -198,15 +196,14 @@ test("example installs use published pins and the release gate updates them", ()
   const put = (path, value) => { mkdirSync(dirname(join(repo, path)), {recursive:true}); writeFileSync(join(repo, path), JSON.stringify(value)) }
   try {
     put("packages/compiler/package.json", { version:"9.8.7" })
-    put("packages/runtime/package.json", { peerDependencies:{effect:"4.0.5"} })
-    put("examples/hello/package.json", {dependencies:{effect:"4.0.5","@effect/platform-node":"4.0.5","vibelang-runtime":"file:../../packages/runtime/vibelang-runtime.tgz"},devDependencies:{vibelang:"0.0.1","vibelang-vite":"0.0.2"}})
+    put("packages/runtime/package.json", { peerDependencies:{effect:"^4.1.0"}, devDependencies:{effect:"4.1.6"} })
+    put("examples/hello/package.json", {dependencies:{effect:"4.1.6","@effect/platform-node":"4.1.6","vibelang-runtime":"file:../../packages/runtime/vibelang-runtime.tgz"},devDependencies:{vibelang:"0.0.1","vibelang-vite":"0.0.2"}})
     assert.match(releaseDocsProblems(repo).join("\n"), /example package pins/)
     releaseDocsProblems(repo, true)
     const app = JSON.parse(readFileSync(join(repo,"examples/hello/package.json"),"utf8"))
     assert.equal(app.dependencies["vibelang-runtime"],"9.8.7")
     assert.equal(app.devDependencies.vibelang,"9.8.7")
     assert.equal(app.devDependencies["vibelang-vite"],"9.8.7")
-    assert.equal(app.overrides["@effect/platform-node-shared"],"4.0.5")
     assert.deepEqual(releaseDocsProblems(repo),[])
     assert.deepEqual(releaseDocsProblems(root),[])
   } finally { rmSync(repo,{recursive:true,force:true}) }
@@ -220,11 +217,10 @@ test("starter prerequisites make Bun conditional on the chosen package manager",
   }
 })
 
-test("installation documents the pinned Effect version and adopted defect precedence", () => {
+test("installation documents the Effect 4.x compatibility and adopted defect precedence", () => {
   const root = fileURLToPath(new URL("../../",import.meta.url))
   for (const path of ["docs/user/src/getting-started/004-installation.md","docs/user/src/setup/existing-project.md"]) {
     const text = readFileSync(join(root,path),"utf8")
-    assert.match(text,/depends on Effect internals and checks the exact version at load/,path)
     assert.match(text,/VibeLang follows Effect 4\.0\.6.s defect precedence/,path)
     assert.match(text,/a failure whose cleanup crashes is a defect/,path)
     assert.doesNotMatch(text,/failure rules do not accept yet|must use 4\.0\.5 for now/,path)
