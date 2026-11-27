@@ -22,7 +22,7 @@ cd my-app
 npm run start
 ```
 
-`npm create vibelang` installs the dependencies itself. VibeLang 0.0.13 publishes native packages for macOS, Linux and Windows on arm64 and x64. The npm and Bun starter rehearsal runs on Linux x64; the other five binaries are cross-built. For VS Code or Cursor, after the install:
+`npm create vibelang` installs the dependencies itself. VibeLang 0.0.14 publishes native packages for macOS, Linux and Windows on arm64 and x64. The npm and Bun starter rehearsal runs on Linux x64; the other five binaries are cross-built. For VS Code or Cursor, after the install:
 
 ```sh
 code --install-extension node_modules/vibelang/editor/vibelang.vsix
@@ -82,7 +82,7 @@ runPromise(main())
 - The Convert button turns one Effect TypeScript file into VibeLang. It handles services, typed errors, layers, schedules and streams.
 - Limits: one file, at most 8 KiB, and the file must import from `effect`.
 - Caps: 10 conversions a day per visitor, shared with this chat.
-- "Compiles" means `vibelang --noEmit` passed with the pinned compiler (vibelang 0.0.13). It does not mean the program behaves identically to the original.
+- "Compiles" means `vibelang --noEmit` passed with the pinned compiler (vibelang 0.0.14). It does not mean the program behaves identically to the original.
 - One model writes each conversion; the compiler then checks it. Nothing a visitor pastes is run.
 
 ## Where to read more
@@ -97,6 +97,9 @@ runPromise(main())
 - Schedules: https://vibelang.sh/scheduling/037-using-schedules.html
 - Configuration: https://vibelang.sh/035-configuration.html
 - Runtime: https://vibelang.sh/036-runtime.html
+- Public coding factory: https://smithers.sh/smithersai/vibelang/-/factory
+- Repository wiki and mythical history: https://smithers.sh/smithersai/vibelang/-/wiki
+- Cloud MCP endpoint: https://smithers.sh/smithersai/vibelang/mcp
 
 ## Rules
 

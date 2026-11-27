@@ -2,11 +2,11 @@
   "version": 2,
   "flow": "docs",
   "source": ".smithers/flows/docs/flow.ts",
-  "digest": "875a5986dec17ee0599a42ebf14c318c3866f075dfedbc37dfdd33d036a480bd",
+  "digest": "ea4150c75fb56bc24b5a3c3c3c14a9f03350d212d6990a7095493f0b0e84e246",
   "inputs": [
     {
       "path": ".smithers/flows/docs/project.ts",
-      "sha256": "41c789c20dca9d9761ae7717f47e2acc6f49b16d461bebce4225e6cdbd34d8e0"
+      "sha256": "426cc251943f8ce16939014121eb85bd83738230b7d0533167e81bae7e28516f"
     },
     {
       "path": ".smithers/flows/docs/render.ts",
@@ -34,7 +34,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "ef20464a81a3493d5ee659e873e64e94ae0224bdfff315bd7aeb7ef632569fc4"
+      "sha256": "f23b1abdc7fec2eb972e80300b2ef6ff51d0f446b38dfaafb94c768d2c4b37da"
     },
     {
       "path": "docs/user/llms-essentials.md",
@@ -47,7 +47,7 @@
   ],
   "outputs": {
     "README.md": {
-      "sha256": "7c0746dec630c2a9b538d51cd86830ef97f8a70d396a8c9c78c1b60ee065a755"
+      "sha256": "b002cd91ed302dd8a8e52947f6b2ea3f76f409dcef324a0ba9e8bb1b1717aa26"
     },
     "CONTRIBUTING.md": {
       "sha256": "a31206acf59c0e6123353454bca22e196e030ac94c10456f80414d430487aae1"
@@ -56,7 +56,7 @@
       "sha256": "bed364db23b1e776274f8278b48854a54533fb9ff42c4faafef9d858c9eaa437"
     },
     "AGENTS.md": {
-      "sha256": "af702d52008c99f0abc60378d1ba5360dc5696d932fdcc15d7e8caf6c00320f1"
+      "sha256": "5c1b1158aebf4a4faca342a62dbd80c9b5f97812b614d163e8f2ac973bc78cb5"
     },
     "templates/app/AGENTS.md": {
       "sha256": "c7179e8d50c735c6047ec71571084c696bc2bd78d5e7fcf802832e7f48c226a4"

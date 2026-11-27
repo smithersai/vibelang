@@ -3,7 +3,9 @@
 [![npm](https://img.shields.io/npm/v/vibelang)](https://www.npmjs.com/package/vibelang)
 [![license](https://img.shields.io/badge/license-MIT%20%2B%20Apache--2.0-blue)](#license)
 
-Write [Effect](https://effect.website) programs in TypeScript syntax, with typed errors and services the compiler checks. Published on npm as [`vibelang`](https://www.npmjs.com/package/vibelang) (providing both the `vibe` and `vibelang` commands, like Go/Golang).
+Write [Effect](https://effect.website) programs in TypeScript syntax, with typed errors and services the compiler checks.
+
+Published on npm as [`vibelang`](https://www.npmjs.com/package/vibelang) (providing both the `vibe` and `vibelang` commands, like Go/Golang).
 
 [Get started](https://vibelang.sh) · [Cheat sheet](https://vibelang.sh/vibelang-features/115-cheat-sheet) · [Contribute](CONTRIBUTING.md)
 

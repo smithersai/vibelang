@@ -44,3 +44,13 @@ Measure exported Go symbol doc coverage and validate relative Markdown links acr
 
 - Document exported Go functions and types in `typescript/tsc/internal/vibelang*` with doc comments (target >= 80%). At least 80.
 - Keep relative links in README.md, CONTRIBUTING.md, MAINTAINERS.md, AGENTS.md, and docs/ valid.
+
+## Factory & Trust
+
+Enforce Smithers Cloud factory projection parity, shared object store split-credential trust, and untrusted PR isolation.
+
+- Keep .smithers/factory.json and .smithers/home.json projected cleanly from .smithers/FACTORY.ts.
+- Enforce split read/write credentials on https://build.smithers.sh so untrusted runs can never poison trunk cache.
+- Keep pull_request workflows isolated from SMITHERS_CACHE_WRITE_TOKEN and forbid pull_request_target.
+- Declare explicit maintainers, protectedPaths trust roots, and two-way issue sync in .smithers/FACTORY.ts.
+- Keep all Obsidian Wiki and Mythical History notes under docs/wiki/ valid with zero broken wikilinks.

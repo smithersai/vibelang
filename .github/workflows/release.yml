@@ -59,7 +59,7 @@ jobs:
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force_site_deploy }}" = "true" ]; then
             should_deploy_site="true"
           elif [ "${{ github.event_name }}" = "push" ]; then
-            if git diff --name-only HEAD~1 HEAD -- site/ docs/user/ README.md | grep -q .; then
+            if git diff --name-only HEAD~1 HEAD -- site/ docs/user/ docs/wiki/ README.md | grep -q .; then
               should_deploy_site="true"
             fi
           fi

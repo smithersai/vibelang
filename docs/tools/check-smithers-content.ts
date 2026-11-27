@@ -31,11 +31,13 @@ export function linkTarget(url: string): { file?: string; ok?: true; error?: str
     return page.startsWith("spec/") ? { file: join("docs/design/src", md.slice("spec/".length)) } : { file: join("docs/user/src", md) }
   }
   if (parsed.hostname === "smithers.sh") {
-    const blob = /^\/effeck\/effeck\/blob\/main\/(.+)$/.exec(parsed.pathname)
+    const blob = /^\/(?:smithersai\/vibelang|effeck\/effeck)\/blob\/main\/(.+)$/.exec(parsed.pathname)
     if (blob) return { file: decodeURIComponent(blob[1]) }
-    if (parsed.pathname === "/effeck/effeck/issues" || parsed.pathname === "/effeck/effeck") return { ok: true }
+    if (/^\/(?:smithersai\/vibelang|effeck\/effeck)(?:\/(?:issues|pulls|mcp|-\/factory|-\/wiki))?$/.test(parsed.pathname)) {
+      return { ok: true }
+    }
   }
-  return { error: "links go to vibelang.sh pages or effeck/effeck on smithers.sh only" }
+  return { error: "links go to vibelang.sh pages or smithersai/vibelang on smithers.sh only" }
 }
 
 export function links(markdown: string): string[] {

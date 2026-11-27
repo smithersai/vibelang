@@ -1,9 +1,117 @@
 {
-  "summary": "VibeLang compiler maintenance, build diagnosis, documentation, and Effect migration.",
+  "summary": "VibeLang public coding factory: incremental build graph, Lighthouse backpressure audit, Obsidian wiki, and Cloud MCP.",
   "flows": [
     {
+      "id": "ci",
+      "description": "Run VibeLang docs, factory drift, Lighthouse backpressure audit, E2E, and compiler acceptance cases on Smithers Cloud.",
+      "summary": "Run VibeLang docs, factory drift, Lighthouse audit, E2E, and compiler cases on Smithers Cloud.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/workflows/ci.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "uphill",
+      "description": "Run VibeLang Uphill metrics and render the Lighthouse-style backpressure audit report.",
+      "summary": "Run Uphill continuous metrics and render the Lighthouse-style backpressure audit report.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/workflows/uphill.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "checks/review",
+      "description": "Review a VibeLang change across compiler semantics, Effect 4 lowering, tests, Uphill backpressure, trust boundaries, and docs.",
+      "summary": "Six-lens review covering compiler semantics, tests, Uphill rules, runtime, trust, and docs.",
+      "featured": true,
+      "kind": "mdx",
+      "path": ".smithers/flows/checks/review/flow.mdx",
+      "capabilities": [
+        "fs:read:**"
+      ],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "issue/repro",
+      "description": "Validate and minimally reproduce a VibeLang bug report as a small .vibe acceptance case or package test before implementation.",
+      "summary": "Reproduce a bug report as a minimal failing .vibe case or package test.",
+      "featured": true,
+      "kind": "mdx",
+      "path": ".smithers/flows/issue/repro/flow.mdx",
+      "capabilities": [
+        "fs:read:**",
+        "proc:spawn:rg *",
+        "proc:spawn:jj --no-pager *",
+        "proc:spawn:go test *",
+        "proc:spawn:node *",
+        "proc:spawn:bun *",
+        "proc:spawn:smthrs *"
+      ],
+      "model": "repository/research",
+      "modelInvocable": true,
+      "flows": [],
+      "budget": {
+        "tokens": 48000,
+        "milliseconds": 600000
+      }
+    },
+    {
+      "id": "issue/poc",
+      "description": "Build a minimal failing-first proof of concept for a maintainer-accepted VibeLang issue with incremental smthrs verification.",
+      "summary": "Build a failing-first local proof of concept for a maintainer-accepted issue.",
+      "featured": true,
+      "kind": "mdx",
+      "path": ".smithers/flows/issue/poc/flow.mdx",
+      "capabilities": [
+        "fs:read:**",
+        "fs:write:**",
+        "proc:spawn:rg *",
+        "proc:spawn:jj --no-pager *",
+        "proc:spawn:go test *",
+        "proc:spawn:gofmt *",
+        "proc:spawn:node *",
+        "proc:spawn:bun *",
+        "proc:spawn:smthrs *",
+        "proc:spawn:uphill *"
+      ],
+      "model": "coding/poc",
+      "modelInvocable": false,
+      "flows": [],
+      "budget": {
+        "tokens": 80000,
+        "milliseconds": 1200000
+      }
+    },
+    {
+      "id": "pr-triage",
+      "description": "Triage an external or internal pull request from its diff and audit evidence without executing untrusted PR code.",
+      "summary": "Triage a pull request from its diff and audit evidence without running untrusted PR code.",
+      "featured": true,
+      "kind": "mdx",
+      "path": ".smithers/flows/pr-triage/flow.mdx",
+      "capabilities": [
+        "fs:read:**",
+        "proc:spawn:rg *"
+      ],
+      "model": "repository/research",
+      "modelInvocable": true,
+      "flows": [],
+      "budget": {
+        "tokens": 48000,
+        "milliseconds": 600000
+      }
+    },
+    {
       "id": "ci-health",
-      "description": "Rank the build graph's slow, slower and flaky targets from CI's results and logs, with the tests and causes behind each",
+      "description": "Rank the build graph",
       "summary": "Find slow, regressed, and flaky checks in build results.",
       "featured": true,
       "kind": "ts",
@@ -26,9 +134,93 @@
       "flows": []
     },
     {
+      "id": "wiki",
+      "description": "Validate the Obsidian-compatible VibeLang Wiki and Mythical History and build the Smithers Cloud wiki feed.",
+      "summary": "Validate and publish the Obsidian-compatible VibeLang Wiki and Mythical History.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/flows/wiki/flow.ts",
+      "capabilities": [
+        "fs:read:**",
+        "proc:spawn:bun .smithers/scripts/wiki.ts *"
+      ],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "sandbox-auth",
+      "description": "Verify the authenticated Smithers Cloud MCP server and one-time-use PKCE/Attach sandbox credential tooling.",
+      "summary": "Verify the Cloud MCP server and one-time-use sandbox authentication tooling.",
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/sandbox-auth/flow.ts",
+      "capabilities": [
+        "fs:read:**",
+        "proc:spawn:bun .smithers/scripts/mint-sandbox-auth.ts *"
+      ],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "release",
+      "description": "Release VibeLang to npm: check the checkout, build the platform binaries and packages, rehearse the install from a throwaway registry, ask a maintainer to approve the exact tarballs and for npm",
+      "summary": "Check, build, rehearse, approve, publish, and verify a VibeLang release.",
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/release/flow.ts",
+      "capabilities": [
+        "fs:read:**",
+        "fs:write:**",
+        "proc:spawn:*",
+        "net:get:*",
+        "net:post:*"
+      ],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "site-deploy",
+      "description": "Deploy vibelang.sh from an isolated jj workspace whenever main@github or published npm vibelang version changes",
+      "summary": "Deploy vibelang.sh whenever main or npm latest changes.",
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/site-deploy/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "spec-review",
+      "description": "Four reviewers grade one revision of the specification independently; the moderator records each verdict and grade",
+      "summary": "Run the four-reviewer specification acceptance gate on one revision.",
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/spec-review/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "fuzz-campaign",
+      "description": "Scan crashers in CommandSandbox, file or deduplicate findings, and verify every crasher is recorded",
+      "summary": "Run a durable Go compiler fuzz campaign and collect crashers.",
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/fuzz-campaign/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
       "id": "docs",
-      "description": "Generate CONTRIBUTING, MAINTAINERS and the agent files from project.ts, and count each doc's tokens",
-      "summary": null,
+      "description": "Generate CONTRIBUTING, MAINTAINERS and the agent files from project.ts, and count each doc",
+      "summary": "Generate CONTRIBUTING, MAINTAINERS, and AGENTS files from project.ts.",
       "featured": false,
       "kind": "ts",
       "path": ".smithers/flows/docs/flow.ts",
@@ -40,7 +232,7 @@
     {
       "id": "effect-bump",
       "description": "Move a VibeLang checkout to another Effect version: pin, move version literals, install, rebuild, regenerate, run the checks that compare VibeLang with Effect, and report what to change",
-      "summary": null,
+      "summary": "Upgrade the Effect pin and verify compiler and runtime parity.",
       "featured": false,
       "kind": "ts",
       "path": ".smithers/flows/effect-bump/flow.ts",
@@ -50,45 +242,9 @@
       "flows": []
     },
     {
-      "id": "migrate",
-      "description": "Migrate an Effect TypeScript codebase to idiomatic VibeLang, one planned batch per execution: upgrade Effect and set VibeLang up first, then codemod, compile, agent repair, verify against the baseline tests and declarations, commit",
-      "summary": null,
-      "featured": false,
-      "kind": "ts",
-      "path": ".smithers/flows/migrate/flow.ts",
-      "capabilities": [],
-      "model": null,
-      "modelInvocable": true,
-      "flows": []
-    },
-    {
-      "id": "release",
-      "description": "Release VibeLang to npm: check the checkout, build the platform binaries and packages, rehearse the install from a throwaway registry, ask a maintainer to approve the exact tarballs and for npm's one-time password, publish, and verify the published packages",
-      "summary": "Check, build, rehearse, approve, publish, and verify a VibeLang release.",
-      "featured": false,
-      "kind": "ts",
-      "path": ".smithers/flows/release/flow.ts",
-      "capabilities": ["fs:read:**", "fs:write:**", "proc:spawn:*", "net:get:*", "net:post:*"],
-      "model": null,
-      "modelInvocable": true,
-      "flows": []
-    },
-    {
-      "id": "spec-review",
-      "description": "Run the specification's acceptance gate on one revision: four reviewers each answer with a verdict and a grade, and the panel's record says whether all four answered LGTM with A- or better",
-      "summary": "Run the four-reviewer specification acceptance gate on one revision.",
-      "featured": false,
-      "kind": "ts",
-      "path": ".smithers/flows/spec-review/flow.ts",
-      "capabilities": [],
-      "model": null,
-      "modelInvocable": true,
-      "flows": []
-    },
-    {
       "id": "ts-bump",
-      "description": "Move the TypeScript fork to a newer upstream commit: merge upstream's changes three ways, move the pin, regenerate the Effect rules' shims, build, run the fork's targets, and report what to change",
-      "summary": null,
+      "description": "Move the TypeScript fork to a newer upstream commit: merge upstream",
+      "summary": "Advance the TypeScript 7 Go fork pin and regenerate Effect rule shims.",
       "featured": false,
       "kind": "ts",
       "path": ".smithers/flows/ts-bump/flow.ts",
@@ -96,12 +252,185 @@
       "model": null,
       "modelInvocable": true,
       "flows": []
+    },
+    {
+      "id": "migrate",
+      "description": "Migrate an Effect TypeScript codebase to idiomatic VibeLang, one planned batch per execution: upgrade Effect and set VibeLang up first, then codemod, compile, agent repair, verify against the baseline tests and declarations, commit",
+      "summary": "Migrate an Effect TypeScript codebase to idiomatic VibeLang in verified batches.",
+      "featured": false,
+      "kind": "ts",
+      "path": ".smithers/flows/migrate/flow.ts",
+      "capabilities": [],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
     }
   ],
-  "on": [],
+  "on": [
+    {
+      "event": "issue.opened",
+      "flow": "issue/repro",
+      "description": "Reproduce new bug reports with a minimal .vibe test case"
+    },
+    {
+      "event": "issue.labeled:todo",
+      "flow": "issue/poc",
+      "description": "Build a failing-first PoC for every maintainer-accepted TODO"
+    },
+    {
+      "event": "change.opened",
+      "flow": [
+        "checks/review",
+        "uphill"
+      ],
+      "description": "Review every Change across VibeLang lenses and run Lighthouse backpressure audit"
+    },
+    {
+      "event": "change.updated",
+      "flow": [
+        "checks/review",
+        "uphill"
+      ],
+      "description": "Re-review every updated Change and refresh Lighthouse backpressure scores"
+    },
+    {
+      "event": "github.push:main",
+      "flow": [
+        "uphill",
+        "wiki",
+        "site-deploy"
+      ],
+      "description": "Refresh Lighthouse audit scores, sync Obsidian Wiki, and deploy vibelang.sh when main advances"
+    },
+    {
+      "event": "schedule:17 9 * * 1",
+      "flow": "ci-health",
+      "description": "Weekly Monday CI health, flakiness, and target timing audit"
+    },
+    {
+      "event": "schedule:0 6 * * *",
+      "flow": "uphill",
+      "description": "Daily Lighthouse backpressure score check across compiler, runtime, and docs"
+    }
+  ],
   "github": {
-    "mirror": "pull",
-    "issues": "read",
-    "changes": "send-upstream"
-  }
+    "mirror": "push",
+    "issues": "two-way",
+    "changes": "land",
+    "protectedPaths": [
+      ".smithers",
+      ".github",
+      ".agents/uphill",
+      "PACKAGE.ts",
+      "packages/PACKAGE.ts",
+      "typescript/PACKAGE.ts",
+      "typescript/tsc/PACKAGE.ts",
+      "typescript/vibelang/PACKAGE.ts",
+      "scripts/release",
+      "scripts/ci.sh",
+      "typescript/tsc/internal/vibelang/identity.go",
+      "docs/design/src",
+      "AGENTS.md",
+      "MAINTAINERS.md",
+      "CONTRIBUTING.md"
+    ],
+    "maintainers": [
+      "roninjin10"
+    ]
+  },
+  "machine": {
+    "vcpus": 4,
+    "memoryMiB": 8192,
+    "tools": [
+      "go",
+      "gofmt",
+      "node",
+      "bun",
+      "jj",
+      "pnpm"
+    ]
+  },
+  "issueViews": [
+    {
+      "id": "accepted",
+      "title": "Accepted",
+      "state": "open",
+      "labels": [
+        "accepted"
+      ]
+    },
+    {
+      "id": "needs-repro",
+      "title": "Needs repro",
+      "state": "open",
+      "labels": [
+        "needs-repro"
+      ]
+    },
+    {
+      "id": "good-first-issue",
+      "title": "Good first issues",
+      "state": "open",
+      "labels": [
+        "good first issue"
+      ]
+    },
+    {
+      "id": "bugs",
+      "title": "Bugs",
+      "state": "open",
+      "labels": [
+        "bug"
+      ]
+    },
+    {
+      "id": "in-progress",
+      "title": "In progress",
+      "state": "open",
+      "labels": [
+        "in-progress"
+      ]
+    },
+    {
+      "id": "docs",
+      "title": "Documentation",
+      "state": "open",
+      "labels": [
+        "documentation"
+      ]
+    }
+  ],
+  "issueTransitions": [
+    {
+      "id": "accept",
+      "title": "Accept for discussion",
+      "to": "accepted",
+      "actor": "person"
+    },
+    {
+      "id": "needs-repro",
+      "title": "Request reproduction",
+      "to": "needs-repro",
+      "actor": "anyone"
+    },
+    {
+      "id": "start-work",
+      "title": "Mark in progress",
+      "from": "accepted",
+      "to": "in-progress",
+      "actor": "anyone"
+    },
+    {
+      "id": "commit-planned",
+      "title": "Commit maintainer plan",
+      "to": "commitment: committed",
+      "actor": "person"
+    },
+    {
+      "id": "commit-open",
+      "title": "Open for community PR",
+      "to": "commitment: open",
+      "actor": "person"
+    }
+  ]
 }

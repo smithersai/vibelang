@@ -1,5 +1,6 @@
 {
   "docs": "https://vibelang.sh/llms.txt",
+  "contributors": "role",
   "sections": [
     {
       "title": "Today",
@@ -12,10 +13,53 @@
           "key": "b"
         },
         {
+          "type": "action",
+          "flow": "uphill",
+          "title": "Run Lighthouse audit",
+          "key": "u"
+        },
+        {
+          "type": "action",
+          "flow": "wiki",
+          "title": "Refresh Obsidian wiki",
+          "key": "w"
+        },
+        {
           "type": "issues"
         },
         {
-          "type": "runs"
+          "type": "stack",
+          "title": "Mythical stack"
+        },
+        {
+          "type": "runs",
+          "title": "Recent runs"
+        },
+        {
+          "type": "flows",
+          "title": "Factory flows"
+        },
+        {
+          "type": "links",
+          "title": "Maintainer controls",
+          "links": [
+            {
+              "label": "Live Factory",
+              "url": "https://smithers.sh/smithersai/vibelang/-/factory"
+            },
+            {
+              "label": "Wiki and Mythical History",
+              "url": "https://smithers.sh/smithersai/vibelang/-/wiki"
+            },
+            {
+              "label": "Cloud MCP Endpoint",
+              "url": "https://smithers.sh/smithersai/vibelang/mcp"
+            },
+            {
+              "label": "GitHub Mirror and Releases",
+              "url": "https://github.com/smithersai/vibelang/actions"
+            }
+          ]
         }
       ]
     },
@@ -52,6 +96,17 @@
           ]
         },
         {
+          "type": "text",
+          "title": "Untrusted runs and shared cache trust",
+          "text": "Contributors are encouraged to run local checks, Uphill Lighthouse audits, and untrusted sandbox builds freely with read-only hits from the shared Smithers Cloud object store. Only trusted maintainer runs and controlled sandboxes can publish trunk cache entries or satisfy merge gates."
+        },
+        {
+          "type": "code",
+          "title": "Run Lighthouse backpressure audit locally",
+          "language": "sh",
+          "code": "bun scripts/audit/run-audit.ts"
+        },
+        {
           "type": "links",
           "title": "Where to ask",
           "links": [
@@ -60,8 +115,20 @@
               "url": "https://github.com/smithersai/vibelang/issues"
             },
             {
+              "label": "Smithers Factory",
+              "url": "https://smithers.sh/smithersai/vibelang/-/factory"
+            },
+            {
+              "label": "Wiki and Mythical History",
+              "url": "https://smithers.sh/smithersai/vibelang/-/wiki"
+            },
+            {
               "label": "Docs",
               "url": "https://vibelang.sh"
+            },
+            {
+              "label": "Connect Agent via MCP",
+              "url": "https://smithers.sh/smithersai/vibelang/mcp"
             }
           ]
         },
@@ -124,8 +191,16 @@
               "label": "Runtime"
             },
             {
-              "value": "macOS · Linux · Windows",
-              "label": "arm64 and x64"
+              "value": "4,027+ cases",
+              "label": "Compiler suite"
+            },
+            {
+              "value": "932+ fuzzers",
+              "label": "Continuous fuzzing"
+            },
+            {
+              "value": "5,709 targets",
+              "label": "Cached build graph"
             },
             {
               "value": "v0",
@@ -160,6 +235,36 @@
             {
               "title": "TypeScript interop",
               "text": "Checks .vibe and .ts together and emits JavaScript and types."
+            }
+          ]
+        },
+        {
+          "type": "cards",
+          "title": "Public Smithers Cloud Factory",
+          "cards": [
+            {
+              "label": "Factory",
+              "title": "Live Coding Factory",
+              "text": "Inspect public TODOs, compiler reviews, merge queue, and live flows built on Smithers Cloud.",
+              "url": "https://smithers.sh/smithersai/vibelang/-/factory"
+            },
+            {
+              "label": "Wiki",
+              "title": "Obsidian Wiki and Mythical History",
+              "text": "Browse backlinked architecture notes, VIP decisions, and the full mythical history of VibeLang.",
+              "url": "https://smithers.sh/smithersai/vibelang/-/wiki"
+            },
+            {
+              "label": "MCP",
+              "title": "Bring Your Own Agent",
+              "text": "Attach Claude Code, Codex, Antigravity, or Cursor over OAuth 2.1 Streamable HTTP MCP.",
+              "url": "https://smithers.sh/smithersai/vibelang/mcp"
+            },
+            {
+              "label": "Backpressure",
+              "title": "Lighthouse Quality Audit",
+              "text": "Continuous Uphill gauges across Footprint, Style, Correctness, Testing, Documentation, and Factory & Trust.",
+              "url": "https://github.com/smithersai/vibelang/actions/workflows/uphill.yml"
             }
           ]
         },
@@ -203,6 +308,12 @@
           "type": "releases",
           "title": "Releases",
           "releases": [
+            {
+              "name": "vibelang@0.0.14",
+              "url": "https://www.npmjs.com/package/vibelang/v/0.0.14",
+              "date": "2026-11-26",
+              "summary": "120+ compiler and runtime fixes, SVG user guides, and Smithers Cloud public factory switchover."
+            },
             {
               "name": "vibelang@0.0.13",
               "url": "https://www.npmjs.com/package/vibelang/v/0.0.13",

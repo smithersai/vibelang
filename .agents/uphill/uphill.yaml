@@ -91,3 +91,23 @@ documentation:
   # All relative Markdown links in root docs, docs/design/src/, and docs/user/src/ must resolve to existing files.
   markdown-links:
     description: Keep relative links in README.md, CONTRIBUTING.md, MAINTAINERS.md, AGENTS.md, and docs/ valid.
+
+factory:
+  title: Factory & Trust
+  description: Enforce Smithers Cloud factory projection parity, shared object store split-credential trust, and untrusted PR isolation.
+  run: bun .agents/uphill/metrics/factory.ts
+  # .smithers/factory.json and .smithers/home.json must match .smithers/FACTORY.ts without drift.
+  factory-projection:
+    description: Keep .smithers/factory.json and .smithers/home.json projected cleanly from .smithers/FACTORY.ts.
+  # .smithers/WORKSPACE.ts must wire https://build.smithers.sh with split read/write secrets.
+  cache-trust:
+    description: Enforce split read/write credentials on https://build.smithers.sh so untrusted runs can never poison trunk cache.
+  # No pull_request_target triggers and no write-cache token exposure in PR workflows.
+  workflow-trust:
+    description: Keep pull_request workflows isolated from SMITHERS_CACHE_WRITE_TOKEN and forbid pull_request_target.
+  # .smithers/factory.json must declare maintainers, protectedPaths, and two-way issue sync.
+  factory-policy:
+    description: Declare explicit maintainers, protectedPaths trust roots, and two-way issue sync in .smithers/FACTORY.ts.
+  # Every Obsidian [[wikilink]] in docs/wiki/ must resolve cleanly with zero broken links.
+  wiki-links:
+    description: Keep all Obsidian Wiki and Mythical History notes under docs/wiki/ valid with zero broken wikilinks.

@@ -232,6 +232,13 @@ Specification: \`docs/design/src/\`. Process: CONTRIBUTING.md.
 4. Repeat for the next commit on \`vibe\`.
 
 \`main\` only moves forward, to green commits, and is never rewritten. Base new work on \`vibe\`. Build toolchains from \`main\` unless you need a commit that's only on \`vibe\`, and say so when you do.`
+    },
+    {
+      heading: "Coding factory, MCP, wiki, and backpressure",
+      body: `- Follow \`.smithers/instructions/mcp-agent.md\` for authenticated MCP access (issues, PRs, TODOs, docs, flows) and one-time-use sandbox credentials via \`bun .smithers/scripts/mint-sandbox-auth.ts\` (mode-600 files only, never on argv).
+- Project \`.smithers/FACTORY.ts\` via \`bun .smithers/scripts/project-factory.ts --write\` and verify the \`//.smithers:factory-suite\` targets.
+- Read and maintain the Obsidian-compatible repository wiki and Mythical History in \`docs/wiki/\` (\`bun .smithers/scripts/wiki.ts --check\`).
+- Run \`bun scripts/audit/run-audit.ts\` to generate the Lighthouse-style backpressure audit report. Untrusted runs use read-only remote cache hits and never publish trunk cache entries or skip gates.`
     }
   ]
 };
