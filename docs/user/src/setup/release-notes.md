@@ -6,6 +6,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ## 0.0.14
 
+### Naming & CLI (VIP-53)
+
+- **Vibe naming & `vibe` CLI aliases:** The language now defaults to **Vibe** across docs, site, READMEs, and the VS Code extension display name while keeping `vibelang` for npm packages, repository, domain (`vibelang.sh`), directives, and environment variables (Go/Golang model). The `vibelang` package now exposes `vibe` and `vibe-format` binaries alongside `vibelang` and `vibelang-format`.
+
 ### New experimental language & toolchain features (opt-in)
 
 - **Durable waits & recorded races in workflows (VIP-56):** `workflow` declarations now run durable waits with `try` (`Experimental.Durable.sleep`, `Experimental.Durable.until`, signal `wait()`, and `Experimental.Human.confirm`/`ask`/`select`/`json`), alone or inside `try.all`, `try.race`, and `try.any`. `try.race` (first settlement) and `try.any` (first success) journal the winner via `Experimental.Durable.race` so replays restore the winner with its exact type. `static readonly deadline` bounds an entire workflow run across restarts. Added `EK5601` for durable waits outside workflows.

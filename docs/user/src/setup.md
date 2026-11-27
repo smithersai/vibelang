@@ -1,6 +1,6 @@
-# Set up VibeLang
+# Set up Vibe
 
-VibeLang is a fork of TypeScript for Effect programs. Follow these steps in order; if a command's output differs from what is shown, stop and report the command and output. VibeLang is v0: expect breaking changes and do not use it in production.
+Vibe (published on npm as `vibelang`) is a fork of TypeScript for Effect programs. Follow these steps in order; if a command's output differs from what is shown, stop and report the command and output. Vibe is v0: expect breaking changes and do not use it in production.
 
 ![VibeLang with your TypeScript tools](/videos/ecosystem.mp4)
 

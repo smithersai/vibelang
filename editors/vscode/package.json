@@ -1,7 +1,7 @@
 {
   "name": "vibelang",
-  "displayName": "VibeLang",
-  "description": "VibeLang language support: the vibelang language server, diagnostics with EK codes, hovers with inferred contracts, and syntax highlighting for .vibe and .vibex files.",
+  "displayName": "Vibe",
+  "description": "Vibe (VibeLang) language support: the language server, diagnostics with EK codes, hovers with inferred contracts, and syntax highlighting for .vibe and .vibex files.",
   "version": "0.0.14",
   "publisher": "vibelang",
   "license": "MIT",
@@ -23,6 +23,7 @@
     "Programming Languages"
   ],
   "keywords": [
+    "vibe",
     "effect",
     "vibelang",
     "typescript"
@@ -46,7 +47,9 @@
       {
         "id": "vibe",
         "aliases": [
+          "Vibe",
           "VibeLang",
+          "vibe",
           "vibelang"
         ],
         "extensions": [
@@ -61,6 +64,7 @@
       {
         "id": "vibex",
         "aliases": [
+          "Vibe JSX",
           "VibeLang JSX",
           "vibex"
         ],

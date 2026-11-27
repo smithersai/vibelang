@@ -1,8 +1,8 @@
 {
   "name": "create-vibelang",
   "version": "0.0.14",
-  "description": "Create a VibeLang application: bun create vibelang my-app",
-  "keywords": ["vibelang", "effect", "typescript", "create", "template"],
+  "description": "Create a Vibe (VibeLang) application: bun create vibelang my-app",
+  "keywords": ["vibe", "vibelang", "effect", "typescript", "create", "template"],
   "homepage": "https://vibelang.sh",
   "repository": {
     "type": "git",

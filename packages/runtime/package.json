@@ -1,8 +1,9 @@
 {
   "name": "vibelang-runtime",
   "version": "0.0.14",
-  "description": "The helpers that JavaScript compiled by the VibeLang compiler imports.",
+  "description": "The helpers that JavaScript compiled by the Vibe (VibeLang) compiler imports.",
   "keywords": [
+    "vibe",
     "vibelang",
     "effect",
     "runtime",

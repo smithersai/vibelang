@@ -52,7 +52,7 @@ function releasePageProblems(route, body, { version, expectedOutput, exactOutput
     ...text.matchAll(new RegExp('["\\x27]((?:create-)?vibelang(?:-[a-z0-9-]+)?)["\\x27]\\s*:\\s*["\\x27](' + semver + ')["\\x27]', "g"))
   ]
   for (const [, name, pin] of pins) if (pin !== version) problem(`pin ${name}@${pin}; expected ${version}`)
-  const labels = [...text.matchAll(new RegExp("\\b(?:VibeLang|vibelang|[Vv]ersion|Rehearsed for|In)\\s+(" + semver + ")", "g"))]
+  const labels = [...text.matchAll(new RegExp("\\b(?:VibeLang|Vibe|vibelang|[Vv]ersion|Rehearsed for|In)\\s+(" + semver + ")", "g"))]
   for (const [label, pin] of labels) if (pin !== version) problem(`release label ${label.trim()}; expected ${version}`)
   if (["/", "/getting-started/004-installation", "/getting-started/004-installation.md"].includes(route) &&
       !labels.some(([, pin]) => pin === version)) problem("missing current release label " + version)

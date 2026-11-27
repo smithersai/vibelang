@@ -31,7 +31,7 @@ VIP-17’s outside-code identifier promise is contextual: a plain class’s stat
 
 The field and enum calls below are ordinary helper calls; the class head keeps the enclosing Effect context, and the nested block establishes its own. The Effect gives `Success([2, 3, 7])`:
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // expect-warning: EK4834
 import { Effect } from "effect"
 function join(n: number): number { return n + 1 }
@@ -116,7 +116,7 @@ Timeout                       then another
 
 The durable declaration lookahead leaves these expression forms available at a statement start:
 
-```vibe [VibeLang]
+```vibe [Vibe]
 const task = 1
 const workflow = 2
 type Job = number
@@ -256,7 +256,7 @@ EffectShorthand = ("effect" | "async") [no LineTerminator here] [lookahead ∉ {
 
 The identifier-spelled expression operators `as`, `satisfies` and `is` retain their expression reading after a value named `effect` or `async`; they cannot select recovery for an invalid function shorthand. In particular, both statements below are VIP-7 `is` expressions, and the Effect succeeds with `2`:
 
-```vibe [VibeLang]
+```vibe [Vibe]
 class Point {}
 effect function operatorHeads() {
   const effect: unknown = new Point()
@@ -937,7 +937,7 @@ for concurrent (const x of xs) (try g(x));     no limit; the body is a parenthes
 
 Both loop layouts have the same Effect counterpart and give `Success(3)` here:
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function multilineTotal() {
   let total = 0
   for

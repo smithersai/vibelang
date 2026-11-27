@@ -1,6 +1,6 @@
 import { DIAGRAM_LINE, VIDEO_LINE } from './user-docs.mjs'
 
-export const LABELS = { effect: 'Effect', long: 'VibeLang long form', es: 'VibeLang', gen: 'Generated TypeScript', dts: 'Generated declaration' }
+export const LABELS = { effect: 'Effect', long: 'Vibe long form', es: 'Vibe', gen: 'Generated TypeScript', dts: 'Generated declaration' }
 const LANGS = { out: 'text', output: 'text', vibelang: 'vibe' }
 
 const escapeCaption = (caption) =>

@@ -1,8 +1,9 @@
 {
   "name": "vibelang-vite",
   "version": "0.0.14",
-  "description": "Compile VibeLang source modules with vibelang in Vite and Vitest",
+  "description": "Compile Vibe (VibeLang) source modules in Vite and Vitest",
   "keywords": [
+    "vibe",
     "vibelang",
     "effect",
     "vite",

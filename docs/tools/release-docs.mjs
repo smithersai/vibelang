@@ -38,8 +38,8 @@ export function renderReleasePage(path, text, version, effect) {
     const compatibility = [
       "**Compatibility.** Use exactly " + code("effect@" + effect) + "; keep " + code("@effect/platform-node") + " and " + code("@effect/vitest") + " at " + code(effect) + " when used.",
       "Existing projects need an " + code("@effect/platform-node-shared") + " override. The starter includes the pins and override.",
-      "Use " + code("vibelang") + " to check " + code(".vibe") + " source. Stock " + code("tsc") + " and " + code("vue-tsc") + " see only the " + code("x.d.vibe.ts") + " declarations the compiler writes, which resolve " + code(".vibe") + " imports when " + code("allowArbitraryExtensions") + " is on.",
-      "For mixed editing in VS Code, let the VibeLang server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.",
+      "Use " + code("vibe") + " (or " + code("vibelang") + ") to check " + code(".vibe") + " source. Stock " + code("tsc") + " and " + code("vue-tsc") + " see only the " + code("x.d.vibe.ts") + " declarations the compiler writes, which resolve " + code(".vibe") + " imports when " + code("allowArbitraryExtensions") + " is on.",
+      "For mixed editing in VS Code, let the Vibe server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.",
     ]
     const install = ["site/src/pages/index.mdx", "site/src/index.mdx"].includes(path)
       ? "[Setup details](/setup/existing-project) · [Editor setup](/getting-started/012-devtools)"

@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert"
-import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync, symlinkSync, linkSync, existsSync } from "node:fs"
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, symlinkSync, linkSync, existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, delimiter, relative } from "node:path"
 import { spawn, spawnSync } from "node:child_process"
@@ -293,6 +293,34 @@ test("a custom Node compiler in a package bin directory keeps its executable mea
   } finally {
     if (before === undefined) delete process.env.VIBELANG_BINARY
     else process.env.VIBELANG_BINARY = before
+    rmSync(scratch, { recursive: true, force: true })
+  }
+})
+
+test("vibe and vibe-format CLI aliases are declared and forward arguments identically", () => {
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"))
+  assert.equal(pkg.bin.vibe, "bin/vibelang")
+  assert.equal(pkg.bin.vibelang, "bin/vibelang")
+  assert.equal(pkg.bin["vibe-format"], "bin/vibelang-format")
+  assert.equal(pkg.bin["vibelang-format"], "bin/vibelang-format")
+  const scratch = mkdtempSync(join(tmpdir(), "vibe-alias-"))
+  try {
+    const binary = join(scratch, "native-vibe")
+    writeFileSync(binary, '#!/usr/bin/env node\nconsole.log(JSON.stringify(process.argv.slice(2)))\n')
+    chmodSync(binary, 0o755)
+    const alias = join(scratch, "vibe")
+    symlinkSync(launcher, alias)
+    const run = spawnSync(process.execPath, [alias, "--noEmit", "src/main.vibe"], {
+      env: { ...process.env, VIBELANG_BINARY: binary }, encoding: "utf8"
+    })
+    assert.equal(run.status, 0, run.stderr)
+    assert.deepEqual(JSON.parse(run.stdout), ["--noEmit", "src/main.vibe"])
+    const help = spawnSync(process.execPath, [alias, "format", "--help"], {
+      env: { ...process.env, VIBELANG_BINARY: binary }, encoding: "utf8"
+    })
+    assert.equal(help.status, 0, help.stderr)
+    assert.match(help.stdout, /vibe format/)
+  } finally {
     rmSync(scratch, { recursive: true, force: true })
   }
 })

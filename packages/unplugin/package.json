@@ -1,8 +1,9 @@
 {
   "name": "vibelang-unplugin",
   "version": "0.0.14",
-  "description": "Compile VibeLang source modules with vibelang in webpack, Rollup, Rolldown, esbuild, Rspack, and Bun",
+  "description": "Compile Vibe (VibeLang) source modules in webpack, Rollup, Rolldown, esbuild, Rspack, and Bun",
   "keywords": [
+    "vibe",
     "vibelang",
     "effect",
     "unplugin",

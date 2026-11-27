@@ -33,30 +33,32 @@ bin_dir=${VIBELANG_BIN_DIR:-$HOME/.local/bin}
 case ":$PATH:" in
   *":$bin_dir:"*)
     mkdir -p "$bin_dir"
-    link="$bin_dir/vibelang"
     launcher="$root/packages/compiler/bin/vibelang"
-    if [ -L "$link" ]; then
-      # A link to a moved or deleted checkout, or to another checkout's
-      # launcher, is one an earlier setup made: point it here.
-      previous=$(readlink "$link")
-      case "$previous" in
-        "$launcher") ;;
-        */packages/compiler/bin/vibelang) ln -sfn "$launcher" "$link"; echo "setup: linked $link (it pointed to $previous)" ;;
-        *)
-          if [ -e "$link" ]; then
-            echo "setup: preserving existing $link; use the project's bun run build"
-          else
-            ln -sfn "$launcher" "$link"
-            echo "setup: linked $link (it pointed to the missing $previous)"
-          fi
-          ;;
-      esac
-    elif [ -e "$link" ]; then
-      echo "setup: preserving existing $link; use the project's bun run build"
-    else
-      ln -s "$launcher" "$link"
-      echo "setup: linked $link"
-    fi
+    for name in vibe vibelang; do
+      link="$bin_dir/$name"
+      if [ -L "$link" ]; then
+        # A link to a moved or deleted checkout, or to another checkout's
+        # launcher, is one an earlier setup made: point it here.
+        previous=$(readlink "$link")
+        case "$previous" in
+          "$launcher") ;;
+          */packages/compiler/bin/vibelang) ln -sfn "$launcher" "$link"; echo "setup: linked $link (it pointed to $previous)" ;;
+          *)
+            if [ -e "$link" ]; then
+              echo "setup: preserving existing $link; use the project's bun run build"
+            else
+              ln -sfn "$launcher" "$link"
+              echo "setup: linked $link (it pointed to the missing $previous)"
+            fi
+            ;;
+        esac
+      elif [ -e "$link" ]; then
+        echo "setup: preserving existing $link; use the project's bun run build"
+      else
+        ln -s "$launcher" "$link"
+        echo "setup: linked $link"
+      fi
+    done
     ;;
   *)
     echo "setup: $bin_dir is not on PATH. Project scripts find vibelang after bun install."

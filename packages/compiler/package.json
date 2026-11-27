@@ -1,8 +1,9 @@
 {
   "name": "vibelang",
   "version": "0.0.14",
-  "description": "The VibeLang compiler and language server: a readable syntax for Effect that compiles to JavaScript with TypeScript declarations",
+  "description": "The Vibe (VibeLang) compiler and language server: a readable syntax for Effect that compiles to JavaScript with TypeScript declarations",
   "keywords": [
+    "vibe",
     "vibelang",
     "effect",
     "typescript",
@@ -83,7 +84,9 @@
     }
   },
   "bin": {
+    "vibe": "bin/vibelang",
     "vibelang": "bin/vibelang",
+    "vibe-format": "bin/vibelang-format",
     "vibelang-format": "bin/vibelang-format",
     "vibelang-ast-grep": "bin/vibelang-ast-grep"
   },

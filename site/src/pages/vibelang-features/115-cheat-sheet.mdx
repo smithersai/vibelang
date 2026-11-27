@@ -9,7 +9,7 @@ Every VibeLang change beside the Effect code it replaces: VibeLang and Effect 4 
 
 <figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/periodic.jpg"><source src="/videos/periodic.mp4" type="video/mp4" /></video><figcaption>Every form on one page</figcaption></figure>
 
-```vibe [VibeLang]
+```vibe [Vibe]
 error NotFound { id: string }
 interface User { id: string; name: string }
 
@@ -41,7 +41,7 @@ An Effect type such as `A!!B!C` needs explicit grouping (`EK0302`). Choose `(A!!
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 type Find = (id: string) => User!NotFound
 type Release = (version: string) => string!!Approval
 type Load = () => string!!
@@ -69,7 +69,7 @@ const hello = (id: string): Effect.Effect<string, NotFound> =>
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 error Missing { id: string }
 error Timeout
 ```
@@ -87,7 +87,7 @@ class Timeout extends Data.TaggedError("Timeout") {}
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // expect-warning: EK4830
 class Invalid extends Data.TaggedError("Invalid")<{ readonly code: string }> {
   constructor(input: string) {
@@ -128,7 +128,7 @@ class Refused extends Failure {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 schema error Stored { key: string; attempts?: number }
 ```
 
@@ -144,7 +144,7 @@ class Stored extends Schema.TaggedError<Stored>()("Stored", { key: Schema.String
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 service Users {
   static readonly key = "app/Users"
   find(id: string): User!NotFound
@@ -166,7 +166,7 @@ class Users extends Context.Service<Users, {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 interface SearchApi {
   find(query: string): string!!
 }
@@ -190,7 +190,7 @@ class Prefix extends Context.Service<Prefix, string>()("app/Prefix") {}
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 const UsersLive = Layer.effect(Users, effect {
   const seen = new Set<string>()
   return Users.of({
@@ -225,7 +225,7 @@ const UsersLive = Layer.effect(Users, Effect.gen(function* () {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 schema Account {
   readonly id: string
   readonly nickname?: string
@@ -256,7 +256,7 @@ type Account = typeof Account.Type
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 schema Role = "admin" | "member"
 // Run in an effect function:
 //   try Console.log(Schema.is(Role)("admin"))
@@ -278,7 +278,7 @@ type Role = typeof Role.Type
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 data Delivery {
   Waiting
   Sent { tracking: string }
@@ -303,7 +303,7 @@ const Delivery = Data.taggedEnum<Delivery>()
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 interface Cart { readonly id: string; items: Array<string> }
 ```
 
@@ -319,7 +319,7 @@ interface Cart { readonly id: string; items: Array<string> }
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function greetUser(id: string) {
   return try withSpan(effect {
     const user = try getUser(id)
@@ -351,7 +351,7 @@ const greetUser = Effect.fn("greetUser")(function* (id: string) {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function fastest() {
   const user = try getUser("1")
   return try race(getUser("1"), getUser("2"))
@@ -372,7 +372,7 @@ const first = yield* Effect.race(getUser("1"), getUser("2"))
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function program() {
   provide UsersLive {
     const users = try Users
@@ -401,7 +401,7 @@ const program = Effect.gen(function* () {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 const seeded = { nextIntUnsafe: (): number => 4, nextDoubleUnsafe: (): number => 0.5 }
 
 effect function roll(): number!! {
@@ -429,7 +429,7 @@ const roll = Random.nextInt.pipe(
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function describe(id: string) {
   return effect {
     return (try getUser(id)).name
@@ -459,7 +459,7 @@ const describe = (id: string) =>
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function nameOrGuest(id: string) {
   return effect { return (try getUser(id)).name } catch () => "guest"
 }
@@ -485,7 +485,7 @@ const nameOrGuest = (id: string) =>
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function nameOrReason(id: string) {
   return effect { return (try getUser(id)).name } catch (e) => match (e) {
     when NotFound: `no user ${e.id}`;
@@ -513,7 +513,7 @@ const nameOrReason = (id: string) =>
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // main.vibe
 export effect function main() {
   try log("Hello")
@@ -547,7 +547,7 @@ await runPromise(main())
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function safe(id: string) {
   return match (try exit(getUser(id))) {
     when Exit.Success(let user): user.name;
@@ -575,7 +575,7 @@ const safe = (id: string) =>
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function logged() {
   const outcome = try exit(getUser("1"))
   if (outcome is Exit.Failure(let cause)) {
@@ -605,7 +605,7 @@ const logged = getUser("1").pipe(
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function tracked() {
   return try onExit(getUser("1"), (outcome) => log(`lookup ${outcome._tag}`))
 }
@@ -630,7 +630,7 @@ const tracked = getUser("1").pipe(
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function outcome() {
   const result = try exit(getUser("1"))
   try yieldNow
@@ -658,7 +658,7 @@ The opening `{` follows the keyword on the same line; across a line break the wo
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function guarded() {
   uninterruptible {
     const user = try getUser("1")
@@ -704,7 +704,7 @@ A tagged template is a call of its tag. If `sql` returns an Effect, the statemen
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function ready() {
   try Console.log(Hex.encode("ready"))
 }
@@ -725,7 +725,7 @@ const ready = Console.log(Hex.encode("ready"))
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function size(path: string) {
   const fs = try FileSystem.FileSystem
   return (try fs.readFileString(path)).length
@@ -752,7 +752,7 @@ const size = (path: string) =>
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function patient() {
   try sleep("10 millis")
   return try timeout(retry(getUser("1"), Schedule.recurs(2)), "1 second")
@@ -779,7 +779,7 @@ const patient = Effect.gen(function* () {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 function hot() {
   return Stream.make(18, 25, 30).pipe(
     Stream.filter((c) => c >= 25),
@@ -812,7 +812,7 @@ Stream transformations construct a Stream. Run it with a Stream consumer such as
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function shout() {
   return (try getUser("1")).name |> %.toUpperCase() |> `${%}!`
 }
@@ -834,7 +834,7 @@ const shout = pipe(user.name, (name) => name.toUpperCase(), (name) => `${name}!`
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function findUser(users: Map<string, User>, id: string) {
   const user = users.get(id)
   if (user === undefined) throw new NotFound({ id })
@@ -861,7 +861,7 @@ const findUser = (users: Map<string, User>, id: string) =>
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function label(id: string) {
   const name = do {
     const user = try getUser(id)
@@ -916,7 +916,7 @@ A `break` or `continue` whose target is outside an `effect { }` block is `EK0202
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function loaded() {
   return try withSpan(effect {
     const user = try getUser("1")
@@ -965,7 +965,7 @@ From the TC39 [pattern matching](https://github.com/tc39/proposal-pattern-matchi
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 function phaseLabel(phase: "draft" | "published") {
   return match (phase) {
     when "draft": "Draft";
@@ -993,7 +993,7 @@ const phaseLabel = (phase: "draft" | "published") =>
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 function describeFailure(failure: NotFound | Timeout) {
   return match (failure) {
     when NotFound(let e): `no user ${e.id}`;
@@ -1020,7 +1020,7 @@ const describeFailure = (failure: NotFound | Timeout) =>
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 function deliveryLabel(delivery: Delivery) {
   return match (delivery) {
     when { _tag: "Waiting" }: "waiting";
@@ -1046,7 +1046,7 @@ const deliveryLabel = Delivery.$match({
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 function greet(name: Option.Option<string>) {
   return match (name) {
     when Option.Some(let n): `Hello, ${n}`;
@@ -1081,7 +1081,7 @@ const failed = (outcome: Exit.Exit<User, NotFound>) => Exit.isFailure(outcome)
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 function firstFailure(outcome: Exit.Exit<User, NotFound>) {
   if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause)) return Cause.pretty(cause)
   return "ok"
@@ -1145,7 +1145,7 @@ export function generateKey() {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 import { makeTicker, offTick, onceTick, statfs, uptime } from "./node-apis.ts"
 import type { EventEmitter } from "node:events"
 import { generateKey } from "./web-apis.ts"
@@ -1217,7 +1217,7 @@ export function isSymbolicLink(path: string): boolean {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 import { isSymbolicLink } from "./links.ts"
 
 const linked = (path: string) => sync(() => isSymbolicLink(path))
@@ -1249,7 +1249,7 @@ const linked = (path: string) => Effect.sync(() => isSymbolicLink(path))
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function both() {
   const user = fork getUser("1")
   const orders = fork getOrders("1")
@@ -1276,7 +1276,7 @@ return [yield* Fiber.join(user), yield* Fiber.join(orders)]
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function many() {
   const [user, orders] = try.all [getUser("1"), getOrders("1")]
   const pair = try all({ user: getUser("1"), orders: getOrders("1") }, { concurrency: "unbounded" })
@@ -1302,7 +1302,7 @@ const pair = yield* Effect.all({ user: getUser("1"), orders: getOrders("1") }, {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function outcomes() {
   const fastest = try.any [getUser("1"), getUser("2")]
   const results = try.allSettled [getUser("1"), getOrders("1")]
@@ -1338,7 +1338,7 @@ const outcomes = yield* Effect.all([Effect.exit(getUser("1")), Effect.exit(getOr
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function withHeartbeat() {
   return try scoped(effect {
     fork.scoped forever(andThen(log("tick"), sleep("1 second")))
@@ -1363,7 +1363,7 @@ const withHeartbeat = Effect.scoped(Effect.gen(function* () {
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function background() {
   fork.detached getUser("1")
   const scope = try Scope.make()
@@ -1388,7 +1388,7 @@ const fiber = yield* Effect.forkIn(getUser("2"), scope)
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function signal() {
   const ready = try Deferred.make<string>()
   try Deferred.succeed(ready, "go")
@@ -1411,7 +1411,7 @@ const value = yield* Deferred.await(ready)
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function next() {
   const jobs = try Queue.unbounded<string>()
   try Queue.offer(jobs, "build")
@@ -1441,7 +1441,7 @@ const next = yield* Effect.raceFirst(
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function logAll(ids: string[]) {
   for concurrent(8) (const id of ids) {
     try log((try getUser(id)).name)

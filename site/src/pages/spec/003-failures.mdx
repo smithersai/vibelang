@@ -22,7 +22,7 @@ Synchronous VibeLang code never throws (VIP-4, amended 2026-10-31): a function t
 
 A throw expression follows [VIP-41](/vips/0041-throw-expressions) and its pinned TC39 proposal. Its syntax restriction is `EK1010`; [Appendix A](/spec/900-appendices#throwexpression) gives the grammar.
 
-```vibe [VibeLang]
+```vibe [Vibe]
 effect function load(id: string) {
   const user = try findUser(id)
   if (!user) throw new NotFound({ id })
@@ -51,7 +51,7 @@ function load(id: string) {
 - A function literal passed where the parameter's function type admits throws, as the thunks of `Effect.try` and `Effect.tryPromise` and the `Promise` executor do, or passed to a `@rethrows` parameter, may contain calls known to throw: they belong to the enclosing call. A function nested in that literal is its own plain code. A `throw` statement or throw expression in the literal is still `EK0401`.
 - TypeScript's `try { } catch { }` statement stays allowed.
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // expect-error: EK0401
 function check(s: string) { if (!s) throw new Error("empty"); return s } // EK0401
 const parsed = (s: string) => JSON.parse(s)                               // EK0401: JSON.parse throws SyntaxError
@@ -78,7 +78,7 @@ VIP-7's direct match-arm body has its separate `"throw" Expression` production: 
 
 In effect code a throw expression fails the Effect, exactly as the corresponding throw statement does (VIP-41). Its counterpart is `yield* Effect.fail(e)` in the same expression position, with type `never`:
 
-```vibe [VibeLang]
+```vibe [Vibe]
 error Missing
 effect function required(value: string | undefined) {
   const v = value ?? throw new Missing()
@@ -153,7 +153,7 @@ const builtins = Effect.gen(function* () {
 })
 ```
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // compiler-gap: pending VIP-4
 // expect-error: EK0403
 effect function f(xs: number[], s: string, v: object) {
@@ -171,7 +171,7 @@ The normative [`throws.json`](https://github.com/smithersai/vibelang/blob/main/d
 
 A generated `schema error` constructor has thrown type `never`, a static contract. Effect 4.1.1 validates its fields; invalid input can throw a plain `Error`, which becomes a defect inside `Effect.gen`.
 
-```vibe [VibeLang]
+```vibe [Vibe]
 schema error Invalid { name: Schema.NonEmptyString }
 effect function invalid() { throw new Invalid({ name: "" }) } // defect, not typed failure
 ```
@@ -206,7 +206,7 @@ Written `@throws` types retain their TypeScript structure. An inline type such a
 
 `EK0404` uses the Promise test of [Result tests](/spec/002-running#result-tests): `never`, `any` and `unknown` never trigger it; any union with at least one `PromiseLike` member does. For a tagged template, apply this test to the selected tag signature's result. Keep the original native invocation inside the bridge thunk, preserving its receiver, cached template object identity, once-only substitutions and evaluation order.
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // expect-error: EK0404
 async function tag(_parts: TemplateStringsArray) { return 7 }
 effect function unwrappedTag() { const p = tag`x`; return 0 } // EK0404
@@ -225,7 +225,7 @@ function wrappedTag() {
 // Success(7).
 ```
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // expect-error: EK0404
 function maybeQuery(): Promise<number> | undefined { return undefined }
 effect function unwrappedQuery() {
@@ -248,7 +248,7 @@ Effect code calls a function whose thrown type is `never` directly. Promise-prod
 
 A dynamic import uses the same explicit Promise bridge. Enclose the complete native import expression, including its arguments, in the thunk once per execution; bridging never admits a forbidden literal module specifier. The local `worker.mjs` fixture exports `const value = 7` with matching declarations.
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // expect-error: EK0404
 effect function unwrappedImport() { const module = import("./worker.mjs"); return 0 } // EK0404
 effect function importedValue() {
@@ -276,7 +276,7 @@ export { importedValue }
 
 A call known to throw in a plain `catch` handler's parameters or body is `EK0401`. Use an effect handler and bridge the call in its body:
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // fragment
 // source: string!Error; parse(e: Error): string is imported with a written @throws tag.
 source catch (e) => parse(e) // EK0401
@@ -289,7 +289,7 @@ const source = Effect.fail(new Error("input"))
 function parse(e: Error): string { throw e }
 const recovered = Effect.catch(source, (e) => Effect.try(() => parse(e)))
 ```
-```vibe [VibeLang]
+```vibe [Vibe]
 error BadInput
 effect function parsed(s: string) {
   return try Effect.try({ try: () => parse(s), catch: () => new BadInput() })
@@ -319,7 +319,7 @@ function parsed(s: string) {
 - **Field initializers and static blocks** run in `new X()` and at class evaluation. Throw checks follow [Thrown types](/spec/003-failures#thrown-types) and [Plain code never throws](/spec/003-failures#plain-code-never-throws), with each expression's source context and the native caught-call exemption preserved.
 - **Arguments** are evaluated by the caller. **Wrapper thunks** run inside the Effect.
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // fragment
 // s: string and q: string are supplied by the enclosing scope.
 effect function a(p = parse(s)) { return p }          // EK0401: a default known to throw
@@ -338,7 +338,7 @@ effect function c({ id }: User) { return id }         // c() from untyped JS giv
 
 Bodyless plain and `async` overload signatures are methods in both error forms, as in a TypeScript class; they execute no code themselves. For example, `labels()` gives an Effect with `Success(["ok", 7])`:
 
-```vibe [VibeLang]
+```vibe [Vibe]
 error Plain {
   label(x: string): string;
   label(x: number): number;
@@ -383,7 +383,7 @@ In a `schema error` body, a computed key is `EK2117` unless its well-typed runti
 
 Known numeric and symbol domains, including unique symbols, cannot become that string key. Safe literals, literal unions, templates and their brands remain admitted; `never` has no possible key. Reject `any`, `unknown`, unresolved/cyclic domains or any other unprovable exclusion conservatively. Ordinary TypeScript invalid-key errors remain independent. Use a literal key or a symbol when needed. Accepted keys keep their existing evaluation order and are emitted as written: no decoder/refinement is executed to prove exclusion, no value is unwrapped and no runtime tag guard is added.
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // expect-error: EK2117
 enum Field { Tag = "_tag", Count = "count" }
 declare const field: Field
@@ -416,7 +416,7 @@ decode({ _tag: "Dynamic", other: 1 })             // Failure: actual is missing
 decode({ _tag: "Dynamic", actual: 1, other: 2 })  // Success: other is stripped
 ```
 
-```vibe [VibeLang]
+```vibe [Vibe]
 function plainKey() {
   error Plain { [field]: number }
   const field = "actual"
@@ -443,7 +443,7 @@ const evaluatedSchemaKey = Effect.sync(() => {
 // erasedPayloadKey succeeds with 7; evaluatedSchemaKey succeeds with [1, 7].
 ```
 
-```vibe [VibeLang]
+```vibe [Vibe]
 error Access {
   role:
     | "admin"
@@ -469,7 +469,7 @@ Diagnostics from compiler-generated superclass calls do not accompany a rejected
 
 A member rejected by [Functions](/spec/001-functions#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form. This includes both `EK0104` and `EK0105` for `async effect get x() { }`. Check the ambient-context rule before classifying members. Otherwise a member gets one diagnostic: the first row that names it. The general member rule, `EK1304`, applies only when no specific member rule applies. For example, `_tag = 1` reports `EK2117`; `static x = 1` reports the static-member rule, not the general member rule.
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // expect-error: EK0104, EK0105
 error BadMember { async effect get value() { return 1 } } // EK0104 and EK0105; no extra EK1304
 ```
@@ -480,7 +480,7 @@ error BadMember { async effect get value() { return 1 } } // EK0104 and EK0105; 
 
 User-written `static` members and setters are forbidden in both forms. The compiler-supplied matcher below is the exception; its `Symbol.customMatcher` shim is described in [Pattern matching](/spec/004-match#class-patterns).
 
-```vibe [VibeLang]
+```vibe [Vibe]
 error NotFound {
   id: string
   get message() { return `no user ${this.id}` }
@@ -533,7 +533,7 @@ Neither form accepts type parameters. For example, `error Invalid<T> { value: T 
 
 `schema error Name { fields }` combines `error` and the field mapping of `schema` declarations ([Data](/spec/006-data#schema-declarations)). Fields are written as TypeScript types and mapped to Schemas. Encoding follows those codecs' `Encoded` representations; JSON, worker messages and RPC transports must support that representation. The declaration adds no implicit wire conversion. For JSON, choose compatible field codecs, such as `Schema.BigIntFromString` for a bigint encoded as a string. The body rules, and their diagnostics, are those of `error` declarations. Referenced field schemas also obey the [decoded-key modifier checks](/spec/006-data#schema-declarations): every payload field is effectively readonly, even without a written `readonly`, so a mutable-key reference is `EK2109`. Nested mutable values remain mutable.
 
-```vibe [VibeLang]
+```vibe [Vibe]
 schema error NotFound { id: string }
 schema error Timeout
 ```

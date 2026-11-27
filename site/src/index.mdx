@@ -1,5 +1,5 @@
 ---
-title: VibeLang · Effect, as a language
+title: Vibe · Effect, as a language
 layout: minimal
 description: Write Effect programs in TypeScript syntax, with typed errors and services the compiler checks.
 showAskAi: false
@@ -17,7 +17,7 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
   <section className="vibe-home__hero">
     <div className="vibe-home__intro">
       <div className="vibe-home__eyebrow">Effect, as a language</div>
-      <h1><span className="vibe-gradient">Vibe</span>Lang</h1>
+      <h1><span className="vibe-gradient">Vibe</span></h1>
       <div className="vibe-home__tagline">
         Write <span>Effect</span> programs in TypeScript syntax, with <span>typed errors and services the compiler checks</span>.
       </div>
@@ -55,9 +55,9 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
 >
 > Existing projects need an `@effect/platform-node-shared` override. The starter includes the pins and override.
 >
-> Use `vibelang` to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
+> Use `vibe` (or `vibelang`) to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
 >
-> For mixed editing in VS Code, let the VibeLang server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.
+> For mixed editing in VS Code, let the Vibe server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.
 >
 > [Setup details](/setup/existing-project) · [Editor setup](/getting-started/012-devtools)
 
@@ -81,15 +81,15 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
 
 ## Overview
 
-VibeLang is a language for building reliable TypeScript in the AI era, built on [Effect](https://effect.website). It gives Effect a simple, readable syntax. The compiler turns it into ordinary Effect code that your team can read and ship, and `.ts` files, npm packages and the rest of the TypeScript ecosystem stay one import away.
+Vibe (published on npm as `vibelang`) is a language for building reliable TypeScript in the AI era, built on [Effect](https://effect.website). It gives Effect a simple, readable syntax. The compiler turns it into ordinary Effect code that your team can read and ship, and `.ts` files, npm packages and the rest of the TypeScript ecosystem stay one import away.
 
-<figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/runthrough.jpg"><source src="/videos/runthrough.mp4" type="video/mp4" /></video><figcaption>VibeLang in three minutes</figcaption></figure>
+<figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/runthrough.jpg"><source src="/videos/runthrough.mp4" type="video/mp4" /></video><figcaption>Vibe in three minutes</figcaption></figure>
 
 ### One program, twice
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 interface User { id: string; name: string }
 
 error UserNotFound { id: string }

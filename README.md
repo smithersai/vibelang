@@ -1,17 +1,17 @@
-# VibeLang
+# Vibe
 
 [![npm](https://img.shields.io/npm/v/vibelang)](https://www.npmjs.com/package/vibelang)
 [![license](https://img.shields.io/badge/license-MIT%20%2B%20Apache--2.0-blue)](#license)
 
-Write [Effect](https://effect.website) programs in TypeScript syntax, with typed errors and services the compiler checks.
+Write [Effect](https://effect.website) programs in TypeScript syntax, with typed errors and services the compiler checks. Published on npm as [`vibelang`](https://www.npmjs.com/package/vibelang) (providing both the `vibe` and `vibelang` commands, like Go/Golang).
 
 [Get started](https://vibelang.sh) · [Cheat sheet](https://vibelang.sh/vibelang-features/115-cheat-sheet) · [Contribute](CONTRIBUTING.md)
 
 > [!IMPORTANT]
-> VibeLang 0.0.13 is the first alpha release. The [specification](https://vibelang.sh/spec) describes the 33 accepted VIPs in the supported core. Some accepted features beyond that core are experimental and require an opt-in. See [what is in the alpha](https://vibelang.sh/setup/alpha).
+> Vibe 0.0.14 is in early alpha. The [specification](https://vibelang.sh/spec) describes the accepted VIPs in the supported core. Some accepted features beyond that core are experimental and require an opt-in. See [what is in the alpha](https://vibelang.sh/setup/alpha).
 
 > [!WARNING]
-> VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
+> Vibe is v0. The language will change in major, breaking ways. It is not suitable for production use.
 
 > [!NOTE]
 > The latest code is on the [`vibe`](https://github.com/smithersai/vibelang/tree/vibe) branch. `main` holds accepted code.
@@ -23,18 +23,18 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 >
 > Existing projects need an `@effect/platform-node-shared` override. The starter includes the pins and override.
 >
-> Use `vibelang` to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
+> Use `vibe` (or `vibelang`) to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
 >
-> For mixed editing in VS Code, let the VibeLang server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.
+> For mixed editing in VS Code, let the Vibe server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.
 >
 > [Setup details](https://vibelang.sh/setup/existing-project) · [Editor setup](https://vibelang.sh/getting-started/012-devtools)
 <!-- compatibility:end -->
 
-## Why VibeLang
+## Why Vibe
 
-VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
+Vibe ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
 
-Effect gives you typed failures, dependency injection, concurrency and resource management. VibeLang gives those programs direct syntax: an `effect` function returns an Effect, `try` runs one, and its errors and required services stay in its type. Every form is exact sugar for the Effect TypeScript it replaces.
+Effect gives you typed failures, dependency injection, concurrency and resource management. Vibe gives those programs direct syntax: an `effect` function returns an Effect, `try` runs one, and its errors and required services stay in its type. Every form is exact sugar for the Effect TypeScript it replaces.
 
 Plain and `async` functions are TypeScript's, so your `.ts` code and npm packages call as they do in TypeScript. The compiler tracks what a function may throw, and Effect code calls one that may throw through Effect's own `Effect.try` ([TypeScript boundaries](https://vibelang.sh/vibelang-features/114-vibelang-for-effect-users#keep-platform-work-in-effect)):
 
@@ -51,7 +51,7 @@ Use Effect services for platform, clock and randomness APIs, such as `Console`, 
 
 Here is one program in both languages: a typed failure, an injected service, two concurrent lookups and a fallback.
 
-**VibeLang**
+**Vibe**
 
 ```vibe
 error UserNotFound { id: string }
@@ -202,4 +202,4 @@ Report a bug in the published packages, with a minimal reproduction, in [Issues]
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it — `vibelang`, `vibelang-<platform>`, `@smthrs/cli-win32-x64`, `@smthrs/cli-win32-arm64`, and `vibelang-typescript` — which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,541 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,579 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

@@ -1,8 +1,9 @@
 {
   "name": "vibelang-typescript",
   "version": "7.1.14",
-  "description": "VibeLang's compiler under the name typescript: VibeLang in a .ts file compiles with your tsc and editor",
+  "description": "Vibe's compiler under the name typescript: Vibe in a .ts file compiles with your tsc and editor",
   "keywords": [
+    "vibe",
     "vibelang",
     "effect",
     "typescript",

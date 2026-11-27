@@ -50,7 +50,7 @@ Copy `patches/alchemy@2.0.0-beta.84.patch` (from [alchemy-run/alchemy#2754](http
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 export error MissingNote { key: string }
 
 const notes = new Map<string, string>([["todo", "milk"]])
@@ -105,7 +105,7 @@ Hold top-level Alchemy resources as plain `const` Effect values, run binding ope
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // fragment
 // api.vibe
 import * as Cloudflare from "@alchemy.run/cloudflare"
@@ -214,7 +214,7 @@ Pass `{ fetch: handle() }` (an Effect value, not the function `{ fetch: handle }
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // fragment
 // stack.vibe
 import * as Cloudflare from "@alchemy.run/cloudflare"

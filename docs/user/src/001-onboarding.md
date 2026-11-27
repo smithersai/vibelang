@@ -1,8 +1,8 @@
-# Welcome to VibeLang
+# Welcome to Vibe
 
-VibeLang is a language for building reliable TypeScript in the AI era, built on [Effect](https://effect.website). It gives Effect a simple, readable syntax. The compiler turns it into ordinary Effect code that your team can read and ship, and `.ts` files, npm packages and the rest of the TypeScript ecosystem stay one import away.
+Vibe (published on npm as `vibelang`, like Go/Golang) is a language for building reliable TypeScript in the AI era, built on [Effect](https://effect.website). It gives Effect a simple, readable syntax. The compiler turns it into ordinary Effect code that your team can read and ship, and `.ts` files, npm packages and the rest of the TypeScript ecosystem stay one import away.
 
-Here is one program twice: a typed error, a service, a fallback and the layer that provides the service. First in Effect TypeScript, then in VibeLang.
+Here is one program twice: a typed error, a service, a fallback and the layer that provides the service. First in Effect TypeScript, then in Vibe.
 
 ```ts effect
 import { Console, Context, Data, Effect, Layer } from "effect"

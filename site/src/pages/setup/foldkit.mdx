@@ -55,7 +55,7 @@ A `schema` declaration is the schema and its type at once; `Runtime.makeApplicat
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 export schema Todo { readonly id: number; readonly text: string; readonly done: boolean }
 
 export schema Model {
@@ -89,7 +89,7 @@ An effect function runs each operation with `try`. A `catch` expression provides
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 schema Quote { readonly text: string }
 
 effect function loadQuote(url: string) {
@@ -125,7 +125,7 @@ In the app, the command returns a Message, and `provide` supplies Foldkit's HTTP
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // fragment
 export const FetchQuote = Command.define("FetchQuote", {
   args: {},
@@ -155,7 +155,7 @@ Foldkit calls `update` and `view` synchronously, so declare them with `function`
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // fragment
 export function update(model: Model, message: Message): Update.Return<Model, Message> {
   return Message.match<Update.Return<Model, Message>>(message, {
@@ -213,7 +213,7 @@ These are matching excerpts from Foldkit's own source, with links fixed to each 
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 export service DialogRuntime {
   static readonly key = '@foldkit/DialogRuntime'
   register: (id: string) => void
@@ -243,7 +243,7 @@ export class DialogRuntime extends Context.Service<
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 export schema RuntimeInfo {
   connectionId: string
   url: string
@@ -272,7 +272,7 @@ export type RuntimeInfo = typeof RuntimeInfo.Type
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // fragment
 export const CalendarDateFromIsoString = Schema.String.pipe(
   Schema.decodeTo(
@@ -344,7 +344,7 @@ The subscription pipeline uses `Stream` methods and `effect` callbacks, with `tr
 
 :::code-group
 
-```vibe [VibeLang]
+```vibe [Vibe]
 // fragment
     const consume: void!never!Services = Stream.concat(
       Stream.make(initDependencies),

@@ -34,7 +34,7 @@ test('a shared link to any page names the page and the site', () => {
   const wrong = []
   for (const [path, html] of pages()) {
     const title = decode(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? '')
-    if (!title.includes('VibeLang')) wrong.push(`${path}: <title> ${JSON.stringify(title)}`)
+    if (!/\bVibe(?:Lang)?\b/.test(title)) wrong.push(`${path}: <title> ${JSON.stringify(title)}`)
     for (const [attribute, name] of [['property', 'og:title'], ['name', 'twitter:title']]) {
       if (tag(html, attribute, name) !== title) wrong.push(`${path}: ${name} ${JSON.stringify(tag(html, attribute, name))}, <title> ${JSON.stringify(title)}`)
     }

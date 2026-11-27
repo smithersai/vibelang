@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process"
+import { basename } from "node:path"
 import { fileURLToPath } from "node:url"
 import { findBinary } from "../binary.mjs"
 
-// `vibelang agents` runs in Node: it writes coding agents' configuration
-// and the check their hooks call (agents.mjs).
+const command = basename(process.argv[1] || "vibe")
+
+// `vibe agents` / `vibelang agents` runs in Node: it writes coding agents'
+// configuration and the check their hooks call (agents.mjs).
 if (process.argv[2] === "agents") {
   const { main } = await import("../agents.mjs")
   process.exit(await main(process.argv.slice(3), findBinary))
 }
 
-// `vibelang eval` runs in Node: it imports *.eval.vibe files through the
-// loader and runs their suites with the runtime (eval.mjs, VIP-59).
+// `vibe eval` / `vibelang eval` runs in Node: it imports *.eval.vibe files
+// through the loader and runs their suites with the runtime (eval.mjs, VIP-59).
 if (process.argv[2] === "eval") {
   const { main } = await import("../eval.mjs")
   process.exit(await main(process.argv.slice(3)))
@@ -20,7 +23,7 @@ if (process.argv[2] === "eval") {
 if (process.argv[2] === "format") {
   try {
     const { formatFiles } = await import("../format.mjs")
-    process.exit(formatFiles(process.argv.slice(3), "vibelang format"))
+    process.exit(formatFiles(process.argv.slice(3), `${command} format`))
   } catch (error) {
     console.error(error.message)
     process.exit(1)

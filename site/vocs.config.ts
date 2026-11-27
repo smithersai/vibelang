@@ -16,7 +16,7 @@ export default defineConfig({
   accentColor: 'light-dark(#4f46e5, #a5a9ff)',
   baseUrl: 'https://vibelang.sh',
   banner:
-    'VibeLang is in early alpha. The language will change in major, breaking ways. It is not suitable for production use.',
+    'Vibe is in early alpha. The language will change in major, breaking ways. It is not suitable for production use.',
   checkDeadlinks: true,
   codeHighlight: {
     // ```vibe blocks use the grammar from VibeLang's editor extension
@@ -45,25 +45,25 @@ export default defineConfig({
   // Vocs renders its /404 route to the published dist/public/404.html.
   head: (path, { frontmatter }) => ({
     ...(path === '/404' ? {
-      title: 'Page not found | VibeLang',
+      title: 'Page not found | Vibe',
       canonical: false,
     } : {}),
     meta: {
       // Vocs gives og:title and twitter:title the bare page name ("Cheat sheet"); a shared
       // link names the site too, as the page's <title> does through titleTemplate.
-      ...(frontmatter?.title && !frontmatter.title.includes('VibeLang') ? {
-        ogTitle: `${frontmatter.title} | VibeLang`,
-        twitterTitle: `${frontmatter.title} | VibeLang`,
+      ...(frontmatter?.title && !/\bVibe(?:Lang)?\b/.test(frontmatter.title) ? {
+        ogTitle: `${frontmatter.title} | Vibe`,
+        twitterTitle: `${frontmatter.title} | Vibe`,
       } : {}),
       ...(path === '/404' ? {
         robots: 'noindex',
         description:
-          'The page you requested was not found. Return to the VibeLang documentation or specification.',
+          'The page you requested was not found. Return to the Vibe documentation or specification.',
         ogUrl: false,
       } : {}),
       ogImageWidth: '1200',
       ogImageHeight: '630',
-      ogImageAlt: 'VibeLang — Effect, as a language',
+      ogImageAlt: 'Vibe — Effect, as a language',
     },
   }),
   iconUrl: '/icon.svg',
@@ -92,8 +92,8 @@ export default defineConfig({
   },
   sidebar: [...sidebar, ...specSidebar, ...vipsSidebar],
   socials: [{ icon: 'github', link: 'https://github.com/smithersai/vibelang' }],
-  title: 'VibeLang',
-  titleTemplate: '%s | VibeLang',
+  title: 'Vibe',
+  titleTemplate: '%s | Vibe',
   topNav: [
     { text: 'Welcome', link: '/001-onboarding' },
     { text: 'Guides', link: '/013-getting-started' },
