@@ -211,6 +211,8 @@ test("renderLighthouseHtml normalizes Uphill value/change/before/after fields an
   assert.ok(html.includes("copy-markdown"))
   assert.ok(html.includes("print-report"))
   assert.ok(html.includes('id="audit-md-data"'))
+  assert.ok(html.includes("lh-copy-cmd"))
+  assert.ok(html.includes("go test -v ./internal/vibelangprotocol/..."))
 })
 
 test("resolveExecutionTrust enforces untrusted PR isolation and trusted main separation", () => {

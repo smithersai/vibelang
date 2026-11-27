@@ -8,7 +8,7 @@ footprint:
     typescript/tsc/internal/vibelangestree: { baseline: 4487 }
     typescript/tsc/internal/vibelangfmt: { baseline: 4292 }
     typescript/tsc/internal/vibelangfuzz: { baseline: 22793 }
-    typescript/tsc/internal/vibelangmapper: { baseline: 17199 }
+    typescript/tsc/internal/vibelangmapper: { baseline: 17204 }
     typescript/tsc/internal/vibelangprotocol: { baseline: 6 }
   go-file-max-lines:
     "*": { target: 500 }

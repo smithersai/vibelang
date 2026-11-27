@@ -34,10 +34,14 @@ const wikiSources = S.Filegroup({
     S.file("//docs/wiki/Architecture/Compiler-Pipeline.md"),
     S.file("//docs/wiki/Architecture/Continuation-Kernel.md"),
     S.file("//docs/wiki/Architecture/Build-Graph-and-Cache.md"),
+    S.file("//docs/wiki/Architecture/Language-Design-and-EK-Diagnostics.md"),
+    S.file("//docs/wiki/Architecture/Editor-LSP-and-Tooling.md"),
     S.file("//docs/wiki/Factory/Smithers-Cloud-Setup.md"),
     S.file("//docs/wiki/Factory/Trust-and-Cache-Model.md"),
     S.file("//docs/wiki/Factory/Backpressure-and-Uphill.md"),
     S.file("//docs/wiki/Factory/Agent-Workflow-Guide.md"),
+    S.file("//docs/wiki/Factory/Public-Roadmap-and-Open-Factory-Issues.md"),
+    S.file("//docs/wiki/Factory/Sandbox-and-MCP-Playbook.md"),
     S.file("//docs/wiki/Process/VIP-and-Decision-Log.md"),
     S.file("//docs/wiki/Process/Release-and-Security.md")
   ]

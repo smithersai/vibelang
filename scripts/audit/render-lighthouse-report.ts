@@ -343,6 +343,26 @@ function renderGaugeSvg(score: number, size = 96): string {
 </svg>`
 }
 
+function opportunityCommand(opp: UphillOpportunity): string {
+  if (opp.metric === "go-unit-tests" && opp.item?.startsWith("typescript/tsc/")) {
+    const pkg = opp.item.slice("typescript/tsc/".length)
+    return `cd typescript/tsc && go test -v ./${pkg}/...`
+  }
+  if (opp.metric === "ts-no-explicit-any" && opp.item) {
+    return `grep -rnE ':\\s*any\\b|\\bas\\s+any\\b' ${opp.item}/src/`
+  }
+  if (opp.metric === "go-no-panic" && opp.item) {
+    return `grep -rn 'panic(' ${opp.item}/ --exclude='*_test.go'`
+  }
+  if (opp.metric === "skill-bytes") {
+    return `wc -c packages/compiler/skills/vibelang/SKILL.md && (cd .smithers && bun run docs:check)`
+  }
+  if (opp.category === "factory") {
+    return `smthrs ci //.smithers:factory-suite --ui plain`
+  }
+  return `bun scripts/audit/run-audit.ts`
+}
+
 function renderStatusGlyph(band: "pass" | "average" | "fail"): string {
   if (band === "pass") return `<span class="lh-glyph lh-glyph--pass" aria-label="Pass"></span>`
   if (band === "average") return `<span class="lh-glyph lh-glyph--average" aria-label="Needs improvement"></span>`
@@ -443,6 +463,7 @@ export function renderLighthouseHtml(
               cur !== null && opp.target !== null && opp.target !== undefined
                 ? `${escapeHtml(formatValue(cur, unit))} -> ${escapeHtml(formatValue(opp.target, unit))}`
                 : escapeHtml(opp.note ?? "Target improvement")
+            const cmd = opportunityCommand(opp)
             return `
         <div class="lh-opp-row" data-audit-kind="opportunity" data-search="${escapeHtml(`${opp.category} ${label} ${opp.note ?? ""}`).toLowerCase()}">
           <div class="lh-opp-row__main">
@@ -453,6 +474,7 @@ export function renderLighthouseHtml(
           <div class="lh-opp-row__bar-wrap">
             <div class="lh-opp-row__track"><div class="lh-opp-row__bar" style="width:${barWidth}%"></div></div>
             <span class="lh-opp-row__gain">+${Math.round(opp.gain)} pts</span>
+            <button type="button" class="lh-copy-cmd" data-cmd="${escapeHtml(cmd)}" title="${escapeHtml(cmd)}">Copy cmd</button>
           </div>
         </div>`
           })
@@ -774,10 +796,16 @@ export function renderLighthouseHtml(
   .lh-opp-row__main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; }
   .lh-opp-row__name { font-weight: 600; font-size: 13.5px; }
   .lh-opp-row__delta { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-  .lh-opp-row__bar-wrap { display: flex; align-items: center; gap: 10px; width: 220px; flex-shrink: 0; }
+  .lh-opp-row__bar-wrap { display: flex; align-items: center; gap: 10px; width: 300px; flex-shrink: 0; }
   .lh-opp-row__track { flex: 1; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
   .lh-opp-row__bar { height: 100%; border-radius: 4px; background: var(--avg-ring); }
   .lh-opp-row__gain { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--avg); width: 58px; text-align: right; flex-shrink: 0; }
+  .lh-copy-cmd {
+    font-size: 11px; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--muted); cursor: pointer; font-family: var(--mono);
+    flex-shrink: 0;
+  }
+  .lh-copy-cmd:hover { border-color: var(--accent); color: var(--accent); }
   .lh-reg-row {
     display: flex; align-items: center; gap: 10px; padding: 8px 0;
     border-top: 1px solid var(--border); flex-wrap: wrap; font-size: 13.5px;
@@ -1034,6 +1062,19 @@ export function renderLighthouseHtml(
       setTimeout(() => { copyBtn.textContent = "Copy summary"; }, 1800);
     }
   });
+  for (const btn of document.querySelectorAll(".lh-copy-cmd")) {
+    btn.addEventListener("click", async () => {
+      const cmd = btn.getAttribute("data-cmd") || "";
+      try {
+        await navigator.clipboard.writeText(cmd);
+        btn.textContent = "Copied";
+        setTimeout(() => { btn.textContent = "Copy cmd"; }, 1400);
+      } catch {
+        btn.textContent = "Error";
+        setTimeout(() => { btn.textContent = "Copy cmd"; }, 1400);
+      }
+    });
+  }
 })();
 </script>
 <script type="application/json" id="audit-md-data">${markdownPayload}</script>

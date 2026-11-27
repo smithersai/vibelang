@@ -215,6 +215,32 @@ async function publishWikiFeed(notes: ReadonlyArray<WikiFeedNote>): Promise<void
   )
 }
 
+function renderScoreBar(score: number): string {
+  const filled = Math.max(0, Math.min(10, Math.round(score / 10)))
+  return `${"█".repeat(filled)}${"░".repeat(10 - filled)}`
+}
+
+function buildVisualSnapshotSection(auditJsonPath: string): string {
+  if (!existsSync(auditJsonPath)) return ""
+  try {
+    const summary = JSON.parse(readFileSync(auditJsonPath, "utf8")) as {
+      overallScore: number
+      categories: ReadonlyArray<{ title: string; score: number; passedCount: number; totalCount: number }>
+    }
+    const rows = [
+      `Overall   ${renderScoreBar(summary.overallScore)} ${String(summary.overallScore).padStart(3)}/100`,
+      "────────────────────────────────────────",
+      ...summary.categories.map(
+        (c) =>
+          `${c.title.padEnd(15)} ${renderScoreBar(c.score)} ${String(c.score).padStart(3)}/100  (${c.passedCount}/${c.totalCount})`
+      )
+    ]
+    return ["## Lighthouse Gauge Snapshot", "", "```text", ...rows, "```", ""].join("\n")
+  } catch {
+    return ""
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2)
   const check = args.includes("--check")
@@ -224,14 +250,16 @@ async function main() {
 
   const extra: WikiFeedNote[] = []
   const auditMdPath = join(repoRoot, ".uphill/lighthouse-audit.md")
+  const auditJsonPath = join(repoRoot, ".uphill/lighthouse-audit.json")
   if ((publish || writeOut) && existsSync(auditMdPath)) {
     const auditMd = readFileSync(auditMdPath, "utf8")
+    const gaugeBlock = buildVisualSnapshotSection(auditJsonPath)
     extra.push({
       path: "Factory/Live-Backpressure-Snapshot.md",
       title: "Live Backpressure Audit Snapshot",
       tags: ["backpressure", "lighthouse", "uphill", "live"],
       updatedAt: new Date().toISOString(),
-      markdown: `---\ntitle: Live Backpressure Audit Snapshot\ntags: [backpressure, lighthouse, uphill, live]\n---\n\n# Live Backpressure Audit Snapshot\n\n${auditMd}\nSee [[Backpressure-and-Uphill]], [[Trust-and-Cache-Model]], and [[Smithers-Cloud-Setup]] for methodology.\n`
+      markdown: `---\ntitle: Live Backpressure Audit Snapshot\ntags: [backpressure, lighthouse, uphill, live]\n---\n\n# Live Backpressure Audit Snapshot\n\n${gaugeBlock}${auditMd}\nSee [[Backpressure-and-Uphill]], [[Trust-and-Cache-Model]], [[Sandbox-and-MCP-Playbook]], and [[Smithers-Cloud-Setup]] for methodology.\n`
     })
   }
 

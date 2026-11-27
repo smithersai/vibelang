@@ -28,13 +28,18 @@ import (
 	"strings"
 )
 
+func die(args ...any) {
+	fmt.Fprintln(os.Stderr, args...)
+	os.Exit(1)
+}
+
 func main() {
 	output := flag.String("o", "builtin_contracts_generated.go", "the file to write")
 	flag.Parse()
 	fs := token.NewFileSet()
 	f, err := parser.ParseFile(fs, "../vibelang/globalthrows_table.go", nil, 0)
 	if err != nil {
-		panic(err)
+		die(err)
 	}
 	contracts := map[string]string{}
 	found := false
@@ -49,7 +54,7 @@ func main() {
 			key, err1 := strconv.Unquote(kv.Key.(*ast.BasicLit).Value)
 			throws, err2 := strconv.Unquote(kv.Value.(*ast.BasicLit).Value)
 			if err1 != nil || err2 != nil {
-				panic(fmt.Sprint(err1, err2))
+				die(err1, err2)
 			}
 			if throws == "never" || throws == "unknown" || strings.Contains(throws, "|") || strings.HasSuffix(key, "()") {
 				continue
@@ -66,7 +71,7 @@ func main() {
 		return false
 	})
 	if !found {
-		panic("missing globalThrowsTable")
+		die("missing globalThrowsTable")
 	}
 	keys := make([]string, 0, len(contracts))
 	for key := range contracts {
@@ -81,10 +86,10 @@ func main() {
 	out.WriteString("}\n")
 	data, err := format.Source(out.Bytes())
 	if err != nil {
-		panic(err)
+		die(err)
 	}
 	if err := os.WriteFile(*output, data, 0644); err != nil {
-		panic(err)
+		die(err)
 	}
 }
 

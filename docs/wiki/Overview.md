@@ -36,9 +36,9 @@ This Obsidian-compatible knowledge base is the shared source of truth for humans
 ## Start Here
 
 - **Origin and Chronicle**: [[Mythical-History|The Mythical History of VibeLang]]
-- **Compiler Internals**: [[Compiler-Pipeline|Go TypeScript 7 Compiler Pipeline]] and [[Continuation-Kernel|Continuation Kernel and Effect 4 Runtime]]
+- **Compiler and Tooling**: [[Compiler-Pipeline|Go TypeScript 7 Compiler Pipeline]], [[Language-Design-and-EK-Diagnostics|Language Design and EK Diagnostics]], [[Continuation-Kernel|Continuation Kernel and Effect 4 Runtime]], and [[Editor-LSP-and-Tooling|Editor, LSP, and Tooling Ecosystem]]
 - **Build and Cache**: [[Build-Graph-and-Cache|5,709-Target Build Graph and Shared Object Store]]
-- **Coding Factory**: [[Smithers-Cloud-Setup|Smithers Cloud Public Factory Setup]], [[Trust-and-Cache-Model|Trust and Cache Model]], [[Backpressure-and-Uphill|Lighthouse Backpressure Audit]], and [[Agent-Workflow-Guide|Cloud MCP Agent Workflow Guide]]
+- **Coding Factory**: [[Smithers-Cloud-Setup|Smithers Cloud Public Factory Setup]], [[Trust-and-Cache-Model|Trust and Cache Model]], [[Backpressure-and-Uphill|Lighthouse Backpressure Audit]], [[Sandbox-and-MCP-Playbook|Sandbox and Cloud MCP Playbook]], [[Public-Roadmap-and-Open-Factory-Issues|Public Roadmap and Open Factory Issues]], and [[Agent-Workflow-Guide|Cloud MCP Agent Workflow Guide]]
 - **Governance and Releases**: [[VIP-and-Decision-Log|VIPs and Specification Grading]] and [[Release-and-Security|Automated Releases, Docs Deploy, and Trust Boundaries]]
 
 ## Key Numbers
