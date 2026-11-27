@@ -31,6 +31,7 @@ import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type * as AiError from "effect/ai/AiError"
 import type * as LanguageModel from "effect/ai/LanguageModel"
+import type * as Tool from "effect/ai/Tool"
 import type * as Toolkit from "effect/ai/Toolkit"
 import * as Acp from "./internal/agentAcp.js"
 import * as Loop from "./internal/agentLoop.js"
@@ -707,7 +708,7 @@ export interface RunOptions<Output extends Schema.Top, E = never, R = never> {
    * The functions a cell may call: a toolkit with handlers, or an Effect that
    * gives one, such as `Experimental.Tools.filesystem`. None unless set.
    */
-  readonly tools?: Toolkit.WithHandler<any> | Effect.Effect<Toolkit.WithHandler<any>, E, R> | undefined
+  readonly tools?: Toolkit.WithHandler<Record<string, Tool.Any>> | Effect.Effect<Toolkit.WithHandler<Record<string, Tool.Any>>, E, R> | undefined
   /** Turns before the run fails with `turns_exhausted`. {@link defaultMaxTurns} unless set. */
   readonly maxTurns?: number | undefined
   /** Re-prompts after an answer that fails `output`. 1 unless set. */
@@ -820,9 +821,13 @@ export const run = <Output extends Schema.Top, E = never, R = never>(
   LanguageModel.LanguageModel | R | Output["DecodingServices"]
 > =>
   Effect.mapError(
-    Loop.run(options as Loop.Options, () => Effect.void, false),
+    Loop.run(options as unknown as Loop.Options, () => Effect.void, false),
     (error) => loopFailed(error as Loop.LoopFailure | AiError.AiError)
-  ) as any
+  ) as unknown as Effect.Effect<
+    RunResult<Output["Type"]>,
+    AgentFailed | AiError.AiError | E,
+    LanguageModel.LanguageModel | R | Output["DecodingServices"]
+  >
 
 /**
  * The same run as {@link run}, as a stream of {@link AgentEvent}s ending in
@@ -840,16 +845,16 @@ export const stream = <Output extends Schema.Top, E = never, R = never>(
   AgentFailed | AiError.AiError | E,
   LanguageModel.LanguageModel | R | Output["DecodingServices"]
 > =>
-  Stream.callback<AgentEvent<Output["Type"]>, AgentFailed | AiError.AiError | E, any>((queue) =>
-    Loop.run(options as Loop.Options, (event) => Effect.asVoid(Queue.offer(queue, event)), true).pipe(
+  Stream.callback<AgentEvent<Output["Type"]>, AgentFailed | AiError.AiError | E, LanguageModel.LanguageModel | R | Output["DecodingServices"]>((queue) =>
+    Loop.run(options as unknown as Loop.Options, (event) => Effect.asVoid(Queue.offer(queue, event)), true).pipe(
       Effect.mapError((error) => loopFailed(error as Loop.LoopFailure | AiError.AiError)),
       Effect.matchCauseEffect({
-        onFailure: (cause) => Queue.failCause(queue, cause as any),
+        onFailure: (cause) => Queue.failCause(queue, cause as unknown as Cause.Cause<AgentFailed | AiError.AiError | E>),
         onSuccess: (result) =>
           Effect.andThen(
             Queue.offer(queue, { _tag: "Finished", result: result as RunResult<Output["Type"]> }),
             Queue.end(queue)
           )
       })
-    )
-  ) as any
+    ) as unknown as Effect.Effect<void, never, LanguageModel.LanguageModel | R | Output["DecodingServices"]>
+  )

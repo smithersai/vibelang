@@ -1,3 +1,4 @@
+import "./version.js"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 
@@ -92,8 +93,8 @@ export function sync(evaluate: unknown, ...inputs: Array<unknown>): Effect.Effec
  */
 export const $try: {
   <A = never, E = never, R = never>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
-  <T extends Effect.Effect<any, any, any>>(effect: T): Effect.Effect<Effect.Success<T>, Effect.Error<T>, Effect.Services<T>>
-} = <T extends Effect.Effect<any, any, any>>(effect: T) => effect as Effect.Effect<Effect.Success<T>, Effect.Error<T>, Effect.Services<T>>
+  <T extends Effect.Effect<unknown, unknown, unknown>>(effect: T): Effect.Effect<Effect.Success<T>, Effect.Error<T>, Effect.Services<T>>
+} = <T extends Effect.Effect<unknown, unknown, unknown>>(effect: T) => effect as Effect.Effect<Effect.Success<T>, Effect.Error<T>, Effect.Services<T>>
 
 /**
  * The `resume` a `callback` hatch receives. A .vibe file names it without an
@@ -121,7 +122,7 @@ export function callback<A, E = never, Args extends Inputs = [], R = never>(
   ...args: Args
 ): Effect.Effect<A, E, R>
 export function callback<A, E = never, Args extends Inputs = [], R = never>(register: (...args: [...Args, Resume<A, E>]) => void | (() => void) | (() => PromiseLike<void>) | Effect.Effect<void, never, R>, ...args: Args): Effect.Effect<A, E, R>
-export function callback(register: (...args: Array<any>) => unknown, ...args: Inputs): Effect.Effect<unknown, unknown, unknown> {
+export function callback(register: (...args: ReadonlyArray<never>) => unknown, ...args: Inputs): Effect.Effect<unknown, unknown, unknown> {
   return Effect.callback<unknown, unknown, unknown>((resumeEffect, signal) => {
     const resume = ((value: unknown) => resumeEffect(Effect.succeed(value))) as Resume<unknown, unknown> & { fail: unknown; exit: unknown }
     resume.fail = (error: unknown) => resumeEffect(Effect.fail(error))

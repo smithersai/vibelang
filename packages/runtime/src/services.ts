@@ -1,3 +1,4 @@
+import "./version.js"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -23,9 +24,9 @@ type Residual<L extends ReadonlyArray<unknown>> = { [K in keyof L]: Exclude<LIn<
 export const wire = <const L extends readonly [Layer.Any, ...Array<Layer.Any>]>(
   ...layers: L
 ): Layer.Layer<LOut<L[number]>, LErr<L[number]>, Residual<L>> => {
-  let acc = layers[layers.length - 1] as Layer.Layer<any, any, any>
-  for (let i = layers.length - 2; i >= 0; i--) acc = Layer.provideMerge(layers[i] as Layer.Layer<any, any, any>, acc)
-  return acc as any
+  let acc = layers[layers.length - 1] as Layer.Layer<never, unknown, unknown>
+  for (let i = layers.length - 2; i >= 0; i--) acc = Layer.provideMerge(layers[i] as Layer.Layer<never, unknown, unknown>, acc)
+  return acc as unknown as Layer.Layer<LOut<L[number]>, LErr<L[number]>, Residual<L>>
 }
 
 // ---------------------------------------------------------------------------
@@ -37,8 +38,8 @@ export const wire = <const L extends readonly [Layer.Any, ...Array<Layer.Any>]>(
 export abstract class Control {}
 
 interface ControlInfo {
-  readonly ops: Record<string, K.Operation<any, any, any>>
-  readonly impl: Record<string, (...args: Array<any>) => Effect.Effect<any, any, any>>
+  readonly ops: Record<string, K.Operation<Array<unknown>, unknown, unknown>>
+  readonly impl: Record<string, (...args: Array<unknown>) => Effect.Effect<unknown, unknown, unknown>>
   /** Each operation's declared parameter count, or -1 when it has a rest parameter or is unknown. */
   readonly arity: Record<string, number>
 }
@@ -50,12 +51,12 @@ export const controls = new WeakMap<object, ControlInfo>()
  * rest parameter), so `handle` passes a clause its continuation after every
  * declared parameter even when a call leaves an optional argument out.
  */
-export const $control = (cls: Context.Key<any, any>, methods: ReadonlyArray<string>, arities: ReadonlyArray<number> = []) => {
-  const ops: Record<string, K.Operation<any, any, any>> = {}
-  const impl: Record<string, (...args: Array<any>) => Effect.Effect<any, any, any>> = {}
+export const $control = (cls: Context.Key<unknown, unknown>, methods: ReadonlyArray<string>, arities: ReadonlyArray<number> = []) => {
+  const ops: Record<string, K.Operation<Array<unknown>, unknown, unknown>> = {}
+  const impl: Record<string, (...args: Array<unknown>) => Effect.Effect<unknown, unknown, unknown>> = {}
   const arity: Record<string, number> = {}
   methods.forEach((m, i) => {
-    const op = K.operation<Array<any>, any, any>(`${cls.key}.${m}`)
+    const op = K.operation<Array<unknown>, unknown, unknown>(`${cls.key}.${m}`)
     ops[m] = op
     impl[m] = (...args) => op(args)
     arity[m] = arities[i] ?? -1
@@ -86,7 +87,7 @@ export type ReferenceKey<S> = (abstract new () => {}) & Context.Reference<S>
  * `Context.Service<I, S>()(key)` (D501).
  */
 export const $service = <I, S = I>(key: string): ServiceKey<I, S> =>
-  Context.Service<I, S>()(key) as any
+  Context.Service<I, S>()(key) as unknown as ServiceKey<I, S>
 
 // ---------------------------------------------------------------------------
 // VIP-57: schema services and worker imports
@@ -136,7 +137,7 @@ export type SchemaServiceKey<I, S = I> = ServiceKey<I, S> & {
  *
  * @internal
  */
-export const schemaServices = new Map<string, Context.Key<any, any> & { readonly [SchemaServiceTypeId]: SchemaServiceInfo }>()
+export const schemaServices = new Map<string, Context.Key<unknown, unknown> & { readonly [SchemaServiceTypeId]: SchemaServiceInfo }>()
 
 /**
  * VIP-57: the base of a generated `schema service` class. It is what
@@ -152,7 +153,7 @@ export const $schemaService = <I, S = I>(
   rpcs: () => unknown,
   typedTransport: ReadonlyArray<string> = []
 ): SchemaServiceKey<I, S> => {
-  const service = Context.Service<I, S>()(key) as any
+  const service = Context.Service<I, S>()(key) as unknown as SchemaServiceKey<I, S>
   const info: SchemaServiceInfo = Object.freeze({ key, rpcs, typedTransport: Object.freeze([...typedTransport]) })
   Object.defineProperty(service, SchemaServiceTypeId, { value: info, enumerable: false, writable: false, configurable: false })
   schemaServices.set(key, service)
@@ -179,7 +180,7 @@ export interface WorkerHandleValue {
   /** The compiled worker module, or with `entry`, a self-contained worker entry script. */
   readonly url: URL
   /** The schema services the module's default-export layer provides. */
-  readonly services: ReadonlyArray<Context.Key<any, any>>
+  readonly services: ReadonlyArray<Context.Key<unknown, unknown>>
   /** Whether `url` is already a worker entry script, as a bundler plugin writes it. */
   readonly entry: boolean
   /**
@@ -202,7 +203,7 @@ export interface WorkerHandleValue {
  */
 export const $worker = (
   source: URL | ((id: number) => unknown),
-  services: ReadonlyArray<Context.Key<any, any>>,
+  services: ReadonlyArray<Context.Key<unknown, unknown>>,
   entry?: boolean
 ): WorkerHandleValue =>
   typeof source === "function"
@@ -229,4 +230,4 @@ export const $worker = (
  * class's `defaultValue()` result.
  */
 export const $reference = <I>(key: string, defaultValue: () => I): ReferenceKey<I> =>
-  Context.Reference<I>(key, { defaultValue }) as any
+  Context.Reference<I>(key, { defaultValue }) as unknown as ReferenceKey<I>

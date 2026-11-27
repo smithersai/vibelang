@@ -125,7 +125,7 @@ export interface GateOptions {
  * @category models
  * @since 0.0.13
  */
-export interface Suite<Args extends ReadonlyArray<unknown> = ReadonlyArray<any>, A = any, R = never> {
+export interface Suite<Args extends ReadonlyArray<unknown> = ReadonlyArray<unknown>, A = unknown, R = never> {
   readonly [TypeId]: TypeId
   readonly name: string
   readonly targetTag?: string | undefined
@@ -144,7 +144,7 @@ export interface Suite<Args extends ReadonlyArray<unknown> = ReadonlyArray<any>,
   readonly warnings: ReadonlyArray<string>
 }
 
-type ServicesOf<S> = S extends Scorer.Scorer<any, infer R> ? R : never
+type ServicesOf<S> = S extends Scorer.Scorer<never, infer R> ? R : never
 
 /**
  * Options of {@link suite}.
@@ -157,7 +157,7 @@ export interface SuiteOptions<
   A,
   E,
   R,
-  S extends ReadonlyArray<Scorer.Scorer<Scorer.Run<Args, A>, any>>
+  S extends ReadonlyArray<Scorer.Scorer<Scorer.Run<Args, A>, unknown>>
 > {
   readonly target: (...args: Args) => Effect.Effect<A, E, R>
   readonly cases: ReadonlyArray<Case<NoInfer<Args>, NoInfer<A>>>
@@ -181,7 +181,7 @@ export const suite = <
   A,
   E = never,
   R = never,
-  const S extends ReadonlyArray<Scorer.Scorer<Scorer.Run<NoInfer<Args>, NoInfer<A>>, any>> = readonly []
+  const S extends ReadonlyArray<Scorer.Scorer<Scorer.Run<NoInfer<Args>, NoInfer<A>>, unknown>> = readonly []
 >(name: string, options: SuiteOptions<Args, A, E, R, S>): Suite<Args, A, R | ServicesOf<S[number]>> => {
   type Declared = Suite<Args, A, R | ServicesOf<S[number]>>
   // Read every field once and never throw: run refuses what is malformed.
@@ -701,7 +701,7 @@ export interface JsonLinesOptions<
   A,
   E,
   R,
-  S extends ReadonlyArray<Scorer.Scorer<Scorer.Run<Args, A>, any>>
+  S extends ReadonlyArray<Scorer.Scorer<Scorer.Run<Args, A>, unknown>>
 > extends Omit<SuiteOptions<Args, A, E, R, S>, "cases"> {
   readonly name: string
 }
@@ -720,7 +720,7 @@ export const fromJsonLines = <
   A,
   E = never,
   R = never,
-  const S extends ReadonlyArray<Scorer.Scorer<Scorer.Run<NoInfer<Args>, NoInfer<A>>, any>> = readonly []
+  const S extends ReadonlyArray<Scorer.Scorer<Scorer.Run<NoInfer<Args>, NoInfer<A>>, unknown>> = readonly []
 >(
   source: string,
   options: JsonLinesOptions<Args, A, E, R, S>

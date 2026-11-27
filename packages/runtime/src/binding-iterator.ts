@@ -1,3 +1,4 @@
+import "./version.js"
 // Compiler ABI for statement-lowered array binding defaults. Keep source jumps
 // as native jumps: in particular IteratorClose errors replace a return, whereas
 // an exception already in flight wins over a closing exception.

@@ -1,3 +1,4 @@
+import "./version.js"
 // Pattern matching (VIP-7). The compiler parses `match (x) { when P: v; }`,
 // `async match` and `x is P`, the TC39 pattern matching proposal pinned in
 // docs/design/vips/tc39-pattern-matching, into plain tests that TypeScript
@@ -12,28 +13,10 @@
 // support; the compiler reports it, so it never runs in a program that
 // compiled.
 
-/**
- * The proposal's `Symbol.customMatcher`: a static method that decides whether
- * a subject matches. `x is M` tests its result for truthiness; an extractor
- * pattern `M(...)` accepts `false` or an iterable object of extracted values. The runtime
- * defines `Symbol.customMatcher` when the engine lacks it, as the registered
- * symbol the proposal's polyfills use, so every copy of the runtime agrees.
- * Like a well-known symbol it is non-writable, non-enumerable and
- * non-configurable; an engine's own symbol is kept (008-runtime.md, Matcher
- * symbol initialization).
- */
-if ((Symbol as any).customMatcher === undefined) {
-  Object.defineProperty(Symbol, "customMatcher", { value: Symbol.for("Symbol.customMatcher") })
-}
-export const customMatcher: typeof Symbol.customMatcher = (Symbol as any).customMatcher
+import { customMatcher } from "./custom-matcher-symbol.js"
+export { customMatcher }
 
-// Public matcher-bearing declarations reference this module through the
-// runtime package, including when a stock consumer has no VibeLang prelude.
-declare global {
-  interface SymbolConstructor {
-    readonly customMatcher: unique symbol
-  }
-}
+type AnyConstructor = abstract new (...args: ReadonlyArray<never>) => unknown
 
 /** The generated matchers of error declarations, which their subclasses share (D278). */
 const errorMatchers = new WeakSet<object>()
@@ -58,12 +41,12 @@ function matcherOf(value: unknown, ownClassOnly = false): Function | undefined {
     if (typeof value === "function" && !Object.hasOwn(value, customMatcher)) return undefined
     // An own undefined value uses the draft's identity default, rather than
     // the ordinary-class instanceof fallback selected for an absent property.
-    const custom = (value as any)[customMatcher]
+    const custom = (value as Record<PropertyKey, unknown>)[customMatcher]
     if (typeof value === "function" && custom === undefined) return undefinedOwnClassMatcher
     // Reflect.apply below performs the native callable check for other values.
-    return custom
+    return custom as Function | undefined
   }
-  const custom = (value as any)[customMatcher]
+  const custom = (value as Record<PropertyKey, unknown>)[customMatcher]
   if (typeof custom !== "function") return undefined
   if (typeof value === "function" && !Object.hasOwn(value, customMatcher) && !errorMatchers.has(custom)) return undefined
   return custom
@@ -85,7 +68,7 @@ export interface MatchHint {
  * `{ matchType: "extractor" }`, still counts.
  */
 export interface CustomMatcher<R = unknown> {
-  [customMatcher](subject: any, hint: MatchHint, receiver?: unknown): R
+  [customMatcher](subject: never, hint: MatchHint, receiver?: unknown): R
 }
 
 const primitiveTypes = new Map<unknown, string>([
@@ -115,10 +98,10 @@ const builtinTests = new Map<unknown, (subject: unknown) => boolean>([
  */
 function regExpExtract(regexp: RegExp, subject: unknown): ReadonlyArray<RegExpMatchArray> | false {
   if (String(regexp.flags).includes("g")) {
-    const all = Array.from((regexp as any)[Symbol.matchAll](subject) as Iterable<RegExpMatchArray>)
+    const all = Array.from((regexp as unknown as { [Symbol.matchAll](s: unknown): Iterable<RegExpMatchArray> })[Symbol.matchAll](subject))
     return all.length === 0 ? false : all
   }
-  const result = (regexp as any)[Symbol.match](subject) as RegExpMatchArray | null
+  const result = (regexp as unknown as { [Symbol.match](s: unknown): RegExpMatchArray | null })[Symbol.match](subject)
   return result === null ? false : [result]
 }
 
@@ -131,7 +114,7 @@ function regExpExtract(regexp: RegExp, subject: unknown): ReadonlyArray<RegExpMa
 function builtinTest(matcher: unknown, subject: unknown): boolean | undefined {
   if (matcher instanceof RegExp) return !!matcher.test(subject as string)
   const primitive = primitiveTypes.get(matcher)
-  if (primitive !== undefined) return typeof subject === primitive || subject instanceof (matcher as any)
+  if (primitive !== undefined) return typeof subject === primitive || subject instanceof (matcher as AnyConstructor)
   const test = builtinTests.get(matcher)
   if (test !== undefined) return test(subject)
   return undefined
@@ -151,7 +134,7 @@ const classSyntaxCache = new WeakMap<Function, boolean>()
  * functions are predicates.
  */
 function isClass(f: Function): boolean {
-  const prototype = (f as any).prototype
+  const prototype = (f as { readonly prototype?: unknown }).prototype
   if (prototype === undefined || prototype === null) return false
   let classSyntax = classSyntaxCache.get(f)
   if (classSyntax === undefined) {
@@ -177,7 +160,7 @@ function sameValue(pattern: unknown, subject: unknown): boolean {
  * of a parameter typed string | number, and the value overload would then
  * take the function and narrow the subject to it.
  */
-export function $is<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown, receiver?: unknown): subject is InstanceType<C>
+export function $is<C extends AnyConstructor>(matcher: C, subject: unknown, receiver?: unknown): subject is InstanceType<C>
 export function $is<S, T extends S>(matcher: (subject: S, hint: MatchHint) => subject is T, subject: unknown, receiver?: unknown): subject is T
 export function $is<S>(matcher: CustomMatcher | ((subject: S, hint: MatchHint) => unknown) | RegExp, subject: unknown, receiver?: unknown): boolean
 export function $is<const T>(matcher: T, subject: unknown, receiver?: unknown): subject is T
@@ -187,13 +170,13 @@ export function $is(matcher: unknown, subject: unknown, receiver: unknown = null
     if (custom !== undefined) {
       return typeof custom === "function"
         ? !!fnCall.call(custom, matcher, subject, booleanHint, receiver)
-        : !!Reflect.apply(custom as any, matcher, [subject, booleanHint, receiver])
+        : !!Reflect.apply(custom as Function, matcher, [subject, booleanHint, receiver])
     }
     const builtin = builtinTest(matcher, subject)
     if (builtin !== undefined) return builtin
     if (typeof matcher === "function") {
       return (dispatch === "construct" || dispatch === "" && isClass(matcher))
-        ? subject instanceof (matcher as any)
+        ? subject instanceof (matcher as AnyConstructor)
         : !!fnCall.call(matcher, receiver, subject, booleanHint)
     }
   }
@@ -203,7 +186,7 @@ export function $is(matcher: unknown, subject: unknown, receiver: unknown = null
 /** The values an extractor pattern with a custom matcher returning R matches against. */
 export type Extracted<R> = R extends false ? false
   : R extends true ? readonly []
-  : R extends ReadonlyArray<any> ? R
+  : R extends ReadonlyArray<unknown> ? R
   : R extends Iterable<infer X> ? ReadonlyArray<X>
   : ReadonlyArray<unknown>
 
@@ -213,7 +196,7 @@ export type ArrayExtraction<S> = unknown extends S ? ReadonlyArray<unknown> : Ex
 /** A typed array's constructor. */
 interface TypedArrayClass<T> {
   readonly BYTES_PER_ELEMENT: number
-  new(...args: Array<any>): T
+  new(...args: ReadonlyArray<never>): T
 }
 
 const typedArray = Object.getPrototypeOf(Uint8Array)
@@ -228,7 +211,7 @@ const instanceExtractors = new Set<unknown>([
 ])
 
 /** The list a matcher or a call-only extractor returned, or false. */
-function extractedList(result: unknown): ReadonlyArray<any> | false {
+function extractedList(result: unknown): ReadonlyArray<unknown> | false {
   if (result === false) return false
   if (Array.isArray(result)) return result
   if (result !== null && (typeof result === "object" || typeof result === "function")) return [...result as Iterable<unknown>]
@@ -269,22 +252,22 @@ export function $extract(matcher: RegExp, subject: unknown, receiver?: unknown):
 // A primitive class extracts the primitive: [subject] for a primitive and
 // [subject.valueOf()] for its boxed object (Chapter 004), never the box.
 export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: unknown, receiver?: unknown): readonly [PrimitiveForConstructor<C>] | false
-export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown, receiver?: unknown): readonly [InstanceType<C> | PrimitiveForConstructor<C>] | false
+export function $extract<C extends AnyConstructor>(matcher: C, subject: unknown, receiver?: unknown): readonly [InstanceType<C> | PrimitiveForConstructor<C>] | false
 export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown, receiver?: unknown): Extracted<R> | false
-export function $extract(matcher: unknown, subject: unknown, receiver?: unknown): ReadonlyArray<any> | false
+export function $extract(matcher: unknown, subject: unknown, receiver?: unknown): ReadonlyArray<unknown> | false
 export function $extract(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false, dispatch: "" | "call" | "construct" = ""): unknown {
   const custom = matcherOf(matcher, ownClassOnly)
   if (custom !== undefined) {
     return extractedList(
       typeof custom === "function"
         ? fnCall.call(custom, matcher, subject, extractorHint, receiver)
-        : Reflect.apply(custom as any, matcher, [subject, extractorHint, receiver])
+        : Reflect.apply(custom as Function, matcher, [subject, extractorHint, receiver])
     )
   }
   if (matcher instanceof RegExp) return regExpExtract(matcher, subject)
   if (typeof matcher === "function") {
     if (matcher === Array) return Array.isArray(subject) ? subject : false
-    if (Object.getPrototypeOf(matcher) === typedArray) return subject instanceof (matcher as any) ? subject : false
+    if (Object.getPrototypeOf(matcher) === typedArray) return subject instanceof (matcher as AnyConstructor) ? subject : false
     const builtin = builtinTest(matcher, subject)
     if (builtin !== undefined) {
       if (!builtin) return false
@@ -292,7 +275,7 @@ export function $extract(matcher: unknown, subject: unknown, receiver: unknown =
       return [primitive !== undefined && typeof subject !== primitive ? (subject as { valueOf(): unknown }).valueOf() : subject]
     }
     if (dispatch === "construct" || dispatch === "" && isClass(matcher)) {
-      if (!(subject instanceof (matcher as any))) return false
+      if (!(subject instanceof (matcher as AnyConstructor))) return false
       if (instanceExtractors.has(matcher)) return [subject]
       throw new TypeError("An ordinary class used as an extractor must return an object")
     }
@@ -314,7 +297,7 @@ function setDataProperty(target: Record<PropertyKey, unknown>, key: PropertyKey,
 export function $rest<T, K extends PropertyKey>(subject: T, keys: ReadonlyArray<K>): Omit<T, K> {
   const result: Record<PropertyKey, unknown> = {}
   const keyCount = keys.length
-  const source = subject as any
+  const source = subject as Record<PropertyKey, unknown>
   const ownStrings = Object.keys(source)
   const ownSymbols = Object.getOwnPropertySymbols(source)
   if (keyCount === 0) {
@@ -386,8 +369,8 @@ export function $relation(operator: "<" | ">" | "<=" | ">=" | "in", subject: unk
     if (value === null || (typeof value !== "object" && typeof value !== "function")) return false
     return (subject as PropertyKey) in (value as object)
   }
-  const s = subject as any
-  const v = value as any
+  const s = subject as number
+  const v = value as number
   switch (operator) {
     case "<":
       return s < v

@@ -1,3 +1,4 @@
+import "./version.js"
 import * as Effect from "effect/Effect"
 
 // Legacy compiler ABI, retained for already-emitted frames. Current compilers
@@ -5,7 +6,7 @@ import * as Effect from "effect/Effect"
 // frame to run IteratorClose or FinishMatch.
 
 /** @internal Compiler ABI: give Effect ownership of a generator's live native iterators. */
-export const $iteratorFrame = <F extends (...args: any[]) => Generator<Effect.Effect<any, any, any>, any, any>>(
+export const $iteratorFrame = <F extends (...args: ReadonlyArray<never>) => Generator<Effect.Effect<unknown, unknown, unknown>, unknown, never>>(
   body: F
 ): F => {
   const wrapped = function(this: unknown, ...args: Parameters<F>) {
@@ -16,7 +17,7 @@ export const $iteratorFrame = <F extends (...args: any[]) => Generator<Effect.Ef
   }
   Object.defineProperty(wrapped, "length", { value: body.length, configurable: true })
   Object.defineProperty(wrapped, "name", { value: body.name, configurable: true })
-  return wrapped as F
+  return wrapped as unknown as F
 }
 
 // A finished generator ignores return(). Source catch and finally are Effect

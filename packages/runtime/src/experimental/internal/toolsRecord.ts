@@ -34,6 +34,6 @@ export const recorded = <A, E, R, S extends Schema.Top, F extends Schema.Top>(op
         name,
         success: options.success,
         error: options.error,
-        execute: options.execute as any
+        execute: options.execute as unknown as Effect.Effect<unknown, unknown, unknown>
       }) as unknown as Effect.Effect<A, E, R>)
   })

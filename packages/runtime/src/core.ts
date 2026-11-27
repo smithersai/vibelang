@@ -1,4 +1,5 @@
 import "./version.js"
+import "./custom-matcher-symbol.js"
 // Runtime ABI used by generated VibeLang modules.
 // Capture the intrinsics outside user scopes, where Object may be shadowed.
 export const $freeze = Object.freeze
@@ -35,7 +36,25 @@ export type {
 export * from "./primitives.js"
 export * from "./match.js"
 export * from "./main.js"
-export * from "./prelude-core.js"
+export * as Effect from "effect/Effect"
+export * as Exit from "effect/Exit"
+export * as Layer from "effect/Layer"
+export * as Schema from "effect/Schema"
+export * as Scope from "effect/Scope"
+export { pipe } from "effect/Function"
+import type * as EffectModule from "effect/Effect"
+import type * as ScopeModule from "effect/Scope"
+export type Effect<A, E = never, R = never> = EffectModule.Effect<A, E, R>
+export type Scope = ScopeModule.Scope
+export {
+  $errorSubclass,
+  $isError,
+  $schemaErrorFamily,
+  $schemaErrorMatcher,
+  $schemaErrorMember,
+  TaggedError,
+  type $ErrorArgs
+} from "./prelude-core.js"
 
 // Effect's acquisitions, as `using` adopts their releases (D401).
 export { acquireDisposable, acquireRelease } from "./resources.js"

@@ -90,7 +90,7 @@ export const make = <
     successSchema: options.success ?? Schema.Void,
     errorSchema: options.error ?? Schema.Never,
     key: options.key
-  }) as any
+  }) as unknown as WorkQueue<Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload, Success, Error>
 
 const queueName = (queue: WorkQueue<Schema.Top, Schema.Top, Schema.Top>) => `WorkQueue/${queue.name}`
 
@@ -147,13 +147,13 @@ export const process = <Payload extends Schema.Top, Success extends Schema.Top, 
   | Error["DecodingServices"]
 > =>
   Effect.gen(function*() {
-    const any = queue as unknown as WorkQueue<Schema.Top, Success, Error>
+    const erased = queue as unknown as WorkQueue<Schema.Top, Success, Error>
     const value = yield* Effect.orDie(Effect.mapError(queue.payloadSchema.makeEffect(payload), (issue) => new Schema.SchemaError(issue)))
     const instance = yield* WorkflowEngine.WorkflowInstance
     const key = queue.key(value)
     const n = nextOccurrence(instance, `${queue.name}\u0000${key}`)
-    const id = yield* Activity.idempotencyKey(`${queueName(any)}/${key}/${n}`)
-    const deferred = deferredOf(any, id)
+    const id = yield* Activity.idempotencyKey(`${queueName(erased)}/${key}/${n}`)
+    const deferred = deferredOf(erased, id)
     const token = yield* DurableDeferred.token(deferred)
     // The run waits on an event, as a signal's wait does: `Durable.waiting`
     // shows it under the queue's name until the worker's exit is recorded.
@@ -163,7 +163,7 @@ export const process = <Payload extends Schema.Top, Success extends Schema.Top, 
       Schema.Void,
       Effect.void
     )
-    const persisted = yield* PersistedQueue.make({ name: queueName(any), schema: itemSchema(queue.payloadSchema) })
+    const persisted = yield* PersistedQueue.make({ name: queueName(erased), schema: itemSchema(queue.payloadSchema) })
     yield* persisted.offer({ token, payload: value }, { id }).pipe(
       Effect.catchTag("SchemaError", Effect.die),
       Effect.tapCause((cause) => Effect.logWarning("WorkQueue offer failed; retrying", cause)),
@@ -171,7 +171,17 @@ export const process = <Payload extends Schema.Top, Success extends Schema.Top, 
       Effect.orDie
     )
     return yield* DurableDeferred.await(deferred)
-  }) as any
+  }) as unknown as Effect.Effect<
+    Success["Type"],
+    Error["Type"],
+    | WorkflowEngine.WorkflowEngine
+    | WorkflowEngine.WorkflowInstance
+    | PersistedQueue.PersistedQueueFactory
+    | Payload["EncodingServices"]
+    | Payload["DecodingServices"]
+    | Success["DecodingServices"]
+    | Error["DecodingServices"]
+  >
 
 /** A take whose handler did not finish keeps its item: attempts never run out. */
 const neverDrop = 2_147_483_647
@@ -205,14 +215,14 @@ export const makeWorker = <Payload extends Schema.Top, Success extends Schema.To
     if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
       return yield* Effect.die(new RangeError(`WorkQueue ${queue.name}: concurrency must be a positive integer, not ${concurrency}`))
     }
-    const any = queue as unknown as WorkQueue<Schema.Top, Success, Error>
-    const persisted = yield* PersistedQueue.make({ name: queueName(any), schema: itemSchema(queue.payloadSchema), maxAttempts: neverDrop })
+    const erased = queue as unknown as WorkQueue<Schema.Top, Success, Error>
+    const persisted = yield* PersistedQueue.make({ name: queueName(erased), schema: itemSchema(queue.payloadSchema), maxAttempts: neverDrop })
     const take = persisted.take((item, metadata) =>
       Effect.gen(function*() {
         const exit = yield* Effect.exit(handler(item.payload as Payload["Type"]))
         // Interruption alone is not an answer: fail the take, and the item is delivered again.
         if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)) return yield* Effect.failCause(exit.cause)
-        yield* DurableDeferred.done(deferredOf(any, metadata.id), { token: item.token, exit })
+        yield* DurableDeferred.done(deferredOf(erased, metadata.id), { token: item.token, exit })
       })
     ).pipe(
       Effect.catchCause((cause) =>
@@ -224,7 +234,16 @@ export const makeWorker = <Payload extends Schema.Top, Success extends Schema.To
     )
     yield* Effect.replicateEffect(take, concurrency, { concurrency, discard: true })
     return yield* Effect.never
-  }) as any
+  }) as unknown as Effect.Effect<
+    never,
+    never,
+    | WorkflowEngine.WorkflowEngine
+    | PersistedQueue.PersistedQueueFactory
+    | R
+    | Payload["DecodingServices"]
+    | Success["EncodingServices"]
+    | Error["EncodingServices"]
+  >
 
 /**
  * A layer that runs {@link makeWorker} for the life of its scope.

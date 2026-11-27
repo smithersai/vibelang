@@ -62,7 +62,7 @@ const statusOf = (result: Workflow.Result<unknown, unknown>): RunStatus => {
  * A workflow's plan as a function of its payload, set by `Durable.workflow`'s
  * `plan` option. The engine journals the plan's digest when a run starts.
  */
-export class PlanOf extends Context.Reference<((payload: any) => unknown) | undefined>("vibelang/experimental/Durable/PlanOf", {
+export class PlanOf extends Context.Reference<((payload: never) => unknown) | undefined>("vibelang/experimental/Durable/PlanOf", {
   defaultValue: () => undefined
 }) {}
 
@@ -80,7 +80,7 @@ export class PlanChanged extends Data.TaggedError("PlanChanged")<{
 /** The digest of the plan `workflow` builds for `payload`, or null when it declares none. */
 export const planDigest = (workflow: Workflow.Any, payload: object): Effect.Effect<string | null> => {
   const plan = Context.get(workflow.annotations, PlanOf)
-  return plan === undefined ? Effect.succeed(null) : sha256(canonicalJson(plan(payload)))
+  return plan === undefined ? Effect.succeed(null) : sha256(canonicalJson((plan as (p: unknown) => unknown)(payload)))
 }
 
 /** The step annotations the journal records with `StepStarted`. */
@@ -359,17 +359,17 @@ export const make = (store: Store) =>
         }))
         if (started.stored) {
           // A finished run is joined: its recorded result, and nothing runs.
-          if (options.discard) return undefined as any
-          return Schema.decodeUnknownSync(resultCodec(workflow))(started.stored.result) as any
+          if (options.discard) return undefined as never
+          return Schema.decodeUnknownSync(resultCodec(workflow))(started.stored.result) as never
         }
         const state = started.state!
-        if (options.discard) return undefined as any
+        if (options.discard) return undefined as never
         const instance = state.instance
         const exit = yield* Fiber.await(state.fiber!)
         if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) && instance.suspended) {
-          return new Workflow.Suspended({}) as any
+          return new Workflow.Suspended({}) as never
         }
-        return yield* (exit as Exit.Exit<any, never>)
+        return yield* (exit as Exit.Exit<never, never>)
       }),
       awaitComplete: (_workflow, executionId) =>
         Effect.suspend(() => {

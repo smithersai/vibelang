@@ -72,7 +72,7 @@ export const rooted = <W extends object>(workflow: W): W => {
   return workflow
 }
 
-type Body = (payload: any, executionId: string) => Effect.Effect<any, any, any>
+type Body = (payload: unknown, executionId: string) => Effect.Effect<unknown, unknown, unknown>
 
 interface Count {
   n: number

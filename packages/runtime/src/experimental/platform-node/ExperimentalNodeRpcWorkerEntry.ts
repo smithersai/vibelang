@@ -14,4 +14,4 @@ const module = (workerData as Record<string, unknown> | null | undefined)?.[modu
 if (typeof module !== "string") {
   throw new Error("ExperimentalNodeRpcWorkerEntry: spawn it with ExperimentalNodeRpc.layer, which passes the worker module's URL")
 }
-runWorker(defaultLayer(module, await import(module)) as any)
+runWorker(defaultLayer(module, await import(module)) as Parameters<typeof runWorker>[0])

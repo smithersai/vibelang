@@ -1,26 +1,20 @@
-// Runs a flow inside this process on the in-memory engine. A flow's eval grades
-// it this way, and the docs generator renders with it: both want no state
-// behind them. Everything else runs a flow on the durable host,
-// `smthrs flow start <flow> --data '<payload>'`, which records the run in
-// `.flows/`, where `smthrs runs list` and `smthrs runs show` read it.
-import { Effect, Layer } from "effect";
-import { FlowEngine } from "@smthrs/engine";
-import { Interpreter } from "@smthrs/flow";
-import { WebCrypto } from "@smthrs/crypto";
-
-type Flow<P, A, E> = Parameters<typeof Interpreter.layerWithImplementations>[0] & {
-  readonly _tag: string;
-  readonly execute: (payload: P, options: { readonly executionId: string }) => Effect.Effect<A, E, any>;
-};
+// Ephemeral in-memory wrapper over `./host.ts`. A flow's eval grades it this
+// way, and deterministic tests run with it when they want zero `.flows/` state.
+// Durable runs go through `./host.ts` (default) or `smthrs flow start <flow>`,
+// both of which record runs in `.flows/` where `smthrs runs list` reads them.
+import type { Layer } from "effect";
+import { execute as hostExecute, memoryRuntime, type RunnableFlow } from "./host.ts";
 
 /** runtime composes a flow, its implementations and the in-memory engine. */
-export const runtime = <P, A, E>(flow: Flow<P, A, E>, implementations: Layer.Layer<any, any, any>) =>
-  Interpreter.layerWithImplementations(flow, implementations as never).pipe(
-    Layer.provideMerge(FlowEngine.layerMemory),
-    Layer.provideMerge(WebCrypto.layer)
-  );
+export const runtime = <P, A, E, ROut, RErr, RIn>(
+  flow: RunnableFlow<P, A, E>,
+  implementations: Layer.Layer<ROut, RErr, RIn>,
+) => memoryRuntime(flow, implementations);
 
-/** execute runs one execution of a flow and returns its exit. */
-export const execute = <P, A, E>(flow: Flow<P, A, E>, implementations: Layer.Layer<any, any, any>, payload: P,
-  executionId = `${flow._tag}-${Date.now()}`) =>
-  Effect.runPromiseExit(flow.execute(payload, { executionId }).pipe(Effect.provide(runtime(flow, implementations))) as Effect.Effect<A, E>);
+/** execute runs one execution of a flow in-memory and returns its exit. */
+export const execute = <P, A, E, ROut, RErr, RIn>(
+  flow: RunnableFlow<P, A, E>,
+  implementations: Layer.Layer<ROut, RErr, RIn>,
+  payload: P,
+  executionId?: string,
+) => hostExecute(flow, implementations, payload, { memory: true, executionId });

@@ -35,7 +35,7 @@ const nodeHost: Host = { platform: process.platform, constants: NFS.constants }
 const handleErrnoException = (method: string) =>
 (
   err: NodeJS.ErrnoException,
-  [path]: [path: NFS.PathLike | number, ...args: Array<any>]
+  [path]: [path: NFS.PathLike | number, ...args: Array<unknown>]
 ): PlatformError.PlatformError => {
   let reason: PlatformError.SystemErrorTag = "Unknown"
   switch (err.code) {

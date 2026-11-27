@@ -1,3 +1,4 @@
+import "./version.js"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -228,7 +229,7 @@ const plainForm: unique symbol = Symbol.for("vibelang/plainForm")
  * what the frame lowering of the same code gives (D340). It records the
  * plain form where `$plainOf` reads it (D446).
  */
-export const $plainSync = <A>(direct: (...args: Array<any>) => A, self: unknown, args: ArrayLike<unknown>): Effect.Effect<A> => {
+export const $plainSync = <A>(direct: (...args: ReadonlyArray<never>) => A, self: unknown, args: ArrayLike<unknown>): Effect.Effect<A> => {
   const plain = (): A => Reflect.apply(direct, self, args)
   const program = Effect.suspend(() => {
     try {
@@ -277,10 +278,10 @@ export const $plainOf = (f: unknown): unknown => {
  * A frame that threw is finished, so Effect, which runs the failure, never
  * resumes it.
  */
-export const $joinedFrame = <F extends (...args: any[]) => Generator<Effect.Effect<any, any, any>, any, any>>(body: F): F => {
+export const $joinedFrame = <F extends (...args: ReadonlyArray<never>) => Generator<Effect.Effect<unknown, unknown, unknown>, unknown, never>>(body: F): F => {
   const wrapped = function(this: unknown, ...args: Parameters<F>) {
-    const iterator = Reflect.apply(body, this, args) as Generator<Effect.Effect<any, any, any>, any, any>
-    const step = (resume: () => IteratorResult<Effect.Effect<any, any, any>, any>): IteratorResult<Effect.Effect<any, any, any>, any> => {
+    const iterator = Reflect.apply(body, this, args) as Generator<Effect.Effect<unknown, unknown, unknown>, unknown, unknown>
+    const step = (resume: () => IteratorResult<Effect.Effect<unknown, unknown, unknown>, unknown>): IteratorResult<Effect.Effect<unknown, unknown, unknown>, unknown> => {
       try {
         return resume()
       } catch (thrown) {

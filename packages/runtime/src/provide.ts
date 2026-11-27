@@ -1,3 +1,4 @@
+import "./version.js"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -20,20 +21,21 @@ import * as Layer from "effect/Layer"
  * checked the value against the first overload's shape, and a method in the
  * value took the form that shape gave it (D92) for every later overload.
  */
-const directServices = new WeakMap<Layer.Any, readonly [Context.Key<any, any>, unknown]>()
+const directServices = new WeakMap<Layer.Any, readonly [Context.Key<never, unknown>, unknown]>()
 
-export function $provideService<const N extends string, K extends Context.Key<any, any> | { readonly [P in N]: Context.Key<any, any> }>(
+export function $provideService<const N extends string, K extends Context.Key<unknown, unknown> | { readonly [P in N]: Context.Key<unknown, unknown> }>(
   key: K,
   name: N,
   value: NoInfer<Context.Service.Shape<ProvidedKey<K, N>>>
 ): Layer.Layer<Context.Service.Identifier<ProvidedKey<K, N>>>
-export function $provideService(key: any, name: string, value: unknown): Layer.Layer<any> {
-  const service = Context.isKey(key) ? key : key[name]
+export function $provideService(key: unknown, name: string, value: unknown): Layer.Any {
+  const service = Context.isKey(key) ? key : (key as Record<string, unknown>)[name]
   if (!Context.isKey(service)) {
     throw new TypeError(`provide ${name} = ...: ${name} is not a service key, and it has no service key named ${name}`)
   }
-  const layer = Layer.succeed(service as Context.Key<any, any>)(value)
-  directServices.set(layer, [service as Context.Key<any, any>, value])
+  const serviceKey = service as unknown as Context.Key<never, unknown>
+  const layer = Layer.succeed(serviceKey)(value)
+  directServices.set(layer, [serviceKey, value])
   return layer
 }
 
@@ -50,13 +52,15 @@ export const $provideEntries: {
     self: Effect.Effect<A, E, R>,
     layers: Layers
   ): Effect.Effect<A, E | Layer.Error<Layers[number]>, Layer.Services<Layers[number]> | Exclude<R, Layer.Success<Layers[number]>>>
-} = function(...args: Array<any>): any {
-  return args.length === 1 ? (self: Effect.Effect<any, any, any>) => provideEntries(self, args[0]) : provideEntries(args[0], args[1])
-}
+} = (function(...args: ReadonlyArray<unknown>): unknown {
+  return args.length === 1
+    ? (self: Effect.Effect<unknown, unknown, unknown>) => provideEntries(self, args[0] as ReadonlyArray<Layer.Any>)
+    : provideEntries(args[0] as Effect.Effect<unknown, unknown, unknown>, args[1] as ReadonlyArray<Layer.Any>)
+}) as typeof $provideEntries
 
-function provideEntries(self: Effect.Effect<any, any, any>, layers: ReadonlyArray<Layer.Any>): Effect.Effect<any, any, any> {
+function provideEntries(self: Effect.Effect<unknown, unknown, unknown>, layers: ReadonlyArray<Layer.Any>): Effect.Effect<unknown, unknown, unknown> {
   const len = layers.length
-  if (len === 1) return Effect.provide(self, layers[0] as Layer.Layer<any, any, any>)
+  if (len === 1) return Effect.provide(self, layers[0] as Layer.Layer<never, unknown, unknown>)
   // Coalesce consecutive Key = value service entries into a single Layer.succeedContext
   // so Effect.provide builds one layer instead of N while preserving Layer.CurrentMemoMap
   // and exact left-to-right override order.
@@ -79,6 +83,6 @@ function provideEntries(self: Effect.Effect<any, any, any>, layers: ReadonlyArra
 }
 
 /** The service key that `key` names: the key itself, or its export named `name`. */
-type ProvidedKey<K, N extends string> = K extends Context.Key<any, any> ? K
+type ProvidedKey<K, N extends string> = K extends Context.Key<unknown, unknown> ? K
   : K extends { readonly [P in N]: infer Key } ? Key
   : never

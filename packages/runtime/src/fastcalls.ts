@@ -1,3 +1,4 @@
+import "./version.js"
 // Call helpers for the JavaScript that VibeLang's text-only projector emits.
 //
 // The projector reads one file's text, so it cannot see the types the fork
@@ -124,13 +125,13 @@ const ran: unique symbol = Symbol("vibelang/fast/ran")
 function pendingEffect(
   body: Iterator<unknown, unknown, unknown>,
   firstStep: unknown
-): Effect.Effect<any, any, any> {
+): Effect.Effect<unknown, unknown, unknown> {
   let step: unknown = firstStep
   const effect = Effect.gen(function* () {
     const current = step
     if (current === ran) return yield* Effect.die(new FastCallRanTwice())
     step = ran
-    let value: unknown = yield* (current as Effect.Effect<any, any, any>)
+    let value: unknown = yield* (current as Effect.Effect<unknown, unknown, unknown>)
     while (true) {
       const state = body.next(value)
       if (state.done) return state.value
@@ -140,7 +141,7 @@ function pendingEffect(
         value = next.value
         continue
       }
-      value = yield* (next as Effect.Effect<any, any, any>)
+      value = yield* (next as Effect.Effect<unknown, unknown, unknown>)
     }
   })
   const summary = { _id: "Effect", op: "vibelang/FastCall" }
@@ -158,17 +159,18 @@ function pendingEffect(
  * body throws here comes back as `Exit.die`. All of these surface at the
  * call site's `yield*`, inside the caller's regions, as the slow call's do.
  */
-export function $settle<Eff extends Effect.Effect<any, any, any>, A>(
-  it: Iterator<Eff, A, any>,
+export function $settle<Eff extends Effect.Effect<unknown, unknown, unknown>, A>(
+  it: Iterator<Eff, A, never>,
   s: IteratorResult<Eff, A>
 ): Fast<A, Eff> {
+  const iter = it as Iterator<Eff, A, unknown>
   try {
     while (true) {
       if (s.done) return $done(s.value)
-      const step = s.value as any
-      if (!Exit.isExit(step)) return pendingEffect(it, step) as any
-      if (Exit.isFailure(step)) return step as any
-      s = it.next(step.value)
+      const step: unknown = s.value
+      if (!Exit.isExit(step)) return pendingEffect(iter, step) as unknown as Fast<A, Eff>
+      if (Exit.isFailure(step)) return step as unknown as Fast<A, Eff>
+      s = iter.next(step.value)
     }
   } catch (defect) {
     return Exit.die(defect)
@@ -195,7 +197,7 @@ const maxEagerDepth = 100
 // publishing it at opaque boundaries; heap entry reserves the full budget.
 // Publications and reservations restore their incoming state in finally;
 // no reservation survives suspension or a fiber switch.
-type EagerFunction = (...args: Array<any>) => any
+type EagerFunction = (...args: ReadonlyArray<never>) => unknown
 const heapFactories = new WeakMap<EagerFunction, EagerFunction>()
 const eagerEntries = new WeakMap<EagerFunction, { stack: EagerFunction; recur?: EagerFunction }>()
 
@@ -246,15 +248,15 @@ export const $eager = {
  * catches a throw in the body's first step and in binding its parameters,
  * which the planned per-function entry leaves to the caller's body.
  */
-export function $fast<Args extends Array<any>, Eff extends Effect.Effect<any, any, any>, A>(
-  body: (...args: Args) => Generator<Eff, A, any>
+export function $fast<Args extends ReadonlyArray<unknown>, Eff extends Effect.Effect<unknown, unknown, unknown>, A>(
+  body: (...args: Args) => Generator<Eff, A, never>
 ): (...args: Args) => Fast<A, Eff> {
-  const slow = Effect.fnUntraced(body as (...args: Args) => Generator<Eff, A, any>)
+  const slow = Effect.fnUntraced(body)
   return function(this: unknown, ...args: Args): Fast<A, Eff> {
-    if ($eager.depth >= $eager.limit) return slow.apply(this, args) as any
+    if ($eager.depth >= $eager.limit) return Reflect.apply(slow, this, args) as unknown as Fast<A, Eff>
     $eager.depth += 16
     try {
-      const it = body.apply(this, args)
+      const it = Reflect.apply(body, this, args)
       return $settle(it, it.next())
     } catch (defect) {
       return Exit.die(defect)

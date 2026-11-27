@@ -1,3 +1,4 @@
+import "./version.js"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -59,7 +60,7 @@ export interface StepSchemas {
 const stepSchemas = new WeakMap<object, StepSchemas>()
 
 /** Associates durable boundary schemas with an Effect returned by a step or wait. @internal */
-export const tagStepSchemas = <E extends Effect.Effect<any, any, any>>(
+export const tagStepSchemas = <E extends Effect.Effect<unknown, unknown, unknown>>(
   effect: E,
   schemas: StepSchemas
 ): E => {
@@ -152,7 +153,30 @@ export interface Workflow<P extends ReadonlyArray<unknown>, A, E, S extends Dura
   readonly layer: Layer.Layer<never, never, WorkflowEngine | R>
 }
 
-type Boundary = (...args: any) => Effect.Effect<any, any, any>
+type Boundary = (...args: ReadonlyArray<never>) => Effect.Effect<unknown, unknown, unknown>
+
+interface DurableTaskRuntime {
+  (payload: Record<string, unknown>): Effect.Effect<unknown, unknown, unknown>
+  readonly toLayer: (fn: (payload: Record<string, unknown>) => Effect.Effect<unknown, unknown, unknown>) => Layer.Layer<never, never, unknown>
+}
+
+interface DurableWorkflowRuntime {
+  readonly execute: (payload: Record<string, unknown>) => Effect.Effect<unknown, unknown, unknown>
+  readonly toLayer: (fn: (payload: Record<string, unknown>) => Effect.Effect<unknown, unknown, unknown>) => Layer.Layer<never, never, unknown>
+}
+
+interface DurableRecord {
+  readonly "~durable"?: unknown
+  readonly "~task"?: unknown
+  readonly "~engine"?: Effect.Effect<import("effect/workflow").Workflow.Any>
+  readonly "~children"?: () => ReadonlyArray<unknown>
+  readonly key: string
+  readonly tier?: Capability.Tier | undefined
+  readonly tierDeclared?: boolean
+  readonly capabilities?: ReadonlyArray<string> | undefined
+  readonly effects?: Capability.EffectEnvelope | undefined
+  readonly layer?: Layer.Layer<never, never, unknown> | undefined
+}
 
 type DurableModule = typeof import("./experimental/Durable.js")
 let durableModule: Promise<DurableModule> | undefined
@@ -242,7 +266,12 @@ export function $task<S extends Boundary>(): <const Sc extends DurableSchemas, R
   schemas: Sc,
   implementation?: (...args: Parameters<S>) => Effect.Effect<Effect.Success<ReturnType<S>>, Effect.Error<ReturnType<S>>, R>
 ) => Task<Parameters<S>, Effect.Success<ReturnType<S>>, Effect.Error<ReturnType<S>>, R, Sc> {
-  return (name, rawOptions, schemas, implementation) => {
+  return <const Sc extends DurableSchemas, R = never>(
+    name: string,
+    rawOptions: DurableOptions,
+    schemas: Sc,
+    implementation?: (...args: Parameters<S>) => Effect.Effect<Effect.Success<ReturnType<S>>, Effect.Error<ReturnType<S>>, R>
+  ): Task<Parameters<S>, Effect.Success<ReturnType<S>>, Effect.Error<ReturnType<S>>, R, Sc> => {
     const options = freezeOptions(rawOptions)
     const key = tagOf(name, options)
     const explicitTier = declaredTier(options)
@@ -251,18 +280,26 @@ export function $task<S extends Boundary>(): <const Sc extends DurableSchemas, R
     const capabilities = declaredCapabilities(options)
     const ceiling = rawCapabilities(options)
     const durable = once((Durable) =>
-      Durable.task(key, { ...passed(options), payload: schemas.payload, success: schemas.success, error: schemas.error } as any)
+      (Durable.task as unknown as (k: string, opts: Record<string, unknown>) => DurableTaskRuntime)(key, {
+        ...passed(options),
+        payload: schemas.payload,
+        success: schemas.success,
+        error: schemas.error
+      })
     )
-    const task: any = (...args: ReadonlyArray<unknown>) =>
+    const taskFn = (...args: ReadonlyArray<unknown>) =>
       tagStepSchemas(
-        Effect.flatMap(durable, (t: any) => t(payloadOf(schemas, args))),
+        Effect.flatMap(durable, (t) => t(payloadOf(schemas, args))),
         { success: schemas.success, error: schemas.error }
       )
-    task.toLayer = (run: (...args: ReadonlyArray<unknown>) => Effect.Effect<unknown, unknown, unknown>) =>
-      Layer.unwrap(Effect.map(durable, (t: any) =>
+    const toLayer = (run: (...args: ReadonlyArray<unknown>) => Effect.Effect<unknown, unknown, unknown>) =>
+      Layer.unwrap(Effect.map(durable, (t) =>
         t.toLayer((payload: Record<string, unknown>) => attenuateEffect(ceiling, run(...argsOf(schemas, payload))))
       ))
-    task.layer = implementation === undefined ? Layer.empty : task.toLayer(implementation)
+    const task = Object.assign(taskFn, {
+      toLayer,
+      layer: implementation === undefined ? Layer.empty : toLayer(implementation as (...args: ReadonlyArray<unknown>) => Effect.Effect<unknown, unknown, unknown>)
+    })
     Object.defineProperties(task, {
       "~task": { value: true },
       tier: { value: tier, enumerable: true },
@@ -270,7 +307,7 @@ export function $task<S extends Boundary>(): <const Sc extends DurableSchemas, R
       capabilities: { value: capabilities, enumerable: true },
       effects: { value: options.effects, enumerable: true }
     })
-    return define(task, key, options, schemas)
+    return define(task, key, options, schemas) as unknown as Task<Parameters<S>, Effect.Success<ReturnType<S>>, Effect.Error<ReturnType<S>>, R, Sc>
   }
 }
 
@@ -288,7 +325,7 @@ const collectReachedTasks = (
   const visit = (items: ReadonlyArray<unknown>) => {
     for (const value of items) {
       if (typeof value !== "function") continue
-      const record = value as any
+      const record = value as unknown as DurableRecord
       if (record["~durable"] !== true) continue
       if (record["~task"] === true) {
         if (seenTasks.has(value)) continue
@@ -348,31 +385,29 @@ export function $workflow<P extends ReadonlyArray<unknown>, A, E, R, const Sc ex
     const opts = passed(options)
     return {
       Durable,
-      workflow: Durable.workflow(key, {
+      workflow: (Durable.workflow as unknown as (k: string, o: Record<string, unknown>) => DurableWorkflowRuntime)(key, {
         ...opts,
         payload: schemas.payload,
         success: schemas.success ?? Schema.Unknown,
         error: schemas.error ?? Schema.Unknown,
         plan: typeof opts.plan === "function" ? opts.plan : () => buildPlan()
-      } as any)
+      })
     }
   })
   const run = (args: ReadonlyArray<unknown>) =>
     tagStepSchemas(
-      Effect.flatMap(durable, ({ workflow: w }: any) => w.execute(payloadOf(schemas, args))),
+      Effect.flatMap(durable, ({ workflow: w }) => w.execute(payloadOf(schemas, args))),
       { success: schemas.success ?? Schema.Unknown, error: schemas.error ?? Schema.Unknown }
     )
-  const workflow: any = (...args: P) => run(args)
-  workflow.child = (...args: P) => run(args)
-  workflow.to = (...args: P): Handoff<P> => ({ _tag: "Handoff", key, args })
-  workflow.body = body
+  const workflowFn = (...args: P) => run(args)
   // A round that returns W.to(…) starts the next round in the same run;
   // maxRounds, when written, bounds them.
+  const runBody = body as unknown as (...args: ReadonlyArray<unknown>) => Effect.Effect<unknown, unknown, unknown>
   const rounds = (first: ReadonlyArray<unknown>) =>
     Effect.gen(function*() {
       let args = first
       for (let round = 1; ; round++) {
-        const result: unknown = yield* (body as any)(...args)
+        const result: unknown = yield* runBody(...args)
         if (!isHandoff(result)) return result
         const max = options.maxRounds
         if (typeof max === "number" && round >= max) {
@@ -381,17 +416,26 @@ export function $workflow<P extends ReadonlyArray<unknown>, A, E, R, const Sc ex
         args = result.args
       }
     })
-  workflow.layer = Layer.unwrap(Effect.map(durable, ({ Durable, workflow: w }: any) => {
-    const layers = children().flatMap((value: any) =>
-      value !== workflow && value?.["~durable"] === true && value.layer !== undefined ? [value.layer] : []
-    )
+  const workflow = Object.assign(workflowFn, {
+    child: (...args: P) => run(args),
+    to: (...args: P): Handoff<P> => ({ _tag: "Handoff", key, args }),
+    body,
+    layer: Layer.empty as Layer.Layer<never, never, unknown>
+  })
+  workflow.layer = Layer.unwrap(Effect.map(durable, ({ Durable, workflow: w }) => {
+    const layers: Array<Layer.Layer<never, never, unknown>> = []
+    for (const value of children()) {
+      if (value === workflow || typeof value !== "function") continue
+      const record = value as unknown as DurableRecord
+      if (record["~durable"] === true && record.layer !== undefined) layers.push(record.layer)
+    }
     const handler = w.toLayer((payload: Record<string, unknown>) => {
       const bodyEffect = attenuateEffect(ceiling, rounds(argsOf(schemas, payload)))
       return options.deadline === undefined
         ? bodyEffect
         : Durable.withDeadline(key, options.deadline, schemas, bodyEffect)
     })
-    return layers.length === 0 ? handler : Layer.provide(handler, Layer.mergeAll(...(layers as [any, ...Array<any>])))
+    return layers.length === 0 ? handler : Layer.provide(handler, Layer.mergeAll(...(layers as [Layer.Layer<never, never, unknown>, ...Array<Layer.Layer<never, never, unknown>>])))
   }))
   Object.defineProperties(workflow, {
     "~engine": { value: Effect.map(durable, ({ workflow: w }) => w) },
@@ -401,7 +445,7 @@ export function $workflow<P extends ReadonlyArray<unknown>, A, E, R, const Sc ex
     effects: { value: options.effects, enumerable: true },
     plan: { get: buildPlan, enumerable: true }
   })
-  return define(workflow, key, options, schemas)
+  return define(workflow, key, options, schemas) as unknown as Workflow<P, Exclude<A, Handoff>, E, Sc, Reached<T>>
 }
 
 /**
@@ -411,24 +455,41 @@ export function $workflow<P extends ReadonlyArray<unknown>, A, E, R, const Sc ex
  * `Experimental.Trigger`.
  * @throws {never}
  */
+export interface AnyWorkflowDeclaration extends Durable<unknown> {
+  (...args: ReadonlyArray<never>): Effect.Effect<unknown, unknown, WorkflowEngine>
+  child(...args: ReadonlyArray<never>): Effect.Effect<unknown, unknown, never>
+  to(...args: ReadonlyArray<never>): Handoff<ReadonlyArray<unknown>>
+  readonly key: string
+  readonly tier: Capability.Tier | undefined
+  readonly capabilities: ReadonlyArray<string> | undefined
+  readonly effects: Capability.EffectEnvelope | undefined
+  readonly plan: WorkflowPlan
+  readonly options: DurableOptions
+  readonly schemas: DurableSchemas
+  readonly layer: Layer.Layer<never, never, unknown>
+}
+
 export const engineLaunch = (
-  declared: Workflow<any, any, any, any, any>,
+  declared: AnyWorkflowDeclaration,
   args: ReadonlyArray<unknown>
 ): Effect.Effect<{ readonly workflow: import("effect/workflow").Workflow.Any; readonly payload: Record<string, unknown> }> =>
-  Effect.map((declared as any)["~engine"] as Effect.Effect<import("effect/workflow").Workflow.Any>, (workflow) => ({
+  Effect.map((declared as unknown as DurableRecord)["~engine"]!, (workflow) => ({
     workflow,
     payload: payloadOf(declared.schemas, args)
   }))
 
 /** The Effect workflow a declared `workflow` runs as. */
 export const engineWorkflow = (
-  declared: Workflow<any, any, any, any, any>
+  declared: AnyWorkflowDeclaration
 ): Effect.Effect<import("effect/workflow").Workflow.Any> =>
-  (declared as any)["~engine"] as Effect.Effect<import("effect/workflow").Workflow.Any>
+  (declared as unknown as DurableRecord)["~engine"]!
 
 /** Whether a value is a declared `workflow` (VIP-55). */
-export const isDeclaredWorkflow = (value: unknown): value is Workflow<any, any, any, any, any> =>
-  typeof value === "function" && (value as any)["~durable"] === true && (value as any)["~engine"] !== undefined
+export const isDeclaredWorkflow = (value: unknown): value is AnyWorkflowDeclaration => {
+  if (typeof value !== "function") return false
+  const record = value as unknown as DurableRecord
+  return record["~durable"] === true && record["~engine"] !== undefined
+}
 
 /**
  * `return W.to(…)` in W's own body, which the parser writes with W's

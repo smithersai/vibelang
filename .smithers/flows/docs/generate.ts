@@ -1,12 +1,12 @@
-// The docs generator: reads the inputs, renders them with the docs flow in this
-// process, and writes the outputs and .smithers/generated.json.
+// The docs generator: reads the inputs, renders them with the docs flow via
+// the shared host (`../host.ts`), and writes the outputs and .smithers/generated.json.
 import { execFileSync } from "node:child_process";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Exit } from "effect";
 import { digestSync } from "@smthrs/crypto";
-import { execute } from "../in-process.ts";
+import { execute, parseHostFlags, type HostOptions } from "../host.ts";
 import docs, { layer } from "./flow.ts";
 import { flowPath, readmeFooter, sourcePaths, type Sources } from "./render.ts";
 
@@ -28,10 +28,10 @@ export async function identity(sources: Sources) {
   return { files, digest: digestSync(JSON.stringify(files)) };
 }
 
-export async function generate() {
+export async function generate(options: HostOptions = { memory: true }) {
   const sources = await readSources();
   const id = await identity(sources);
-  const exit = await execute(docs, layer, { sources }, `docs-${id.digest}`);
+  const exit = await execute(docs, layer, { sources }, { executionId: `docs-${id.digest}`, ...options });
   if (Exit.isFailure(exit)) throw new Error(String(exit.cause));
   const outputs = exit.value;
   const manifest = JSON.stringify({
@@ -42,9 +42,10 @@ export async function generate() {
 }
 
 if (import.meta.main) {
+  const { options: hostOptions } = parseHostFlags(process.argv.slice(2));
   execFileSync("node", [join(repository, "scripts/generate-diagnostic-registry.mjs")], { stdio: "inherit" });
   execFileSync("node", [join(repository, "scripts/generate-grammar-admission.mjs")], { stdio: "inherit" });
-  const { outputs, manifest } = await generate();
+  const { outputs, manifest } = await generate({ memory: true, ...hostOptions });
   for (const [path, content] of Object.entries(outputs)) {
     const target = join(repository, path);
     await mkdir(dirname(target), { recursive: true });

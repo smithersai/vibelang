@@ -223,7 +223,7 @@ const confined = (command: ChildProcess.StandardCommand): ChildProcess.StandardC
   )
   return ChildProcess.make(command.command, [...command.args] as Array<string>, {
     ...command.options,
-    env: { ...Text.childEnvironment(Text.hostEnvironment(), { env: declared }), ...secrets } as any,
+    env: { ...Text.childEnvironment(Text.hostEnvironment(), { env: declared }), ...secrets } as Record<string, string | undefined>,
     extendEnv: false
   }) as ChildProcess.StandardCommand
 }
@@ -300,7 +300,7 @@ export const toolkit: {
     }
     const protocol = options.protocol === "2026-07-28" ? McpProtocol.v2026_07_28 : McpProtocol.v2025_11_25
     const timeout = options.timeout ?? callTimeoutDefault
-    let transport: Effect.Effect<EffectMcpClient.Transport, McpClientError.McpClientError, any>
+    let transport: Effect.Effect<EffectMcpClient.Transport, McpClientError.McpClientError, unknown>
     if ("command" in options) {
       if (!ChildProcess.isStandardCommand(options.command)) {
         return yield* invalid(server, "command must be one command, not a pipeline.")
@@ -308,9 +308,9 @@ export const toolkit: {
       const command = confined(options.command)
       const line = commandResource({
         command: command.command,
-        args: command.args as any,
+        args: command.args as ReadonlyArray<string>,
         shell: command.options.shell,
-        env: command.options.env as any,
+        env: command.options.env as Record<string, string | undefined>,
         extendEnv: false
       }, command.options.cwd)
       yield* permission(server, `proc:spawn:${line.resource}`)
@@ -343,7 +343,7 @@ export const toolkit: {
     const listed = yield* Effect.mapError(connected.listTools(), withheld(server, "listing its tools"))
     const chosen = yield* select(server, listed, include)
     return yield* build(server, connected, chosen, options.trustAnnotations === true, timeout)
-  })) as any
+  })) as unknown as typeof toolkit
 
 const build = (
   server: string,
@@ -366,8 +366,8 @@ const build = (
           })
         )
       }
-      let tool: any = Tool.dynamic(name, {
-        parameters: descriptor.inputSchema as any,
+      let tool: Tool.Any = Tool.dynamic(name, {
+        parameters: descriptor.inputSchema as Record<string, unknown>,
         description: descriptor.description,
         success: McpSchema.CallToolResult,
         failure: McpError,
@@ -407,9 +407,12 @@ const build = (
         })
       }
     }
-    const made: any = Toolkit.make(...tools)
+    const made = Toolkit.make(...tools) as unknown as {
+      readonly pipe: (fn: unknown) => Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool>>, McpError>
+      readonly toHandlers: (h: Record<string, (params: unknown) => Effect.Effect<unknown, McpError>>) => Effect.Effect<Context.Context<never>>
+    }
     return yield* made.pipe(Effect.provideContext(yield* made.toHandlers(handlers)))
-  }) as any
+  }) as unknown as Effect.Effect<Toolkit.WithHandler<Record<string, RemoteTool>>, McpError>
 
 /**
  * The server-side descriptor of a tool in a toolkit from {@link toolkit}.
@@ -419,4 +422,4 @@ const build = (
  * @since 0.0.13
  */
 export const descriptorOf = (tool: Tool.Any): McpSchema.Tool | undefined =>
-  Context.getOrUndefined((tool as any).annotations, EffectMcpClient.ToolDescriptor)
+  Context.getOrUndefined((tool as { readonly annotations: Context.Context<never> }).annotations, EffectMcpClient.ToolDescriptor)

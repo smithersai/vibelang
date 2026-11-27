@@ -17,8 +17,8 @@ export const moduleFromEntry = (entry: string): string | undefined =>
   new URL(entry).searchParams.get(moduleParameter) ?? undefined
 
 /** The default export of a worker module, or a clear error. */
-export const defaultLayer = (module: string, exports: any): unknown => {
-  const layer = exports?.default
+export const defaultLayer = (module: string, exports: unknown): unknown => {
+  const layer = (exports as { readonly default?: unknown } | null | undefined)?.default
   if (layer === undefined) throw new Error(`Experimental.Rpc: worker module ${module} has no default export; export default the Layer that provides its schema services`)
   return layer
 }

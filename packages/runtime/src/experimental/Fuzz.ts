@@ -109,19 +109,19 @@ export const target: {
     property: (value: A) => boolean | Effect.Effect<boolean, E, R>,
     options: TargetOptions<A>
   ): Target<A, E, R>
-} = (
-  input: Schema.Constraint | Arbitrary.Arbitrary<any>,
-  property: (value: any) => boolean | Effect.Effect<boolean, any, any>,
-  options: TargetOptions<any>
-): Target<any, any, any> => {
+} = ((
+  input: Schema.Constraint | Arbitrary.Arbitrary<unknown>,
+  property: (value: unknown) => boolean | Effect.Effect<boolean, unknown, unknown>,
+  options: TargetOptions<unknown>
+): Target<unknown, unknown, unknown> => {
   if (Arbitrary.isArbitrary(input)) return Internal.makeTarget(input, property, options)
   const schema = input as Schema.Constraint
-  const codec = Schema.toCodecJson(schema)
+  const codec = Schema.toCodecJson(schema) as unknown as Schema.Codec<unknown, unknown>
   return Internal.makeTarget(Arbitrary.schema(schema), property, {
-    codec: Internal.jsonCodec(Schema.encodeSync(codec as any), Schema.decodeSync(codec as any)),
+    codec: Internal.jsonCodec(Schema.encodeSync(codec), Schema.decodeSync(codec)),
     ...options
   })
-}
+}) as unknown as typeof target
 
 /**
  * Configures a fuzz run.
@@ -657,11 +657,11 @@ export const run: {
     property: (value: A) => boolean | Effect.Effect<boolean, E, R>,
     options?: Options
   ): Effect.Effect<Report<A, E>, FuzzError, R>
-} = (
-  input: Schema.Constraint | Arbitrary.Arbitrary<any>,
-  property: (value: any) => boolean | Effect.Effect<boolean, any, any>,
+} = ((
+  input: Schema.Constraint | Arbitrary.Arbitrary<unknown>,
+  property: (value: unknown) => boolean | Effect.Effect<boolean, unknown, unknown>,
   options?: Options
-): Effect.Effect<Report<any, any>, FuzzError, any> =>
+): Effect.Effect<Report<unknown, unknown>, FuzzError, unknown> =>
   // VibeLang's one addition to the upstream copy (VIP-70): a Schema input is compiled with `Arbitrary.schema`, as
   // `target` already does, so a Vibe `schema` goes where an Arbitrary does.
   Internal.runTarget(
@@ -671,7 +671,7 @@ export const run: {
       { id: "", revision: "", anonymous: true }
     ),
     options
-  )
+  )) as unknown as typeof run
 
 /**
  * Fuzzes a {@link Target}, replaying its saved failures and inputs from the {@link Corpus} store first.

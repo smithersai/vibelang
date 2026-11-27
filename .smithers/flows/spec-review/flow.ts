@@ -134,8 +134,8 @@ export default Flow.make("spec-review", {
   // names, so the flow declares no paths here.
   effects: { reads: [], writes: [], mode: "expected", onConflict: "serialize" },
   payload: FlowPayload,
-  success: Schema.Unknown,
-  error: Schema.Unknown,
+  success: Outcome,
+  error: StepFailed,
   body: Node.capture({ implementationVersion }, (input: Schema.Struct.Type<typeof FlowPayload>) =>
     Snapshot.call(input).pipe(Node.andThen(panel.call({ input: { run: input.run, record: input.record } }))))
 });

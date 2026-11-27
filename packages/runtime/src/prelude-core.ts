@@ -1,3 +1,4 @@
+import "./version.js"
 import * as Data from "effect/Data"
 import * as SchemaAST from "effect/SchemaAST"
 import type * as EffectModule from "effect/Effect"
@@ -30,7 +31,7 @@ export type Scope = ScopeModule.Scope
  * and a class that extends the declaration's class tests only instanceof.
  */
 const errorMatcher = (made: object, tag: string) =>
-  function(this: abstract new(...args: any) => any, subject: unknown, hint?: MatchHint) {
+  function(this: abstract new(...args: ReadonlyArray<never>) => unknown, subject: unknown, hint?: MatchHint) {
     const tagged = Object.getPrototypeOf(this) === made && subject !== null && (typeof subject === "object" || typeof subject === "function") && (subject as { _tag?: unknown })._tag === tag
     if (!tagged && !(subject instanceof this)) return false
     return hint?.matchType === "extractor" ? [subject] : true
@@ -43,10 +44,10 @@ const errorMatcher = (made: object, tag: string) =>
  * `NotFound(let error)` binds it.
  */
 export const TaggedError: typeof Data.TaggedError = ((tag: string) => {
-  const Base: any = Data.TaggedError(tag)
+  const Base = Data.TaggedError(tag) as unknown as Record<PropertyKey, unknown>
   Base[customMatcher] = $registerErrorMatcher(errorMatcher(Base, tag))
   return Base
-}) as any
+}) as unknown as typeof Data.TaggedError
 
 /**
  * D278: the base of `error Name extends Base`, a subclass of Base whose
@@ -54,13 +55,13 @@ export const TaggedError: typeof Data.TaggedError = ((tag: string) => {
  * `Data.TaggedError` does for its own. The declaration's members declare the
  * tag's type, so the base keeps Base's type, its constructor and its statics.
  */
-export const $errorSubclass = <B extends abstract new(...args: any) => { readonly _tag: string }>(
+export const $errorSubclass = <B extends abstract new(...args: ReadonlyArray<never>) => { readonly _tag: string }>(
   base: B,
   tag: string
 ): B => {
-  const Base = base as unknown as abstract new(...args: Array<any>) => { _tag: string }
+  const Base = base as unknown as abstract new(...args: Array<unknown>) => { _tag: string }
   abstract class Tagged extends Base {
-    constructor(...args: Array<any>) {
+    constructor(...args: Array<unknown>) {
       super(...args)
       this._tag = tag
     }
@@ -76,7 +77,7 @@ export const $errorSubclass = <B extends abstract new(...args: any) => { readonl
  * constructor must take a single object of fields, as an error declared
  * without a constructor does; otherwise this is never (EK2118).
  */
-export type $ErrorArgs<B, A> = B extends abstract new(args: infer P) => any ? ([P] extends [void] ? {} : P) & A : never
+export type $ErrorArgs<B, A> = B extends abstract new(args: infer P) => unknown ? ([P] extends [void] ? {} : P) & A : never
 
 /**
  * D304: a schema error family. A value of a family base's type may be any of
@@ -111,7 +112,7 @@ const joinSchemaErrorFamilies = (error: object, own: SchemaAST.AST): void => {
  * extract the original subject; the closure keeps its tag and class
  * independently of the call receiver.
  */
-export const $schemaErrorMatcher = (error: abstract new(...args: any) => unknown, tag: string, privateFactoryBase = false): void => {
+export const $schemaErrorMatcher = (error: abstract new(...args: ReadonlyArray<never>) => unknown, tag: string, privateFactoryBase = false): void => {
   // Plain declarations have a private TaggedError/$errorSubclass factory base.
   // Its legacy matcher belongs to direct runtime-factory consumers. Once the
   // declaration owns its matcher, retain no inherited fallback on that base.
@@ -131,7 +132,7 @@ export const $schemaErrorMatcher = (error: abstract new(...args: any) => unknown
 export const $isError = (value: unknown): value is Error => value instanceof Error
 
 /** D304: joins a schema error subclass to the families above it. */
-export const $schemaErrorMember = (error: abstract new(...args: any) => unknown): void => {
+export const $schemaErrorMember = (error: abstract new(...args: ReadonlyArray<never>) => unknown): void => {
   joinSchemaErrorFamilies(error, ownSchemaErrorAst(error))
 }
 
@@ -141,7 +142,7 @@ export const $schemaErrorMember = (error: abstract new(...args: any) => unknown)
  * suspension, which reads the subclasses when the schema first runs, inside
  * a union, which takes checks as a class's schema does.
  */
-export const $schemaErrorFamily = (error: abstract new(...args: any) => unknown): void => {
+export const $schemaErrorFamily = (error: abstract new(...args: ReadonlyArray<never>) => unknown): void => {
   const own = ownSchemaErrorAst(error)
   joinSchemaErrorFamilies(error, own)
   const members: Array<SchemaAST.AST> = []

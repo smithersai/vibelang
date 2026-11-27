@@ -1,21 +1,23 @@
 // Command line for the migrate flow: runs one execution, which migrates the
-// next batch of a run, in this process on the in-memory engine. The run
-// directory holds every step's result, so the next execution resumes from it.
-// The durable host refuses this flow: its steps load the target repository's
-// own tools (TypeScript, knip, oxlint, Vite) through createRequire, which
-// smthrs cannot pin before a run.
+// next batch of a run, on the shared durable SQLite host (`../host.ts`) so
+// `smthrs runs list` tracks each run. Pass `--memory` for an ephemeral run.
+// The run directory also holds every step's result, so the next execution
+// resumes from it. (`smthrs flow start migrate` still refuses this flow
+// directly because its steps load the target repository's own tools through
+// `createRequire`, which smthrs cannot pin before a run.)
 //
 //   MIGRATE_AGENT="<command>" bun .smithers/flows/migrate/run.ts --run <dir> \
-//     --target <repo> --package <dir> --test "<command>" [--test-cwd <dir>] --toolchain <dir>
+//     --target <repo> --package <dir> --test "<command>" [--test-cwd <dir>] --toolchain <dir> [--memory] [--root <dir>] [--db <file>]
 //
 // --scope <scope.txt> plans one whole-scope pass instead, which needs no agent.
 import { Cause, Exit, Option } from "effect";
 import migrate, { layer } from "./flow.ts";
-import { execute } from "../in-process.ts";
+import { execute, parseHostFlags } from "../host.ts";
 import { many, one, parseArgs } from "./lib/args.mjs";
 
 export function payloadFrom(argv: ReadonlyArray<string>) {
-  const { options } = parseArgs(["flow", ...argv]);
+  const { rest } = parseHostFlags(argv);
+  const { options } = parseArgs(["flow", ...rest]);
   return {
     run: one(options, "run"),
     target: one(options, "target"),
@@ -33,8 +35,9 @@ export function payloadFrom(argv: ReadonlyArray<string>) {
 }
 
 if (import.meta.main) {
-  const payload = payloadFrom(process.argv.slice(2));
-  const exit = await execute(migrate, layer, payload);
+  const { options: hostOptions, rest } = parseHostFlags(process.argv.slice(2));
+  const payload = payloadFrom(rest);
+  const exit = await execute(migrate, layer, payload, hostOptions);
   if (Exit.isSuccess(exit)) console.log(JSON.stringify(exit.value, null, 2));
   else {
     const failure = Cause.findErrorOption(exit.cause);

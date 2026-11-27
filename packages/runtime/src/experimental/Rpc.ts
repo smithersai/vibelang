@@ -54,7 +54,7 @@ export interface WorkerHandle<out L> extends WorkerHandleValue {
  * @since 0.0.14
  */
 export class WorkerHost extends /* @__PURE__ */ Context.Service<WorkerHost, {
-  readonly spawn: (handle: WorkerHandle<any>) => Layer.Layer<Worker.WorkerPlatform | Worker.Spawner>
+  readonly spawn: (handle: WorkerHandle<unknown>) => Layer.Layer<Worker.WorkerPlatform | Worker.Spawner>
 }>()("vibelang/experimental/Rpc/WorkerHost") {}
 
 /**
@@ -74,17 +74,20 @@ export type PoolOptions =
 
 /** Whether a value is a worker handle. @since 0.0.14 */
 export const isWorkerHandle = (u: unknown): u is WorkerHandle<unknown> =>
-  typeof u === "object" && u !== null && (u as any)[WorkerHandleTypeId] === WorkerHandleTypeId
+  typeof u === "object" && u !== null && (u as Record<PropertyKey, unknown>)[WorkerHandleTypeId] === WorkerHandleTypeId
 
-type AnyKey = Context.Key<any, any>
+type AnyKey = Context.Key<unknown, unknown>
 
-const keyOf = (service: unknown): string =>
-  typeof service === "function" || (typeof service === "object" && service !== null)
-    ? typeof (service as any).key === "string" ? (service as any).key : String((service as any).name ?? service)
-    : String(service)
+const keyOf = (service: unknown): string => {
+  if (typeof service === "function" || (typeof service === "object" && service !== null)) {
+    const record = service as { readonly key?: unknown; readonly name?: unknown }
+    return typeof record.key === "string" ? record.key : String(record.name ?? service)
+  }
+  return String(service)
+}
 
 const infoOf = (service: unknown, caller: string): SchemaServiceInfo => {
-  const info = (service as any)?.[SchemaServiceTypeId] as SchemaServiceInfo | undefined
+  const info = (service as Record<PropertyKey, unknown> | null | undefined)?.[SchemaServiceTypeId] as SchemaServiceInfo | undefined
   if (info === undefined) {
     throw new Error(`Experimental.Rpc.${caller}: ${keyOf(service)} is not a schema service; declare it with \`schema service\``)
   }
@@ -100,13 +103,13 @@ const infoOf = (service: unknown, caller: string): SchemaServiceInfo => {
  */
 export const group = (service: AnyKey): RpcGroup.RpcGroup<Rpc.Any> => groupOf(service, "group")
 
-const groupOf = (service: unknown, caller: string): RpcGroup.RpcGroup<any> => {
+const groupOf = (service: unknown, caller: string): RpcGroup.RpcGroup<Rpc.Any> => {
   const info = infoOf(service, caller)
-  const rpcs = info.rpcs() as any
+  const rpcs = info.rpcs() as { readonly requests?: unknown } | null | undefined
   if (rpcs === null || (typeof rpcs !== "function" && typeof rpcs !== "object") || !(rpcs.requests instanceof Map)) {
     throw new Error(`Experimental.Rpc.${caller}: the Rpc group of schema service ${info.key} is not an RpcGroup`)
   }
-  return rpcs
+  return rpcs as unknown as RpcGroup.RpcGroup<Rpc.Any>
 }
 
 // One schema service at one end of a connection: its key, members and the
@@ -114,7 +117,7 @@ const groupOf = (service: unknown, caller: string): RpcGroup.RpcGroup<any> => {
 interface Entry {
   readonly service: AnyKey
   readonly key: string
-  readonly group: RpcGroup.RpcGroup<any>
+  readonly group: RpcGroup.RpcGroup<Rpc.Any>
   readonly typedTransport: ReadonlySet<string>
   // Each member's name, wire tag, payload field names in parameter order, and kind.
   readonly members: ReadonlyArray<{
@@ -131,7 +134,7 @@ const entryOf = (service: unknown, caller: string, namespaced: boolean): Entry =
   const prefix = namespaced ? `${info.key}/` : ""
   const members: Array<Entry["members"][number]> = []
   for (const [name, rpc] of base.requests as ReadonlyMap<string, Rpc.AnyWithProps>) {
-    const fields = (rpc.payloadSchema as any).fields
+    const fields = (rpc.payloadSchema as { readonly fields?: Record<string, unknown> }).fields
     members.push({
       name,
       tag: prefix + name,
@@ -142,7 +145,7 @@ const entryOf = (service: unknown, caller: string, namespaced: boolean): Entry =
   return {
     service: service as AnyKey,
     key: info.key,
-    group: namespaced ? base.prefix(prefix) : base,
+    group: (namespaced ? base.prefix(prefix) : base) as RpcGroup.RpcGroup<Rpc.Any>,
     typedTransport: new Set(info.typedTransport),
     members
   }
@@ -160,7 +163,7 @@ const entriesOf = (services: ReadonlyArray<unknown>, caller: string, namespaced:
 
 // One group with every entry's Rpcs. Tags must not collide: a server routes a
 // request by its tag alone.
-const mergeGroups = (entries: ReadonlyArray<Entry>, caller: string): RpcGroup.RpcGroup<any> => {
+const mergeGroups = (entries: ReadonlyArray<Entry>, caller: string): RpcGroup.RpcGroup<Rpc.Any> => {
   const owners = new Map<string, string>()
   for (const entry of entries) {
     for (const member of entry.members) {
@@ -183,7 +186,7 @@ const isRpcClientError = (u: unknown): u is RpcClientError => u instanceof RpcCl
 // The service's shape over an Rpc client: positional arguments become the
 // payload struct keyed by parameter name. An argument that was not passed
 // stays absent, so an omitted optional parameter is an absent key.
-const stubOf = (entry: Entry, client: Record<string, (payload: object) => any>): Record<string, unknown> => {
+const stubOf = (entry: Entry, client: Record<string, (payload: object) => unknown>): Record<string, unknown> => {
   const shape: Record<string, unknown> = {}
   for (const member of entry.members) {
     const call = client[member.tag]
@@ -204,34 +207,37 @@ const stubOf = (entry: Entry, client: Record<string, (payload: object) => any>):
 
 // The Rpc handlers of one service, calling its implementation: the payload's
 // fields become positional arguments, up to the last one present.
-const handlersOf = (entry: Entry): Layer.Layer<never, never, any> =>
-  entry.group.toLayer(Effect.map(entry.service as Effect.Effect<any, never, any>, (impl: any) => {
-    const handlers: Record<string, (payload: any) => unknown> = {}
-    for (const member of entry.members) {
-      const { fields, name } = member
-      handlers[member.tag] = (payload: any) => {
-        let count = fields.length
-        while (count > 0 && !(payload !== null && typeof payload === "object" && fields[count - 1] in payload)) count--
-        const args = fields.slice(0, count).map((field) => payload[field])
-        return impl[name](...args)
+const handlersOf = (entry: Entry): Layer.Layer<never, never, unknown> =>
+  (entry.group.toLayer as unknown as (effect: Effect.Effect<Record<string, (payload: unknown) => unknown>, never, unknown>) => Layer.Layer<never, never, unknown>)(
+    Effect.map(entry.service as unknown as Effect.Effect<Record<string, (...args: Array<unknown>) => unknown>, never, unknown>, (impl) => {
+      const handlers: Record<string, (payload: unknown) => unknown> = {}
+      for (const member of entry.members) {
+        const { fields, name } = member
+        handlers[member.tag] = (payload: unknown) => {
+          const record = payload as Record<string, unknown> | null
+          let count = fields.length
+          while (count > 0 && !(record !== null && typeof record === "object" && fields[count - 1] in record)) count--
+          const args = fields.slice(0, count).map((field) => record![field])
+          return impl[name](...args)
+        }
       }
-    }
-    return handlers
-  }) as any) as any
+      return handlers
+    })
+  )
 
-const clientLayer = (entries: ReadonlyArray<Entry>, merged: RpcGroup.RpcGroup<any>) =>
+const clientLayer = (entries: ReadonlyArray<Entry>, merged: RpcGroup.RpcGroup<Rpc.Any>) =>
   Layer.effectContext(Effect.map(RpcClient.make(merged), (client) =>
-    Context.makeUnsafe<any>(new Map(entries.map((entry) => [entry.key, stubOf(entry, client as any)])))
+    Context.makeUnsafe<never>(new Map(entries.map((entry) => [entry.key, stubOf(entry, client as unknown as Record<string, (payload: object) => unknown>)])))
   ))
 
-const serverLayer = (entries: ReadonlyArray<Entry>, merged: RpcGroup.RpcGroup<any>): Layer.Layer<never, never, any> => {
+const serverLayer = (entries: ReadonlyArray<Entry>, merged: RpcGroup.RpcGroup<Rpc.Any>): Layer.Layer<never, never, unknown> => {
   const [first, ...rest] = entries.map(handlersOf)
-  return RpcServer.layer(merged).pipe(Layer.provide(Layer.mergeAll(first, ...rest))) as any
+  return RpcServer.layer(merged).pipe(Layer.provide(Layer.mergeAll(first, ...rest))) as unknown as Layer.Layer<never, never, unknown>
 }
 
 // Builds a layer at construction time, so that a class that is not a schema
 // service is a defect of the layer, not an exception at the call.
-const defer = <A, R>(build: () => Layer.Layer<A, any, R>): Layer.Layer<A, never, R> =>
+const defer = <A, R>(build: () => Layer.Layer<A, unknown, R>): Layer.Layer<A, never, R> =>
   Layer.orDie(Layer.unwrap(Effect.sync(build)))
 
 type Identifier<S> = S extends Context.Key<infer I, infer _S> ? I : never
@@ -248,7 +254,7 @@ export const client = <I, S>(service: Context.Key<I, S>): Layer.Layer<I, never, 
   defer(() => {
     const entries = entriesOf([service], "client", false)
     return clientLayer(entries, mergeGroups(entries, "client"))
-  }) as any
+  }) as unknown as Layer.Layer<I, never, RpcClient.Protocol>
 
 /**
  * A layer that serves `services` from their implementations in context over
@@ -265,7 +271,7 @@ export const serve = <S extends AnyKey, const Rest extends ReadonlyArray<AnyKey>
   defer(() => {
     const entries = entriesOf([service, ...services], "serve", false)
     return serverLayer(entries, mergeGroups(entries, "serve"))
-  }) as any
+  }) as unknown as Layer.Layer<never, never, Identifier<S | Rest[number]> | RpcServer.Protocol>
 
 /**
  * A layer that provides every service of a worker module from a pool of its
@@ -287,7 +293,7 @@ export const workers = <ROut, E, RIn>(
       Layer.provide(RpcClient.layerProtocolWorker(options)),
       Layer.provide(host.spawn(worker))
     )
-  }))) as any
+  }))) as unknown as Layer.Layer<ROut, never, WorkerHost>
 
 /**
  * What a worker entry runs: builds `layer` and serves its schema services
@@ -310,10 +316,10 @@ export const serveWorker = <ROut, E, RIn>(
       Layer.provide(Layer.succeedContext(context)),
       Layer.provide(RpcServer.layerProtocolWorkerRunner)
     )
-  }))) as any
+  }))) as unknown as Layer.Layer<never, never, RIn | WorkerRunner.WorkerRunnerPlatform>
 
 // The schema services a built context provides, in its order.
-const discover = (context: Context.Context<any>): Array<AnyKey> => {
+const discover = (context: Context.Context<never>): Array<AnyKey> => {
   const found: Array<AnyKey> = []
   for (const key of context.mapUnsafe.keys()) {
     const service = schemaServices.get(key)

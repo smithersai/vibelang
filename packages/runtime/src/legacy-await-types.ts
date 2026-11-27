@@ -10,11 +10,12 @@ import type * as Fiber from "effect/Fiber"
 // compiles passes one, and the operations do not wait for one (D394). A
 // Deferred is invariant in its error type, and any is not assignable to
 // never, so a Deferred that cannot fail needs its own member.
+type AnyDeferred = { readonly "~effect/Deferred": unknown }
+
 export type AwaitElement =
-  | Effect.Effect<any, any, any>
-  | Fiber.Fiber<any, any>
-  | Deferred.Deferred<any, any>
-  | Deferred.Deferred<any, never>
+  | Effect.Effect<unknown, unknown, unknown>
+  | Fiber.Fiber<unknown, unknown>
+  | AnyDeferred
 
 // The Effect an element's type stands for. A Fiber or a Deferred, which the
 // compiler rejects, keeps the type of waiting for it, so the operation's type
@@ -36,8 +37,8 @@ type AllOptions = {
 }
 
 type AllReturn<Arg, O extends AllOptions> = OperandEffects<Arg> extends infer X extends
-  | Iterable<Effect.Effect<any, any, any>>
-  | Record<string, Effect.Effect<any, any, any>> ? Effect.All.Return<X, O>
+  | Iterable<Effect.Effect<unknown, unknown, unknown>>
+  | Record<string, Effect.Effect<unknown, unknown, unknown>> ? Effect.All.Return<X, O>
   : never
 
 type RaceElement<Arg> = Arg extends Iterable<infer X> ? ElementEffect<X> : never

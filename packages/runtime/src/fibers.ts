@@ -1,3 +1,4 @@
+import "./version.js"
 import type * as Arr from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -12,9 +13,11 @@ import type * as Types from "effect/Types"
 // the compiler passes as the program its syntax builds (D322, D391).
 
 /** What `await` waits for: a Fiber or a Deferred, or an array or object of them. */
-export type Awaitable = Fiber.Fiber<any, any> | Deferred.Deferred<any, any>
+type AnyDeferred = { readonly "~effect/Deferred": unknown }
 
-type NotAwaitable = Effect.Effect<any, any, any> | PromiseLike<any> | ((...args: never) => unknown)
+export type Awaitable = Fiber.Fiber<unknown, unknown> | AnyDeferred
+
+type NotAwaitable = Effect.Effect<unknown, unknown, unknown> | PromiseLike<unknown> | ((...args: never) => unknown)
 
 // Each type parameter is inferred rather than matched against any: a
 // Deferred is invariant in its error type, and any is not assignable to never.
@@ -52,14 +55,14 @@ export type AwaitedError<T> =
 export function $await<const T>(value: T): Effect.Effect<AwaitedValue<T>, AwaitedError<T>>
 // The implementation's return type is any: comparing it with the overload's
 // recursive types would instantiate them without bound.
-export function $await(value: unknown): any {
+export function $await(value: unknown): Effect.Effect<unknown, unknown> {
   return awaitValue(value)
 }
 
 type IsFiber<T> = T extends Fiber.Fiber<infer _A, infer _E> ? true : false
 type JoinedLeaf<T> = T extends Fiber.Fiber<infer A, infer _E> ? A : never
 type JoinedLeafError<T> = T extends Fiber.Fiber<infer _A, infer E> ? E : never
-type NotJoinable = Effect.Effect<any, any, any> | Deferred.Deferred<any, any> | PromiseLike<any> | ((...args: never) => unknown)
+type NotJoinable = Effect.Effect<unknown, unknown, unknown> | AnyDeferred | PromiseLike<unknown> | ((...args: never) => unknown)
 
 /**
  * The value `join x` returns: a Fiber's value, or an array or object of them
@@ -88,7 +91,7 @@ export type JoinedError<T> =
  */
 export function $join<const T>(value: T): Effect.Effect<JoinedValue<T>, JoinedError<T>>
 // The implementation's return type is any for the same reason as $await's.
-export function $join(value: unknown): any {
+export function $join(value: unknown): Effect.Effect<unknown, unknown> {
   return awaitValue(value)
 }
 
@@ -139,7 +142,7 @@ function joinParts(value: object, fibers: Array<Fiber.Fiber<unknown, unknown>>):
   )
 }
 
-type Program = () => Effect.Effect<any, any, any>
+type Program = () => Effect.Effect<unknown, unknown, unknown>
 
 type Index<K> = K extends `${infer N extends number}` ? N : never
 
@@ -185,7 +188,7 @@ export const $select = <const D extends boolean, const P extends ReadonlyArray<P
       yield* interruptOthers(index)
       return yield* Effect.map(exit, (value) => ({ index, value }))
     })
-  ) as any
+  ) as unknown as Effect.Effect<Selected<P, D>, Effect.Error<ReturnType<P[number]>>, Effect.Services<ReturnType<P[number]>>>
 
 const firstExit = (fibers: ReadonlyArray<Fiber.Fiber<unknown, unknown>>) =>
   Effect.callback<readonly [number, import("effect").Exit.Exit<unknown, unknown>]>((resume) => {
@@ -225,24 +228,30 @@ export const forkIn = <A, E, R>(scope: Scope.Scope, program: Effect.Effect<A, E,
   Effect.forkIn(program, scope)
 
 // VIP-18: values are Effects already; constructing the array runs no element.
-type TryEffects = ReadonlyArray<Effect.Effect<any, any, any>>
+type TryEffects = ReadonlyArray<Effect.Effect<unknown, unknown, unknown>>
 export function $tryAll<const A extends TryEffects>(operand: A): Effect.Effect<
   { -readonly [K in keyof A]: Effect.Success<A[K]> }, Effect.Error<A[number]>, Effect.Services<A[number]>
 > {
-  return Effect.all(operand, { concurrency: "unbounded" }) as any
+  return Effect.all(operand, { concurrency: "unbounded" }) as unknown as Effect.Effect<
+    { -readonly [K in keyof A]: Effect.Success<A[K]> }, Effect.Error<A[number]>, Effect.Services<A[number]>
+  >
 }
 export function $tryRace<const A extends TryEffects>(operand: A): Effect.Effect<Effect.Success<A[number]>, Effect.Error<A[number]>, Effect.Services<A[number]>> {
-  return Effect.raceAllFirst(operand)
+  return Effect.raceAllFirst(operand) as unknown as Effect.Effect<Effect.Success<A[number]>, Effect.Error<A[number]>, Effect.Services<A[number]>>
 }
 export function $tryAny<const A extends TryEffects>(operand: A): Effect.Effect<Effect.Success<A[number]>, Effect.Error<A[number]>, Effect.Services<A[number]>> {
-  return Effect.raceAll(operand)
+  return Effect.raceAll(operand) as unknown as Effect.Effect<Effect.Success<A[number]>, Effect.Error<A[number]>, Effect.Services<A[number]>>
 }
 export function $tryAllSettled<const A extends TryEffects>(operand: A): Effect.Effect<
   number extends A["length"]
     ? Array<Exit.Exit<Effect.Success<A[number]>, Effect.Error<A[number]>>>
     : { -readonly [K in keyof A]: Exit.Exit<Effect.Success<A[K]>, Effect.Error<A[K]>> }, never, Effect.Services<A[number]>
 > {
-  return Effect.all(operand.map(Effect.exit), { concurrency: "unbounded" }) as any
+  return Effect.all(operand.map(Effect.exit), { concurrency: "unbounded" }) as unknown as Effect.Effect<
+    number extends A["length"]
+      ? Array<Exit.Exit<Effect.Success<A[number]>, Effect.Error<A[number]>>>
+      : { -readonly [K in keyof A]: Exit.Exit<Effect.Success<A[K]>, Effect.Error<A[K]>> }, never, Effect.Services<A[number]>
+  >
 }
 
 /** VIP-17: the signature of `fork.in(scope) e`, which the compiler writes as Effect.forkIn. */

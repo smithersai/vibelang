@@ -1,8 +1,9 @@
+import "./version.js"
 import * as Effect from "effect/Effect"
 import { $expected } from "./regions.js"
 
 /** A class whose instances a trusted call throws as expected failures. */
-export type FailureClass<E> = abstract new (...args: any) => E
+export type FailureClass<E> = abstract new (...args: ReadonlyArray<never>) => E
 
 /**
  * D5, D23: a call whose contract lists expected failures, such as a function
@@ -54,12 +55,12 @@ export type Trusted<F, Errors extends ReadonlyArray<FailureClass<unknown>>> = F 
  * trusted call: an instance of a listed class is an expected failure where
  * the call stands, and any other exception is a defect.
  */
-export const trusted = <F extends (...args: any[]) => any, const Classes extends ReadonlyArray<FailureClass<unknown>>>(
-  impl: F & (Extract<ReturnType<F>, PromiseLike<unknown> | Effect.Effect<any, any, any>> extends never ? unknown : never),
+export const trusted = <F extends (...args: ReadonlyArray<never>) => unknown, const Classes extends ReadonlyArray<FailureClass<unknown>>>(
+  impl: F & (Extract<ReturnType<F>, PromiseLike<unknown> | Effect.Effect<unknown, unknown, unknown>> extends never ? unknown : never),
   classes: Classes
 ): Trusted<F, Classes> => {
   const call = function (this: unknown, ...args: Array<unknown>) {
-    return impl.apply(undefined, args)
+    return Reflect.apply(impl, undefined, args)
   }
   return Object.defineProperty(call, $errors, { value: classes }) as unknown as Trusted<F, Classes>
 }

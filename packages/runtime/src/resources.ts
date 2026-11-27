@@ -1,3 +1,4 @@
+import "./version.js"
 import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"

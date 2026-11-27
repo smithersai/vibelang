@@ -53,7 +53,8 @@ import {
   tagStepSchemas,
   type DurableSchemas,
   type Workflow as DeclaredWorkflow,
-  type WorkflowPlan
+  type WorkflowPlan,
+  type AnyWorkflowDeclaration
 } from "../durable.js"
 import * as Capability from "./Capability.js"
 import * as canonical from "./internal/canonical.js"
@@ -265,7 +266,7 @@ const declareWorkflow = <
   }) as unknown as Workflow.Workflow<Tag, Schema.Struct<Payload>, Success, Error>
   const { execute, poll } = workflow
   return Object.assign(workflow, {
-    execute: ((payload: any, options?: any) =>
+    execute: ((payload: never, options?: never) =>
       restoreDeadlines(tag, execute.call(workflow, payload, options))) as typeof execute,
     poll: (executionId: string) =>
       Effect.map(poll.call(workflow, executionId), Option.map((result) =>
@@ -617,8 +618,8 @@ export const withDeadline = (
   key: string,
   deadline: Duration.Input,
   schemas: DurableSchemas,
-  body: Effect.Effect<unknown, unknown, any>
-): Effect.Effect<unknown, unknown, any> => {
+  body: Effect.Effect<unknown, unknown, unknown>
+): Effect.Effect<unknown, unknown, unknown> => {
   const Outcome = Schema.Union([
     Schema.Struct({ _tag: Schema.Literal("ok"), value: schemas.success ?? Schema.Unknown }),
     Schema.Struct({ _tag: Schema.Literal("err"), error: schemas.error ?? Schema.Unknown }),
@@ -683,7 +684,7 @@ export type UnstableStep = steps.UnstableStep
  * @since 0.0.13
  */
 export const race = <
-  const Effects extends readonly [Effect.Effect<any, any, any>, ...Array<Effect.Effect<any, any, any>>],
+  const Effects extends readonly [Effect.Effect<unknown, unknown, unknown>, ...Array<Effect.Effect<unknown, unknown, unknown>>],
   Success extends Schema.Top,
   Error extends Schema.Top = Schema.Never
 >(options: {
@@ -707,16 +708,16 @@ export const race = <
         : `${scope}${steps.encodeName(options.name)}`
       // The arms run on a copy of the instance, which this marks with the
       // race's scope before any of them counts a step.
-      const scoped = (effect: Effect.Effect<any, any, any>) =>
+      const scoped = (effect: Effect.Effect<unknown, unknown, unknown>) =>
         Effect.flatMap(Effect.service(WorkflowEngine.WorkflowInstance), (copy) => {
           steps.enterScope(copy, `${path}/`)
           return effect
         })
       return yield* DurableDeferred.raceAll({
         name: path,
-        success: options.success as Schema.Top as Schema.Schema<any>,
-        error: (options.error ?? Schema.Never) as Schema.Top as Schema.Schema<any>,
-        effects: options.effects.map(scoped) as unknown as readonly [Effect.Effect<any, any, any>]
+        success: options.success as Schema.Top as Schema.Schema<unknown>,
+        error: (options.error ?? Schema.Never) as Schema.Top as Schema.Schema<unknown>,
+        effects: options.effects.map(scoped) as unknown as readonly [Effect.Effect<unknown, unknown, unknown>]
       })
     }) as ReturnType<typeof race<Effects, Success, Error>>,
     { success: options.success, error: options.error ?? Schema.Never }
@@ -734,7 +735,7 @@ export const race = <
  * @internal
  */
 export const raceSteps = <
-  const Effects extends ReadonlyArray<Effect.Effect<any, any, any>>
+  const Effects extends ReadonlyArray<Effect.Effect<unknown, unknown, unknown>>
 >(
   effects: Effects,
   firstSuccess = false
@@ -772,7 +773,7 @@ export const raceSteps = <
         : errorSchemas.length === 1
         ? errorSchemas[0]!
         : Schema.Union(errorSchemas)
-      const scoped = (effect: Effect.Effect<any, any, any>) =>
+      const scoped = (effect: Effect.Effect<unknown, unknown, unknown>) =>
         Effect.flatMap(Effect.service(WorkflowEngine.WorkflowInstance), (copy) => {
           steps.enterScope(copy, `${path}/`)
           return effect
@@ -783,14 +784,14 @@ export const raceSteps = <
       const raced = firstSuccess
         ? DurableDeferred.raceAll({
           name: path,
-          success: successSchema as Schema.Schema<any>,
-          error: errorSchema as Schema.Schema<any>,
-          effects: arms.map(scoped) as unknown as readonly [Effect.Effect<any, any, any>]
+          success: successSchema as Schema.Schema<unknown>,
+          error: errorSchema as Schema.Schema<unknown>,
+          effects: arms.map(scoped) as unknown as readonly [Effect.Effect<unknown, unknown, unknown>]
         })
         : DurableDeferred.raceAll({
           name: path,
-          success: successSchema as Schema.Schema<any>,
-          error: errorSchema as Schema.Schema<any>,
+          success: successSchema as Schema.Schema<unknown>,
+          error: errorSchema as Schema.Schema<unknown>,
           effects: [
             Effect.flatMap(
               Effect.raceAll(
@@ -806,11 +807,15 @@ export const raceSteps = <
             )
           ]
         })
-      return yield* Effect.mapBoth(raced, {
+      return yield* Effect.mapBoth(raced as unknown as Effect.Effect<readonly [number, unknown], readonly [number, unknown], unknown>, {
         onSuccess: ([, value]: readonly [number, unknown]) => value,
         onFailure: ([, error]: readonly [number, unknown]) => error
       })
-    }) as any,
+    }) as unknown as Effect.Effect<
+      Effect.Success<Effects[number]>,
+      Effect.Error<Effects[number]>,
+      Effect.Services<Effects[number]> | WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance
+    >,
     { success: Schema.Unknown, error: Schema.Unknown }
   )
 
@@ -1040,7 +1045,7 @@ export type TimerInvalid = waits.TimerInvalid
  * @category models
  * @since 0.0.13
  */
-export type WorkflowTarget = Workflow.Any | DeclaredWorkflow<any, any, any, any, any>
+export type WorkflowTarget = Workflow.Any | AnyWorkflowDeclaration
 
 /**
  * A typed value that enters a run from outside. Both ends import the one
@@ -1177,8 +1182,8 @@ export interface Run<A, E> {
  * payload type.
  */
 interface AnyWorkflow extends Workflow.Any {
-  readonly execute: (payload: any, options?: any) => Effect.Effect<any, any, any>
-  readonly poll: (executionId: string) => Effect.Effect<Option.Option<Workflow.Result<any, any>>, never, any>
+  readonly execute: (payload: never, options?: never) => Effect.Effect<unknown, unknown, unknown>
+  readonly poll: (executionId: string) => Effect.Effect<Option.Option<Workflow.Result<unknown, unknown>>, never, unknown>
   readonly interrupt: (executionId: string) => Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>
   readonly resume: (executionId: string) => Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>
 }
@@ -1187,17 +1192,17 @@ interface AnyWorkflow extends Workflow.Any {
 type EngineWorkflow = Workflow.Workflow<string, Workflow.AnyStructSchema, Schema.Top, Schema.Top>
 
 /** A declared `workflow` (VIP-55) or an Effect `Workflow` that a run handle can drive. */
-type RunTarget = AnyWorkflow | DeclaredWorkflow<any, any, any, any, any>
+type RunTarget = AnyWorkflow | AnyWorkflowDeclaration
 
-type TargetSuccess<W extends RunTarget> = W extends DeclaredWorkflow<any, infer A, any, any, any> ? A
+type TargetSuccess<W extends RunTarget> = W extends DeclaredWorkflow<infer _P, infer A, infer _E, infer _S, infer _R> ? A
   : W extends AnyWorkflow ? W["successSchema"]["Type"]
   : never
 
-type TargetError<W extends RunTarget> = W extends DeclaredWorkflow<any, any, infer E, any, any> ? E
+type TargetError<W extends RunTarget> = W extends DeclaredWorkflow<infer _P, infer _A, infer E, infer _S, infer _R> ? E
   : W extends AnyWorkflow ? W["errorSchema"]["Type"]
   : never
 
-type TargetPayload<W extends RunTarget> = W extends DeclaredWorkflow<any, any, any, infer S, any>
+type TargetPayload<W extends RunTarget> = W extends DeclaredWorkflow<infer _P, infer _A, infer _E, infer S, infer _R>
   ? Schema.Struct.Type<S["payload"]>
   : W extends AnyWorkflow ? Schema.Struct.Type<W["payloadSchema"]["fields"]>
   : never
@@ -1245,7 +1250,7 @@ export const spawn = <W extends RunTarget>(
   Effect.gen(function*() {
     const wf = yield* resolveWorkflow(W)
     const id = yield* wf.executionId(payload)
-    yield* wf.execute(payload, { discard: true })
+    yield* wf.execute(payload as never, { discard: true } as never)
     return run(W, id)
   }) as Effect.Effect<Run<TargetSuccess<W>, TargetError<W>>, never, WorkflowEngine.WorkflowEngine>
 
@@ -1305,7 +1310,7 @@ export function plan<W extends AnyWorkflow>(
   payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>
 ): Effect.Effect<{ readonly plan: unknown; readonly digest: string | null }>
 export function plan(
-  W: AnyWorkflow | DeclaredWorkflow<ReadonlyArray<any>, unknown, unknown>,
+  W: AnyWorkflow | AnyWorkflowDeclaration,
   ...rest: ReadonlyArray<unknown>
 ): Effect.Effect<{ readonly plan: unknown; readonly digest: string | null }> {
   if (isDeclaredWorkflow(W)) {
@@ -1317,7 +1322,7 @@ export function plan(
         )
         const build = Context.get(workflow.annotations, engineInternal.PlanOf)
         return {
-          plan: build === undefined ? W.plan : build(snapshot),
+          plan: build === undefined ? W.plan : (build as (payload: unknown) => unknown)(snapshot),
           digest: yield* engineInternal.planDigest(workflow, snapshot)
         }
       })
@@ -1331,7 +1336,7 @@ export function plan(
       engineInternal.encodePayload(workflow, workflow.payloadSchema.make(payload) as object)
     )
     const build = Context.get(workflow.annotations, engineInternal.PlanOf)
-    return { plan: build === undefined ? null : build(snapshot), digest: yield* engineInternal.planDigest(workflow, snapshot) }
+    return { plan: build === undefined ? null : (build as (payload: unknown) => unknown)(snapshot), digest: yield* engineInternal.planDigest(workflow, snapshot) }
   })
 }
 

@@ -1,13 +1,14 @@
+import "./version.js"
 // Cache operations use captured intrinsics: changing Map.prototype in a guard
 // must not make an internal cache operation call user code (VIP-7).
 const PropertyCacheMap = Map
-const mapHas = Function.prototype.call.bind(Map.prototype.has) as (map: Map<any, any>, key: unknown) => boolean
-const mapGet = Function.prototype.call.bind(Map.prototype.get) as (map: Map<any, any>, key: unknown) => any
-const mapSet = Function.prototype.call.bind(Map.prototype.set) as (map: Map<any, any>, key: unknown, value: unknown) => unknown
+const mapHas = Function.prototype.call.bind(Map.prototype.has) as <K, V>(map: Map<K, V>, key: K) => boolean
+const mapGet = Function.prototype.call.bind(Map.prototype.get) as <K, V>(map: Map<K, V>, key: K) => V | undefined
+const mapSet = Function.prototype.call.bind(Map.prototype.set) as <K, V>(map: Map<K, V>, key: K, value: V) => Map<K, V>
 const propertyKeyString = String
 
-const mapClear = Function.prototype.call.bind(Map.prototype.clear) as (map: Map<any, any>) => void
-const mapValues = Function.prototype.call.bind(Map.prototype.values) as (map: Map<any, any>) => MapIterator<any>
+const mapClear = Function.prototype.call.bind(Map.prototype.clear) as <K, V>(map: Map<K, V>) => void
+const mapValues = Function.prototype.call.bind(Map.prototype.values) as <K, V>(map: Map<K, V>) => MapIterator<V>
 const reflectApply = Reflect.apply
 const emptyArgs: readonly [] = Object.freeze([])
 
@@ -18,7 +19,7 @@ type IterableSubject<S> = [S] extends [Iterable<unknown>] ? S
   : [Extract<S, Iterable<unknown>>] extends [never] ? S
   : Extract<S, Iterable<unknown>>
 type ItemOf<S> = S extends Iterable<infer T> ? T : unknown
-type Item<S> = 0 extends 1 & S ? any : ItemOf<IterableSubject<S>>
+type Item<S> = 0 extends 1 & S ? S : ItemOf<IterableSubject<S>>
 type ItemAt<S, I extends number> = S extends ReadonlyArray<unknown> ? S[I] : ItemOf<S>
 // A rest binding copies the unconsumed tuple positions into a mutable tuple.
 type TupleRest<S extends readonly unknown[], I extends number, Count extends unknown[]=[]>
@@ -33,7 +34,7 @@ type IsTuple<S extends readonly unknown[]> = S extends unknown
       : S extends readonly [...unknown[], unknown] ? true : false
     : true
   : never
-type Rest<S,I extends number> = 0 extends 1 & S ? any
+type Rest<S,I extends number> = 0 extends 1 & S ? S
  : number extends I ? Item<S>[]
  : [IterableSubject<S>] extends [readonly unknown[]]
    ? false extends IsTuple<IterableSubject<S>> ? Item<S>[]
@@ -110,7 +111,7 @@ class MatchCacheImpl {
     let groups = this.#values
     let cache = groups === undefined ? undefined : mapGet(groups, subject) as Map<PropertyKey, unknown> | undefined
     if (cache !== undefined && mapHas(cache, name)) return mapGet(cache, name)
-    const value = (subject as any)[key]
+    const value = (subject as Record<PropertyKey, unknown>)[key]
     if (groups === undefined) {
       groups = new PropertyCacheMap<object, Map<PropertyKey, unknown>>()
       this.#values = groups
@@ -131,11 +132,11 @@ class MatchCacheImpl {
       this.#records = records
     }
     if (subject === null || subject === undefined) { mapSet(records, subject, false); return false }
-    const method = (subject as any)[Symbol.iterator]
+    const method = (subject as { readonly [Symbol.iterator]?: unknown })[Symbol.iterator]
     if (typeof method !== "function") { mapSet(records, subject, false); return false }
     const iterator = reflectApply(method, subject, emptyArgs)
     if (!object(iterator)) throw new TypeError("Iterator is not an object")
-    const next = (iterator as any).next
+    const next = (iterator as { readonly next?: unknown }).next
     mapSet(records, subject, { iterator, next, values: [], done: false })
     return true
   }
@@ -171,9 +172,9 @@ class MatchCacheImpl {
       if (!entry || entry.done) continue
       entry.done = true
       try {
-        const close = (entry.iterator as any).return
+        const close = (entry.iterator as { readonly return?: unknown }).return
         if (close === undefined || close === null) continue
-        const result = reflectApply(close, entry.iterator, emptyArgs)
+        const result = reflectApply(close as Function, entry.iterator, emptyArgs)
         if (!object(result)) throw new TypeError("Iterator return result is not an object")
       } catch (error) {
         if (errors === undefined) errors = [error]

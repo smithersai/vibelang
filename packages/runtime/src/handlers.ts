@@ -1,3 +1,4 @@
+import "./version.js"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as K from "./kernel/kernel.js"
@@ -21,17 +22,17 @@ export interface Continuation<V, E, H> {
  * removes the whole control from the program's requirements.
  */
 type Clauses<S, H> = {
-  readonly [M in keyof S as S[M] extends (...args: any) => Effect.Effect<any, any, any> ? M : never]-?: S[M] extends
-    (...args: infer P) => Effect.Effect<infer V, infer E, any> ? (...args: [...P, k: Continuation<V, E, H>]) => Effect.Effect<any, any, any>
+  readonly [M in keyof S as S[M] extends (...args: ReadonlyArray<never>) => Effect.Effect<unknown, unknown, unknown> ? M : never]-?: S[M] extends
+    (...args: infer P) => Effect.Effect<infer V, infer E, unknown> ? (...args: [...P, k: Continuation<V, E, H>]) => Effect.Effect<unknown, unknown, unknown>
     : never
 }
-type ClauseEffects<C> = { [M in keyof C]: C[M] extends (...args: any) => infer F ? F : never }[keyof C]
+type ClauseEffects<C> = { [M in keyof C]: C[M] extends (...args: ReadonlyArray<never>) => infer F ? F : never }[keyof C]
 // A clause's tail resume returns the kernel's request, never a value of the
 // handle's result (generated TypeScript sees $tailResume's type).
-type ClauseA<C> = ClauseEffects<C> extends infer F ? F extends Effect.Effect<infer A, any, any> ? Exclude<A, K.TailResume> : never
+type ClauseA<C> = ClauseEffects<C> extends infer F ? F extends Effect.Effect<infer A, unknown, unknown> ? Exclude<A, K.TailResume> : never
   : never
-type ClauseE<C> = ClauseEffects<C> extends infer F ? F extends Effect.Effect<any, infer E, any> ? E : never : never
-type ClauseR<C> = ClauseEffects<C> extends infer F ? F extends Effect.Effect<any, any, infer R> ? R : never : never
+type ClauseE<C> = ClauseEffects<C> extends infer F ? F extends Effect.Effect<unknown, infer E, unknown> ? E : never : never
+type ClauseR<C> = ClauseEffects<C> extends infer F ? F extends Effect.Effect<unknown, unknown, infer R> ? R : never : never
 
 /**
  * `handle(program, Control, clauses, onReturn?)`: runs `program` with a deep
@@ -54,22 +55,30 @@ export function handle<A, E, R, I, S, C extends Clauses<S, never>, B, EB, RB>(
   onReturn: (value: A) => Effect.Effect<B, EB, RB>
 ): Effect.Effect<B | ClauseA<C>, E | EB | ClauseE<C>, Exclude<R, I> | RB | ClauseR<C>>
 export function handle(
-  program: Effect.Effect<any, any, any>,
-  control: Context.Key<any, any>,
-  clauses: Record<string, (...args: Array<any>) => Effect.Effect<any, any, any>>,
-  onReturn?: (value: any) => Effect.Effect<any, any, any>
-): Effect.Effect<any, any, any> {
+  program: Effect.Effect<unknown, unknown, unknown>,
+  control: Context.Key<unknown, unknown>,
+  clauses: Record<string, (...args: ReadonlyArray<never>) => Effect.Effect<unknown, unknown, unknown>>,
+  onReturn?: (value: never) => Effect.Effect<unknown, unknown, unknown>
+): Effect.Effect<unknown, unknown, unknown> {
   const info = controls.get(control)
-  if (!info) return Effect.die(new Error(`${String((control as any).key)} is not a control operation`))
-  const ops: Array<K.Operation<any, any, any>> = []
-  const kclauses: Record<string, (payload: any, k: K.Continuation) => Effect.Effect<any, any, any>> = {}
+  const controlKey = String((control as { readonly key?: unknown }).key)
+  if (!info) return Effect.die(new Error(`${controlKey} is not a control operation`))
+  const ops: Array<K.Operation<Array<unknown>, unknown, unknown>> = []
+  const kclauses: Record<string, (payload: unknown, k: K.Continuation) => Effect.Effect<unknown, unknown, unknown>> = {}
   for (const [m, op] of Object.entries(info.ops)) {
     if (typeof clauses[m] !== "function") continue
     ops.push(op)
     const arity = info.arity[m] ?? -1
-    kclauses[op.name] = (payload: Array<any>, k) => clauses[m](...fitArguments(payload, arity), k)
+    const clause = clauses[m] as (...args: Array<unknown>) => Effect.Effect<unknown, unknown, unknown>
+    kclauses[op.name] = (payload, k) => clause(...fitArguments(payload as Array<unknown>, arity), k)
   }
-  return K.handle(String((control as any).key), ops, Effect.provideService(program, control, info.impl as any), kclauses, onReturn)
+  return K.handle(
+    controlKey,
+    ops as ReadonlyArray<K.Operation<never, unknown, unknown>>,
+    Effect.provideService(program, control as unknown as Context.Key<never, unknown>, info.impl),
+    kclauses,
+    onReturn as ((value: unknown) => Effect.Effect<unknown, unknown, unknown>) | undefined
+  )
 }
 
 /**
@@ -78,7 +87,7 @@ export function handle(
  * the call left an optional argument out. A count of -1 (a rest parameter, or
  * a control registered without counts) keeps the arguments as given.
  */
-const fitArguments = (payload: Array<any>, arity: number): Array<any> =>
+const fitArguments = (payload: Array<unknown>, arity: number): Array<unknown> =>
   arity < 0 || payload.length === arity
     ? payload
     : payload.length < arity
@@ -86,7 +95,7 @@ const fitArguments = (payload: Array<any>, arity: number): Array<any> =>
     : payload.slice(0, arity)
 
 /** Continues the program with `value` at the perform site; returns what the `handle` then produces. */
-export const resume: <V, E, H>(k: Continuation<V, E, H>, value: NoInfer<V>) => Effect.Effect<H> = K.resume as any
+export const resume: <V, E, H>(k: Continuation<V, E, H>, value: NoInfer<V>) => Effect.Effect<H> = K.resume as unknown as <V, E, H>(k: Continuation<V, E, H>, value: NoInfer<V>) => Effect.Effect<H>
 
 /**
  * Continues the program by running `program` at the perform site (D17): it
@@ -94,17 +103,17 @@ export const resume: <V, E, H>(k: Continuation<V, E, H>, value: NoInfer<V>) => E
  * (EK2005).
  */
 export const resumeWith: <V, E, H>(k: Continuation<V, E, H>, program: Effect.Effect<NoInfer<V>, NoInfer<E>, never>) => Effect.Effect<H> =
-  K.resumeWith as any
+  K.resumeWith as unknown as <V, E, H>(k: Continuation<V, E, H>, program: Effect.Effect<NoInfer<V>, NoInfer<E>, never>) => Effect.Effect<H>
 
 /** Stops the program: its cleanup runs, its `catch` blocks do not. Fails if cleanup fails. */
-export const abandon: <V, E, H>(k: Continuation<V, E, H>) => Effect.Effect<void> = K.abandon as any
+export const abandon: <V, E, H>(k: Continuation<V, E, H>) => Effect.Effect<void> = K.abandon as unknown as <V, E, H>(k: Continuation<V, E, H>) => Effect.Effect<void>
 
 /** D18: a clause's tail `resume` is returned as a request, never yielded (KERNEL-CHANGES.md section 1). */
-export const $tailResume: <V, E, H>(k: Continuation<V, E, H>, value: NoInfer<V>) => K.TailResume = K.tailResume as any
+export const $tailResume: <V, E, H>(k: Continuation<V, E, H>, value: NoInfer<V>) => K.TailResume = K.tailResume as unknown as <V, E, H>(k: Continuation<V, E, H>, value: NoInfer<V>) => K.TailResume
 export const $tailResumeWith: <V, E, H>(k: Continuation<V, E, H>, program: Effect.Effect<NoInfer<V>, NoInfer<E>, never>) => K.TailResume =
-  K.tailResumeWith as any
+  K.tailResumeWith as unknown as <V, E, H>(k: Continuation<V, E, H>, program: Effect.Effect<NoInfer<V>, NoInfer<E>, never>) => K.TailResume
 
-type ClauseBinding<F> = F extends (...args: infer P) => Effect.Effect<infer V, infer E, any> ? [k: Continuation<V, E, never>, ...args: P]
+type ClauseBinding<F> = F extends (...args: infer P) => Effect.Effect<infer V, infer E, unknown> ? [k: Continuation<V, E, never>, ...args: P]
   : never
 
 /**
@@ -115,6 +124,6 @@ type ClauseBinding<F> = F extends (...args: infer P) => Effect.Effect<infer V, i
  * lowering removes it. The continuation's `resume` returns `never`: the
  * clause's result is what the rest of the try block does.
  */
-export function $clause<F extends (...args: any) => Effect.Effect<any, any, any>>(_operation: F): ClauseBinding<F> {
+export function $clause<F extends (...args: ReadonlyArray<never>) => Effect.Effect<unknown, unknown, unknown>>(_operation: F): ClauseBinding<F> {
   throw new Error("$clause types a handle clause's bindings; compiled code never calls it")
 }

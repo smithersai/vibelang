@@ -29,6 +29,7 @@ import * as DecisionModel from "effect/ai/DecisionModel"
 import * as EmbeddingModel from "effect/ai/EmbeddingModel"
 import * as LanguageModel from "effect/ai/LanguageModel"
 import * as Response from "effect/ai/Response"
+import type * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
@@ -255,7 +256,7 @@ const withUndeclaredToolCalls = (part: Schema.Top, deferred: boolean): Schema.To
   deferred
     ? Schema.Union([
       part,
-      undeclaredToolCall ??= Response.ToolCallPart("", Schema.Unknown).mapFields((fields: any) => ({
+      undeclaredToolCall ??= Response.ToolCallPart("", Schema.Unknown).mapFields((fields: Record<string, Schema.Top>) => ({
         ...fields,
         name: Schema.String
       })) as unknown as Schema.Top
@@ -268,13 +269,30 @@ const withUndeclaredToolCalls = (part: Schema.Top, deferred: boolean): Schema.To
 // resolution is off), and under deferred validation it may hold a call to an
 // undeclared tool. The journal reads parts the same way, so it encodes what
 // the call returned.
-const journalParts = (toolkit: any, options: any) => {
+interface RuntimeTool {
+  readonly parametersSchema: Schema.Top
+  readonly failureSchema: Schema.Top
+  setParameters(schema: Schema.Top): Tool.Any
+}
+interface RuntimeToolkit {
+  readonly tools: Record<string, RuntimeTool>
+}
+interface RuntimeCallOptions {
+  readonly disableToolCallResolution?: boolean
+  readonly toolCallValidation?: string
+  readonly toolkit?: RuntimeToolkit | Effect.Effect<RuntimeToolkit, unknown, unknown>
+  readonly prompt?: unknown
+  readonly objectName?: unknown
+  readonly schema?: Schema.Top
+}
+
+const journalParts = (toolkit: RuntimeToolkit | undefined, options: RuntimeCallOptions) => {
   const deferred = options.disableToolCallResolution === true && options.toolCallValidation === "deferred"
   const encoded = options.disableToolCallResolution === true && !deferred
   const tools = toolkit === undefined
     ? (undefined as never)
     : Toolkit.make(
-      ...(Object.values(toolkit.tools) as Array<any>).map((tool) =>
+      ...Object.values(toolkit.tools).map((tool) =>
         tool.setParameters(encoded ? Schema.toEncoded(tool.parametersSchema) : Schema.Unknown)
       )
     )
@@ -289,20 +307,20 @@ const journalParts = (toolkit: any, options: any) => {
 // step's errors are the provider's and the tools' alone; with the toolkit's
 // schemas, the step journals tool calls, tool results and typed tool
 // failures, and a replay runs no handler.
-const resolveTools = (options: any) =>
+const resolveTools = (options: RuntimeCallOptions) =>
   Effect.map(
     options.toolkit === undefined
       ? Effect.succeed(undefined)
       : Effect.isEffect(options.toolkit)
-      ? (options.toolkit as Effect.Effect<any, any, any>)
+      ? (options.toolkit as Effect.Effect<RuntimeToolkit, unknown, unknown>)
       : Effect.succeed(options.toolkit),
-    (toolkit: any) => ({
+    (toolkit: RuntimeToolkit | undefined) => ({
       toolkit,
       ...journalParts(toolkit, options),
       request: toolkit === undefined ? options : { ...options, toolkit },
       error: (toolkit === undefined
         ? AiError.AiError
-        : Schema.Union([AiError.AiError, ...Object.values(toolkit.tools).map((tool: any) => tool.failureSchema)])) as unknown as Schema.Top
+        : Schema.Union([AiError.AiError, ...Object.values(toolkit.tools).map((tool) => tool.failureSchema)])) as unknown as Schema.Top
     })
   )
 
@@ -310,16 +328,17 @@ const resolveTools = (options: any) =>
 // Activity named after the request, whose answer, or failure, the engine
 // journals. A resumed run reads the recorded result instead of calling the
 // provider. A refusal for capacity parks the run until its window reopens.
-const recordedCall = (model: LanguageModel.LanguageModel, method: Recordable) => (options: any) => {
-  const live = (request: unknown) => (model[method] as (options: unknown) => Effect.Effect<any, any, any>)(request)
+const recordedCall = (model: LanguageModel.LanguageModel, method: Recordable) => (options: unknown) => {
+  const live = (request: unknown) => (model[method] as (options: unknown) => Effect.Effect<unknown, unknown, unknown>)(request)
   if (options === null || typeof options !== "object") return live(options)
   return Effect.flatMap(Effect.serviceOption(WorkflowEngine.WorkflowInstance), (instance) => {
     if (Option.isNone(instance)) return live(options)
     return Effect.gen(function*() {
-      const { error, request, part } = yield* resolveTools(options)
+      const callOpts = options as RuntimeCallOptions
+      const { error, request, part } = yield* resolveTools(callOpts)
       const content = Schema.Array(part)
       const success = method === "generateObject"
-        ? Schema.Struct({ value: options.schema as Schema.Top, content })
+        ? Schema.Struct({ value: callOpts.schema as Schema.Top, content })
         : Schema.Struct({ content })
       const step = (name: string) =>
         Activity.make({
@@ -327,13 +346,18 @@ const recordedCall = (model: LanguageModel.LanguageModel, method: Recordable) =>
           success,
           error,
           execute: Effect.provideService(
-            Effect.map(live(request), (response: any) =>
-              method === "generateObject" ? { value: response.value, content: response.content } : { content: response.content }),
+            Effect.map(live(request), (response) => {
+              const r = response as { readonly value?: unknown; readonly content: Array<Response.Part<Record<string, Tool.Any>>> }
+              return method === "generateObject" ? { value: r.value, content: r.content } : { content: r.content }
+            }),
             StepScope,
             name
           )
         })
-      const recorded: any = yield* record.parked("model", instance.value, [method, options.prompt, options.objectName ?? null], step)
+      const recorded = (yield* record.parked("model", instance.value, [method, callOpts.prompt, callOpts.objectName ?? null], step)) as {
+        readonly value: unknown
+        readonly content: Array<Response.Part<Record<string, Tool.Any>>>
+      }
       return method === "generateObject"
         ? new LanguageModel.GenerateObjectResponse(recorded.value, recorded.content)
         : new LanguageModel.GenerateTextResponse(recorded.content)
@@ -341,14 +365,15 @@ const recordedCall = (model: LanguageModel.LanguageModel, method: Recordable) =>
   })
 }
 
-const recordedStream = (model: LanguageModel.LanguageModel) => (options: any) => {
+const recordedStream = (model: LanguageModel.LanguageModel) => (options: unknown) => {
   const live = (request: unknown) => (model.streamText as (options: unknown) => Stream.Stream<unknown, unknown>)(request)
   if (options === null || typeof options !== "object") return live(options)
   return Stream.unwrap(Effect.flatMap(Effect.serviceOption(WorkflowEngine.WorkflowInstance), (found) => {
     if (Option.isNone(found)) return Effect.succeed(live(options))
     const instance = found.value
     return Effect.gen(function*() {
-      const { error, request, streamPart } = yield* resolveTools(options)
+      const callOpts = options as RuntimeCallOptions
+      const { error, request, streamPart } = yield* resolveTools(callOpts)
       const queue = yield* Queue.unbounded<unknown, unknown>()
       let delivered = false
       const parts = Schema.Array(streamPart)
@@ -368,10 +393,10 @@ const recordedStream = (model: LanguageModel.LanguageModel) => (options: any) =>
         })
       // onExit, not a failure handler: a park suspends the run by
       // interrupting this fiber, and the caller must hear of it.
-      const fiber = yield* record.parked("model", instance, ["streamText", options.prompt], step, () => !delivered).pipe(
+      const fiber = yield* record.parked("model", instance, ["streamText", callOpts.prompt], step, () => !delivered).pipe(
         Effect.onExit((exit) =>
           Exit.isSuccess(exit)
-            ? delivered ? Queue.end(queue) : Effect.andThen(Queue.offerAll(queue, (exit.value as any).parts), Queue.end(queue))
+            ? delivered ? Queue.end(queue) : Effect.andThen(Queue.offerAll(queue, (exit.value as { readonly parts: ReadonlyArray<unknown> }).parts), Queue.end(queue))
             : Queue.failCause(queue, exit.cause)
         ),
         Effect.forkDetach

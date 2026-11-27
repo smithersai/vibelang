@@ -1,3 +1,4 @@
+import "./version.js"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Runtime from "effect/Runtime"

@@ -24,11 +24,8 @@ import {
   contAll,
   contE,
   type FiberInternals,
-  restoreInterruptible,
-  setFailCause
+  restoreInterruptible
 } from "./internals.js"
-
-setFailCause((cause) => Effect.failCause(cause))
 
 // ---------------------------------------------------------------------------
 // Defects raised by the kernel
@@ -186,39 +183,39 @@ const setInterruptibility = (fiber: FiberInternals, value: boolean) => {
 // Operations and evidence
 // ---------------------------------------------------------------------------
 
-type Clause = (payload: any, k: Continuation) => Effect.Effect<any, any, any>
+type Clause = (payload: unknown, k: Continuation) => Effect.Effect<unknown, unknown, unknown>
 
 export interface HandlerInstance {
   readonly label: string
   readonly fiberId: number
   readonly clauses: Readonly<Record<string, Clause>>
-  readonly onReturn: ((value: any) => Effect.Effect<any, any, any>) | undefined
+  readonly onReturn: ((value: never) => Effect.Effect<unknown, unknown, unknown>) | undefined
 }
 
 export type Evidence =
-  | { readonly _tag: "InPlace"; readonly run: (payload: any) => Effect.Effect<any, any, any> }
+  | { readonly _tag: "InPlace"; readonly run: (payload: never) => Effect.Effect<unknown, unknown, unknown> }
   | { readonly _tag: "Prompt"; readonly handler: HandlerInstance }
 
 // An operation's contract: payload P, success A, and the expected failures E
 // a handler may deliver at the perform site with resumeWith.
 export interface Operation<P, A, E = never> {
   readonly name: string
-  readonly key: Context.Key<any, Evidence>
+  readonly key: Context.Key<never, Evidence>
   (payload: P): Effect.Effect<A, E>
 }
 
 export const operation = <P, A, E = never>(name: string): Operation<P, A, E> => {
-  const key = Context.Service<Evidence>(`vibelang/operation/${name}`) as unknown as Context.Key<any, Evidence>
+  const key = Context.Service<Evidence>(`vibelang/operation/${name}`) as unknown as Context.Key<never, Evidence>
   const op = ((payload: P) => perform(op, payload)) as Operation<P, A, E>
   Object.defineProperty(op, "name", { value: name })
-  ;(op as any).key = key
+  ;(op as unknown as { key: Context.Key<never, Evidence> }).key = key
   return op
 }
 
 // Tail-resumptive evidence: the implementation runs at the perform site in
 // the caller's Context. This is exactly Effect's service-method semantics.
 export const provideInPlace = <P, A, E, R>(
-  op: Operation<P, A, any>,
+  op: Operation<P, A, unknown>,
   run: (payload: P) => Effect.Effect<A, E, R>
 ) =>
 <B, E2, R2>(self: Effect.Effect<B, E2, R2>) =>
@@ -248,7 +245,7 @@ class PromptFrame {
     return undefined
   }
   [contA](value: unknown) {
-    return this.handler.onReturn ? this.handler.onReturn(value) : Effect.succeed(value)
+    return this.handler.onReturn ? (this.handler.onReturn as (v: unknown) => Effect.Effect<unknown, unknown, unknown>)(value) : Effect.succeed(value)
   }
 }
 
@@ -424,7 +421,7 @@ export class Continuation {
   constructor(
     readonly op: string,
     readonly fiberId: number,
-    public segment: Array<any> | undefined,
+    public segment: Array<unknown> | undefined,
     readonly context: Context.Context<never>,
     readonly interruptible: boolean,
     readonly handler: HandlerInstance,
@@ -458,13 +455,13 @@ const unwrap = (target: Continuation | Suspended) => (target instanceof Suspende
 // because the region's cleanup has to run after the resumed computation.
 export class TailResume {
   readonly _tag = "TailResume"
-  constructor(readonly target: Continuation | Suspended, readonly effect: Effect.Effect<any, any, any>) {}
+  constructor(readonly target: Continuation | Suspended, readonly effect: Effect.Effect<unknown, unknown, unknown>) {}
 }
 
 export const tailResume = <A>(target: Continuation | Suspended, value: A): TailResume =>
   new TailResume(target, Exit.succeed(value))
 
-export const tailResumeWith = (target: Continuation | Suspended, effect: Effect.Effect<any, any, any>): TailResume =>
+export const tailResumeWith = (target: Continuation | Suspended, effect: Effect.Effect<unknown, unknown, unknown>): TailResume =>
   new TailResume(target, effect)
 
 // Observers for tracing. Tests use these to print the machine state.
@@ -478,14 +475,18 @@ export const perform = <P, A, E>(op: Operation<P, A, E>, payload: P): Effect.Eff
     const fiber = asInternals(f)
     const evidence = Context.getOrUndefined(fiber.context, op.key) as Evidence | undefined
     if (evidence === undefined) return Effect.die(new UnhandledOperation(op.name))
-    if (evidence._tag === "InPlace") return evidence.run(payload)
+    if (evidence._tag === "InPlace") return (evidence.run as (p: unknown) => Effect.Effect<unknown, unknown, unknown>)(payload)
     return capture(fiber, op.name, evidence.handler, payload)
   }) as Effect.Effect<A, E>
 
 const capture = (fiber: FiberInternals, opName: string, handler: HandlerInstance, payload: unknown) => {
   const stack = fiber._stack
   let i = stack.length - 1
-  while (i >= 0 && !(stack[i] instanceof PromptFrame && stack[i].handler === handler)) i--
+  while (i >= 0) {
+    const frame = stack[i]
+    if (frame instanceof PromptFrame && frame.handler === handler) break
+    i--
+  }
   if (i < 0) {
     return Effect.die(
       handler.fiberId === fiber.id ? new HandlerPromptExited(opName) : new HandlerNotOnThisFiber(opName)
@@ -526,8 +527,8 @@ export const resume = <A>(target: Continuation | Suspended, value: A) => resumeW
 
 export const resumeWith = (
   target: Continuation | Suspended,
-  effect: Effect.Effect<any, any, any>
-): Effect.Effect<any, any, any> =>
+  effect: Effect.Effect<unknown, unknown, unknown>
+): Effect.Effect<unknown, unknown, unknown> =>
   Effect.withFiber((f) => {
     const fiber = asInternals(f)
     const k = unwrap(target)
@@ -545,8 +546,10 @@ export const resumeWith = (
     // Without this, a producer iterated n times would hold n Owner frames
     // until iteration ends.
     let top = stack.length - 1
-    if (stack[top] instanceof ClauseFrame && stack[top].k === k) top--
-    if (stack[top] instanceof OwnerFrame && stack[top].k === k) stack.length = top
+    const topFrame = stack[top]
+    if (topFrame instanceof ClauseFrame && topFrame.k === k) top--
+    const ownerFrame = stack[top]
+    if (ownerFrame instanceof OwnerFrame && ownerFrame.k === k) stack.length = top
     // Deep handler: reinstall the prompt at the resume site.
     stack.push(new PromptFrame(k.handler, fiber.context, fiber.interruptible))
     for (let j = 0; j < segment.length; j++) stack.push(segment[j])
@@ -632,11 +635,11 @@ export const transfer = (k: Continuation): Effect.Effect<Suspended> =>
 
 export const handle = <A, E, R>(
   label: string,
-  ops: ReadonlyArray<Operation<any, any, any>>,
+  ops: ReadonlyArray<Operation<never, unknown, unknown>>,
   body: Effect.Effect<A, E, R>,
   clauses: Readonly<Record<string, Clause>>,
-  onReturn?: (value: A) => Effect.Effect<any, any, any>
-): Effect.Effect<any, any, any> =>
+  onReturn?: (value: A) => Effect.Effect<unknown, unknown, unknown>
+): Effect.Effect<unknown, unknown, unknown> =>
   Effect.withFiber((f) => {
     const fiber = asInternals(f)
     const handler: HandlerInstance = { label, fiberId: fiber.id, clauses, onReturn }
@@ -776,7 +779,7 @@ export const suspend = <A>(
       releaseAll()
       cleanup?.()
     })
-  } as any)
+  } as unknown as Parameters<typeof Effect.callback<A>>[0])
 
 // Handoff for producers that cannot act on a `false` from `resume`, such as
 // event sources whose shutdown is asynchronous. Cancellation waits for the
@@ -833,4 +836,4 @@ export const handoff = <A>(
         return Effect.forEach(values, releaseLate, { discard: true })
       })
     })
-  } as any)
+  } as unknown as Parameters<typeof Effect.callback<A>>[0])

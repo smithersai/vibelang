@@ -90,7 +90,7 @@ export interface Options {
   readonly prompt: string
   readonly output: Schema.Top
   readonly system?: string | undefined
-  readonly tools?: Toolkit.WithHandler<any> | Effect.Effect<Toolkit.WithHandler<any>, any, any> | undefined
+  readonly tools?: Toolkit.WithHandler<Record<string, Tool.Any>> | Effect.Effect<Toolkit.WithHandler<Record<string, Tool.Any>>, unknown, unknown> | undefined
   readonly maxTurns?: number | undefined
   readonly corrections?: number | undefined
   readonly limits?: Partial<Realm.Limits> | undefined
@@ -140,7 +140,7 @@ const safeJson = (value: unknown): string => {
 const clip = (text: string, max: number): string => text.length <= max ? text : `${text.slice(0, max)}… [${text.length - max} more characters]`
 
 const instructions = (options: Options, tools: ReadonlyArray<Tool.Any>): string => {
-  const outputSchema = safeJson(Tool.getJsonSchemaFromSchema(options.output as any))
+  const outputSchema = safeJson(Tool.getJsonSchemaFromSchema(options.output as unknown as Schema.Top))
   const toolLines = tools.length === 0
     ? "This run has no tools."
     : tools.map((tool) =>
@@ -207,12 +207,12 @@ const Judgement = Decision.make({
 // One tool call settled through the toolkit's handler. Every outcome is a
 // value the cell reads: an unknown name, input the tool's schema refuses, a
 // handler failure. Only interruption and defects end the cell.
-const settle = (toolkit: Toolkit.WithHandler<any> | undefined, call: Realm.Call): Effect.Effect<Realm.CallResult> => {
+const settle = (toolkit: Toolkit.WithHandler<Record<string, Tool.Any>> | undefined, call: Realm.Call): Effect.Effect<Realm.CallResult> => {
   if (toolkit === undefined || !Object.hasOwn(toolkit.tools, call.tool)) {
     return Effect.succeed({ ok: false, error: { code: "unknown_tool", message: `No tool named ${call.tool} was handed to this run.` } })
   }
-  return toolkit.handle(call.tool, call.input as any).pipe(
-    Effect.flatMap((stream) => Stream.runLast(stream as Stream.Stream<Tool.HandlerResult<any>, unknown>)),
+  return toolkit.handle(call.tool, call.input as never).pipe(
+    Effect.flatMap((stream) => Stream.runLast(stream as unknown as Stream.Stream<Tool.HandlerResult<Tool.Any>, unknown>)),
     Effect.map((last): Realm.CallResult => {
       if (Option.isNone(last)) return { ok: false, error: { code: "no_result", message: `${call.tool} gave no result.` } }
       const result = last.value
@@ -281,7 +281,7 @@ export const run = (
     const toolkit = options.tools === undefined
       ? undefined
       : Effect.isEffect(options.tools)
-      ? yield* (options.tools as Effect.Effect<Toolkit.WithHandler<any>>)
+      ? yield* (options.tools as Effect.Effect<Toolkit.WithHandler<Record<string, Tool.Any>>>)
       : options.tools
     const tools = toolkit === undefined ? [] : Object.values(toolkit.tools) as Array<Tool.Any>
     const names = tools.map((tool) => tool.name)
@@ -331,7 +331,7 @@ export const run = (
         yield* emit({ _tag: "TurnStarted", turn })
         let text = ""
         if (streaming) {
-          yield* Stream.runForEach(LanguageModel.streamText({ prompt: messages as any }), (part: any) => {
+          yield* Stream.runForEach(LanguageModel.streamText({ prompt: messages as unknown as Parameters<typeof LanguageModel.streamText>[0]["prompt"] }), (part) => {
             if (part.type === "text-delta") {
               text += part.delta
               return emit({ _tag: "TextDelta", turn, delta: part.delta })
@@ -340,7 +340,7 @@ export const run = (
             return Effect.void
           })
         } else {
-          const response = yield* LanguageModel.generateText({ prompt: messages as any })
+          const response = yield* LanguageModel.generateText({ prompt: messages as unknown as Parameters<typeof LanguageModel.generateText>[0]["prompt"] })
           text = response.text
           usage = sumUsage(usage, response)
         }

@@ -8,6 +8,7 @@
 // (internal/core.ts:31-61). Every access is pinned to the exact version.
 import type * as Cause from "effect/Cause"
 import type * as Context from "effect/Context"
+import { failCause } from "effect/Effect"
 import "../version.js"
 export { PINNED_EFFECT_VERSION } from "../version.js"
 
@@ -24,7 +25,7 @@ export const ExitTypeId = "~effect/Exit"
 // The subset of FiberImpl (internal/effect.ts:487-743) the kernel touches.
 export interface FiberInternals {
   readonly id: number
-  readonly _stack: Array<any>
+  readonly _stack: Array<unknown>
   interruptible: boolean
   _interruptedCause: Cause.Cause<never> | undefined
   // Set by interruptUnsafe while the fiber runs interruptibly; the run loop
@@ -57,19 +58,19 @@ export const restoreInterruptible = (value: boolean) => ({
   }
 })
 
-// Set by kernel.ts to avoid a circular import.
-let failCauseNow: (cause: Cause.Cause<never>) => unknown = () => {
-  throw new Error("kernel not initialized")
-}
+let failCauseNow: (cause: Cause.Cause<never>) => unknown = (cause) => failCause(cause)
 export const setFailCause = (f: (cause: Cause.Cause<never>) => unknown) => {
   failCauseNow = f
 }
 
 // Debug view of a frame: the op name for Effect primitives, or the kernel tag.
-export const frameName = (frame: any): string => {
-  if (frame && typeof frame.esFrame === "string") return frame.esFrame
-  const id = frame?.[identifier]
-  if (typeof id === "string") return id
-  if (frame && contAll in frame && !(contA in frame) && !(contE in frame)) return "RestoreFlag"
+export const frameName = (frame: unknown): string => {
+  if (frame !== null && typeof frame === "object") {
+    const record = frame as Record<PropertyKey, unknown>
+    if (typeof record.esFrame === "string") return record.esFrame
+    const id = record[identifier]
+    if (typeof id === "string") return id
+    if (contAll in record && !(contA in record) && !(contE in record)) return "RestoreFlag"
+  }
   return "Frame"
 }

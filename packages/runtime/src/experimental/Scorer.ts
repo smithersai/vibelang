@@ -642,8 +642,8 @@ export interface BindOptions {
   readonly timeout?: Duration.Input | undefined
 }
 
-type PayloadOf<W> = W extends Workflow.Workflow<any, infer P, any, any> ? P["Type"] : never
-type SuccessOf<W> = W extends Workflow.Workflow<any, any, infer S, any> ? S["Type"] : never
+type PayloadOf<W> = W extends Workflow.Workflow<string, infer P, Schema.Top, Schema.Top> ? P["Type"] : never
+type SuccessOf<W> = W extends Workflow.Workflow<string, Workflow.AnyStructSchema, infer S, Schema.Top> ? S["Type"] : never
 
 /**
  * Scores a workflow's live runs. The layer wraps the `WorkflowEngine` it is
@@ -727,11 +727,11 @@ export const bind = <W extends Workflow.Any, R = never>(
         })
       return WorkflowEngine.WorkflowEngine.of({
         ...engine,
-        register: (registered: any, execute: any) =>
+        register: ((registered: Workflow.Any, execute: (payload: unknown, run: string) => Effect.Effect<unknown, unknown, unknown>) =>
           registered._tag !== workflow._tag
-            ? engine.register(registered, execute)
-            : engine.register(registered, (payload: any, run: string) =>
-              Effect.tap(execute(payload, run), (output: any) => grade(payload, output, run)))
+            ? (engine.register as unknown as (w: Workflow.Any, ex: typeof execute) => Effect.Effect<void>)(registered, execute)
+            : (engine.register as unknown as (w: Workflow.Any, ex: typeof execute) => Effect.Effect<void>)(registered, (payload, run) =>
+              Effect.tap(execute(payload, run), (output) => grade(payload as PayloadOf<W>, output as SuccessOf<W>, run)))) as WorkflowEngine.WorkflowEngine["Service"]["register"]
       } as WorkflowEngine.WorkflowEngine["Service"])
     })
   )

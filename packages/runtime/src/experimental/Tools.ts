@@ -1406,15 +1406,19 @@ const kit = <const Names extends ReadonlyArray<keyof Declarations>>(
   Effect.gen(function*() {
     const context = yield* Effect.context<Needs<Names[number]>>()
     const toolkit = Toolkit.make(...names.map((name) => declarations[name] as Tool.Any))
-    const handlers: Record<string, (input: any) => Effect.Effect<any, ToolError>> = {}
+    const handlers: Record<string, (input: unknown) => Effect.Effect<unknown, ToolError>> = {}
     for (const name of names) {
-      const impl = impls[name] as (input: any) => Effect.Effect<any, ToolError, any>
+      const impl = impls[name] as unknown as (input: unknown) => Effect.Effect<unknown, ToolError, never>
       // The caller's context wins, so its permission store and ceiling apply;
       // the services the toolkit was built with fill in what it lacks.
       handlers[name] = (input) => Effect.updateContext(impl(input), (current) => Context.merge(context, current))
     }
-    return yield* (toolkit as any).pipe(Effect.provideContext(yield* (toolkit as any).toHandlers(handlers)))
-  }) as any
+    const dynamicKit = toolkit as unknown as {
+      readonly pipe: (fn: unknown) => Effect.Effect<WithHandlerOf<Names[number]>, never, Needs<Names[number]>>
+      readonly toHandlers: (h: typeof handlers) => Effect.Effect<Context.Context<never>>
+    }
+    return yield* dynamicKit.pipe(Effect.provideContext(yield* dynamicKit.toHandlers(handlers)))
+  }) as unknown as Effect.Effect<WithHandlerOf<Names[number]>, never, Needs<Names[number]>>
 
 /**
  * `read`, `write`, `edit`, `applyPatch`, `ls`, `glob` and `grep`. Needs
@@ -1527,13 +1531,13 @@ export const layerNativeSearch: Layer.Layer<never, never, ChildProcessSpawner> =
         let truncated = output.truncated()
         for (const line of output.text().split("\n")) {
           if (line === "") continue
-          let event: any
+          let event: { readonly type?: unknown; readonly data?: { readonly path?: { readonly text?: unknown }; readonly line_number?: unknown; readonly lines?: { readonly text?: unknown } } }
           try {
             event = JSON.parse(line)
           } catch {
             continue
           }
-          if (event.type === "begin") files.add(event.data?.path?.text ?? "")
+          if (event.type === "begin") files.add(String(event.data?.path?.text ?? ""))
           if (event.type !== "match") continue
           if (matches.length >= max) {
             truncated = true

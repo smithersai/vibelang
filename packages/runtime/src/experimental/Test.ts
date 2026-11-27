@@ -570,7 +570,7 @@ export const record = <E, R>(
               schema: request.responseFormat.schema as Schema.Codec<Record<string, unknown>, Record<string, unknown>>
             } as never)
             : model.generateText(generate as never)
-          const answered = yield* (response as Effect.Effect<LanguageModel.GenerateTextResponse<any>, AiError.AiError>).pipe(
+          const answered = yield* (response as Effect.Effect<LanguageModel.GenerateTextResponse<Record<string, Tool.Any>>, AiError.AiError>).pipe(
             Effect.tapError((error) => save({ request: recordedRequest(request), failure: encodeFailure(error) }))
           )
           const encode = Schema.encodeSync(Response.Part(toolkit) as unknown as Schema.Codec<unknown, Response.PartEncoded>)
@@ -657,7 +657,7 @@ interface EngineInstance {
 
 interface Registration {
   readonly workflow: Workflow.Any
-  readonly execute: (payload: any, executionId: string) => Effect.Effect<any, any, any>
+  readonly execute: (payload: never, executionId: string) => Effect.Effect<unknown, unknown, unknown>
   readonly context: Context.Context<never>
 }
 
@@ -694,7 +694,7 @@ export const restartable: Layer.Layer<WorkflowEngine.WorkflowEngine | Durable.Du
       Effect.gen(function*() {
         const context = yield* Effect.context<never>()
         registrations.push({ workflow, execute, context })
-        yield* current.engine.register(workflow as any, execute)
+        yield* (current.engine.register as unknown as (w: Workflow.Any, ex: Registration["execute"]) => Effect.Effect<void>)(workflow, execute)
       })
     // Each member is read from the current instance when it is used, so an
     // engine captured before a crash talks to the instance after it.
@@ -708,12 +708,12 @@ export const restartable: Layer.Layer<WorkflowEngine.WorkflowEngine | Durable.Du
       yield* Scope.close(current.scope, Exit.void)
       current = yield* build
       for (const registration of registrations) {
-        yield* current.engine.register(registration.workflow as any, registration.execute).pipe(
+        yield* (current.engine.register as unknown as (w: Workflow.Any, ex: Registration["execute"]) => Effect.Effect<void, never, unknown>)(registration.workflow, registration.execute).pipe(
           Effect.provideContext(
             registration.context.pipe(
               Context.add(WorkflowEngine.WorkflowEngine, engine),
               Context.add(Scope.Scope, current.scope)
-            ) as Context.Context<any>
+            )
           )
         ) as Effect.Effect<void>
       }

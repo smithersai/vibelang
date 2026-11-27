@@ -10,8 +10,8 @@
 import { defaultLayer, moduleFromEntry } from "../internal/rpcHost.js"
 import { runWorker } from "./ExperimentalBrowserRpc.js"
 
-const module = moduleFromEntry(import.meta.url) ?? moduleFromEntry(String((globalThis as any).location?.href ?? import.meta.url))
+const module = moduleFromEntry(import.meta.url) ?? moduleFromEntry(String((globalThis as { readonly location?: { readonly href?: unknown } }).location?.href ?? import.meta.url))
 if (module === undefined) {
   throw new Error("ExperimentalBrowserRpcWorkerEntry: spawn it with ExperimentalBrowserRpc.layer, which passes the worker module's URL")
 }
-runWorker(defaultLayer(module, await import(/* @vite-ignore */ module)) as any)
+runWorker(defaultLayer(module, await import(/* @vite-ignore */ module)) as Parameters<typeof runWorker>[0])

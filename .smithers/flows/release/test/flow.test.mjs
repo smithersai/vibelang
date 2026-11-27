@@ -4,17 +4,13 @@
 import { writeFileSync } from "node:fs"
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { Cause, Effect, Exit, Layer, Option, Schedule } from "effect"
-import { FlowEngine } from "@smthrs/engine"
-import { DurableDeferred, HumanTask, Interpreter } from "@smthrs/flow"
-import { WebCrypto } from "@smthrs/crypto"
+import { Cause, Effect, Exit, Option, Schedule } from "effect"
+import { DurableDeferred, HumanTask } from "@smthrs/flow"
+import { memoryRuntime } from "../../host.ts"
 import release, { layer } from "../flow.ts"
 import { fixture, NAMES, OTP } from "./fixture.mjs"
 
-const runtime = Interpreter.layerWithImplementations(release, layer).pipe(
-  Layer.provideMerge(FlowEngine.layerMemory),
-  Layer.provideMerge(WebCrypto.layer)
-)
+const runtime = memoryRuntime(release, layer)
 
 // answer records value for the question name once the run is parked on it.
 const answer = (executionId, name, value) =>

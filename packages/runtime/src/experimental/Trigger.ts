@@ -45,7 +45,7 @@ import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type { SqlClient } from "effect/sql"
 import { type Workflow, WorkflowEngine } from "effect/workflow"
-import { engineLaunch, engineWorkflow, isDeclaredWorkflow, type Workflow as DeclaredWorkflow } from "../durable.js"
+import { engineLaunch, engineWorkflow, isDeclaredWorkflow, type AnyWorkflowDeclaration, type Workflow as DeclaredWorkflow } from "../durable.js"
 import { Durable, type Signal } from "./Durable.js"
 import * as canonical from "./internal/canonical.js"
 import * as sqlStore from "./internal/triggerSql.js"
@@ -120,7 +120,7 @@ export type CatchUp = "none" | "one" | "all"
 type AnyWorkflow = Workflow.Any
 
 // A declared `workflow` (VIP-55), of any parameters.
-type AnyDeclared = DeclaredWorkflow<any, any, any, any, any>
+type AnyDeclared = AnyWorkflowDeclaration
 
 /**
  * What a trigger starts: a declared `workflow`, or one of Effect's workflows.
@@ -139,7 +139,8 @@ export type Target = AnyWorkflow | AnyDeclared
  * @category models
  * @since 0.0.13
  */
-export type Input<W extends Target> = W extends DeclaredWorkflow<infer P, any, any, any, any> ? Readonly<P>
+export type Input<W extends Target> = W extends DeclaredWorkflow<infer P, infer _A, infer _E, infer _S, infer _R> ? Readonly<P>
+  : W extends AnyDeclared ? ReadonlyArray<unknown>
   : W extends AnyWorkflow ? Schema.Struct.Type<W["payloadSchema"]["fields"]>
   : never
 
@@ -710,7 +711,7 @@ const make = (triggers: ReadonlyArray<Trigger>, options: { readonly pollMs: numb
  * @since 0.0.13
  */
 export const layer = (
-  triggers: ReadonlyArray<Trigger<any> | Effect.Effect<Trigger<any>, TriggerError>>,
+  triggers: ReadonlyArray<Trigger<Target> | Effect.Effect<Trigger<Target>, TriggerError>>,
   options: LayerOptions = {}
 ): Layer.Layer<never, TriggerError, Store | RunnerService> =>
   Layer.effectDiscard(Effect.gen(function*() {
