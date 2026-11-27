@@ -21,8 +21,12 @@
   "license": "MIT",
   "type": "module",
   "sideEffects": [
+    "./dist/core-entry.js",
     "./dist/core-native.cjs",
+    "./dist/core.js",
     "./dist/custom-matcher-symbol.js",
+    "./dist/entry.js",
+    "./dist/index.js",
     "./dist/native.cjs",
     "./dist/version.js"
   ],

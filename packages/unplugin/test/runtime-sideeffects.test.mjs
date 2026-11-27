@@ -76,7 +76,8 @@ it("a bare runtime import keeps Symbol.customMatcher initialization", async (t) 
     console.log(typeof Symbol.customMatcher)
   `)
   assert.ok(Object.values(result.metafile.outputs).some((output) =>
-    Object.entries(output.inputs).some(([path, input]) => path.endsWith("/dist/match.js") && input.bytesInOutput > 0)))
+    Object.entries(output.inputs).some(([path, input]) =>
+      (path.endsWith("/dist/custom-matcher-symbol.js") || path.endsWith("/dist/match.js")) && input.bytesInOutput > 0)))
   const output = join(root, "bundle.mjs")
   await writeFile(output, result.outputFiles[0].text)
   const ran = spawnSync(process.execPath, [output], { encoding: "utf8", timeout: 10_000 })

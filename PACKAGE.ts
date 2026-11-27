@@ -903,7 +903,7 @@ const targets = {
   }),
   "agent-evals-benchmark-30": S.Shell.Test({
     summary: "Run the 30-task reproducible AI Agent Reliability Benchmark.",
-    shell: "bun test .smithers/evals/agent-evals/benchmark-30/benchmark-30.test.ts",
+    shell: "bun test ./.smithers/evals/agent-evals/benchmark-30/benchmark-30.test.ts",
     data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
     tools: [bun, node],
     sandbox: "none",
