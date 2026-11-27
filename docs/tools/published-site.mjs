@@ -8,10 +8,17 @@ import { renderReleasePage } from "./release-docs.mjs"
 
 const root = fileURLToPath(new URL("../../", import.meta.url))
 const semver = /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/
+const semverRange = /^[~^]?\d+\.\d+\.\d+(?:-[\w.-]+)?$/
 const tools = ["vibelang", "vibelang-runtime", "vibelang-vite", "vibelang-unplugin", "create-vibelang"]
 const read = path => JSON.parse(readFileSync(path, "utf8"))
 export const platformNames = manifest => Object.keys(manifest.optionalDependencies ?? {})
   .filter(name => /^(?:vibelang-(?:darwin|linux|win32|freebsd)-|@smthrs\/cli-win32-)/.test(name)).sort()
+export const runtimeEffectVersion = runtime => {
+  const dev = runtime?.devDependencies?.effect
+  if (semver.test(dev)) return dev
+  const peer = runtime?.peerDependencies?.effect
+  return semverRange.test(peer) ? peer.replace(/^[~^]/, "") : undefined
+}
 
 export function resolveSiteRelease({ env = process.env, npm = args => execFileSync("npm", ["view", ...args, "--tag=latest"], { encoding: "utf8", timeout: 30000 }), repository = root, requirePublished = false } = {}) {
   if (env.VIBELANG_SITE_RELEASE_FILE) return read(env.VIBELANG_SITE_RELEASE_FILE)
@@ -23,7 +30,7 @@ export function resolveSiteRelease({ env = process.env, npm = args => execFileSy
   const rehearsal = !requirePublished && env.VIBELANG_RELEASE_VERSION === candidate.version
   const compiler = rehearsal ? candidate : JSON.parse(npm(["vibelang@" + version, "--json"]))
   const runtime = rehearsal ? read(join(repository, "packages/runtime/package.json")) : JSON.parse(npm(["vibelang-runtime@" + version, "--json"]))
-  if (compiler.version !== version || runtime.version !== version || !platformNames(compiler).length || !semver.test(runtime.peerDependencies?.effect)) {
+  if (compiler.version !== version || runtime.version !== version || !platformNames(compiler).length || !semverRange.test(runtime.peerDependencies?.effect)) {
     throw new Error("published-site: incomplete registry release metadata for " + version)
   }
   const names = [...tools, ...platformNames(compiler)]
@@ -47,7 +54,7 @@ export function renderSiteRelease(path, text, snapshot, sourceEffect) {
     return sections[0] + sections.slice(published).join("").replace(new RegExp("^(## " + version.replaceAll(".", "\\.") + ") \\(unreleased\\)", "m"), "$1")
   }
   if (/(?:^|\/)compiler-gaps\.(?:md|mdx)$/.test(path)) return text
-  const effect = snapshot.runtime.peerDependencies.effect
+  const effect = runtimeEffectVersion(snapshot.runtime)
   let output = renderReleasePage(path === "index.mdx" ? "site/src/pages/index.mdx" : path, text, version, effect)
   if (sourceEffect && sourceEffect !== effect) output = output.replaceAll(sourceEffect, effect)
   const platforms = platformNames(snapshot.compiler)

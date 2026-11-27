@@ -1,1 +1,2 @@
-*.vibe linguist-language=TypeScript
+*.vibe linguist-language=TypeScript text eol=lf
+*.vibex linguist-language=TypeScript text eol=lf

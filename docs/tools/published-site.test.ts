@@ -29,7 +29,7 @@ test("built install commands and native packages resolve in the npm snapshot, ah
           if (!snapshot.packages[name]) problems.push(name)
         }
         expect(text).toContain("WSL")
-        expect(text).toContain("effect@4.0.6")
+        expect(text).toContain("effect@^4.0.6")
       }
     }
     expect(problems).toEqual([])

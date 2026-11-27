@@ -44,8 +44,9 @@ const spec = localSpec ? loadSpec(path.resolve(source, '..')) : undefined
 if (localSpec) SPEC_URL = '/spec/'
 const errors = []
 const release = process.env.VIBELANG_SITE_RELEASE_FILE ? JSON.parse(fs.readFileSync(process.env.VIBELANG_SITE_RELEASE_FILE, 'utf8')) : undefined
-const renderSiteRelease = release ? (await import('../../docs/tools/published-site.mjs')).renderSiteRelease : (_rel, text) => text
-const sourceEffect = release ? JSON.parse(fs.readFileSync(path.join(docsDir, '../packages/runtime/package.json'), 'utf8')).peerDependencies.effect : undefined
+const publishedSite = release ? await import('../../docs/tools/published-site.mjs') : undefined
+const renderSiteRelease = publishedSite ? publishedSite.renderSiteRelease : (_rel, text) => text
+const sourceEffect = publishedSite ? publishedSite.runtimeEffectVersion(JSON.parse(fs.readFileSync(path.join(docsDir, '../packages/runtime/package.json'), 'utf8'))) : undefined
 const renderRelease = (rel, text) => renderSiteRelease(rel, text, release, sourceEffect)
 const releaseChangesTool = path.resolve(source, '../tools/release-changes.mjs')
 const releaseChanges = fs.existsSync(releaseChangesTool) ? await import(releaseChangesTool) : undefined

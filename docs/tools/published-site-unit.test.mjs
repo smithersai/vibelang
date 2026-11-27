@@ -26,13 +26,15 @@ test("npm latest overrides the candidate and registry failures never fall back",
 test("an explicit candidate override supports offline release rehearsals", () => {
   const dir = mkdtempSync(join(tmpdir(), "site-rehearsal-"))
   try {
-    for (const [name, manifest] of [["compiler", { version: "9.8.7", optionalDependencies: { "@smthrs/cli-win32-x64": "9.8.7" } }], ["runtime", { version: "9.8.7", peerDependencies: { effect: "4.1.0" } }]]) {
+    for (const [name, manifest] of [["compiler", { version: "9.8.7", optionalDependencies: { "@smthrs/cli-win32-x64": "9.8.7" } }], ["runtime", { version: "9.8.7", peerDependencies: { effect: "^4.1.0" }, devDependencies: { effect: "4.1.6" } }]]) {
       mkdirSync(join(dir, "packages", name), { recursive: true })
       writeFileSync(join(dir, "packages", name, "package.json"), JSON.stringify(manifest))
     }
     const release = resolveSiteRelease({ repository: dir, env: { VIBELANG_RELEASE_VERSION: "9.8.7" }, npm: () => { throw Error("must not contact npm") } })
-    const page = renderSiteRelease("setup.md", "Version 0.0.11 publishes native packages for macOS, Linux and Windows on arm64 and x64.", release)
+    const page = renderSiteRelease("setup.md", "Version 0.0.11 publishes native packages for macOS, Linux and Windows on arm64 and x64.\n<!-- compatibility:start -->\nold\n<!-- compatibility:end -->", release, "4.1.6")
     assert.match(page, /Version 9.8.7.*Windows on x64/)
+    assert.match(page, /effect@\^4\.1\.0/)
+    assert.match(page, /effect@4\.1\.6/)
     assert.doesNotMatch(page, /WSL/)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
@@ -119,7 +121,7 @@ test("rehearsal package mentions are not installation claims", () => {
 
 test("site rendering preserves the known-limitations release guarantee with an older npm snapshot", () => {
   const source = readFileSync(new URL("../user/src/setup/known-limitations.md", import.meta.url), "utf8")
-  const claim = "In 0.0.13, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in."
+  const claim = "In 0.0.14, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in."
   const release = { ...snapshot, compiler: { ...snapshot.compiler, version: "0.0.12" } }
   assert.ok(source.includes(claim))
   assert.ok(renderSiteRelease("setup/known-limitations.md", source, release).includes(claim))

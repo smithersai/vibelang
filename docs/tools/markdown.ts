@@ -1,4 +1,4 @@
-import { renderSiteRelease } from "./published-site.mjs"
+import { renderSiteRelease, runtimeEffectVersion } from "./published-site.mjs"
 import { publishRunDirectives, stripDecisionReferences, stripDiagrams, stripVideos } from "../../site/scripts/user-docs.mjs"
 // Markdown copies and llms.txt for the single Vocs site. Extracted from the former renderer.
 import { Marked, type Tokens } from "marked"
@@ -71,7 +71,7 @@ export function buildMarkdown(site: string, facts: Record<string, string>, relea
       entry.isDirectory() ? files(join(dir, entry.name)) : entry.isFile() && entry.name.endsWith(".md") ? [relative(src, join(dir, entry.name))] : [])
   }
   // Read a snapshot: writers can keep working, and validation and rendering use the same bytes.
-  const sourceEffect = release ? JSON.parse(readFileSync(join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies.effect : undefined
+  const sourceEffect = release ? runtimeEffectVersion(JSON.parse(readFileSync(join(repo, "packages/runtime/package.json"), "utf8"))) : undefined
   const sources = new Map(files(src).map(path => [path, renderSiteRelease(path, stripDecisionReferences(stripDiagrams(stripVideos(publishRunDirectives(readFileSync(join(src, path), "utf8"))))), release, sourceEffect)]))
   const errors: string[] = []
   for (const name of readdirSync(design).filter(f => f.endsWith(".md")).sort()) {

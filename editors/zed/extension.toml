@@ -12,10 +12,10 @@ languages = ["Vibe", "Vibe JSX"]
 
 [grammars.vibe]
 repository = "https://github.com/smithersai/vibelang"
-rev = "7b0fd5b58fed32be58ff11d3a1ae8eda233fd16d"
+rev = "6097dc4b07794a60cc6683e2f35507c1ad4fd651"
 path = "editors/tree-sitter-vibelang"
 
 [grammars.vibex]
 repository = "https://github.com/smithersai/vibelang"
-rev = "7b0fd5b58fed32be58ff11d3a1ae8eda233fd16d"
+rev = "6097dc4b07794a60cc6683e2f35507c1ad4fd651"
 path = "editors/tree-sitter-vibelang/vibex"

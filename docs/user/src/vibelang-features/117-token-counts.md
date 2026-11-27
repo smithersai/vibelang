@@ -87,13 +87,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| **Start Here** | **5,500** |
+| **Start Here** | **5,600** |
 | [Welcome](../001-onboarding.md) | 2,200 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 1,900 |
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,500 |
 | **Learning Path** | **11,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 2,100 |
-| [Installation](../getting-started/004-installation.md) | 2,600 |
+| [Installation](../getting-started/004-installation.md) | 2,500 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 2,900 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 960 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 2,100 |
@@ -103,14 +103,14 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,200 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 1,500 |
 | [Devtools](../getting-started/012-devtools.md) | 9,100 |
-| **All 13 pages** | **32,000** |
+| **All 13 pages** | **31,000** |
 
 ### Setup
 
 | Page | Tokens |
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,800 |
-| [What is in the alpha](../setup/alpha.md) | 3,000 |
+| [What is in the alpha](../setup/alpha.md) | 3,200 |
 | [Known limitations](../setup/known-limitations.md) | 3,100 |
 | [Source maps](../setup/source-maps.md) | 920 |
 | **Start a project** | **5,500** |

@@ -47,7 +47,7 @@ To publish this extension in the official [zed-industries/extensions](https://gi
 [vibelang]
 submodule = "extensions/vibelang"
 path = "editors/zed"
-version = "0.0.14"
+version = "0.0.15"
 ```
 
 3. Update `rev` in `editors/zed/extension.toml` to the released commit SHA and open a pull request to `zed-industries/extensions`.

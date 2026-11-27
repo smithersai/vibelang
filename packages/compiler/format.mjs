@@ -228,7 +228,7 @@ function formatText(text, filePath, style, flags = []) {
 // `--stdin` formats too: it returns a gitignored file's text unchanged.
 function discoverable(config) {
   const result = spawnDprint(["output-file-paths", "--config", config, "**/*.{vibe,vibex,ts,tsx,mts,cts}"])
-  return result.status === 0 ? new Set(result.stdout.split("\n").filter(Boolean)) : new Set()
+  return result.status === 0 ? new Set(result.stdout.split(/\r?\n/).filter(Boolean)) : new Set()
 }
 // cleanTexts remembers, across runs and per working directory, the texts dprint
 // left unchanged, so a check of a clean tree starts no dprint. An entry names the
