@@ -27,7 +27,7 @@ writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: {
   target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true,
   rootDir: "src", outDir: "dist", declaration: true, sourceMap: true
 }, include: ["src/**/*.vibe"] }))
-const source = `export function answer() { return 42 }
+const source = `export effect function answer() { return 42 }
 export effect function main() { try Console.log("Windows main ran") }
 await runPromise(main())
 `
@@ -52,7 +52,7 @@ const output = result.outputs.get(join(root, "src/main.vibe"))
 assert.ok(output)
 assert.ok(output.map.sources.includes(join(root, "src/main.vibe").replaceAll("\\", "/")))
 if (process.argv.includes("--vitest")) {
-  writeFileSync(join(root, "src/main.test.vibe"), 'import { assert, it } from "@effect/vitest"\r\nimport { answer } from "./main.vibe"\r\nit.effect("VibeLang Effect under Vitest on Windows") {\r\n  assert.strictEqual(answer(), 42)\r\n}\r\n')
+  writeFileSync(join(root, "src/main.test.vibe"), 'import { assert, it } from "@effect/vitest"\r\nimport { answer } from "./main.vibe"\r\nit.effect("VibeLang Effect under Vitest on Windows", effect () => {\r\n  const value = try answer()\r\n  try Effect.try(() => assert.strictEqual(value, 42))\r\n})\r\n')
   writeFileSync(join(root, "vitest.config.mjs"), 'import vibelang from "vibelang-vite"; export default { plugins: [vibelang({ project: "tsconfig.json" })], test: { include: ["src/**/*.test.vibe"] } }')
   run(process.execPath, ["node_modules/vitest/vitest.mjs", "run", "--config", "vitest.config.mjs"])
 }
