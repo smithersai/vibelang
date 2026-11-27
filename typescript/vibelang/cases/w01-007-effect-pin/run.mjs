@@ -1,11 +1,11 @@
 // run-seconds: 240
-// rule-evidence: docs/design/src/007-tooling.md#the-effect-version | The pinned dependency artifact is exactly `effect@4.1.1`; the `4.1` minimum means the pin never moves below `4.1`, not that other `4.1.x` versions are supported (VIP-32, amended).
-// rule-evidence: docs/design/src/007-tooling.md#the-effect-version | The compiler reads the resolved `effect/package.json`; any version other than `4.1.1`, including `4.1.0`, is `EK3201` in the CLI and editor ([VIP-32](../vips/0032-effect-version.md#decision)).
+// rule-evidence: docs/design/src/007-tooling.md#the-effect-version | VibeLang supports any stable Effect release in the `^4.1.0` semver range (`>=4.1.0 <5.0.0`), with the repository's tested baseline at `effect@4.1.6` (VIP-32, amended 2026-11-27).
+// rule-evidence: docs/design/src/007-tooling.md#the-effect-version | The compiler reads the resolved `effect/package.json`; any version outside the stable `^4.1.0` range (`>=4.1.0 <5.0.0`), including `4.0.x`, `5.x`, and prereleases such as `4.1.6-next.1`, is `EK3201` in the CLI and editor ([VIP-32](../vips/0032-effect-version.md#decision)).
 //
-// The published packages pin exactly 4.1.1. A project whose resolved
-// effect/package.json names any other version, the neighbouring 4.1.x
-// releases included, reports one EK3201 on its config in the CLI build and
-// in the language server; the pinned version reports nothing.
+// The published packages declare peerDependencies.effect = "^4.1.0" with tested
+// baseline 4.1.6. Any version outside >=4.1.0 <5.0.0 (4.0.x, 5.x, prereleases)
+// reports one EK3201 on its config in the CLI build and in the language server;
+// stable ^4.1.0 versions report nothing.
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
@@ -13,13 +13,16 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { compiler, repo, run } from "../../tests/coverage-tooling.mjs"
 import { Connection } from "../../lsp-connection.mjs"
 
-const pin = "4.1.1"
+const range = "^4.1.0"
+const baseline = "4.1.6"
 for (const manifest of ["packages/runtime/package.json", "packages/compiler/package.json"]) {
   const json = JSON.parse(fs.readFileSync(path.join(repo, manifest), "utf8"))
-  assert.equal(json.peerDependencies.effect, pin, manifest + " peer range")
+  assert.equal(json.peerDependencies.effect, range, manifest + " peer range")
 }
-assert.match(fs.readFileSync(path.join(repo, "packages/runtime/src/version.ts"), "utf8"), /PINNED_EFFECT_VERSION = "4\.1\.1"/)
-console.log("manifests pin effect", pin)
+const versionSrc = fs.readFileSync(path.join(repo, "packages/runtime/src/version.ts"), "utf8")
+assert.match(versionSrc, /PINNED_EFFECT_VERSION = "4\.1\.6"/)
+assert.match(versionSrc, /SUPPORTED_EFFECT_RANGE = "\^4\.1\.0"/)
+console.log("manifests support effect", range, "baseline", baseline)
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 function project(version) {
@@ -59,10 +62,10 @@ async function editor(dir) {
   return published.filter(p => p.uri.endsWith("/tsconfig.json")).at(-1)?.diagnostics.map(d => d.source + String(d.code).padStart(4, "0")) ?? []
 }
 
-for (const version of ["4.1.0", "4.1.2", "4.0.3", "4.2.0", pin]) {
+for (const version of ["4.0.3", "5.0.0", "4.1.6-next.1", "4.1.0", "4.2.0", baseline]) {
   const dir = project(version)
   const built = run(compiler, ["--pretty", "false", "-p", dir], dir)
   const cli = [...built.output.matchAll(/^tsconfig\.json\(1,1\): error (EK\d+): The resolved effect is ([^;]+);/gm)].map(m => m[1] + " " + m[2])
-  const lsp = version === pin || version === "4.1.0" ? await editor(dir) : null
-  console.log([version.padEnd(6), "cli", JSON.stringify(cli), ...(lsp ? ["editor", JSON.stringify(lsp)] : [])].join(" "))
+  const lsp = version === baseline || version === "4.0.3" ? await editor(dir) : null
+  console.log([version.padEnd(12), "cli", JSON.stringify(cli), ...(lsp ? ["editor", JSON.stringify(lsp)] : [])].join(" "))
 }

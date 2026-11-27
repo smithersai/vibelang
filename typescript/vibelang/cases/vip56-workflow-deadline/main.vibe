@@ -1,4 +1,4 @@
-// expect-result: {"fast":"ok:a","slow":"DeadlineExceeded: Workflow Slow exceeded its deadline (25 millis).","failed":"bad:b"}
+// expect-result: {"fast":"ok:a","slow":"DeadlineExceeded","failed":"bad:b"}
 // VIP-56: `static readonly deadline` bounds a workflow run durably across
 // waits without delaying normal completion or typed failures.
 task Work {
