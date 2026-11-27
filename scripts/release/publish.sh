@@ -44,6 +44,8 @@ node "$root/scripts/release/repack.mjs" "$tarballs"
 
 if user=$(npm whoami --registry "$registry" 2>/dev/null); then
   echo "publish: logged in to npm as $user; publishing VibeLang $version"
+elif [ "${GITHUB_ACTIONS:-}" = "true" ] && [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+  echo "publish: using GitHub Actions OIDC trusted publishing for VibeLang $version"
 elif [ -n "$dry" ]; then
   echo "publish: not logged in to npm; the dry run continues"
 else
@@ -117,7 +119,12 @@ read_otp() {
   return "$read_status"
 }
 
-if [ -z "$dry" ] && [ -z "$otp" ]; then
+interactive=0
+if [ -t 0 ] && [ "${CI:-}" != "true" ]; then
+  interactive=1
+fi
+
+if [ -z "$dry" ] && [ -z "$otp" ] && [ "$interactive" -eq 1 ]; then
   read_otp 'npm one-time password (press Enter if your account does not use one): '
 fi
 
@@ -128,12 +135,19 @@ for item in $todo; do
   file=${rest#*=}
   while :; do
     set -- npm publish "$stage/$file" --registry "$registry" --access public
+    if [ "${GITHUB_ACTIONS:-}" = "true" ] && [ "$registry" = "https://registry.npmjs.org/" ] && [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+      set -- "$@" --provenance
+    fi
     [ -z "$dry" ] || set -- "$@" --dry-run
     if npm_config_otp="${otp:-${npm_config_otp:-}}" "$@"; then
       if [ -n "$dry" ]; then echo "publish: $name@$package_version checked (dry run)"; else echo "publish: $name@$package_version published"; fi
       break
     fi
     [ -z "$dry" ] || exit 1
+    if [ "$interactive" -eq 0 ]; then
+      echo "publish: $name@$package_version failed in non-interactive mode. Fix credentials or trusted publishing and rerun to resume." >&2
+      exit 1
+    fi
     read_otp "publish: $name failed. Enter a new one-time password to retry, or press Enter to stop: "
     [ -n "$otp" ] || { echo "publish: stopped. Rerun this script to resume." >&2; exit 1; }
   done

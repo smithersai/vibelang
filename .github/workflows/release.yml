@@ -1,0 +1,200 @@
+name: Release and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force_site_deploy:
+        description: Redeploy vibelang.sh even if npm version is already published
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Check release state
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      published: ${{ steps.check.outputs.published }}
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      should_deploy_site: ${{ steps.check.outputs.should_deploy_site }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "26"
+      - id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./packages/compiler/package.json").version')"
+          published="$(npm view vibelang version --prefer-online 2>/dev/null || echo "")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "published=$published" >> "$GITHUB_OUTPUT"
+
+          should_publish="false"
+          should_deploy_site="false"
+
+          if [ "$version" != "$published" ]; then
+            should_publish="true"
+            should_deploy_site="true"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force_site_deploy }}" = "true" ]; then
+            should_deploy_site="true"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            if git diff --name-only HEAD~1 HEAD -- site/ docs/user/ README.md | grep -q .; then
+              should_deploy_site="true"
+            fi
+          fi
+
+          echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
+          echo "should_deploy_site=$should_deploy_site" >> "$GITHUB_OUTPUT"
+          echo "Plan: candidate=$version published=${published:-none} should_publish=$should_publish should_deploy_site=$should_deploy_site"
+
+  release:
+    name: Build, rehearse, publish npm, deploy site
+    needs: plan
+    if: needs.plan.outputs.should_publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: typescript/tsc/go.mod
+          cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "26"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Ensure npm supports OIDC trusted publishing
+        run: |
+          npm --version
+          npm install -g npm@latest
+          npm --version
+
+      - name: Pre-warm Go module cache
+        run: (cd typescript/tsc && go version && go mod download)
+
+      - name: Build all 6 platform binaries
+        run: sh scripts/release/build-binaries.sh
+
+      - name: Assemble 12 npm tarballs and VS Code extension
+        run: node scripts/release/make-packages.mjs
+
+      - name: Rehearse release against local registry
+        run: sh scripts/release/rehearse.sh
+
+      - name: Publish dry run
+        run: sh scripts/release/publish.sh --dry-run
+
+      - name: Publish packages to npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > "$HOME/.npmrc"
+            chmod 600 "$HOME/.npmrc"
+          fi
+          sh scripts/release/publish.sh
+
+      - name: Deploy vibelang.sh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VIBELANG_STALE_VIDEOS_REASON: "Automated main release ships existing walkthrough videos"
+        run: sh scripts/release/deploy-site.sh "${{ needs.plan.outputs.version }}"
+
+      - name: Verify live npm packages and site
+        run: sh scripts/release/verify-published.sh "${{ needs.plan.outputs.version }}"
+
+      - name: Record publication snapshot on main
+        run: |
+          set -euo pipefail
+          node docs/tools/release-history.mjs --record
+          if ! git diff --quiet docs/tools/release-publication-snapshot.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/tools/release-publication-snapshot.json
+            git commit -m "chore(release): record Vibe ${{ needs.plan.outputs.version }} npm publication"
+            git push origin HEAD:main
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "GitHub Release v$VERSION already exists; skipping"
+            exit 0
+          fi
+          NOTES_FILE="$(mktemp)"
+          trap 'rm -f "$NOTES_FILE"' EXIT
+          awk -v v="## $VERSION" '$0 == v { found=1; next } /^## / && found { exit } found { print }' \
+            docs/user/src/setup/release-notes.md > "$NOTES_FILE"
+          gh release create "v$VERSION" \
+            --target "${{ github.sha }}" \
+            --prerelease \
+            --title "Vibe $VERSION" \
+            --notes-file "$NOTES_FILE"
+
+      - name: Close matching open release issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          for num in $(gh issue list --state open --search "Release $VERSION in:title" --json number --jq '.[].number'); do
+            gh issue close "$num" --reason completed --comment "Released Vibe \`$VERSION\` via GitHub Actions (npm packages, https://vibelang.sh, and GitHub Release \`v$VERSION\`)."
+          done
+
+  deploy-site:
+    name: Deploy vibelang.sh for docs/site update
+    needs: plan
+    if: needs.plan.outputs.should_publish != 'true' && needs.plan.outputs.should_deploy_site == 'true' && needs.plan.outputs.published != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "26"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Deploy vibelang.sh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VIBELANG_STALE_VIDEOS_REASON: "Automated docs deploy ships existing walkthrough videos"
+        run: sh scripts/release/deploy-site.sh "${{ needs.plan.outputs.published }}"
+
+      - name: Verify live site
+        run: sh scripts/release/verify-published.sh "${{ needs.plan.outputs.published }}"

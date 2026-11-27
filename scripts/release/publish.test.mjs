@@ -265,3 +265,31 @@ for (const segment of ["Users", "home"]) {
     assert.equal(existsSync(stage), false)
   })
 }
+
+test("GitHub Actions OIDC mode proceeds without npm whoami, skips TTY OTP prompt, and adds --provenance", (t) => {
+  const f = fixture(t)
+  const result = run(f, {
+    CI: "true",
+    GITHUB_ACTIONS: "true",
+    ACTIONS_ID_TOKEN_REQUEST_URL: "https://token.actions.githubusercontent.invalid/",
+    VIBELANG_REGISTRY: "https://registry.npmjs.org/"
+  }, ["--dry-run"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /using GitHub Actions OIDC trusted publishing/)
+  assert.equal(result.publishes.length, names.length)
+  for (const args of result.publishes) {
+    assert.deepEqual(args.slice(2), ["--registry", "https://registry.npmjs.org/", "--access", "public", "--provenance", "--dry-run"])
+  }
+})
+
+test("non-interactive CI failure exits immediately instead of prompting for an OTP via stty", (t) => {
+  const f = fixture(t)
+  const result = run(f, {
+    CI: "true",
+    TEST_LOGGED_IN: "1",
+    TEST_FAIL_PUBLISH: "1"
+  }, [])
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /failed in non-interactive mode/)
+  assert.doesNotMatch(result.stderr, /stty/)
+})
