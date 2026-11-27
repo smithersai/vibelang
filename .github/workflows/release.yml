@@ -87,10 +87,12 @@ jobs:
         with:
           bun-version: "1.4.2"
 
-      - name: Print toolchain versions
+      - name: Install pnpm and print toolchain versions
         run: |
+          npm install -g pnpm@12.18.0
           node --version
           npm --version
+          pnpm --version
           bun --version
 
       - name: Pre-warm Go module cache
