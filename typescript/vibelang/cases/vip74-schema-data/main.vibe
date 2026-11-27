@@ -1,0 +1,44 @@
+// expect-result: {"decoded":["waiting","sent:TRK-1@NYC:fast","failed:503"],"guard":true,"encodedTag":"Sent","unionMatch":"TRK-1"}
+export schema Address {
+  readonly city: string
+}
+
+export schema data Delivery {
+  Waiting
+  Sent {
+    readonly tracking: string
+    note?: string
+    address: Address
+  }
+  Failed {
+    code: number
+  }
+}
+
+export function describe(d: Delivery): string {
+  return match (d) {
+    when { _tag: "Waiting" }: "waiting";
+    when { _tag: "Sent", let tracking, let address } and let s: `sent:${tracking}@${address.city}:${s.note ?? "none"}`;
+    when { _tag: "Failed", let code }: `failed:${code}`;
+  }
+}
+
+export effect function main() {
+  const decode = Schema.decodeUnknownEffect(Delivery)
+  const encode = Schema.encodeEffect(Delivery)
+  const a = try decode({ _tag: "Waiting" })
+  const b = try decode({ _tag: "Sent", tracking: "TRK-1", note: "fast", address: { city: "NYC" } })
+  const c = try decode({ _tag: "Failed", code: 503 })
+  const encoded = try encode(b)
+  const unionMatch = Delivery.match(b, {
+    Waiting: () => "none",
+    Sent: (s) => s.tracking,
+    Failed: (f) => String(f.code),
+  })
+  return {
+    decoded: [describe(a), describe(b), describe(c)],
+    guard: Delivery.guards.Sent(b),
+    encodedTag: encoded._tag,
+    unionMatch,
+  }
+}

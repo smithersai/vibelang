@@ -31,6 +31,10 @@ func schemaFieldInitializerSites(file *ast.SourceFile) []schemaFieldInitializerS
 			bodies = append(bodies, node.Arguments()[0].Loc)
 			return false
 		}
+		if isSchemaTaggedUnionFields(node) {
+			bodies = append(bodies, node.Loc)
+			return false
+		}
 		// A type with no schema form is a TypeScript type too (EK2109).
 		if isUnsupportedSchema(node) && !isNonFieldSchema(node) {
 			if span := node.Loc; span.Pos() >= 0 && span.End() >= span.Pos() && span.End() <= len(file.Text()) {

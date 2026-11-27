@@ -360,6 +360,16 @@ func (w *printer) statement(n *ast.Node, e env) {
 		}
 	case ast.KindReturnStatement:
 		w.returnStatement(n, e)
+	case ast.KindThrowStatement:
+		if e.effect {
+			w.write("return yield* " + p.names.prelude("Effect") + ".fail(")
+			w.node(n.Expression(), e)
+			w.write("); ")
+		} else {
+			w.write("throw ")
+			w.node(n.Expression(), e)
+			w.write("; ")
+		}
 	case ast.KindExpressionStatement:
 		w.node(n.Expression(), e)
 		w.write("; ")

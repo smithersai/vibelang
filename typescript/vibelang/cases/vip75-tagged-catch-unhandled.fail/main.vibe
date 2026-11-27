@@ -1,0 +1,13 @@
+// expect: EK9201
+error NotFound
+error DbDown
+
+effect function fetchItem(failDb: boolean): string!(NotFound | DbDown) {
+  if (failDb) throw new DbDown()
+  throw new NotFound()
+}
+
+// Catching only NotFound leaves DbDown in residual E, violating string!!.
+export effect function strict(): string!! {
+  return fetchItem(true) catch { when NotFound: "missing" }
+}

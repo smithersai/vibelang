@@ -123,6 +123,9 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 		if p.isStartOfVibeLangSchemaService() {
 			return p.parseSchemaServiceDeclaration(pos, jsdoc, modifiers) // VIP-57, vibelang_schema_service.go
 		}
+		if p.isStartOfVibeLangSchemaData() {
+			return p.parseSchemaDataDeclaration(pos, jsdoc, modifiers) // VIP-74, vibelang_schema_data.go
+		}
 		if p.isStartOfVibeLangSchemaError() {
 			return p.parseErrorDeclaration(pos, jsdoc, modifiers, true /*schema*/) // vibelang_errors.go
 		}
@@ -1431,7 +1434,9 @@ func (p *Parser) vibelangCalleeAnchor(anchor core.TextRange) core.TextRange {
 // vibelangSchemaFields makes Schema.Struct({ ... }) of members, the members of
 // a schema declaration's body or of an object type in a field, flagged
 // NodeFlagsVibeLang. body is the range of the braces.
-func (p *Parser) vibelangSchemaFields(members []*ast.Node, body core.TextRange) *ast.Node {
+// vibelangSchemaFieldProperties maps struct or variant members to VIP-15
+// property assignments, preserving written readonly mutability and comments.
+func (p *Parser) vibelangSchemaFieldProperties(members []*ast.Node) []*ast.Node {
 	properties := p.vibelangSchemaProperties(members)
 	for i, member := range members {
 		if ast.IsPropertySignatureDeclaration(member) && member.Name() != nil && member.Type() != nil &&
@@ -1448,6 +1453,11 @@ func (p *Parser) vibelangSchemaFields(members []*ast.Node, body core.TextRange) 
 			properties[i].Loc = core.NewTextRange(member.Pos(), properties[i].End())
 		}
 	}
+	return properties
+}
+
+func (p *Parser) vibelangSchemaFields(members []*ast.Node, body core.TextRange) *ast.Node {
+	properties := p.vibelangSchemaFieldProperties(members)
 	brace := scanner.SkipTrivia(p.sourceText, body.Pos())
 	// The properties lie between the braces, as a parsed object literal's do:
 	// the printer writes the comments at the list's end before the closing

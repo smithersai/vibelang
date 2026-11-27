@@ -51,7 +51,7 @@ func checkAmbientSchemaData(c *checker.Checker, file *ast.SourceFile) {
 		}
 		message, width := EK1506, len("schema")
 		switch form.Name {
-		case "schema", parser.VibeSyntaxSchemaAlias:
+		case "schema", parser.VibeSyntaxSchemaAlias, parser.VibeSyntaxSchemaData:
 		case parser.VibeSyntaxData:
 			message, width = EK1607, len("data")
 		default:

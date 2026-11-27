@@ -93,7 +93,11 @@ func (c *converter) convertControlFlowStatement(n *ast.Node, parent *ast.Node) (
 		}
 		return result, true
 	case ast.KindThrowStatement:
-		return c.node(n, "ThrowStatement").set("argument", c.convertChild(n.Expression(), n)), true
+		res := c.node(n, "ThrowStatement").set("argument", c.convertChild(n.Expression(), n))
+		if c.synthesized(n) {
+			res.set("synthesized", true)
+		}
+		return res, true
 	}
 	return nil, false
 }

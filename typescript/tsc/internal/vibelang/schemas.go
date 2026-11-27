@@ -4,6 +4,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -44,7 +45,7 @@ const schemaTypeID = "~effect/Schema/Schema"
 // isSchemaStruct reports whether node is the Schema.Struct call that the
 // parser writes for a schema declaration, or for an object type in one.
 func isSchemaStruct(node *ast.Node) bool {
-	return node.Kind == ast.KindCallExpression && node.Flags&ast.NodeFlagsVibeLang != 0
+	return node.Kind == ast.KindCallExpression && node.Flags&ast.NodeFlagsVibeLang != 0 && !parser.IsSchemaTaggedUnion(node)
 }
 
 // isUnsupportedSchema reports whether node is the Schema.Unknown that the
@@ -62,6 +63,10 @@ func isNonFieldSchema(node *ast.Node) bool {
 func checkSchemaDeclarations(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
+		if parser.IsSchemaTaggedUnion(n) {
+			checkSchemaTaggedUnion(c, file, n) // schema_data.go
+			return false
+		}
 		if outer := enclosingSchemaCall(n); isSchemaStruct(n) && (outer == nil || !isSchemaStruct(outer)) {
 			checkSchemaFields(c, file, n, n)
 		}
@@ -168,7 +173,7 @@ func isDeclaredSchemaReference(c *checker.Checker, value *ast.Node) bool {
 		if declaration.Kind != ast.KindVariableDeclaration {
 			continue
 		}
-		if isSchemaAlias(declaration) || declaration.Initializer() != nil && isSchemaStruct(declaration.Initializer()) {
+		if isSchemaAlias(declaration) || declaration.Initializer() != nil && (isSchemaStruct(declaration.Initializer()) || parser.IsSchemaTaggedUnion(declaration.Initializer())) {
 			return true
 		}
 	}

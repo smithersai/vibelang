@@ -8,7 +8,7 @@ import path from "node:path"
 export function checkTwin(dir){
  const modules=process.env.COV_MODULES_REFERENCE_NODE_MODULES??process.env.EFFECT_NODE_MODULES
  assert.ok(modules,"set EFFECT_NODE_MODULES; COV_MODULES_REFERENCE_NODE_MODULES selects the historical 4.1.0 oracle")
- const pin=process.env.COV_MODULES_REFERENCE_NODE_MODULES?"4.1.0":JSON.parse(readFileSync(new URL("../../../packages/runtime/package.json",import.meta.url))).peerDependencies.effect
+ const pin=process.env.COV_MODULES_REFERENCE_NODE_MODULES?"4.1.0":JSON.parse(readFileSync(new URL("../../../packages/runtime/package.json",import.meta.url))).devDependencies.effect
  for(const [name,version]of [["typescript","5.9.3"],["effect",pin]])
   assert.equal(JSON.parse(readFileSync(path.join(modules,name,"package.json"))).version,version)
  const work=path.join(dir,".cache/coverage-twin")

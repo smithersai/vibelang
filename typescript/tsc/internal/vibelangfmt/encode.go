@@ -111,6 +111,13 @@ type placeholder struct {
 	// data marks a data declaration (D307), whose variants with fields the
 	// type literal writes with a colon before the fields.
 	data bool
+	// taggedCatch marks a VIP-75 `e catch { when ... }` expression.
+	taggedCatch bool
+	// trailingSemi records whether the last arm of a tagged catch ended with `;`.
+	trailingSemi bool
+	// commaArms marks tagged catch arms whose comma expression was parenthesized
+	// so the TypeScript formatter can parse them as object-literal values.
+	commaArms map[int]bool
 	// bodyKinds records the source bodies of an is condition before lowering.
 	bodyKinds []ast.Kind
 	// nested marks a placeholder whose edit an opaque edit swallowed, such as
@@ -704,7 +711,7 @@ func (e *encoder) declaration(form parser.VibeSyntax) error {
 		} else {
 			e.typeBody(form)
 		}
-	case parser.VibeSyntaxData:
+	case parser.VibeSyntaxData, parser.VibeSyntaxSchemaData:
 		// data D { A; B { f: T } } is type $v = { A; B: { f: T } }: a variant
 		// is a property, and its fields, if any, its type.
 		name := e.hold(placeholderTypeHead, head, form.Head.Pos(), firstLineWidth(head)-len("type  ="))
@@ -1028,10 +1035,46 @@ func (e *encoder) catch(form parser.VibeSyntax) error {
 		e.insert(form.Left.End(), ")", -1)
 	}
 	name := e.hold(placeholderCatch, "catch", form.Word.Pos(), 0)
-	e.holders[len(e.holders)-1].parenthesized = parenthesized
+	holderIndex := len(e.holders) - 1
+	e.holders[holderIndex].parenthesized = parenthesized
 	e.replace(form.Word.Pos(), form.Word.End(), "."+name+"(")
 	e.insert(form.Right.End(), ")", 1)
+	if form.Open.End() > form.Open.Pos() {
+		e.encodeTaggedCatchArms(holderIndex, form)
+	}
 	return nil
+}
+
+// encodeTaggedCatchArms projects VIP-75 `catch { when ... }` arms into valid
+// object-literal properties so the TypeScript formatter preserves layout.
+func (e *encoder) encodeTaggedCatchArms(holderIndex int, form parser.VibeSyntax) {
+	e.holders[holderIndex].taggedCatch = true
+	if len(form.Arms) > 0 {
+		lastArm := form.Arms[len(form.Arms)-1]
+		e.holders[holderIndex].trailingSemi = lastArm.Semicolon.End() > lastArm.Semicolon.Pos()
+	}
+	for i, arm := range form.Arms {
+		if headText := e.text(arm.Head); strings.HasPrefix(headText, "when") {
+			e.opaque(placeholderMatchArm, arm.Head, "", "", firstLineWidth(headText))
+		}
+		if arm.Comma {
+			if e.holders[holderIndex].commaArms == nil {
+				e.holders[holderIndex].commaArms = map[int]bool{}
+			}
+			e.holders[holderIndex].commaArms[i] = true
+			e.insert(arm.Value.Pos(), "(", -1)
+			e.insert(arm.Value.End(), ")", 0)
+		}
+		last := i == len(form.Arms)-1
+		switch {
+		case arm.Semicolon.Pos() != arm.Semicolon.End() && last:
+			e.replace(arm.Semicolon.Pos(), arm.Semicolon.End(), "")
+		case arm.Semicolon.Pos() != arm.Semicolon.End():
+			e.replace(arm.Semicolon.Pos(), arm.Semicolon.End(), ",")
+		case !last:
+			e.insert(arm.Value.End(), ",", 1)
+		}
+	}
 }
 
 // parenthesizeNullish puts parentheses around a pipe's operand when it is a

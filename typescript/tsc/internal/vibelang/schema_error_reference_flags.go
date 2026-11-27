@@ -22,5 +22,8 @@ func schemaMappedFieldObject(node *ast.Node) *ast.Node {
 	if isSchemaStruct(node) {
 		return node.Arguments()[0]
 	}
+	if isSchemaTaggedUnionFields(node) {
+		return node
+	}
 	return nil
 }

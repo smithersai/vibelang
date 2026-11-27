@@ -80,9 +80,8 @@ export const RegistryPolicyProvider = () =>
     RegistryPolicy,
     effect {
       const readPolicy = effect {
-        return ecr.getRegistryPolicy({}) catch effect (e) => match (e) {
-          when { _tag: "RegistryPolicyNotFoundException" }: undefined;
-          default: throw e;
+        return ecr.getRegistryPolicy({}) catch {
+          when { _tag: "RegistryPolicyNotFoundException" }: undefined
         }
       }
 
@@ -127,9 +126,8 @@ export const RegistryPolicyProvider = () =>
           return { registryId, policy: desired }
         },
         delete: effect () => {
-          ecr.deleteRegistryPolicy({}) catch effect (e) => match (e) {
-            when { _tag: "RegistryPolicyNotFoundException" }: undefined;
-            default: throw e;
+          ecr.deleteRegistryPolicy({}) catch {
+            when { _tag: "RegistryPolicyNotFoundException" }: undefined
           }
         },
       }
@@ -144,9 +142,9 @@ export const RegistryPolicyProvider = () =>
 | `Effect.gen(function* () { ... })` | `effect { ... }` |
 | `Effect.fn(function* ({ news }) { ... })` | `effect ({ news }) => { ... }` |
 | `yield* e` | `try e` |
-| `e.pipe(Effect.catchTag("X", () => Effect.void))` | `e catch effect (err) => match (err) { when { _tag: "X" }: undefined; default: throw err; }` |
+| `e.pipe(Effect.catchTag("X", () => Effect.void))` | `e catch { when { _tag: "X" }: undefined }` |
 
-Across the provider, 9 `yield*`, 2 `Effect.gen`, 3 `Effect.fn`, and 2 `.pipe` calls disappear: 60 lines vs 57, and 1,372 non-whitespace characters vs 1,436. The `catch` is the one spot VibeLang is longer, because `match` writes the rethrow explicitly (`default: throw err`) where `Effect.catchTag` rethrows implicitly.
+Across the provider, 9 `yield*`, 2 `Effect.gen`, 3 `Effect.fn`, and 2 `.pipe` calls disappear: 57 lines vs 58, and 1,436 non-whitespace characters vs 1,302. With concise tagged `catch { when ... }` (VIP-75), unmatched errors rethrow automatically with narrowed residual types—making even single-tag recovery shorter and clearer than `Effect.catchTag`.
 
 ## Hand edits
 

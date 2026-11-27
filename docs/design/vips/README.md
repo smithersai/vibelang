@@ -61,6 +61,8 @@ VibeLang ships no quick fixes or codemods of its own before its first release; t
 | [71](0071-std-test.md) | `Experimental.Test`: doubles, assertions and conformance | accepted 2026-11-23 (**standard library only — no compiler changes**) |
 | [72](0072-std-observe.md) | `Experimental.Otlp`: logs, metrics and traces over OTLP | accepted 2026-11-23 (**standard library only — no compiler changes**) |
 | [73](0073-std-patterns.md) | `Experimental.Patterns` and `PACKAGE.vibe` | accepted 2026-11-23 (**standard library only — no compiler changes**) |
+| [74](0074-schema-data.md) | Serializable tagged unions (`schema data`) | accepted 2026-11-27 |
+| [75](0075-tagged-catch.md) | Concise tagged `catch` (`e catch { when ... }`) | accepted 2026-11-27 |
 
 ## Acceptance
 

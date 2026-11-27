@@ -1,0 +1,76 @@
+// expect-result: {"single":"guest","multiNotFound":"missing","multiRateLimited":"retry:42","retried":[42],"propagated":"db-caught","withDefault":"fallback","byTag":true,"ok":"item:ok"}
+error UserNotFound { id: string }
+error NotFound { key: string }
+error RateLimited { retryAfter: number }
+error DbDown { host: string }
+error RegistryPolicyNotFoundException
+
+const retries: number[] = []
+
+effect function recordRetry(ms: number): void!! {
+  retries.push(ms)
+}
+
+effect function findUser(id: string): string!UserNotFound {
+  if (id === "missing") throw new UserNotFound({ id })
+  return "user:" + id
+}
+
+effect function fetchItem(id: string): string!(NotFound | RateLimited | DbDown) {
+  if (id === "missing") throw new NotFound({ key: id })
+  if (id === "slow") throw new RateLimited({ retryAfter: 42 })
+  if (id === "down") throw new DbDown({ host: "pg-1" })
+  return "item:" + id
+}
+
+effect function fetchRegistryPolicy(): string!RegistryPolicyNotFoundException {
+  throw new RegistryPolicyNotFoundException()
+}
+
+// Single tag, no trailing semicolon; residual E narrows to never.
+effect function loadUser(id: string): string!! {
+  return findUser(id) catch { when UserNotFound: "guest" }
+}
+
+// Multi-tag with extractor binding and effectful arm; residual E narrows to DbDown.
+effect function loadItem(id: string): string!DbDown {
+  return fetchItem(id) catch {
+    when NotFound: "missing";
+    when RateLimited(let e): try recordRetry(e.retryAfter), `retry:${e.retryAfter}`;
+  }
+}
+
+// Default arm narrows E to never.
+effect function loadWithDefault(id: string): string!! {
+  return fetchItem(id) catch {
+    when NotFound: "missing";
+    default: "fallback";
+  }
+}
+
+// Object tag pattern (e.g., AWS SDK / third-party tagged errors).
+effect function readPolicy(): (string | undefined)!! {
+  return fetchRegistryPolicy() catch {
+    when { _tag: "RegistryPolicyNotFoundException" }: undefined
+  }
+}
+
+export effect function main() {
+  const single = try loadUser("missing")
+  const multiNotFound = try loadItem("missing")
+  const multiRateLimited = try loadItem("slow")
+  const propagated = loadItem("down") catch { when DbDown: "db-caught" }
+  const withDefault = try loadWithDefault("down")
+  const policy = try readPolicy()
+  const ok = try loadItem("ok")
+  return {
+    single,
+    multiNotFound,
+    multiRateLimited,
+    retried: retries,
+    propagated,
+    withDefault,
+    byTag: policy === undefined,
+    ok,
+  }
+}

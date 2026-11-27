@@ -282,7 +282,9 @@ func (c *converter) schemaDeclaration(n *ast.Node) *obj {
 	}
 	name := declarations[0].Name()
 	id := c.convertChild(name, declarations[0])
-	if literal := c.schemaBody(fields); literal != nil {
+	if parser.IsSchemaTaggedUnion(fields) {
+		c.attachSchemaDataAnnotation(id, fields)
+	} else if literal := c.schemaBody(fields); literal != nil {
 		c.attachSchemaAnnotation(id, literal)
 	}
 	declarator := c.nodeAt(span{c.start(name), n.End()}, "VariableDeclarator").
@@ -294,6 +296,41 @@ func (c *converter) schemaDeclaration(n *ast.Node) *obj {
 		set("declare", hasModifier(ast.KindDeclareKeyword, n)).
 		set("kind", "const")
 	return c.fixExports(n, result)
+}
+
+// attachSchemaDataAnnotation attaches a TSTypeLiteral annotation for a
+// `schema data` declaration's variants and parsed field types.
+func (c *converter) attachSchemaDataAnnotation(id *obj, call *ast.Node) {
+	args := call.Arguments()
+	if len(args) == 0 || args[0].Kind != ast.KindObjectLiteralExpression {
+		return
+	}
+	variantsObj := args[0]
+	members := []any{}
+	for _, prop := range variantsObj.AsObjectLiteralExpression().Properties.Nodes {
+		if !ast.IsPropertyAssignment(prop) {
+			continue
+		}
+		vName := prop.Name()
+		member := c.nodeAt(c.rangeOf(vName), "TSPropertySignature").
+			set("computed", isComputed(vName)).
+			set("key", c.convertChild(vName, prop)).
+			set("optional", false).
+			set("readonly", false)
+		if init := prop.Initializer(); init != nil && !synthesized(init) {
+			if literal := c.schemaBody(init); literal != nil {
+				body := c.convertChild(literal, literal.Parent)
+				schemaValues(body)
+				member.set("typeAnnotation", c.nodeAt(c.rangeOf(init), "TSTypeAnnotation").set("typeAnnotation", body))
+				member.setRange(span{c.start(vName), init.End()})
+			}
+		}
+		members = append(members, member)
+	}
+	body := c.node(variantsObj, "TSTypeLiteral").set("members", members)
+	annotation := c.nodeAt(span{id.rng().end, variantsObj.End()}, "TSTypeAnnotation").set("typeAnnotation", body)
+	id.set("typeAnnotation", annotation)
+	fixParentLocation(id, annotation.rng())
 }
 
 // A schema reads as a typed const binding. As for a written annotation,

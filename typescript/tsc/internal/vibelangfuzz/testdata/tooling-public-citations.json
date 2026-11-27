@@ -53,11 +53,11 @@
   },
   {
     "key": "effect-pin",
-    "claim": "any version other than `4.1.1`, including `4.1.0`, is `EK3201`",
+    "claim": "any version outside the stable `^4.1.0` range (`>=4.1.0 <5.0.0`), including `4.0.x`, `5.x`, and prereleases such as `4.1.6-next.1`, is `EK3201`",
     "sources": [
       {
         "file": "0032-effect-version.md",
-        "heading": "an off-pin Effect is a compile error"
+        "heading": "An unsupported Effect version is a project-level compile error"
       }
     ]
   },

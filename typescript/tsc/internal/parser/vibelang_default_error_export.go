@@ -63,6 +63,8 @@ func (p *Parser) parseVibeLangDefaultErrorExport(pos int, jsdoc jsdocScannerInfo
 	case "schema":
 		if p.isStartOfVibeLangSchemaService() {
 			code, message = 905, VibeLangDefaultServiceExportMessage // VIP-57: a schema service is a service
+		} else if p.isStartOfVibeLangSchemaData() {
+			code, message = 1603, VibeLangDefaultDataExportMessage // VIP-74: a schema data is a data union
 		} else if !p.isStartOfVibeLangSchemaError() {
 			code, message = 1501, VibeLangDefaultSchemaExportMessage
 		}

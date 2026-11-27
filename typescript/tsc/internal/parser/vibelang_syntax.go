@@ -129,6 +129,8 @@ type VibeSyntaxArm struct {
 	Head      core.TextRange
 	Value     core.TextRange
 	Semicolon core.TextRange
+	// Comma is set when Value is an unparenthesized comma expression.
+	Comma bool
 }
 
 // ParseVibeLangSyntax parses a .vibe file as ParseSourceFile does, and returns

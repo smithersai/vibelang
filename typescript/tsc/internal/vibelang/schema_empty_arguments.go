@@ -66,7 +66,7 @@ func checkSchemaEmptyArguments(c *checker.Checker, file *ast.SourceFile) {
 		switch {
 		case isSchemaAlias(n):
 			value(n.Initializer())
-		case isSchemaStruct(n), isSchemaErrorFields(n):
+		case isSchemaStruct(n), isSchemaErrorFields(n), parser.IsSchemaTaggedUnion(n):
 			value(n)
 		}
 		return n.ForEachChild(visit)

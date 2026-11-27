@@ -2,6 +2,7 @@ package vibelangmapper
 
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -40,7 +41,9 @@ func (p *projector) catchExpression(call *ast.Node, e env) {
 		p.catchProgram(fallback)
 	} else {
 		p.plan.replace(left.End(), p.tokenStart(handler), ", ")
-		if handler.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+		if parser.IsVibeLangTaggedCatchHandler(handler) {
+			p.taggedCatchHandler(handler)
+		} else if handler.Flags&ast.NodeFlagsVibeLangEffect != 0 {
 			p.effectLambda(handler)
 		} else {
 			p.plainCatchHandler(handler)
@@ -264,6 +267,20 @@ func sourceCatchEffectCode(node *ast.Node) bool {
 		}
 	}
 	return sourceCatchEffectCode(owner)
+}
+
+// taggedCatchHandler projects a VIP-75 `catch { when ... }` handler block as
+// an Effect.gen callback whose arms return recovered values and whose
+// fallthrough rethrows unmatched failures via Effect.fail.
+func (p *projector) taggedCatchHandler(handler *ast.Node) {
+	param := handler.Parameters()[0].Name().Text()
+	w := &printer{p: p, names: map[string]string{}}
+	fresh := p.names.fresh("$catch")
+	w.names[param] = fresh
+	w.write("(" + fresh + ") => " + p.names.prelude("Effect") + ".gen(function* () { ")
+	w.blockContents(handler.Body(), handler.Body().Statements(), newEffectEnv())
+	w.write(" })")
+	p.synthesizedChunks(handler, w.chunks, p.tokenStart(handler), handler.End())
 }
 
 // plainCatchHandler keeps the written function and lifts only its result.

@@ -42,7 +42,13 @@ func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expr
 		}
 		p.nextToken() // catch
 		handlerStart := p.nodePos()
-		handler := p.parseVibeLangCatchHandler()
+		var taggedForm VibeSyntax
+		var handler *ast.Node
+		if p.isStartOfVibeLangTaggedCatch() {
+			handler = p.parseVibeLangTaggedCatch(handlerStart, &taggedForm)
+		} else {
+			handler = p.parseVibeLangCatchHandler()
+		}
 		// A closed handler cannot take binary or postfix continuations. An
 		// unparenthesized block arrow permits ASI before a new expression.
 		// Parentheses are erased from the handler tree, but move its start.
@@ -66,7 +72,16 @@ func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expr
 			p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxCatch, Word: keyword, Left: p.sourceRange(left), Right: p.sourceRange(fallback), Range: core.NewTextRange(p.sourceRange(left).Pos(), fallback.End())})
 			handler = p.vibelangProgramArrow(nil, fallback, core.NewTextRange(fallback.Pos(), fallback.Pos()))
 		} else {
-			p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxCatch, Word: keyword, Left: p.sourceRange(left), Right: core.NewTextRange(scanner.SkipTrivia(p.sourceText, handlerStart), p.nodePos()), Range: core.NewTextRange(p.sourceRange(left).Pos(), p.nodePos())})
+			p.recordVibeSyntax(VibeSyntax{
+				Kind:  VibeSyntaxCatch,
+				Word:  keyword,
+				Left:  p.sourceRange(left),
+				Right: core.NewTextRange(scanner.SkipTrivia(p.sourceText, handlerStart), p.nodePos()),
+				Open:  taggedForm.Open,
+				Close: taggedForm.Close,
+				Arms:  taggedForm.Arms,
+				Range: core.NewTextRange(p.sourceRange(left).Pos(), p.nodePos()),
+			})
 		}
 		self := p.vibelangProgramArrow(nil, left, core.NewTextRange(left.Pos(), left.Pos()))
 		callee := p.vibelangIntrinsic("$catchExpression", keyword)

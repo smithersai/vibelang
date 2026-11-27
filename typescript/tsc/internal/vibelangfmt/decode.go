@@ -634,6 +634,11 @@ func (d *decoder) node(node *ast.Node) error {
 		}
 		d.replace(dot, end, head)
 		d.replace(arguments[0].End(), call.End(), "")
+		if holder.taggedCatch {
+			if err := d.decodeTaggedCatchArms(arguments[0], holder, lost); err != nil {
+				return err
+			}
+		}
 		if holder.parenthesized {
 			// The encoding parenthesized the left side for the access.
 			left := access.Expression()
@@ -646,6 +651,40 @@ func (d *decoder) node(node *ast.Node) error {
 		}
 	default:
 		return lost()
+	}
+	return nil
+}
+
+// decodeTaggedCatchArms restores arm semicolons and unwraps comma expressions
+// inside a formatted VIP-75 `catch { when ... }` block.
+func (d *decoder) decodeTaggedCatchArms(arg *ast.Node, holder placeholder, lost func() error) error {
+	if arg.Kind != ast.KindObjectLiteralExpression {
+		return lost()
+	}
+	properties := arg.Properties()
+	for i, arm := range properties {
+		if arm.Kind != ast.KindPropertyAssignment {
+			return lost()
+		}
+		if holder.commaArms[i] {
+			if init := arm.Initializer(); init != nil && init.Kind == ast.KindParenthesizedExpression {
+				open := d.start(init)
+				d.replace(open, open+1, "")
+				d.replace(init.End()-1, init.End(), "")
+			}
+		}
+		last := i == len(properties)-1
+		at, after, ok := d.nextToken(arm.End(), ',')
+		switch {
+		case ok && last && !holder.trailingSemi:
+			d.replace(at, after, "")
+		case ok:
+			d.replace(at, after, ";")
+		case last && holder.trailingSemi:
+			d.insert(arm.End(), ";")
+		case !last:
+			return lost()
+		}
 	}
 	return nil
 }

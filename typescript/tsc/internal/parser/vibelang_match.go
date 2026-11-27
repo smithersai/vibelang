@@ -112,12 +112,13 @@ type matchArm struct {
 // matchInfo is a match expression as written, kept so a return statement or
 // an expression statement can write it without the function.
 type matchInfo struct {
-	anchor  core.TextRange // the match keyword
-	subject *ast.Node
-	arms    []matchArm
-	pos     int
-	async   *ast.Node    // the async modifier, or nil for a synchronous match
-	errors  []matchError // arm separators and arm grammar, in source order
+	anchor          core.TextRange // the match keyword (or `{` for tagged catch)
+	subject         *ast.Node
+	arms            []matchArm
+	pos             int
+	async           *ast.Node    // the async modifier, or nil for a synchronous match
+	errors          []matchError // arm separators and arm grammar, in source order
+	implicitDefault bool         // tagged catch rethrows unmatched failures instead of $noMatch
 }
 
 // matchError is a mistake in the arms of a match, which holds no pattern to
@@ -2663,7 +2664,7 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 		var steps []matchStep
 		patternMark := len(p.reparseList)
 		if arm.pattern != nil {
-			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor, uncovered: !hasDefault, coverage: true, cache: cache})
+			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor, uncovered: !hasDefault && !info.implicitDefault, coverage: true, cache: cache})
 		}
 		var patternHoists, patternTemps []*ast.Node
 		for _, hoist := range p.takeHoists(patternMark) {
@@ -2710,9 +2711,13 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 		out = append(out, block)
 	}
 	if !defaulted && len(info.arms) > 0 {
-		noMatch := p.mCall(p.vibelangIntrinsic("$noMatch", info.anchor), []*ast.Node{path()}, info.anchor)
-		p.recordMatchMemberArms(noMatch, info)
-		out = append(out, unmatched(noMatch, info.anchor))
+		if info.implicitDefault {
+			out = append(out, unmatched(path(), info.anchor))
+		} else {
+			noMatch := p.mCall(p.vibelangIntrinsic("$noMatch", info.anchor), []*ast.Node{path()}, info.anchor)
+			p.recordMatchMemberArms(noMatch, info)
+			out = append(out, unmatched(noMatch, info.anchor))
+		}
 	}
 	return out
 }

@@ -1,0 +1,13 @@
+// expect: EK4701
+export schema data Shape {
+  Empty
+  Circle { readonly radius: number }
+  Rect { width: number; height: number }
+}
+
+export function area(s: Shape): number {
+  return match (s) {
+    when { _tag: "Empty" }: 0;
+    when { _tag: "Circle", let radius }: 3 * radius * radius;
+  }
+}

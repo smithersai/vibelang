@@ -30,6 +30,10 @@ func schemaDuplicateReadonlyRanges(file *ast.SourceFile) []core.TextRange {
 			bodies = append(bodies, bodySource{span: node.Arguments()[0].Loc})
 			return false // the source walk below includes nested object types
 		}
+		if isSchemaTaggedUnionFields(node) {
+			bodies = append(bodies, bodySource{span: node.Loc})
+			return false
+		}
 		if isSchemaErrorFields(node) {
 			bodies = append(bodies, bodySource{span: node.Loc, class: true})
 			return false

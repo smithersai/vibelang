@@ -59,6 +59,11 @@ func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
 			classSources[node.Arguments()[0].Loc] = ast.GetContainingClass(node) != nil
 			return false
 		}
+		if isSchemaTaggedUnionFields(node) {
+			bodies = append(bodies, node.Loc)
+			classSources[node.Loc] = ast.GetContainingClass(node) != nil
+			return false
+		}
 		if isUnsupportedSchema(node) && !isNonFieldSchema(node) {
 			span := node.Loc
 			if span.Pos() >= 0 && span.End() >= span.Pos() && span.End() <= len(file.Text()) {
