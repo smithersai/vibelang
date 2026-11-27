@@ -16,9 +16,9 @@ export function $bindingIterators() {
   return {
     open<T>(source: T) {
       // Native destructuring acquires the iterator and caches next once.
-      if (source == null) { const [] = source as any }
+      if (source == null) { const [] = source as unknown as Iterable<never> }
       const method = (source as Iterable<unknown>)[iteratorKey]
-      if (typeof method !== "function") { const [] = { [iteratorKey]: method } as any }
+      if (typeof method !== "function") { const [] = { [iteratorKey]: method } as unknown as Iterable<never> }
       const iterator = apply(method, source, []) as Iterator<unknown>
       if (object(iterator) !== iterator) { const [] = { [iteratorKey]: () => iterator } }
       const next = iterator.next
@@ -79,13 +79,13 @@ export function $bindingIterators() {
           done = true
           // Native destructuring gives the host ownership of GetMethod(return),
           // callability and object-result validation, including error text.
-          const bridge: Iterable<undefined> = {
+          const bridge: Iterable<unknown> = {
             [iteratorKey]() {
               return {
                 next() { return { done: false, value: undefined } },
-                get return(): any {
+                get return(): Iterator<unknown>["return"] {
                   const finish = iterator.return
-                  return typeof finish === "function" ? () => apply(finish, iterator, []) : finish
+                  return typeof finish === "function" ? (): IteratorResult<unknown> => apply(finish, iterator, []) : finish
                 }
               }
             }

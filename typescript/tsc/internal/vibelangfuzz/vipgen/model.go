@@ -72,16 +72,28 @@ type Citation struct {
 
 var registry []*Construct
 
+// registrationErrors collects any duplicate construct registrations instead of
+// panicking during package init.
+var registrationErrors []error
+
 // Register adds a construct. Each vipNN_*.go file calls it from init.
-func Register(c *Construct) {
+func Register(c *Construct) error {
+	if c == nil {
+		err := fmt.Errorf("vipgen: cannot register nil construct")
+		registrationErrors = append(registrationErrors, err)
+		return err
+	}
 	if slices.ContainsFunc(registry, func(o *Construct) bool { return o.Key == c.Key }) {
-		panic("vipgen: construct registered twice: " + c.Key)
+		err := fmt.Errorf("vipgen: construct registered twice: %s", c.Key)
+		registrationErrors = append(registrationErrors, err)
+		return err
 	}
 	registry = append(registry, c)
 	// Go runs the init functions of a package's files in file name order,
 	// and the key orders them too, so an input's bytes choose the same
 	// construct on every build.
 	slices.SortFunc(registry, func(a, b *Construct) int { return strings.Compare(a.Key, b.Key) })
+	return nil
 }
 
 // Constructs returns every registered construct, in key order.

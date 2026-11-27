@@ -479,14 +479,14 @@ effect function %s(): E.Effect<number, unknown> {
 }`, impl, value, await, setup, operand, keep)
 	js, _, diagnostics := vibelangmapper.Emit(source, vibelangmapper.FileContext{})
 	if len(diagnostics) != 0 {
-		panic(fmt.Sprintf("mapper join template: %v\n%s", diagnostics, source))
+		failVipgen(fmt.Sprintf("mapper join template: %v\n%s", diagnostics, source))
 	}
 	modules := map[string]string{"effect": "__joinRoot", "effect/Effect": "__joinEffect", "effect/Fiber": "__joinFiber", "effect/Context": "__joinContext", "vibelang-runtime": "__joinRuntime", "vibelang-runtime/internal": "__joinInternal"}
 	var parameters, arguments []string
 	for _, m := range mapperJoinImports.FindAllStringSubmatch(js, -1) {
 		namespace, ok := modules[m[2]]
 		if !ok {
-			panic("unexpected mapper join import: " + m[2])
+			failVipgen("unexpected mapper join import: " + m[2])
 		}
 		for _, binding := range strings.Split(m[1], ",") {
 			names := strings.Split(strings.TrimSpace(binding), " as ")

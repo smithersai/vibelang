@@ -47,24 +47,6 @@ func newLexicalContext() *lexicalContext {
 
 // collect walks file and records where the scan must rescan.
 func (l *lexicalContext) collect(file *ast.SourceFile, text string) {
-	start := func(n *ast.Node) int { return scanner.SkipTrivia(text, n.Pos()) }
-	var name func(*ast.Node)
-	name = func(n *ast.Node) {
-		switch n.Kind {
-		case ast.KindPropertyAccessExpression:
-			name(n.Expression())
-			name(n.Name())
-		case ast.KindJsxNamespacedName:
-			// typescript-estree leaves the namespaced name's leaf
-			// tokens as Identifier, including hyphenated names.
-			ns := n.AsJsxNamespacedName().Namespace
-			l.jsx[start(ns)] = jsxLexeme{ns.End(), "Identifier"}
-			local := n.Name()
-			l.jsx[start(local)] = jsxLexeme{local.End(), "Identifier"}
-		case ast.KindIdentifier:
-			l.jsx[start(n)] = jsxLexeme{n.End(), "JSXIdentifier"}
-		}
-	}
 	jsxDepth := 0
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
@@ -72,64 +54,90 @@ func (l *lexicalContext) collect(file *ast.SourceFile, text string) {
 			jsxDepth++
 			defer func() { jsxDepth-- }()
 		}
-		if n.Pos() < 0 {
-			return n.ForEachChild(visit)
-		}
-		switch n.Kind {
-		case ast.KindJsxOpeningElement, ast.KindJsxSelfClosingElement, ast.KindJsxClosingElement:
-			name(n.TagName())
-		case ast.KindJsxAttribute:
-			name(n.Name())
-			if value := n.Initializer(); value != nil && value.Kind == ast.KindStringLiteral {
-				l.jsx[start(value)] = jsxLexeme{value.End(), "JSXText"}
-			}
-		case ast.KindJsxText, ast.KindJsxTextAllWhiteSpaces:
-			if n.End() > n.Pos() {
-				l.jsx[n.Pos()] = jsxLexeme{n.End(), "JSXText"}
-			}
-		case ast.KindRegularExpressionLiteral:
-			l.regexps[start(n)] = true
-		case ast.KindTemplateMiddle, ast.KindTemplateTail:
-			l.templates[start(n)] = true
-		case ast.KindBinaryExpression:
-			operator := n.AsBinaryExpression().OperatorToken
-			switch operator.Kind {
-			case ast.KindLessThanLessThanToken:
-				l.leftShifts[start(operator)] = true
-			case ast.KindGreaterThanGreaterThanToken, ast.KindGreaterThanGreaterThanGreaterThanToken,
-				ast.KindGreaterThanEqualsToken, ast.KindGreaterThanGreaterThanEqualsToken,
-				ast.KindGreaterThanGreaterThanGreaterThanEqualsToken:
-				l.greaters[start(operator)] = true
-			case ast.KindBarToken:
-				if n.Flags&ast.NodeFlagsVibeLang != 0 {
-					l.pipes[start(operator)] = true
-				}
-			}
-		case ast.KindPropertyAccessExpression:
-			// Match typescript-estree's hasJSXAncestor token rule even
-			// for a property access inside a JSX expression container.
-			if jsxDepth > 0 {
-				for _, id := range []*ast.Node{n.Expression(), n.Name()} {
-					if id.Kind == ast.KindIdentifier && !synthesized(id) {
-						l.jsx[start(id)] = jsxLexeme{id.End(), "JSXIdentifier"}
-					}
-				}
-			}
-			// x |> f(%)(…) parses as x.pipe(f(…)) whose pipe stands on |.
-			name := n.AsPropertyAccessExpression().Name()
-			if name.Flags&ast.NodeFlagsReparsed != 0 && name.Kind == ast.KindIdentifier && name.Text() == "pipe" {
-				l.pipes[start(name)] = true
-			}
-		case ast.KindIdentifier:
-			// A pipe's topic, %, is an identifier the parser flags; its token is %.
-			// A cache name may retain a literal's span without changing its token kind.
-			if n.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang|ast.NodeFlagsVibeLangTemporary) == 0 {
-				l.identifiers[start(n)] = true
-			}
+		if n.Pos() >= 0 {
+			l.collectNode(n, text, jsxDepth)
 		}
 		return n.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+func (l *lexicalContext) collectJSXName(n *ast.Node, text string) {
+	switch n.Kind {
+	case ast.KindPropertyAccessExpression:
+		l.collectJSXName(n.Expression(), text)
+		l.collectJSXName(n.Name(), text)
+	case ast.KindJsxNamespacedName:
+		// typescript-estree leaves the namespaced name's leaf
+		// tokens as Identifier, including hyphenated names.
+		ns := n.AsJsxNamespacedName().Namespace
+		l.jsx[scanner.SkipTrivia(text, ns.Pos())] = jsxLexeme{ns.End(), "Identifier"}
+		local := n.Name()
+		l.jsx[scanner.SkipTrivia(text, local.Pos())] = jsxLexeme{local.End(), "Identifier"}
+	case ast.KindIdentifier:
+		l.jsx[scanner.SkipTrivia(text, n.Pos())] = jsxLexeme{n.End(), "JSXIdentifier"}
+	}
+}
+
+func (l *lexicalContext) collectBinaryToken(n *ast.Node, text string) {
+	operator := n.AsBinaryExpression().OperatorToken
+	pos := scanner.SkipTrivia(text, operator.Pos())
+	switch operator.Kind {
+	case ast.KindLessThanLessThanToken:
+		l.leftShifts[pos] = true
+	case ast.KindGreaterThanGreaterThanToken, ast.KindGreaterThanGreaterThanGreaterThanToken,
+		ast.KindGreaterThanEqualsToken, ast.KindGreaterThanGreaterThanEqualsToken,
+		ast.KindGreaterThanGreaterThanGreaterThanEqualsToken:
+		l.greaters[pos] = true
+	case ast.KindBarToken:
+		if n.Flags&ast.NodeFlagsVibeLang != 0 {
+			l.pipes[pos] = true
+		}
+	}
+}
+
+func (l *lexicalContext) collectNode(n *ast.Node, text string, jsxDepth int) {
+	start := func(node *ast.Node) int { return scanner.SkipTrivia(text, node.Pos()) }
+	switch n.Kind {
+	case ast.KindJsxOpeningElement, ast.KindJsxSelfClosingElement, ast.KindJsxClosingElement:
+		l.collectJSXName(n.TagName(), text)
+	case ast.KindJsxAttribute:
+		l.collectJSXName(n.Name(), text)
+		if value := n.Initializer(); value != nil && value.Kind == ast.KindStringLiteral {
+			l.jsx[start(value)] = jsxLexeme{value.End(), "JSXText"}
+		}
+	case ast.KindJsxText, ast.KindJsxTextAllWhiteSpaces:
+		if n.End() > n.Pos() {
+			l.jsx[n.Pos()] = jsxLexeme{n.End(), "JSXText"}
+		}
+	case ast.KindRegularExpressionLiteral:
+		l.regexps[start(n)] = true
+	case ast.KindTemplateMiddle, ast.KindTemplateTail:
+		l.templates[start(n)] = true
+	case ast.KindBinaryExpression:
+		l.collectBinaryToken(n, text)
+	case ast.KindPropertyAccessExpression:
+		// Match typescript-estree's hasJSXAncestor token rule even
+		// for a property access inside a JSX expression container.
+		if jsxDepth > 0 {
+			for _, id := range []*ast.Node{n.Expression(), n.Name()} {
+				if id.Kind == ast.KindIdentifier && !synthesized(id) {
+					l.jsx[start(id)] = jsxLexeme{id.End(), "JSXIdentifier"}
+				}
+			}
+		}
+		// x |> f(%)(…) parses as x.pipe(f(…)) whose pipe stands on |.
+		name := n.AsPropertyAccessExpression().Name()
+		if name.Flags&ast.NodeFlagsReparsed != 0 && name.Kind == ast.KindIdentifier && name.Text() == "pipe" {
+			l.pipes[start(name)] = true
+		}
+	case ast.KindIdentifier:
+		// A pipe's topic, %, is an identifier the parser flags; its token is %.
+		// A cache name may retain a literal's span without changing its token kind.
+		if n.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang|ast.NodeFlagsVibeLangTemporary) == 0 {
+			l.identifiers[start(n)] = true
+		}
+	}
 }
 
 // lex scans text into ESTree tokens and comments.

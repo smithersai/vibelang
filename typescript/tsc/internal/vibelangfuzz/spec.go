@@ -17,14 +17,23 @@ func SpecPath(chapter string) string {
 
 const specDir = "docs/design/src"
 
-// SpecText returns a chapter's text. It panics when the chapter is missing:
-// a target without its oracle must not pass.
-func SpecText(chapter string) string {
+// ReadSpecText returns a chapter's text or an error if the chapter is missing.
+func ReadSpecText(chapter string) (string, error) {
 	data, err := os.ReadFile(SpecPath(chapter))
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return string(data)
+	return string(data), nil
+}
+
+// SpecText returns a chapter's text, failing the harness if the chapter is missing:
+// a target without its oracle must not pass.
+func SpecText(chapter string) string {
+	text, err := ReadSpecText(chapter)
+	if err != nil {
+		failFuzz(err)
+	}
+	return text
 }
 
 // SpecCodes returns the codes registered by Appendix B and current tooling.

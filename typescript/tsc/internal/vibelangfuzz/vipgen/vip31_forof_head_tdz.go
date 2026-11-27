@@ -101,9 +101,7 @@ return JSON.stringify([trace,cells.map((f):number=>f()),x,y]);
 	// A JavaScript template literal keeps the source's lines as written, so
 	// the reference print holds the cited loop head token for token; a
 	// quoted string would glue each escaped newline to the next keyword.
-	if strings.ContainsAny(nativeSource, "`\\") || strings.Contains(nativeSource, "${") {
-		panic("for-of head TDZ source must fit in a template literal")
-	}
+	nativeSource = escapeTemplateLiteral(nativeSource)
 	reference := fmt.Sprintf("const %s=(await import(\"node:module\")).createRequire(import.meta.resolve(\"effect\"))(\"typescript\");\nconst %s=new Function(\"return \"+%s.transpileModule(`%s`,{compilerOptions:{target:%s.ScriptTarget.ES2022,module:%s.ModuleKind.ESNext}}).outputText)();",
 		ts, name, ts, nativeSource, ts, ts)
 	source = strings.Replace(source, "return JSON.stringify(", "return stringifyObservation(", 1)

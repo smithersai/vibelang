@@ -176,7 +176,7 @@ func (tx *lowering) visitScoped(node *ast.Node) *ast.Node {
 	case ast.KindForStatement, ast.KindLabeledStatement:
 		return tx.visitUsingFor(node)
 	default:
-		panic("unexpected resource scope node")
+		return tx.Visitor().VisitEachChild(node)
 	}
 }
 

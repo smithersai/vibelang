@@ -94,9 +94,17 @@ var CaseSeeds = sync.OnceValue(func() []Seed {
 // gitignored output, so reading it would make the seeds, and which case each
 // index picks, depend on what ran in this checkout before.
 func loadCaseSeeds(root string) []Seed {
+	seeds, err := loadCaseSeedsChecked(root)
+	if err != nil {
+		failFuzz(err)
+	}
+	return seeds
+}
+
+func loadCaseSeedsChecked(root string) ([]Seed, error) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	var seeds []Seed
 	for _, entry := range entries {
@@ -148,7 +156,7 @@ func loadCaseSeeds(root string) []Seed {
 		})
 		seeds = append(seeds, seed)
 	}
-	return seeds
+	return seeds, nil
 }
 
 var vibeFence = regexp.MustCompile("(?ms)^[ \t]*```vibe[^\\n]*\\n(.*?)^[ \t]*```")

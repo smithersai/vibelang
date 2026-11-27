@@ -98,9 +98,7 @@ func doLoopHead(g *Gen, s *Scope) Stmt {
 }`, name, outerDeclaration, outerType, outerValue, declaration, head, kind, local, extra, items, mutate, outerMutation)
 	native := strings.Replace(source, "do {", "(() => {", 1)
 	native = strings.Replace(native, "\n  "+items+"\n })", "\n  return "+items+"\n })())", 1)
-	if strings.ContainsAny(native, "\x60\\") || strings.Contains(native, "$"+"{") {
-		panic("loop head reference needs literal escaping")
-	}
+	native = escapeTemplateLiteral(native)
 	ts := g.Name("stock")
 	reference := fmt.Sprintf("const %s = (await import(\"node:module\")).createRequire(import.meta.resolve(\"effect\"))(\"typescript\");\nconst %s = new Function(\"return \" + %s.transpileModule(\x60%s\x60, { compilerOptions: { target: %s.ScriptTarget.ES2022, module: %s.ModuleKind.ESNext } }).outputText)();", ts, name, ts, native, ts, ts)
 	observed := g.Name("observed")

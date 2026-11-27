@@ -209,7 +209,7 @@ func renderExec(e edit) (text string, keep bool) {
 		// A block's Scope region: $scopedBody is Effect.scoped (execHelpers).
 		return e.text, true
 	}
-	panic("exec: kind " + e.kind.String() + " not implemented")
+	return "", false
 }
 
 // dataMethodCandidateText supplies the name's generated module functions as

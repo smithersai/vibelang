@@ -78,16 +78,14 @@ func formChoiceDiagnostics(ctx context.Context, service *ls.LanguageService, fil
 	}
 	compute := sync.OnceValue(func() []*ast.Diagnostic {
 		// A canceled checker request must not poison later pulls of this version.
+		completed := false
 		defer func() {
-			if reason := recover(); reason != nil {
+			if !completed || ctx.Err() != nil {
 				cache.(*sync.Map).Delete(file)
-				panic(reason)
 			}
 		}()
 		result := resolveFormChoiceDiagnostics(ctx, service, file)
-		if ctx.Err() != nil {
-			cache.(*sync.Map).Delete(file)
-		}
+		completed = true
 		return result
 	})
 	result, _ := cache.(*sync.Map).LoadOrStore(file, compute)

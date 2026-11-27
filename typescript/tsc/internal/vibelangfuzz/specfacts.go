@@ -91,26 +91,35 @@ func codesIn(text string) []int32 {
 }
 
 // Current registry sources may never fall back to retired chapters.
-func currentSpecText(chapter string) string {
+func currentSpecTextChecked(chapter string) (string, error) {
 	path := SpecPath(chapter)
 	if filepath.Dir(path) != filepath.Join(Root(), specDir) {
-		panic("diagnostic registry requires the current specification: " + chapter)
+		return "", fmt.Errorf("diagnostic registry requires the current specification: %s", chapter)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return string(data)
+	return string(data), nil
 }
 
-func requireQuote(text, quote string) {
-	if !strings.Contains(text, quote) {
-		panic("current diagnostic specification no longer says: " + quote)
+func currentSpecText(chapter string) string {
+	text, err := currentSpecTextChecked(chapter)
+	if err != nil {
+		failFuzz(err)
 	}
+	return text
+}
+
+func requireQuote(text, quote string) error {
+	if !strings.Contains(text, quote) {
+		return fmt.Errorf("current diagnostic specification no longer says: %s", quote)
+	}
+	return nil
 }
 
 // diagnosticTable reads named columns from the end, preserving pipes in Rule.
-func diagnosticTable(text string, headers []string, required bool) [][]string {
+func diagnosticTable(text string, headers []string, required bool) ([][]string, error) {
 	var rows [][]string
 	active, found := false, false
 	for _, line := range strings.Split(text, "\n") {
@@ -136,30 +145,62 @@ func diagnosticTable(text string, headers []string, required bool) [][]string {
 		rows = append(rows, row)
 	}
 	if required && (!found || len(rows) == 0) {
-		panic("missing current diagnostic table: " + strings.Join(headers, " | "))
+		return nil, fmt.Errorf("missing current diagnostic table: %s", strings.Join(headers, " | "))
 	}
-	return rows
+	return rows, nil
 }
 
-var Facts = sync.OnceValue(func() *SpecFacts {
-	appendix := currentSpecText(grammarAppendix)
+// LoadFacts parses Appendix B and tooling diagnostic tables and returns any
+// specification mismatch as a structured error.
+func LoadFacts() (*SpecFacts, error) {
+	appendix, err := currentSpecTextChecked(grammarAppendix)
+	if err != nil {
+		return nil, err
+	}
 	_, appendix = appendixBRows(appendix)
-	tooling := currentSpecText(toolingChapter)
+	tooling, err := currentSpecTextChecked(toolingChapter)
+	if err != nil {
+		return nil, err
+	}
 	for _, quote := range []string{defaultCategoryQuote, adjustableQuote, reusedQuote, retiredQuote} {
-		requireQuote(appendix, quote)
+		if err := requireQuote(appendix, quote); err != nil {
+			return nil, err
+		}
 	}
 	for _, quote := range []string{severityValuesQuote, suggestionQuote, toolingAdjustableQuote, importedFileScopeQuote, ownFileScopeQuote} {
-		requireQuote(tooling, quote)
+		if err := requireQuote(tooling, quote); err != nil {
+			return nil, err
+		}
 	}
 	facts := &SpecFacts{Defaults: map[int32]DefaultCategory{}, Rows: map[int32]SpecRow{}, Imported: map[int32]string{}}
-	for _, cells := range diagnosticTable(appendix, []string{"Code", "Rule", "VIP", "Chapter"}, true) {
+	if err := loadAppendixBRows(facts, appendix); err != nil {
+		return nil, err
+	}
+	if err := loadToolingWarnings(facts, tooling); err != nil {
+		return nil, err
+	}
+	if err := loadImportedAndInterim(facts, appendix, tooling); err != nil {
+		return nil, err
+	}
+	if err := loadBooleanSettingsAndAdjustable(facts, tooling); err != nil {
+		return nil, err
+	}
+	return facts, nil
+}
+
+func loadAppendixBRows(facts *SpecFacts, appendix string) error {
+	rows, err := diagnosticTable(appendix, []string{"Code", "Rule", "VIP", "Chapter"}, true)
+	if err != nil {
+		return err
+	}
+	for _, cells := range rows {
 		codes := codesIn(cells[0])
 		if len(codes) != 1 {
-			panic("invalid Appendix B code: " + cells[0])
+			return fmt.Errorf("invalid Appendix B code: %s", cells[0])
 		}
 		code := codes[0]
 		if _, ok := facts.Rows[code]; ok {
-			panic("duplicate Appendix B code: " + cells[0])
+			return fmt.Errorf("duplicate Appendix B code: %s", cells[0])
 		}
 		facts.Rows[code] = SpecRow{Code: code, Reports: cells[1], Chapters: cells[3]}
 		category := DefaultError
@@ -179,35 +220,57 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 		}
 		facts.Defaults[code] = category
 	}
+	return nil
+}
+
+func loadToolingWarnings(facts *SpecFacts, tooling string) error {
 	// The own-warning table remains separate from the imported inventory.
-	requireQuote(tooling, "The following own warnings default to `\"warning\"`; they are separate from imported rules")
-	for _, cells := range diagnosticTable(tooling, []string{"Warning", "Code", "Suggested fix"}, true) {
+	if err := requireQuote(tooling, "The following own warnings default to `\"warning\"`; they are separate from imported rules"); err != nil {
+		return err
+	}
+	rows, err := diagnosticTable(tooling, []string{"Warning", "Code", "Suggested fix"}, true)
+	if err != nil {
+		return err
+	}
+	for _, cells := range rows {
 		codes := codesIn(cells[1])
 		if len(codes) != 1 {
-			panic("invalid tooling warning code: " + cells[1])
+			return fmt.Errorf("invalid tooling warning code: %s", cells[1])
 		}
 		code := codes[0]
 		if category, ok := facts.Defaults[code]; ok && category != DefaultWarning {
-			panic("tooling warning disagrees with Appendix B: " + cells[1])
+			return fmt.Errorf("tooling warning disagrees with Appendix B: %s", cells[1])
 		}
 		if _, ok := facts.Rows[code]; !ok {
 			facts.Rows[code] = SpecRow{Code: code, Reports: cells[0], Repair: cells[2], Chapters: toolingChapter}
 		}
 		facts.Defaults[code] = DefaultWarning
 	}
+	return nil
+}
+
+func loadImportedAndInterim(facts *SpecFacts, appendix, tooling string) error {
 	// "The normative `lint-codes.json` and this table are generated by `node
 	// docs/tools/lint-codes.mjs --write`": each row states a rule's code and
 	// default severity. Imported rules stay out of Rows, which holds VibeLang's
 	// own rules; every one is adjustable (007-tooling.md, rule 6).
-	requireQuote(appendix, importedTableQuote)
-	requireQuote(tooling, importedSeverityQuote)
-	for _, cells := range diagnosticTable(appendix, []string{"Code", "Rule", "VIP", "Chapter", "Default severity"}, true) {
+	if err := requireQuote(appendix, importedTableQuote); err != nil {
+		return err
+	}
+	if err := requireQuote(tooling, importedSeverityQuote); err != nil {
+		return err
+	}
+	importedRows, err := diagnosticTable(appendix, []string{"Code", "Rule", "VIP", "Chapter", "Default severity"}, true)
+	if err != nil {
+		return err
+	}
+	for _, cells := range importedRows {
 		codes := codesIn(cells[0])
-		category, ok := importedDefaults[strings.Trim(cells[4], "\x60")]
+		category, ok := importedDefaults[strings.Trim(cells[4], "`")]
 		if len(codes) != 1 || !ok {
-			panic("invalid imported lint row: " + cells[0])
+			return fmt.Errorf("invalid imported lint row: %s", cells[0])
 		}
-		facts.Imported[codes[0]] = strings.TrimPrefix(strings.Trim(cells[1], "\x60"), "effecttsgo/")
+		facts.Imported[codes[0]] = strings.TrimPrefix(strings.Trim(cells[1], "`"), "effecttsgo/")
 		facts.Defaults[codes[0]] = category
 	}
 	for code, row := range facts.Rows {
@@ -219,21 +282,22 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 		}
 	}
 	if facts.SeverityConfigCode == 0 || facts.ConfigValueCode == 0 {
-		panic(fmt.Sprintf("Appendix B lost the severity-entry or config-key/value rule: severity prefix %q matched code %d; config prefix %q matched code %d", severityEntryRule, facts.SeverityConfigCode, configValueRule, facts.ConfigValueCode))
+		return fmt.Errorf("Appendix B lost the severity-entry or config-key/value rule: severity prefix %q matched code %d; config prefix %q matched code %d", severityEntryRule, facts.SeverityConfigCode, configValueRule, facts.ConfigValueCode)
 	}
-	// "A transitional compiler may still print compatibility diagnostics from
-	// the old language. The following inventory covers the `EK92xx` codes in
-	// its registry, separately from the normative rules above: an interim
-	// code does not establish a language rule or reserve a new VIP block."
-	// Interim codes are registered identities with the category their row
-	// states. They stay out of Rows, which holds the language's rules, and
-	// out of Adjustable, whose rule names a rule's warning.
-	requireQuote(appendix, transitionalQuote)
-	requireQuote(appendix, interimQuote)
-	for _, cells := range diagnosticTable(appendix, []string{"Emitted code", "Rule", "Retirement VIP", "Replacement"}, true) {
+	if err := requireQuote(appendix, transitionalQuote); err != nil {
+		return err
+	}
+	if err := requireQuote(appendix, interimQuote); err != nil {
+		return err
+	}
+	interimRows, err := diagnosticTable(appendix, []string{"Emitted code", "Rule", "Retirement VIP", "Replacement"}, true)
+	if err != nil {
+		return err
+	}
+	for _, cells := range interimRows {
 		codes := codesIn(cells[0])
 		if len(codes) != 1 {
-			panic("invalid transitional inventory code: " + cells[0])
+			return fmt.Errorf("invalid transitional inventory code: %s", cells[0])
 		}
 		facts.Interim = append(facts.Interim, codes[0])
 		facts.Defaults[codes[0]] = DefaultError
@@ -246,25 +310,37 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 			facts.Defaults[codes[0]] = DefaultOff
 		}
 	}
-	// The reused sentence uses inclusive ranges ("EK2001 to EK2005",
-	// "EK2102 to EK2104"); expand those current-spec endpoints.
-	facts.Reused = reusedCodes(reusedQuote)
+	reused, err := reusedCodes(reusedQuote)
+	if err != nil {
+		return err
+	}
+	facts.Reused = reused
 	facts.Retired = codesIn(retiredQuote)
 	for _, code := range facts.Reused {
 		if _, ok := facts.Rows[code]; !ok {
-			panic("reused code has no current Appendix B row")
+			return fmt.Errorf("reused code has no current Appendix B row: EK%04d", code)
 		}
 	}
+	return nil
+}
+
+func loadBooleanSettingsAndAdjustable(facts *SpecFacts, tooling string) error {
 	facts.Severities = quoted(severityValuesQuote)
 	// "Write VibeLang settings in the root `vibe` object"
-	requireQuote(tooling, "Write VibeLang settings in the root `vibe` object")
-	for _, cells := range diagnosticTable(tooling, []string{"Key", "Meaning"}, true) {
+	if err := requireQuote(tooling, "Write VibeLang settings in the root `vibe` object"); err != nil {
+		return err
+	}
+	settingRows, err := diagnosticTable(tooling, []string{"Key", "Meaning"}, true)
+	if err != nil {
+		return err
+	}
+	for _, cells := range settingRows {
 		if strings.HasPrefix(cells[1], "Boolean;") {
-			facts.BooleanSettings = append(facts.BooleanSettings, strings.TrimPrefix(strings.Trim(cells[0], "\x60"), "vibe."))
+			facts.BooleanSettings = append(facts.BooleanSettings, strings.TrimPrefix(strings.Trim(cells[0], "`"), "vibe."))
 		}
 	}
 	if len(facts.BooleanSettings) == 0 {
-		panic("current tooling no longer defines boolean switches")
+		return fmt.Errorf("current tooling no longer defines boolean switches")
 	}
 	for code := range facts.Rows {
 		if facts.Defaults[code] == DefaultWarning {
@@ -275,21 +351,36 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 		facts.Adjustable = append(facts.Adjustable, code)
 	}
 	slices.Sort(facts.Adjustable)
+	return nil
+}
+
+// Facts returns the cached specification diagnostic facts, exiting the test
+// harness on specification drift instead of silently using an empty oracle.
+var Facts = sync.OnceValue(func() *SpecFacts {
+	facts, err := LoadFacts()
+	if err != nil {
+		failFuzz(err)
+	}
 	return facts
 })
 
 func quoted(text string) []string {
 	var values []string
-	for _, m := range regexp.MustCompile("\x60\"([a-z]+)\"\x60").FindAllStringSubmatch(text, -1) {
+	for _, m := range regexp.MustCompile("`\"([a-z]+)\"`").FindAllStringSubmatch(text, -1) {
 		values = append(values, m[1])
 	}
 	return values
 }
 
+// IsAdjustable reports whether code can be configured via vibe.severities.
 func (f *SpecFacts) IsAdjustable(code int32) bool {
 	return slices.Contains(f.Adjustable, code)
 }
+
+// IsRegistered reports whether code is registered in the specification.
 func (f *SpecFacts) IsRegistered(code int32) bool { return SpecHasCode(code) }
+
+// Default returns the default diagnostic category of code.
 func (f *SpecFacts) Default(code int32) DefaultCategory {
 	if category, ok := f.Defaults[code]; ok {
 		return category
@@ -298,13 +389,13 @@ func (f *SpecFacts) Default(code int32) DefaultCategory {
 }
 
 // reusedCodes expands the inclusive code ranges in Appendix B's reuse sentence.
-func reusedCodes(text string) []int32 {
+func reusedCodes(text string) ([]int32, error) {
 	codes := codesIn(text)
 	for _, m := range regexp.MustCompile("EK([0-9]{4})` to `EK([0-9]{4})").FindAllStringSubmatch(text, -1) {
 		lo, _ := strconv.Atoi(m[1])
 		hi, _ := strconv.Atoi(m[2])
 		if hi < lo {
-			panic("reversed reused-code range")
+			return nil, fmt.Errorf("reversed reused-code range: EK%04d to EK%04d", lo, hi)
 		}
 		for code := int32(lo); code <= int32(hi); code++ {
 			if !slices.Contains(codes, code) {
@@ -313,5 +404,5 @@ func reusedCodes(text string) []int32 {
 		}
 	}
 	slices.Sort(codes)
-	return codes
+	return codes, nil
 }

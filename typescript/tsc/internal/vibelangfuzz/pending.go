@@ -93,7 +93,7 @@ const Superseded = "superseded"
 func Pending(target, key string) (PendingEntry, bool) {
 	entries, err := pendingEntries()
 	if err != nil {
-		panic(err)
+		failFuzz(err)
 	}
 	return findPending(entries, target, key)
 }
@@ -201,7 +201,7 @@ func PendingFeatures(target string) map[string]PendingEntry {
 	}
 	entries, err := pendingEntries()
 	if err != nil {
-		panic(err)
+		failFuzz(err)
 	}
 	for _, entry := range entries {
 		if name, ok := strings.CutPrefix(entry.Key, "feature:"); ok && entry.Target == target {
@@ -218,7 +218,7 @@ func Gap(t testing.TB, target, key, format string, args ...any) {
 	t.Helper()
 	entries, err := pendingEntries()
 	if err != nil {
-		panic(err)
+		t.Fatalf("pending entries: %v", err)
 	}
 	if entry, ok := findPending(entries, target, key); ok {
 		usePending(entry)
@@ -245,7 +245,7 @@ func ExpectPending(t testing.TB, target, key string) {
 	t.Helper()
 	entries, err := pendingEntries()
 	if err != nil {
-		panic(err)
+		t.Fatalf("pending entries: %v", err)
 	}
 	expectPending(t, entries, target, key)
 }

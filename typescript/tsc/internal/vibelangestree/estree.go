@@ -32,6 +32,7 @@ type Error struct {
 	Column  int    `json:"column"`
 }
 
+// Error formats the parse error with its 1-based line and column.
 func (e *Error) Error() string {
 	return fmt.Sprintf("%d:%d: %s", e.Line, e.Column, e.Message)
 }
@@ -83,30 +84,17 @@ func Parse(fileName string, text string) (json string, failure *Error) {
 	}
 	c := &converter{file: file, text: text, vibe: vibe, scan: scanner.NewScanner(), modules: modules}
 	c.scan.SetText(text)
-	var program *obj
-	err := func() (failure *Error) {
-		defer func() {
-			switch e := recover().(type) {
-			case nil:
-			case unsupported:
-				failure = fail(e.pos, e.Error())
-			case syntaxError:
-				failure = fail(e.pos, e.message)
-			default:
-				panic(e)
-			}
-		}()
-		program = c.convertChild(file.AsNode(), nil)
-		return nil
-	}()
-	if err != nil {
-		return "", err
+	program := c.convertChild(file.AsNode(), nil)
+	if c.err != nil {
+		return "", fail(c.err.pos, c.err.message)
 	}
 	tokens, comments := lex(text, lexical)
 	program.set("comments", comments).set("tokens", tokens)
 	var b strings.Builder
 	b.Grow(len(text) * 8)
-	write(&b, program, positions)
+	if err := write(&b, program, positions); err != nil {
+		return "", fail(0, err.Error())
+	}
 	return b.String(), nil
 }
 

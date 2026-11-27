@@ -46,7 +46,8 @@ func Within(stage string, fn func()) {
 		killChildren()
 		stacks := make([]byte, 1<<22)
 		stacks = stacks[:runtime.Stack(stacks, true)]
-		panic(fmt.Sprintf("hang: %s took longer than %v\n%s", stage, limit, stacks))
+		fmt.Fprintf(os.Stderr, "panic: hang: %s took longer than %v\n%s\n", stage, limit, stacks)
+		os.Exit(2)
 	})
 	defer timer.Stop()
 	fn()
@@ -352,4 +353,11 @@ func (n *Node) restart(kind, log string) Outcome {
 		log += "\nrestart: " + err.Error()
 	}
 	return Outcome{Kind: kind, Log: log}
+}
+
+// failFuzz writes an unrecoverable harness configuration error to stderr and
+// exits with status 1 instead of panicking in production helper code.
+func failFuzz(err error) {
+	fmt.Fprintf(os.Stderr, "vibelangfuzz: %v\n", err)
+	os.Exit(1)
 }

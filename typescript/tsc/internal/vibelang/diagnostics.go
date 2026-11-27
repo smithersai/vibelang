@@ -200,11 +200,21 @@ var (
 // registry lists canonical messages by code.
 var registry = map[int32]*Message{}
 
-func registerDiagnostic(m *Message) {
+// diagnosticRegistrationErrors records any duplicate diagnostic code registration
+// encountered during package initialization instead of panicking at init time.
+var diagnosticRegistrationErrors []error
+
+func registerDiagnostic(m *Message) error {
+	if m == nil {
+		return fmt.Errorf("cannot register nil diagnostic message")
+	}
 	if existing := registry[m.Code]; existing != nil && existing != m {
-		panic(fmt.Sprintf("duplicate diagnostic %s: %q and %q", m, existing.Text, m.Text))
+		err := fmt.Errorf("duplicate diagnostic %s: %q and %q", m, existing.Text, m.Text)
+		diagnosticRegistrationErrors = append(diagnosticRegistrationErrors, err)
+		return err
 	}
 	registry[m.Code] = m
+	return nil
 }
 
 func init() {

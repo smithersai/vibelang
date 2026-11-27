@@ -105,18 +105,16 @@ func TestCurrentConfigFacts(t *testing.T) {
 }
 
 func TestCurrentRegistryTables(t *testing.T) {
-	rows := diagnosticTable("| Code | Rule | VIP | Chapter |\n| --- | --- | --- | --- |\n| `EK0301` | a | b | 3 | [Functions](001-functions.md) |\n", []string{"Code", "Rule", "VIP", "Chapter"}, true)
+	rows, err := diagnosticTable("| Code | Rule | VIP | Chapter |\n| --- | --- | --- | --- |\n| `EK0301` | a | b | 3 | [Functions](001-functions.md) |\n", []string{"Code", "Rule", "VIP", "Chapter"}, true)
+	if err != nil {
+		t.Fatalf("unexpected error parsing valid table: %v", err)
+	}
 	if len(rows) != 1 || rows[0][1] != "a | b" || rows[0][2] != "3" {
 		t.Fatalf("pipe moved the rule columns: %v", rows)
 	}
 	for _, text := range []string{"", "| Code | Rule | VIP | Chapter |\n| --- | --- | --- | --- |"} {
-		func() {
-			defer func() {
-				if recover() == nil {
-					t.Error("missing table/rows did not panic")
-				}
-			}()
-			diagnosticTable(text, []string{"Code", "Rule", "VIP", "Chapter"}, true)
-		}()
+		if _, err := diagnosticTable(text, []string{"Code", "Rule", "VIP", "Chapter"}, true); err == nil {
+			t.Errorf("missing table/rows for %q did not return an error", text)
+		}
 	}
 }

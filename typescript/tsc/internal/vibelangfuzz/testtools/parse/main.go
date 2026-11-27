@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -140,7 +141,8 @@ func main() {
 	for input.Scan() {
 		var q request
 		if err := json.Unmarshal(input.Bytes(), &q); err != nil {
-			panic(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 		if q.Generate != nil {
 			data := make([]byte, len(*q.Generate))
@@ -154,10 +156,12 @@ func main() {
 			results = append(results, parse(source))
 		}
 		if err := output.Encode(results); err != nil {
-			panic(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 	}
 	if err := input.Err(); err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }

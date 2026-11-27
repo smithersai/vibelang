@@ -163,6 +163,14 @@ func cycleParityExpectation(stock, baseline []stockSpan, emitted, written, fallb
 }
 
 func readParityOutputs(dir string, inputs map[string]string) map[string]string {
+	written, err := readParityOutputsChecked(dir, inputs)
+	if err != nil {
+		failFuzz(err)
+	}
+	return written
+}
+
+func readParityOutputsChecked(dir string, inputs map[string]string) (map[string]string, error) {
 	written := map[string]string{}
 	err := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
@@ -190,7 +198,7 @@ func readParityOutputs(dir string, inputs map[string]string) map[string]string {
 		return nil
 	})
 	if err != nil {
-		panic(fmt.Errorf("read stock outputs: %w", err))
+		return nil, fmt.Errorf("read stock outputs: %w", err)
 	}
-	return written
+	return written, nil
 }

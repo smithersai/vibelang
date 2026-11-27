@@ -1,6 +1,7 @@
 package vibelangestree
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -110,8 +111,8 @@ func (p positions) utf16(pos int) int {
 	return p.offset[pos]
 }
 
-// write appends value as JSON to b.
-func write(b *strings.Builder, value any, p positions) {
+// write appends value as JSON to b and returns an error for unsupported types.
+func write(b *strings.Builder, value any, p positions) error {
 	switch v := value.(type) {
 	case nil:
 		b.WriteString("null")
@@ -134,41 +135,63 @@ func write(b *strings.Builder, value any, p positions) {
 		b.WriteString(strconv.Itoa(p.utf16(v.end)))
 		b.WriteByte(']')
 	case *obj:
-		if v == nil {
-			b.WriteString("null")
-			return
-		}
-		b.WriteByte('{')
-		for i, k := range v.keys {
-			if i > 0 {
-				b.WriteByte(',')
-			}
-			writeString(b, k)
-			b.WriteByte(':')
-			write(b, v.vals[i], p)
-		}
-		b.WriteByte('}')
+		return writeObj(b, v, p)
 	case []any:
-		b.WriteByte('[')
-		for i, item := range v {
-			if i > 0 {
-				b.WriteByte(',')
-			}
-			write(b, item, p)
-		}
-		b.WriteByte(']')
+		return writeAnySlice(b, v, p)
 	case []*obj:
-		b.WriteByte('[')
-		for i, item := range v {
-			if i > 0 {
-				b.WriteByte(',')
-			}
-			write(b, item, p)
-		}
-		b.WriteByte(']')
+		return writeObjSlice(b, v, p)
 	default:
-		panic("vibelangestree: cannot write a value of this type")
+		return fmt.Errorf("vibelangestree: cannot write a value of type %T", value)
 	}
+	return nil
+}
+
+func writeObj(b *strings.Builder, v *obj, p positions) error {
+	if v == nil {
+		b.WriteString("null")
+		return nil
+	}
+	b.WriteByte('{')
+	for i, k := range v.keys {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		writeString(b, k)
+		b.WriteByte(':')
+		if err := write(b, v.vals[i], p); err != nil {
+			return err
+		}
+	}
+	b.WriteByte('}')
+	return nil
+}
+
+func writeAnySlice(b *strings.Builder, v []any, p positions) error {
+	b.WriteByte('[')
+	for i, item := range v {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		if err := write(b, item, p); err != nil {
+			return err
+		}
+	}
+	b.WriteByte(']')
+	return nil
+}
+
+func writeObjSlice(b *strings.Builder, v []*obj, p positions) error {
+	b.WriteByte('[')
+	for i, item := range v {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		if err := write(b, item, p); err != nil {
+			return err
+		}
+	}
+	b.WriteByte(']')
+	return nil
 }
 
 // writeString writes s as a JSON string. Invalid UTF-8, which a lone

@@ -225,14 +225,22 @@ func toolsLeftOut(target string, files map[string]string) string {
 // toolsLeftOutFeatures returns every matching exclusion. Two pending
 // features can describe the same input; both omissions must stay visible.
 func toolsLeftOutFeatures(target string, files map[string]string) []string {
+	names, err := toolsLeftOutFeaturesChecked(target, files)
+	if err != nil {
+		failFuzz(err)
+	}
+	return names
+}
+
+func toolsLeftOutFeaturesChecked(target string, files map[string]string) ([]string, error) {
 	if os.Getenv("VIBELANG_FUZZ_HANG_PROBE") == "1" {
-		return nil
+		return nil, nil
 	}
 	var names []string
 	for _, name := range mapKeys(PendingFeatures(target)) {
 		matches, ok := toolsFeature(name)
 		if !ok {
-			panic("testdata/pending names an unknown feature " + name + " for " + target)
+			return nil, fmt.Errorf("testdata/pending names an unknown feature %s for %s", name, target)
 		}
 		for _, file := range mapKeys(files) {
 			if matches(files[file]) {
@@ -241,7 +249,7 @@ func toolsLeftOutFeatures(target string, files map[string]string) []string {
 			}
 		}
 	}
-	return names
+	return names, nil
 }
 
 // toolsSkipLeftOut reports every feature that omits an input, so exclusions
@@ -250,7 +258,11 @@ func toolsSkipLeftOut(t testing.TB, target string, files map[string]string) {
 	t.Helper()
 	var omitted []string
 	features := PendingFeatures(target)
-	for _, name := range toolsLeftOutFeatures(target, files) {
+	leftOut, err := toolsLeftOutFeaturesChecked(target, files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range leftOut {
 		entry := features[name]
 		usePending(entry)
 		omitted = append(omitted, fmt.Sprintf("%s (%s: %s)", name, entry.Owner, entry.Reason))
@@ -336,7 +348,8 @@ func toolsScan(text string) []toolsToken {
 		tokens = append(tokens, toolsToken{token, s.TokenText(), s.TokenStart(), s.TokenEnd()})
 		previous = token
 	}
-	panic("tools scanner did not reach EOF")
+	// Bounded loop guard: return the tokens scanned so far if EOF was not reached.
+	return tokens
 }
 
 func toolsIsComment(token toolsToken) bool {

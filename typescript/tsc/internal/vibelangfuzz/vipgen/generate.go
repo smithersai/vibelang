@@ -3,6 +3,7 @@ package vipgen
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path"
 	"slices"
 	"strings"
@@ -191,7 +192,7 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 			}
 		}
 		if len(forms) == 0 {
-			panic("vipgen: " + focus.Key + " requires no construct that declares a function")
+			failVipgen("vipgen: " + focus.Key + " requires no construct that declares a function")
 		}
 		for i := range g.c.intn(maxHelpers + 1) {
 			f := &Func{Name: fmt.Sprintf("f%d", i), Void: g.c.chance(4), Form: g.pick(forms)}
@@ -278,11 +279,20 @@ func Refocus(data []byte, key string) []byte {
 // Seed returns the input that focuses a construct by its key,
 // "key:<key>\x00", whatever else is registered or left out. Bytes appended
 // to it drive the rest of the generator.
-func Seed(key string) []byte {
+// SeedChecked validates key and returns the named focus seed or an error.
+func SeedChecked(key string) ([]byte, error) {
 	if Lookup(key) == nil {
-		panic("vipgen: no construct " + key)
+		return nil, fmt.Errorf("vipgen: no construct %s", key)
 	}
-	return []byte(namedPrefix + key + "\x00")
+	return []byte(namedPrefix + key + "\x00"), nil
+}
+
+func Seed(key string) []byte {
+	seed, err := SeedChecked(key)
+	if err != nil {
+		failVipgen(err.Error())
+	}
+	return seed
 }
 
 // NamedInput splits an input of the form "key:<key>\x00<rest>" into its key
@@ -323,12 +333,14 @@ func (g *Gen) Decls() []Node  { return g.decls }
 // module may be added: the reference must never run compiled VibeLang, and a
 // .ts module compiles as TypeScript, so both prints run the same code. A
 // construct may add the same module again, with the same source.
-func (g *Gen) AddFile(name, source string, names ...string) {
+// AddFileChecked validates and registers an auxiliary TypeScript module,
+// returning an error on invalid paths or conflicting duplicate definitions.
+func (g *Gen) AddFileChecked(name, source string, names ...string) error {
 	if !strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".d.ts") || name != path.Clean(name) || strings.HasPrefix(name, "../") || path.IsAbs(name) || name == "main.ts" {
-		panic("vipgen: a program's extra module is a .ts file inside the project: " + name)
+		return fmt.Errorf("vipgen: a program's extra module is a .ts file inside the project: %s", name)
 	}
 	if old, ok := g.files[name]; ok && old != source {
-		panic("vipgen: two sources for the module " + name)
+		return fmt.Errorf("vipgen: two sources for the module %s", name)
 	}
 	g.files[name] = source
 	for _, n := range names {
@@ -336,6 +348,22 @@ func (g *Gen) AddFile(name, source string, names ...string) {
 			g.imports[name] = append(g.imports[name], n)
 		}
 	}
+	return nil
+}
+
+func (g *Gen) AddFile(name, source string, names ...string) {
+	if err := g.AddFileChecked(name, source, names...); err != nil {
+		failVipgen(err.Error())
+	}
+}
+
+func failVipgen(message string) {
+	fmt.Fprintln(os.Stderr, message)
+	os.Exit(1)
+}
+
+func escapeTemplateLiteral(s string) string {
+	return strings.NewReplacer("\\", "\\\\", "`", "\\`", "${", "\\${").Replace(s)
 }
 
 // Plain reports whether the program is plain (Program.Plain): its
