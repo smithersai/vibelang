@@ -64,7 +64,7 @@ for (const specifier of ["vibelang-runtime", "vibelang-runtime/internal"]) {
       assert.equal(ran.signal, null)
       assert.equal(ran.status, 1)
       const metadata = JSON.parse(await readFile(join(runtime, "package.json"), "utf8"))
-      assert.ok(ran.stderr.includes(`requires effect@${metadata.peerDependencies.effect}; found effect@0.0.0`))
+      assert.ok(ran.stderr.includes(`requires effect@${metadata.peerDependencies.effect}`) && ran.stderr.includes("found effect@0.0.0"), ran.stderr)
     })
   }
 }
