@@ -135,8 +135,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 440 |
 | [Other editors](../setup/other-editors.md) | 740 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
-| **Keep .ts file names** | **1,400** |
-| [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |
+| **Keep .ts file names** | **1,300** |
+| [VibeLang in .ts files](../setup/typescript-shim.md) | 1,300 |
 | **Upgrade** | **210,000** |
 | [Release notes](../setup/release-notes.md) | 210,000 |
 | **All 23 pages** | **260,000** |

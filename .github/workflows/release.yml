@@ -43,6 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           version="$(node -p 'require("./packages/compiler/package.json").version')"
+          snapshot="$(node -p 'require("./docs/tools/release-publication-snapshot.json").version' 2>/dev/null || echo "")"
           published="$(npm view vibelang version --prefer-online 2>/dev/null || echo "")"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "published=$published" >> "$GITHUB_OUTPUT"
@@ -52,6 +53,8 @@ jobs:
 
           if [ "$version" != "$published" ]; then
             should_publish="true"
+            should_deploy_site="true"
+          elif [ "$snapshot" != "$published" ]; then
             should_deploy_site="true"
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force_site_deploy }}" = "true" ]; then
             should_deploy_site="true"
@@ -63,7 +66,7 @@ jobs:
 
           echo "should_publish=$should_publish" >> "$GITHUB_OUTPUT"
           echo "should_deploy_site=$should_deploy_site" >> "$GITHUB_OUTPUT"
-          echo "Plan: candidate=$version published=${published:-none} should_publish=$should_publish should_deploy_site=$should_deploy_site"
+          echo "Plan: candidate=$version published=${published:-none} snapshot=${snapshot:-none} should_publish=$should_publish should_deploy_site=$should_deploy_site"
 
   release:
     name: Build, rehearse, publish npm, deploy site
@@ -124,6 +127,30 @@ jobs:
           fi
           sh scripts/release/publish.sh
 
+      - name: Wait for npm registry propagation
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          pkgs="vibelang vibelang-runtime create-vibelang vibelang-vite vibelang-unplugin vibelang-linux-x64 vibelang-darwin-arm64"
+          for i in $(seq 1 40); do
+            pending=""
+            for pkg in $pkgs; do
+              live="$(npm view "$pkg" version --prefer-online 2>/dev/null || echo "")"
+              if [ "$live" != "$VERSION" ]; then
+                pending="$pending $pkg=${live:-none}"
+              fi
+            done
+            if [ -z "$pending" ]; then
+              echo "propagation check $i/40: all packages serving $VERSION"
+              exit 0
+            fi
+            echo "propagation check $i/40: waiting on$pending"
+            sleep 15
+          done
+          echo "Timed out waiting for Vibe $VERSION packages to propagate on npm" >&2
+          exit 1
+
       - name: Deploy vibelang.sh
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -177,7 +204,7 @@ jobs:
           done
 
   deploy-site:
-    name: Deploy vibelang.sh for docs/site update
+    name: Deploy vibelang.sh and finalize release
     needs: plan
     if: needs.plan.outputs.should_publish != 'true' && needs.plan.outputs.should_deploy_site == 'true' && needs.plan.outputs.published != ''
     runs-on: ubuntu-24.04
@@ -186,7 +213,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "26"
@@ -206,3 +233,45 @@ jobs:
 
       - name: Verify live site
         run: sh scripts/release/verify-published.sh "${{ needs.plan.outputs.published }}"
+
+      - name: Record publication snapshot on main if pending
+        run: |
+          set -euo pipefail
+          node docs/tools/release-history.mjs --record
+          if ! git diff --quiet docs/tools/release-publication-snapshot.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/tools/release-publication-snapshot.json
+            git commit -m "chore(release): record Vibe ${{ needs.plan.outputs.published }} npm publication"
+            git push origin HEAD:main
+          fi
+
+      - name: Create GitHub Release if missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.published }}
+        run: |
+          set -euo pipefail
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "GitHub Release v$VERSION already exists; skipping"
+            exit 0
+          fi
+          NOTES_FILE="$(mktemp)"
+          trap 'rm -f "$NOTES_FILE"' EXIT
+          awk -v v="## $VERSION" '$0 == v { found=1; next } /^## / && found { exit } found { print }' \
+            docs/user/src/setup/release-notes.md > "$NOTES_FILE"
+          gh release create "v$VERSION" \
+            --target "${{ github.sha }}" \
+            --prerelease \
+            --title "Vibe $VERSION" \
+            --notes-file "$NOTES_FILE"
+
+      - name: Close matching open release issue if open
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.published }}
+        run: |
+          set -euo pipefail
+          for num in $(gh issue list --state open --search "Release $VERSION in:title" --json number --jq '.[].number'); do
+            gh issue close "$num" --reason completed --comment "Released Vibe \`$VERSION\` via GitHub Actions (npm packages, https://vibelang.sh, and GitHub Release \`v$VERSION\`)."
+          done
