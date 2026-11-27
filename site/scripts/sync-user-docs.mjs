@@ -27,7 +27,7 @@ import { loadSpec } from './spec-docs.mjs'
 
 let SPEC_URL = 'https://vibelang.sh/spec/'
 const EFFECT_DOCS_URL = 'https://effect.website/docs/'
-const KEEP = new Set(['index.mdx', '_root.css', 'proposals.mdx', 'spec', 'vips'])
+const KEEP = new Set(['index.mdx', '_root.css', 'play.mdx', 'proposals.mdx', 'spec', 'vips'])
 // Sidebar entries for site-only pages, appended after the inventory's sections.
 const SITE_SIDEBAR = [{ text: 'Proposals', link: '/proposals' }]
 

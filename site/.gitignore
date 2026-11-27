@@ -5,3 +5,6 @@ dist
 *.log
 
 src/pages.gen.ts
+
+# Built via scripts/build-playground-wasm.sh (65+ MB raw Go WASM binary)
+public/playground/

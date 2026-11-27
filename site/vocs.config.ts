@@ -98,6 +98,7 @@ export default defineConfig({
     { text: 'Welcome', link: '/001-onboarding' },
     { text: 'Guides', link: '/013-getting-started' },
     { text: 'Cheat sheet', link: '/vibelang-features/115-cheat-sheet' },
+    { text: 'Playground', link: '/play' },
     { text: 'Specification', link: '/spec/' },
     { text: 'VIPs', link: '/vips/' },
     { text: 'GitHub', link: 'https://github.com/smithersai/vibelang', external: true },
