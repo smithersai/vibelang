@@ -7,9 +7,9 @@ tags: [history, mythical-history, vips, releases, architecture]
 
 Every enduring language carries the scars of the designs it tested, measured, and deliberately threw away. This chronicle traces how VibeLang grew from early Effect syntax experiments into a Go-native TypeScript 7 compiler and public coding factory on Smithers Cloud.
 
-## Age I: Effeck and the Early Prototypes
+## Age I: Effeck and the Early Prototypes <!-- brand-gate: allow -->
 
-VibeLang began under the codename **effeck**, exploring how to write Effect programs without generator ceremony (`Effect.gen(function* () { ... })` and `yield*`). Early prototypes in `prototype/` and the original decision ledger (`docs/design/history/DECISIONS.md`, decisions `D1` through `D520`) tested ambitious implicit models:
+VibeLang began under the codename **effeck** <!-- brand-gate: allow -->, exploring how to write Effect programs without generator ceremony (`Effect.gen(function* () { ... })` and `yield*`). Early prototypes in `prototype/` and the original decision ledger (`docs/design/history/DECISIONS.md`, decisions `D1` through `D520`) tested ambitious implicit models:
 
 - `D320-D323` and `D500` explored inferring whether a function was effectful from `await` inside its body (`D540`, `D550`).
 - `D27` experimented with a `wire` syntax for dependency graphs.
@@ -21,7 +21,7 @@ Building real programs against those early rules exposed a hard truth: implicit 
 
 ## Age II: The Rename and the TypeScript 7 Go Fork
 
-On **2026-10-18**, the project officially renamed from `effeck` to **VibeLang** and shipped `vibelang@0.0.1`, the first release on npm. Rather than maintaining a fragile standalone parser, the compiler forked Microsoft's native Go TypeScript 7 compiler (`typescript/tsc/internal/vibelang*`) so `.vibe` and `.ts` files typecheck in one unified program, emit clean JavaScript with `.d.vibe.ts` declarations, and share a single language server.
+On **2026-10-18**, the project officially renamed from `effeck` <!-- brand-gate: allow --> to **VibeLang** and shipped `vibelang@0.0.1`, the first release on npm. Rather than maintaining a fragile standalone parser, the compiler forked Microsoft's native Go TypeScript 7 compiler (`typescript/tsc/internal/vibelang*`) so `.vibe` and `.ts` files typecheck in one unified program, emit clean JavaScript with `.d.vibe.ts` declarations, and share a single language server.
 
 See [[Compiler-Pipeline]] and [[Continuation-Kernel]] for how the Go compiler and `vibelang-runtime` cooperate.
 

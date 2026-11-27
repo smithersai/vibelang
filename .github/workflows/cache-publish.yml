@@ -47,7 +47,10 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq bubblewrap
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
-      - run: sh scripts/ci.sh --prepare-only
+      - run: |
+          (cd packages/runtime && bun install --frozen-lockfile && bun run build)
+          sh scripts/ci.sh --prepare-only
+          ln -sfn ../../../packages/runtime/dist .smithers/node_modules/vibelang-runtime/dist
       - name: Run and publish verified factory and docs targets to build.smithers.sh
         env:
           SMITHERS_CACHE_URL: ${{ secrets.SMITHERS_CACHE_URL }}

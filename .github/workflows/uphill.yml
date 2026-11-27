@@ -39,10 +39,18 @@ jobs:
         with:
           bun-version: "1.4.2"
 
-      - name: Install .smithers and runtime workspace dependencies
+      - name: Setup jj
+        uses: taiki-e/install-action@e67fa11c4b9316fa714ddf0abed07a0c3143b95b
+        with:
+          tool: jj-cli@0.39.0
+
+      - name: Initialize colocated jj repo and install workspace dependencies
         run: |
+          jj git init --colocate
           (cd packages/runtime && bun install --frozen-lockfile && bun run build)
+          (cd docs/tools && bun install --frozen-lockfile)
           (cd .smithers && bun install --frozen-lockfile)
+          ln -sfn ../../../packages/runtime/dist .smithers/node_modules/vibelang-runtime/dist
 
       - name: Run Uphill
         uses: wevm/uphill@main
