@@ -1,0 +1,59 @@
+---
+title: "VIP-75: Concise tagged catch (e catch { when ... })"
+description: "VIP-75: Concise tagged catch (e catch { when ... }). A VibeLang improvement proposal: the decision, its reasons and its history."
+---
+
+# VIP-75: Concise tagged `catch` (`e catch { when ... }`)
+
+**Status:** accepted 2026-11-27 (language ergonomics wave — extending VIP-5 `catch` with VIP-7 `when` arms).
+
+## Decision
+
+Add a zero-ambiguity block-arm form of `catch` expressions that reuses VIP-7 `when` / `default` arms directly after `catch`:
+
+```vibe
+const user = users.find(id) catch { when UserNotFound: guest }
+
+const val = fetchItem(id) catch {
+  when NotFound: "missing";
+  when RateLimited(let e): try sleep(e.retryAfter), "retry";
+}
+```
+
+### Syntax
+
+- Immediately after `catch`, `{` followed by `when <pattern>` (not `when:`) or `default:` begins a **tagged catch handler** (`ClosedCatchHandler`).
+- Ordinary object literals after `catch` (`e catch { a: 1 }`, `e catch { when: 1 }`, `e catch {}`) remain invalid handlers and continue to report `EK0509`.
+- Arms reuse VIP-7 `when <pattern>: <armBody>` and `default: <armBody>` grammar (including error classes `when NotFound`, error extractors `when RateLimited(let e)`, object tag patterns `when { _tag: "NotFound", let id }`, guards, `and`/`or`/`not`, comma expressions, `try`, and `throw`).
+- Multiple arms are separated by `;`; a trailing `;` before the closing `}` is optional (so single-arm `e catch { when NotFound: guest }` needs no semicolon).
+- As a closed catch handler, `catch { ... }` follows VIP-5 precedence rules: unparenthesized mixing with `??`, `||`, `&&` or postfix/binary continuations on the same line report `EK0512`, and ASI starts a new statement after `}` on a new line.
+
+### Semantics & Lowering
+
+`e catch { when P1: v1; when P2: v2 }` has the exact semantics of:
+
+```vibe
+e catch effect ($err) => match ($err) {
+  when P1: v1;
+  when P2: v2;
+  default: throw $err;
+}
+```
+
+And with an explicit `default: vd` arm:
+
+```vibe
+e catch effect ($err) => match ($err) {
+  when P1: v1;
+  default: vd;
+}
+```
+
+- **Effectful arm bodies:** Arm bodies evaluate in effect context, so `try` runs Effects and `throw` fails typed without writing `effect (err) => ...`.
+- **Automatic residual rethrow & narrowing:** When no `default:` arm is present, unmatched errors are automatically rethrown with their flow-narrowed residual type, mirroring `Effect.catchTag` / `Effect.catchTags`. Matching every member of `E` narrows the residual error channel to `never`; leaving a member unhandled preserves it in `E` (and triggers `EK9201` if excluded by a declared return contract).
+- **Explicit `default:` arm:** Handles all remaining errors, narrowing residual `E` to `never` (unless an arm throws or runs a failing Effect).
+- **Context & head rules:** All VIP-5 rules apply unchanged (`EK0504` outside effect code, `EK0505` for `try e catch { ... }`, `EK0506` for non-Effect operand, `EK9204` warning when `e` cannot fail, `EK2114` inside a hatch).
+
+## Motivation
+
+Before VIP-75, catching a single error tag required `e catch effect (err) => match (err) { when NotFound: guest; default: throw err; }`, which was longer than Effect TypeScript's `e.pipe(Effect.catchTag("NotFound", () => Effect.succeed(guest)))`. In real providers such as Alchemy's `RegistryPolicy`, `catch` was the single remaining place where VibeLang was more verbose than Effect TypeScript. `e catch { when ... }` eliminates the ceremony while supporting full VIP-7 pattern matching, multi-tag recovery, extractor bindings, effectful recovery arms, and exact residual error narrowing.

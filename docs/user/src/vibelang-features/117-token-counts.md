@@ -17,11 +17,11 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,770 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 18,135 |
-| The skill and the user guide (149 pages) | 540,000 |
-| The user guide alone | 530,000 |
-| The specification (11 chapters) | 280,000 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,713 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,078 |
+| The skill and the user guide (150 pages) | 540,000 |
+| The user guide alone | 540,000 |
+| The specification (11 chapters) | 290,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
 ## Effect TypeScript beside VibeLang
@@ -87,7 +87,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| **Start Here** | **5,600** |
+| **Start Here** | **5,500** |
 | [Welcome](../001-onboarding.md) | 2,200 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 1,900 |
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,500 |
@@ -111,11 +111,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,800 |
 | [What is in the alpha](../setup/alpha.md) | 3,000 |
-| [Known limitations](../setup/known-limitations.md) | 3,000 |
+| [Known limitations](../setup/known-limitations.md) | 3,100 |
 | [Source maps](../setup/source-maps.md) | 920 |
-| **Start a project** | **5,700** |
+| **Start a project** | **5,500** |
 | [New project](../setup/new-project.md) | 620 |
-| [Existing project](../setup/existing-project.md) | 2,200 |
+| [Existing project](../setup/existing-project.md) | 2,000 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 2,900 |
 | **Build and test** | **8,700** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 6,300 |
@@ -123,23 +123,24 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Format and lint** | **11,000** |
 | [Format with dprint](../setup/formatting.md) | 1,900 |
 | [Developer tools](../setup/developer-tools.md) | 8,600 |
-| **Frameworks** | **11,000** |
+| **Frameworks** | **14,000** |
+| [Effect UI](../setup/effect-ui.md) | 3,600 |
 | [React](../setup/react.md) | 1,900 |
 | [React Native and Metro](../setup/react-native.md) | 530 |
 | [Vue](../setup/vue.md) | 2,700 |
 | [Svelte](../setup/svelte.md) | 2,400 |
 | [Foldkit](../setup/foldkit.md) | 3,300 |
-| **Editors** | **4,700** |
+| **Editors** | **5,100** |
 | [VS Code and Cursor](../setup/vscode.md) | 1,200 |
 | [Neovim](../setup/neovim.md) | 1,200 |
-| [Zed](../setup/zed.md) | 440 |
+| [Zed](../setup/zed.md) | 840 |
 | [Other editors](../setup/other-editors.md) | 740 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
-| **Keep .ts file names** | **1,300** |
-| [VibeLang in .ts files](../setup/typescript-shim.md) | 1,300 |
+| **Keep .ts file names** | **1,700** |
+| [VibeLang in .ts files](../setup/typescript-shim.md) | 1,700 |
 | **Upgrade** | **210,000** |
 | [Release notes](../setup/release-notes.md) | 210,000 |
-| **All 23 pages** | **260,000** |
+| **All 24 pages** | **260,000** |
 
 ### Guides
 
@@ -300,12 +301,12 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [3. Failures](../../../design/src/003-failures.md) | 11,000 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 24,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 16,000 |
-| [6. Data](../../../design/src/006-data.md) | 9,400 |
+| [6. Data](../../../design/src/006-data.md) | 9,900 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 18,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |
 | **Appendices** | **150,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 120,000 |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 130,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
-| **All 11 pages** | **280,000** |
+| **All 11 pages** | **290,000** |
 
 <!-- token-counts: end -->

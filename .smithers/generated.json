@@ -2,7 +2,7 @@
   "version": 2,
   "flow": "docs",
   "source": ".smithers/flows/docs/flow.ts",
-  "digest": "ea4150c75fb56bc24b5a3c3c3c14a9f03350d212d6990a7095493f0b0e84e246",
+  "digest": "c48a7730e943ab79063f4b5b5363ff66c00b7a441bed613ff2593e54eccfd14f",
   "inputs": [
     {
       "path": ".smithers/flows/docs/project.ts",
@@ -18,11 +18,11 @@
     },
     {
       "path": ".smithers/flows/docs/generate.ts",
-      "sha256": "d4b7ebad0f9bcc0bfc3b97e786bff5e5b894cbd5670bb5b7bb1eb4a65007fbe1"
+      "sha256": "739e6de2fd60ccf282326de0d73e969b87642ed71d9d04ef01f76bf2e678917e"
     },
     {
       "path": ".smithers/flows/in-process.ts",
-      "sha256": "f21e419b42d4f1b1fec0e693c4082200e78d4d6de13fe139d409f87f5978be79"
+      "sha256": "7a1aaf154859194d15e7997a152782e550830880c03533fdd3e12e1da02cf6a1"
     },
     {
       "path": ".smithers/package.json",
@@ -34,7 +34,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "f23b1abdc7fec2eb972e80300b2ef6ff51d0f446b38dfaafb94c768d2c4b37da"
+      "sha256": "9fbd90bb52f32640ec4d5498bdd9fa34d98af582adfd684105efb43bfb9c9415"
     },
     {
       "path": "docs/user/llms-essentials.md",
@@ -42,12 +42,12 @@
     },
     {
       "path": "packages/compiler/skills/vibelang/SKILL.md",
-      "sha256": "d49895677da175959cf8a618eb979f1e1ca38ee2f0c2671ade739e7c03b78871"
+      "sha256": "72165a3e113805b3b1dc3f43465861342636de4d4aac047bccc12e9314bb631f"
     }
   ],
   "outputs": {
     "README.md": {
-      "sha256": "b002cd91ed302dd8a8e52947f6b2ea3f76f409dcef324a0ba9e8bb1b1717aa26"
+      "sha256": "e47b5e98376da53bf53592cfb38492d55b89adbe0135705abb6f828afdea8a44"
     },
     "CONTRIBUTING.md": {
       "sha256": "a31206acf59c0e6123353454bca22e196e030ac94c10456f80414d430487aae1"
@@ -56,7 +56,7 @@
       "sha256": "bed364db23b1e776274f8278b48854a54533fb9ff42c4faafef9d858c9eaa437"
     },
     "AGENTS.md": {
-      "sha256": "5c1b1158aebf4a4faca342a62dbd80c9b5f97812b614d163e8f2ac973bc78cb5"
+      "sha256": "dafefc24774e19dce49f17492d32a9a23f0fa77dcd37b144a351f3e20535339a"
     },
     "templates/app/AGENTS.md": {
       "sha256": "c7179e8d50c735c6047ec71571084c696bc2bd78d5e7fcf802832e7f48c226a4"

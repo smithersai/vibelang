@@ -233,6 +233,14 @@ export const vipsSidebar = [
           {
             "text": "73. Experimental.Patterns and PACKAGE.vibe",
             "link": "/vips/0073-std-patterns"
+          },
+          {
+            "text": "74. Serializable tagged unions (schema data)",
+            "link": "/vips/0074-schema-data"
+          },
+          {
+            "text": "75. Concise tagged catch (e catch { when ... })",
+            "link": "/vips/0075-tagged-catch"
           }
         ]
       },

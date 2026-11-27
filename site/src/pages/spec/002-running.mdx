@@ -5,7 +5,7 @@ description: "Running Effects, from the VibeLang specification: the rules the ac
 
 # Running Effects
 
-Sources: [VIP-4](/vips/0004-throw), [VIP-5](/vips/0005-try-runs-effects), [VIP-2](/vips/0002-effect-blocks-and-do), [VIP-17](/vips/0017-fork), [VIP-18](/vips/0018-concurrent), [VIP-19](/vips/0019-for-concurrent), [VIP-20](/vips/0020-for-try), [VIP-21](/vips/0021-producers), [VIP-22](/vips/0022-interruption-blocks), [VIP-23](/vips/0023-pipe).
+Sources: [VIP-4](/vips/0004-throw), [VIP-5](/vips/0005-try-runs-effects), [VIP-2](/vips/0002-effect-blocks-and-do), [VIP-17](/vips/0017-fork), [VIP-18](/vips/0018-concurrent), [VIP-19](/vips/0019-for-concurrent), [VIP-20](/vips/0020-for-try), [VIP-21](/vips/0021-producers), [VIP-22](/vips/0022-interruption-blocks), [VIP-23](/vips/0023-pipe), [VIP-75](/vips/0075-tagged-catch).
 
 Calling an `effect` function constructs its cold Effect. Calls retain ordinary JavaScript evaluation, including receivers, arguments and parameter initialization; a plain factory can perform JavaScript work while constructing its result. Returning an Effect does not itself execute it. The table lists language execution sites in effect code (an `effect` function, a producer or an `effect` block); native Effect APIs and explicit written runners keep their own call behavior:
 
@@ -324,6 +324,24 @@ fetchUser(id) catch effect (e) => { throw new Wrapped(e) }                   // 
 fetchUser(id) catch (e) => { try { throw e } catch { return 0 } }            // EK0401: even when a try statement catches it
 fetchUser(id) catch (e) => () => { throw e }                                 // EK0401: the nested arrow is plain code too
 ```
+
+### Concise tagged `catch` (VIP-75)
+
+A `catch` expression may take a pattern-arm block immediately after `catch`, reusing VIP-7 `when` and `default` arms ([VIP-75](/vips/0075-tagged-catch)):
+
+```vibe [Vibe]
+// fragment
+const user = users.find(id) catch { when UserNotFound: guest }
+const val = fetchItem(id) catch {
+  when NotFound: "missing";
+  when RateLimited(let e): try sleep(e.retryAfter), "retry";
+}
+```
+
+- `{` immediately after `catch` begins a tagged catch block when its first token is `when` (not `when:`) or `default:`. Ordinary object literals (`e catch { a: 1 }`, `e catch { when: 1 }`, `e catch {}`) remain invalid handlers (`EK0509`).
+- Arm bodies evaluate in effect context (`try` and `throw` are allowed), and a trailing semicolon before `}` is optional.
+- When no `default:` arm is written, unmatched failures are automatically rethrown with their flow-narrowed residual error type, mirroring `Effect.catchTag` / `Effect.catchTags`. Writing a `default:` arm catches every remaining error, narrowing residual `E` to `never` unless an arm throws or runs a failing Effect.
+- As a closed handler, `catch { ... }` obeys the same precedence and continuation rules as block-bodied arrow handlers (`EK0512` for unparenthesized mixing or same-line continuations, ASI after `}` on a new line) and all VIP-5 placement and operand checks (`EK0504`, `EK0505`, `EK0506`, `EK9204`, `EK2114`).
 
 ## `await`
 

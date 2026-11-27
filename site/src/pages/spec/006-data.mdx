@@ -5,7 +5,7 @@ description: "Data, from the VibeLang specification: the rules the accepted impr
 
 # Data
 
-Sources: [VIP-15](/vips/0015-schema-declarations), [VIP-16](/vips/0016-data-declarations), [VIP-28](/vips/0028-generic-data), [VIP-44](/vips/0044-durable-values).
+Sources: [VIP-15](/vips/0015-schema-declarations), [VIP-16](/vips/0016-data-declarations), [VIP-28](/vips/0028-generic-data), [VIP-44](/vips/0044-durable-values), [VIP-74](/vips/0074-schema-data).
 
 ## `schema` declarations
 
@@ -671,3 +671,37 @@ const Exact = Schema.Struct({
 })
 type Exact = typeof Exact.Type
 ```
+
+## `schema data` declarations
+
+Source: [VIP-74](/vips/0074-schema-data).
+
+`schema data Name { VariantA; VariantB { field: Type } }` is the serializable twin of `data` (parallel to `schema error` for `error`). It lowers directly to Effect 4's `Schema.TaggedUnion` plus its companion type alias `type Name = typeof Name.Type`:
+
+```vibe [Vibe]
+export schema data Shape {
+  Empty
+  Circle { readonly radius: number }
+  Rectangle { width: number; height?: number }
+}
+```
+
+```ts [Effect]
+import { Schema } from "effect"
+
+export const Shape = Schema.TaggedUnion({
+  Empty: {},
+  Circle: { radius: Schema.Number },
+  Rectangle: {
+    width: Schema.mutableKey(Schema.Number),
+    height: Schema.mutableKey(Schema.optional(Schema.Number)),
+  },
+})
+export type Shape = typeof Shape.Type
+```
+
+- `schema`, `data`, and `Name` appear on one line; `schema data { … }` and `schema data = Type` remain ordinary `schema` declarations named `data`.
+- Variant fields use VIP-15's schema field mapping (`readonly`, `mutableKey`, optional keys including `exactOptionalPropertyTypes`, nested objects, arrays, tuples, records, literals, and schema references).
+- Each decoded variant carries its literal `_tag`, so `match (shape)` checks exhaustiveness at compile time (`EK4701`) using object tag patterns `when { _tag: "Circle", let radius }`.
+- Declaration output emits `export declare const Name: Schema.TaggedUnion<…>;` followed by `export type Name = typeof Name.Type;`.
+- Reserved `_tag` fields (`EK1601`), `export default schema data` (`EK1603`), missing bodies (`EK1604`), missing variant separators (`EK1605`), invalid variant names or parenthesized payloads (`EK1606`), type parameters (`EK1502`), non-field members (`EK1505`), ambient `declare schema data` (`EK1506`), and unsupported field types (`EK2109`) report their owning diagnostics.
