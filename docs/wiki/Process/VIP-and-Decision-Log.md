@@ -5,7 +5,7 @@ tags: [process, vips, specification, spec-review]
 
 # VIPs and Specification Grading
 
-VibeLang's semantics are governed by formal **VibeLang Improvement Proposals (VIPs)** under `docs/design/vips/` (`VIP-0001` through `VIP-0073`) and rendered into the normative specification in `docs/design/src/`.
+VibeLang's semantics are governed by formal **VibeLang Improvement Proposals (VIPs)** under `docs/design/vips/` (`VIP-0001` through `VIP-0075`) and rendered into the normative specification in `docs/design/src/`.
 
 ## Proposal Lifecycle
 
@@ -20,6 +20,7 @@ VibeLang's semantics are governed by formal **VibeLang Improvement Proposals (VI
 - **Concurrency and Streams (`VIP-0017` to `VIP-0023`)**: `fork`/`join`, `try.all`/`try.race`/`try.any`/`try.allSettled`, `for concurrent`, `for try`, `effect function*` producers, `uninterruptible`/`restore`, Hack pipe `|>`.
 - **Tooling and Interop (`VIP-0026` to `VIP-0041`)**: explicit `main`, `.d.vibe.ts` sidecars, generic `data`, `schema error`, `vibe.config.json`, Effect 4 pin, platform stdlib, built-in Effect lint, `.vibex` JSX, `module` blocks for foreign throwing code.
 - **Durable Workflows (`VIP-0044`, `VIP-0055` to `VIP-0073`)**: durable values, `task` and `workflow`, durable waits, remote workers, capabilities, eval declarations, and standard library modules for agents, tools, MCP, memory, sandboxes, secrets, fuzzing, and observability.
+- **Ergonomics & Effect UI Interop (`VIP-0074`, `VIP-0075`)**: `schema data` serializable tagged unions (`Schema.TaggedUnion`) and concise tagged `catch { when ... }` with automatic residual error rethrow.
 
 ## Related Notes
 

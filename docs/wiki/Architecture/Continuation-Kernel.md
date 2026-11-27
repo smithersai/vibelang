@@ -5,7 +5,7 @@ tags: [architecture, runtime, effect4, kernel]
 
 # Continuation Kernel and Effect 4 Runtime
 
-Compiled VibeLang code executes on `vibelang-runtime` (`packages/runtime/`) over **Effect 4** (`effect@4.1.1`). Every VibeLang construct compiles to ordinary Effect 4 primitives with zero hidden global state.
+Compiled VibeLang code executes on `vibelang-runtime` (`packages/runtime/`) over **Effect 4** (`effect@^4.1.0`, tested on `4.1.6`). Every core VibeLang construct compiles to ordinary public Effect 4 primitives with zero hidden global state or fiber-internal coupling.
 
 ## Runtime Layers
 

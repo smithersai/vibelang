@@ -48,6 +48,6 @@ This Obsidian-compatible knowledge base is the shared source of truth for humans
 | Build and test targets | 5,709 | `.smithers/WORKSPACE.ts`, `PACKAGE.ts` |
 | Compiler acceptance cases | 4,027+ | `typescript/vibelang/cases/` |
 | Go fuzz targets | 932+ | `typescript/tsc/internal/vibelangfuzz/` |
-| Language proposals | VIP-0001 through VIP-0073 | `docs/design/vips/` |
+| Language proposals | VIP-0001 through VIP-0075 | `docs/design/vips/` |
 | Published platform binaries | 6 (macOS, Linux, Windows on arm64 and x64) | `scripts/release/build-binaries.sh` |
 | Published npm packages | 12 tarballs + VS Code VSIX | `scripts/release/make-packages.mjs` |
