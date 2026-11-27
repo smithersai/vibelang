@@ -217,6 +217,7 @@ Specification: \`docs/design/src/\`. Process: CONTRIBUTING.md.
 - A file that says it is generated changes only through its source.
 - Match nearby code, format Go with gofmt, and don't reformat unrelated code.
 - {{secrets}}
+- Follow the [Uphill rules](.agents/uphill/rules.md), which \`uphill rules --write\` rewrites from each metric's description: @.agents/uphill/rules.md
 - Agents never approve or merge.`,
   sections: [
     // Will, 2026-11-02 23:55Z: "vibe is where work happens main is where productionized version of it lands ... It's like

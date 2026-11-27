@@ -12,6 +12,7 @@ Specification: `docs/design/src/`. Process: CONTRIBUTING.md.
 - A file that says it is generated changes only through its source.
 - Match nearby code, format Go with gofmt, and don't reformat unrelated code.
 - Never put credentials or private user content in fixtures, logs or issues.
+- Follow the [Uphill rules](.agents/uphill/rules.md), which `uphill rules --write` rewrites from each metric's description: @.agents/uphill/rules.md
 - Agents never approve or merge.
 
 ## vibe and main
@@ -25,4 +26,4 @@ Work happens on `vibe`, and `main` is the productionized version. Treat `vibe` a
 
 `main` only moves forward, to green commits, and is never rewritten. Base new work on `vibe`. Build toolchains from `main` unless you need a commit that's only on `vibe`, and say so when you do.
 
-<sub>491 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>533 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

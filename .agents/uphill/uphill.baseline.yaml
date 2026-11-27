@@ -1,0 +1,90 @@
+# Each measurement's `baseline`, the size, count, or check `uphill --update` accepted, and its
+# `target`. Edit a target here, and each run reports what changed since the baseline.
+
+footprint:
+  go-pkg-prod-lines:
+    "*": { target: 2500 }
+    typescript/tsc/internal/vibelang: { baseline: 62284 }
+    typescript/tsc/internal/vibelangestree: { baseline: 4487 }
+    typescript/tsc/internal/vibelangfmt: { baseline: 4292 }
+    typescript/tsc/internal/vibelangfuzz: { baseline: 22793 }
+    typescript/tsc/internal/vibelangmapper: { baseline: 17199 }
+    typescript/tsc/internal/vibelangprotocol: { baseline: 6 }
+  go-file-max-lines:
+    "*": { target: 500 }
+    typescript/tsc/internal/vibelang: { baseline: 1628 }
+    typescript/tsc/internal/vibelangestree: { baseline: 2300 }
+    typescript/tsc/internal/vibelangfmt: { baseline: 1491 }
+    typescript/tsc/internal/vibelangfuzz: { baseline: 1329 }
+    typescript/tsc/internal/vibelangmapper: { baseline: 2753 }
+    typescript/tsc/internal/vibelangprotocol: { baseline: 6 }
+  pkg-source-bytes:
+    "*": { target: 40kB }
+    packages/compiler: { baseline: 554870B }
+    packages/create-vibelang: { baseline: 9140B }
+    packages/runtime: { baseline: 1670kB }
+    packages/ts-mapper: { baseline: 248640B }
+    packages/typescript-shim: { baseline: 1490B }
+    packages/unplugin: { baseline: 96690B }
+    packages/vite: { baseline: 72940B }
+  skill-bytes: { baseline: 21930B, target: 18kB }
+  compiler-cases: { baseline: 4027 }
+
+style:
+  go-fmt:
+    "*": { baseline: pass }
+  go-max-fn-lines:
+    "*": { target: 70 }
+    typescript/tsc/internal/vibelang: { baseline: 255 }
+    typescript/tsc/internal/vibelangestree: { baseline: 1031 }
+    typescript/tsc/internal/vibelangfmt: { baseline: 337 }
+    typescript/tsc/internal/vibelangfuzz: { baseline: 274 }
+    typescript/tsc/internal/vibelangmapper: { baseline: 204 }
+    typescript/tsc/internal/vibelangprotocol: { baseline: 1 }
+  ts-no-explicit-any:
+    "*": { baseline: fail }
+  ts-no-ts-ignore:
+    "*": { baseline: pass }
+
+correctness:
+  version-alignment:
+    "*": { baseline: pass }
+  repo-guards:
+    "*": { baseline: pass }
+  go-no-panic:
+    "*": { baseline: fail }
+    typescript/tsc/internal/vibelangfmt: { baseline: pass }
+    typescript/tsc/internal/vibelangprotocol: { baseline: pass }
+  go-no-todo:
+    "*": { baseline: pass }
+
+testing:
+  go-unit-tests:
+    "*": { target: 50 }
+    typescript/tsc/internal/vibelang: { baseline: 1174 }
+    typescript/tsc/internal/vibelangestree: { baseline: 45 }
+    typescript/tsc/internal/vibelangfmt: { baseline: 93 }
+    typescript/tsc/internal/vibelangfuzz: { baseline: 1835 }
+    typescript/tsc/internal/vibelangmapper: { baseline: 347 }
+    typescript/tsc/internal/vibelangprotocol: { baseline: 0 }
+  go-fuzz-targets: { baseline: 932, target: 250 }
+  pkg-test-files:
+    "*": { target: 10 }
+    packages/compiler: { baseline: 291 }
+    packages/create-vibelang: { baseline: 8 }
+    packages/runtime: { baseline: 195 }
+    packages/ts-mapper: { baseline: 3 }
+    packages/typescript-shim: { baseline: 3 }
+    packages/unplugin: { baseline: 44 }
+    packages/vite: { baseline: 41 }
+
+documentation:
+  go-doc-coverage:
+    "*": { target: 80 }
+    typescript/tsc/internal/vibelang: { baseline: 94 }
+    typescript/tsc/internal/vibelangestree: { baseline: 40 }
+    typescript/tsc/internal/vibelangfmt: { baseline: 100 }
+    typescript/tsc/internal/vibelangfuzz: { baseline: 38 }
+    typescript/tsc/internal/vibelangmapper: { baseline: 94 }
+  markdown-links:
+    "*": { baseline: pass }

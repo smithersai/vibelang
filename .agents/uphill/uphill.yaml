@@ -1,0 +1,93 @@
+# .agents/uphill/uphill.yaml — Continuous metrics for VibeLang (Go compiler + npm packages + docs).
+
+footprint:
+  title: Footprint
+  description: Keep Go compiler packages modular, npm package sources lean, and the agent SKILL.md token budget tight.
+  run: bun .agents/uphill/metrics/footprint.ts
+  # Non-test Go lines per VibeLang compiler package under typescript/tsc/internal/vibelang*.
+  go-pkg-prod-lines:
+    poor: 15000
+    description: Keep each Go compiler package modular and cohesive; extract subsystems instead of growing monoliths.
+  # Longest non-test .go file per VibeLang compiler package. Target of 500 lines prevents oversized single files.
+  go-file-max-lines:
+    poor: 2000
+    description: Keep individual Go compiler source files under 500 lines by splitting passes and helpers cleanly.
+  # Production TypeScript/JS source bytes per npm package under packages/*.
+  pkg-source-bytes:
+    poor: 200kB
+    description: Keep each published npm package's source footprint lean and focused on its public contract.
+  # Size of packages/compiler/skills/vibelang/SKILL.md loaded into agent context on every .vibe task.
+  skill-bytes:
+    poor: 26kB
+    description: Keep `packages/compiler/skills/vibelang/SKILL.md` concise (target <= 18 kB) so agents spend fewer tokens per turn.
+  # Tripwire: total compiler acceptance cases under typescript/vibelang/cases/.
+  compiler-cases:
+    description: Add compiler semantics acceptance cases under `typescript/vibelang/cases/` for every language rule.
+
+style:
+  title: Style
+  description: Enforce gofmt, TigerStyle Go function lengths, and strict TypeScript typing across published packages.
+  run: bun .agents/uphill/metrics/style.ts
+  # Every VibeLang Go package must be formatted with `gofmt` (AGENTS.md rule).
+  go-fmt:
+    description: Format all Go code under `typescript/tsc/internal/vibelang*` with `gofmt`.
+  # Longest production Go function per VibeLang package. TigerStyle caps functions at 70 lines.
+  go-max-fn-lines:
+    poor: 250
+    description: Keep Go compiler functions at or under 70 lines (TigerStyle); decompose deep AST/typechecker branches into helpers.
+  # No explicit `: any` or `as any` in production TypeScript files under packages/*.
+  ts-no-explicit-any:
+    description: Avoid explicit `any` in production TypeScript code under `packages/`; use typed schemas or `unknown`.
+  # No `@ts-ignore`, `@ts-expect-error`, or `@ts-nocheck` directives in production TypeScript files under packages/*.
+  ts-no-ts-ignore:
+    description: Fix underlying TypeScript type mismatches instead of suppressing them with `@ts-ignore` or `@ts-expect-error`.
+
+correctness:
+  title: Correctness
+  description: Enforce compiler/npm version lockstep, generated-file sync guards, and panic/TODO-free Go compiler code.
+  run: bun .agents/uphill/metrics/correctness.ts
+  # Every VibeLang npm package version must match `typescript/tsc/internal/vibelang/identity.go` (and `7.1.<patch>` for vibelang-typescript).
+  version-alignment:
+    description: Keep all `packages/*/package.json` versions aligned with `typescript/tsc/internal/vibelang/identity.go`.
+  # Fast repository integrity checks (projection prelude, directive readers, API identity, release history, lint codes, tracked leaks, case collisions).
+  repo-guards:
+    description: Keep generated artifacts, lint codes, release history, and case-collision/leak guards passing (`bun run docs:check` in `.smithers/`).
+  # Production Go files under typescript/tsc/internal/vibelang* should return diagnostics/errors instead of calling `panic()`.
+  go-no-panic:
+    description: Return structured diagnostics or errors instead of calling `panic()` in production Go compiler packages.
+  # No unresolved TODO/FIXME/XXX/HACK markers left in production Go compiler files.
+  go-no-todo:
+    description: Resolve or track TODO/FIXME items instead of leaving them in production Go compiler files.
+
+testing:
+  title: Testing
+  description: Track Go compiler unit/fuzz test depth and npm package test file coverage across the workspace.
+  run: bun .agents/uphill/metrics/testing.ts
+  # Count of `func Test...` functions per VibeLang Go package. Target of 50 drives broad compiler coverage.
+  go-unit-tests:
+    better: higher
+    poor: 10
+    description: Maintain thorough Go unit tests across every `typescript/tsc/internal/vibelang*` package.
+  # Total Go `func Fuzz...` targets across VibeLang compiler packages (tripwire / target).
+  go-fuzz-targets:
+    better: higher
+    poor: 50
+    description: Expand Go fuzz targets in `typescript/tsc/internal/vibelangfuzz` as new syntax and lowering forms land.
+  # Count of `*.test.*` / `*.spec.*` files per npm package under packages/*.
+  pkg-test-files:
+    better: higher
+    poor: 2
+    description: Keep comprehensive unit and integration test suites in every published npm package under `packages/`.
+
+documentation:
+  title: Documentation
+  description: Measure exported Go symbol doc coverage and validate relative Markdown links across design and user docs.
+  run: bun .agents/uphill/metrics/documentation.ts
+  # Share (%) of exported Go `func` and `type` declarations in VibeLang packages preceded by doc comments.
+  go-doc-coverage:
+    better: higher
+    poor: 20
+    description: Document exported Go functions and types in `typescript/tsc/internal/vibelang*` with doc comments (target >= 80%).
+  # All relative Markdown links in root docs, docs/design/src/, and docs/user/src/ must resolve to existing files.
+  markdown-links:
+    description: Keep relative links in README.md, CONTRIBUTING.md, MAINTAINERS.md, AGENTS.md, and docs/ valid.

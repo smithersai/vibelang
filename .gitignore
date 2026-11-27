@@ -45,3 +45,4 @@ packages/compiler/test/source-maps/.prepared/
 
 # Draft VIP-53 rename plan (>1 MiB); keep untracked until #670 executes.
 /artifacts/vip53-vibe-rename-plan.html
+.uphill/

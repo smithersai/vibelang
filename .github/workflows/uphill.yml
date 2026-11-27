@@ -1,0 +1,37 @@
+name: Uphill
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  uphill:
+    name: Uphill metrics
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: typescript/tsc/go.mod
+          cache: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Run Uphill
+        uses: wevm/uphill@main
