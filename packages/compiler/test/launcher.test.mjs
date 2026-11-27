@@ -320,6 +320,18 @@ test("vibe and vibe-format CLI aliases are declared and forward arguments identi
     })
     assert.equal(help.status, 0, help.stderr)
     assert.match(help.stdout, /vibe format/)
+    const runHelp = spawnSync(process.execPath, [alias, "run", "--help"], { encoding: "utf8" })
+    assert.equal(runHelp.status, 0, runHelp.stderr)
+    assert.match(runHelp.stdout, /Usage: vibe run <file\.vibe\|file\.vibex\|file\.ts>/)
+    const runMissing = spawnSync(process.execPath, [alias, "run"], { encoding: "utf8" })
+    assert.equal(runMissing.status, 2)
+    const entry = join(scratch, "entry.mjs")
+    writeFileSync(entry, 'console.log(JSON.stringify(process.argv.slice(2))); process.exit(7)\n')
+    const runFile = spawnSync(process.execPath, [alias, "run", entry, "--flag", "ok"], {
+      env: { ...process.env, VIBELANG_BINARY: binary }, encoding: "utf8"
+    })
+    assert.equal(runFile.status, 7, runFile.stderr)
+    assert.deepEqual(JSON.parse(runFile.stdout), ["--flag", "ok"])
   } finally {
     rmSync(scratch, { recursive: true, force: true })
   }

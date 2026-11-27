@@ -1,6 +1,6 @@
 # What is in the alpha
 
-VibeLang 0.0.13 is the alpha. It supports the 33 accepted VIPs numbered 1 to 41 (the core language). Implemented experimental features beyond the core, including accepted `task` and `workflow` declarations, require `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`.
+Vibe 0.0.14 (published on npm as `vibelang`) is the official alpha. It supports the 33 accepted VIPs numbered 1 to 41 (the core language). Implemented experimental features beyond the core, including accepted `task` and `workflow` declarations, `theorem` declarations, and the `Experimental` stdlib modules below, require `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`.
 
 `Experimental` holds two kinds of module: VIP-33's platform additions (`Experimental.FileSystem`, `Experimental.Encoding`, and peers) are core and need no opt-in, while open-proposal modules marked experimental below require it.
 
@@ -49,27 +49,27 @@ File a [bug report](https://github.com/smithersai/vibelang/issues/new?template=b
 | [39](https://vibelang.sh/vips/0039-vibex) | `.vibex`, VibeLang with JSX | Supported |
 | [40](https://vibelang.sh/vips/0040-module-declarations) | `module` declarations, TypeScript inside a `.vibe` file | Supported |
 | [41](https://vibelang.sh/vips/0041-throw-expressions) | TC39 throw expressions | Supported |
-| [42](https://vibelang.sh/vips/0042-vibelang-in-ts-files-open) | VibeLang in `.ts` files (`// @vibe`) | Accepted (2026-11-23); compiler implements `// @vibe` |
-| [43](https://vibelang.sh/vips/0043-theorems) | `theorem` and `spec`, proofs in TypeScript's own syntax | Accepted, not in the alpha; not implemented |
+| [42](https://vibelang.sh/vips/0042-vibelang-in-ts-files-open) | Vibe in `.ts` files (`// @vibe`) | Accepted (2026-11-23); compiler implements `// @vibe` and `vibelang-typescript` ships as an experimental CLI preview |
+| [43](https://vibelang.sh/vips/0043-theorems) | `theorem` and `spec`, proofs in TypeScript's own syntax | Accepted; `theorem` declarations, proof audit (`EK4317`/`EK4318`), and `vibe.proofDir` implemented (opt-in) |
 | [44](https://vibelang.sh/vips/0044-durable-values) | Durable values | Accepted, not in the alpha; its schema mapping is supported as part of VIP-15 |
-| [53](https://vibelang.sh/vips/0053-rename-smithersscript-open) | Renaming VibeLang → **Vibe** | Revised 2026-11-23; needs Vibe rename plan |
+| [53](https://vibelang.sh/vips/0053-rename-smithersscript-open) | Naming the language **Vibe** (Go/Golang model) | Accepted (2026-11-26); **Vibe** naming and `vibe` / `vibe-format` CLI commands shipped in 0.0.14 |
 | [54](https://vibelang.sh/vips/0054-consistent-platform-code-open) | One consistent model for platform-specific code | RFP (request for proposal) |
-| [55](https://vibelang.sh/vips/0055-durable-tasks-workflows) | `task` and `workflow`, durable steps and the plan the compiler derives | Accepted (2026-11-23); implemented (`task`, `workflow`) |
-| [56](https://vibelang.sh/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | Implemented on `main`: durable waits, workflow deadlines and recorded race outcomes |
-| [57](https://vibelang.sh/vips/0057-workers-remote) | `schema service` and worker imports: threads and other machines behind one typed boundary | Implemented on `main`: schema services, worker imports, RPC and bundler worker entries |
-| [58](https://vibelang.sh/vips/0058-capabilities) | Capabilities: a permission kernel in the standard library (+ task plan metadata) | Implemented on `main`: runtime capabilities, task and workflow plan metadata, and capability ceilings |
-| [59](https://vibelang.sh/vips/0059-eval-declarations) | Eval declarations: a file kind and a function, no syntax | Implemented on `main`: `vibelang eval` discovers `*.eval.vibe` files, and bundlers reject eval entries |
+| [55](https://vibelang.sh/vips/0055-durable-tasks-workflows) | `task` and `workflow`, durable steps and the plan the compiler derives | Accepted (2026-11-23); implemented (`task`, `workflow`, opt-in) |
+| [56](https://vibelang.sh/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | Implemented in 0.0.14 (opt-in): durable waits, workflow deadlines and recorded race outcomes |
+| [57](https://vibelang.sh/vips/0057-workers-remote) | `schema service` and worker imports: threads and other machines behind one typed boundary | Implemented in 0.0.14 (opt-in): schema services, worker imports, RPC and bundler worker entries |
+| [58](https://vibelang.sh/vips/0058-capabilities) | Capabilities: a permission kernel in the standard library (+ task plan metadata) | Implemented in 0.0.14 (opt-in): runtime capabilities, task and workflow plan metadata, and capability ceilings |
+| [59](https://vibelang.sh/vips/0059-eval-declarations) | Eval declarations: a file kind and a function, no syntax | Implemented in 0.0.14 (opt-in): `vibe eval` discovers `*.eval.vibe` files, and bundlers reject eval entries |
 | [60](https://vibelang.sh/vips/0060-std-durable) | `Experimental.Durable`, the durable runtime: journal, replay, run state, step cache and time travel | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [61](https://vibelang.sh/vips/0061-std-triggers) | `Experimental.Trigger` and `Experimental.WorkQueue`: cron triggers and durable queues | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [62](https://vibelang.sh/vips/0062-std-model) | `Experimental.Model`: language models and decision models with no SDK | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
-| [63](https://vibelang.sh/vips/0063-std-agent) | `Experimental.Agent`: the agent loop, model-written scripts and coding-agent CLIs | Accepted (2026-11-23) — **library only (no compiler changes)**; partial runtime implemented |
-| [64](https://vibelang.sh/vips/0064-std-tools) | `Experimental.Tools`: the standard tools for files, search, HTTP, the web, the shell and language servers | Accepted (2026-11-23) — **library only (no compiler changes)**; in progress |
-| [65](https://vibelang.sh/vips/0065-std-mcp) | `Experimental.McpClient`: MCP servers as toolkits, on Effect's client and server | Accepted (2026-11-23) — **library only (no compiler changes)**; in progress |
+| [63](https://vibelang.sh/vips/0063-std-agent) | `Experimental.Agent`: the agent loop, model-written scripts and coding-agent CLIs | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented (`Agent.run` & `Agent.stream`) |
+| [64](https://vibelang.sh/vips/0064-std-tools) | `Experimental.Tools`: the standard tools for files, search, HTTP, the web, the shell and language servers | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
+| [65](https://vibelang.sh/vips/0065-std-mcp) | `Experimental.McpClient`: MCP servers as toolkits, on Effect's client and server | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [66](https://vibelang.sh/vips/0066-std-memory) | `Experimental.Memory`: durable facts, notes, history and recall across runs | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
-| [67](https://vibelang.sh/vips/0067-std-sandbox) | `Experimental.Sandbox`: provisioned machines behind the ordinary platform services | Accepted (2026-11-23) — **library only (no compiler changes)**; in progress |
-| [68](https://vibelang.sh/vips/0068-std-secrets) | `Experimental.Secrets`: secrets a step uses without holding them | Accepted (2026-11-23) — **library only (no compiler changes)**; in progress |
+| [67](https://vibelang.sh/vips/0067-std-sandbox) | `Experimental.Sandbox`: provisioned machines behind the ordinary platform services | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
+| [68](https://vibelang.sh/vips/0068-std-secrets) | `Experimental.Secrets`: secrets a step uses without holding them | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [69](https://vibelang.sh/vips/0069-std-eval) | `Experimental.Eval` and `Experimental.Scorer`: suites, scorers, judges, baselines and gates | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [70](https://vibelang.sh/vips/0070-std-fuzz) | `Experimental.Fuzz`: fuzzing and deterministic fiber simulation | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
 | [71](https://vibelang.sh/vips/0071-std-test) | `Experimental.Test`: doubles, assertions and conformance for agentic programs | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
-| [72](https://vibelang.sh/vips/0072-std-observe) | `Experimental.Otlp`: logs, metrics and traces over OTLP, scrubbed and bounded | Accepted (2026-11-23) — **library only (no compiler changes)**; in progress |
-| [73](https://vibelang.sh/vips/0073-std-patterns) | `Experimental.Patterns` and `PACKAGE.vibe`: the reference engine's patterns and build graph, written in VibeLang | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
+| [72](https://vibelang.sh/vips/0072-std-observe) | `Experimental.Otlp`: logs, metrics and traces over OTLP, scrubbed and bounded | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |
+| [73](https://vibelang.sh/vips/0073-std-patterns) | `Experimental.Patterns` and `PACKAGE.vibe`: the reference engine's patterns and build graph, written in Vibe | Accepted (2026-11-23) — **library only (no compiler changes)**; implemented |

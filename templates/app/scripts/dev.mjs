@@ -1,11 +1,11 @@
 import { spawn } from "node:child_process"
 
 // Build first so the watch compiler starts from a valid project.
-const build = spawn("vibelang", [], { stdio: "inherit" })
+const build = spawn("vibe", [], { stdio: "inherit" })
 build.on("error", fail)
 build.on("exit", (code, signal) => {
   if (code !== 0 || signal) process.exit(code || 1)
-  const compiler = spawn("vibelang", ["--watch", "--pretty", "false", "--locale", "en"], {
+  const compiler = spawn("vibe", ["--watch", "--pretty", "false", "--locale", "en"], {
     stdio: ["inherit", "pipe", "inherit"]
   })
   const children = []

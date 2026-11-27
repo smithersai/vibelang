@@ -1,6 +1,6 @@
-# VibeLang app
+# Vibe app
 
-> **Warning:** VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
+> **Warning:** Vibe (published on npm as `vibelang`) is v0. The language will change in major, breaking ways. It is not suitable for production use.
 
 ```sh
 bun run start
@@ -10,18 +10,18 @@ bun run format
 bun run check
 ```
 
-This project was created from the VibeLang starter. If its dependencies are not
+This project was created from the Vibe starter. If its dependencies are not
 installed yet, for example after `--no-install`, run `bun install` first.
 
 `start` builds the project and prints `Hello, VibeLang!` and
-`Recovered from EmptyName`. `dev` builds once, starts `vibelang --watch`, then starts Node's output watcher
-only after the compiler is watching; press Ctrl+C to stop both. Vitest runs
+`Recovered from EmptyName`. `dev` builds once, starts `vibe --watch`, then starts Node's output watcher
+only after the compiler is watching; press Ctrl+C to stop both. You can also run a single source file directly with `npx vibe run src/main.vibe`. Vitest runs
 `src/**/*.test.vibe` and `src/**/*.test.vibex` through `vibelang-vite` and `@effect/vitest`. The plugin
-checks the project with `vibelang`, compiles to a temporary directory and serves
+checks the project with `vibe`, compiles to a temporary directory and serves
 the JavaScript from memory, and maps assertion stacks to the original `.vibe`
 lines. `test` needs no prior build.
 
-`format` formats the `.vibe` files with `vibelang format --write`. `lint` runs `vibelang lint`, the type checker with VibeLang's and Effect's lint rules, over sources and tests; `check` runs `vibelang format --check`, then `lint`, and fails on either, for CI.
+`format` formats the `.vibe` files with `vibe format --write`. `lint` runs `vibe lint`, the type checker with Vibe's and Effect's lint rules, over sources and tests; `check` runs `vibe format --check`, then `lint`, and fails on either, for CI.
 
 Each build also writes a declaration pair per module for stock TypeScript tools,
 `greeting.d.vibe.ts` and the forwarding `greeting.d.ts`, with hidden

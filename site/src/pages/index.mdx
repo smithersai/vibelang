@@ -49,20 +49,6 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
 
       </div>
 
-      {/* compatibility:start */}
-
-> **Compatibility.** Use exactly `effect@4.1.1`; keep `@effect/platform-node` and `@effect/vitest` at `4.1.1` when used.
->
-> Existing projects need an `@effect/platform-node-shared` override. The starter includes the pins and override.
->
-> Use `vibe` (or `vibelang`) to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
->
-> For mixed editing in VS Code, let the Vibe server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.
->
-> [Setup details](/setup/existing-project) · [Editor setup](/getting-started/012-devtools)
-
-{/* compatibility:end */}
-
       <div className="vibe-home__stats">
         <div className="vibe-stat">
           <span>stage</span>
@@ -148,13 +134,13 @@ await Effect.runPromise(main)
 
 :::
 
-Both programs print `Hello, Ada`, and both run on Effect. `error` declares the tagged error class, `service` declares the dependency, `effect function` returns an Effect, `try` runs one, `catch` handles the declared failure, and `provide` supplies the layer. The compiler infers the type of `greet` as `string!!Users`, which is `Effect<string, never, Users>`. [Welcome](/001-onboarding) walks through this program, and [Why VibeLang?](/getting-started/002-why-effect) makes the case, including Effect's own argument against a language.
+Both programs print `Hello, Ada`, and both run on Effect. `error` declares the tagged error class, `service` declares the dependency, `effect function` returns an Effect, `try` runs one, `catch` handles the declared failure, and `provide` supplies the layer. The compiler infers the type of `greet` as `string!!Users`, which is `Effect<string, never, Users>`. [Welcome](/001-onboarding) walks through this program, and [Why Vibe?](/getting-started/002-why-effect) makes the case, including Effect's own argument against a language.
 
 <figure className="vibe-diagram"><img className="vibe-diagram__light" src="/diagrams/effect-three-channels.svg" alt="Every Effect carries three compile-time channels: Success (A), Expected Errors (E), and Required Services (R)" /><img className="vibe-diagram__dark" src="/diagrams/effect-three-channels-dark.svg" alt="Every Effect carries three compile-time channels: Success (A), Expected Errors (E), and Required Services (R)" /><figcaption>Every Effect carries three compile-time channels: Success (A), Expected Errors (E), and Required Services (R)</figcaption></figure>
 
 ### TypeScript stays one step away
 
-The compiler is a fork of the TypeScript 7 compiler. It checks `.vibe` and `.ts` files in one program and emits JavaScript plus a `.d.vibe.ts` declaration beside each `.vibe` file, so TypeScript imports VibeLang functions as ordinary Effect functions. A `.ts` file can sit beside any `.vibe` file. Based on [Effect's Creating Effects](https://effect.website/docs/v4/getting-started/creating-effects#trypromise), this adapter wraps an `async` function from a `.ts` file:
+The compiler is a fork of the TypeScript 7 compiler. It checks `.vibe` and `.ts` files in one program and emits JavaScript plus a `.d.vibe.ts` declaration beside each `.vibe` file, so TypeScript imports Vibe functions as ordinary Effect functions. A `.ts` file can sit beside any `.vibe` file. Based on [Effect's Creating Effects](https://effect.website/docs/v4/getting-started/creating-effects#trypromise), this adapter wraps an `async` function from a `.ts` file:
 
 ```vibe
 import { fetchTodo } from "./todos.ts" // (id: number, signal: AbortSignal) => Promise<string>
@@ -184,11 +170,25 @@ Effect's functions and modules are in scope without imports. `error`, `service`,
 ## Where to go next
 
 - **Start:** [Welcome](/001-onboarding), then [Getting Started](/013-getting-started) for the starter project. You need Node `22.22.3` (`22.x`) or Node `24.11.1` or later. Bun is optional, at 1.4 or later; [running sources with Bun](/setup/vibelang-cli#run-sources-with-bun) needs 1.4.2 or later.
-- **Coming from Effect:** the [cheat sheet](/vibelang-features/115-cheat-sheet) shows every change, and [VibeLang for Effect users](/vibelang-features/114-vibelang-for-effect-users) explains the rules.
-- **Set up a project or editor:** [Set up VibeLang](/setup) covers new and existing projects, Vite, React, Vue, Svelte, VS Code, Neovim and Zed.
-- **Report or propose:** report a bug in the published packages in [GitHub Issues](https://github.com/smithersai/vibelang/issues/new/choose), with a minimal reproduction. Propose a change to the language at the [VibeLang factory](https://lang.smithers.sh); its repository is a new implementation of VibeLang with no compiler yet.
+- **Coming from Effect:** the [cheat sheet](/vibelang-features/115-cheat-sheet) shows every change, and [Vibe for Effect users](/vibelang-features/114-vibelang-for-effect-users) explains the rules.
+- **Set up a project or editor:** [Set up Vibe](/setup) covers new and existing projects, Vite, React, Vue, Svelte, VS Code, Neovim and Zed.
+- **Report or propose:** report a bug in the published packages in [GitHub Issues](https://github.com/smithersai/vibelang/issues/new/choose), with a minimal reproduction, or read the accepted [VIPs](/vips/) and [specification](/spec/).
 
-VibeLang is in early alpha. The language will change in major, breaking ways, and it is not ready for production use. The release rehearsal creates, starts and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built.
+{/* compatibility:start */}
+
+> **Compatibility.** Use exactly `effect@4.1.1`; keep `@effect/platform-node` and `@effect/vitest` at `4.1.1` when used.
+>
+> Existing projects need an `@effect/platform-node-shared` override. The starter includes the pins and override.
+>
+> Use `vibe` (or `vibelang`) to check `.vibe` source. Stock `tsc` and `vue-tsc` see only the `x.d.vibe.ts` declarations the compiler writes, which resolve `.vibe` imports when `allowArbitraryExtensions` is on.
+>
+> For mixed editing in VS Code, let the Vibe server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.
+>
+> [Setup details](/setup/existing-project) · [Editor setup](/getting-started/012-devtools)
+
+{/* compatibility:end */}
+
+Vibe is in early alpha. The language will change in major, breaking ways, and it is not ready for production use. The release rehearsal creates, starts and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built.
 
 Version 0.0.14 provides native packages for macOS, Linux and Windows on arm64 and x64.
 

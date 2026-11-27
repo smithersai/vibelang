@@ -8,7 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Naming & CLI (VIP-53)
 
-- **Vibe naming & `vibe` CLI aliases:** The language now defaults to **Vibe** across docs, site, READMEs, and the VS Code extension display name while keeping `vibelang` for npm packages, repository, domain (`vibelang.sh`), directives, and environment variables (Go/Golang model). The `vibelang` package now exposes `vibe` and `vibe-format` binaries alongside `vibelang` and `vibelang-format`.
+- **Vibe naming & `vibe` CLI commands:** The language now defaults to **Vibe** across docs, site, READMEs, starter templates, social previews, and the VS Code extension display name while keeping `vibelang` for npm packages, repository, domain (`vibelang.sh`), directives, and environment variables (Go/Golang model). The `vibelang` package now exposes `vibe` and `vibe-format` binaries alongside `vibelang` and `vibelang-format`, and adds `vibe run <file>` to execute a `.vibe`, `.vibex`, or `// @vibe` entrypoint directly in Node with source maps.
 
 ### New experimental language & toolchain features (opt-in)
 

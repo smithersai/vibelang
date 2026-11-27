@@ -119,7 +119,7 @@ test("install pins, compiler output, platform metadata and homepage badges deriv
 test("known limitations keeps its versioned diagnostic guarantee when rendering an older release", () => {
   const path = "docs/user/src/setup/known-limitations.md"
   const source = readFileSync(new URL("../user/src/setup/known-limitations.md", import.meta.url), "utf8")
-  const claim = "In 0.0.13, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in."
+  const claim = "In 0.0.14, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in."
   assert.ok(source.includes(claim))
   assert.ok(renderReleasePage(path, source, "0.0.12").includes(claim))
 })

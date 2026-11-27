@@ -1,11 +1,11 @@
 # Known limitations
 
-VibeLang is in early alpha.
+Vibe (published on npm as `vibelang`) is in early alpha.
 
 - Platforms: [macOS arm64/x64, Linux arm64/x64, Windows arm64/x64](../getting-started/004-installation.md#prerequisites). The npm and Bun starter rehearsal runs on Linux x64; the other five binaries are cross-built.
 - Bun runtime: use `1.4.2` or newer. See [Run sources with Bun](vibelang-cli.md#run-sources-with-bun). Older versions can misresolve computed imports or corrupt Unicode import paths.
 - Effect: [`effect@4.1.1` exactly](existing-project.md); other versions are unsupported.
-- Stock TypeScript: run `vibelang` first to emit adjacent `.d.vibe.ts` declaration sidecars and the `.d.ts` files that re-export them, then enable `allowArbitraryExtensions` so stock TypeScript tools can [read `.vibe` imports](vibelang-cli.md#let-typescript-tools-read-vibe-modules), including a `.ts` file's `./x.js` import. These tools read the declarations; they do not check the VibeLang implementation. `vibelang-ts-mapper`, a TypeScript 7.1 content mapper that lets stock TypeScript check `.vibe` and `.vibex` files, is experimental and unpublished. It is tested with `typescript@7.1.0-beta`, which runs it only under `tsc --runExternalCode`. Add both extensions to `contentMappers.extensions` and set `compilerOptions.jsx` as for `.tsx`; the mapper preserves JSX for TypeScript to check.
+- Stock TypeScript: run `vibe` (or `vibelang`) first to emit adjacent `.d.vibe.ts` declaration sidecars and the `.d.ts` files that re-export them, then enable `allowArbitraryExtensions` so stock TypeScript tools can [read `.vibe` imports](vibelang-cli.md#let-typescript-tools-read-vibe-modules), including a `.ts` file's `./x.js` import. These tools read the declarations; they do not check the Vibe implementation. `vibelang-ts-mapper`, a TypeScript 7.1 content mapper that lets stock TypeScript check `.vibe` and `.vibex` files, is experimental and unpublished. It is tested with `typescript@7.1.0-beta`, which runs it only under `tsc --runExternalCode`. Add both extensions to `contentMappers.extensions` and set `compilerOptions.jsx` as for `.tsx`; the mapper preserves JSX for TypeScript to check.
 - Editors: [VS Code and Cursor use the bundled VSIX](vscode.md). VS Code Marketplace and Open VSX publishing are not ready.
 - Stability: [v0: breaking changes expected](release-notes.md). Read release notes before upgrading.
 
@@ -22,19 +22,17 @@ callee's callable type, such as `() => number!NotFound`, instead of erasing it.
 
 The experimental TypeScript mapper keeps an exported function’s written Effect contract, such as `number!!`, even when its body is pure. Its projected type has no `$plain` member.
 
-After the supported CLI, plugins and editor routes, the experimental [TypeScript shim](typescript-shim.md) is a last resort for projects that cannot change TypeScript file names. Under VIP-42, the `vibelang` compiler recognizes a `.ts` file whose first line is `// @vibe`; the `vibelang-typescript` replacement package that runs it as `tsc` is a source-checkout preview and is not published to npm. Stock readers can accept a marked file with different meaning.
+After the supported CLI, plugins and editor routes, the experimental [TypeScript shim](typescript-shim.md) is a last resort for projects that cannot change TypeScript file names. Under VIP-42, the `vibe` compiler recognizes a `.ts` file whose first line is `// @vibe`; `vibelang-typescript` ships as an experimental CLI-only replacement for `tsc` (it does not yet expose TypeScript's programmatic JavaScript API). Stock readers can accept a marked file with different meaning.
 
 Mapper failures `EK9001` through `EK9007` have [repair guidance in the diagnostic reference](../vibelang-features/diagnostic-code-map.md#typescript-mapper-failures).
 
-In a `.vibex` file, `return` inside a `do` expression in a JSX attribute or child container reports `EK0204`, although [VIP-39](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0039-vibex.md) says it leaves the enclosing function. For example, `export function f() { return <Box v={do { return 7 }} /> }` fails. Move the `do` expression into a statement of its own before the element: `const v = do { return 7 }; return <Box v={v} />`.
-
 With `declarationMap` on, the declaration map of a `module` body lists a source that is never written. For `module parse { … }` in `a.vibe`, `dist/a.vibe.parse.d.ts.map` has `"sources": ["../a.vibe.parse.ts", "../a.vibe"]`, and there is no `a.vibe.parse.ts`. The mappings use only `a.vibe`, so go-to-definition reaches the right file; a tool that checks every listed source reports the first one missing. Declaration maps also carry no `sourcesContent`, as with TypeScript's own `declarationMap`, even with `inlineSources`; only the JavaScript maps embed the source.
 
-After `"type": "module"` is added to a project's `package.json`, `node --import vibelang/register` can keep running the CommonJS it compiled before, and fails with `ReferenceError: exports is not defined in ES module scope`. Run it once with `VIBELANG_DISABLE_CACHE=1` to compile it again; the next release keys the compile cache on the module format.
+After `"type": "module"` is added to a project's `package.json`, `node --import vibelang/register` can keep running the CommonJS it compiled before, and fails with `ReferenceError: exports is not defined in ES module scope`. Run it once with `VIBELANG_DISABLE_CACHE=1` to compile it again; a future release keys the compile cache on the module format.
 
 ## The experimental opt-in
 
-The opt-in marks which modules are supported in 0.0.13: `Durable`, `Human`, `Eval`, `Scorer`, `Memory`, `Fuzz`, `FuzzSimulation`, `Test` and `Patterns` require `"vibe": { "experimental": ["builtins"] }`. It is a support boundary, not a security boundary: the check catches the direct uses below to prevent accidental use, but cannot stop a program that sets out to reach an open-proposal module. In 0.0.13, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in.
+The opt-in marks which modules are supported in 0.0.14: `Durable`, `Human`, `Eval`, `Scorer`, `Memory`, `Fuzz`, `FuzzSimulation`, `Test`, `Patterns`, `Agent`, `Tools`, `McpClient`, `Sandbox`, `Secrets`, `Otlp`, `Trigger`, `WorkQueue`, `Model`, `Rpc`, and `Capability` require `"vibe": { "experimental": ["builtins"] }`. It is a support boundary, not a security boundary: the check catches the direct uses below to prevent accidental use, but cannot stop a program that sets out to reach an open-proposal module. In 0.0.14, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in.
 
 ### What `EK3013` refuses
 
@@ -46,7 +44,7 @@ Without the opt-in, these direct forms report `EK3013` in a `.vibe` or `.vibex` 
 - `export *` of `vibelang-runtime/experimental`, and an import, re-export or dynamic `import()` whose specifier is a module's literal subpath.
 - A direct `import type { Store } from "vibelang-runtime/experimental/Durable"` and `ReturnType<typeof Experimental.Durable.makeMemoryStore>`.
 
-### Routes the check does not follow in 0.0.13
+### Routes the check does not follow in 0.0.14
 
 - Binding or importing the whole namespace without selecting a gated member passes. These obtain the namespace value without executing an experimental operation; adding `E.Durable` to these examples reports `EK3013`:
   - `const E = Experimental`

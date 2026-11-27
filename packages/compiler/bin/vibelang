@@ -6,21 +6,40 @@ import { findBinary } from "../binary.mjs"
 
 const command = basename(process.argv[1] || "vibe")
 
-// `vibe agents` / `vibelang agents` runs in Node: it writes coding agents'
-// configuration and the check their hooks call (agents.mjs).
-if (process.argv[2] === "agents") {
+// `vibe run <file> [args...]` runs a .vibe, .vibex, or .ts entrypoint directly
+// in Node with source maps and the vibelang/register loader preloaded.
+if (process.argv[2] === "run") {
+  const args = process.argv.slice(3)
+  if (args.length === 0 || args[0] === "-h" || args[0] === "--help") {
+    console.log(`Usage: ${command} run <file.vibe|file.vibex|file.ts> [args...]`)
+    process.exit(args.length === 0 ? 2 : 0)
+  }
+  const register = new URL("../register.mjs", import.meta.url).href
+  const runner = spawn(process.execPath, ["--enable-source-maps", "--import", register, ...args], {
+    stdio: "inherit",
+    env: process.env,
+  })
+  const signals = ["SIGINT", "SIGTERM", "SIGHUP"]
+  for (const signal of signals) process.on(signal, () => runner.kill(signal))
+  runner.on("error", (error) => {
+    console.error(`${command} run: cannot start ${process.execPath}: ${error.message}`)
+    process.exitCode = 1
+  })
+  runner.on("exit", (code, signal) => {
+    if (signal) {
+      process.removeAllListeners(signal)
+      process.kill(process.pid, signal)
+    } else process.exitCode = code ?? 1
+  })
+} else if (process.argv[2] === "agents") {
   const { main } = await import("../agents.mjs")
   process.exit(await main(process.argv.slice(3), findBinary))
-}
-
-// `vibe eval` / `vibelang eval` runs in Node: it imports *.eval.vibe files
-// through the loader and runs their suites with the runtime (eval.mjs, VIP-59).
-if (process.argv[2] === "eval") {
+} else if (process.argv[2] === "eval") {
+  // `vibe eval` / `vibelang eval` runs in Node: it imports *.eval.vibe files
+  // through the loader and runs their suites with the runtime (eval.mjs, VIP-59).
   const { main } = await import("../eval.mjs")
   process.exit(await main(process.argv.slice(3)))
-}
-
-if (process.argv[2] === "format") {
+} else if (process.argv[2] === "format") {
   try {
     const { formatFiles } = await import("../format.mjs")
     process.exit(formatFiles(process.argv.slice(3), `${command} format`))
@@ -28,30 +47,30 @@ if (process.argv[2] === "format") {
     console.error(error.message)
     process.exit(1)
   }
+} else {
+  let binary
+  try { binary = findBinary() }
+  catch (error) {
+    console.error(error.message)
+    process.exit(1)
+  }
+  const child = spawn(binary, process.argv.slice(2), { stdio: "inherit", env: {
+    ...process.env,
+    VIBELANG_FORMAT_NODE: process.execPath,
+    VIBELANG_FORMAT_MODULE: fileURLToPath(new URL("../format.mjs", import.meta.url))
+  } })
+  const signals = ["SIGINT", "SIGTERM", "SIGHUP"]
+  for (const signal of signals) process.on(signal, () => child.kill(signal))
+  child.on("error", (error) => {
+    console.error(`${command}: cannot run ${binary}: ${error.message}`)
+    console.error("Reinstall vibelang (with optional dependencies enabled), run sh scripts/build-vibelang.sh from a checkout, or set VIBELANG_BINARY.")
+    process.exitCode = 1
+  })
+  child.on("exit", (code, signal) => {
+    if (signal) {
+      process.removeAllListeners(signal)
+      process.kill(process.pid, signal)
+    } else process.exitCode = code ?? 1
+  })
 }
-
-let binary
-try { binary = findBinary() }
-catch (error) {
-  console.error(error.message)
-  process.exit(1)
-}
-const child = spawn(binary, process.argv.slice(2), { stdio: "inherit", env: {
-  ...process.env,
-  VIBELANG_FORMAT_NODE: process.execPath,
-  VIBELANG_FORMAT_MODULE: fileURLToPath(new URL("../format.mjs", import.meta.url))
-} })
-const signals = ["SIGINT", "SIGTERM", "SIGHUP"]
-for (const signal of signals) process.on(signal, () => child.kill(signal))
-child.on("error", (error) => {
-  console.error(`vibelang: cannot run ${binary}: ${error.message}`)
-  console.error("Run sh scripts/build-vibelang.sh from the VibeLang repository, or set VIBELANG_BINARY.")
-  process.exitCode = 1
-})
-child.on("exit", (code, signal) => {
-  if (signal) {
-    process.removeAllListeners(signal)
-    process.kill(process.pid, signal)
-  } else process.exitCode = code ?? 1
-})
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-const prompt = `Read https://vibelang.sh/setup.md and follow it; use https://vibelang.sh/llms.txt as the docs index. Then help me build my first VibeLang project.`
+const prompt = `Read https://vibelang.sh/setup.md and follow it; use https://vibelang.sh/llms.txt as the docs index. Then help me build my first Vibe project.`
 
 export function CopyPromptButton() {
   const [status, setStatus] = useState<'idle' | 'copied' | 'error'>('idle')

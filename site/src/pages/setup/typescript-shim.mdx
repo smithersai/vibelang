@@ -1,17 +1,23 @@
 ---
-title: "VibeLang in .ts files"
-description: "vibelang-typescript is an experimental source-checkout preview of VIP-42 and is not published to npm. Use the regular .vibe integration whenever you can rename files."
+title: "Vibe in .ts files"
+description: "vibelang-typescript is an experimental CLI-only preview of VIP-42 (published at vibelang-typescript@7.1.14 to match TypeScript 7.1 peer ranges). Use the regular .vibe integration whenever you can..."
 ---
 
-# VibeLang in .ts files
+# Vibe in .ts files
 
-`vibelang-typescript` is an experimental source-checkout preview of [VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md) and is not published to npm. Use [the regular `.vibe` integration](/setup/existing-project) whenever you can rename files.
+`vibelang-typescript` is an experimental CLI-only preview of [VIP-42](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0042-vibelang-in-ts-files-open.md) (published at `vibelang-typescript@7.1.14` to match TypeScript 7.1 peer ranges). Use [the regular `.vibe` integration](/setup/existing-project) whenever you can rename files.
 
-The compiler treats a `.ts` file whose first line is `// @vibe` as VibeLang and installs under the name `typescript` so existing `tsc` scripts reach it; unmarked files stay TypeScript. Use this only as a last resort: the [`vibelang` CLI](/setup/vibelang-cli), [Vite and Vitest](/setup/vite), and [Set up VibeLang](/setup) plugins keep stock TypeScript tools intact, whereas stock parsers ignore `// @vibe` and can reject syntax or compile with different semantics.
+The compiler treats a `.ts` file whose first line is `// @vibe` as Vibe and installs under the name `typescript` so existing `tsc` scripts reach it; unmarked files stay TypeScript. Use this only as a last resort: the [`vibe` CLI](/setup/vibelang-cli), [Vite and Vitest](/setup/vite), and [Set up Vibe](/setup) plugins keep stock TypeScript tools intact, whereas stock parsers ignore `// @vibe` and can reject syntax or compile with different semantics.
 
 ## Install
 
-`vibelang-typescript` is not currently available from npm—use the source-checkout preview below. Because the checkout targets TypeScript 7.1, migrate TypeScript 5/6 projects (and their configs) to 7.1 first.
+Install `vibelang-typescript` as an npm alias for `typescript` (requires TypeScript 7.1-compatible config):
+
+```sh
+npm install -D typescript@npm:vibelang-typescript@7.1.14
+```
+
+Consumers that import TypeScript's JavaScript programmatic API are not yet supported; see [Tool compatibility](#tool-compatibility) below, or test from a source checkout:
 
 ## Source checkout preview
 

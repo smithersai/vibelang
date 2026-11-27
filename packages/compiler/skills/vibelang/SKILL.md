@@ -1,13 +1,13 @@
 ---
 name: vibelang
-description: Write, edit or review VibeLang (.vibe files), Effect programs in TypeScript syntax. Use for any .vibe file, diff or question about VibeLang.
+description: Write, edit or review Vibe / VibeLang (.vibe files), Effect programs in TypeScript syntax. Use for any .vibe file, diff or question about Vibe or VibeLang.
 ---
 
-# VibeLang
+# Vibe (VibeLang)
 
-VibeLang is TypeScript with syntax for Effect. An `effect` function returns an Effect, `try` runs an Effect, and every construct is exact sugar for the Effect TypeScript beside it, with Effect 4's runtime behavior. Plain and `async` functions mean what they mean in TypeScript. `vibelang` (a TypeScript 7 compiler) checks `.vibe` and `.ts` files together and emits JavaScript and declarations.
+Vibe (published on npm as `vibelang`) is TypeScript with syntax for Effect. An `effect` function returns an Effect, `try` runs an Effect, and every construct is exact sugar for the Effect TypeScript beside it, with Effect 4's runtime behavior. Plain and `async` functions mean what they mean in TypeScript. `vibe` (also available as `vibelang`, a TypeScript 7 compiler) checks `.vibe` and `.ts` files together and emits JavaScript and declarations; `vibe run <file.vibe>` runs a `.vibe` entrypoint directly in Node with source maps.
 
-VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
+Vibe ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
 
 ## The model
 
