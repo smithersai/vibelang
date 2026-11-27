@@ -23,6 +23,7 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
       </div>
       <div className="vibe-home__actions">
         <CopyPromptButton />
+        <HomePage.Button href="/play">Playground</HomePage.Button>
         <HomePage.Button href="/001-onboarding">Docs</HomePage.Button>
         <HomePage.Button href="https://github.com/smithersai/vibelang">GitHub</HomePage.Button>
       </div>
@@ -43,6 +44,12 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
   bun create vibelang@latest my-app
   cd my-app
   bun run start
+  ```
+
+  ```bash [Effect UI]
+  npm create vibelang@latest my-app -- --ui
+  cd my-app
+  npm run dev
   ```
 
   :::
@@ -67,9 +74,45 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
 
 ## Overview
 
-Vibe (published on npm as `vibelang`) is a language for building reliable TypeScript in the AI era, built on [Effect](https://effect.website). It gives Effect a simple, readable syntax. The compiler turns it into ordinary Effect code that your team can read and ship, and `.ts` files, npm packages and the rest of the TypeScript ecosystem stay one import away.
+Vibe (published on npm as `vibelang`) brings **compiler-checked soundness**, **zero-ceremony Effect syntax**, and **AI-era reliability** to TypeScript, built on [Effect](https://effect.website). Every expected failure, dependency, stream, and state transition stays in the type system where both humans and coding agents get instant compiler feedback instead of silent runtime drift. The compiler emits ordinary Effect JavaScript and `.d.vibe.ts` declarations, so `.ts` files, npm packages, and the rest of the TypeScript ecosystem stay one import away.
 
 <figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/runthrough.jpg"><source src="/videos/runthrough.mp4" type="video/mp4" /></video><figcaption>Vibe in three minutes</figcaption></figure>
+
+### Effect UI in Vibe
+
+Build browser and terminal apps with [`@effect/ui`](/setup/effect-ui) using `schema` models, `Command.Service` fiber cancellation, `effect function*` progress streams, and exhaustive `match` in views — with zero `Effect.try` wrappers around UI constructors:
+
+```vibe
+import { Command, Subscription, UiSchema } from "@effect/ui"
+import { Html } from "@effect/ui/html"
+
+schema UploadStatus = "Uploading" | "Done" | "Cancelled"
+schema Upload { readonly id: number; readonly fileName: string; readonly progress: number; readonly status: UploadStatus }
+
+const Msg = UiSchema.TaggedEnum({
+  Progressed: { id: Schema.Number, progress: Schema.Number },
+  Completed: { id: Schema.Number },
+  Cancelled: { id: Schema.Number }
+})
+
+// VIP-21 producer: compiles to a scoped Effect Stream for live subscriptions
+effect function* progressTicks(id: number) {
+  for (let progress = 10; progress < 100; progress += 10) {
+    try sleep("100 millis")
+    yield Msg.Progressed({ id, progress })
+  }
+}
+
+// Exhaustive match in views: missing a status is a compile error
+const actionButton = (h: Html.H<typeof Msg.Type>, upload: Upload) =>
+  match (upload.status) {
+    when "Uploading": h.button.on("click", Msg.Cancelled({ id: upload.id })).children("Cancel");
+    when "Cancelled": h.span("Cancelled");
+    when "Done": h.span("Done");
+  }
+```
+
+Start an Effect UI app with `npm create vibelang@latest my-app -- --ui`, try live presets in the [Playground](/play), or explore the [Effect UI guide](/setup/effect-ui) and showcase apps: [Domains](https://github.com/smithersai/vibelang/tree/vibe/examples/effect-ui-domains), [Concurrent Uploads](https://github.com/smithersai/vibelang/tree/vibe/examples/effect-ui-uploads), and [Web + OpenTUI Snake](https://github.com/smithersai/vibelang/tree/vibe/examples/effect-ui-snake).
 
 ### One program, twice
 
@@ -169,9 +212,10 @@ Effect's functions and modules are in scope without imports. `error`, `service`,
 
 ## Where to go next
 
-- **Start:** [Welcome](/001-onboarding), then [Getting Started](/013-getting-started) for the starter project. You need Node `22.22.3` (`22.x`) or Node `24.11.1` or later. Bun is optional, at 1.4 or later; [running sources with Bun](/setup/vibelang-cli#run-sources-with-bun) needs 1.4.2 or later.
+- **Try in the browser:** open the interactive [Playground](/play) with live Effect UI previews, compiled Effect TypeScript output, and real-time diagnostics.
+- **Start:** [Welcome](/001-onboarding), [Effect UI setup](/setup/effect-ui), or [Getting Started](/013-getting-started) for the starter project. You need Node `22.22.3` (`22.x`) or Node `24.11.1` or later. Bun is optional, at 1.4 or later; [running sources with Bun](/setup/vibelang-cli#run-sources-with-bun) needs 1.4.2 or later.
 - **Coming from Effect:** the [cheat sheet](/vibelang-features/115-cheat-sheet) shows every change, and [Vibe for Effect users](/vibelang-features/114-vibelang-for-effect-users) explains the rules.
-- **Set up a project or editor:** [Set up Vibe](/setup) covers new and existing projects, Vite, React, Vue, Svelte, VS Code, Neovim and Zed.
+- **Set up a project or editor:** [Set up Vibe](/setup) covers new and existing projects, Effect UI, Vite, React, Vue, Svelte, VS Code, Neovim and Zed.
 - **Report or propose:** report a bug in the published packages in [GitHub Issues](https://github.com/smithersai/vibelang/issues/new/choose), with a minimal reproduction, or read the accepted [VIPs](/vips/) and [specification](/spec/).
 
 {/* compatibility:start */}
@@ -188,10 +232,6 @@ Effect's functions and modules are in scope without imports. `error`, `service`,
 
 {/* compatibility:end */}
 
-Vibe is in early alpha. The language will change in major, breaking ways, and it is not ready for production use. The release rehearsal creates, starts and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built.
-
-Version 0.0.14 provides native packages for macOS, Linux and Windows on arm64 and x64.
-
-The alpha supports the language the accepted [VIPs](/vips/) and the [specification](/spec/) define. Features from open proposals, such as `task` and `workflow` declarations and the `Experimental` modules, are experimental: each can change or be removed in any release, and [What is in the alpha](/setup/alpha) lists them.
+Vibe is in early alpha. The language will change in major, breaking ways, and it is not ready for production use. The release rehearsal creates, starts and tests a fresh starter on Linux x64 with npm and Bun before each release; macOS, Windows and Linux arm64 binaries are built and published, and [what is in the alpha](/setup/alpha) lists the platform matrix and open caveats.
 
 </article>

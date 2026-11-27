@@ -1,0 +1,17 @@
+import { HttpServer } from "effect/http"
+import { HttpApiBuilder } from "effect/http-api"
+import { DomainsApi } from "../api/DomainsApi.vibe"
+import { Domains } from "../services/Domains.vibe"
+
+const DomainsHandlers = HttpApiBuilder.group(
+  DomainsApi,
+  "domains",
+  effect (handlers) => {
+    const domains = try Domains
+    return handlers.handle("search", ({ query }) => domains.search(query))
+  }
+)
+
+export const DomainsApiLive = HttpApiBuilder.layer(DomainsApi).pipe(
+  Layer.provide([DomainsHandlers, HttpServer.layerServices])
+)

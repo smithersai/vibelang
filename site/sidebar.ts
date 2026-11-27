@@ -148,6 +148,10 @@ export const sidebar = [
         "collapsed": false,
         "items": [
           {
+            "text": "Effect UI",
+            "link": "/setup/effect-ui"
+          },
+          {
             "text": "React",
             "link": "/setup/react"
           },

@@ -1,0 +1,21 @@
+import { Route } from "@effect/ui"
+import { labelOf } from "./domain/Domain.vibe"
+
+export const AppRoute = Route.union({
+  Search: Route.make("/", { search: { q: Schema.optional(Schema.String) } }),
+  NotFound: Route.make("/*")
+})
+export type AppRoute = typeof AppRoute.Type
+
+export const homeUrl = AppRoute.print(AppRoute.Search({ search: {} }))
+
+export function queryOf(route: AppRoute): string {
+  return match (route) {
+    when { _tag: "Search", let search }: search.q ?? "";
+    when { _tag: "NotFound" }: "";
+  }
+}
+
+export function labelOfRoute(route: AppRoute): string | undefined {
+  return labelOf(queryOf(route))
+}

@@ -51,6 +51,7 @@ Code example count: one example per fenced code block in the source body, includ
   - [Format with dprint](src/setup/formatting.md)
   - [Developer tools](src/setup/developer-tools.md)
 - **Frameworks**
+  - [Effect UI](src/setup/effect-ui.md)
   - [React](src/setup/react.md)
   - [React Native and Metro](src/setup/react-native.md)
   - [Vue](src/setup/vue.md)

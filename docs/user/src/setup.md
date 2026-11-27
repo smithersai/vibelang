@@ -45,6 +45,7 @@ Follow each matching page in order: **project → build or framework → editor*
 | Existing project | [Add VibeLang to an existing project](setup/existing-project.md) |
 | `vibelang` CLI (replaces `tsc`) | [Build with the vibelang CLI](setup/vibelang-cli.md) |
 | Vite or Vitest (plain) | [Vite and Vitest](setup/vite.md) |
+| Effect UI (`@effect/ui`) with Vite or OpenTUI | [Effect UI](setup/effect-ui.md) |
 | React, Vue, or Svelte with Vite | [React](setup/react.md), [Vue](setup/vue.md), or [Svelte](setup/svelte.md) |
 | React Native or Expo (Metro) | [React Native and Metro](setup/react-native.md) |
 | Next.js (webpack) or Astro | [Framework setup](#framework-setup) below |

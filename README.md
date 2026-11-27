@@ -7,7 +7,7 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 
 Published on npm as [`vibelang`](https://www.npmjs.com/package/vibelang) (providing both the `vibe` and `vibelang` commands, like Go/Golang).
 
-[Get started](https://vibelang.sh) · [Cheat sheet](https://vibelang.sh/vibelang-features/115-cheat-sheet) · [Contribute](CONTRIBUTING.md)
+[Playground](https://vibelang.sh/play) · [Effect UI](https://vibelang.sh/setup/effect-ui) · [Get started](https://vibelang.sh) · [Cheat sheet](https://vibelang.sh/vibelang-features/115-cheat-sheet) · [Contribute](CONTRIBUTING.md)
 
 > [!IMPORTANT]
 > Vibe 0.0.14 is in early alpha. The [specification](https://vibelang.sh/spec) describes the accepted VIPs in the supported core. Some accepted features beyond that core are experimental and require an opt-in. See [what is in the alpha](https://vibelang.sh/setup/alpha).
@@ -34,7 +34,7 @@ Published on npm as [`vibelang`](https://www.npmjs.com/package/vibelang) (provid
 
 ## Why Vibe
 
-Vibe ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
+Compiler-checked soundness, zero-ceremony Effect syntax, and AI-era reliability — built directly on TypeScript 7 and Effect 4. Vibe ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
 
 Effect gives you typed failures, dependency injection, concurrency and resource management. Vibe gives those programs direct syntax: an `effect` function returns an Effect, `try` runs one, and its errors and required services stay in its type. Every form is exact sugar for the Effect TypeScript it replaces.
 
@@ -50,6 +50,25 @@ effect function settings(text: string) {
 ```
 
 Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock`, `Random` and `FileSystem`. A `.vibe` file reaches Node.js and web APIs only through Effect's services, provided by a platform layer ([platform services](https://vibelang.sh/platform/105-introduction)).
+
+### Effect UI in Vibe
+
+Build browser and terminal apps with [`@effect/ui`](https://vibelang.sh/setup/effect-ui) — typed `schema` models, `schema error`, `service` + `Layer.effect`, switch-mode `Command.Service`, live `effect function*` progress subscriptions, and exhaustive `match` in views:
+
+```sh
+npm create vibelang@latest my-app -- --ui
+cd my-app
+npm run dev
+npm run test
+```
+
+Try it live in the browser [Playground](https://vibelang.sh/play) or inspect the three flagship showcase apps:
+
+- [effect-ui-domains](examples/effect-ui-domains/) — full-stack domain search (`HttpApi`, `Query.Service`, `@effect/ui-kit` Dialog/Select/Button, Effect TS parity tests)
+- [effect-ui-uploads](examples/effect-ui-uploads/) — concurrent uploads (`Command.Service` fiber cancellation, VIP-21 `effect function*` progress stream, `@effect/ui-devtools`)
+- [effect-ui-snake](examples/effect-ui-snake/) — one `.vibe` Snake core mounted to both `@effect/ui/html` (Web) and `@effect/ui-opentui` (Terminal)
+
+### One program in both languages
 
 Here is one program in both languages: a typed failure, an injected service, two concurrent lookups and a fallback.
 
@@ -142,6 +161,15 @@ bun run start
 bun run test
 ```
 
+For an Effect UI browser app (Vite + `@effect/ui` + `@effect/ui-kit` + `Story`/`HtmlScene` tests):
+
+```sh
+npm create vibelang@latest my-app -- --ui
+cd my-app
+npm run dev
+npm run test
+```
+
 The starter's `start` script runs Node and uses `@effect/platform-node`, even when Bun installs its dependencies. To use Bun as the runtime, see [Run sources with Bun](docs/user/src/setup/vibelang-cli.md#run-sources-with-bun).
 
 You need Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.4.2 or later. Bun is optional. `npm run start` prints:
@@ -190,11 +218,13 @@ Use `cursor` instead of `code` for Cursor. The extension isn't on the marketplac
 
 ## Learn more
 
+- [Playground](https://vibelang.sh/play): compile and run Vibe in the browser with live Effect UI previews
+- [Effect UI guide](https://vibelang.sh/setup/effect-ui): side-by-side Effect TS and Vibe patterns for Web and OpenTUI apps
 - [Guides and reference](https://vibelang.sh)
 - [Syntax cheat sheet](https://vibelang.sh/vibelang-features/115-cheat-sheet): every form beside the Effect code it replaces
 - [Vibe for Effect users](https://vibelang.sh/vibelang-features/114-vibelang-for-effect-users)
 - [Specification](docs/design/src/000-intro.md)
-- [Examples](examples/README.md): services, an HTTP API, retries and races, streams, React, Vue and Svelte
+- [Examples](examples/README.md): Effect UI (Domains, Uploads, Web + OpenTUI Snake), services, HTTP API, retries and races, streams, React, Vue and Svelte
 
 ## Help build it
 
@@ -204,4 +234,4 @@ Report a bug in the published packages, with a minimal reproduction, in [Issues]
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it — `vibelang`, `vibelang-<platform>`, `@smthrs/cli-win32-x64`, `@smthrs/cli-win32-arm64`, and `vibelang-typescript` — which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,528 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,812 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

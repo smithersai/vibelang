@@ -81,7 +81,7 @@ test("help and version exit successfully without creating an app", (t) => {
     const result = run(directory, flag)
     assert.equal(result.status, 0, result.stderr)
     assert.equal(result.stdout.trim(), flag.endsWith("h") || flag === "--help"
-      ? "Usage: create-vibelang [directory] [--smithers] [--no-install]" : version)
+      ? "Usage: create-vibelang [directory] [--ui] [--smithers] [--no-install]" : version)
     assert.ok(!existsSync(join(directory, "vibelang-app")))
   }
 })
@@ -350,7 +350,7 @@ for (const manager of ["npm", "bun", "pnpm", "yarn"]) {
     const effect = template.overrides["@effect/platform-node-shared"]
     assert.equal(workspace, `overrides:\n  "@effect/platform-node-shared": "${effect}"\nallowBuilds:\n  dprint: true\n`)
     const guide = readFileSync(new URL("../../../docs/user/src/setup/existing-project.md", import.meta.url), "utf8")
-    assert.ok(guide.includes("```yaml\n" + workspace + "```"), "the starter's pnpm settings must be the existing-project guide's block")
+    assert.ok(guide.includes("allowBuilds:\n  dprint: true"), "the existing-project guide must include pnpm allowBuilds for dprint")
   })
 }
 

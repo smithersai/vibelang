@@ -1,0 +1,90 @@
+import { Array as Arr, Order } from "effect"
+import {
+  type AvailableDomain,
+  type Domain,
+  domainCandidates,
+  type DomainName,
+  type DomainRange,
+  domainTlds,
+  labelOf
+} from "./Domain.vibe"
+
+export interface DomainListing extends DomainName {
+  readonly domain: Domain | undefined
+}
+
+export schema AvailabilityFilter = "All" | "Available"
+
+export schema SortOrder =
+  | "Relevance"
+  | "Length"
+  | "PriceAscending"
+  | "PriceDescending"
+  | "Alphabetical"
+
+export const TOP_RESULT_COUNT = 4
+export const topRange: DomainRange = { offset: 0, limit: TOP_RESULT_COUNT }
+export const restRange: DomainRange = {
+  offset: TOP_RESULT_COUNT,
+  limit: domainTlds.length - TOP_RESULT_COUNT
+}
+export const catalogRange: DomainRange = { offset: 0, limit: domainTlds.length }
+
+export function queryToListings(
+  query: string,
+  domains?: ReadonlyMap<string, Domain>
+): ReadonlyArray<DomainListing> {
+  return domainCandidates(labelOf(query) ?? "").map((candidate) => ({
+    ...candidate,
+    domain: domains?.get(candidate.name)
+  }))
+}
+
+const nameOrder = Order.mapInput(Order.String, (domain: DomainName) => domain.name)
+const lengthOrder = Order.combine(
+  Order.mapInput(Order.Number, (domain: DomainName) => domain.name.length),
+  nameOrder
+)
+const availabilityOrder = Order.mapInput(
+  Order.Number,
+  ({ domain }: DomainListing) =>
+    domain === undefined ? 2 : domain._tag === "Unavailable" ? 1 : 0
+)
+const priceOrder = Order.mapInput(
+  Order.Number,
+  ({ domain }: DomainListing) => domain?._tag === "Available" ? domain.price : 0
+)
+
+export function filterAndSortListings(
+  listings: ReadonlyArray<DomainListing>,
+  availability: AvailabilityFilter,
+  sort: SortOrder
+): ReadonlyArray<DomainListing> {
+  const matching = listings.filter((listing) =>
+    availability === "All" || listing.domain?._tag !== "Unavailable"
+  )
+  return match (sort) {
+    when "Relevance": matching;
+    when "Length": Arr.sort(matching, lengthOrder);
+    when "Alphabetical": Arr.sort(matching, nameOrder);
+    when "PriceAscending": Arr.sort(matching, Order.combine(availabilityOrder, priceOrder));
+    when "PriceDescending": Arr.sort(matching, Order.combine(availabilityOrder, Order.flip(priceOrder)));
+  }
+}
+
+export function formatPrice(price: number): string {
+  const cents = Math.round(price * 100)
+  const dollars = Math.floor(cents / 100)
+  const remainder = String(cents % 100).padStart(2, "0")
+  return `$${dollars}.${remainder}`
+}
+
+export function formatRegistrationPrice(domain: AvailableDomain): string {
+  return domain.years === 1
+    ? formatPrice(domain.price)
+    : `${formatPrice(domain.price)} / ${domain.years} years`
+}
+
+export function formatRenewalPrice(domain: AvailableDomain): string {
+  return `Renews at ${formatPrice(domain.renewalPrice)} / yr`
+}

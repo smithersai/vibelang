@@ -1,0 +1,17 @@
+import * as Position from "./position.vibe"
+import type { Snake } from "./snake.vibe"
+import * as SnakeDomain from "./snake.vibe"
+
+error PositionCollision
+
+effect function tryPosition(snake: Snake): Position.Position!PositionCollision {
+  const x = try Random.nextIntBetween(0, Position.GRID_SIZE, { halfOpen: true })
+  const y = try Random.nextIntBetween(0, Position.GRID_SIZE, { halfOpen: true })
+  const pos: Position.Position = { x, y }
+  if (SnakeDomain.contains(snake, pos)) throw new PositionCollision()
+  return pos
+}
+
+export effect function generatePosition(snake: Snake): Position.Position!! {
+  return try orDie(retry(tryPosition(snake), Schedule.forever))
+}

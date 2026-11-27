@@ -1,0 +1,25 @@
+import { HttpApiClient } from "effect/http-api"
+import { DomainsApi } from "../api/DomainsApi.vibe"
+import { type Domain, type DomainSearch, searchSample, SearchUnavailable } from "../domain/Domain.vibe"
+
+export service Domains {
+  static readonly key = "domains/Domains"
+  search(search: DomainSearch): ReadonlyArray<Domain>!SearchUnavailable
+}
+
+export const DomainsHttpLive = Layer.effect(
+  Domains,
+  effect {
+    const client = try HttpApiClient.make(DomainsApi)
+    return {
+      search: effect (query) =>
+        client.domains.search({ query }) catch effect () => {
+          throw new SearchUnavailable()
+        }
+    }
+  }
+)
+
+export const DomainsSampleLive = Layer.succeed(Domains, {
+  search: effect (search) => searchSample(search)
+})

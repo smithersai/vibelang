@@ -1,0 +1,84 @@
+import { Command, Component, Head, UiSchema } from "@effect/ui"
+import { Button } from "@effect/ui-kit"
+import { Html } from "@effect/ui/html"
+
+export schema CounterModel {
+  readonly count: number
+  readonly saving: boolean
+  readonly lastSaved: number | null
+}
+
+export const CounterMessage = UiSchema.TaggedEnum({
+  ClickedDecrement: {},
+  ClickedIncrement: {},
+  ClickedReset: {},
+  ClickedSave: {},
+  SucceededSave: { saved: Schema.Number }
+})
+export type CounterMessage = typeof CounterMessage.Type
+
+export class SaveCount extends Command.Service<SaveCount>()(
+  "counter/SaveCount",
+  {
+    args: { count: Schema.Number },
+    success: CounterMessage,
+    mode: "switch"
+  }
+) {
+  static readonly layer = this.toLayer(
+    effect ({ count }) => {
+      try sleep("150 millis")
+      return CounterMessage.SucceededSave({ saved: count })
+    }
+  )
+}
+
+export const CounterNoDeps = Html.component({
+  name: "Counter",
+  model: CounterModel,
+  message: CounterMessage
+}).make({
+  init: () => ({ count: 0, saving: false, lastSaved: null }),
+  update: {
+    ClickedDecrement: ($) => $.evolve({ count: (count) => count - 1 }),
+    ClickedIncrement: ($) => $.evolve({ count: (count) => count + 1 }),
+    ClickedReset: ($) => $.evolve({ count: 0 }),
+    ClickedSave: ($) =>
+      $.evolve({ saving: true }).run(SaveCount.make({ count: $.model.count })),
+    SucceededSave: ($, { saved }) =>
+      $.evolve({ saving: false, lastSaved: saved })
+  },
+  head: ({ model }) => [Head.title(`Counter: ${model.count}`)],
+  view: (h, model) =>
+    h.main.class("page").children(
+      h.section.class("card").children(
+        h.h1("Vibe + Effect UI"),
+        h.p.class("count").attr("aria-label", "Current count").children(String(model.count)),
+        h.div.class("actions").children(
+          Button(h, { onPress: CounterMessage.ClickedDecrement() })
+            .attr("aria-label", "Decrement")
+            .class("btn")
+            .children("-"),
+          Button(h, { onPress: CounterMessage.ClickedReset() })
+            .class("btn")
+            .children("Reset"),
+          Button(h, { onPress: CounterMessage.ClickedIncrement() })
+            .attr("aria-label", "Increment")
+            .class("btn")
+            .children("+"),
+          Button(h, { onPress: CounterMessage.ClickedSave() })
+            .class("btn btn-primary")
+            .children(model.saving ? "Saving…" : "Save")
+        ),
+        h.p.class("status").attr("role", "status").children(
+          model.saving
+            ? "Saving count…"
+            : model.lastSaved === null
+            ? "Not saved yet"
+            : `Saved: ${model.lastSaved}`
+        )
+      )
+    )
+})
+
+export const Counter = CounterNoDeps.pipe(Component.provide(SaveCount.layer))

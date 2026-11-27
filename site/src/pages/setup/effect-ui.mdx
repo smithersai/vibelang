@@ -1,0 +1,426 @@
+---
+title: "Effect UI"
+description: "Vibe pairs directly with @effect/ui: typed schemas, tagged errors, Effect services, switch-mode commands, live stream subscriptions, exhaustive pattern matching in views, and dual browser..."
+---
+
+# Effect UI
+
+Vibe pairs directly with [`@effect/ui`](https://github.com/Effect-TS/ui): typed schemas, tagged errors, Effect services, switch-mode commands, live stream subscriptions, exhaustive pattern matching in views, and dual browser (`@effect/ui/html`) plus terminal (`@effect/ui-opentui`) hosts — all type-checked together under `strict: true` and `exactOptionalPropertyTypes: true`.
+
+You can also try Effect UI presets live in the browser [Playground](https://vibelang.sh/play) before installing locally.
+
+## 1. Create an Effect UI starter
+
+Scaffold a ready-to-run Vibe + `@effect/ui` + Vite + Vitest app with `--ui`:
+
+```sh
+npm create vibelang@latest my-app -- --ui
+cd my-app
+npm run dev
+npm run test
+```
+
+With Bun:
+
+```sh
+bun create vibelang@latest my-app -- --ui
+cd my-app
+bun run dev
+bun run test
+```
+
+The `--ui` starter configures `strict: true`, `exactOptionalPropertyTypes: true`, `vibelang-vite`, `@effect/ui`, `@effect/ui-kit`, `@effect/ui-devtools`, an async `Command.Service` counter in `src/Counter.vibe`, and deterministic `Story` + `HtmlScene` tests in `src/Counter.test.vibe`.
+
+## 2. Manual installation and `tsconfig.json`
+
+VibeLang supports any stable Effect release matching `effect@^4.1.0` (including `effect@4.1.6`, required by `@effect/ui`'s `^4.1.4` peer). Install the `@effect/ui` packages alongside `vibelang`, `vibelang-runtime`, and `vibelang-vite`:
+
+```json
+{
+  "dependencies": {
+    "@effect/ui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6",
+    "@effect/ui-kit": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6",
+    "@effect/ui-devtools": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6",
+    "effect": "4.1.6",
+    "vibelang-runtime": "0.0.14"
+  },
+  "devDependencies": {
+    "@effect/vitest": "4.1.6",
+    "happy-dom": "20.14.6",
+    "vibelang": "0.0.14",
+    "vibelang-vite": "0.0.14",
+    "vite": "8.3.5",
+    "vitest": "5.1.0"
+  },
+  "overrides": {
+    "@effect/ui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6",
+    "@effect/ui-kit": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6",
+    "@effect/ui-devtools": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6"
+  }
+}
+```
+
+Enable both `strict` and `exactOptionalPropertyTypes` in `tsconfig.json` so `@effect/ui` models, messages, and component props stay exact:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "skipLibCheck": true,
+    "types": ["vite/client"]
+  },
+  "include": ["src"]
+}
+```
+
+Vibe's compiler recognizes non-throwing constructors and builders from `@effect/ui`, `@effect/ui-kit`, `@effect/ui-devtools`, and `@effect/ui-opentui` (`UiSchema.TaggedEnum`, `Html` builders, `Command.make`, `Query.Service`, `UiStruct.evolve`, `Router`, `Button`, `Dialog`, `Select`, `Story`, `HtmlScene`) as `@throws {never}`, so you call them directly inside `effect` functions with zero `Effect.try` wrappers. Throwing helpers (`*Unsafe`, `*OrThrow`, `decode*Sync`, `encode*Sync`, `asserts`) still report `EK0403`.
+
+## 3. Effect TypeScript beside Vibe
+
+### `schema` models and `schema error`
+
+Mark `schema` fields `readonly` so they project directly to plain `Schema.Struct` fields (compatible with `DomainSearch.fields` in `HttpApiEndpoint` and `Query.Service`):
+
+:::code-group
+
+```vibe [Vibe]
+// fragment
+export schema UploadStatus = "Uploading" | "Done" | "Cancelled"
+
+export schema DomainName {
+  readonly name: string
+  readonly tld: string
+}
+
+export schema error SearchUnavailable
+```
+
+```ts [Effect]
+// fragment
+import { Schema } from "effect"
+
+export const UploadStatus = Schema.Literals(["Uploading", "Done", "Cancelled"])
+export type UploadStatus = typeof UploadStatus.Type
+
+export const DomainName = Schema.Struct({
+  name: Schema.String,
+  tld: Schema.String
+})
+export type DomainName = typeof DomainName.Type
+
+export class SearchUnavailable
+  extends Schema.TaggedError<SearchUnavailable>()("SearchUnavailable", {})
+{}
+```
+
+:::
+
+### `service` and `Layer.effect`
+
+Declare a service with `service` and wire HTTP or test implementations with `Layer.effect` and `catch effect`:
+
+:::code-group
+
+```vibe [Vibe]
+// fragment
+import { HttpApiClient } from "effect/http-api"
+
+export service Domains {
+  static readonly key = "domains/Domains"
+  search(search: DomainSearch): ReadonlyArray<Domain>!SearchUnavailable
+}
+
+export const DomainsHttpLive = Layer.effect(
+  Domains,
+  effect {
+    const client = try HttpApiClient.make(DomainsApi)
+    return {
+      search: effect (query) =>
+        client.domains.search({ query }) catch effect () => {
+          throw new SearchUnavailable()
+        }
+    }
+  }
+)
+```
+
+```ts [Effect]
+// fragment
+import { Context, Effect, Layer } from "effect"
+import { HttpApiClient } from "effect/http-api"
+
+export class Domains extends Context.Service<Domains, {
+  search(search: DomainSearch): Effect.Effect<ReadonlyArray<Domain>, SearchUnavailable>
+}>()("domains/Domains") {
+  static readonly layerHttp = Layer.effect(
+    Domains,
+    Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(DomainsApi)
+      return Domains.of({
+        search: (query) =>
+          client.domains.search({ query }).pipe(
+            Effect.mapError(() => new SearchUnavailable())
+          )
+      })
+    })
+  )
+}
+```
+
+:::
+
+### `Command.Service` and `Query.Service`
+
+`Command.Service` runs keyed side effects with fiber cancellation (`mode: "switch"`), and `Query.Service` caches debounced fetches across components:
+
+:::code-group
+
+```vibe [Vibe]
+// fragment
+import { Command, Query } from "@effect/ui"
+
+export class UploadFile extends Command.Service<UploadFile>()(
+  "uploads/UploadFile",
+  {
+    args: { uploadId: Schema.Number, sizeMegabytes: Schema.Number },
+    success: UploadsMessage,
+    group: ["uploadId"],
+    mode: "switch"
+  }
+) {
+  static readonly layer = this.toLayer(
+    effect ({ uploadId, sizeMegabytes }) => {
+      try sleep(Duration.millis(sizeMegabytes * 100))
+      return UploadsMessage.CompletedUploadFile({ uploadId })
+    }
+  )
+}
+
+export class SearchDomains extends Query.Service<SearchDomains>()(
+  "domains/SearchDomains",
+  {
+    args: DomainSearch.fields,
+    success: Schema.Array(Domain),
+    error: SearchUnavailable,
+    staleTime: "5 minutes"
+  }
+) {
+  static readonly layer = this.toLayer(
+    effect {
+      const domains = try Domains
+      return (args: DomainSearch) => domains.search(args)
+    }
+  )
+}
+```
+
+```ts [Effect]
+// fragment
+import { Command, Query } from "@effect/ui"
+import { Duration, Effect, Schema } from "effect"
+
+export class UploadFile extends Command.Service<UploadFile>()(
+  "uploads/UploadFile",
+  {
+    args: { uploadId: Schema.Number, sizeMegabytes: Schema.Number },
+    success: UploadsMessage,
+    group: ["uploadId"],
+    mode: "switch"
+  }
+) {
+  static readonly layer = this.toLayer(({ uploadId, sizeMegabytes }) =>
+    Effect.sleep(Duration.millis(sizeMegabytes * 100)).pipe(
+      Effect.as(UploadsMessage.CompletedUploadFile({ uploadId }))
+    )
+  )
+}
+
+export class SearchDomains extends Query.Service<SearchDomains>()(
+  "domains/SearchDomains",
+  {
+    args: DomainSearch.fields,
+    success: Schema.Array(Domain),
+    error: SearchUnavailable,
+    staleTime: "5 minutes"
+  }
+) {
+  static readonly layer = this.toLayer(
+    Domains.useSync((domains) => domains.search)
+  )
+}
+```
+
+:::
+
+### Live `Subscription` streams with `effect function*`
+
+A Vibe producer (`effect function*`) compiles to a pull-based Effect `Stream` with scoped fiber cleanup. Pass it directly to `Subscription.make`:
+
+:::code-group
+
+```vibe [Vibe]
+// fragment
+import { Subscription } from "@effect/ui"
+
+export effect function* uploadProgressStream(uploadId: number, stepMs: number) {
+  for (let progress = 10; progress < 100; progress += 10) {
+    try sleep(Duration.millis(stepMs))
+    yield UploadsMessage.ProgressedUpload({ uploadId, progress })
+  }
+}
+
+// Inside Html.component({ ... }).make({ subscriptions }):
+// Subscription.make("uploadProgress", [upload.id, upload.attempt], () =>
+//   uploadProgressStream(upload.id, stepMs)
+// )
+```
+
+```ts [Effect]
+// fragment
+import { Subscription } from "@effect/ui"
+import { Duration, Effect, Stream } from "effect"
+
+const uploadProgressStream = (uploadId: number, stepMs: number) =>
+  Stream.range(1, 9).pipe(
+    Stream.mapEffect((step) =>
+      Effect.sleep(Duration.millis(stepMs)).pipe(
+        Effect.as(UploadsMessage.ProgressedUpload({ uploadId, progress: step * 10 }))
+      )
+    )
+  )
+```
+
+:::
+
+### Exhaustive `match` in views
+
+Every `schema` union or `data` sum type can be rendered with compiler-checked `match` — adding a new state without handling it is a compile error:
+
+:::code-group
+
+```vibe [Vibe]
+// fragment
+const UploadAction = UploadsDef.fragment((h, upload: Upload) =>
+  match (upload.status) {
+    when "Uploading":
+      h.button.on("click", UploadsMessage.ClickedCancelUpload({ uploadId: upload.id }))
+        .children("Cancel");
+    when "Cancelled":
+      h.button.on("click", UploadsMessage.ClickedRestartUpload({ uploadId: upload.id }))
+        .children("Restart");
+    when "Done":
+      null;
+  }
+)
+```
+
+```ts [Effect]
+// fragment
+const UploadAction = UploadsDef.fragment((h, upload: Upload) => {
+  switch (upload.status) {
+    case "Uploading":
+      return h.button.on("click", UploadsMessage.ClickedCancelUpload({ uploadId: upload.id }))
+        .children("Cancel")
+    case "Cancelled":
+      return h.button.on("click", UploadsMessage.ClickedRestartUpload({ uploadId: upload.id }))
+        .children("Restart")
+    case "Done":
+      return null
+  }
+})
+```
+
+:::
+
+### One `.vibe` core on both Web (`@effect/ui/html`) and Terminal (`@effect/ui-opentui`)
+
+Keep your model, messages, commands, pure update logic, and `effect function*` clock subscription in one shared `.vibe` module, then mount thin view/host adapters for both the browser and the terminal:
+
+```vibe
+// fragment
+// Shared core (src/core.vibe)
+export schema GameState = "NotStarted" | "Playing" | "Paused" | "GameOver"
+export effect function* gameClockTicks(intervalMs: number) {
+  while (true) {
+    try sleep(Duration.millis(intervalMs))
+    yield SnakeGameMessage.TickedClock()
+  }
+}
+
+// Browser host (src/SnakeWeb.vibe) -> Html.component({ ... })
+// Terminal host (src/SnakeTui.vibe) -> OpenTui.component({ ... })
+// Terminal entry (src/entry.tui.vibe):
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import { OpenTuiHost } from "@effect/ui-opentui"
+import { SnakeTui } from "./SnakeTui.vibe"
+
+NodeRuntime.runMain(OpenTuiHost.run(SnakeTui, {}))
+```
+
+### Deterministic `Story` and `HtmlScene` tests
+
+Test state transitions and command interruption with `Story`, and DOM interactions, ARIA roles, and subscriptions with `HtmlScene` — both inside `@effect/vitest`'s `it.effect`:
+
+:::code-group
+
+```vibe [Vibe]
+// fragment
+import { HtmlLocator, HtmlScene } from "@effect/ui/html/testing"
+import { Locator, Story } from "@effect/ui/testing"
+import { describe, it } from "@effect/vitest"
+
+describe("Uploads", () => {
+  it.effect("streams progress and completes to Done", () => effect {
+    const scene = try HtmlScene.make(Uploads, {})
+    scene.click(HtmlLocator.role("button", { name: "Upload a file" }))
+      .subscription("uploadProgress:0,0", UploadsMessage.ProgressedUpload({ uploadId: 0, progress: 40 }))
+      .expect(Locator.text("Uploading (40%)")).toExist()
+      .resolve(UploadFile, UploadsMessage.CompletedUploadFile({ uploadId: 0 }))
+      .expect(Locator.text("Done")).toExist()
+  })
+})
+```
+
+```ts [Effect]
+// fragment
+import { HtmlLocator, HtmlScene } from "@effect/ui/html/testing"
+import { Locator, Story } from "@effect/ui/testing"
+import { assert, describe, it } from "@effect/vitest"
+import { Effect } from "effect"
+
+describe("Uploads", () => {
+  it.effect("streams progress and completes to Done", () =>
+    Effect.gen(function*() {
+      const scene = yield* HtmlScene.make(Uploads, {})
+      scene.click(HtmlLocator.role("button", { name: "Upload a file" }))
+        .subscription("uploadProgress:0,0", UploadsMessage.ProgressedUpload({ uploadId: 0, progress: 40 }))
+        .expect(Locator.text("Uploading (40%)")).toExist()
+        .resolve(UploadFile, UploadsMessage.CompletedUploadFile({ uploadId: 0 }))
+        .expect(Locator.text("Done")).toExist()
+    }))
+})
+```
+
+:::
+
+Keep the DOM mount (`document.getElementById("root")!`) in a small `src/entry.ts` entrypoint beside your `.vibe` components so platform DOM lookups stay at the TypeScript boundary.
+
+## 4. Complete showcase examples
+
+All three flagship examples install real `@effect/ui` packages, compile under `strict: true` and `exactOptionalPropertyTypes: true`, pass `vibe --noEmit`, Vitest `Story`/`HtmlScene` suites, and `vite build`:
+
+- [effect-ui-domains](https://github.com/smithersai/vibelang/tree/vibe/examples/effect-ui-domains) — Full-stack domain search with shared `HttpApi`, `schema` models, `schema error SearchUnavailable`, `service Domains` + `Layer.effect`, `Query.Service`, `@effect/ui-kit` (`Button`, `Dialog`, `Select`), and Effect TS parity tests.
+- [effect-ui-uploads](https://github.com/smithersai/vibelang/tree/vibe/examples/effect-ui-uploads) — Concurrent uploads with `Command.Service` (`mode: "switch"`) fiber interruption, exhaustive `match` views, a VIP-21 `effect function*` progress `Subscription`, and `@effect/ui-devtools`.
+- [effect-ui-snake](https://github.com/smithersai/vibelang/tree/vibe/examples/effect-ui-snake) — One `.vibe` Snake core mounted to both `@effect/ui/html` (browser) and `@effect/ui-opentui` (terminal).
+
+## Next
+
+Configure [Vite and Vitest](/setup/vite) or set up your editor ([VS Code and Cursor](/setup/vscode), [Neovim](/setup/neovim), [Zed](/setup/zed), or [other editors](/setup/other-editors)), then verify with step 4 of [Set up VibeLang](/setup).

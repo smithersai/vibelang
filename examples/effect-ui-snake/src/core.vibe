@@ -1,0 +1,159 @@
+import { Command, Head, Subscription, UiSchema, UiStruct } from "@effect/ui"
+import * as Apple from "./domain/apple.vibe"
+import { Direction, isOpposite } from "./domain/direction.vibe"
+import * as Position from "./domain/position.vibe"
+import * as Snake from "./domain/snake.vibe"
+
+export const GAME = {
+  INITIAL_POSITION: { x: 10, y: 10 },
+  INITIAL_DIRECTION: "Right" as Direction,
+  POINTS_PER_APPLE: 10
+} as const
+
+export const GAME_SPEED = {
+  MIN_INTERVAL: 80,
+  BASE_INTERVAL: 150
+} as const
+
+export schema GameState = "NotStarted" | "Playing" | "Paused" | "GameOver"
+
+export schema SnakeGameModel {
+  readonly snake: Snake.Snake
+  readonly apple: Position.Position
+  readonly direction: Direction
+  readonly nextDirection: Direction
+  readonly gameState: GameState
+  readonly points: number
+  readonly highScore: number
+}
+
+export const SnakeGameMessage = UiSchema.TaggedEnum({
+  Steered: { direction: Direction },
+  ToggledPause: {},
+  Restarted: {},
+  RequestedQuit: {},
+  TickedClock: {},
+  CompletedGenerateApplePosition: { position: Position.Position }
+})
+export type SnakeGameMessage = typeof SnakeGameMessage.Type
+
+export const GenerateApplePosition = Command.make(
+  "snake/GenerateApplePosition",
+  { args: { snake: Snake.Snake } },
+  effect ({ snake }) => {
+    const position = try Apple.generatePosition(snake)
+    return SnakeGameMessage.CompletedGenerateApplePosition({ position })
+  }
+)
+
+export const NEW_GAME = {
+  snake: Snake.create(GAME.INITIAL_POSITION),
+  direction: GAME.INITIAL_DIRECTION,
+  nextDirection: GAME.INITIAL_DIRECTION,
+  gameState: "NotStarted" as GameState,
+  points: 0
+} satisfies Partial<SnakeGameModel>
+
+export function initialModel(): SnakeGameModel {
+  return {
+    ...NEW_GAME,
+    apple: { x: 15, y: 15 },
+    highScore: 0
+  }
+}
+
+export function tickInterval(points: number): number {
+  return Math.max(GAME_SPEED.MIN_INTERVAL, GAME_SPEED.BASE_INTERVAL - points)
+}
+
+export function nextOnSpace(state: GameState): GameState {
+  return match (state) {
+    when "NotStarted": "Playing";
+    when "Playing": "Paused";
+    when "Paused": "Playing";
+    when "GameOver": "GameOver";
+  }
+}
+
+export function gameStateText(state: GameState): string {
+  return match (state) {
+    when "NotStarted": "Press SPACE to start";
+    when "Playing": "Playing - SPACE to pause";
+    when "Paused": "Paused - SPACE to continue";
+    when "GameOver": "Game Over - Press R to restart";
+  }
+}
+
+export function stepClock(model: SnakeGameModel): {
+  readonly next: SnakeGameModel
+  readonly ateApple: boolean
+} {
+  if (model.gameState !== "Playing") return { next: model, ateApple: false }
+
+  const direction = isOpposite(model.direction, model.nextDirection)
+    ? model.direction
+    : model.nextDirection
+  const willEatApple = Position.equivalence(
+    Position.move(model.snake[0], direction),
+    model.apple
+  )
+  const snake = willEatApple
+    ? Snake.grow(model.snake, direction)
+    : Snake.move(model.snake, direction)
+
+  if (Snake.hasCollision(snake)) {
+    return {
+      next: UiStruct.evolve(model, {
+        gameState: "GameOver",
+        highScore: Math.max(model.points, model.highScore)
+      }),
+      ateApple: false
+    }
+  }
+
+  return {
+    next: {
+      ...model,
+      snake,
+      direction,
+      points: willEatApple ? model.points + GAME.POINTS_PER_APPLE : model.points
+    },
+    ateApple: willEatApple
+  }
+}
+
+// Shared VIP-21 producer for the game clock, used by BOTH Web and OpenTUI hosts.
+export effect function* gameClockTicks(intervalMs: number) {
+  while (true) {
+    try sleep(Duration.millis(intervalMs))
+    yield SnakeGameMessage.TickedClock()
+  }
+}
+
+export function gameClockSubscription(model: SnakeGameModel) {
+  return model.gameState === "Playing"
+    ? Subscription.make(
+      "gameClock",
+      tickInterval(model.points),
+      (interval) => gameClockTicks(interval)
+    )
+    : false
+}
+
+export function snakeHead({ model }: { readonly model: SnakeGameModel }) {
+  return [Head.title(`Snake | ${model.points} pts`)]
+}
+
+export data CellKind {
+  Head
+  Body
+  Apple
+  Empty
+}
+
+export function classifyCell(cell: Position.Position, model: SnakeGameModel): CellKind {
+  if (Position.equivalence(cell, model.snake[0])) return CellKind.Head()
+  if (Snake.contains(model.snake, cell)) return CellKind.Body()
+  if (Position.equivalence(cell, model.apple)) return CellKind.Apple()
+  return CellKind.Empty()
+}

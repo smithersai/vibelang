@@ -1,0 +1,74 @@
+import { Query } from "@effect/ui"
+import { assert, describe, it } from "@effect/vitest"
+import { HttpClientRequest, HttpRouter, HttpServerRequest } from "effect/http"
+import { DomainsApi } from "./api/DomainsApi.vibe"
+import { SearchUnavailable } from "./domain/Domain.vibe"
+import { topRange } from "./domain/Listing.vibe"
+import { SearchDomains } from "./queries/SearchDomains.vibe"
+import { DomainsApiLive } from "./server/DomainsApiLive.vibe"
+import { Domains, DomainsSampleLive } from "./services/Domains.vibe"
+import { TsDomains, TsSearchDomains } from "../ts/Domains.ts"
+
+describe("DomainsApi and Vibe <-> Effect TS parity", () => {
+  it.effect("SearchDomains matches Effect TS TsSearchDomains on identical input", () => effect {
+    const args = { label: "vibelang", ...topRange }
+    const vibeLayer = Layer.mergeAll(
+      SearchDomains.layer.pipe(Layer.provide(DomainsSampleLive)),
+      Query.layer()
+    )
+    const tsLayer = Layer.mergeAll(
+      TsSearchDomains.layer.pipe(Layer.provide(TsDomains.layerSample)),
+      Query.layer()
+    )
+    const vibeResults = try effect {
+      provide vibeLayer {
+        return try SearchDomains.get(args)
+      }
+    }
+    const tsResults = try effect {
+      provide tsLayer {
+        return try TsSearchDomains.get(args)
+      }
+    }
+
+    try Effect.try(() => {
+      assert.deepStrictEqual(vibeResults, tsResults)
+      assert.strictEqual(vibeResults[0]?.name, "vibelang.com")
+      assert.strictEqual(vibeResults[0]?._tag, "Unavailable")
+      assert.strictEqual(vibeResults[2]?.name, "vibelang.app")
+      assert.strictEqual(vibeResults[2]?._tag, "Available")
+    })
+  })
+
+  it.effect("shared HttpApi serves GET /api/domains and returns 503 on SearchUnavailable", () => effect {
+    const req = HttpServerRequest.fromClientRequest(
+      HttpClientRequest.get("http://local/api/domains?label=effect&offset=0&limit=4")
+    )
+    const okStatus = try scoped(effect {
+      const app = try HttpRouter.toHttpEffect(DomainsApiLive.pipe(Layer.provide(DomainsSampleLive)))
+      provide HttpServerRequest.HttpServerRequest = req {
+        const res = try app
+        return res.status
+      }
+    })
+
+    const failingDomains = Layer.succeed(Domains, {
+      search: effect () => {
+        throw new SearchUnavailable()
+      }
+    })
+    const errStatus = try scoped(effect {
+      const app = try HttpRouter.toHttpEffect(DomainsApiLive.pipe(Layer.provide(failingDomains)))
+      provide HttpServerRequest.HttpServerRequest = req {
+        const res = try app
+        return res.status
+      }
+    })
+
+    try Effect.try(() => {
+      assert.strictEqual(okStatus, 200)
+      assert.strictEqual(errStatus, 503)
+      assert.strictEqual(DomainsApi.identifier, "domains")
+    })
+  })
+})

@@ -1,15 +1,49 @@
 ---
 title: "Zed"
-description: "Zed defines languages through extensions, so these project settings map .vibe to TypeScript and .vibex to TSX and replace vtsls's binary with vibelang. VibeLang accepts Zed's typescript language..."
+description: "Vibe provides a Zed extension in editors/zed/ that registers native Vibe (.vibe) and Vibe JSX (.vibex) languages with tree-sitter highlighting and launches vibelang --lsp --stdio from the..."
 ---
 
 # Zed
 
-Zed defines languages through extensions, so these project settings map `.vibe` to TypeScript and `.vibex` to TSX and replace `vtsls`'s binary with `vibelang`. VibeLang accepts Zed's `typescript` language id and serves `.ts` files too.
+Vibe provides a Zed extension in `editors/zed/` that registers native **Vibe** (`.vibe`) and **Vibe JSX** (`.vibex`) languages with tree-sitter highlighting and launches `vibelang --lsp --stdio` from the project's `node_modules/.bin/vibelang` (falling back to `vibelang` on `PATH`).
 
-> **Known Zed 0.195.3 limit:** The server starts, but Zed sends `previousResultId: null` on diagnostic requests, which VibeLang rejects with `InvalidParams` (`-32602`). Run `npx vibelang --noEmit` in the terminal for diagnostics until Zed omits that field.
+> **Known Zed 0.195.3 limit:** Older Zed releases send `previousResultId: null` on pull diagnostic requests, which VibeLang rejects with `InvalidParams` (`-32602`). Upgrade Zed or run `npx vibelang --noEmit` in the terminal for diagnostics if your Zed build still sends that field.
 
-## 1. Find the compiler's absolute path
+## Option 1: Install the Zed extension (recommended)
+
+### Install as a Dev Extension
+
+Requires Rust with the `wasm32-wasip1` target (`rustup target add wasm32-wasip1`).
+
+1. Clone `https://github.com/smithersai/vibelang`.
+2. In Zed, open the Command Palette and run **zed: install dev extension**.
+3. Choose the `editors/zed` directory in your checkout.
+4. Open a project with `vibelang` installed; the extension automatically discovers `node_modules/.bin/vibelang` (or `vibelang` on `PATH`) and starts `vibelang --lsp --stdio`.
+
+To override the binary path in a workspace, add `.zed/settings.json`:
+
+```json
+{
+  "lsp": {
+    "vibelang": {
+      "binary": {
+        "path": "/absolute/path/to/project/node_modules/.bin/vibelang",
+        "arguments": ["--lsp", "--stdio"]
+      }
+    }
+  }
+}
+```
+
+### Zed Extensions registry
+
+Once published to the [Zed Extensions registry](https://github.com/zed-industries/extensions), open **zed: extensions** in Zed and install **Vibe** (`vibelang`). See `editors/zed/README.md` in the repository for the registry submission manifest (`extensions.toml`).
+
+## Option 2: Project settings without the extension
+
+If you prefer not to install the Dev Extension yet, project settings can map `.vibe` to TypeScript and `.vibex` to TSX and point Zed's `vtsls` binary at `vibelang`. VibeLang accepts Zed's `typescript` language id and serves `.ts` files too.
+
+### 1. Find the compiler's absolute path
 
 From the project directory, run:
 
@@ -20,7 +54,7 @@ echo "$PWD/node_modules/.bin/vibelang"
 
 Copy the first line for step 2; the second prints `VibeLang 0.0.14 (TypeScript 7.1.0-dev)`.
 
-## 2. Add the project settings
+### 2. Add the project settings
 
 Add or merge into `.zed/settings.json` (keeping `vtsls` intact in other TypeScript projects) and replace `path` with the absolute path from step 1:
 

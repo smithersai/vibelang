@@ -1,0 +1,52 @@
+import { Component, Head } from "@effect/ui"
+import { OpenTuiCommand } from "@effect/ui-opentui"
+import { Story } from "@effect/ui/testing"
+import { assert, describe, it } from "@effect/vitest"
+import {
+  GenerateApplePosition,
+  SnakeGameMessage
+} from "./core.vibe"
+import { SnakeTui } from "./SnakeTui.vibe"
+
+describe("SnakeTui story (same Vibe core on @effect/ui-opentui)", () => {
+  it.effect("shares core game transitions and issues OpenTuiCommand.quit() on Q", () => effect {
+    const story = try Story.make(SnakeTui, {})
+    story.resolve(
+      GenerateApplePosition,
+      SnakeGameMessage.CompletedGenerateApplePosition({ position: { x: 11, y: 10 } })
+    )
+    story.send(SnakeGameMessage.ToggledPause())
+      .send(SnakeGameMessage.TickedClock())
+      .resolve(
+        GenerateApplePosition,
+        SnakeGameMessage.CompletedGenerateApplePosition({ position: { x: 3, y: 3 } })
+      )
+
+    try Effect.try(() => {
+      assert.strictEqual(story.model.gameState, "Playing")
+      assert.strictEqual(story.model.points, 10)
+      assert.deepStrictEqual(Story.head(story.current), [Head.title("Snake | 10 pts")])
+    })
+
+    story.send(SnakeGameMessage.RequestedQuit())
+      .expectExact(OpenTuiCommand.quit())
+      .resolve(OpenTuiCommand.quit(), Component.noop)
+  })
+
+  it.effect("pauses, resumes, and steers cleanly in terminal host", () => effect {
+    const story = try Story.make(SnakeTui, {})
+    story.resolve(
+      GenerateApplePosition,
+      SnakeGameMessage.CompletedGenerateApplePosition({ position: { x: 18, y: 18 } })
+    )
+    story.send(SnakeGameMessage.ToggledPause())
+      .send(SnakeGameMessage.Steered({ direction: "Down" }))
+      .send(SnakeGameMessage.TickedClock())
+      .send(SnakeGameMessage.ToggledPause())
+
+    try Effect.try(() => {
+      assert.strictEqual(story.model.direction, "Down")
+      assert.strictEqual(story.model.gameState, "Paused")
+    })
+  })
+})

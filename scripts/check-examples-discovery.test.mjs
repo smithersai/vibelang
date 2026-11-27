@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 
 const repository = process.env.VIBELANG_CHECK_EXAMPLES_ROOT ?? fileURLToPath(new URL("../", import.meta.url))
-const names = ["hello", "users", "http-api", "file-tree", "resilience", "approval", "pipeline", "react-vite", "vue-vite", "svelte-vite", "foldkit-app", "alchemy-stack"]
+const names = ["hello", "users", "http-api", "file-tree", "resilience", "approval", "pipeline", "react-vite", "vue-vite", "svelte-vite", "foldkit-app", "alchemy-stack", "effect-ui-domains", "effect-ui-uploads", "effect-ui-snake"]
 const modes = [
   ["test-present", 0], ["test-absent", 0], ["scripts-empty", 0], ["test-fails", 1],
   ["invalid-json", 1], ["missing-manifest", 1],
@@ -29,7 +29,7 @@ for (const [mode, expected] of modes) {
       return path
     }
     mkdirSync(join(root, "scripts"), { recursive: true })
-    for (const name of ["check-examples.sh", "prepare-examples.mjs", "template-files.mjs"]) cpSync(join(repository, "scripts", name), join(root, "scripts", name))
+    for (const name of ["check-examples.sh", "prepare-examples.mjs", "template-files.mjs", "is-main.mjs"]) cpSync(join(repository, "scripts", name), join(root, "scripts", name))
     put("packages/runtime/package.json", JSON.stringify({ peerDependencies: { effect: "4.1.0" } }))
     for (const name of names) {
       const scripts = name === "users" && mode !== "test-absent" ? { scripts: mode === "scripts-empty" ? {} : { test: "fixture" } } : {}

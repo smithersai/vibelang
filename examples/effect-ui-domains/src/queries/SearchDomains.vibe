@@ -1,0 +1,20 @@
+import { Query } from "@effect/ui"
+import { Domain, DomainSearch, SearchUnavailable } from "../domain/Domain.vibe"
+import { Domains } from "../services/Domains.vibe"
+
+export class SearchDomains extends Query.Service<SearchDomains>()(
+  "domains/SearchDomains",
+  {
+    args: DomainSearch.fields,
+    success: Schema.Array(Domain),
+    error: SearchUnavailable,
+    staleTime: "5 minutes"
+  }
+) {
+  static readonly layer = this.toLayer(
+    effect {
+      const domains = try Domains
+      return (args: DomainSearch) => domains.search(args)
+    }
+  )
+}

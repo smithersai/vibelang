@@ -1,0 +1,39 @@
+{
+  "name": "vibelang-ui-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vibe --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vibe --noEmit",
+    "test": "vitest run",
+    "format": "vibe format --write",
+    "lint": "vibe lint -p tsconfig.json",
+    "check": "vibe format --check && vibe lint -p tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/ui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6",
+    "@effect/ui-devtools": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6",
+    "@effect/ui-kit": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6",
+    "effect": "4.1.6",
+    "vibelang-runtime": "0.0.14"
+  },
+  "devDependencies": {
+    "@effect/vitest": "4.1.6",
+    "happy-dom": "20.14.6",
+    "vibelang": "0.0.14",
+    "vibelang-vite": "0.0.14",
+    "vite": "8.3.5",
+    "vitest": "5.1.0"
+  },
+  "engines": {
+    "node": "^22.22.3 || >=24.11.1"
+  },
+  "overrides": {
+    "@effect/ui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6",
+    "@effect/ui-kit": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6",
+    "@effect/ui-devtools": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6"
+  }
+}

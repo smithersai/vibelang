@@ -62,6 +62,7 @@ const create = readJson("packages/create-vibelang/package.json")
 const typescriptShim = readJson("packages/typescript-shim/package.json")
 const tsMapper = readJson("packages/ts-mapper/package.json")
 const template = readJson("templates/app/package.json")
+const uiTemplate = readJson("templates/effect-ui/package.json")
 const identity = readFileSync(join(root, "typescript/tsc/internal/vibelang/identity.go"), "utf8")
 const version = /const Version = "([^"]+)"/.exec(identity)?.[1]
 
@@ -78,6 +79,7 @@ for (const [name, pkg] of [["vibelang", compiler], ["vibelang-runtime", runtime]
   expect(pkg.version === version, `${name}: version ${pkg.version}, but the compiler is ${version}`)
 }
 expect(template.engines?.node === nodeEngine, "template: engines.node " + template.engines?.node + ", expected ^22.22.3 || >=24.11.1 (matching vibelang-runtime)")
+expect(uiTemplate.engines?.node === nodeEngine, "uiTemplate: engines.node " + uiTemplate.engines?.node + ", expected ^22.22.3 || >=24.11.1 (matching vibelang-runtime)")
 const optional = compiler.optionalDependencies ?? {}
 expect(JSON.stringify(Object.keys(optional).sort()) === JSON.stringify(Object.keys(platforms).map((p) => platformPackage(p)).sort()),
   `vibelang: optionalDependencies must list exactly ${Object.keys(platforms).join(", ")}`)
@@ -263,18 +265,20 @@ order.push({
 })
 
 const createDir = stage("create-vibelang", [["packages/create-vibelang/bin", "bin"], ["packages/create-vibelang/README.md"], ["packages/create-vibelang/package.json"]], { LICENSE: mit })
-copyTracked("templates/app", join(createDir, "template"), isTemplateFile)
-// npm drops .gitignore from packages; create-vibelang restores the dot.
-for (const name of [".gitignore", ".gitattributes"]) renameSync(join(createDir, "template", name), join(createDir, "template", name.slice(1)))
-const appManifest = JSON.parse(readFileSync(join(createDir, "template/package.json"), "utf8"))
-appManifest.dependencies["vibelang-runtime"] = version
-appManifest.devDependencies.vibelang = version
-appManifest.devDependencies["vibelang-vite"] = version
-writeFileSync(join(createDir, "template/package.json"), JSON.stringify(appManifest, null, 2) + "\n")
+for (const [src, dest] of [["templates/app", "template"], ["templates/effect-ui", "template-ui"]]) {
+  copyTracked(src, join(createDir, dest), isTemplateFile)
+  // npm drops .gitignore from packages; create-vibelang restores the dot.
+  for (const name of [".gitignore", ".gitattributes"]) renameSync(join(createDir, dest, name), join(createDir, dest, name.slice(1)))
+  const manifest = JSON.parse(readFileSync(join(createDir, dest, "package.json"), "utf8"))
+  manifest.dependencies["vibelang-runtime"] = version
+  manifest.devDependencies.vibelang = version
+  manifest.devDependencies["vibelang-vite"] = version
+  writeFileSync(join(createDir, dest, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
+}
 order.push({
   name: "create-vibelang",
   dir: createDir,
-  required: ["bin/create-vibelang.mjs", "template/package.json", "template/gitignore", "template/gitattributes", "template/src/main.vibe", "template/AGENTS.md", "LICENSE"]
+  required: ["bin/create-vibelang.mjs", "template/package.json", "template/gitignore", "template/gitattributes", "template/src/main.vibe", "template/AGENTS.md", "template-ui/package.json", "template-ui/gitignore", "template-ui/gitattributes", "template-ui/src/Counter.vibe", "template-ui/AGENTS.md", "LICENSE"]
 })
 
 order.push({

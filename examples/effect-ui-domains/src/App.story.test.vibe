@@ -1,0 +1,54 @@
+import { Router } from "@effect/ui"
+import { Story } from "@effect/ui/testing"
+import { assert, describe, it } from "@effect/vitest"
+import { AppMessage, AppNoDeps } from "./App.vibe"
+import { searchSample } from "./domain/Domain.vibe"
+import { restRange, topRange } from "./domain/Listing.vibe"
+import { AppRoute } from "./routes.vibe"
+
+error UnexpectedFixture { message: string }
+
+const search = (q?: string) =>
+  AppRoute.Search({ search: q === undefined ? {} : { q } })
+
+describe("App story", () => {
+  it.effect("Escape clears the search field and patches the route", () => effect {
+    const route = search("effect")
+    const story = try Story.make(AppNoDeps, { route })
+    story.keepPending("top")
+      .send(AppMessage.PressedEscape())
+      .expectExact(Router.patchSearch(AppRoute, route, { q: undefined }, { scroll: true }))
+      .resolve(Router.PatchSearch, "navigated")
+    try Effect.try(() => assert.strictEqual(story.model.query, ""))
+  })
+
+  it.effect("adding and removing a domain updates the cart without duplicates", () => effect {
+    const story = try Story.make(AppNoDeps, { route: search("effect") })
+    const [first] = searchSample({ label: "effect", ...topRange })
+    if (first === undefined || first._tag !== "Available") {
+      throw new UnexpectedFixture({ message: "expected an Available sample domain" })
+    }
+    story.loaded("top", searchSample({ label: "effect", ...topRange }))
+      .loaded("rest", searchSample({ label: "effect", ...restRange }))
+      .send(AppMessage.ClickedAddDomain({ domain: first }))
+      .send(AppMessage.ClickedAddDomain({ domain: first }))
+    try Effect.try(() => assert.deepStrictEqual(story.model.cart.map((d) => d.name), [first.name]))
+
+    story.send(AppMessage.ClickedRemoveDomain({ name: first.name }))
+    try Effect.try(() => assert.deepStrictEqual(story.model.cart, []))
+  })
+
+  it.effect("picking availability and sort filters updates model and closes popup", () => effect {
+    const story = try Story.make(AppNoDeps, { route: search("vibelang") })
+    story.keepPending("top")
+      .send(AppMessage.RequestedOpenPopup({ popup: "AvailabilityListbox" }))
+      .send(AppMessage.PickedAvailabilityFilter({ value: "Available" }))
+      .send(AppMessage.RequestedOpenPopup({ popup: "SortListbox" }))
+      .send(AppMessage.PickedSortOrder({ value: "PriceAscending" }))
+    try Effect.try(() => {
+      assert.strictEqual(story.model.availability, "Available")
+      assert.strictEqual(story.model.sort, "PriceAscending")
+      assert.strictEqual(story.model.popup, null)
+    })
+  })
+})

@@ -2,7 +2,14 @@
   "name": "create-vibelang",
   "version": "0.0.14",
   "description": "Create a Vibe (VibeLang) application: bun create vibelang my-app",
-  "keywords": ["vibe", "vibelang", "effect", "typescript", "create", "template"],
+  "keywords": [
+    "vibe",
+    "vibelang",
+    "effect",
+    "typescript",
+    "create",
+    "template"
+  ],
   "homepage": "https://vibelang.sh",
   "repository": {
     "type": "git",
@@ -14,9 +21,23 @@
   },
   "license": "MIT",
   "type": "module",
-  "bin": { "create-vibelang": "bin/create-vibelang.mjs" },
-  "files": ["bin", "template", "README.md", "LICENSE"],
-  "scripts": { "test": "node --test test/*.test.mjs" },
-  "devDependencies": { "fast-check": "4.10.2" },
-  "engines": { "node": "^22.22.3 || >=24.11.1" }
+  "bin": {
+    "create-vibelang": "bin/create-vibelang.mjs"
+  },
+  "files": [
+    "bin",
+    "template",
+    "template-ui",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "fast-check": "4.10.2"
+  },
+  "engines": {
+    "node": "^22.22.3 || >=24.11.1"
+  }
 }

@@ -1,0 +1,27 @@
+import type { Direction } from "./direction.vibe"
+
+export const GRID_SIZE = 20
+
+export schema Position {
+  readonly x: number
+  readonly y: number
+}
+
+export const equivalence = Schema.toEquivalence(Position)
+
+export function wrap({ x, y }: Position): Position {
+  return {
+    x: x < 0 ? GRID_SIZE - 1 : x >= GRID_SIZE ? 0 : x,
+    y: y < 0 ? GRID_SIZE - 1 : y >= GRID_SIZE ? 0 : y
+  }
+}
+
+export function move(pos: Position, direction: Direction): Position {
+  const next = match (direction) {
+    when "Up": ({ x: pos.x, y: pos.y - 1 });
+    when "Down": ({ x: pos.x, y: pos.y + 1 });
+    when "Left": ({ x: pos.x - 1, y: pos.y });
+    when "Right": ({ x: pos.x + 1, y: pos.y });
+  }
+  return wrap(next)
+}

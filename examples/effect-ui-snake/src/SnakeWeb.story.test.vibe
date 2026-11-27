@@ -1,0 +1,77 @@
+import { Head } from "@effect/ui"
+import { Story } from "@effect/ui/testing"
+import { assert, describe, it } from "@effect/vitest"
+import {
+  GenerateApplePosition,
+  initialModel,
+  SnakeGameMessage,
+  type SnakeGameModel
+} from "./core.vibe"
+import { SnakeWeb } from "./SnakeWeb.vibe"
+
+const playingModel: SnakeGameModel = {
+  ...initialModel(),
+  gameState: "Playing"
+}
+
+describe("SnakeWeb story (shared core)", () => {
+  it.effect("starts, steers without 180-degree reversal, eats apple, and updates head title", () => effect {
+    const story = try Story.make(SnakeWeb, {})
+    story.resolve(
+      GenerateApplePosition,
+      SnakeGameMessage.CompletedGenerateApplePosition({ position: { x: 10, y: 9 } })
+    )
+    story.send(SnakeGameMessage.ToggledPause())
+      .send(SnakeGameMessage.Steered({ direction: "Left" })) // opposite of Right -> ignored on tick
+      .send(SnakeGameMessage.Steered({ direction: "Up" }))
+      .send(SnakeGameMessage.TickedClock())
+      .resolve(
+        GenerateApplePosition,
+        SnakeGameMessage.CompletedGenerateApplePosition({ position: { x: 4, y: 4 } })
+      )
+
+    try Effect.try(() => {
+      assert.strictEqual(story.model.gameState, "Playing")
+      assert.strictEqual(story.model.direction, "Up")
+      assert.strictEqual(story.model.points, 10)
+      assert.strictEqual(story.model.snake.length, 4)
+      assert.deepStrictEqual(story.model.apple, { x: 4, y: 4 })
+      assert.deepStrictEqual(Story.head(story.current), [Head.title("Snake | 10 pts")])
+    })
+  })
+
+  it.effect("self-collision transitions to GameOver and preserves highScore on restart", () => effect {
+    const story = try Story.make(SnakeWeb, {})
+    const colliding: SnakeGameModel = {
+      ...playingModel,
+      points: 40,
+      highScore: 20,
+      direction: "Up",
+      nextDirection: "Left",
+      snake: [
+        { x: 5, y: 5 },
+        { x: 5, y: 6 },
+        { x: 4, y: 6 },
+        { x: 4, y: 5 },
+        { x: 4, y: 4 }
+      ]
+    }
+    story.given(colliding)
+      .send(SnakeGameMessage.TickedClock())
+    try Effect.try(() => {
+      assert.strictEqual(story.model.gameState, "GameOver")
+      assert.strictEqual(story.model.highScore, 40)
+    })
+
+    story.send(SnakeGameMessage.Restarted())
+      .resolve(
+        GenerateApplePosition,
+        SnakeGameMessage.CompletedGenerateApplePosition({ position: { x: 2, y: 2 } })
+      )
+    try Effect.try(() => {
+      assert.strictEqual(story.model.gameState, "NotStarted")
+      assert.strictEqual(story.model.points, 0)
+      assert.strictEqual(story.model.highScore, 40)
+    })
+  })
+})

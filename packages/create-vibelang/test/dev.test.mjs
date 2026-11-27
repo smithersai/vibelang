@@ -31,8 +31,10 @@ else setTimeout(() => {
  setTimeout(() => process.stdout.write(ready.slice(${split})), 5)
 }, ${delay})
 `
- writeFileSync(join(root, "bin/vibelang"), compiler)
- chmodSync(join(root, "bin/vibelang"), 0o755)
+ for (const name of ["vibe", "vibelang"]) {
+  writeFileSync(join(root, "bin", name), compiler)
+  chmodSync(join(root, "bin", name), 0o755)
+ }
  const child = spawn(process.execPath, ["scripts/dev.mjs"], {
   cwd: root, detached: true, env: { ...process.env, PATH: join(root, "bin") + delimiter + process.env.PATH },
   stdio: ["ignore", "pipe", "pipe"]

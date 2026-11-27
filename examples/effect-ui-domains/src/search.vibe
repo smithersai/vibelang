@@ -1,0 +1,46 @@
+import { AsyncResult } from "effect/reactivity"
+import { type Domain, labelOf, type SearchUnavailable } from "./domain/Domain.vibe"
+
+export type DomainsResult = AsyncResult.AsyncResult<
+  ReadonlyArray<Domain>,
+  SearchUnavailable
+>
+
+export data SearchState {
+  Idle
+  Invalid
+  Loading
+  Failed
+  Ready {
+    domains: ReadonlyMap<string, Domain>
+    loading: boolean
+    failed: boolean
+  }
+}
+
+export const invalidQueryMessage =
+  "Enter a domain name using letters, numbers, and hyphens (up to 63 characters)."
+export const failedSearchMessage =
+  "Could not load sample domains. Please try again."
+
+export function searchState(
+  query: string,
+  top: DomainsResult,
+  rest: DomainsResult
+): SearchState {
+  if (query === "") return SearchState.Idle()
+  if (labelOf(query) === undefined) return SearchState.Invalid()
+  const results = [top, rest]
+  const settled = results.filter(AsyncResult.isSuccess)
+  if (settled.length === 0) {
+    return AsyncResult.isFailure(top) && !top.waiting
+      ? SearchState.Failed()
+      : SearchState.Loading()
+  }
+  const domains = settled.flatMap((result) => result.value)
+  return SearchState.Ready({
+    domains: new Map(domains.map((domain) => [domain.name, domain])),
+    loading: results.some((result) => result.waiting || AsyncResult.isInitial(result)),
+    failed: results.some((result) => AsyncResult.isFailure(result) && !result.waiting)
+  })
+}

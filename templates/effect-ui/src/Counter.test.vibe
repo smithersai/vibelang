@@ -1,0 +1,40 @@
+import { HtmlLocator, HtmlScene } from "@effect/ui/html/testing"
+import { Locator, Story } from "@effect/ui/testing"
+import { assert, describe, it } from "@effect/vitest"
+import { Counter, CounterMessage, SaveCount } from "./Counter.vibe"
+
+describe("Counter", () => {
+  it.effect("increments, decrements, resets, and saves via SaveCount command", () => effect {
+    const story = try Story.make(Counter, {})
+    try Effect.try(() => assert.strictEqual(story.model.count, 0))
+
+    story.send(CounterMessage.ClickedIncrement())
+      .send(CounterMessage.ClickedIncrement())
+      .send(CounterMessage.ClickedDecrement())
+    try Effect.try(() => assert.strictEqual(story.model.count, 1))
+
+    story.send(CounterMessage.ClickedSave())
+    try Effect.try(() => assert.strictEqual(story.model.saving, true))
+
+    story.expectExact(SaveCount.make({ count: 1 }))
+      .resolve(SaveCount, CounterMessage.SucceededSave({ saved: 1 }))
+    try Effect.try(() => {
+      assert.strictEqual(story.model.saving, false)
+      assert.strictEqual(story.model.lastSaved, 1)
+    })
+
+    story.send(CounterMessage.ClickedReset())
+    try Effect.try(() => assert.strictEqual(story.model.count, 0))
+  })
+
+  it.effect("renders buttons and status updates in HtmlScene", () => effect {
+    const scene = try HtmlScene.make(Counter, {})
+    scene.expect(HtmlLocator.role("heading", { name: "Vibe + Effect UI" })).toExist()
+      .expect(Locator.text("Not saved yet")).toExist()
+      .click(HtmlLocator.role("button", { name: "Increment" }))
+      .click(HtmlLocator.role("button", { name: "Save" }))
+      .expect(Locator.text("Saving count…")).toExist()
+      .resolve(SaveCount, CounterMessage.SucceededSave({ saved: 1 }))
+      .expect(Locator.text("Saved: 1")).toExist()
+  })
+})

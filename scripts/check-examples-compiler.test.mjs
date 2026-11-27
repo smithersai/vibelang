@@ -8,7 +8,7 @@ import { test } from "node:test"
 
 const quote = value => "'" + value.replaceAll("'", "'\\''") + "'"
 const source = process.env.VIBELANG_CHECK_EXAMPLES_ROOT ?? fileURLToPath(new URL("../", import.meta.url))
-const names = ["hello", "users", "http-api", "file-tree", "resilience", "approval", "pipeline", "react-vite", "vue-vite", "svelte-vite", "foldkit-app", "alchemy-stack"]
+const names = ["hello", "users", "http-api", "file-tree", "resilience", "approval", "pipeline", "react-vite", "vue-vite", "svelte-vite", "foldkit-app", "alchemy-stack", "effect-ui-domains", "effect-ui-uploads", "effect-ui-snake"]
 const direct = names.slice(0, 7)
 const selections = [
   { name: "native checkout only", native: true, expected: "native" },
@@ -37,7 +37,7 @@ for (const selection of selections) {
       if (executable) chmodSync(file, 0o755)
       return file
     }
-    for (const script of ["check-examples.sh", "prepare-examples.mjs", "template-files.mjs"]) {
+    for (const script of ["check-examples.sh", "prepare-examples.mjs", "template-files.mjs", "is-main.mjs"]) {
       const file = put("scripts/" + script, "")
       cpSync(join(source, "scripts", script), file)
     }

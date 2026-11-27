@@ -1,0 +1,92 @@
+import { Story } from "@effect/ui/testing"
+import { assert, describe, it } from "@effect/vitest"
+import { TestClock } from "effect/testing"
+import {
+  FAKE_FILES,
+  UploadFile,
+  uploadProgressStream,
+  Uploads,
+  UploadsMessage,
+  type UploadsModel
+} from "./Uploads.vibe"
+
+const [firstFile, secondFile, thirdFile] = FAKE_FILES
+const clickedStartUpload = UploadsMessage.ClickedStartUpload()
+const clickedCancelFirst = UploadsMessage.ClickedCancelUpload({ uploadId: 0 })
+const completedFirst = UploadsMessage.CompletedUploadFile({ uploadId: 0 })
+const completedSecond = UploadsMessage.CompletedUploadFile({ uploadId: 1 })
+const firstCommand = UploadFile.make({ uploadId: 0, sizeMegabytes: firstFile!.sizeMegabytes })
+const secondCommand = UploadFile.make({ uploadId: 1, sizeMegabytes: secondFile!.sizeMegabytes })
+const thirdCommand = UploadFile.make({ uploadId: 2, sizeMegabytes: thirdFile!.sizeMegabytes })
+
+function statuses(model: UploadsModel) {
+  return model.uploads.map((upload) => upload.status)
+}
+
+describe("Uploads story", () => {
+  it.effect("cancelling one upload interrupts only that fiber and leaves others running", () => effect {
+    const story = try Story.make(Uploads, {})
+    story.send(clickedStartUpload)
+      .send(clickedStartUpload)
+      .send(clickedCancelFirst)
+    try Effect.try(() =>
+      assert.deepStrictEqual(
+        story.interrupted.map((command) => command.args),
+        [firstCommand.args]
+      )
+    )
+    story.expectExact(secondCommand)
+      .resolve(secondCommand, completedSecond)
+    try Effect.try(() => assert.deepStrictEqual(statuses(story.model), ["Cancelled", "Done"]))
+  })
+
+  it.effect("restarting a cancelled upload resets progress and increments attempt", () => effect {
+    const story = try Story.make(Uploads, {})
+    story.send(clickedStartUpload)
+      .send(UploadsMessage.ProgressedUpload({ uploadId: 0, progress: 40 }))
+      .send(clickedCancelFirst)
+      .send(UploadsMessage.ClickedRestartUpload({ uploadId: 0 }))
+    try Effect.try(() => {
+      assert.strictEqual(story.model.uploads[0]?.status, "Uploading")
+      assert.strictEqual(story.model.uploads[0]?.progress, 0)
+      assert.strictEqual(story.model.uploads[0]?.attempt, 1)
+    })
+    story.expectExact(firstCommand)
+      .resolve(firstCommand, completedFirst)
+    try Effect.try(() => {
+      assert.strictEqual(story.model.uploads[0]?.status, "Done")
+      assert.strictEqual(story.model.uploads[0]?.progress, 100)
+    })
+  })
+
+  it.effect("cancel all interrupts every active upload and keeps completed ones", () => effect {
+    const story = try Story.make(Uploads, {})
+    story.send(clickedStartUpload)
+      .send(clickedStartUpload)
+      .send(clickedStartUpload)
+      .resolve(secondCommand, completedSecond)
+      .send(UploadsMessage.ClickedCancelAllUploads())
+    try Effect.try(() =>
+      assert.deepStrictEqual(
+        story.interrupted.map((command) => command.args),
+        [firstCommand.args, thirdCommand.args]
+      )
+    )
+    story.expectNone()
+    try Effect.try(() =>
+      assert.deepStrictEqual(statuses(story.model), ["Cancelled", "Done", "Cancelled"])
+    )
+  })
+
+  it.effect("VIP-21 producer subscription yields progress ticks from 10 to 90 under TestClock", () => effect {
+    const fiber = fork Stream.runCollect(uploadProgressStream(7, 10))
+    try TestClock.adjust("1 second")
+    const ticks = try join fiber
+    try Effect.try(() =>
+      assert.deepStrictEqual(
+        ticks.map((msg) => msg._tag === "ProgressedUpload" ? msg.progress : -1),
+        [10, 20, 30, 40, 50, 60, 70, 80, 90]
+      )
+    )
+  })
+})

@@ -1,0 +1,469 @@
+import { Command, Component, Head, Router, UiSchema, UiStruct } from "@effect/ui"
+import { Button, Dialog, Select, type SelectItem } from "@effect/ui-kit"
+import { Html, HtmlCommand } from "@effect/ui/html"
+import { AsyncResult } from "effect/reactivity"
+import {
+  AvailableDomain,
+  type Domain,
+  domainTlds
+} from "./domain/Domain.vibe"
+import {
+  AvailabilityFilter,
+  type DomainListing,
+  filterAndSortListings,
+  formatPrice,
+  formatRegistrationPrice,
+  formatRenewalPrice,
+  queryToListings,
+  restRange,
+  SortOrder,
+  topRange
+} from "./domain/Listing.vibe"
+import { SearchDomains } from "./queries/SearchDomains.vibe"
+import { AppRoute, homeUrl, labelOfRoute, queryOf } from "./routes.vibe"
+import {
+  failedSearchMessage,
+  invalidQueryMessage,
+  searchState
+} from "./search.vibe"
+
+schema SearchLayout = "Landing" | "Search"
+
+schema Popup = "Cart" | "AvailabilityListbox" | "SortListbox"
+
+export const AppMessage = UiSchema.TaggedEnum({
+  ChangedRoute: { route: AppRoute },
+  UpdatedSearch: { value: Schema.String },
+  PressedEscape: {},
+  ClickedClearSearch: {},
+  RequestedOpenPopup: { popup: Popup },
+  RequestedClosePopup: { popup: Popup },
+  PickedAvailabilityFilter: { value: AvailabilityFilter },
+  PickedSortOrder: { value: SortOrder },
+  ClickedAddDomain: { domain: AvailableDomain },
+  ClickedRemoveDomain: { name: Schema.String },
+  ClickedRetrySearch: {}
+})
+export type AppMessage = typeof AppMessage.Type
+
+export schema AppModel {
+  readonly route: AppRoute
+  readonly query: string
+  readonly layout: SearchLayout
+  readonly availability: AvailabilityFilter
+  readonly sort: SortOrder
+  readonly popup: Popup | null
+  readonly cart: ReadonlyArray<AvailableDomain>
+}
+
+const SearchInput = Html.ref("SearchInput", "input")
+
+export const RetrySearch = Command.make(
+  "domains/RetrySearch",
+  { args: {} },
+  effect () => {
+    try SearchDomains.invalidate()
+    return Component.noop
+  }
+)
+
+const availabilityLabels: Readonly<Record<AvailabilityFilter, string>> = {
+  All: "Show All",
+  Available: "Available"
+}
+
+const sortLabels: Readonly<Record<SortOrder, string>> = {
+  Relevance: "Relevance",
+  Length: "Length",
+  Alphabetical: "Alphabetical",
+  PriceAscending: "Price: Low to High",
+  PriceDescending: "Price: High to Low"
+}
+
+const availabilityItems: ReadonlyArray<SelectItem> = AvailabilityFilter.literals.map((value) => ({
+  value,
+  label: availabilityLabels[value]
+}))
+
+const sortItems: ReadonlyArray<SelectItem> = SortOrder.literals.map((value) => ({
+  value,
+  label: sortLabels[value]
+}))
+
+const isAvailabilityFilter = Schema.is(AvailabilityFilter)
+const isSortOrder = Schema.is(SortOrder)
+
+function titleOf(route: AppRoute): string {
+  return match (route) {
+    when { _tag: "NotFound" }: "Not Found | Vibe Domains";
+    when { _tag: "Search", let search }: search.q ? `${search.q} | Vibe Domains` : "Vibe Domains";
+  }
+}
+
+const AppDef = Html.component({
+  name: "App",
+  props: Schema.Struct({ route: AppRoute }),
+  model: AppModel,
+  message: AppMessage,
+  queries: {
+    top: {
+      query: SearchDomains,
+      args: ({ model }) => {
+        const label = labelOfRoute(model.route)
+        return label === undefined ? undefined : { label, ...topRange }
+      },
+      debounce: "150 millis"
+    },
+    rest: {
+      query: SearchDomains,
+      args: ({ model, queries }) => {
+        const label = labelOfRoute(model.route)
+        if (label === undefined || !AsyncResult.isSuccess(queries.top)) {
+          return undefined
+        }
+        return { label, ...restRange }
+      }
+    }
+  }
+})
+
+const CartDialog = AppDef.fragment((h, model: AppModel) => {
+  const total = model.cart.reduce((sum, domain) => sum + domain.price, 0)
+  return Dialog(h, {
+    key: "cart",
+    props: { open: model.popup === "Cart" },
+    onEmit: {
+      RequestedOpen: () => AppMessage.RequestedOpenPopup({ popup: "Cart" }),
+      RequestedClose: () => AppMessage.RequestedClosePopup({ popup: "Cart" }),
+      Settled: () => undefined
+    },
+    view: (dialog) =>
+      h.div.children(
+        dialog.trigger(
+          h.button.attrs({
+            id: "cart-button",
+            "aria-label": `Cart, ${model.cart.length} domains`
+          }).class("button")
+        ).children(`Cart (${model.cart.length})`),
+        dialog.portal(h.dialog.class("dialog-overlay"))?.children(
+          dialog.backdrop(h.div),
+          dialog.popup(h.div.class("dialog-panel")).children(
+            dialog.title(h.h2).children(`Your Cart (${model.cart.length})`),
+            model.cart.length === 0
+              ? h.p.class("domain-meta").children("No domains added yet.")
+              : h.ul.class("cart-list").children(
+                model.cart.map((item) =>
+                  h.li.key(item.name).class("cart-item").children(
+                    h.span(`${item.name} · ${formatPrice(item.price)}`),
+                    Button(h, {
+                      onPress: AppMessage.ClickedRemoveDomain({ name: item.name })
+                    })
+                      .attr("aria-label", `Remove ${item.name} from cart`)
+                      .class("button")
+                      .children("Remove")
+                  )
+                )
+              ),
+            h.div.class("cart-item").children(
+              h.strong(`Total: ${formatPrice(total)}`),
+              dialog.close(
+                h.button.class("button").attr("aria-label", "Close cart")
+              ).children("Close")
+            )
+          )
+        )
+      )
+  })
+})
+
+interface FilterSelectOptions {
+  readonly popup: Popup
+  readonly label: string
+  readonly value: string
+  readonly items: ReadonlyArray<SelectItem>
+  readonly picked: (value: string) => AppMessage | undefined
+}
+
+const FilterSelect = AppDef.fragment((h, model: AppModel, options: FilterSelectOptions) => {
+  const open = model.popup === options.popup
+  return Select(h, {
+    key: options.popup,
+    props: {
+      open,
+      value: options.value,
+      items: options.items,
+      alignItemWithTrigger: false,
+      side: "bottom",
+      align: "end",
+      sideOffset: 6,
+      collisionPadding: 8
+    },
+    onEmit: {
+      RequestedOpen: () => AppMessage.RequestedOpenPopup({ popup: options.popup }),
+      RequestedClose: () => AppMessage.RequestedClosePopup({ popup: options.popup }),
+      Picked: ({ value }) => options.picked(String(value)),
+      Settled: () => undefined
+    },
+    view: (select) =>
+      h.div.children(
+        select.trigger(
+          h.button.class("select-trigger").attr(
+            "aria-label",
+            `${options.label}: ${options.items.find((item) => item.value === options.value)?.label ?? ""}`
+          )
+        ).children(select.value(h.span)),
+        select.positioner(h.div).children(
+          select.popup(h.div.class("select-popup")).children(
+            open && options.items.map((item) =>
+              select.item({
+                element: h.div.class("select-item"),
+                value: item.value
+              }).children(select.itemText(h.div).children(item.label))
+            )
+          )
+        )
+      )
+  })
+})
+
+const DomainRow = AppDef.fragment((h, model: AppModel, listing: DomainListing) => {
+  const domain = listing.domain
+  const inCart = model.cart.some((item) => item.name === listing.name)
+
+  const trailing = domain === undefined
+    ? h.span.class("domain-taken").children("Checking…")
+    : match (domain) {
+      when { _tag: "Unavailable" }:
+        h.span.class("domain-taken").children("Taken");
+      when { _tag: "Available" }:
+        h.div.class("filters").children(
+          h.div.children(
+            h.div.class("domain-price").children(formatRegistrationPrice(domain)),
+            h.div.class("domain-meta").children(formatRenewalPrice(domain))
+          ),
+          Button(h, {
+            onPress: inCart
+              ? AppMessage.ClickedRemoveDomain({ name: domain.name })
+              : AppMessage.ClickedAddDomain({ domain })
+          })
+            .attr("aria-label", inCart ? `Remove ${domain.name}` : `Add ${domain.name}`)
+            .class("button", !inCart && "button-primary")
+            .children(inCart ? "Added" : "Add")
+        );
+    }
+
+  return h.li.key(listing.name).class("domain-row").children(
+    h.div.children(
+      h.h3.class("domain-name").children(listing.name),
+      h.p.class("domain-meta").children(`.${listing.tld}`)
+    ),
+    trailing
+  )
+})
+
+const SearchResults = AppDef.fragment((h, model: AppModel) => {
+  const search = searchState(queryOf(model.route), h.queries.top, h.queries.rest)
+  return match (search) {
+    when { _tag: "Idle" }:
+      h.section.class("status-banner").children(
+        h.p("Enter a domain name to explore sample prices and availability across 24 TLDs.")
+      );
+    when { _tag: "Invalid" }:
+      h.div.attr("role", "alert").class("alert-banner").children(
+        h.p(invalidQueryMessage),
+        Button(h, { onPress: AppMessage.ClickedClearSearch() })
+          .class("button")
+          .children("Try again")
+      );
+    when { _tag: "Loading" }:
+      h.p.attrs({ role: "status", "aria-label": "Searching domains" })
+        .class("status-banner")
+        .children("Checking availability and prices…");
+    when { _tag: "Failed" }:
+      h.div.attr("role", "alert").class("alert-banner").children(
+        h.p(failedSearchMessage),
+        Button(h, { onPress: AppMessage.ClickedRetrySearch() })
+          .class("button")
+          .children("Try again")
+      );
+    when { _tag: "Ready", let domains, let loading, let failed }:
+      do {
+        const listings = filterAndSortListings(
+          queryToListings(queryOf(model.route), domains),
+          model.availability,
+          model.sort
+        )
+        h.section.children(
+          h.div.class("toolbar").children(
+            h.p.attr("role", "status").class("domain-meta").children(
+              domains.size < domainTlds.length
+                ? `${domains.size} of ${domainTlds.length} domains checked · USD`
+                : `${listings.length} domains · USD`
+            ),
+            h.div.class("filters").children(
+              FilterSelect(h, model, {
+                popup: "AvailabilityListbox",
+                label: "Availability",
+                value: model.availability,
+                items: availabilityItems,
+                picked: (value) =>
+                  isAvailabilityFilter(value)
+                    ? AppMessage.PickedAvailabilityFilter({ value })
+                    : undefined
+              }),
+              FilterSelect(h, model, {
+                popup: "SortListbox",
+                label: "Sort",
+                value: model.sort,
+                items: sortItems,
+                picked: (value) =>
+                  isSortOrder(value)
+                    ? AppMessage.PickedSortOrder({ value })
+                    : undefined
+              })
+            )
+          ),
+          listings.length === 0
+            ? h.p.attr("role", "status").class("status-banner").children(
+              "No domains match your filters. Try showing all domains."
+            )
+            : h.ul.attr("aria-label", "All domain results").class("results").children(
+              listings.map((listing) => DomainRow(h, model, listing))
+            ),
+          failed && !loading &&
+            h.div.attr("role", "alert").class("alert-banner").children(
+              h.p(failedSearchMessage),
+              Button(h, { onPress: AppMessage.ClickedRetrySearch() })
+                .class("button")
+                .children("Try again")
+            )
+        )
+      };
+  }
+})
+
+const focusSearchInput = HtmlCommand.focus(SearchInput, () => Component.noop, {
+  preventScroll: true
+})
+
+function clearSearch(model: AppModel) {
+  return model.route._tag === "Search"
+    ? Router.patchSearch(AppRoute, model.route, { q: undefined }, { scroll: true }).pipe(Command.asNoop)
+    : undefined
+}
+
+export const AppNoDeps = AppDef.make({
+  init: ($) => {
+    const query = queryOf($.props.route)
+    return {
+      route: $.props.route,
+      query,
+      layout: query === "" ? "Landing" : "Search",
+      availability: "All",
+      sort: "Relevance",
+      popup: null,
+      cart: []
+    }
+  },
+  update: {
+    ChangedRoute: ($, { route }) => {
+      const query = queryOf(route)
+      return UiStruct.evolve($.model, {
+        route,
+        query,
+        layout: (layout) => query === "" ? layout : "Search"
+      })
+    },
+
+    UpdatedSearch: ($, { value }) =>
+      $.model.route._tag === "Search"
+        ? $.evolve({
+          query: value,
+          layout: (layout) => value === "" ? layout : "Search"
+        }).run(
+          Router.patchSearch(AppRoute, $.model.route, {
+            q: value === "" ? undefined : value
+          }).pipe(Command.asNoop)
+        )
+        : $.model,
+
+    PressedEscape: ($) => {
+      const clear = clearSearch($.model)
+      return clear === undefined ? $.model : $.evolve({ query: "" }).run(clear)
+    },
+
+    ClickedClearSearch: ($) => {
+      const clear = clearSearch($.model)
+      return clear === undefined
+        ? $.run(focusSearchInput)
+        : $.evolve({ query: "" }).run(clear, focusSearchInput)
+    },
+
+    RequestedOpenPopup: ($, { popup }) => $.evolve({ popup }),
+
+    RequestedClosePopup: ($, { popup }) =>
+      $.evolve({ popup: (open) => open === popup ? null : open }),
+
+    PickedAvailabilityFilter: ($, { value }) =>
+      $.evolve({ availability: value, popup: null }),
+
+    PickedSortOrder: ($, { value }) =>
+      $.evolve({ sort: value, popup: null }),
+
+    ClickedAddDomain: ($, { domain }) =>
+      $.model.cart.some((item) => item.name === domain.name)
+        ? $.model
+        : $.evolve({ cart: (cart) => [...cart, domain] }),
+
+    ClickedRemoveDomain: ($, { name }) =>
+      $.evolve({ cart: (cart) => cart.filter((item) => item.name !== name) }),
+
+    ClickedRetrySearch: ($) => $.run(RetrySearch.make({}), focusSearchInput)
+  },
+  subscriptions: ({ model }) => [
+    Router.subscription(AppRoute, model.route, (route) => AppMessage.ChangedRoute({ route }))
+  ],
+  head: ({ model }) => [Head.title(titleOf(model.route))],
+  view: (h, model) =>
+    match (model.route) {
+      when { _tag: "NotFound", let params }:
+        h.main.class("app").children(
+          h.h1("404 — Page Not Found"),
+          h.p(`The path "${params["*"]}" was not found.`),
+          h.a.attr("href", homeUrl).children("← Back to Domains")
+        );
+      when { _tag: "Search" }:
+        h.div.attrs({ "data-search-layout": model.layout }).class("app").children(
+          h.header.class("header").children(
+            h.a.attr("href", homeUrl).class("brand").children(
+              h.span("Domains"),
+              h.span.class("brand-tag").children("Vibe + Effect UI")
+            ),
+            CartDialog(h, model)
+          ),
+          h.form.class("search-form").attr("role", "search").children(
+            h.input.ref(SearchInput).attrs({
+              type: "search",
+              name: "q",
+              "aria-label": "Search domains",
+              placeholder: "Search for a domain (e.g. vibelang, effect)…"
+            })
+              .class("search-input")
+              .value(model.query)
+              .on("input", ({ value }) => AppMessage.UpdatedSearch({ value }))
+              .on("keydown", ({ composing, key }) =>
+                key === "Escape" && !composing ? AppMessage.PressedEscape() : undefined,
+                { preventDefault: true }
+              ),
+            model.query !== "" &&
+              Button(h, { onPress: AppMessage.ClickedClearSearch() })
+                .attr("aria-label", "Clear search")
+                .class("button")
+                .children("Clear")
+          ),
+          h.main.children(SearchResults(h, model))
+        );
+    }
+})
+
+export const App = AppNoDeps.pipe(Component.provide(SearchDomains.layer))

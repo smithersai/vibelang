@@ -1,0 +1,119 @@
+import { OpenTui, OpenTuiCommand, OpenTuiSubscription } from "@effect/ui-opentui"
+import { Array as Arr } from "effect"
+import {
+  classifyCell,
+  gameClockSubscription,
+  gameStateText,
+  GenerateApplePosition,
+  initialModel,
+  NEW_GAME,
+  nextOnSpace,
+  snakeHead,
+  SnakeGameMessage,
+  SnakeGameModel,
+  stepClock
+} from "./core.vibe"
+import type { Direction } from "./domain/direction.vibe"
+import * as Position from "./domain/position.vibe"
+
+const TUI_DIRECTIONS: ReadonlyArray<readonly [string, Direction]> = [
+  ["up", "Up"],
+  ["down", "Down"],
+  ["left", "Left"],
+  ["right", "Right"],
+  ["w", "Up"],
+  ["s", "Down"],
+  ["a", "Left"],
+  ["d", "Right"]
+]
+
+const TUI_SHORTCUTS = [
+  ...TUI_DIRECTIONS.map(([key, direction]) => ({
+    key,
+    message: SnakeGameMessage.Steered({ direction }),
+    repeat: true
+  })),
+  { key: "space", message: SnakeGameMessage.ToggledPause(), repeat: false },
+  { key: "r", message: SnakeGameMessage.Restarted(), repeat: false },
+  { key: "q", message: SnakeGameMessage.RequestedQuit(), repeat: false }
+]
+
+interface CellGlyph {
+  readonly char: string
+  readonly fg: string
+}
+
+function cellGlyph(cell: Position.Position, model: SnakeGameModel): CellGlyph {
+  return match (classifyCell(cell, model)) {
+    when { _tag: "Head" }: ({ char: "@@", fg: "#4ade80" });
+    when { _tag: "Body" }: ({ char: "[]", fg: "#22c55e" });
+    when { _tag: "Apple" }: ({ char: "()", fg: "#f87171" });
+    when { _tag: "Empty" }: ({ char: " .", fg: "#64748b" });
+  }
+}
+
+export const SnakeTui = OpenTui.component({
+  name: "SnakeTui",
+  model: SnakeGameModel,
+  message: SnakeGameMessage
+}).make({
+  init: ($) =>
+    $.set(initialModel())
+      .run(GenerateApplePosition.make({ snake: NEW_GAME.snake })),
+  update: {
+    Steered: ($, { direction }) =>
+      $.model.gameState === "Playing"
+        ? $.evolve({ nextDirection: direction })
+        : $.model,
+    ToggledPause: ($) =>
+      $.evolve({ gameState: (state) => nextOnSpace(state) }),
+    Restarted: ($) =>
+      $.evolve(NEW_GAME).run(GenerateApplePosition.make({ snake: NEW_GAME.snake })),
+    RequestedQuit: ($) => $.run(OpenTuiCommand.quit()),
+    TickedClock: ($) => {
+      const { ateApple, next } = stepClock($.model)
+      return ateApple
+        ? $.set(next).run(GenerateApplePosition.make({ snake: next.snake }))
+        : next
+    },
+    CompletedGenerateApplePosition: ($, { position }) =>
+      $.evolve({ apple: position })
+  },
+  subscriptions: ({ model }) => [
+    gameClockSubscription(model),
+    OpenTuiSubscription.shortcuts(TUI_SHORTCUTS)
+  ],
+  head: snakeHead,
+  view: (h, model) =>
+    h.box.style({
+      flexDirection: "column",
+      padding: 1,
+      gap: 1,
+      width: Position.GRID_SIZE * 2 + 4
+    }).children(
+      h.text.style({ fg: "#f8fafc" }).children(
+        h.b("Snake"),
+        `  Score: ${model.points}  High: ${model.highScore}`
+      ),
+      h.text.style({ fg: "#cbd5e1" }).children(gameStateText(model.gameState)),
+      h.box.style({
+        border: true,
+        borderColor: "#64748b",
+        flexDirection: "column",
+        width: Position.GRID_SIZE * 2 + 2,
+        height: Position.GRID_SIZE + 2
+      }).children(
+        Arr.makeBy(Position.GRID_SIZE, (y) =>
+          h.text(
+            Arr.makeBy(Position.GRID_SIZE, (x) => {
+              const glyph = cellGlyph({ x, y }, model)
+              return h.span.style({ fg: glyph.fg }).children(glyph.char)
+            })
+          )
+        )
+      ),
+      h.text.style({ fg: "#64748b" }).children(
+        "Arrows/WASD: move  SPACE: start/pause  R: restart  Q: quit"
+      )
+    )
+})

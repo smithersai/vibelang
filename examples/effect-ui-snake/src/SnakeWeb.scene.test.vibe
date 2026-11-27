@@ -1,0 +1,39 @@
+import { HtmlLocator, HtmlScene } from "@effect/ui/html/testing"
+import { Locator } from "@effect/ui/testing"
+import { describe, it } from "@effect/vitest"
+import {
+  GenerateApplePosition,
+  initialModel,
+  SnakeGameMessage,
+  type SnakeGameModel
+} from "./core.vibe"
+import { SnakeWeb } from "./SnakeWeb.vibe"
+
+const baseModel: SnakeGameModel = initialModel()
+
+describe("SnakeWeb scene", () => {
+  it.effect("renders initial heading, scores, start prompt, and responds to SPACE and ArrowUp", () => effect {
+    const scene = try HtmlScene.make(SnakeWeb, {})
+    scene.given(baseModel)
+      .expect(HtmlLocator.role("heading", { name: "Snake Game" })).toExist()
+      .expect(Locator.text("Score: 0")).toExist()
+      .expect(Locator.text("Press SPACE to start")).toExist()
+      .fireDocument("keydown", { key: " " }).expectDefaultPrevented()
+      .expect(Locator.text("Playing - SPACE to pause")).toExist()
+      .given({ ...baseModel, gameState: "Playing", apple: { x: 10, y: 9 } })
+      .fireDocument("keydown", { key: "ArrowUp" }).expectDefaultPrevented()
+      .subscription("gameClock:150", SnakeGameMessage.TickedClock())
+      .expect(Locator.text("Score: 10")).toExist()
+      .resolve(
+        GenerateApplePosition,
+        SnakeGameMessage.CompletedGenerateApplePosition({ position: { x: 0, y: 0 } })
+      )
+  })
+
+  it.effect("unhandled keys keep browser defaults", () => effect {
+    const scene = try HtmlScene.make(SnakeWeb, {})
+    scene.given({ ...baseModel, gameState: "Playing" })
+      .fireDocument("keydown", { key: "Tab" }).expectIgnored()
+      .fireDocument("keydown", { key: "r", ctrl: true }).expectIgnored()
+  })
+})

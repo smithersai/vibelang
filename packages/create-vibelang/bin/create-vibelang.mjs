@@ -2,22 +2,25 @@
 // create-vibelang copies the VibeLang starter app into a new directory, pins the
 // VibeLang packages to its own version, and installs dependencies with the
 // package manager that ran it: `bun create vibelang@latest my-app` or
-// `npm create vibelang@latest my-app`.
+// `npm create vibelang@latest my-app`. Pass `--ui` for the Effect UI browser
+// starter (`templates/effect-ui`), or `--smithers` for Smithers build targets.
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
 import { basename, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const usage = "Usage: create-vibelang [directory] [--smithers] [--no-install]"
+const usage = "Usage: create-vibelang [directory] [--ui] [--smithers] [--no-install]"
 const smithersVersion = "1.0.0-rc.18"
 const own = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"))
 
 let target
 let install = true
 let smithers = false
+let ui = false
 for (const arg of process.argv.slice(2)) {
   if (arg === "--no-install") install = false
   else if (arg === "--smithers") smithers = true
+  else if (arg === "--ui") ui = true
   else if (arg === "--no-git") continue // accepted; create-vibelang never runs git init
   else if (arg === "-h" || arg === "--help") {
     console.log(usage)
@@ -29,6 +32,7 @@ for (const arg of process.argv.slice(2)) {
   else if (target === undefined) target = arg
   else fail(`unexpected argument ${arg}\n${usage}`)
 }
+if (ui && smithers) fail(`--ui and --smithers cannot be combined\n${usage}`)
 target ??= "vibelang-app"
 const directory = resolve(target)
 const manager = packageManager()
@@ -38,10 +42,12 @@ try {
     if (readdirSync(directory).length > 0) fail(`${target} is not empty. Choose a new directory name.`)
   }
 
-  // The published package carries the template in template/; a checkout uses
-  // templates/app directly.
-  const packaged = fileURLToPath(new URL("../template", import.meta.url))
-  const template = existsSync(packaged) ? packaged : fileURLToPath(new URL("../../../templates/app", import.meta.url))
+  // The published package carries templates in template/ and template-ui/;
+  // a checkout uses templates/app and templates/effect-ui directly.
+  const packaged = fileURLToPath(new URL(ui ? "../template-ui" : "../template", import.meta.url))
+  const template = existsSync(packaged)
+    ? packaged
+    : fileURLToPath(new URL(ui ? "../../../templates/effect-ui" : "../../../templates/app", import.meta.url))
   mkdirSync(directory, { recursive: true })
   cpSync(template, directory, {
     recursive: true,
@@ -93,7 +99,7 @@ try {
   if (typeof error?.code !== "string" || !/^E[A-Z]+$/.test(error.code)) throw error
   fail(`Could not create ${target} (${error.code}). Check the path and directory permissions, then retry with a new or empty directory.`)
 }
-console.log(`Created ${target} with VibeLang ${own.version}.`)
+console.log(`Created ${target} with VibeLang ${own.version}${ui ? " (Effect UI)" : ""}.`)
 if (install) {
   console.log(`Installing dependencies with ${manager}...`)
   const result = spawnSync(manager, ["install"], { cwd: directory, stdio: "inherit", shell: process.platform === "win32" })
@@ -107,12 +113,18 @@ if (install) {
   }
 }
 
+const nextCommands = ui
+  ? `  ${manager} run dev      start the Vite dev server with Effect UI DevTools
+  ${manager} run test     run the .vibe Story and Scene tests with Vitest
+  ${manager} run build    type-check with vibe --noEmit and build for production`
+  : `  ${manager} run start    build and run src/main.vibe
+  ${manager} run dev      rebuild and restart on every save
+  ${manager} run test     run the .vibe tests with Vitest${smithers ? `\n  ${manager} run ci       run the Smithers build, test, and check targets` : ""}`
+
 console.log(`
 Next steps:
   cd ${shellQuote(target)}${install ? "" : `\n  ${manager} install`}
-  ${manager} run start    build and run src/main.vibe
-  ${manager} run dev      rebuild and restart on every save
-  ${manager} run test     run the .vibe tests with Vitest${smithers ? `\n  ${manager} run ci       run the Smithers build, test, and check targets` : ""}
+${nextCommands}
 
 Editor support for VS Code or Cursor, after the install:
   code --install-extension node_modules/vibelang/editor/vibelang.vsix

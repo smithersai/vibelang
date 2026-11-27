@@ -85,6 +85,15 @@ export const request = Request
 
 With the DOM library enabled, both compilers accept this file: VibeLang binds `Request` to `effect/Request`, while stock TypeScript binds it to the web `Request` constructor. Emitted JS, declarations, and runtime values diverge silently (this prelude collision remains an open question in VIP-42). VibeLang also always treats marked files as modules, whereas stock TypeScript can treat import/export-free files as scripts.
 
+## Programmatic API and `tsserver` status (TypeScript 7 boundary)
+
+`vibelang-typescript` is a native TypeScript 7.1 drop-in for `tsc` and LSP, not a JavaScript reimplementation of the TypeScript 5/6 compiler API:
+
+- **Root module exports (`import "typescript"` / `require("typescript")`):** exports only typed `version` and `versionMajorMinor` metadata (matching the `7.1.x` package version so peer dependency ranges accept it).
+- **Classic JavaScript compiler API:** `createProgram`, `createSourceFile`, `transpileModule`, `readConfigFile`, `sys`, `SyntaxKind`, and `createLanguageService` are intentionally absent (`undefined`). Tools that rely on the classic JavaScript compiler API (`ts-loader`, `fork-ts-checker-webpack-plugin`, `typescript-eslint`, `TypeDoc`, `ts-jest`, `vue-tsc`, `svelte-check`, and `ngc`) fail at startup rather than silently miscompiling `// @vibe` files.
+- **Native TypeScript 7 RPC client APIs:** `typescript/sync` and `typescript/async` are not exported yet (importing either throws `ERR_PACKAGE_PATH_NOT_EXPORTED`). The compiler binary exposes the native JSON-RPC entrypoint via `tsc --api`, pending a Vibe-matched JavaScript client package.
+- **Language server vs. legacy `tsserver`:** `typescript/lib/tsserver.js` and `typescript/bin/tsserver` are not shipped. Editors connect over LSP 3.17 through `tsc --lsp --stdio`, which VS Code's TypeScript 7 `js/ts.tsdk.path` setting discovers via `node_modules/typescript/lib/tsc` or `node_modules/typescript/tsc`.
+
 ## Return to stock TypeScript
 
 Rewrite VibeLang forms and make implicit prelude bindings explicit before handing a marked file back to stock TypeScript, and verify emitted behavior even when stock `tsc` reports zero errors. Remaining VibeLang syntax produces parse errors such as `TS1434`.

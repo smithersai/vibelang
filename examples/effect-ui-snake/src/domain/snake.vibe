@@ -1,0 +1,47 @@
+import { Array as Arr } from "effect"
+import type { Direction } from "./direction.vibe"
+import * as Position from "./position.vibe"
+
+export const INITIAL_LENGTH = 3
+
+export const Snake = Schema.NonEmptyArray(Position.Position)
+export type Snake = typeof Snake.Type
+
+export function create(startPos: Position.Position): Snake {
+  return Arr.makeBy(INITIAL_LENGTH, (i) => ({
+    x: startPos.x - i,
+    y: startPos.y
+  }))
+}
+
+export function move(snake: Snake, direction: Direction): Snake {
+  return Arr.matchLeft(snake, {
+    onEmpty: () => snake,
+    onNonEmpty: (head, tail) => {
+      const newHead = Position.move(head, direction)
+      return [newHead, head, ...Arr.dropRight(tail, 1)]
+    }
+  })
+}
+
+export function grow(snake: Snake, direction: Direction): Snake {
+  return Arr.matchLeft(snake, {
+    onEmpty: () => snake,
+    onNonEmpty: (head, tail) => {
+      const newHead = Position.move(head, direction)
+      return [newHead, head, ...tail]
+    }
+  })
+}
+
+export function hasCollision(snake: Snake): boolean {
+  return Arr.matchLeft(snake, {
+    onEmpty: () => false,
+    onNonEmpty: (head, tail) =>
+      Arr.some(tail, (segment) => Position.equivalence(head, segment))
+  })
+}
+
+export function contains(snake: Snake, pos: Position.Position): boolean {
+  return Arr.some(snake, (segment) => Position.equivalence(segment, pos))
+}

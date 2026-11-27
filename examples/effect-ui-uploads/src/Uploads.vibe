@@ -1,0 +1,253 @@
+import { Command, Component, Head, Subscription, UiSchema, UiStruct } from "@effect/ui"
+import { Html } from "@effect/ui/html"
+
+export schema UploadStatus = "Uploading" | "Done" | "Cancelled"
+
+export schema Upload {
+  readonly id: number
+  readonly fileName: string
+  readonly sizeMegabytes: number
+  readonly progress: number
+  readonly attempt: number
+  readonly status: UploadStatus
+}
+
+export schema UploadsModel {
+  readonly uploadId: number
+  readonly uploads: ReadonlyArray<Upload>
+}
+
+export const UploadsMessage = UiSchema.TaggedEnum({
+  ClickedStartUpload: {},
+  ClickedCancelUpload: { uploadId: Schema.Number },
+  ClickedCancelAllUploads: {},
+  ClickedRestartUpload: { uploadId: Schema.Number },
+  ProgressedUpload: { uploadId: Schema.Number, progress: Schema.Number },
+  CompletedUploadFile: { uploadId: Schema.Number }
+})
+export type UploadsMessage = typeof UploadsMessage.Type
+
+export interface FakeFile {
+  readonly name: string
+  readonly sizeMegabytes: number
+}
+
+export const FAKE_FILES: ReadonlyArray<FakeFile> = [
+  { name: "vacation-photos.zip", sizeMegabytes: 48 },
+  { name: "demo-recording.mp4", sizeMegabytes: 87 },
+  { name: "quarterly-report.pdf", sizeMegabytes: 12 },
+  { name: "design-assets.sketch", sizeMegabytes: 34 },
+  { name: "database-backup.sql", sizeMegabytes: 61 }
+]
+
+export const MILLISECONDS_PER_MEGABYTE = 100
+
+function isUploading(upload: Upload): boolean {
+  return upload.status === "Uploading"
+}
+
+function updateUpload(
+  uploadId: number,
+  f: (upload: Upload) => Upload
+): (uploads: ReadonlyArray<Upload>) => ReadonlyArray<Upload> {
+  return (uploads) => uploads.map((upload) => upload.id === uploadId ? f(upload) : upload)
+}
+
+export class UploadFile extends Command.Service<UploadFile>()(
+  "uploads/UploadFile",
+  {
+    args: { uploadId: Schema.Number, sizeMegabytes: Schema.Number },
+    success: UploadsMessage,
+    group: ["uploadId"],
+    mode: "switch"
+  }
+) {
+  static readonly layer = this.toLayer(
+    effect ({ uploadId, sizeMegabytes }) => {
+      try sleep(Duration.millis(sizeMegabytes * MILLISECONDS_PER_MEGABYTE))
+      return UploadsMessage.CompletedUploadFile({ uploadId })
+    }
+  )
+}
+
+// VIP-21 producer: compiles to a pull-based Stream.callback with automatic fiber
+// cleanup when the Subscription key disappears on completion or cancellation.
+export effect function* uploadProgressStream(uploadId: number, sizeMegabytes: number) {
+  const stepMs = Math.max(20, Math.floor((sizeMegabytes * MILLISECONDS_PER_MEGABYTE) / 10))
+  for (let progress = 10; progress < 100; progress += 10) {
+    try sleep(Duration.millis(stepMs))
+    yield UploadsMessage.ProgressedUpload({ uploadId, progress })
+  }
+}
+
+function badgeClass(status: UploadStatus): string {
+  return match (status) {
+    when "Uploading": "badge badge-uploading";
+    when "Done": "badge badge-done";
+    when "Cancelled": "badge badge-cancelled";
+  }
+}
+
+const UploadsDef = Html.component({
+  name: "Uploads",
+  model: UploadsModel,
+  message: UploadsMessage
+})
+
+const UploadAction = UploadsDef.fragment((h, upload: Upload) =>
+  match (upload.status) {
+    when "Uploading":
+      h.button.on("click", UploadsMessage.ClickedCancelUpload({ uploadId: upload.id }))
+        .attr("aria-label", `Cancel upload ${upload.id}`)
+        .class("btn btn-danger")
+        .children("Cancel");
+    when "Cancelled":
+      h.button.on("click", UploadsMessage.ClickedRestartUpload({ uploadId: upload.id }))
+        .attr("aria-label", `Restart upload ${upload.id}`)
+        .class("btn")
+        .children("Restart");
+    when "Done":
+      null;
+  }
+)
+
+const UploadRow = UploadsDef.fragment((h, upload: Upload) =>
+  h.li.key(String(upload.id)).class("row").children(
+    h.div.class("row-top").children(
+      h.div.class("file-meta").children(
+        h.span.class("file-name").children(upload.fileName),
+        h.span.class("file-size").children(`${upload.sizeMegabytes} MB`)
+      ),
+      h.div.class("row-controls").children(
+        h.span.class(badgeClass(upload.status)).children(
+          match (upload.status) {
+            when "Uploading": `Uploading (${upload.progress}%)`;
+            when "Done": "Done";
+            when "Cancelled": "Cancelled";
+          }
+        ),
+        UploadAction(h, upload)
+      )
+    ),
+    isUploading(upload) &&
+      h.div.attrs({
+        role: "progressbar",
+        "aria-label": `Progress for ${upload.fileName}`,
+        "aria-valuemin": "0",
+        "aria-valuemax": "100",
+        "aria-valuenow": String(upload.progress)
+      }).class("progress-track").children(
+        h.div.class("progress-fill").style({ width: `${upload.progress}%` })
+      )
+  )
+)
+
+export const UploadsNoDeps = UploadsDef.make({
+  init: () => ({ uploadId: 0, uploads: [] }),
+  update: {
+    ClickedStartUpload: ($) => {
+      const file = FAKE_FILES[$.model.uploadId % FAKE_FILES.length]!
+      const upload: Upload = {
+        id: $.model.uploadId,
+        fileName: file.name,
+        sizeMegabytes: file.sizeMegabytes,
+        progress: 0,
+        attempt: 0,
+        status: "Uploading"
+      }
+      return $.set({
+        uploadId: $.model.uploadId + 1,
+        uploads: [...$.model.uploads, upload]
+      }).run(
+        UploadFile.make({
+          uploadId: upload.id,
+          sizeMegabytes: upload.sizeMegabytes
+        })
+      )
+    },
+
+    ClickedCancelUpload: ($, { uploadId }) =>
+      $.model.uploads.some((upload) => upload.id === uploadId && isUploading(upload))
+        ? $.evolve({
+          uploads: updateUpload(uploadId, (upload) =>
+            UiStruct.evolve(upload, { status: "Cancelled" })
+          )
+        }).run(Command.interrupt(UploadFile, { uploadId }))
+        : $.model,
+
+    ClickedCancelAllUploads: ($) =>
+      $.evolve({
+        uploads: (uploads) =>
+          uploads.map((upload) =>
+            isUploading(upload) ? UiStruct.evolve(upload, { status: "Cancelled" }) : upload
+          )
+      }).run(Command.interrupt(UploadFile)),
+
+    ClickedRestartUpload: ($, { uploadId }) => {
+      const upload = $.model.uploads.find((u) => u.id === uploadId && u.status === "Cancelled")
+      return upload === undefined
+        ? $.model
+        : $.evolve({
+          uploads: updateUpload(uploadId, (current) =>
+            UiStruct.evolve(current, {
+              status: "Uploading",
+              progress: 0,
+              attempt: current.attempt + 1
+            })
+          )
+        }).run(
+          UploadFile.make({ uploadId, sizeMegabytes: upload.sizeMegabytes })
+        )
+    },
+
+    ProgressedUpload: ($, { progress, uploadId }) =>
+      $.evolve({
+        uploads: updateUpload(uploadId, (upload) =>
+          isUploading(upload) ? UiStruct.evolve(upload, { progress }) : upload
+        )
+      }),
+
+    CompletedUploadFile: ($, { uploadId }) =>
+      $.evolve({
+        uploads: updateUpload(uploadId, (upload) =>
+          UiStruct.evolve(upload, { status: "Done", progress: 100 })
+        )
+      })
+  },
+  subscriptions: ({ model }) =>
+    model.uploads
+      .filter(isUploading)
+      .map((upload) =>
+        Subscription.make(
+          "uploadProgress",
+          [upload.id, upload.attempt],
+          () => uploadProgressStream(upload.id, upload.sizeMegabytes)
+        )
+      ),
+  head: () => [Head.title("Vibe Uploads · Effect UI")],
+  view: (h, model) =>
+    h.main.class("page").children(
+      h.header.children(
+        h.h1.class("title").children("File Uploads"),
+        h.p.class("subtitle").children(
+          "Switch-mode Command.Service fiber interruption + VIP-21 producer progress streams"
+        )
+      ),
+      h.div.class("actions").children(
+        h.button.on("click", UploadsMessage.ClickedStartUpload())
+          .class("btn btn-primary")
+          .children("Upload a file"),
+        model.uploads.some(isUploading) &&
+          h.button.on("click", UploadsMessage.ClickedCancelAllUploads())
+            .class("btn btn-danger")
+            .children("Cancel all")
+      ),
+      model.uploads.length === 0
+        ? h.p.class("empty").children("Nothing here yet. Start an upload.")
+        : h.ul.class("list").children(
+          model.uploads.map((upload) => UploadRow(h, upload))
+        )
+    )
+})
+
+export const Uploads = UploadsNoDeps.pipe(Component.provide(UploadFile.layer))

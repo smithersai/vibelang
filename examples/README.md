@@ -1,11 +1,14 @@
 # VibeLang examples
 
-Each project has exact Effect 4.1.1 dependencies, `.vibe` sources in `src`,
+Each project has exact Effect 4.1.6 dependencies, `.vibe` sources in `src`,
 and a short README. The Node examples emit ESM to `dist`; the frontend
 examples build browser bundles with Vite.
 
 | Example | Shows |
 | --- | --- |
+| [effect-ui-domains](effect-ui-domains/) | Full-stack `@effect/ui` domain search with shared `HttpApi`, `schema` models, `schema error`, `service` + `Layer.effect`, `Query.Service`, `@effect/ui-kit` components, and Effect TS parity + `Story`/`HtmlScene` tests. |
+| [effect-ui-uploads](effect-ui-uploads/) | Concurrent `@effect/ui` uploads with `Command.Service` (`mode: "switch"`) fiber interruption, exhaustive `match` views, a VIP-21 `effect function*` progress `Subscription`, and `@effect/ui-devtools`. |
+| [effect-ui-snake](effect-ui-snake/) | One `.vibe` Snake core mounting to both `@effect/ui/html` (Web) and `@effect/ui-opentui` (Terminal), with shared `Story` and `HtmlScene` tests. |
 | [hello](hello/) | One function, one log, and a written application runner. |
 | [users](users/) | Service declarations, layer composition, typed failures, and test layers. |
 | [http-api](http-api/) | A schema-validated HTTP route, conflict errors, and socket-free route tests. |
@@ -26,6 +29,7 @@ The seven-day minimum release age exempts the exact dependencies those packages 
 In a Node example directory, run `bun install`,
 `bun run build`, and `bun run start`. In a frontend example, run
 `bun install`, `bun run dev`, or `bun run test` to check and build it.
+In `effect-ui-snake`, run `bun run dev` for the browser or `bun run dev:tui` for the OpenTUI terminal host.
 In foldkit-app or alchemy-stack, `bun run test` checks both versions with one suite.
 The users, http-api, and resilience
 projects also have `bun run test`; Vitest compiles their `.vibe` sources

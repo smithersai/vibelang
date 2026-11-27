@@ -1,0 +1,63 @@
+import { Component, Router } from "@effect/ui"
+import { Dialog } from "@effect/ui-kit"
+import { HtmlCommand } from "@effect/ui/html"
+import { HtmlLocator, HtmlScene } from "@effect/ui/html/testing"
+import { Locator } from "@effect/ui/testing"
+import { assert, describe, it } from "@effect/vitest"
+import { AppNoDeps, RetrySearch } from "./App.vibe"
+import { searchSample, SearchUnavailable } from "./domain/Domain.vibe"
+import { restRange, topRange } from "./domain/Listing.vibe"
+import { AppRoute } from "./routes.vibe"
+
+const search = (q?: string) =>
+  AppRoute.Search({ search: q === undefined ? {} : { q } })
+const searchBox = HtmlLocator.role("searchbox", { name: "Search domains" })
+const tryAgain = HtmlLocator.role("button", { name: "Try again" })
+
+describe("App scene", () => {
+  it.effect("typing on landing updates search and patches route", () => effect {
+    const route = search()
+    const scene = try HtmlScene.make(AppNoDeps, { route })
+    try Effect.try(() =>
+      assert.deepStrictEqual(scene.queryInfo.map((info) => info.args), [undefined, undefined])
+    )
+    scene.expect(Locator.attr("data-search-layout", "Landing")).toExist()
+      .type(searchBox, "effect")
+      .expect(searchBox).toHaveValue("effect")
+      .expect(Locator.attr("data-search-layout", "Search")).toExist()
+      .expectExact(Router.patchSearch(AppRoute, route, { q: "effect" }))
+      .resolve(Router.PatchSearch, "navigated")
+  })
+
+  it.effect("loaded results render available domains, cart add, and cart dialog", () => effect {
+    const scene = try HtmlScene.make(AppNoDeps, { route: search("effect") })
+    scene.expect(HtmlLocator.role("status", { name: "Searching domains" })).toExist()
+      .loaded("top", searchSample({ label: "effect", ...topRange }))
+      .loaded("rest", searchSample({ label: "effect", ...restRange }))
+      .expect(HtmlLocator.role("heading", { name: "effect.com" })).toExist()
+      .click(HtmlLocator.role("button", { name: "Add effect.com" }))
+      .expect(HtmlLocator.role("button", { name: "Cart, 1 domains" })).toExist()
+      .childEmit(Dialog, "cart", { _tag: "RequestedOpen", triggerId: "cart-button" })
+      .expect(HtmlLocator.role("heading", { name: "Your Cart (1)" })).toExist()
+      .click(HtmlLocator.role("button", { name: "Remove effect.com from cart" }))
+      .expect(Locator.text("No domains added yet.")).toExist()
+  })
+
+  it.effect("failed search renders alert and RetrySearch invalidates query", () => effect {
+    const scene = try HtmlScene.make(AppNoDeps, { route: search("effect") })
+    scene.loadFailed("top", new SearchUnavailable())
+      .expect(HtmlLocator.role("alert")).toHaveText(/Could not load sample domains/)
+      .click(tryAgain)
+      .expectExact(RetrySearch, HtmlCommand.Focus)
+      .resolve(RetrySearch, Component.noop)
+      .resolve(HtmlCommand.Focus, { found: true })
+  })
+
+  it.effect("unknown path renders 404 page", () => effect {
+    const scene = try HtmlScene.make(AppNoDeps, {
+      route: AppRoute.NotFound({ params: { "*": "missing" } })
+    })
+    scene.expect(HtmlLocator.role("heading", { name: "404 — Page Not Found" })).toExist()
+      .expect(HtmlLocator.role("link", { name: "← Back to Domains" })).toExist()
+  })
+})

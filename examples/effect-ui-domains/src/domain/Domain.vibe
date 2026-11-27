@@ -1,0 +1,108 @@
+import { Array as Arr } from "effect"
+
+export schema DomainName {
+  readonly name: string
+  readonly tld: string
+}
+
+const Price = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0))
+
+export const Domain = Schema.TaggedUnion({
+  Available: {
+    ...DomainName.fields,
+    price: Price,
+    renewalPrice: Price,
+    years: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10 })),
+    isPremium: Schema.Boolean
+  },
+  Unavailable: DomainName.fields
+})
+export type Domain = typeof Domain.Type
+
+export schema AvailableDomain = Domain.cases.Available
+
+const samplePrices: Readonly<Record<string, number>> = {
+  com: 12,
+  dev: 12,
+  app: 9.99,
+  io: 34.99,
+  ai: 80,
+  sh: 33,
+  xyz: 2.99,
+  org: 9.99,
+  me: 13.99,
+  net: 13.5,
+  tech: 7.99,
+  cloud: 7.99,
+  studio: 21.99,
+  design: 39.99,
+  co: 25.99,
+  run: 19.99,
+  page: 9.99,
+  tools: 24.99,
+  build: 18.5,
+  codes: 22.0,
+  software: 29.0,
+  systems: 16.0,
+  world: 3.99,
+  space: 1.99
+}
+
+export const domainTlds: ReadonlyArray<string> = Object.keys(samplePrices)
+
+export const DomainLabel = Schema.String.check(
+  Schema.isPattern(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/)
+)
+
+export const DomainOffset = Schema.Int.check(
+  Schema.isBetween({ minimum: 0, maximum: domainTlds.length - 1 })
+)
+
+export const DomainLimit = Schema.Int.check(
+  Schema.isBetween({ minimum: 1, maximum: domainTlds.length })
+)
+
+export schema DomainRange {
+  readonly offset: DomainOffset
+  readonly limit: DomainLimit
+}
+
+export schema DomainSearch {
+  readonly label: DomainLabel
+  readonly offset: DomainOffset
+  readonly limit: DomainLimit
+}
+
+export schema error SearchUnavailable
+
+export function normalizeLabel(query: string): string {
+  return query.trim().toLowerCase().replace(/^https?:\/\//, "").split(/[./]/)[0] ?? ""
+}
+
+export function labelOf(query: string): string | undefined {
+  const label = normalizeLabel(query)
+  return Schema.is(DomainLabel)(label) ? label : undefined
+}
+
+export function domainCandidates(label: string): ReadonlyArray<DomainName> {
+  return Arr.map(domainTlds, (tld) => ({ name: `${label}.${tld}`, tld }))
+}
+
+const takenLabels: ReadonlyArray<string> = ["vercel", "google", "github", "vibelang"]
+const takenTlds: ReadonlyArray<string> = ["com", "dev"]
+
+export function searchSample({ label, limit, offset }: DomainSearch): ReadonlyArray<Domain> {
+  return domainCandidates(label).slice(offset, offset + limit).map((candidate) => {
+    if (takenLabels.includes(label) && takenTlds.includes(candidate.tld)) {
+      return Domain.cases.Unavailable.make(candidate)
+    }
+    const price = samplePrices[candidate.tld] ?? 19.99
+    return Domain.cases.Available.make({
+      ...candidate,
+      price,
+      renewalPrice: price,
+      years: 1,
+      isPremium: price >= 30
+    })
+  })
+}

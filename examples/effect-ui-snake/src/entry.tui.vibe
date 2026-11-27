@@ -1,0 +1,5 @@
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import { OpenTuiHost } from "@effect/ui-opentui"
+import { SnakeTui } from "./SnakeTui.vibe"
+
+NodeRuntime.runMain(OpenTuiHost.run(SnakeTui, {}))

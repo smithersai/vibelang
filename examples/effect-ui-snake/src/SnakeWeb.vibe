@@ -1,0 +1,104 @@
+import { Html, HtmlSubscription } from "@effect/ui/html"
+import { Array as Arr } from "effect"
+import {
+  classifyCell,
+  gameClockSubscription,
+  gameStateText,
+  GenerateApplePosition,
+  initialModel,
+  NEW_GAME,
+  nextOnSpace,
+  snakeHead,
+  SnakeGameMessage,
+  SnakeGameModel,
+  stepClock
+} from "./core.vibe"
+import type { Direction } from "./domain/direction.vibe"
+import * as Position from "./domain/position.vibe"
+
+const WEB_DIRECTIONS: ReadonlyArray<readonly [string, Direction]> = [
+  ["ArrowUp", "Up"],
+  ["ArrowDown", "Down"],
+  ["ArrowLeft", "Left"],
+  ["ArrowRight", "Right"],
+  ["w", "Up"],
+  ["s", "Down"],
+  ["a", "Left"],
+  ["d", "Right"]
+]
+
+const WEB_SHORTCUTS = [
+  ...WEB_DIRECTIONS.map(([key, direction]) => ({
+    key,
+    message: SnakeGameMessage.Steered({ direction }),
+    repeat: true
+  })),
+  { key: " ", message: SnakeGameMessage.ToggledPause(), repeat: false },
+  { key: "r", message: SnakeGameMessage.Restarted(), repeat: false }
+]
+
+function cellClass(cell: Position.Position, model: SnakeGameModel): string {
+  return match (classifyCell(cell, model)) {
+    when { _tag: "Head" }: "cell cell-head";
+    when { _tag: "Body" }: "cell cell-body";
+    when { _tag: "Apple" }: "cell cell-apple";
+    when { _tag: "Empty" }: "cell cell-empty";
+  }
+}
+
+export const SnakeWeb = Html.component({
+  name: "SnakeWeb",
+  model: SnakeGameModel,
+  message: SnakeGameMessage
+}).make({
+  init: ($) =>
+    $.set(initialModel())
+      .run(GenerateApplePosition.make({ snake: NEW_GAME.snake })),
+  update: {
+    Steered: ($, { direction }) =>
+      $.model.gameState === "Playing"
+        ? $.evolve({ nextDirection: direction })
+        : $.model,
+    ToggledPause: ($) =>
+      $.evolve({ gameState: (state) => nextOnSpace(state) }),
+    Restarted: ($) =>
+      $.evolve(NEW_GAME).run(GenerateApplePosition.make({ snake: NEW_GAME.snake })),
+    RequestedQuit: ($) => $.model,
+    TickedClock: ($) => {
+      const { ateApple, next } = stepClock($.model)
+      return ateApple
+        ? $.set(next).run(GenerateApplePosition.make({ snake: next.snake }))
+        : next
+    },
+    CompletedGenerateApplePosition: ($, { position }) =>
+      $.evolve({ apple: position })
+  },
+  subscriptions: ({ model }) => [
+    gameClockSubscription(model),
+    HtmlSubscription.shortcuts(WEB_SHORTCUTS)
+  ],
+  head: snakeHead,
+  view: (h, model) =>
+    h.main.class("page").children(
+      h.h1.class("title").children("Snake Game"),
+      h.div.class("scores").children(
+        h.p(`Score: ${model.points}`),
+        h.p(`High Score: ${model.highScore}`)
+      ),
+      h.p.class("status").children(gameStateText(model.gameState)),
+      h.div.class("board").children(
+        Arr.makeBy(Position.GRID_SIZE, (y) =>
+          h.div.class("row").children(
+            Arr.makeBy(Position.GRID_SIZE, (x) =>
+              h.div.class(cellClass({ x, y }, model))
+            )
+          )
+        )
+      ),
+      h.div.class("hints").children(
+        h.p("Use ARROW KEYS or WASD to move"),
+        h.p("SPACE to pause/start"),
+        h.p("R to restart")
+      )
+    )
+})

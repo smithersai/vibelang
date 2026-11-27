@@ -1,0 +1,36 @@
+{
+  "name": "vibelang-example-effect-ui-snake",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:tui": "vibe run src/entry.tui.vibe",
+    "build": "vite build",
+    "typecheck": "vibelang -p tsconfig.json --noEmit",
+    "test": "vibelang -p tsconfig.json --noEmit && vitest run && vite build"
+  },
+  "dependencies": {
+    "@effect/platform-node": "4.1.6",
+    "@effect/ui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6",
+    "@effect/ui-devtools": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6",
+    "@effect/ui-kit": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6",
+    "@effect/ui-opentui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-opentui@22128c6",
+    "@opentui/core": "0.9.9",
+    "effect": "4.1.6",
+    "vibelang-runtime": "0.0.14"
+  },
+  "devDependencies": {
+    "@effect/vitest": "4.1.6",
+    "happy-dom": "20.14.6",
+    "vibelang": "0.0.14",
+    "vibelang-vite": "0.0.14",
+    "vite": "8.3.5",
+    "vitest": "5.1.0"
+  },
+  "overrides": {
+    "@effect/ui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6",
+    "@effect/ui-kit": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6",
+    "@effect/ui-devtools": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6",
+    "@effect/ui-opentui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-opentui@22128c6"
+  }
+}
