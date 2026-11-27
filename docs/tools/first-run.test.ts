@@ -29,7 +29,8 @@ test.skipIf(!existsSync(compiler))("the local starter runs and its stdout matche
     const app = join(temp, "app")
     // The Vite plugin must be able to check and emit a new, unbuilt app.
     const tests = await command(["node", join(repo, "docs/tools/node_modules/vitest/vitest.mjs"), "run"], app)
-    expect(tests).toMatch(/\bTests\s+2 passed\b/)
+    const plainTests = tests.replace(/\x1b\[[0-9;]*m/g, "")
+    expect(plainTests).toMatch(/\bTests\s+2 passed\b/)
     const version = await command([compiler, "--version"], app)
     const existingProject = readFileSync(join(repo, "docs/user/src/setup/existing-project.md"), "utf8")
     const expectedVersion = sectionBlocks(existingProject, "3. Check the compiler", "out")
