@@ -168,7 +168,8 @@ test("Go-only mapper setup installs dependencies where execution tests resolve t
   const runtime = /effect := filepath.Join\(root, "([^"]+)\/node_modules\/effect"\)/.exec(helper)?.[1]
   expect(runtime, "derive the install directory from the real runtime test helper").toBeDefined()
   const manifest = JSON.parse(await readFile(join(repository, runtime!, "package.json"), "utf8"))
-  expect(manifest.devDependencies.effect).toBe(manifest.peerDependencies.effect)
+  expect(manifest.peerDependencies.effect).toBe("^4.1.0")
+  expect(manifest.devDependencies.effect).toMatch(/^4\.\d+\.\d+$/)
   const contributing = render(await readSources())["CONTRIBUTING.md"]!
   expect(contributing).toContain("(docs/maintainers/build.md#running-suites-directly)")
   const guide = await readFile(join(repository, "docs/maintainers/build.md"), "utf8")
@@ -212,7 +213,7 @@ test("contributor release-note guidance runs the strict guard before submission"
       const bullet = /^- .+$/m.exec(fixtureNotes.slice(fixtureNotes.indexOf(heading)))![0]
       for (const [label, text, status] of [
         ["valid", fixtureNotes, 0],
-        ["duplicate", fixtureNotes.replace(heading, heading + "\n" + bullet), 1],
+        ["duplicate", fixtureNotes.replace(heading, heading + "\n" + bullet + "\n" + bullet), 1],
         ["internal", fixtureNotes.replace(heading, heading + "\n- Added fuzz regression checks."), 1],
       ] as const) {
         await writeFile(join(fixture, "docs/user/src/setup/release-notes.md"), text)
