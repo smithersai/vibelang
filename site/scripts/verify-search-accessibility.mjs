@@ -52,9 +52,25 @@ try {
       await trigger.focus()
       await page.keyboard.press('Enter')
       const input = page.getByRole('combobox')
+      const dialog = page.getByRole('dialog')
+      const status = dialog.locator('[role="status"][aria-live="polite"]')
+      const keyboardHints = async () => dialog.evaluate(root =>
+        [...root.querySelectorAll('span')].filter(span => span.querySelector('kbd')).map(span => ({
+          text: span.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+          visible: span.getClientRects().length > 0,
+        }))
+      )
       await input.fill('scope')
       await page.getByRole('option').first().waitFor()
+      await status.filter({ hasText: /results? for "scope"/ }).waitFor({ state: 'attached' })
       const first = await activeResult()
+      assert.equal(await status.textContent(), `${first.ids.length} ${first.ids.length === 1 ? 'result' : 'results'} for "scope"`)
+      if (width >= 640) {
+        const hints = (await keyboardHints()).filter(hint => hint.visible).map(hint => hint.text)
+        assert.equal(hints.some(text => text.includes('navigate')), first.ids.length > 1)
+        assert.equal(hints.some(text => text.includes('select')), true)
+        assert.equal(hints.some(text => text.includes('close')), true)
+      }
       await page.keyboard.press('ArrowDown')
       const second = await activeResult()
       assert.notEqual(second.id, first.id)
@@ -63,14 +79,24 @@ try {
       checks.push('jump and regular results track keyboard selection with unique IDs')
       await input.fill('retry')
       await page.getByRole('option').filter({ hasText: /retry/i }).first().waitFor()
-      await activeResult()
-      checks.push('changed results retain a valid selected descendant')
+      await status.filter({ hasText: /results? for "retry"/ }).waitFor({ state: 'attached' })
+      const retryState = await activeResult()
+      assert.equal(await status.textContent(), `${retryState.ids.length} ${retryState.ids.length === 1 ? 'result' : 'results'} for "retry"`)
+      checks.push('changed results retain a valid selected descendant and announce updated count')
       await input.fill('vibelangnonexistentx20261018')
       await page.getByText('No results found', { exact: true }).waitFor()
+      await status.filter({ hasText: /^No results found for "vibelangnonexistentx20261018"$/ }).waitFor({ state: 'attached' })
+      assert.equal(await status.textContent(), 'No results found for "vibelangnonexistentx20261018"')
       assert.equal(await input.getAttribute('aria-activedescendant'), null)
       assert.equal(await input.getAttribute('aria-controls'), null)
       assert.equal(await input.getAttribute('aria-expanded'), 'false')
-      checks.push('empty results clear active descendant and popup relationship')
+      if (width >= 640) {
+        const hints = (await keyboardHints()).filter(hint => hint.visible).map(hint => hint.text)
+        assert.equal(hints.some(text => text.includes('navigate')), false)
+        assert.equal(hints.some(text => text.includes('select')), false)
+        assert.equal(hints.some(text => text.includes('close')), true)
+      }
+      checks.push('empty results clear active descendant, announce empty state, and hide unusable keyboard actions')
       await page.keyboard.press('Escape')
       await page.getByRole('dialog').waitFor({ state: 'hidden' })
       await page.waitForTimeout(400)

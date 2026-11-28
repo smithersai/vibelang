@@ -1,5 +1,7 @@
 import { afterEach, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -7,7 +9,12 @@ import { fileURLToPath } from 'node:url'
 import { patchVocsSearch } from './patch-vocs-search.mjs'
 
 const installed = fileURLToPath(new URL('../node_modules/vocs/', import.meta.url))
+const basePatchFile = fileURLToPath(new URL('../patches/vocs-2.8.5-search-accessibility.patch', import.meta.url))
+const deltaPatchFile = fileURLToPath(new URL('../patches/vocs-2.8.5-search-announcements-and-actions.patch', import.meta.url))
+const upstreamSourceHash = '1a5739418f3f89eaf75438056c2c60c59720d2447f1de9539aff1006ae549de2'
+const previousSourceHash = '20e53e899bc97983fb12a7927e1dd09d4c589060ca24b66d700e0ab5a51e8986'
 const files = ['src/react/internal/Search.tsx', 'dist/react/internal/Search.js', 'dist/react/internal/Search.js.map']
+const sha = value => createHash('sha256').update(value).digest('hex')
 const roots = []
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
 function fixture() {
@@ -29,6 +36,35 @@ test('an applied patch is idempotent and leaves the same vendor files', () => {
   const before = snapshot()
   assert.equal(patchVocsSearch(root).changed, false)
   assert.deepEqual(snapshot(), before)
+})
+
+test('applying the patches to upstream Vocs 2.8.5 source is deterministic for source, JS, and source map', () => {
+  const { root, vendor, snapshot } = fixture()
+  patchVocsSearch(root)
+  const expected = snapshot()
+  const revDelta = spawnSync('patch', ['-R', '--batch', '--fuzz=0', '-p1', '-d', vendor, '-i', deltaPatchFile], { encoding: 'utf8' })
+  assert.equal(revDelta.status, 0, revDelta.stderr || revDelta.stdout)
+  assert.equal(sha(readFileSync(join(vendor, files[0]), 'utf8')), previousSourceHash)
+  const revBase = spawnSync('patch', ['-R', '--batch', '--fuzz=0', '-p1', '-d', vendor, '-i', basePatchFile], { encoding: 'utf8' })
+  assert.equal(revBase.status, 0, revBase.stderr || revBase.stdout)
+  assert.equal(sha(readFileSync(join(vendor, files[0]), 'utf8')), upstreamSourceHash)
+  const result = patchVocsSearch(root)
+  assert.equal(result.changed, true)
+  assert.equal(result.version, '2.8.5')
+  assert.deepEqual(snapshot(), expected)
+  const [source, compiled, mapText] = expected
+  assert.match(source, /aria-live="polite"/)
+  assert.match(source, /role="status"/)
+  assert.match(source, /canNavigate &&/)
+  assert.match(source, /canSelect &&/)
+  assert.match(compiled, /"aria-live": "polite"/)
+  assert.match(compiled, /role: "status"/)
+  assert.match(compiled, /canNavigate &&/)
+  assert.match(compiled, /canSelect &&/)
+  const map = JSON.parse(mapText)
+  assert.equal(map.file, 'Search.js')
+  assert.deepEqual(map.sources, ['Search.tsx'])
+  assert.equal(map.sourcesContent[0], source)
 })
 
 for (const change of ['version', 'source', 'compiled module']) test(`unsupported ${change} changes fail before overwriting vendor files`, () => {
