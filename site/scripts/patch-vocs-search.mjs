@@ -7,14 +7,35 @@ import { fileURLToPath } from 'node:url'
 import * as ts from 'typescript'
 
 const docsRoot = fileURLToPath(new URL('../', import.meta.url))
-const patchFile = fileURLToPath(new URL('../patches/vocs-2.8.5-search-accessibility.patch', import.meta.url))
+const basePatchFile = fileURLToPath(new URL('../patches/vocs-2.8.5-search-accessibility.patch', import.meta.url))
+const deltaPatchFile = fileURLToPath(new URL('../patches/vocs-2.8.5-search-announcements-and-actions.patch', import.meta.url))
 const hashes = {
   source: '1a5739418f3f89eaf75438056c2c60c59720d2447f1de9539aff1006ae549de2',
-  patched: '20e53e899bc97983fb12a7927e1dd09d4c589060ca24b66d700e0ab5a51e8986',
+  patched: '3408d9a23708430ff81e8bae2dc5207e4123c1c3ef69051af77176bb782cc021',
   javascript: 'ecc2fd8eb51103894b63140abcd4739252cba10d5adb1978b5ccd15e95d79a69',
   map: 'd21605f96027ad99d3c3975752bc63411da68444e1e6ba4dc9aad844c9ff323f',
 }
+const previous = {
+  source: '20e53e899bc97983fb12a7927e1dd09d4c589060ca24b66d700e0ab5a51e8986',
+  javascript: '80b31bb0fc92ec8bfdd66a5238b98dce5ce8de4aceee83cca9cb0bbcb9a9274a',
+  map: '22160a8a2b7920312c4cc67fab522605eef756232d83ba8ca8b68c7346059ff4',
+}
 const sha = value => createHash('sha256').update(value).digest('hex')
+
+function applyPatch(source, patchFile, expectedHash) {
+  const temporary = mkdtempSync(join(tmpdir(), 'vibelang-vocs-search-'))
+  try {
+    const staged = join(temporary, 'src/react/internal/Search.tsx')
+    mkdirSync(dirname(staged), { recursive: true })
+    writeFileSync(staged, source)
+    const result = spawnSync('patch', ['--batch', '--forward', '--fuzz=0', '-p1', '-d', temporary, '-i', patchFile], { encoding: 'utf8' })
+    if (result.error || result.status !== 0)
+      throw new Error(`Could not apply the Vocs source patch: ${result.error?.message ?? result.stderr ?? result.status}`)
+    const next = readFileSync(staged, 'utf8')
+    if (sha(next) !== expectedHash) throw new Error('Patched Vocs source hash did not match the reviewed patch.')
+    return next
+  } finally { rmSync(temporary, { recursive: true, force: true }) }
+}
 
 /** Patch only an owned npm dependency; never follow a workspace's borrowed module links. */
 export function patchVocsSearch(root = docsRoot) {
@@ -32,20 +53,14 @@ export function patchVocsSearch(root = docsRoot) {
   }
   let source = readFileSync(sourceFile, 'utf8')
   const sourceHash = sha(source)
-  if (sourceHash !== hashes.source && sourceHash !== hashes.patched)
+  const fromPrevious = sourceHash === previous.source
+  if (sourceHash !== hashes.source && sourceHash !== hashes.patched && !fromPrevious)
     throw new Error('Vocs Search.tsx source hash changed; review the patch instead of applying it with fuzz.')
   if (sourceHash === hashes.source) {
-    const temporary = mkdtempSync(join(tmpdir(), 'vibelang-vocs-search-'))
-    try {
-      const staged = join(temporary, 'src/react/internal/Search.tsx')
-      mkdirSync(dirname(staged), { recursive: true })
-      writeFileSync(staged, source)
-      const result = spawnSync('patch', ['--batch', '--forward', '--fuzz=0', '-p1', '-d', temporary, '-i', patchFile], { encoding: 'utf8' })
-      if (result.error || result.status !== 0)
-        throw new Error(`Could not apply the Vocs source patch: ${result.error?.message ?? result.stderr ?? result.status}`)
-      source = readFileSync(staged, 'utf8')
-      if (sha(source) !== hashes.patched) throw new Error('Patched Vocs source hash did not match the reviewed patch.')
-    } finally { rmSync(temporary, { recursive: true, force: true }) }
+    source = applyPatch(source, basePatchFile, previous.source)
+    source = applyPatch(source, deltaPatchFile, hashes.patched)
+  } else if (fromPrevious) {
+    source = applyPatch(source, deltaPatchFile, hashes.patched)
   }
   // Vocs ships source and compiled modules; its CLI loads dist. Recompile this
   // one module only, retaining the upstream package, license and build pipeline.
@@ -59,10 +74,11 @@ export function patchVocsSearch(root = docsRoot) {
   })
   if (output.diagnostics?.some(item => item.category === ts.DiagnosticCategory.Error))
     throw new Error('Patched Vocs Search.tsx did not compile.')
+  const expectedOriginal = fromPrevious ? previous : hashes
   const changes = [
-    [javascriptFile, output.outputText, hashes.javascript],
-    [mapFile, output.sourceMapText, hashes.map],
-    [sourceFile, source, hashes.source],
+    [javascriptFile, output.outputText, expectedOriginal.javascript],
+    [mapFile, output.sourceMapText, expectedOriginal.map],
+    [sourceFile, source, expectedOriginal.source],
   ]
   for (const [file, value, originalHash] of changes) {
     if (typeof value !== 'string') throw new Error('Patched Vocs module output is incomplete.')

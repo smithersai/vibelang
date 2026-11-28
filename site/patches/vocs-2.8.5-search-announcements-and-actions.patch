@@ -1,0 +1,129 @@
+--- a/src/react/internal/Search.tsx
++++ b/src/react/internal/Search.tsx
+@@ -37,6 +37,7 @@
+ }
+ 
+ type SearchState = {
++  query: string
+   results: SearchResult[]
+   selectedIndex: number
+ }
+@@ -85,6 +86,7 @@
+ }
+ 
+ const initialSearchState: SearchState = {
++  query: '',
+   results: [],
+   selectedIndex: 0,
+ }
+@@ -246,15 +248,18 @@
+   }, [])
+ 
+   React.useEffect(() => {
+-    if (!index || !query.trim()) {
+-      setSearch((s) => (s.results.length ? { ...s, results: [], selectedIndex: 0 } : s))
++    const trimmed = query.trim()
++    if (!index || !trimmed) {
++      setSearch((s) =>
++        s.results.length || s.query ? { query: '', results: [], selectedIndex: 0 } : s,
++      )
+       return
+     }
+ 
+     const results = (
+       index.search(query, SearchConfig.getQueryOptions(config)) as SearchResult[]
+     ).slice(0, 20)
+-    setSearch((s) => ({ ...s, results, selectedIndex: 0 }))
++    setSearch((s) => ({ ...s, query: trimmed, results, selectedIndex: 0 }))
+   }, [query, index, config])
+ 
+   React.useEffect(() => {
+@@ -310,6 +315,29 @@
+     return displayedResults
+   }, [jumpToResult, displayedResults])
+ 
++  const trimmedQuery = query.trim()
++  const canSelect = Boolean(allItems[search.selectedIndex])
++  const canNavigate = allItems.length > 1
++  const dialogDescription = canNavigate
++    ? 'Search through documentation pages. Use arrow keys to navigate, Enter to select, Escape to close.'
++    : canSelect
++      ? 'Search through documentation pages. Press Enter to select, Escape to close.'
++      : 'Search through documentation pages. Press Escape to close.'
++  const statusAnnouncement = React.useMemo(() => {
++    if (!open) return ''
++    if (!trimmedQuery) {
++      if (allItems.length === 0) return ''
++      return `${allItems.length} recent ${allItems.length === 1 ? 'search' : 'searches'}`
++    }
++    if (!index) return 'Loading search results'
++    if (search.query !== trimmedQuery) return ''
++    if (allItems.length === 0) {
++      return semanticLoading ? 'Searching documentation' : `No results found for "${trimmedQuery}"`
++    }
++    const countLabel = `${allItems.length} ${allItems.length === 1 ? 'result' : 'results'} for "${trimmedQuery}"`
++    return semanticLoading ? `${countLabel}. Enhancing results.` : countLabel
++  }, [open, trimmedQuery, allItems.length, index, search.query, semanticLoading])
++
+   const handleKeyDown = React.useCallback(
+     (event: React.KeyboardEvent) => {
+       const items = allItems
+@@ -370,8 +398,16 @@
+         >
+           <Dialog.Title className="vocs:sr-only">Search documentation</Dialog.Title>
+           <Dialog.Description className="vocs:sr-only">
+-            Search through documentation pages. Use arrow keys to navigate, enter to select.
++            {dialogDescription}
+           </Dialog.Description>
++          <div
++            aria-atomic="true"
++            aria-live="polite"
++            className="vocs:sr-only"
++            role="status"
++          >
++            {statusAnnouncement}
++          </div>
+ 
+           <div className="vocs:flex vocs:items-center vocs:gap-3 vocs:px-4 vocs:py-3 vocs:border-b vocs:border-primary">
+             <LucideSearch className="vocs:size-5 vocs:text-secondary vocs:shrink-0" />
+@@ -465,21 +501,25 @@
+ 
+           <div className="vocs:max-sm:hidden vocs:flex vocs:items-center vocs:justify-between vocs:px-4 vocs:py-2 vocs:border-t vocs:border-primary vocs:text-xs vocs:text-secondary">
+             <div className="vocs:flex vocs:items-center vocs:gap-3">
+-              <span className="vocs:flex vocs:items-center vocs:gap-1">
+-                <kbd className="vocs:bg-primary vocs:border vocs:border-primary vocs:rounded vocs:px-1.5 vocs:py-0.5 vocs:text-[10px]">
+-                  ↑
+-                </kbd>
+-                <kbd className="vocs:bg-primary vocs:border vocs:border-primary vocs:rounded vocs:px-1.5 vocs:py-0.5 vocs:text-[10px]">
+-                  ↓
+-                </kbd>
+-                <span>navigate</span>
+-              </span>
+-              <span className="vocs:flex vocs:items-center vocs:gap-1">
+-                <kbd className="vocs:bg-primary vocs:border vocs:border-primary vocs:rounded vocs:px-1.5 vocs:py-0.5 vocs:text-[10px]">
+-                  ↵
+-                </kbd>
+-                <span>select</span>
+-              </span>
++              {canNavigate && (
++                <span className="vocs:flex vocs:items-center vocs:gap-1">
++                  <kbd className="vocs:bg-primary vocs:border vocs:border-primary vocs:rounded vocs:px-1.5 vocs:py-0.5 vocs:text-[10px]">
++                    ↑
++                  </kbd>
++                  <kbd className="vocs:bg-primary vocs:border vocs:border-primary vocs:rounded vocs:px-1.5 vocs:py-0.5 vocs:text-[10px]">
++                    ↓
++                  </kbd>
++                  <span>navigate</span>
++                </span>
++              )}
++              {canSelect && (
++                <span className="vocs:flex vocs:items-center vocs:gap-1">
++                  <kbd className="vocs:bg-primary vocs:border vocs:border-primary vocs:rounded vocs:px-1.5 vocs:py-0.5 vocs:text-[10px]">
++                    ↵
++                  </kbd>
++                  <span>select</span>
++                </span>
++              )}
+               <span className="vocs:flex vocs:items-center vocs:gap-1">
+                 <kbd className="vocs:bg-primary vocs:border vocs:border-primary vocs:rounded vocs:px-1.5 vocs:py-0.5 vocs:text-[10px]">
+                   esc
